@@ -31,6 +31,7 @@ import com.android.tradefed.util.SimplePerfStatResultParser;
 import com.android.tradefed.util.SimplePerfUtil;
 import com.android.tradefed.util.SimplePerfUtil.SimplePerfType;
 import com.android.tradefed.util.SimpleStats;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.junit.Assert;
 
@@ -449,7 +450,9 @@ public class MicroBenchTest implements IDeviceTest, IRemoteTest {
             for (TestCase test : testCases) {
                 test.runTest(listener, metrics);
             }
-            listener.testRunEnded((System.currentTimeMillis() - beginTime), metrics);
+            listener.testRunEnded(
+                    (System.currentTimeMillis() - beginTime),
+                    TfMetricProtoUtil.upgradeConvert(metrics));
         }
 
         if (mStopFramework) {

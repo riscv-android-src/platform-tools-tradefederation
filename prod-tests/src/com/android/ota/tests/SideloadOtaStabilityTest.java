@@ -47,6 +47,7 @@ import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.util.DeviceRecoveryModeUtil;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.junit.Assert;
 
@@ -242,7 +243,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                 metrics.put("boot_time_available", Double.toString(lastBootTime.mAvailTime));
             }
             long endTime = System.currentTimeMillis() - startTime;
-            listener.testRunEnded(endTime, metrics);
+            listener.testRunEnded(endTime, TfMetricProtoUtil.upgradeConvert(metrics));
         }
     }
 
@@ -355,7 +356,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             double availTime = (System.currentTimeMillis() - start) / 1000.0;
             return new BootTimeInfo(availTime, onlineTime);
         } finally {
-            listener.testEnded(test, metrics);
+            listener.testEnded(test, TfMetricProtoUtil.upgradeConvert(metrics));
         }
     }
 

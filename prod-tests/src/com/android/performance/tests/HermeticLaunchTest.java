@@ -35,6 +35,7 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.junit.Assert;
 
@@ -222,7 +223,7 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
                     }
                     listener.testRunStarted(
                             activityNameSplit[activityNameSplit.length - 1].trim(), 0);
-                    listener.testRunEnded(0, activityMetrics);
+                    listener.testRunEnded(0, TfMetricProtoUtil.upgradeConvert(activityMetrics));
                 }
             } else {
                 listener.testRunStarted(

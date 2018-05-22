@@ -25,6 +25,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.targetprep.BuildError;
@@ -120,8 +121,8 @@ public class EmulatorBootTest implements IDeviceTest, IRemoteTest, IBuildReceive
             throw new RuntimeException(e);
         }
         finally {
-            listener.testEnded(bootTest, new HashMap<String, String>());
-            listener.testRunEnded(0, new HashMap<String,String>());
+            listener.testEnded(bootTest, new HashMap<String, Metric>());
+            listener.testRunEnded(0, new HashMap<String, Metric>());
         }
     }
 

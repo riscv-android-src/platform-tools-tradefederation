@@ -32,7 +32,6 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.RunUtil;
 
 import java.io.File;
-import java.util.Collections;
 import java.util.HashMap;
 
 /**
@@ -111,8 +110,7 @@ public class SkiaTest implements IRemoteTest, IDeviceTest {
             retrieveFiles(mSkiaApp, listener);
         }
 
-        listener.testRunEnded(System.currentTimeMillis() - start,
-                Collections.<String, String>emptyMap());
+        listener.testRunEnded(System.currentTimeMillis() - start, new HashMap<String, Metric>());
     }
 
     /**
