@@ -28,6 +28,7 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.ProcessInfo;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.junit.Assert;
 
@@ -293,7 +294,7 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
         // Create an empty testRun to report the parsed runMetrics
         CLog.d("About to report metrics: %s", metrics);
         listener.testRunStarted(runName, 0);
-        listener.testRunEnded(0, metrics);
+        listener.testRunEnded(0, TfMetricProtoUtil.upgradeConvert(metrics));
     }
 
     /**

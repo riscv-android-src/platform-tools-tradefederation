@@ -19,6 +19,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IMultiDeviceTest;
@@ -33,7 +34,7 @@ import org.junit.Assert;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -128,8 +129,9 @@ public class Sl4aBluetoothDiscovery implements IRemoteTest, IMultiDeviceTest {
             CLog.e(e);
             listener.testFailed(testId, "Exception " + e);
         } finally {
-            listener.testEnded(testId, Collections.emptyMap());
-            listener.testRunEnded(System.currentTimeMillis() - startTime, Collections.emptyMap());
+            listener.testEnded(testId, new HashMap<String, Metric>());
+            listener.testRunEnded(
+                    System.currentTimeMillis() - startTime, new HashMap<String, Metric>());
             dutClient.close();
             discovererClient.close();
         }
