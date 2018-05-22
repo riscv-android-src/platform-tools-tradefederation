@@ -23,6 +23,7 @@ import static org.junit.Assert.fail;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
@@ -42,6 +43,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
 
@@ -94,7 +96,7 @@ public class SubprocessTestResultsParserTest {
                 (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(4);
         mockRunListener.testRunEnded(
-                EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         mockRunListener.testIgnored((TestDescription) EasyMock.anyObject());
         EasyMock.expectLastCall();
@@ -135,7 +137,7 @@ public class SubprocessTestResultsParserTest {
         mockRunListener.testRunFailed((String)EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         mockRunListener.testRunEnded(
-                EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         mockRunListener.testIgnored((TestDescription) EasyMock.anyObject());
         EasyMock.expectLastCall();

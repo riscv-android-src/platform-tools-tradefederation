@@ -25,6 +25,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -37,8 +38,10 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ICompressionStrategy;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 
 import java.io.File;
@@ -529,31 +532,45 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
         /** {@inheritDoc} */
         @Override
         public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
-            // Look for the coverage file path from the run metrics
-            String coverageFilePath = runMetrics.get(CodeCoverageTest.COVERAGE_REMOTE_FILE_LABEL);
-            if (coverageFilePath != null) {
-                CLog.d("Coverage file at %s", coverageFilePath);
+            testRunEnded(elapsedTime, TfMetricProtoUtil.upgradeConvert(runMetrics));
+        }
 
-                // Try to pull the coverage measurements off of the device
-                File coverageFile = null;
-                try {
-                    coverageFile = mDevice.pullFile(coverageFilePath);
-                    if (coverageFile != null) {
-                        try (FileInputStreamSource source =
-                                new FileInputStreamSource(coverageFile)) {
-                            testLog(
-                                    mCurrentRunName + "_runtime_coverage",
-                                    LogDataType.COVERAGE,
-                                    source);
+        /** {@inheritDoc} */
+        @Override
+        public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
+            // Look for the coverage file path from the run metrics
+            Metric coverageFilePathMetric =
+                    runMetrics.get(CodeCoverageTest.COVERAGE_REMOTE_FILE_LABEL);
+
+            if (coverageFilePathMetric != null) {
+                String coverageFilePath =
+                        coverageFilePathMetric.getMeasurements().getSingleString();
+                if (!Strings.isNullOrEmpty(coverageFilePath)) {
+                    CLog.d("Coverage file at %s", coverageFilePath);
+
+                    // Try to pull the coverage measurements off of the device
+                    File coverageFile = null;
+                    try {
+                        coverageFile = mDevice.pullFile(coverageFilePath);
+                        if (coverageFile != null) {
+                            try (FileInputStreamSource source =
+                                    new FileInputStreamSource(coverageFile)) {
+                                testLog(
+                                        mCurrentRunName + "_runtime_coverage",
+                                        LogDataType.COVERAGE,
+                                        source);
+                            }
+                        } else {
+                            CLog.w(
+                                    "Failed to pull coverage file from device: %s",
+                                    coverageFilePath);
                         }
-                    } else {
-                        CLog.w("Failed to pull coverage file from device: %s", coverageFilePath);
+                    } catch (DeviceNotAvailableException e) {
+                        // Nothing we can do, so just log the error.
+                        CLog.w(e);
+                    } finally {
+                        FileUtil.deleteFile(coverageFile);
                     }
-                } catch (DeviceNotAvailableException e) {
-                    // Nothing we can do, so just log the error.
-                    CLog.w(e);
-                } finally {
-                    FileUtil.deleteFile(coverageFile);
                 }
             }
 

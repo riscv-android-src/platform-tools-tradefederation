@@ -23,6 +23,7 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.ListInstrumentationParser;
@@ -34,7 +35,7 @@ import org.junit.runner.notification.RunListener;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
@@ -381,7 +382,7 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     private void reportEarlyFailure(ITestInvocationListener listener, String errorMessage) {
         listener.testRunStarted("AndroidJUnitTest_setupError", 0);
         listener.testRunFailed(errorMessage);
-        listener.testRunEnded(0, Collections.emptyMap());
+        listener.testRunEnded(0, new HashMap<String, Metric>());
     }
 
     /**
