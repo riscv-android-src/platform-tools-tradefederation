@@ -20,18 +20,20 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
-import com.android.tradefed.testtype.IBuildReceiver;
-import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.testtype.IBuildReceiver;
+import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
+
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableMap;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 /** A dummy test that fowards coverage measurements from the build provider to the logger. */
@@ -85,6 +87,6 @@ public final class CoverageMeasurementForwarder implements IRemoteTest, IBuildRe
                 FileUtil.deleteFile(coverageMeasurement);
             }
         }
-        listener.testRunEnded(0, ImmutableMap.of());
+        listener.testRunEnded(0, new HashMap<String, Metric>());
     }
 }
