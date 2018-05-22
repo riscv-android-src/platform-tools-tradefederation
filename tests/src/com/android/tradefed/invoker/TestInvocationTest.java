@@ -96,6 +96,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -1826,7 +1827,7 @@ public class TestInvocationTest extends TestCase {
         mMockTestListener.testStarted(EasyMock.eq(testId), EasyMock.anyLong());
         mMockTestListener.testEnded(
                 EasyMock.eq(testId), EasyMock.anyLong(), EasyMock.eq(Collections.emptyMap()));
-        Capture<Map<String, String>> captured = new Capture<>();
+        Capture<HashMap<String, Metric>> captured = new Capture<>();
         mMockTestListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(captured));
         EasyMock.replay(mMockTestListener);
         new InvocationExecution()

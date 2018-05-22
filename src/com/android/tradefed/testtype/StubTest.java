@@ -21,12 +21,12 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 
@@ -91,8 +91,8 @@ public class StubTest implements IShardableTest {
             listener.testRunStarted("TestStub", 1);
             TestDescription testId = new TestDescription("StubTest", "StubMethod");
             listener.testStarted(testId);
-            listener.testEnded(testId, Collections.emptyMap());
-            listener.testRunEnded(500, new LinkedHashMap<String, String>());
+            listener.testEnded(testId, new LinkedHashMap<String, Metric>());
+            listener.testRunEnded(500, new LinkedHashMap<String, Metric>());
         }
     }
 
