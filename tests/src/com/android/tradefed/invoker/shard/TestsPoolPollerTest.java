@@ -26,6 +26,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
@@ -37,6 +38,7 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -107,7 +109,7 @@ public class TestsPoolPollerTest {
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(numTests))
-                .testRunEnded(Mockito.anyLong(), (Map<String, String>) Mockito.any());
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
         assertEquals(0, tracker.getCount());
     }
 
@@ -138,7 +140,7 @@ public class TestsPoolPollerTest {
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(numTests))
-                .testRunEnded(Mockito.anyLong(), (Map<String, String>) Mockito.any());
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
         assertEquals(0, tracker.getCount());
     }
 
@@ -169,7 +171,7 @@ public class TestsPoolPollerTest {
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(numTests))
-                .testRunEnded(Mockito.anyLong(), (Map<String, String>) Mockito.any());
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
         assertEquals(0, tracker.getCount());
     }
 
@@ -243,9 +245,9 @@ public class TestsPoolPollerTest {
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(numTests)).testStarted(Mockito.any());
         Mockito.verify(mListener, Mockito.times(numTests))
-                .testEnded(Mockito.any(), (Map<String, String>) Mockito.any());
+                .testEnded(Mockito.any(), (HashMap<String, Metric>) Mockito.any());
         Mockito.verify(mListener, Mockito.times(numTests))
-                .testRunEnded(Mockito.anyLong(), (Map<String, String>) Mockito.any());
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
         Mockito.verify(mDevice).waitForDeviceAvailable(Mockito.anyLong());
         Mockito.verify(mDevice).reboot();
         assertEquals(2, tracker.getCount());
