@@ -28,6 +28,7 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.collect.ImmutableMap;
 
@@ -183,7 +184,7 @@ public class FrameworkPerfTest implements IRemoteTest, IDeviceTest {
                     CLog.i("%s ::'%s' : %s", section, section2, sectionMetrics.get(section2));
                 }
                 listener.testRunStarted(section, 0);
-                listener.testRunEnded(0, sectionMetrics);
+                listener.testRunEnded(0, TfMetricProtoUtil.upgradeConvert(sectionMetrics));
             }
         }
     }

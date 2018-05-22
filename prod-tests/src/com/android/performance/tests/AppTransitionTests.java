@@ -39,6 +39,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SimpleStats;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -658,7 +659,7 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
             activityMetrics.put(appNameKey + "_std_dev", stats.stdev().toString());
         }
         mListener.testRunStarted(reportingKey, 0);
-        mListener.testRunEnded(0, activityMetrics);
+        mListener.testRunEnded(0, TfMetricProtoUtil.upgradeConvert(activityMetrics));
     }
 
     /**
