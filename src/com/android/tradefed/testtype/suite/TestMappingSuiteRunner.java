@@ -20,8 +20,8 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.util.TestMapping;
 
 import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.Set;
-
 /**
  * Implementation of {@link BaseTestSuite} to run tests specified by option include-filter, or
  * TEST_MAPPING files from build, as a suite.
@@ -29,22 +29,22 @@ import java.util.Set;
 public class TestMappingSuiteRunner extends BaseTestSuite {
 
     @Option(
-        name = "test-mapping-test-type",
+        name = "test-mapping-test-group",
         description =
-                "Type of tests to run, e.g., presubmit, postsubmit. The suite runner "
+                "Group of tests to run, e.g., presubmit, postsubmit. The suite runner "
                         + "shall load the tests defined in all TEST_MAPPING files in the source "
                         + "code, through build artifact test_mappings.zip."
     )
-    private String mTestType = null;
+    private String mTestGroup = null;
 
     /**
      * Load the tests configuration that will be run. Each tests is defined by a {@link
      * IConfiguration} and a unique name under which it will report results. There are 2 ways to
      * load tests for {@link TestMappingSuiteRunner}:
      *
-     * <p>1. --test-mapping-test-type, which specifies the type of tests in TEST_MAPPING files. The
-     * runner will parse all TEST_MAPPING files in the source code through build artifact
-     * test_mappings.zip, and load tests grouped under the given test type.
+     * <p>1. --test-mapping-test-group, which specifies the group of tests in TEST_MAPPING files.
+     * The runner will parse all TEST_MAPPING files in the source code through build artifact
+     * test_mappings.zip, and load tests grouped under the given test group.
      *
      * <p>2. --include-filter, which specifies the name of the test to run. The use case is for
      * presubmit check to only run a list of tests related to the Cls to be verifies. The list of
@@ -55,24 +55,41 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
     @Override
     public LinkedHashMap<String, IConfiguration> loadTests() {
         Set<String> includeFilter = getIncludeFilter();
-        if (mTestType == null && includeFilter.isEmpty()) {
+        if (mTestGroup == null && includeFilter.isEmpty()) {
             throw new RuntimeException(
-                    "At least one of the options, --test-mapping-test-type or --include-filter, "
+                    "At least one of the options, --test-mapping-test-group or --include-filter, "
                             + "should be set.");
         }
-        if (mTestType != null && !includeFilter.isEmpty()) {
+        if (mTestGroup != null && !includeFilter.isEmpty()) {
             throw new RuntimeException(
-                    "If options --test-mapping-test-type is set, option --include-filter should "
+                    "If options --test-mapping-test-group is set, option --include-filter should "
                             + "not be set.");
         }
 
-        if (mTestType != null) {
-            Set<String> testsToRun = TestMapping.getTests(getBuildInfo(), mTestType);
+        if (mTestGroup != null) {
+            Set<TestMapping.TestInfo> testsToRun = TestMapping.getTests(getBuildInfo(), mTestGroup);
             if (testsToRun.isEmpty()) {
                 throw new RuntimeException(
-                        String.format("No test found for the given type: %s.", mTestType));
+                        String.format("No test found for the given group: %s.", mTestGroup));
             }
-            setIncludeFilter(testsToRun);
+
+            // Name of the tests
+            Set<String> testNames = new HashSet<String>();
+            // module-arg options compiled from test options for each test.
+            Set<String> moduleArgs = new HashSet<String>();
+            for (TestMapping.TestInfo test : testsToRun) {
+                testNames.add(test.getName());
+                for (TestMapping.TestOption option : test.getOptions()) {
+                    String moduleArg = String.format("%s:%s", test.getName(), option.getName());
+                    if (option.getValue() != null && !option.getValue().isEmpty()) {
+                        moduleArg = String.format("%s:%s", moduleArg, option.getValue());
+                    }
+                    moduleArgs.add(moduleArg);
+                }
+            }
+
+            setIncludeFilter(testNames);
+            addModuleArgs(moduleArgs);
         }
 
         return super.loadTests();

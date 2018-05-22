@@ -28,6 +28,7 @@ import org.junit.runners.JUnit4;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -50,16 +51,21 @@ public class TestMappingTest {
             String srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_1";
             InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
             testMappingFile = FileUtil.saveResourceFile(resourceStream, tempDir, TEST_MAPPING);
-            List<String> tests = new TestMapping(testMappingFile.toPath()).getTests("presubmit");
+            List<TestMapping.TestInfo> tests =
+                    new TestMapping(testMappingFile.toPath()).getTests("presubmit");
             assertEquals(1, tests.size());
-            assertEquals("test1", tests.get(0));
+            assertEquals("test1", tests.get(0).getName());
             tests = new TestMapping(testMappingFile.toPath()).getTests("postsubmit");
-            assertEquals(2, tests.size());
-            assertEquals("test2", tests.get(0));
-            assertEquals("test1", tests.get(1));
+            assertEquals(3, tests.size());
+            assertEquals("test2", tests.get(0).getName());
+            TestMapping.TestOption option = tests.get(0).getOptions().get(0);
+            assertEquals("instrumentation-arg", option.getName());
+            assertEquals(
+                    "annotation=android.platform.test.annotations.Presubmit", option.getValue());
+            assertEquals("instrument", tests.get(1).getName());
             tests = new TestMapping(testMappingFile.toPath()).getTests("othertype");
             assertEquals(1, tests.size());
-            assertEquals("test3", tests.get(0));
+            assertEquals("test3", tests.get(0).getName());
         } finally {
             FileUtil.recursiveDelete(tempDir);
         }
@@ -74,7 +80,8 @@ public class TestMappingTest {
             tempDir = FileUtil.createTempDir("test_mapping");
             File testMappingFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPING).toFile();
             FileUtil.writeToFile("bad format json file", testMappingFile);
-            List<String> tests = new TestMapping(testMappingFile.toPath()).getTests("presubmit");
+            List<TestMapping.TestInfo> tests =
+                    new TestMapping(testMappingFile.toPath()).getTests("presubmit");
         } finally {
             FileUtil.recursiveDelete(tempDir);
         }
@@ -102,11 +109,15 @@ public class TestMappingTest {
             EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
 
             EasyMock.replay(mockBuildInfo);
-            Set<String> tests = TestMapping.getTests(mockBuildInfo, "presubmit");
+            Set<TestMapping.TestInfo> tests = TestMapping.getTests(mockBuildInfo, "presubmit");
 
             assertEquals(2, tests.size());
-            assertTrue(tests.contains("suite/stub1"));
-            assertTrue(tests.contains("test1"));
+            Set<String> names = new HashSet<String>();
+            for (TestMapping.TestInfo test : tests) {
+                names.add(test.getName());
+            }
+            assertTrue(names.contains("suite/stub1"));
+            assertTrue(names.contains("test1"));
         } finally {
             FileUtil.recursiveDelete(tempDir);
         }

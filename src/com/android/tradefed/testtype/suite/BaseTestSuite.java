@@ -223,6 +223,11 @@ public class BaseTestSuite extends ITestSuite {
         return mModuleRepo;
     }
 
+    /** Adds module args */
+    public void addModuleArgs(Set<String> moduleArgs) {
+        mModuleArgs.addAll(moduleArgs);
+    }
+
     /**
      * Create the {@link SuiteModuleLoader} responsible to load the {@link IConfiguration} and
      * assign them some of the options.
