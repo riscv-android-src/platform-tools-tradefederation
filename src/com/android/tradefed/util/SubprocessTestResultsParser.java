@@ -34,6 +34,7 @@ import com.android.tradefed.util.SubprocessEventHelper.TestRunEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestStartedEventInfo;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -333,7 +334,9 @@ public class SubprocessTestResultsParser implements Closeable {
         public void handleEvent(String eventJson) throws JSONException {
             try {
                 TestRunEndedEventInfo rei = new TestRunEndedEventInfo(new JSONObject(eventJson));
-                mListener.testRunEnded(rei.mTime, rei.mRunMetrics);
+                // TODO: Parse directly as proto.
+                mListener.testRunEnded(
+                        rei.mTime, TfMetricProtoUtil.upgradeConvert(rei.mRunMetrics));
             } finally {
                 mCurrentTest = null;
             }
