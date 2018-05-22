@@ -42,9 +42,31 @@ import java.util.stream.Stream;
 /** A class for loading a TEST_MAPPING file. */
 public class TestMapping {
 
-    /** Stores the test information set in a TEST_MAPPING file. */
-    protected class TestInfo {
+    /** Stores the test option details set in a TEST_MAPPING file. */
+    public class TestOption {
+        // Name of the option
         private String mName = null;
+        // Value of the option, can be empty.
+        private String mValue = null;
+
+        public TestOption(String name, String value) {
+            mName = name;
+            mValue = value;
+        }
+
+        public String getName() {
+            return mName;
+        }
+
+        public String getValue() {
+            return mValue;
+        }
+    }
+
+    /** Stores the test information set in a TEST_MAPPING file. */
+    public class TestInfo {
+        private String mName = null;
+        private List<TestOption> mOptions = new ArrayList<TestOption>();
 
         public TestInfo(String name) {
             mName = name;
@@ -53,14 +75,22 @@ public class TestMapping {
         public String getName() {
             return mName;
         }
+
+        public void addOption(TestOption option) {
+            mOptions.add(option);
+        }
+
+        public List<TestOption> getOptions() {
+            return mOptions;
+        }
     }
 
     private static final String PRESUBMIT = "presubmit";
     private static final String POSTSUBMIT = "postsubmit";
-    private static final String KEY_INCLUDE_PARENT = "include_parent";
     private static final String KEY_NAME = "name";
     private static final String TEST_MAPPING = "TEST_MAPPING";
     private static final String TEST_MAPPINGS_ZIP = "test_mappings.zip";
+    private static final String KEY_OPTIONS = "options";
 
     private Map<String, List<TestInfo>> mTestCollection = null;
 
@@ -77,18 +107,28 @@ public class TestMapping {
             if (content != null) {
                 JSONTokener tokener = new JSONTokener(content);
                 JSONObject root = new JSONObject(tokener);
-                Iterator<String> testTypes = (Iterator<String>) root.keys();
-                while (testTypes.hasNext()) {
-                    String type = testTypes.next();
-                    if (type.equals(KEY_INCLUDE_PARENT)) {
-                        continue;
-                    }
-                    List<TestInfo> testsForType = new ArrayList<TestInfo>();
-                    mTestCollection.put(type, testsForType);
-                    JSONArray arr = root.getJSONArray(type);
+                Iterator<String> testGroups = (Iterator<String>) root.keys();
+                while (testGroups.hasNext()) {
+                    String group = testGroups.next();
+                    List<TestInfo> testsForGroup = new ArrayList<TestInfo>();
+                    mTestCollection.put(group, testsForGroup);
+                    JSONArray arr = root.getJSONArray(group);
                     for (int i = 0; i < arr.length(); i++) {
                         JSONObject testObject = arr.getJSONObject(i);
-                        testsForType.add(new TestInfo(testObject.getString(KEY_NAME)));
+                        TestInfo test = new TestInfo(testObject.getString(KEY_NAME));
+                        if (testObject.has(KEY_OPTIONS)) {
+                            JSONArray optionObjects = testObject.getJSONArray(KEY_OPTIONS);
+                            for (int j = 0; j < optionObjects.length(); j++) {
+                                JSONObject optionObject = optionObjects.getJSONObject(j);
+                                for (int k = 0; k < optionObject.names().length(); k++) {
+                                    String name = optionObject.names().getString(k);
+                                    String value = optionObject.getString(name);
+                                    TestOption option = new TestOption(name, value);
+                                    test.addOption(option);
+                                }
+                            }
+                        }
+                        testsForGroup.add(test);
                     }
                 }
             }
@@ -96,7 +136,9 @@ public class TestMapping {
             errorMessage = String.format("TEST_MAPPING file does not exist: %s.", path.toString());
             CLog.e(errorMessage);
         } catch (JSONException e) {
-            errorMessage = String.format("Error parsing TEST_MAPPING file: %s.", path.toString());
+            errorMessage =
+                    String.format(
+                            "Error parsing TEST_MAPPING file: %s. Error: %s", path.toString(), e);
         }
 
         if (errorMessage != null) {
@@ -106,23 +148,23 @@ public class TestMapping {
     }
 
     /**
-     * Helper to get all tests set in a TEST_MAPPING file for a given type.
+     * Helper to get all tests set in a TEST_MAPPING file for a given grou.
      *
-     * @param testType A {@link String} of the test type.
-     * @return A {@code List<String>} of the test names.
+     * @param testGroup A {@link String} of the test group.
+     * @return A {@code List<TestInfo>} of the test infos.
      */
-    public List<String> getTests(String testType) {
-        List<String> tests = new ArrayList<String>();
+    public List<TestInfo> getTests(String testGroup) {
+        List<TestInfo> tests = new ArrayList<TestInfo>();
 
-        if (mTestCollection.containsKey(testType)) {
-            for (TestInfo test : mTestCollection.get(testType)) {
-                tests.add(test.getName());
+        if (mTestCollection.containsKey(testGroup)) {
+            for (TestInfo test : mTestCollection.get(testGroup)) {
+                tests.add(test);
             }
         }
         // All presubmit tests should be part of postsubmit too.
-        if (testType.equals(POSTSUBMIT) && mTestCollection.containsKey(PRESUBMIT)) {
+        if (testGroup.equals(POSTSUBMIT) && mTestCollection.containsKey(PRESUBMIT)) {
             for (TestInfo test : mTestCollection.get(PRESUBMIT)) {
-                tests.add(test.getName());
+                tests.add(test);
             }
         }
 
@@ -131,13 +173,13 @@ public class TestMapping {
 
     /**
      * Helper to find all tests in all TEST_MAPPING files. This is needed when a suite run requires
-     * to run all tests in TEST_MAPPING files for a given type, e.g., presubmit.
+     * to run all tests in TEST_MAPPING files for a given group, e.g., presubmit.
      *
-     * @param testType a {@link String} of the test type.
-     * @return A {@code Set<String>} of tests set in the build artifact, test_mappings.zip.
+     * @param testGroup a {@link String} of the test group.
+     * @return A {@code Set<TestInfo>} of tests set in the build artifact, test_mappings.zip.
      */
-    public static Set<String> getTests(IBuildInfo buildInfo, String testType) {
-        Set<String> tests = new HashSet<String>();
+    public static Set<TestInfo> getTests(IBuildInfo buildInfo, String testGroup) {
+        Set<TestInfo> tests = new HashSet<TestInfo>();
 
         File testMappingsZip = buildInfo.getFile(TEST_MAPPINGS_ZIP);
         File testMappingsDir = null;
@@ -149,7 +191,7 @@ public class TestMapping {
                             Paths.get(testMappingsDir.getAbsolutePath()),
                             FileVisitOption.FOLLOW_LINKS);
             stream.filter(path -> path.getFileName().toString().equals(TEST_MAPPING))
-                    .forEach(path -> tests.addAll((new TestMapping(path)).getTests(testType)));
+                    .forEach(path -> tests.addAll((new TestMapping(path)).getTests(testGroup)));
         } catch (IOException e) {
             RuntimeException runtimeException =
                     new RuntimeException(
