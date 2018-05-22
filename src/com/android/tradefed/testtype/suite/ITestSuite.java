@@ -173,7 +173,7 @@ public abstract class ITestSuite
         name = PRIMARY_ABI_RUN,
         description =
                 "Whether to run tests with only the device primary abi. "
-                        + "This will override the --abi option."
+                        + "This is overriden by the --abi option."
     )
     private boolean mPrimaryAbiRun = false;
 

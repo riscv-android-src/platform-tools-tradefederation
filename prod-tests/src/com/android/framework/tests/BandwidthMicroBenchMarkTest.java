@@ -40,6 +40,7 @@ import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.net.HttpHelper;
 import com.android.tradefed.util.net.IHttpHelper;
 import com.android.tradefed.util.net.IHttpHelper.DataSizeException;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.junit.Assert;
 
@@ -441,7 +442,7 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
         postMetrics.put("Fail", String.valueOf(failCount));
 
         listener.testRunStarted(compactRuKey, 0);
-        listener.testRunEnded(0, postMetrics);
+        listener.testRunEnded(0, TfMetricProtoUtil.upgradeConvert(postMetrics));
     }
 
     private void printFailures(CompareResult result) {

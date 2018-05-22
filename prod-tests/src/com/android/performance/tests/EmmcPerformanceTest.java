@@ -30,6 +30,7 @@ import com.android.tradefed.util.SimplePerfResult;
 import com.android.tradefed.util.SimplePerfUtil;
 import com.android.tradefed.util.SimplePerfUtil.SimplePerfType;
 import com.android.tradefed.util.SimpleStats;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.junit.Assert;
 
@@ -128,7 +129,9 @@ public class EmmcPerformanceTest implements IDeviceTest, IRemoteTest {
             // runRandomWrite(mIterations, listener, metrics);
 
             CLog.d("Metrics: %s", metrics.toString());
-            listener.testRunEnded((System.currentTimeMillis() - beginTime), metrics);
+            listener.testRunEnded(
+                    (System.currentTimeMillis() - beginTime),
+                    TfMetricProtoUtil.upgradeConvert(metrics));
         } finally {
             cleanUp();
         }
