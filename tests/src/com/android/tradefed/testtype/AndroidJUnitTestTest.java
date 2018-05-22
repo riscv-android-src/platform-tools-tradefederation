@@ -21,6 +21,7 @@ import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.util.FileUtil;
@@ -30,7 +31,7 @@ import junit.framework.TestCase;
 import org.easymock.EasyMock;
 
 import java.io.File;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -284,7 +285,7 @@ public class AndroidJUnitTestTest extends TestCase {
 
         mMockListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(0));
         mMockListener.testRunFailed("failed to push");
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+        mMockListener.testRunEnded(0, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice, mMockListener);
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
