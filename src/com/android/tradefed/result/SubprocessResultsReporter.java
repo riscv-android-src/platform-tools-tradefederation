@@ -18,6 +18,7 @@ package com.android.tradefed.result;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
@@ -33,6 +34,7 @@ import com.android.tradefed.util.SubprocessEventHelper.TestRunFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestStartedEventInfo;
 import com.android.tradefed.util.SubprocessTestResultsParser;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.json.JSONObject;
 
@@ -41,6 +43,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -112,9 +115,16 @@ public class SubprocessResultsReporter
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_RUN_ENDED, info);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public void testRunEnded(long time, HashMap<String, Metric> runMetrics) {
+        // TODO: Transfer the full proto instead of just Strings.
+        TestRunEndedEventInfo info =
+                new TestRunEndedEventInfo(time, TfMetricProtoUtil.compatibleConvert(runMetrics));
+        printEvent(SubprocessTestResultsParser.StatusKeys.TEST_RUN_ENDED, info);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void testRunFailed(String reason) {
         TestRunFailedEventInfo info = new TestRunFailedEventInfo(reason);

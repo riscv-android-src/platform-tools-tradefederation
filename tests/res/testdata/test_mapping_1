@@ -6,13 +6,30 @@
   ],
   "postsubmit": [
     {
-      "name": "test2"
+      "name": "test2",
+      "options": [
+        {
+          "instrumentation-arg": "annotation=android.platform.test.annotations.Presubmit"
+        }
+      ]
+    },
+    {
+      "name": "instrument",
+      "options": [
+        {
+          "run-name": "some-name"
+        }
+      ]
     }
   ],
   "othertype": [
     {
-      "name": "test3"
+      "name": "test3",
+      "options": [
+        {
+          "just-an-option": ""
+        }
+      ]
     }
-  ],
-  "include_parent": false
+  ]
 }
