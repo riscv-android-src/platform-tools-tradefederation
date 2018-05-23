@@ -738,7 +738,7 @@ public class ModuleDefinitionTest {
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("SERIAL");
         EasyMock.expect(
                         mMockDevice.logBugreport(
-                                EasyMock.eq("module-failure-bugreport-SERIAL"),
+                                EasyMock.eq("module-fakeName-failure-SERIAL-bugreport"),
                                 EasyMock.anyObject()))
                 .andReturn(true);
 
