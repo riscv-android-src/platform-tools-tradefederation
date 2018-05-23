@@ -398,17 +398,10 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
         }
 
         @Override
-        public void testEnded(TestDescription test, Map<String, String> testMetrics) {
+        public void testEnded(TestDescription test, HashMap<String, Metric> testMetrics) {
             if (!mLoggedTestFailure && mLoggingOption == LoggingOption.AFTER_TEST) {
                 onScreenshotAndBugreport(getDevice(), mListener, String.format("%s_%s_final",
                         test.getClassName(), test.getTestName()));
-            }
-        }
-
-        @Override
-        public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
-            if (!mLoggedTestRunFailure && mLoggingOption == LoggingOption.AFTER_TEST) {
-                onScreenshotAndBugreport(getDevice(), mListener, "test_run_final");
             }
         }
 

@@ -119,7 +119,9 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     public void testEnded(TestIdentifier testId, Map<String, String> testMetrics) {
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
-                listener.testEnded(TestDescription.createFromTestIdentifier(testId), testMetrics);
+                listener.testEnded(
+                        TestDescription.createFromTestIdentifier(testId),
+                        TfMetricProtoUtil.upgradeConvert(testMetrics));
             } catch (RuntimeException any) {
                 CLog.e(
                         "RuntimeException when invoking %s#testEnded",
@@ -134,7 +136,9 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
                 listener.testEnded(
-                        TestDescription.createFromTestIdentifier(testId), endTime, testMetrics);
+                        TestDescription.createFromTestIdentifier(testId),
+                        endTime,
+                        TfMetricProtoUtil.upgradeConvert(testMetrics));
             } catch (RuntimeException any) {
                 CLog.e(
                         "RuntimeException when invoking %s#testEnded",
