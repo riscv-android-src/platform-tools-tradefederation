@@ -44,7 +44,6 @@ import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
-import com.android.tradefed.testtype.GranularRetriableTestWrapper;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
@@ -391,7 +390,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 // After the run, if the test failed (even after retry the final result passed) has
                 // failed, capture a bugreport.
                 if (retriableTest.hasFailed()) {
-                    captureBugreport(listener);
+                    captureBugreport(listener, getId());
                 }
             }
         } finally {
@@ -424,7 +423,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      *
      * @param test the {@link IRemoteTest} that is being wrapped.
      * @param failureListener a particular listener to collect logs on testFail. Can be null.
-     * @throws skipTestCases A run strategy when SKIP_MODULE_TESTCASES is defined.
+     * @param skipTestCases A run strategy when SKIP_MODULE_TESTCASES is defined.
      */
     @VisibleForTesting
     GranularRetriableTestWrapper prepareGranularRetriableWrapper(
@@ -443,17 +442,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         return retriableTest;
     }
 
-    private void reportFailure(ITestInvocationListener listener, String errorMessage) {
-        listener.testRunFailed(errorMessage);
-    }
-
-    private void captureBugreport(ITestLogger listener) {
+    private void captureBugreport(ITestLogger listener, String moduleId) {
         for (ITestDevice device : mModuleInvocationContext.getDevices()) {
             if (device.getIDevice() instanceof StubDevice) {
                 continue;
             }
             device.logBugreport(
-                    String.format("module-failure-bugreport-%s", device.getSerialNumber()),
+                    String.format(
+                            "module-%s-failure-%s-bugreport", moduleId, device.getSerialNumber()),
                     listener);
         }
     }

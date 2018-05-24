@@ -400,7 +400,7 @@ public class TfTestLauncher extends SubprocessTfLauncher {
             listener.testRunStarted("hprofAllocSites", 1);
             TestDescription tid = new TestDescription("hprof", "allocationSites");
             listener.testStarted(tid);
-            listener.testEnded(tid, results);
+            listener.testEnded(tid, TfMetricProtoUtil.upgradeConvert(results));
             listener.testRunEnded(0, new HashMap<String, Metric>());
         } catch (IOException e) {
             throw new RuntimeException(e);

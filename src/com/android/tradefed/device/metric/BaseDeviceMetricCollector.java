@@ -166,15 +166,7 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
 
     @Override
     public final void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
-        HashMap<String, Metric> convert = TfMetricProtoUtil.upgradeConvert(runMetrics);
-        try {
-            onTestRunEnd(mRunData, convert);
-            mRunData.addToMetrics(convert);
-        } catch (Throwable t) {
-            // Prevent exception from messing up the status reporting.
-            CLog.e(t);
-        }
-        mForwarder.testRunEnded(elapsedTime, TfMetricProtoUtil.compatibleConvert(convert));
+        testRunEnded(elapsedTime, TfMetricProtoUtil.upgradeConvert(runMetrics));
     }
 
     @Override
@@ -223,19 +215,12 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     @Override
     public final void testEnded(
             TestDescription test, long endTime, Map<String, String> testMetrics) {
-        HashMap<String, Metric> convert = TfMetricProtoUtil.upgradeConvert(testMetrics);
-        if (!mSkipTestCase) {
-            try {
-                onTestEnd(mTestData, convert);
-                mTestData.addToMetrics(convert);
-            } catch (Throwable t) {
-                // Prevent exception from messing up the status reporting.
-                CLog.e(t);
-            }
-        } else {
-            CLog.d("Skipping %s collection for %s.", this.getClass().getName(), test.toString());
-        }
-        mForwarder.testEnded(test, endTime, TfMetricProtoUtil.compatibleConvert(convert));
+        testEnded(test, endTime, TfMetricProtoUtil.upgradeConvert(testMetrics));
+    }
+
+    @Override
+    public final void testEnded(TestDescription test, HashMap<String, Metric> testMetrics) {
+        testEnded(test, System.currentTimeMillis(), testMetrics);
     }
 
     @Override

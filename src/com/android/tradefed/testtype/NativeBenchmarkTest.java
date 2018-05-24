@@ -24,6 +24,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IFileEntry;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -210,7 +211,7 @@ public class NativeBenchmarkTest implements IDeviceTest, IRemoteTest {
                 // TODO: is catching exceptions, and reporting testRunFailed necessary?
             } finally {
                 final long elapsedTime = System.currentTimeMillis() - startTime;
-                listener.testRunEnded(elapsedTime, metricMap);
+                listener.testRunEnded(elapsedTime, TfMetricProtoUtil.upgradeConvert(metricMap));
             }
         }
     }

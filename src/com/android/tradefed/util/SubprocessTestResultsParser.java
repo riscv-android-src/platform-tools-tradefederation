@@ -381,9 +381,13 @@ public class SubprocessTestResultsParser implements Closeable {
                 TestEndedEventInfo tei = new TestEndedEventInfo(new JSONObject(eventJson));
                 checkCurrentTestId(tei.mClassName, tei.mTestName);
                 if (tei.mEndTime != null) {
-                    mListener.testEnded(mCurrentTest, tei.mEndTime, tei.mRunMetrics);
+                    mListener.testEnded(
+                            mCurrentTest,
+                            tei.mEndTime,
+                            TfMetricProtoUtil.upgradeConvert(tei.mRunMetrics));
                 } else {
-                    mListener.testEnded(mCurrentTest, tei.mRunMetrics);
+                    mListener.testEnded(
+                            mCurrentTest, TfMetricProtoUtil.upgradeConvert(tei.mRunMetrics));
                 }
             } finally {
                 mCurrentTest = null;
