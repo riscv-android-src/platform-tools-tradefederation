@@ -21,20 +21,26 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.result.LogDataType;
 
 import org.easymock.EasyMock;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.File;
+import java.lang.Error;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 
 /**
  * Unit tests for {@link AtraceCollector},
@@ -46,24 +52,39 @@ public final class AtraceCollectorTest {
     private OptionSetter mOptionSetter;
     private ITestInvocationListener mMockTestLogger;
     private IInvocationContext mMockInvocationContext;
-    private String mDefaultLogPath = "/data/local/tmp/atrace.atr";
-    private String mSerialNo = "12349876";
-    private String mCategories = "tisket tasket brisket basket";
+    private IRunUtil mMockRunUtil;
+    private File mDummyBinary;
+    private static final String M_DEFAULT_LOG_PATH = "/data/local/tmp/atrace.atr";
+    private static final String M_SERIAL_NO = "12349876";
+    private static final String M_CATEGORIES = "tisket tasket brisket basket";
+    private static final String M_TRACE_PATH_NAME = "/tmp/traces.txt";
 
     @Before
     public void setUp() throws Exception {
         mMockDevice = EasyMock.createNiceMock(ITestDevice.class);
         mMockTestLogger = EasyMock.createMock(ITestInvocationListener.class);
         mMockInvocationContext = EasyMock.createNiceMock(IInvocationContext.class);
+        mMockRunUtil = EasyMock.createMock(IRunUtil.class);
 
         mAtrace = new AtraceCollector();
         mOptionSetter = new OptionSetter(mAtrace);
-        mOptionSetter.setOptionValue("categories", mCategories);
+        mOptionSetter.setOptionValue("categories", M_CATEGORIES);
+
+        EasyMock.expect(mMockDevice.pullFile((String) EasyMock.anyObject()))
+                .andStubReturn(new File(M_TRACE_PATH_NAME));
+        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(M_SERIAL_NO);
 
         EasyMock.expect(mMockInvocationContext.getDevices())
                 .andStubReturn(Arrays.asList(mMockDevice));
         EasyMock.replay(mMockInvocationContext);
         mAtrace.init(mMockInvocationContext, mMockTestLogger);
+        mDummyBinary = File.createTempFile("tmp", "bin");
+        mDummyBinary.setExecutable(true);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        mDummyBinary.delete();
     }
 
     /**
@@ -77,8 +98,11 @@ public final class AtraceCollectorTest {
     @Test
     public void testStartsAtraceOnSetupNoOptions() throws Exception {
         mMockDevice.executeShellCommand(
-                EasyMock.eq("atrace --async_start -z " + mCategories),
-                EasyMock.anyObject(), EasyMock.eq(1L), EasyMock.anyObject(), EasyMock.eq(1));
+                EasyMock.eq("atrace --async_start -z " + M_CATEGORIES),
+                EasyMock.anyObject(),
+                EasyMock.eq(1L),
+                EasyMock.anyObject(),
+                EasyMock.eq(1));
         EasyMock.expectLastCall().times(1);
 
         EasyMock.replay(mMockDevice);
@@ -91,15 +115,16 @@ public final class AtraceCollectorTest {
      * Test {@link AtraceCollector#onTestStart(DeviceMetricData)} to see if atrace collection
      * started correctly when the compress-dump option is false.
      *
-     * <p>
-     * Expect that atrace was started in async mode with compression off.
-     * </p>
+     * <p>Expect that atrace was started in async mode with compression off.
      */
     @Test
     public void testStartsAtraceOnSetupNoCompression() throws Exception {
         mMockDevice.executeShellCommand(
-                EasyMock.eq("atrace --async_start " + mCategories),
-                EasyMock.anyObject(), EasyMock.eq(1L), EasyMock.anyObject(), EasyMock.eq(1));
+                EasyMock.eq("atrace --async_start " + M_CATEGORIES),
+                EasyMock.anyObject(),
+                EasyMock.eq(1L),
+                EasyMock.anyObject(),
+                EasyMock.eq(1));
         EasyMock.expectLastCall().times(1);
 
         EasyMock.replay(mMockDevice);
@@ -121,8 +146,11 @@ public final class AtraceCollectorTest {
     @Test
     public void testStartsAtraceOnSetupCategoriesOption() throws Exception {
         mMockDevice.executeShellCommand(
-                EasyMock.eq("atrace --async_start -z " + mCategories),
-                EasyMock.anyObject(), EasyMock.eq(1L), EasyMock.anyObject(), EasyMock.eq(1));
+                EasyMock.eq("atrace --async_start -z " + M_CATEGORIES),
+                EasyMock.anyObject(),
+                EasyMock.eq(1L),
+                EasyMock.anyObject(),
+                EasyMock.eq(1));
         EasyMock.expectLastCall().times(1);
 
         EasyMock.replay(mMockDevice);
@@ -144,7 +172,7 @@ public final class AtraceCollectorTest {
     public void testStartsAtraceOnSetupMultipleCategoriesOption() throws Exception {
         String freqCategory = "freq";
         String schedCategory = "sched";
-        String expectedCategories = mCategories + " " + freqCategory + " " + schedCategory;
+        String expectedCategories = M_CATEGORIES + " " + freqCategory + " " + schedCategory;
         mMockDevice.executeShellCommand(
                 EasyMock.eq("atrace --async_start -z " + expectedCategories),
                 EasyMock.anyObject(), EasyMock.eq(1L), EasyMock.anyObject(), EasyMock.eq(1));
@@ -193,13 +221,18 @@ public final class AtraceCollectorTest {
     @Test
     public void testStopsAtraceDuringTearDown() throws Exception {
         mMockDevice.executeShellCommand(
-                EasyMock.eq("atrace --async_stop -o " + mDefaultLogPath),
-                EasyMock.anyObject(), EasyMock.eq(60L), EasyMock.anyObject(), EasyMock.eq(1));
+                EasyMock.eq("atrace --async_stop -o " + M_DEFAULT_LOG_PATH),
+                EasyMock.anyObject(),
+                EasyMock.eq(60L),
+                EasyMock.anyObject(),
+                EasyMock.eq(1));
         EasyMock.expectLastCall().times(1);
-        EasyMock.expect(mMockDevice.pullFile(EasyMock.eq(mDefaultLogPath)))
-                .andReturn(new File("/tmp/potato")).once();
-        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("rm -f " + mDefaultLogPath)))
-                .andReturn("").times(1);
+        EasyMock.expect(mMockDevice.pullFile(EasyMock.eq(M_DEFAULT_LOG_PATH)))
+                .andReturn(new File("/tmp/potato"))
+                .once();
+        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("rm -f " + M_DEFAULT_LOG_PATH)))
+                .andReturn("")
+                .times(1);
 
         EasyMock.replay(mMockDevice);
         mAtrace.onTestEnd(
@@ -217,11 +250,15 @@ public final class AtraceCollectorTest {
     @Test
     public void testPreserveFileOnDeviceOption() throws Exception {
         mMockDevice.executeShellCommand(
-                EasyMock.eq("atrace --async_stop -o " + mDefaultLogPath),
-                EasyMock.anyObject(), EasyMock.eq(60L), EasyMock.anyObject(), EasyMock.eq(1));
+                EasyMock.eq("atrace --async_stop -o " + M_DEFAULT_LOG_PATH),
+                EasyMock.anyObject(),
+                EasyMock.eq(60L),
+                EasyMock.anyObject(),
+                EasyMock.eq(1));
         EasyMock.expectLastCall().times(1);
-        EasyMock.expect(mMockDevice.pullFile(EasyMock.eq(mDefaultLogPath)))
-                .andReturn(new File("/tmp/potato")).once();
+        EasyMock.expect(mMockDevice.pullFile(EasyMock.eq(M_DEFAULT_LOG_PATH)))
+                .andReturn(new File("/tmp/potato"))
+                .once();
 
         EasyMock.replay(mMockDevice);
         mOptionSetter.setOptionValue("preserve-ondevice-log", "true");
@@ -256,10 +293,9 @@ public final class AtraceCollectorTest {
     public void testUploadsLogWithCompression() throws Exception {
         EasyMock.expect(mMockDevice.pullFile((String) EasyMock.anyObject()))
                 .andStubReturn(new File("/tmp/potato"));
-        EasyMock.expect(mMockDevice.getSerialNumber())
-                .andStubReturn(mSerialNo);
+        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(M_SERIAL_NO);
         mMockTestLogger.testLog(
-                EasyMock.eq("atrace" + mSerialNo),
+                EasyMock.eq("atrace" + M_SERIAL_NO),
                 EasyMock.eq(LogDataType.ATRACE),
                 EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
@@ -278,13 +314,12 @@ public final class AtraceCollectorTest {
      * <p>Expect that testLog is called with the proper filename and LogDataType.
      */
     @Test
-    public void testUploadslogWithoutCompression() throws Exception {
+    public void testUploadsLogWithoutCompression() throws Exception {
         EasyMock.expect(mMockDevice.pullFile((String) EasyMock.anyObject()))
                 .andStubReturn(new File("/tmp/potato"));
-        EasyMock.expect(mMockDevice.getSerialNumber())
-                .andStubReturn(mSerialNo);
+        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(M_SERIAL_NO);
         mMockTestLogger.testLog(
-                EasyMock.eq("atrace" + mSerialNo),
+                EasyMock.eq("atrace" + M_SERIAL_NO),
                 EasyMock.eq(LogDataType.TEXT),
                 EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
@@ -309,8 +344,7 @@ public final class AtraceCollectorTest {
         List<ITestDevice> devices = new ArrayList<ITestDevice>();
         for (int i = 0; i < num_devices; i++) {
             ITestDevice device = EasyMock.createNiceMock(ITestDevice.class);
-            EasyMock.expect(device.getSerialNumber())
-                    .andStubReturn(mSerialNo);
+            EasyMock.expect(device.getSerialNumber()).andStubReturn(M_SERIAL_NO);
             EasyMock.expect(device.pullFile((String) EasyMock.anyObject()))
                     .andStubReturn(new File("/tmp/potato"));
             EasyMock.replay(device);
@@ -330,11 +364,213 @@ public final class AtraceCollectorTest {
 
         AtraceCollector atrace = new AtraceCollector();
         OptionSetter optionSetter = new OptionSetter(atrace);
-        optionSetter.setOptionValue("categories", mCategories);
+        optionSetter.setOptionValue("categories", M_CATEGORIES);
         atrace.init(mockInvocationContext, mMockTestLogger);
         atrace.onTestEnd(
                 new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
 
         EasyMock.verify(mMockTestLogger);
+    }
+
+    /**
+     * Test {@link AtraceCollector#onTestEnd(DeviceMetricData, Map)} to see that it can run trace
+     * post-processing commands on the log file
+     *
+     * <p>Expect that the executable is invoked and testLog is called for the trace data process.
+     */
+    @Test
+    public void testExecutesPostProcessPar() throws Exception {
+        CommandResult commandResult = new CommandResult(CommandStatus.SUCCESS);
+        commandResult.setStdout("stdout");
+        commandResult.setStderr("stderr");
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.eq(60L),
+                                EasyMock.eq(mDummyBinary.getAbsolutePath()),
+                                EasyMock.eq("-i"),
+                                EasyMock.eq(M_TRACE_PATH_NAME),
+                                EasyMock.eq("--switch1")))
+                .andReturn(commandResult)
+                .times(1);
+
+        mMockTestLogger.testLog(
+                EasyMock.eq("atrace" + M_SERIAL_NO),
+                EasyMock.eq(LogDataType.ATRACE),
+                EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
+        EasyMock.replay(mMockTestLogger, mMockRunUtil, mMockDevice);
+
+        //test
+        mOptionSetter.setOptionValue("post-process-binary", mDummyBinary.getAbsolutePath());
+        mOptionSetter.setOptionValue("post-process-input-file-key", "TRACEF");
+        mOptionSetter.setOptionValue("post-process-args", "-i");
+        mOptionSetter.setOptionValue("post-process-args", "TRACEF");
+        mOptionSetter.setOptionValue("post-process-args", "--switch1");
+        mOptionSetter.setOptionValue("post-process-timeout", "60");
+        mAtrace.setRunUtil(mMockRunUtil);
+        mAtrace.onTestEnd(
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
+
+        EasyMock.verify(mMockTestLogger, mMockRunUtil);
+    }
+
+    /**
+     * Test {@link AtraceCollector#onTestEnd(DeviceMetricData, Map)} to see that it can run trace
+     * post-processing commands on the log file for executables who don't have keyed input.
+     *
+     * <p>Expect that the executable is invoked and testLog is called for the trace data process.
+     */
+    @Test
+    public void testExecutesPostProcessParDifferentFormat() throws Exception {
+        CommandResult commandResult = new CommandResult(CommandStatus.SUCCESS);
+        commandResult.setStdout("stdout");
+        commandResult.setStderr("stderr");
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.eq(60L),
+                                EasyMock.eq(mDummyBinary.getAbsolutePath()),
+                                EasyMock.eq(M_TRACE_PATH_NAME),
+                                EasyMock.eq("--switch1")))
+                .andReturn(commandResult)
+                .times(1);
+
+        mMockTestLogger.testLog(
+                EasyMock.eq("atrace" + M_SERIAL_NO),
+                EasyMock.eq(LogDataType.ATRACE),
+                EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
+        EasyMock.replay(mMockTestLogger, mMockRunUtil, mMockDevice);
+
+        mOptionSetter.setOptionValue("post-process-binary", mDummyBinary.getAbsolutePath());
+        mOptionSetter.setOptionValue("post-process-input-file-key", "TRACEF");
+        mOptionSetter.setOptionValue("post-process-args", "TRACEF");
+        mOptionSetter.setOptionValue("post-process-args", "--switch1");
+        mOptionSetter.setOptionValue("post-process-timeout", "60");
+        mAtrace.setRunUtil(mMockRunUtil);
+        mAtrace.onTestEnd(
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
+
+        EasyMock.verify(mMockTestLogger, mMockRunUtil);
+    }
+
+    /**
+     * Test {@link AtraceCollector#onTestEnd(DeviceMetricData, Map)} to see that it can run a
+     * post-processing command that makes no output on stderr.
+     *
+     * <p>Expect that the executable is invoked and testLog is called for the trace data process.
+     */
+    @Test
+    public void testExecutesPostProcessParNoStderr() throws Exception {
+        CommandResult commandResult = new CommandResult(CommandStatus.SUCCESS);
+        commandResult.setStdout("stdout");
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.eq(180000L),
+                                EasyMock.eq(mDummyBinary.getAbsolutePath()),
+                                EasyMock.eq("-i"),
+                                EasyMock.eq(M_TRACE_PATH_NAME),
+                                EasyMock.eq("--switch1")))
+                .andReturn(commandResult)
+                .times(1);
+
+        mMockTestLogger.testLog(
+                EasyMock.eq("atrace" + M_SERIAL_NO),
+                EasyMock.eq(LogDataType.ATRACE),
+                EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
+        EasyMock.replay(mMockTestLogger, mMockRunUtil, mMockDevice);
+
+        mOptionSetter.setOptionValue("post-process-binary", mDummyBinary.getAbsolutePath());
+        mOptionSetter.setOptionValue("post-process-input-file-key", "TRACEF");
+        mOptionSetter.setOptionValue("post-process-args", "-i");
+        mOptionSetter.setOptionValue("post-process-args", "TRACEF");
+        mOptionSetter.setOptionValue("post-process-args", "--switch1");
+        mOptionSetter.setOptionValue("post-process-timeout", "3m");
+        mAtrace.setRunUtil(mMockRunUtil);
+        mAtrace.onTestEnd(
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
+
+        EasyMock.verify(mMockTestLogger, mMockRunUtil);
+    }
+
+    /**
+     * Test {@link AtraceCollector#onTestEnd(DeviceMetricData, Map)} to see that a failing
+     * post-processing command is not fatal.
+     *
+     * <p>Expect that the executable is invoked and testLog is called for the trace data process.
+     */
+    @Test
+    public void testExecutesPostProcessParFailed() throws Exception {
+        CommandResult commandResult = new CommandResult(CommandStatus.FAILED);
+        commandResult.setStderr("stderr");
+
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.eq(60000L),
+                                EasyMock.eq(mDummyBinary.getAbsolutePath()),
+                                EasyMock.eq("-i"),
+                                EasyMock.eq(M_TRACE_PATH_NAME),
+                                EasyMock.eq("--switch1")))
+                .andReturn(commandResult)
+                .times(1);
+
+        mMockTestLogger.testLog(
+                EasyMock.eq("atrace" + M_SERIAL_NO),
+                EasyMock.eq(LogDataType.ATRACE),
+                EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
+        EasyMock.replay(mMockTestLogger, mMockRunUtil, mMockDevice);
+
+        mOptionSetter.setOptionValue("post-process-binary", mDummyBinary.getAbsolutePath());
+        mOptionSetter.setOptionValue("post-process-input-file-key", "TRACEF");
+        mOptionSetter.setOptionValue("post-process-args", "-i");
+        mOptionSetter.setOptionValue("post-process-args", "TRACEF");
+        mOptionSetter.setOptionValue("post-process-args", "--switch1");
+        mOptionSetter.setOptionValue("post-process-timeout", "1m");
+        mAtrace.setRunUtil(mMockRunUtil);
+        mAtrace.onTestEnd(
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
+
+        EasyMock.verify(mMockTestLogger, mMockRunUtil);
+    }
+
+    /**
+     * Test {@link AtraceCollector#onTestEnd(DeviceMetricData, Map)} to see that a timeout of the
+     * post-processing command is not fatal.
+     *
+     * <p>Expect that timeout is not fatal.
+     */
+    @Test
+    public void testExecutesPostProcessParTimeout() throws Exception {
+        CommandResult commandResult = new CommandResult(CommandStatus.TIMED_OUT);
+
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.eq(3661000L),
+                                EasyMock.eq(mDummyBinary.getAbsolutePath()),
+                                EasyMock.eq("-i"),
+                                EasyMock.eq(M_TRACE_PATH_NAME),
+                                EasyMock.eq("--switch1")))
+                .andReturn(commandResult)
+                .times(1);
+
+        mMockTestLogger.testLog(
+                EasyMock.eq("atrace" + M_SERIAL_NO),
+                EasyMock.eq(LogDataType.ATRACE),
+                EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
+        EasyMock.replay(mMockTestLogger, mMockRunUtil, mMockDevice);
+
+        mOptionSetter.setOptionValue("post-process-binary", mDummyBinary.getAbsolutePath());
+        mOptionSetter.setOptionValue("post-process-input-file-key", "TRACEF");
+        mOptionSetter.setOptionValue("post-process-args", "-i");
+        mOptionSetter.setOptionValue("post-process-args", "TRACEF");
+        mOptionSetter.setOptionValue("post-process-args", "--switch1");
+        mOptionSetter.setOptionValue("post-process-timeout", "1h1m1s");
+        mAtrace.setRunUtil(mMockRunUtil);
+        mAtrace.onTestEnd(
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
+
+        EasyMock.verify(mMockTestLogger, mMockRunUtil);
     }
 }
