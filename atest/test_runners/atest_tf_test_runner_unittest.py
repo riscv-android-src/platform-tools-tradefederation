@@ -31,11 +31,9 @@ from test_finders import test_info
 #pylint: disable=no-self-use
 #pylint: disable=invalid-name
 TEST_INFO_DIR = '/tmp/atest_run_1510085893_pi_Nbi'
-TEST_INFO_FILE = '%s/test_info.json' % TEST_INFO_DIR
 METRICS_DIR = '%s/baseline-metrics' % TEST_INFO_DIR
 METRICS_DIR_ARG = '--metrics-folder %s ' % METRICS_DIR
-RUN_CMD_ARGS = '--test-info-file %s {metrics}--log-level WARN' \
-               % (TEST_INFO_FILE)
+RUN_CMD_ARGS = '{metrics}--log-level WARN'
 RUN_CMD = atf_tr.AtestTradefedTestRunner._RUN_CMD.format(
     exe=atf_tr.AtestTradefedTestRunner.EXECUTABLE,
     template=atf_tr.AtestTradefedTestRunner._TF_TEMPLATE,
@@ -118,18 +116,18 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         mock_resultargs.return_value = []
         unittest_utils.assert_strict_equal(
             self,
-            self.tr._generate_run_commands(TEST_INFO_FILE, {}, ''),
+            self.tr._generate_run_commands([], {}, ''),
             RUN_CMD.format(metrics=''))
         unittest_utils.assert_strict_equal(
             self,
-            self.tr._generate_run_commands(TEST_INFO_FILE, {}, METRICS_DIR),
+            self.tr._generate_run_commands([], {}, METRICS_DIR),
             RUN_CMD.format(metrics=METRICS_DIR_ARG))
         # Run cmd with result server args.
         result_arg = '--result_arg'
         mock_resultargs.return_value = [result_arg]
         unittest_utils.assert_strict_equal(
             self,
-            self.tr._generate_run_commands(TEST_INFO_FILE, {}, ''),
+            self.tr._generate_run_commands([], {}, ''),
             RUN_CMD.format(metrics='') + ' ' + result_arg)
 
     def test_flatten_test_filters(self):

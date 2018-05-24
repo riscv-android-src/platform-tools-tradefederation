@@ -67,3 +67,8 @@ GTF_TARGET = 'google-tradefed-core'
 # Test type for TEST_MAPPING
 TEST_TYPE_PRESUBMIT = 'presubmit'
 TEST_TYPE_POSTSUBMIT = 'postsubmit'
+
+# TradeFed command line args
+TF_INCLUDE_FILTER = '--include-filter'
+TF_MODULE_ARG = '--module-arg'
+TF_MODULE_ARG_VALUE_FMT = '%s:include-filter:%s'
