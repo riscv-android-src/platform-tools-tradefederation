@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.tradefed.testtype;
+package com.android.tradefed.testtype.suite;
 
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -27,9 +27,9 @@ import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.TestRunResult;
-import com.android.tradefed.testtype.suite.ModuleDefinition;
-import com.android.tradefed.testtype.suite.ModuleListener;
-import com.android.tradefed.testtype.suite.TestFailureListener;
+import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestFilterReceiver;
+
 import com.google.common.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
@@ -144,9 +144,10 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
     /**
      * Initialize a new {@link ModuleListener} for each test run.
      *
-     * @return a {@link ResultForwarder} listener which contains the new {@link ModuleListener}, the
-     *     main {@link ITestInvocationListener} and main {@link TestFailureListener}, and wrapped by
-     *     RunMetricsCollector and Module MetricCollector (if not initialized).
+     * @return a {@link ITestInvocationListener} listener which contains the new {@link
+     *     ModuleListener}, the main {@link ITestInvocationListener} and main {@link
+     *     TestFailureListener}, and wrapped by RunMetricsCollector and Module MetricCollector (if
+     *     not initialized).
      */
     private ITestInvocationListener prepareRunListener() {
         ModuleListener moduleListener = createModuleListener();
