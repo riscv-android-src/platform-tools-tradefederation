@@ -17,8 +17,10 @@ package com.android.tradefed.testtype;
 
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -30,7 +32,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -102,7 +103,7 @@ public class GTestXmlResultParser {
                     CLog.e(errorMessage);
                 }
                 listener.testRunFailed(errorMessage);
-                listener.testRunEnded(mTotalRunTime, Collections.emptyMap());
+                listener.testRunEnded(mTotalRunTime, new HashMap<String, Metric>());
             }
             return;
         }
@@ -133,7 +134,7 @@ public class GTestXmlResultParser {
             }
         }
         for (ITestInvocationListener listener : mTestListeners) {
-            listener.testRunEnded(mTotalRunTime, Collections.emptyMap());
+            listener.testRunEnded(mTotalRunTime, new HashMap<String, Metric>());
         }
     }
 
@@ -186,7 +187,7 @@ public class GTestXmlResultParser {
         Map<String, String> map = new HashMap<>();
         map.put("runtime", parsedResults.mTestRunTime);
         for (ITestInvocationListener listener : mTestListeners) {
-            listener.testEnded(testId, map);
+            listener.testEnded(testId, TfMetricProtoUtil.upgradeConvert(map));
         }
     }
 
