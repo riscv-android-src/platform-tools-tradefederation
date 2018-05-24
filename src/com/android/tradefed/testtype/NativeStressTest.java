@@ -25,6 +25,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IFileEntry;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -199,7 +200,7 @@ public class NativeStressTest implements IDeviceTest, IRemoteTest {
                 parser.getRunName(), iterationsComplete, avgIterationTime));
         metricMap.put(ITERATION_KEY, Integer.toString(iterationsComplete));
         metricMap.put(AVG_ITERATION_TIME_KEY, Float.toString(avgIterationTime));
-        listener.testRunEnded(elapsedTime, metricMap);
+        listener.testRunEnded(elapsedTime, TfMetricProtoUtil.upgradeConvert(metricMap));
     }
 
     /**

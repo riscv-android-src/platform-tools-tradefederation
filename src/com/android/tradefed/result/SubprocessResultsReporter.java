@@ -85,9 +85,25 @@ public class SubprocessResultsReporter
     /** {@inheritDoc} */
     @Override
     public void testEnded(TestDescription testId, long endTime, Map<String, String> metrics) {
+        testEnded(testId, endTime, TfMetricProtoUtil.upgradeConvert(metrics));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testEnded(TestDescription testId, HashMap<String, Metric> metrics) {
+        testEnded(testId, System.currentTimeMillis(), metrics);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testEnded(TestDescription testId, long endTime, HashMap<String, Metric> metrics) {
+        // TODO: transfer the proto metrics instead of string metrics
         TestEndedEventInfo info =
                 new TestEndedEventInfo(
-                        testId.getClassName(), testId.getTestName(), endTime, metrics);
+                        testId.getClassName(),
+                        testId.getTestName(),
+                        endTime,
+                        TfMetricProtoUtil.compatibleConvert(metrics));
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_ENDED, info);
     }
 
@@ -111,8 +127,7 @@ public class SubprocessResultsReporter
      */
     @Override
     public void testRunEnded(long time, Map<String, String> runMetrics) {
-        TestRunEndedEventInfo info = new TestRunEndedEventInfo(time, runMetrics);
-        printEvent(SubprocessTestResultsParser.StatusKeys.TEST_RUN_ENDED, info);
+        testRunEnded(time, TfMetricProtoUtil.upgradeConvert(runMetrics));
     }
 
     /** {@inheritDoc} */

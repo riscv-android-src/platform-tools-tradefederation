@@ -18,6 +18,7 @@ package com.android.tradefed.result;
 
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -66,8 +67,7 @@ public abstract class NameMangleListener implements ITestInvocationListener {
     /** {@inheritDoc} */
     @Override
     public void testEnded(TestDescription test, Map<String, String> testMetrics) {
-        final TestDescription mangledTestId = mangleTestId(test);
-        mListener.testEnded(mangledTestId, testMetrics);
+        testEnded(test, TfMetricProtoUtil.upgradeConvert(testMetrics));
     }
 
     /** {@inheritDoc} */
@@ -103,7 +103,7 @@ public abstract class NameMangleListener implements ITestInvocationListener {
      */
     @Override
     public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
-        mListener.testRunEnded(elapsedTime, runMetrics);
+        testRunEnded(elapsedTime, TfMetricProtoUtil.upgradeConvert(runMetrics));
     }
 
     /** {@inheritDoc} */

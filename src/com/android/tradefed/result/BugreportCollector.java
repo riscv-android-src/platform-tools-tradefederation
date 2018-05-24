@@ -20,6 +20,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -436,6 +437,11 @@ public class BugreportCollector implements ITestInvocationListener {
     /** {@inheritDoc} */
     @Override
     public void testEnded(TestDescription test, Map<String, String> testMetrics) {
+        testEnded(test, TfMetricProtoUtil.upgradeConvert(testMetrics));
+    }
+
+    @Override
+    public void testEnded(TestDescription test, HashMap<String, Metric> testMetrics) {
         mListener.testEnded(test, testMetrics);
         mCollector.testEnded(test, testMetrics);
         check(Relation.AFTER, Noun.TESTCASE, test);
@@ -465,9 +471,7 @@ public class BugreportCollector implements ITestInvocationListener {
      */
     @Override
     public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
-        mListener.testRunEnded(elapsedTime, runMetrics);
-        mCollector.testRunEnded(elapsedTime, runMetrics);
-        check(Relation.AFTER, Noun.TESTRUN);
+        testRunEnded(elapsedTime, TfMetricProtoUtil.upgradeConvert(runMetrics));
     }
 
     /** {@inheritDoc} */

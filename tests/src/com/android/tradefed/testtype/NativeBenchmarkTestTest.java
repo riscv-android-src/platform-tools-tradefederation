@@ -23,18 +23,20 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IFileEntry;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
-import java.util.Map;
+import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Unit tests for {@link NativeBenchmarkTest}
- */
+/** Unit tests for {@link NativeBenchmarkTest}. */
+@RunWith(JUnit4.class)
 public class NativeBenchmarkTestTest {
 
     private NativeBenchmarkTest mBenchmark;
@@ -143,7 +145,7 @@ public class NativeBenchmarkTestTest {
         EasyMock.expectLastCall();
         mListener.testRunStarted(EasyMock.eq(fakeRunName), EasyMock.anyInt());
         EasyMock.expectLastCall();
-        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.expectLastCall();
         replayMocks(fakeEntry);
         mBenchmark.run(mListener);
