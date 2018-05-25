@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.testtype;
+package com.android.tradefed.testtype.suite;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.config.IConfiguration;
@@ -22,7 +22,7 @@ import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.testtype.suite.ModuleListener;
+import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.FileSystemLogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -43,7 +43,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-/** Unit tests for {@link GranularRetriableTestWrapper}. */
+/** Unit tests for {@link com.android.tradefed.testtype.suite.GranularRetriableTestWrapper}. */
 @RunWith(JUnit4.class)
 public class GranularRetriableTestWrapperTest {
 
@@ -102,7 +102,7 @@ public class GranularRetriableTestWrapperTest {
     @Test(expected = DeviceNotAvailableException.class)
     public void testRun_catchDeviceNotAvailableException() throws Exception {
         IRemoteTest mockTest = Mockito.mock(IRemoteTest.class);
-        Mockito.doThrow(new DeviceNotAvailableException("fake message"))
+        Mockito.doThrow(new DeviceNotAvailableException("fake message", "serial"))
                 .when(mockTest)
                 .run(Mockito.any(ITestInvocationListener.class));
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(mockTest);
@@ -116,7 +116,7 @@ public class GranularRetriableTestWrapperTest {
     @Test
     public void testRun_catchDeviceUnresponsiveException() throws Exception {
         IRemoteTest mockTest = Mockito.mock(IRemoteTest.class);
-        Mockito.doThrow(new DeviceUnresponsiveException("fake message"))
+        Mockito.doThrow(new DeviceUnresponsiveException("fake message", "serial"))
                 .when(mockTest)
                 .run(Mockito.any(ITestInvocationListener.class));
         ModuleListener mockRunListener = Mockito.mock(ModuleListener.class);
