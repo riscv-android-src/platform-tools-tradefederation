@@ -147,6 +147,17 @@ public interface IBuildInfo extends Serializable {
     public File getFile(String name);
 
     /**
+     * Helper method to retrieve a {@link VersionedFile} with a given name.
+     *
+     * @param name
+     * @return The versioned file or <code>null</code> if not found
+     */
+    public default VersionedFile getVersionedFile(String name) {
+        // Default implementation for project that don't extends BuildInfo class.
+        return null;
+    }
+
+    /**
      * Returns all {@link VersionedFile}s stored in this {@link BuildInfo}.
      */
     public Collection<VersionedFile> getFiles();
