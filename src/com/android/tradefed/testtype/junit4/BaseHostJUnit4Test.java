@@ -162,10 +162,12 @@ public abstract class BaseHostJUnit4Test
      * @param apkFileName The name of the apk file.
      * @param grantPermission whether to pass the grant permission flag when installing the apk.
      * @param userId the user id of the user where to install the apk.
+     * @param options extra options given to the install command
      */
-    public final void installPackageAsUser(String apkFileName, boolean grantPermission, int userId)
+    public final void installPackageAsUser(
+            String apkFileName, boolean grantPermission, int userId, String... options)
             throws DeviceNotAvailableException, TargetSetupError {
-        installPackageAsUser(getDevice(), apkFileName, grantPermission, userId);
+        installPackageAsUser(getDevice(), apkFileName, grantPermission, userId, options);
     }
 
     /**
@@ -175,9 +177,14 @@ public abstract class BaseHostJUnit4Test
      * @param apkFileName The name of the apk file.
      * @param grantPermission whether to pass the grant permission flag when installing the apk.
      * @param userId the user id of the user where to install the apk.
+     * @param options extra options given to the install command
      */
     public final void installPackageAsUser(
-            ITestDevice device, String apkFileName, boolean grantPermission, int userId)
+            ITestDevice device,
+            String apkFileName,
+            boolean grantPermission,
+            int userId,
+            String... options)
             throws DeviceNotAvailableException, TargetSetupError {
         SuiteApkInstaller installer = createSuiteApkInstaller();
         // Force the apk clean up
@@ -188,6 +195,9 @@ public abstract class BaseHostJUnit4Test
         installer.setUserId(userId);
         installer.setShouldGrantPermission(grantPermission);
         installer.setAbi(getAbi());
+        for (String option : options) {
+            installer.addInstallArg(option);
+        }
         installer.setUp(device, mContext.getBuildInfo(device));
     }
 
