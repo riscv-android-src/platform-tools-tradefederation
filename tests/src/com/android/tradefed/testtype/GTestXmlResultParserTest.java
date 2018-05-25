@@ -17,6 +17,7 @@ package com.android.tradefed.testtype;
 
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.FileUtil;
@@ -29,7 +30,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Map;
+import java.util.HashMap;
 
 /** Unit tests for {@link GTestXmlResultParser} */
 public class GTestXmlResultParserTest extends TestCase {
@@ -84,10 +85,10 @@ public class GTestXmlResultParserTest extends TestCase {
                 mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
                 mockRunListener.testEnded(
                         (TestDescription) EasyMock.anyObject(),
-                        (Map<String, String>) EasyMock.anyObject());
+                        (HashMap<String, Metric>) EasyMock.anyObject());
             }
-            mockRunListener.testRunEnded(EasyMock.anyLong(),
-                    (Map<String, String>) EasyMock.anyObject());
+            mockRunListener.testRunEnded(
+                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
             EasyMock.replay(mockRunListener);
             GTestXmlResultParser resultParser =
                     new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
@@ -113,10 +114,10 @@ public class GTestXmlResultParserTest extends TestCase {
                 mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
                 mockRunListener.testEnded(
                         (TestDescription) EasyMock.anyObject(),
-                        (Map<String, String>) EasyMock.anyObject());
+                        (HashMap<String, Metric>) EasyMock.anyObject());
             }
-            mockRunListener.testRunEnded(EasyMock.anyLong(),
-                    (Map<String, String>) EasyMock.anyObject());
+            mockRunListener.testRunEnded(
+                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
             EasyMock.replay(mockRunListener);
             GTestXmlResultParser resultParser =
                     new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
@@ -144,7 +145,7 @@ public class GTestXmlResultParserTest extends TestCase {
                 mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
                 mockRunListener.testEnded(
                         (TestDescription) EasyMock.anyObject(),
-                        (Map<String, String>) EasyMock.anyObject());
+                        (HashMap<String, Metric>) EasyMock.anyObject());
             }
             // 1 failed test
             mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
@@ -152,9 +153,9 @@ public class GTestXmlResultParserTest extends TestCase {
                     (TestDescription) EasyMock.anyObject(), EasyMock.eq(expectedMessage));
             mockRunListener.testEnded(
                     (TestDescription) EasyMock.anyObject(),
-                    (Map<String, String>) EasyMock.anyObject());
-            mockRunListener.testRunEnded(EasyMock.anyLong(),
-                    (Map<String, String>) EasyMock.anyObject());
+                    (HashMap<String, Metric>) EasyMock.anyObject());
+            mockRunListener.testRunEnded(
+                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
             EasyMock.replay(mockRunListener);
             GTestXmlResultParser resultParser =
                     new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
@@ -178,8 +179,8 @@ public class GTestXmlResultParserTest extends TestCase {
                     EasyMock.createMock(ITestInvocationListener.class);
             mockRunListener.testRunStarted(TEST_MODULE_NAME, 0);
             mockRunListener.testRunFailed(expected);
-            mockRunListener.testRunEnded(EasyMock.anyLong(),
-                    (Map<String, String>) EasyMock.anyObject());
+            mockRunListener.testRunEnded(
+                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
             EasyMock.replay(mockRunListener);
             GTestXmlResultParser resultParser =
                     new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
@@ -206,11 +207,11 @@ public class GTestXmlResultParserTest extends TestCase {
                 mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
                 mockRunListener.testEnded(
                         (TestDescription) EasyMock.anyObject(),
-                        (Map<String, String>) EasyMock.anyObject());
+                        (HashMap<String, Metric>) EasyMock.anyObject());
             }
             mockRunListener.testRunFailed(expected);
-            mockRunListener.testRunEnded(EasyMock.anyLong(),
-                    (Map<String, String>) EasyMock.anyObject());
+            mockRunListener.testRunEnded(
+                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
             EasyMock.replay(mockRunListener);
             GTestXmlResultParser resultParser =
                     new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
@@ -238,11 +239,11 @@ public class GTestXmlResultParserTest extends TestCase {
                 mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
                 mockRunListener.testEnded(
                         (TestDescription) EasyMock.anyObject(),
-                        (Map<String, String>) EasyMock.anyObject());
+                        (HashMap<String, Metric>) EasyMock.anyObject());
             }
             mockRunListener.testRunFailed(expected);
-            mockRunListener.testRunEnded(EasyMock.anyLong(),
-                    (Map<String, String>) EasyMock.anyObject());
+            mockRunListener.testRunEnded(
+                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
             EasyMock.replay(mockRunListener);
             GTestXmlResultParser resultParser =
                     new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
@@ -274,8 +275,8 @@ public class GTestXmlResultParserTest extends TestCase {
                     EasyMock.createMock(ITestInvocationListener.class);
             mockRunListener.testRunStarted(TEST_MODULE_NAME, 0);
             mockRunListener.testRunFailed(expected);
-            mockRunListener.testRunEnded(EasyMock.anyLong(),
-                    (Map<String, String>) EasyMock.anyObject());
+            mockRunListener.testRunEnded(
+                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
             EasyMock.replay(mockRunListener);
             GTestXmlResultParser resultParser =
                     new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
