@@ -209,15 +209,11 @@ public class TestRunResult {
         updateTestResult(test, TestStatus.IGNORED, null);
     }
 
-    public void testEnded(TestDescription test, Map<String, String> testMetrics) {
-        testEnded(test, System.currentTimeMillis(), testMetrics);
-    }
-
     public void testEnded(TestDescription test, HashMap<String, Metric> testMetrics) {
         testEnded(test, System.currentTimeMillis(), testMetrics);
     }
 
-    public void testEnded(TestDescription test, long endTime, Map<String, String> testMetrics) {
+    public void testEnded(TestDescription test, long endTime, HashMap<String, Metric> testMetrics) {
         TestResult result = mTestResults.get(test);
         if (result == null) {
             result = new TestResult();
@@ -226,16 +222,10 @@ public class TestRunResult {
             result.setStatus(TestStatus.PASSED);
         }
         result.setEndTime(endTime);
-        result.setMetrics(testMetrics);
-        result.setProtoMetrics(TfMetricProtoUtil.upgradeConvert(testMetrics));
+        result.setMetrics(TfMetricProtoUtil.compatibleConvert(testMetrics));
+        result.setProtoMetrics(testMetrics);
         addTestResult(test, result);
         mCurrentTestResult = null;
-    }
-
-    public void testEnded(TestDescription test, long endTime, HashMap<String, Metric> testMetrics) {
-        testEnded(test, endTime, TfMetricProtoUtil.compatibleConvert(testMetrics));
-        TestResult result = mTestResults.get(test);
-        result.setProtoMetrics(testMetrics);
     }
 
     public void testRunFailed(String errorMessage) {

@@ -174,7 +174,19 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
 
     /** {@inheritDoc} */
     @Override
+    public void testEnded(TestDescription test, HashMap<String, Metric> testMetrics) {
+        testEnded(test, System.currentTimeMillis(), testMetrics);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public void testEnded(TestDescription test, long endTime, Map<String, String> testMetrics) {
+        testEnded(test, endTime, TfMetricProtoUtil.upgradeConvert(testMetrics));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testEnded(TestDescription test, long endTime, HashMap<String, Metric> testMetrics) {
         mIsCountDirty = true;
         mCurrentResults.testEnded(test, endTime, testMetrics);
     }
