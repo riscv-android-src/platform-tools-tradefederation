@@ -21,19 +21,13 @@ import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.Option.Importance;
-import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.SubprocessResultsReporter;
 import com.android.tradefed.targetprep.ITargetPreparer;
-import com.android.tradefed.testtype.Abi;
-import com.android.tradefed.testtype.IAbi;
-import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
-import com.android.tradefed.util.AbiFormatter;
-import com.android.tradefed.util.AbiUtils;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -66,13 +60,6 @@ public class AtestRunner extends BaseTestSuite {
     private boolean mSkipTearDown = false;
 
     @Option(
-        name = "abi-name",
-        description =
-                "Abi to pass to tests that require an ABI. The device default will be used if not specified."
-    )
-    private String mabiName;
-
-    @Option(
         name = "subprocess-report-port",
         description = "the port where to connect to send the" + "events."
     )
@@ -89,8 +76,11 @@ public class AtestRunner extends BaseTestSuite {
 
     @Override
     public LinkedHashMap<String, IConfiguration> loadTests() {
+        // atest only needs to run on primary or specified abi.
+        if (getRequestedAbi() == null) {
+            setPrimaryAbiRun(true);
+        }
         LinkedHashMap<String, IConfiguration> configMap = super.loadTests();
-        IAbi abi = getAbi();
         LinkedHashMap<String, HashSet<String>> includeFilters = getIncludeFilters();
         for (IConfiguration testConfig : configMap.values()) {
             if (mSkipSetUp || mSkipTearDown) {
@@ -99,7 +89,6 @@ public class AtestRunner extends BaseTestSuite {
             if (mDebug) {
                 addDebugger(testConfig);
             }
-            setTestAbi(testConfig, abi);
 
             // Inject include-filter to test.
             HashSet<String> moduleFilters =
@@ -186,48 +175,6 @@ public class AtestRunner extends BaseTestSuite {
             listeners.add(subprocessResult);
         }
         return listeners;
-    }
-
-    /**
-     * Helper to create the IAbi instance to pass to tests that implement IAbiReceiver.
-     *
-     * @return IAbi instance to use, may be null if not provided and device is unreachable.
-     */
-    private IAbi getAbi() {
-        if (mabiName == null) {
-            if (getDevice() == null) {
-                return null;
-            }
-            try {
-                mabiName = AbiFormatter.getDefaultAbi(getDevice(), "");
-            } catch (DeviceNotAvailableException e) {
-                return null;
-            }
-        }
-        return new Abi(mabiName, AbiUtils.getBitness(mabiName));
-    }
-
-    /**
-     * Set ABI of tests and target preparers that require it to default ABI of device.
-     *
-     * @param testConfig The configuration to set the ABI for.
-     * @param abi The IAbi instance to pass to setAbi() of tests and target preparers.
-     */
-    private void setTestAbi(IConfiguration testConfig, IAbi abi) {
-        if (abi == null) {
-            return;
-        }
-        List<IRemoteTest> tests = testConfig.getTests();
-        for (IRemoteTest test : tests) {
-            if (test instanceof IAbiReceiver) {
-                ((IAbiReceiver) test).setAbi(abi);
-            }
-        }
-        for (ITargetPreparer targetPreparer : testConfig.getTargetPreparers()) {
-            if (targetPreparer instanceof IAbiReceiver) {
-                ((IAbiReceiver) targetPreparer).setAbi(abi);
-            }
-        }
     }
 
     /** Helper to attach the debugger to any Instrumentation tests in the config. */
