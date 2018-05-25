@@ -17,7 +17,10 @@ package com.android.tradefed.testtype.suite;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.hamcrest.CoreMatchers.*;
+import static org.junit.Assert.fail;
 
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
@@ -29,6 +32,8 @@ import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.AbiUtils;
+import com.android.tradefed.util.FileUtil;
+
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -36,6 +41,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.io.File;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -47,6 +53,8 @@ public class BaseTestSuiteTest {
     private BaseTestSuite mRunner;
     private IDeviceBuildInfo mBuildInfo;
     private ITestDevice mMockDevice;
+
+    private static final String TEST_MODULE = "test-module";
 
     @Before
     public void setUp() throws Exception {
@@ -60,7 +68,6 @@ public class BaseTestSuiteTest {
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn("armeabi-v7a");
         EasyMock.replay(mMockDevice);
     }
-
     /**
      * Test BaseTestSuite that hardcodes the abis to avoid failures related to running the tests
      * against a particular abi build of tradefed.
@@ -72,6 +79,98 @@ public class BaseTestSuiteTest {
             abis.add(new Abi("arm64-v8a", AbiUtils.getBitness("arm64-v8a")));
             abis.add(new Abi("armeabi-v7a", AbiUtils.getBitness("armeabi-v7a")));
             return abis;
+        }
+    }
+
+    /** Test for {@#link BaseTestSuite#setupFilters()} implementation, no modules match. */
+    @Test
+    public void testSetupFilters_noMatch() throws Exception {
+        File tmpDir = FileUtil.createTempDir(TEST_MODULE);
+        File moduleConfig = new File(tmpDir, "module_name.config");
+        moduleConfig.createNewFile();
+        try {
+            OptionSetter setter = new OptionSetter(mRunner);
+            setter.setOptionValue("module", "my_module");
+            mRunner.setupFilters(tmpDir);
+            fail("Should have thrown exception");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("No modules found matching my_module", expected.getMessage());
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
+    /** Test for {@#link BaseTestSuite#setupFilters()} implementation, only one module matches. */
+    @Test
+    public void testSetupFilters_oneMatch() throws Exception {
+        File tmpDir = FileUtil.createTempDir(TEST_MODULE);
+        File moduleConfig = new File(tmpDir, "module_name.config");
+        File moduleConfig2 = new File(tmpDir, "module_name2.config");
+        moduleConfig.createNewFile();
+        moduleConfig2.createNewFile();
+        try {
+            OptionSetter setter = new OptionSetter(mRunner);
+            setter.setOptionValue("module", "module_name2");
+            mRunner.setupFilters(tmpDir);
+            assertEquals(1, mRunner.getIncludeFilter().size());
+            assertThat(
+                    mRunner.getIncludeFilter(),
+                    hasItem(
+                            new SuiteTestFilter(mRunner.getRequestedAbi(), "module_name2", null)
+                                    .toString()));
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
+    /**
+     * Test for {@#link BaseTestSuite#setupFilters()} implementation, multi modules match prefix but
+     * don't exact match.
+     */
+    @Test
+    public void testSetupFilters_multiMatchNoExactMatch() throws Exception {
+        File tmpDir = FileUtil.createTempDir(TEST_MODULE);
+        File moduleConfig = new File(tmpDir, "module_name1.config");
+        File moduleConfig2 = new File(tmpDir, "module_name2.config");
+        moduleConfig.createNewFile();
+        moduleConfig2.createNewFile();
+        try {
+            OptionSetter setter = new OptionSetter(mRunner);
+            setter.setOptionValue("module", "module_name");
+            mRunner.setupFilters(tmpDir);
+            fail("Should have thrown exception");
+        } catch (IllegalArgumentException expected) {
+            assertThat(
+                    expected.getMessage(),
+                    containsString("Multiple modules found matching module_name:"));
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
+    /**
+     * Test for {@#link BaseTestSuite#setupFilters()} implementation, multi modules match prefix and
+     * one matches exactly.
+     */
+    @Test
+    public void testSetupFilters_multiMatchOneExactMatch() throws Exception {
+        File tmpDir = FileUtil.createTempDir(TEST_MODULE);
+        File moduleConfig = new File(tmpDir, "module_name.config");
+        File moduleConfig2 = new File(tmpDir, "module_name2.config");
+        moduleConfig.createNewFile();
+        moduleConfig2.createNewFile();
+        try {
+            OptionSetter setter = new OptionSetter(mRunner);
+            setter.setOptionValue("module", "module_name");
+            mRunner.setupFilters(tmpDir);
+            assertEquals(1, mRunner.getIncludeFilter().size());
+            assertThat(
+                    mRunner.getIncludeFilter(),
+                    hasItem(
+                            new SuiteTestFilter(mRunner.getRequestedAbi(), "module_name", null)
+                                    .toString()));
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
         }
     }
 
