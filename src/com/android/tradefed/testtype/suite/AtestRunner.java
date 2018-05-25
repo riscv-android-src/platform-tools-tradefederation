@@ -20,6 +20,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionCopier;
+import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -30,15 +31,22 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.AbiUtils;
-
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 /** Implementation of {@link ITestSuite} */
 public class AtestRunner extends BaseTestSuite {
+
+    private static final Pattern CONFIG_RE =
+            Pattern.compile(".*/(?<config>[^/]+).config", Pattern.CASE_INSENSITIVE);
 
     @Option(
         name = "wait-for-debugger",
@@ -70,10 +78,20 @@ public class AtestRunner extends BaseTestSuite {
     )
     private Integer mReportPort = null;
 
+    @Option(
+        name = "atest-include-filter",
+        description =
+                "the include filters to pass to a module. The expected format is"
+                        + "\"<module-name>:<include-filter-value>\"",
+        importance = Importance.ALWAYS
+    )
+    private List<String> mIncludeFilters = new ArrayList<>();
+
     @Override
     public LinkedHashMap<String, IConfiguration> loadTests() {
         LinkedHashMap<String, IConfiguration> configMap = super.loadTests();
         IAbi abi = getAbi();
+        LinkedHashMap<String, HashSet<String>> includeFilters = getIncludeFilters();
         for (IConfiguration testConfig : configMap.values()) {
             if (mSkipSetUp || mSkipTearDown) {
                 disableTargetPreparers(testConfig, mSkipSetUp, mSkipTearDown);
@@ -82,9 +100,75 @@ public class AtestRunner extends BaseTestSuite {
                 addDebugger(testConfig);
             }
             setTestAbi(testConfig, abi);
+
+            // Inject include-filter to test.
+            HashSet<String> moduleFilters =
+                    includeFilters.get(canonicalizeConfigName(testConfig.getName()));
+            if (moduleFilters != null) {
+                for (String filter : moduleFilters) {
+                    addFilter(testConfig, filter);
+                }
+            }
         }
 
         return configMap;
+    }
+
+    /** Get a collection of include filters grouped by module name. */
+    private LinkedHashMap<String, HashSet<String>> getIncludeFilters() {
+        LinkedHashMap<String, HashSet<String>> includeFilters =
+                new LinkedHashMap<String, HashSet<String>>();
+        for (String filter : mIncludeFilters) {
+            int moduleSep = filter.indexOf(":");
+            if (moduleSep == -1) {
+                throw new RuntimeException("Expected delimiter ':' for module or class.");
+            }
+            String moduleName = canonicalizeConfigName(filter.substring(0, moduleSep));
+            String moduleFilter = filter.substring(moduleSep + 1);
+            HashSet<String> moduleFilters = includeFilters.get(moduleName);
+            if (moduleFilters == null) {
+                moduleFilters = new HashSet<String>();
+                includeFilters.put(moduleName, moduleFilters);
+            }
+            moduleFilters.add(moduleFilter);
+        }
+        return includeFilters;
+    }
+
+    /**
+     * Non-integrated modules have full file paths as their name, .e.g /foo/bar/name.config, but all
+     * we want is the name.
+     */
+    private String canonicalizeConfigName(String originalName) {
+        Matcher match = CONFIG_RE.matcher(originalName);
+        if (match.find()) {
+            return match.group("config");
+        }
+        return originalName;
+    }
+
+    /**
+     * Add filter to the tests in an IConfiguration.
+     *
+     * @param testConfig The configuration containing tests to filter.
+     * @param filter The filter to add to the tests in the testConfig.
+     */
+    private void addFilter(IConfiguration testConfig, String filter) {
+        List<IRemoteTest> tests = testConfig.getTests();
+        for (IRemoteTest test : tests) {
+            if (test instanceof ITestFilterReceiver) {
+                CLog.d(
+                        "%s:%s - Applying filter (%s)",
+                        testConfig.getName(), test.getClass().getSimpleName(), filter);
+                ((ITestFilterReceiver) test).addIncludeFilter(filter);
+            } else {
+                CLog.e(
+                        "Test Class (%s) does not support filtering. Cannot apply filter: %s.\n"
+                                + "Please update test to use a class that implements "
+                                + "ITestFilterReceiver. Running entire test module instead.",
+                        test.getClass().getSimpleName(), filter);
+            }
+        }
     }
 
     /** Return a ConfigurationFactory instance. Organized this way for testing purposes. */
