@@ -59,7 +59,6 @@ import com.android.tradefed.util.TimeUtil;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -442,7 +441,7 @@ public abstract class ITestSuite
             for (ModuleDefinition module : runModules) {
                 listener.testRunStarted(module.getId(), 0);
                 listener.testRunFailed("Module did not run due to device not available.");
-                listener.testRunEnded(0, Collections.emptyMap());
+                listener.testRunEnded(0, new HashMap<String, Metric>());
             }
             throw e;
         }
