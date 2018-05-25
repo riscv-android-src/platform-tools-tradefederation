@@ -17,13 +17,13 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.MultiLineReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 /**
@@ -124,13 +124,12 @@ public class GTestListTestParser extends MultiLineReceiver {
     @Override
     public void done() {
         // now we send out all the test callbacks
-        final Map<String, String> empty = Collections.<String, String>emptyMap();
         mTestRunListener.testRunStarted(mTestRunName, mTests.size());
         for (TestDescription id : mTests) {
             mTestRunListener.testStarted(id);
-            mTestRunListener.testEnded(id, empty);
+            mTestRunListener.testEnded(id, new HashMap<String, Metric>());
         }
-        mTestRunListener.testRunEnded(0, empty);
+        mTestRunListener.testRunEnded(0, new HashMap<String, Metric>());
         super.done();
     }
 }

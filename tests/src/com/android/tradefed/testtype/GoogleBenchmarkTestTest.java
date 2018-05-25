@@ -19,6 +19,7 @@ import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.MockFileUtil;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 
 import junit.framework.TestCase;
@@ -26,6 +27,7 @@ import junit.framework.TestCase;
 import org.easymock.EasyMock;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -123,7 +125,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
         mMockInvocationListener.testRunStarted(test1, 3);
         mMockInvocationListener.testRunStarted(test2, 2);
         mMockInvocationListener.testRunEnded(
-                EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(2);
         replayMocks();
 
@@ -205,7 +207,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
         mMockInvocationListener.testRunStarted(test1, 3);
         mMockInvocationListener.testRunStarted(test2, 2);
         mMockInvocationListener.testRunEnded(
-                EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(2);
         replayMocks();
 
@@ -243,7 +245,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
         // Expect reportName instead of test name
         mMockInvocationListener.testRunStarted(reportName, 3);
         mMockInvocationListener.testRunEnded(
-                EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.expectLastCall();
         replayMocks();
 
@@ -281,7 +283,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
         mMockInvocationListener.testRunFailed(EasyMock.anyObject());
         // Even with exception testrunEnded is expected.
         mMockInvocationListener.testRunEnded(
-                EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.expectLastCall();
         replayMocks();
 

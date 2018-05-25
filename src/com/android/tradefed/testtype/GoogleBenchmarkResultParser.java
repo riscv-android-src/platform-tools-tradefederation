@@ -19,6 +19,7 @@ import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -82,7 +83,7 @@ public class GoogleBenchmarkResultParser {
                     mTestListener.testFailed(testId,String.format("Test failed to generate "
                                 + "proper results: %s", e.getMessage()));
                 }
-                mTestListener.testEnded(testId, testResults);
+                mTestListener.testEnded(testId, TfMetricProtoUtil.upgradeConvert(testResults));
             }
             results.put("Pass", Integer.toString(benchmarks.length()));
         } catch (JSONException e) {
