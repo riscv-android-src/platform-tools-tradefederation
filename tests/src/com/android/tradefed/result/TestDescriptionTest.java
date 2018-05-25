@@ -15,7 +15,9 @@
  */
 package com.android.tradefed.result;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -54,6 +56,7 @@ public class TestDescriptionTest {
                         "className", "testName", new TestAnnotation(), new TestAnnotation2());
         assertEquals("className", mDescription.getClassName());
         assertEquals("testName", mDescription.getTestName());
+        assertEquals("testName", mDescription.getTestNameWithoutParams());
         assertEquals(2, mDescription.getAnnotations().size());
         assertNotNull(mDescription.getAnnotation(TestAnnotation.class));
         assertNotNull(mDescription.getAnnotation(TestAnnotation2.class));
@@ -67,5 +70,26 @@ public class TestDescriptionTest {
         assertEquals("testName", mDescription.getTestName());
         assertEquals(0, mDescription.getAnnotations().size());
         assertNull(mDescription.getAnnotation(TestAnnotation.class));
+    }
+
+    /** Create a {@link TestDescription} with a parameterized method. */
+    @Test
+    public void testCreateDescription_parameterized() {
+        mDescription = new TestDescription("className", "testName[0]");
+        assertEquals("className", mDescription.getClassName());
+        assertEquals("testName[0]", mDescription.getTestName());
+        assertEquals("testName", mDescription.getTestNameWithoutParams());
+
+        mDescription = new TestDescription("className", "testName[key=value]");
+        assertEquals("testName[key=value]", mDescription.getTestName());
+        assertEquals("testName", mDescription.getTestNameWithoutParams());
+
+        mDescription = new TestDescription("className", "testName[key=\"quoted value\"]");
+        assertEquals("testName[key=\"quoted value\"]", mDescription.getTestName());
+        assertEquals("testName", mDescription.getTestNameWithoutParams());
+
+        mDescription = new TestDescription("className", "testName[key:22]");
+        assertEquals("testName[key:22]", mDescription.getTestName());
+        assertEquals("testName", mDescription.getTestNameWithoutParams());
     }
 }
