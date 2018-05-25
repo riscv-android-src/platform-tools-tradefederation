@@ -40,6 +40,8 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
+import com.android.tradefed.suite.checker.StatusCheckerResult;
+import com.android.tradefed.suite.checker.StatusCheckerResult.CheckStatus;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
@@ -513,7 +515,7 @@ public abstract class ITestSuite
             throws DeviceNotAvailableException {
         long startTime = System.currentTimeMillis();
         CLog.i("Running system status checker before module execution: %s", moduleName);
-        List<String> failures = new ArrayList<>();
+        Map<String, String> failures = new LinkedHashMap<>();
         for (ISystemStatusChecker checker : checkers) {
             // Check if the status checker should be skipped.
             if (mSystemStatusCheckBlacklist.contains(checker.getClass().getName())) {
@@ -523,10 +525,12 @@ public abstract class ITestSuite
                 continue;
             }
 
-            boolean result = checker.preExecutionCheck(device);
-            if (!result) {
-                failures.add(checker.getClass().getCanonicalName());
-                CLog.w("System status checker [%s] failed", checker.getClass().getCanonicalName());
+            StatusCheckerResult result = checker.preExecutionCheck(device);
+            if (!CheckStatus.SUCCESS.equals(result.getStatus())) {
+                String errorMessage =
+                        (result.getErrorMessage() == null) ? "" : result.getErrorMessage();
+                failures.put(checker.getClass().getCanonicalName(), errorMessage);
+                CLog.w("System status checker [%s] failed.", checker.getClass().getCanonicalName());
             }
         }
         if (!failures.isEmpty()) {
@@ -556,16 +560,18 @@ public abstract class ITestSuite
             throws DeviceNotAvailableException {
         long startTime = System.currentTimeMillis();
         CLog.i("Running system status checker after module execution: %s", moduleName);
-        List<String> failures = new ArrayList<>();
+        Map<String, String> failures = new LinkedHashMap<>();
         for (ISystemStatusChecker checker : checkers) {
             // Check if the status checker should be skipped.
             if (mSystemStatusCheckBlacklist.contains(checker.getClass().getName())) {
                 continue;
             }
 
-            boolean result = checker.postExecutionCheck(device);
-            if (!result) {
-                failures.add(checker.getClass().getCanonicalName());
+            StatusCheckerResult result = checker.postExecutionCheck(device);
+            if (!CheckStatus.SUCCESS.equals(result.getStatus())) {
+                String errorMessage =
+                        (result.getErrorMessage() == null) ? "" : result.getErrorMessage();
+                failures.put(checker.getClass().getCanonicalName(), errorMessage);
                 CLog.w("System status checker [%s] failed", checker.getClass().getCanonicalName());
             }
         }
@@ -588,7 +594,7 @@ public abstract class ITestSuite
     private void reportModuleCheckerResult(
             String identifier,
             String moduleName,
-            List<String> failures,
+            Map<String, String> failures,
             long startTime,
             ITestInvocationListener listener) {
         if (!mReportSystemChecker) {
