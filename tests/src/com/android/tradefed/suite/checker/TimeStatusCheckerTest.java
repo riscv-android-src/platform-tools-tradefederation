@@ -15,10 +15,11 @@
  */
 package com.android.tradefed.suite.checker;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.suite.checker.StatusCheckerResult.CheckStatus;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -47,7 +48,7 @@ public class TimeStatusCheckerTest {
     public void testCheckTimeDiff_small() throws DeviceNotAvailableException {
         EasyMock.expect(mMockDevice.getDeviceTimeOffset(EasyMock.anyObject())).andReturn(2000L);
         EasyMock.replay(mMockDevice);
-        assertTrue(mChecker.postExecutionCheck(mMockDevice));
+        assertEquals(CheckStatus.SUCCESS, mChecker.postExecutionCheck(mMockDevice).getStatus());
         EasyMock.verify(mMockDevice);
     }
 
@@ -60,7 +61,7 @@ public class TimeStatusCheckerTest {
         EasyMock.expect(mMockDevice.getDeviceTimeOffset(EasyMock.anyObject())).andReturn(15000L);
         mMockDevice.setDate(EasyMock.anyObject());
         EasyMock.replay(mMockDevice);
-        assertFalse(mChecker.postExecutionCheck(mMockDevice));
+        assertEquals(CheckStatus.FAILED, mChecker.postExecutionCheck(mMockDevice).getStatus());
         EasyMock.verify(mMockDevice);
     }
 }
