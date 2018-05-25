@@ -16,6 +16,7 @@
 package com.android.tradefed.targetprep.multi;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.VersionedFile;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -24,7 +25,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
 
-import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -80,12 +80,12 @@ public final class MergeMultiBuildTargetPreparer extends BaseMultiTargetPreparer
 
         // Move the requested keys.
         for (String key : mKeysToMove) {
-            File toBeMoved = providerInfo.getFile(key);
+            VersionedFile toBeMoved = providerInfo.getVersionedFile(key);
             if (toBeMoved == null) {
                 CLog.w("Key '%s' did not match any files, ignoring.", key);
                 continue;
             }
-            receiverInfo.setFile(key, toBeMoved, providerInfo.getBuildId());
+            receiverInfo.setFile(key, toBeMoved.getFile(), toBeMoved.getVersion());
         }
     }
 }
