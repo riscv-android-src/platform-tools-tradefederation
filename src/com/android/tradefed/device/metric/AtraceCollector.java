@@ -27,6 +27,11 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.RunUtil;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.nio.file.Paths;
@@ -34,6 +39,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
 
 /**
  * A {@link IMetricCollector} that runs atrace during a test and collects the result and log
@@ -65,6 +71,43 @@ public class AtraceCollector extends BaseDeviceMetricCollector {
     @Option(name = "compress-dump",
             description = "produce a compressed trace dump")
     private boolean mCompressDump = true;
+
+    /* These options will arrange a post processing executable binary to be ran on the collected
+     * trace.
+     * E.G.
+     * <option name="post-process-binary" value="/path/to/analyzer.par"/>
+     * <option name="post-process-input-file-key" value="TRACE_FILE"/>
+     * <option name="post-process-args" value="--input_file TRACE_FILE --arg1 --arg2"/>
+     * Will be executed as
+     * /path/to/analyzer.par --input_file TRACE_FILE --arg1 --arg2
+     */
+    @Option(
+        name = "post-process-input-file-key",
+        description =
+                "The string that will be replaced with the absolute path to the trace file "
+                        + "in post-process-args"
+    )
+    private String mLogProcessingTraceInput = "TRACE_FILE";
+
+    @Option(
+        name = "post-process-binary",
+        description = "a self-contained binary that will be executed on the trace file"
+    )
+    private File mLogProcessingBinary = null;
+
+    @Option(name = "post-process-args", description = "args for the binary")
+    private List<String> mLogProcessingArgs = new ArrayList<>();
+
+    @Option(
+        name = "post-process-timeout",
+        isTimeVal = true,
+        description =
+                "The amount of time (eg, 1m2s) that Tradefed will wait for the "
+                        + "postprocessing subprocess to finish"
+    )
+    private long mLogProcessingTimeoutMilliseconds = 0;
+
+    private IRunUtil mRunUtil = RunUtil.getDefault();
 
     protected String fullLogPath() {
         return Paths.get(mLogPath, mLogFilename + "." + getLogType().getFileExt()).toString();
@@ -124,6 +167,30 @@ public class AtraceCollector extends BaseDeviceMetricCollector {
         }
     }
 
+    private void postProcess(File trace, String id) {
+        if (mLogProcessingBinary == null
+                || !mLogProcessingBinary.exists()
+                || !mLogProcessingBinary.canExecute()) {
+            CLog.w("No trace postprocessor specified. Skipping trace postprocessing.");
+            return;
+        }
+
+        List<String> commandLine = new ArrayList<String>();
+        commandLine.add(mLogProcessingBinary.getAbsolutePath());
+        for (String entry : mLogProcessingArgs) {
+            commandLine.add(entry.replaceAll(mLogProcessingTraceInput, trace.getAbsolutePath()));
+        }
+
+        String[] commandLineArr = new String[commandLine.size()];
+        commandLine.toArray(commandLineArr);
+        CommandResult result =
+                mRunUtil.runTimedCmd(mLogProcessingTimeoutMilliseconds, commandLineArr);
+
+        CLog.v(
+                "Trace postprocessing status: %s\nstdout: %s\nstderr: ",
+                result.getStatus(), result.getStdout(), result.getStderr());
+    }
+
     @Override
     public void onTestEnd(
             DeviceMetricData testData, final Map<String, Metric> currentTestCaseMetrics) {
@@ -144,9 +211,10 @@ public class AtraceCollector extends BaseDeviceMetricCollector {
                                 getLogType(),
                                 streamSource);
                     }
+
+                    postProcess(trace, device.getSerialNumber());
                     trace.delete();
-                }
-                else {
+                } else {
                     throw new DeviceRuntimeException("failed to pull log: " + fullLogPath());
                 }
 
@@ -156,11 +224,15 @@ public class AtraceCollector extends BaseDeviceMetricCollector {
                 else {
                     CLog.w("preserving ondevice atrace log: %s", fullLogPath());
                 }
-            }
-            catch (DeviceNotAvailableException | DeviceRuntimeException e) {
+            } catch (DeviceNotAvailableException | DeviceRuntimeException e) {
                 CLog.e("Error retrieving atrace log! device not available:");
                 CLog.e(e);
             }
         }
+    }
+
+    @VisibleForTesting
+    void setRunUtil(IRunUtil util) {
+        mRunUtil = util;
     }
 }

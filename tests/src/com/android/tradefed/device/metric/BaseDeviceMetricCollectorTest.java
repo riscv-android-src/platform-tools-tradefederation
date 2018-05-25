@@ -53,7 +53,7 @@ public class BaseDeviceMetricCollectorTest {
     private BaseDeviceMetricCollector mBase;
     private IInvocationContext mContext;
     private ITestInvocationListener mMockListener;
-    @Captor private ArgumentCaptor<Map<String, String>> mCapturedMetrics;
+    @Captor private ArgumentCaptor<HashMap<String, Metric>> mCapturedMetrics;
 
     @Before
     public void setUp() {
@@ -90,10 +90,13 @@ public class BaseDeviceMetricCollectorTest {
         Mockito.verify(mMockListener, times(1)).testAssumptionFailure(test, "trace");
         Mockito.verify(mMockListener, times(1)).testIgnored(test);
         Mockito.verify(mMockListener, times(1))
-                .testEnded(Mockito.eq(test), Mockito.anyLong(), Mockito.eq(Collections.emptyMap()));
+                .testEnded(
+                        Mockito.eq(test),
+                        Mockito.anyLong(),
+                        Mockito.eq(new HashMap<String, Metric>()));
         Mockito.verify(mMockListener, times(1)).testRunFailed("test run failed");
         Mockito.verify(mMockListener, times(1)).testRunStopped(0L);
-        Mockito.verify(mMockListener, times(1)).testRunEnded(0L, Collections.emptyMap());
+        Mockito.verify(mMockListener, times(1)).testRunEnded(0L, new HashMap<String, Metric>());
         Mockito.verify(mMockListener, times(1)).invocationFailed(Mockito.any());
         Mockito.verify(mMockListener, times(1)).invocationEnded(0L);
 
@@ -159,10 +162,13 @@ public class BaseDeviceMetricCollectorTest {
         Mockito.verify(mMockListener, times(1)).testAssumptionFailure(test, "trace");
         Mockito.verify(mMockListener, times(1)).testIgnored(test);
         Mockito.verify(mMockListener, times(1))
-                .testEnded(Mockito.eq(test), Mockito.anyLong(), Mockito.eq(Collections.emptyMap()));
+                .testEnded(
+                        Mockito.eq(test),
+                        Mockito.anyLong(),
+                        Mockito.eq(new HashMap<String, Metric>()));
         Mockito.verify(mMockListener, times(1)).testRunFailed("test run failed");
         Mockito.verify(mMockListener, times(1)).testRunStopped(0L);
-        Mockito.verify(mMockListener, times(1)).testRunEnded(0L, Collections.emptyMap());
+        Mockito.verify(mMockListener, times(1)).testRunEnded(0L, new HashMap<String, Metric>());
         Mockito.verify(mMockListener, times(1)).invocationFailed(Mockito.any());
         Mockito.verify(mMockListener, times(1)).invocationEnded(0L);
 
@@ -300,8 +306,8 @@ public class BaseDeviceMetricCollectorTest {
             test = new TestDescription("class", "method");
         }
         base.testStarted(test);
-        base.testEnded(test, new HashMap<String, String>());
-        base.testRunEnded(0L, Collections.emptyMap());
+        base.testEnded(test, new HashMap<String, Metric>());
+        base.testRunEnded(0L, new HashMap<String, Metric>());
         base.invocationEnded(0L);
 
         Mockito.verify(mMockListener, times(1)).invocationStarted(Mockito.any());
@@ -310,7 +316,7 @@ public class BaseDeviceMetricCollectorTest {
         // Metrics should have been skipped, so the map should be empty.
         Mockito.verify(mMockListener, times(1))
                 .testEnded(Mockito.eq(test), Mockito.anyLong(), mCapturedMetrics.capture());
-        Mockito.verify(mMockListener, times(1)).testRunEnded(0L, Collections.emptyMap());
+        Mockito.verify(mMockListener, times(1)).testRunEnded(0L, new HashMap<String, Metric>());
         Mockito.verify(mMockListener, times(1)).invocationEnded(0L);
 
         Assert.assertSame(mMockListener, mBase.getInvocationListener());
@@ -421,7 +427,7 @@ public class BaseDeviceMetricCollectorTest {
         Mockito.verify(mMockListener, times(1))
                 .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
 
-        List<Map<String, String>> allValues = mCapturedMetrics.getAllValues();
+        List<HashMap<String, Metric>> allValues = mCapturedMetrics.getAllValues();
         // For test1
         assertTrue(allValues.get(0).containsKey("onteststart"));
         assertTrue(allValues.get(0).containsKey("ontestend"));
@@ -469,7 +475,7 @@ public class BaseDeviceMetricCollectorTest {
         Mockito.verify(mMockListener, times(1))
                 .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
 
-        List<Map<String, String>> allValues = mCapturedMetrics.getAllValues();
+        List<HashMap<String, Metric>> allValues = mCapturedMetrics.getAllValues();
         // For test1
         assertFalse(allValues.get(0).containsKey("onteststart"));
         assertFalse(allValues.get(0).containsKey("ontestend"));

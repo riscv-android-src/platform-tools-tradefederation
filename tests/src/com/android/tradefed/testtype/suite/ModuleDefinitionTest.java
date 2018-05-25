@@ -312,11 +312,6 @@ public class ModuleDefinitionTest {
         mMockCleaner.tearDown(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo),
                 EasyMock.isNull());
         mMockListener.testRunStarted(EasyMock.eq(MODULE_NAME), EasyMock.eq(1));
-        mMockListener.testStarted(
-                new TestDescription(TargetSetupError.class.getCanonicalName(), "preparationError"));
-        mMockListener.testFailed(EasyMock.anyObject(), EasyMock.contains(exceptionMessage));
-        mMockListener.testEnded(
-                EasyMock.anyObject(), (HashMap<String, Metric>) EasyMock.anyObject());
         mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
@@ -743,7 +738,7 @@ public class ModuleDefinitionTest {
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("SERIAL");
         EasyMock.expect(
                         mMockDevice.logBugreport(
-                                EasyMock.eq("module-failure-bugreport-SERIAL"),
+                                EasyMock.eq("module-fakeName-failure-SERIAL-bugreport"),
                                 EasyMock.anyObject()))
                 .andReturn(true);
 

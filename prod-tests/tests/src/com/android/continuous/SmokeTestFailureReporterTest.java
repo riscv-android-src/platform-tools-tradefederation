@@ -21,6 +21,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.IEmail;
 import com.android.tradefed.util.IEmail.Message;
@@ -31,6 +32,7 @@ import org.easymock.Capture;
 import org.easymock.EasyMock;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 /** Unit tests for {@link SmokeTestFailureReporter} */
@@ -56,7 +58,7 @@ public class SmokeTestFailureReporterTest extends TestCase {
                         + "target=target?, build_flavor=generic-userdebug, branch=git_master}";
         final String expBodyStart = "FooTest#testFoo failed\nStack trace:\nthis is a trace\n";
 
-        final Map<String, String> emptyMap = Collections.emptyMap();
+        final HashMap<String, Metric> emptyMap = new HashMap<>();
         final TestDescription testId = new TestDescription("FooTest", "testFoo");
         final String trace = "this is a trace";
 

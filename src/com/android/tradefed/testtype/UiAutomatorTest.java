@@ -24,6 +24,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IFileEntry;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
@@ -42,6 +43,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -396,7 +398,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
         }
 
         @Override
-        public void testEnded(TestDescription test, Map<String, String> testMetrics) {
+        public void testEnded(TestDescription test, HashMap<String, Metric> testMetrics) {
             if (!mLoggedTestFailure && mLoggingOption == LoggingOption.AFTER_TEST) {
                 onScreenshotAndBugreport(getDevice(), mListener, String.format("%s_%s_final",
                         test.getClassName(), test.getTestName()));
@@ -404,7 +406,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
         }
 
         @Override
-        public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
+        public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
             if (!mLoggedTestRunFailure && mLoggingOption == LoggingOption.AFTER_TEST) {
                 onScreenshotAndBugreport(getDevice(), mListener, "test_run_final");
             }

@@ -15,15 +15,19 @@
  */
 package com.android.tradefed.device.metric;
 
+import static org.junit.Assert.*;
+
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 
+import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
@@ -66,6 +70,7 @@ public class FilePullerLogCollectorTest {
         metrics.put("log1", "/data/local/tmp/log1.txt");
         metrics.put("another_metrics", "57");
 
+        Capture<HashMap<String, Metric>> capture = new Capture<>();
         mMockListener.testStarted(test, 0L);
         EasyMock.expect(mMockDevice.pullFile("/data/local/tmp/log1.txt"))
                 .andReturn(new File("file"));
@@ -73,12 +78,18 @@ public class FilePullerLogCollectorTest {
                 .andReturn("");
         mMockListener.testLog(
                 EasyMock.eq("file"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        mMockListener.testEnded(test, 50L, metrics);
+        mMockListener.testEnded(EasyMock.eq(test), EasyMock.eq(50L), EasyMock.capture(capture));
 
         EasyMock.replay(mMockDevice, mMockListener);
         listener.testStarted(test, 0L);
         listener.testEnded(test, 50L, metrics);
         EasyMock.verify(mMockDevice, mMockListener);
+        HashMap<String, Metric> metricCaptured = capture.getValue();
+        assertEquals(
+                "57", metricCaptured.get("another_metrics").getMeasurements().getSingleString());
+        assertEquals(
+                "/data/local/tmp/log1.txt",
+                metricCaptured.get("log1").getMeasurements().getSingleString());
     }
 
     /**
@@ -95,12 +106,19 @@ public class FilePullerLogCollectorTest {
         metrics.put("log1", "/data/local/tmp/log1.txt");
         metrics.put("another_metrics", "57");
 
+        Capture<HashMap<String, Metric>> capture = new Capture<>();
         mMockListener.testStarted(test, 0L);
-        mMockListener.testEnded(test, 50L, metrics);
+        mMockListener.testEnded(EasyMock.eq(test), EasyMock.eq(50L), EasyMock.capture(capture));
 
         EasyMock.replay(mMockDevice, mMockListener);
         listener.testStarted(test, 0L);
         listener.testEnded(test, 50L, metrics);
         EasyMock.verify(mMockDevice, mMockListener);
+        HashMap<String, Metric> metricCaptured = capture.getValue();
+        assertEquals(
+                "57", metricCaptured.get("another_metrics").getMeasurements().getSingleString());
+        assertEquals(
+                "/data/local/tmp/log1.txt",
+                metricCaptured.get("log1").getMeasurements().getSingleString());
     }
 }

@@ -25,6 +25,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
+import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ZipUtil;
@@ -83,13 +84,13 @@ public class TestMappingSuiteRunnerTest {
 
     /**
      * Test for {@link TestMappingSuiteRunner#loadTests()} to fail when both options include-filter
-     * and test-mapping-test-type are set.
+     * and test-mapping-test-group are set.
      */
     @Test(expected = RuntimeException.class)
-    public void testLoadTests_conflictTestType() throws Exception {
+    public void testLoadTests_conflictTestGroup() throws Exception {
         OptionSetter setter = new OptionSetter(mRunner);
         setter.setOptionValue("include-filter", "test1");
-        setter.setOptionValue("test-mapping-test-type", "type");
+        setter.setOptionValue("test-mapping-test-group", "group");
         mRunner.loadTests();
     }
 
@@ -107,7 +108,7 @@ public class TestMappingSuiteRunnerTest {
         File tempDir = null;
         try {
             OptionSetter setter = new OptionSetter(mRunner);
-            setter.setOptionValue("test-mapping-test-type", "postsubmit");
+            setter.setOptionValue("test-mapping-test-group", "postsubmit");
 
             tempDir = FileUtil.createTempDir("test_mapping");
 
@@ -131,9 +132,25 @@ public class TestMappingSuiteRunnerTest {
             EasyMock.replay(mockBuildInfo);
 
             LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
-            assertEquals(4, configMap.size());
+
+            // Test configs in test_mapping_1 doesn't exist, but should be listed in
+            // include-filters.
+            assertTrue(mRunner.getIncludeFilter().contains("test1"));
+            assertTrue(mRunner.getIncludeFilter().contains("test2"));
+            assertTrue(mRunner.getIncludeFilter().contains("instrument"));
+            assertTrue(mRunner.getIncludeFilter().contains("suite/stub1"));
+            assertTrue(mRunner.getIncludeFilter().contains("suite/stub2"));
+
+            // Check module-arg work as expected.
+            InstrumentationTest test =
+                    (InstrumentationTest) configMap.get("arm64-v8a instrument").getTests().get(0);
+            assertEquals("some-name", test.getRunName());
+
+            assertEquals(6, configMap.size());
+            assertTrue(configMap.containsKey(ABI_1 + " instrument"));
             assertTrue(configMap.containsKey(ABI_1 + " suite/stub1"));
             assertTrue(configMap.containsKey(ABI_1 + " suite/stub2"));
+            assertTrue(configMap.containsKey(ABI_2 + " instrument"));
             assertTrue(configMap.containsKey(ABI_2 + " suite/stub1"));
             assertTrue(configMap.containsKey(ABI_2 + " suite/stub2"));
 
@@ -149,7 +166,7 @@ public class TestMappingSuiteRunnerTest {
         File tempDir = null;
         try {
             OptionSetter setter = new OptionSetter(mRunner);
-            setter.setOptionValue("test-mapping-test-type", "none-exist");
+            setter.setOptionValue("test-mapping-test-group", "none-exist");
 
             tempDir = FileUtil.createTempDir("test_mapping");
 

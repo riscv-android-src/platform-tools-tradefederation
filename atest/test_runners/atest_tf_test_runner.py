@@ -16,7 +16,6 @@
 Atest Tradefed test runner class.
 """
 
-import json
 import logging
 import os
 import subprocess
@@ -60,8 +59,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         elif extra_args.get(constants.POST_PATCH_ITERATIONS):
             iterations = extra_args.pop(constants.POST_PATCH_ITERATIONS)
             metrics_folder = os.path.join(self.results_dir, 'new-metrics')
-        filepath = self._create_test_info_file(test_infos)
-        run_cmd = self._generate_run_commands(filepath, extra_args, metrics_folder)
+        args = self._create_test_args(test_infos)
+        run_cmd = self._generate_run_commands(args, extra_args, metrics_folder)
         for _ in xrange(iterations):
             super(AtestTradefedTestRunner, self).run(run_cmd)
         if metrics_folder:
@@ -144,44 +143,36 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             args_not_supported.append(arg)
         return args_to_append, args_not_supported
 
-    def _generate_run_commands(self, filepath, extra_args, metrics_folder):
+    def _generate_run_commands(self, args, extra_args, metrics_folder):
         """Generate a list of run commands from TestInfos.
 
         Args:
-            filepath: A string of the filepath to the test_info file.
+            args: A list of strings of TF arguments to run the tests.
             extra_Args: A Dict of extra args to append.
             metrics_folder: A string of the filepath to put metrics.
 
         Returns:
             A string that contains the atest tradefed run command.
         """
-        args = ['--test-info-file', filepath]
+        # Create a copy of args as more args could be added to the list.
+        test_args = list(args)
         if metrics_folder:
-            args.extend(['--metrics-folder', metrics_folder])
+            test_args.extend(['--metrics-folder', metrics_folder])
         if logging.getLogger().isEnabledFor(logging.DEBUG):
             log_level = 'VERBOSE'
         else:
             log_level = 'WARN'
-        args.extend(['--log-level', log_level])
+        test_args.extend(['--log-level', log_level])
 
         args_to_add, args_not_supported = self._parse_extra_args(extra_args)
-        args.extend(args_to_add)
+        test_args.extend(args_to_add)
         if args_not_supported:
             logging.info('%s does not support the following args %s',
                          self.EXECUTABLE, args_not_supported)
 
-        args.extend(atest_utils.get_result_server_args())
-        self.run_cmd_dict['args'] = ' '.join(args)
+        test_args.extend(atest_utils.get_result_server_args())
+        self.run_cmd_dict['args'] = ' '.join(test_args)
         return self._RUN_CMD.format(**self.run_cmd_dict)
-
-    @staticmethod
-    def _testinfo_to_tf_dict(t_info):
-        """Return dict representation of TestInfo suitable to be saved
-        to test_info.json file and loaded by TradeFed's AtestRunner."""
-        filters = set()
-        for test_filter in t_info.data.get(constants.TI_FILTER, []):
-            filters.update(test_filter.to_set_of_tf_strings())
-        return {'test': t_info.test_name, 'filters': list(filters)}
 
     def _flatten_test_infos(self, test_infos):
         """Sort and group test_infos by module_name and sort and group filters
@@ -271,19 +262,24 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             results.add(test_info.TestFilter(class_name, frozenset(methods)))
         return frozenset(results)
 
-    def _create_test_info_file(self, test_infos):
-        """
+    def _create_test_args(self, test_infos):
+        """Compile TF command line args based on the given test infos.
 
         Args:
             test_infos: A set of TestInfo instances.
 
-        Returns: A string of the filepath.
+        Returns: A list of TF arguments to run the tests.
         """
         test_infos = self._flatten_test_infos(test_infos)
-        filepath = os.path.join(self.results_dir, 'test_info.json')
-        infos = [self._testinfo_to_tf_dict(t_info) for t_info in test_infos]
-        logging.debug('Test info: %s', infos)
-        logging.info('Writing test info to: %s', filepath)
-        with open(filepath, 'w') as test_info_file:
-            json.dump(infos, test_info_file)
-        return filepath
+        args = []
+        for info in test_infos:
+            args.extend([constants.TF_INCLUDE_FILTER, info.test_name])
+            filters = set()
+            for test_filter in info.data.get(constants.TI_FILTER, []):
+                filters.update(test_filter.to_set_of_tf_strings())
+            for test_filter in filters:
+                module_arg = (
+                    constants.TF_MODULE_ARG_VALUE_FMT %
+                    (info.test_name, test_filter))
+                args.extend([constants.TF_MODULE_ARG, module_arg])
+        return args

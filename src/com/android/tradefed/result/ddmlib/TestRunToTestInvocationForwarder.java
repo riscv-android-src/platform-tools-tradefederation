@@ -20,6 +20,7 @@ import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -118,7 +119,9 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     public void testEnded(TestIdentifier testId, Map<String, String> testMetrics) {
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
-                listener.testEnded(TestDescription.createFromTestIdentifier(testId), testMetrics);
+                listener.testEnded(
+                        TestDescription.createFromTestIdentifier(testId),
+                        TfMetricProtoUtil.upgradeConvert(testMetrics));
             } catch (RuntimeException any) {
                 CLog.e(
                         "RuntimeException when invoking %s#testEnded",
@@ -133,7 +136,9 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
                 listener.testEnded(
-                        TestDescription.createFromTestIdentifier(testId), endTime, testMetrics);
+                        TestDescription.createFromTestIdentifier(testId),
+                        endTime,
+                        TfMetricProtoUtil.upgradeConvert(testMetrics));
             } catch (RuntimeException any) {
                 CLog.e(
                         "RuntimeException when invoking %s#testEnded",
@@ -147,7 +152,7 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
-                listener.testRunEnded(elapsedTime, runMetrics);
+                listener.testRunEnded(elapsedTime, TfMetricProtoUtil.upgradeConvert(runMetrics));
             } catch (RuntimeException any) {
                 CLog.e(
                         "RuntimeException when invoking %s#testRunEnded",

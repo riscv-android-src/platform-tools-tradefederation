@@ -32,10 +32,12 @@ import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.targetprep.ITargetPreparer;
@@ -57,7 +59,7 @@ import com.android.tradefed.util.TimeUtil;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -419,8 +421,14 @@ public abstract class ITestSuite
                                 .addDeviceBuildInfo(deviceName, mContext.getBuildInfo(deviceName));
                     }
                     listener.testModuleStarted(module.getModuleInvocationContext());
+                    // Trigger module start on module level listener too
+                    new ResultForwarder(moduleListeners)
+                            .testModuleStarted(module.getModuleInvocationContext());
+
                     runSingleModule(module, listener, moduleListeners, failureListener);
                 } finally {
+                    // Trigger module end on module level listener too
+                    new ResultForwarder(moduleListeners).testModuleEnded();
                     // clear out module invocation context since we are now done with module
                     // execution
                     listener.testModuleEnded();
@@ -433,7 +441,7 @@ public abstract class ITestSuite
             for (ModuleDefinition module : runModules) {
                 listener.testRunStarted(module.getId(), 0);
                 listener.testRunFailed("Module did not run due to device not available.");
-                listener.testRunEnded(0, Collections.emptyMap());
+                listener.testRunEnded(0, new HashMap<String, Metric>());
             }
             throw e;
         }
@@ -592,7 +600,8 @@ public abstract class ITestSuite
         if (!failures.isEmpty()) {
             listener.testRunFailed(String.format("%s failed '%s' checkers", moduleName, failures));
         }
-        listener.testRunEnded(System.currentTimeMillis() - startTime, Collections.emptyMap());
+        listener.testRunEnded(
+                System.currentTimeMillis() - startTime, new HashMap<String, Metric>());
     }
 
     /** {@inheritDoc} */

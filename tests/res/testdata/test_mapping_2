@@ -6,8 +6,12 @@
   ],
   "postsubmit": [
     {
-      "name": "suite/stub2"
+      "name": "suite/stub2",
+      "options": [
+        {
+          "test-suite-tag": "just_a_name"
+        }
+      ]
     }
-  ],
-  "include_parent": false
+  ]
 }

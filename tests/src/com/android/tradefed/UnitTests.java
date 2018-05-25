@@ -175,7 +175,6 @@ import com.android.tradefed.testtype.GTestTest;
 import com.android.tradefed.testtype.GTestXmlResultParserTest;
 import com.android.tradefed.testtype.GoogleBenchmarkResultParserTest;
 import com.android.tradefed.testtype.GoogleBenchmarkTestTest;
-import com.android.tradefed.testtype.GranularRetriableTestWrapperTest;
 import com.android.tradefed.testtype.HostTestTest;
 import com.android.tradefed.testtype.InstalledInstrumentationsTestTest;
 import com.android.tradefed.testtype.InstrumentationFileTestTest;
@@ -201,6 +200,7 @@ import com.android.tradefed.testtype.metricregression.MetricsTest;
 import com.android.tradefed.testtype.python.PythonBinaryHostTestTest;
 import com.android.tradefed.testtype.suite.AtestRunnerTest;
 import com.android.tradefed.testtype.suite.BaseTestSuiteTest;
+import com.android.tradefed.testtype.suite.GranularRetriableTestWrapperTest;
 import com.android.tradefed.testtype.suite.ITestSuiteIntegrationTest;
 import com.android.tradefed.testtype.suite.ITestSuiteMultiTest;
 import com.android.tradefed.testtype.suite.ITestSuiteTest;
@@ -216,6 +216,7 @@ import com.android.tradefed.testtype.suite.TestSuiteInfoTest;
 import com.android.tradefed.testtype.suite.TfSuiteRunnerTest;
 import com.android.tradefed.testtype.suite.ValidateSuiteConfigHelperTest;
 import com.android.tradefed.testtype.suite.module.BaseModuleControllerTest;
+import com.android.tradefed.testtype.suite.module.NativeBridgeModuleControllerTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsParserTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsTestTest;
 import com.android.tradefed.util.AaptParserTest;
@@ -486,7 +487,6 @@ import org.junit.runners.Suite.SuiteClasses;
     FakeTestTest.class,
     GoogleBenchmarkResultParserTest.class,
     GoogleBenchmarkTestTest.class,
-    GranularRetriableTestWrapperTest.class,
     GTestListTestParserTest.class,
     GTestResultParserTest.class,
     GTestTest.class,
@@ -523,6 +523,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // testtype/suite
     AtestRunnerTest.class,
     BaseTestSuiteTest.class,
+    GranularRetriableTestWrapperTest.class,
     ITestSuiteIntegrationTest.class,
     ITestSuiteMultiTest.class,
     ITestSuiteTest.class,
@@ -540,6 +541,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // testtype/suite/module
     BaseModuleControllerTest.class,
+    NativeBridgeModuleControllerTest.class,
 
     // testtype/testdefs
     XmlDefsParserTest.class,
