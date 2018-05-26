@@ -258,6 +258,12 @@ public class BuildInfo implements IBuildInfo {
         return null;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public VersionedFile getVersionedFile(String name) {
+        return mVersionedFileMap.get(name);
+    }
+
     /**
      * {@inheritDoc}
      */

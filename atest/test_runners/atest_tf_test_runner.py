@@ -279,7 +279,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 filters.update(test_filter.to_set_of_tf_strings())
             for test_filter in filters:
                 module_arg = (
-                    constants.TF_MODULE_ARG_VALUE_FMT %
+                    constants.TF_ATEST_INCLUDE_FILTER_VALUE_FMT %
                     (info.test_name, test_filter))
-                args.extend([constants.TF_MODULE_ARG, module_arg])
+                args.extend([constants.TF_ATEST_INCLUDE_FILTER, module_arg])
         return args

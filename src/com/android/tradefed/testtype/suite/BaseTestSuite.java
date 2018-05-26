@@ -258,6 +258,18 @@ public class BaseTestSuite extends ITestSuite {
             Set<File> modules =
                     SuiteModuleLoader.getModuleNamesMatching(
                             testsDir, mSuitePrefix, String.format("%s.*.config", mModuleName));
+            // If multiple modules match, do exact match.
+            if (modules.size() > 1) {
+                Set<File> newModules = new HashSet<>();
+                String exactModuleName = String.format("%s.config", mModuleName);
+                for (File module : modules) {
+                    if (module.getName().equals(exactModuleName)) {
+                        newModules.add(module);
+                        modules = newModules;
+                        break;
+                    }
+                }
+            }
             if (modules.size() == 0) {
                 throw new IllegalArgumentException(
                         String.format("No modules found matching %s", mModuleName));

@@ -90,7 +90,7 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     /** Attempt to extract the crash from the logcat if the test was seen as started. */
     private String extractCrashAndAddToMessage(String errorMessage, Long startTime) {
         if (errorMessage.contains(ERROR_MESSAGE) && startTime != null) {
-            mLogcatItem = extractLogcat(mDevice, mStartTime);
+            mLogcatItem = extractLogcat(mDevice, startTime);
             errorMessage = addJavaCrashToString(mLogcatItem, errorMessage);
         }
         return errorMessage;
