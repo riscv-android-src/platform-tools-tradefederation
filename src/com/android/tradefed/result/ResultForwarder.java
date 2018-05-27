@@ -93,7 +93,7 @@ public class ResultForwarder implements ITestInvocationListener {
         for (ITestInvocationListener listener : mListeners) {
             try {
                 listener.invocationStarted(context);
-            } catch (Throwable e) {
+            } catch (RuntimeException e) {
                 CLog.e(
                         "Exception while invoking %s#invocationStarted",
                         listener.getClass().getName());
@@ -110,7 +110,7 @@ public class ResultForwarder implements ITestInvocationListener {
         for (ITestInvocationListener listener : mListeners) {
             try {
                 listener.invocationFailed(cause);
-            } catch (Throwable e) {
+            } catch (RuntimeException e) {
                 CLog.e(
                         "Exception while invoking %s#invocationFailed",
                         listener.getClass().getName());
@@ -144,7 +144,7 @@ public class ResultForwarder implements ITestInvocationListener {
         for (ITestInvocationListener listener : mListeners) {
             try {
                 listener.testLog(dataName, dataType, dataStream);
-            } catch (Throwable e) {
+            } catch (RuntimeException e) {
                 CLog.e("Exception while invoking %s#testLog", listener.getClass().getName());
                 CLog.e(e);
             }
@@ -159,7 +159,7 @@ public class ResultForwarder implements ITestInvocationListener {
         for (ITestInvocationListener listener : mListeners) {
             try {
                 listener.testRunStarted(runName, testCount);
-            } catch (Throwable e) {
+            } catch (RuntimeException e) {
                 CLog.e("Exception while invoking %s#testRunStarted", listener.getClass().getName());
                 CLog.e(e);
             }
@@ -174,7 +174,7 @@ public class ResultForwarder implements ITestInvocationListener {
         for (ITestInvocationListener listener : mListeners) {
             try {
                 listener.testRunFailed(errorMessage);
-            } catch (Throwable e) {
+            } catch (RuntimeException e) {
                 CLog.e("Exception while invoking %s#testRunFailed", listener.getClass().getName());
                 CLog.e(e);
             }
@@ -189,7 +189,7 @@ public class ResultForwarder implements ITestInvocationListener {
         for (ITestInvocationListener listener : mListeners) {
             try {
                 listener.testRunStopped(elapsedTime);
-            } catch (Throwable e) {
+            } catch (RuntimeException e) {
                 CLog.e("Exception while invoking %s#testRunStopped", listener.getClass().getName());
                 CLog.e(e);
             }
@@ -204,7 +204,7 @@ public class ResultForwarder implements ITestInvocationListener {
         for (ITestInvocationListener listener : mListeners) {
             try {
                 listener.testRunEnded(elapsedTime, runMetrics);
-            } catch (Throwable e) {
+            } catch (RuntimeException e) {
                 CLog.e("Exception while invoking %s#testRunEnded", listener.getClass().getName());
                 CLog.e(e);
             }
@@ -217,7 +217,7 @@ public class ResultForwarder implements ITestInvocationListener {
         for (ITestInvocationListener listener : mListeners) {
             try {
                 listener.testRunEnded(elapsedTime, runMetrics);
-            } catch (Throwable e) {
+            } catch (RuntimeException e) {
                 CLog.e("Exception while invoking %s#testRunEnded", listener.getClass().getName());
                 CLog.e(e);
             }
@@ -236,7 +236,7 @@ public class ResultForwarder implements ITestInvocationListener {
         for (ITestInvocationListener listener : mListeners) {
             try {
                 listener.testStarted(test, startTime);
-            } catch (Throwable e) {
+            } catch (RuntimeException e) {
                 CLog.e("Exception while invoking %s#testStarted", listener.getClass().getName());
                 CLog.e(e);
             }
@@ -249,7 +249,7 @@ public class ResultForwarder implements ITestInvocationListener {
         for (ITestInvocationListener listener : mListeners) {
             try {
                 listener.testFailed(test, trace);
-            } catch (Throwable e) {
+            } catch (RuntimeException e) {
                 CLog.e("Exception while invoking %s#testFailed", listener.getClass().getName());
                 CLog.e(e);
             }
@@ -268,7 +268,7 @@ public class ResultForwarder implements ITestInvocationListener {
         for (ITestInvocationListener listener : mListeners) {
             try {
                 listener.testEnded(test, endTime, testMetrics);
-            } catch (Throwable e) {
+            } catch (RuntimeException e) {
                 CLog.e("Exception while invoking %s#testEnded", listener.getClass().getName());
                 CLog.e(e);
             }
@@ -287,7 +287,7 @@ public class ResultForwarder implements ITestInvocationListener {
         for (ITestInvocationListener listener : mListeners) {
             try {
                 listener.testEnded(test, endTime, testMetrics);
-            } catch (Throwable e) {
+            } catch (RuntimeException e) {
                 CLog.e("Exception while invoking %s#testEnded", listener.getClass().getName());
                 CLog.e(e);
             }
@@ -299,7 +299,7 @@ public class ResultForwarder implements ITestInvocationListener {
         for (ITestInvocationListener listener : mListeners) {
             try {
                 listener.testAssumptionFailure(test, trace);
-            } catch (Throwable e) {
+            } catch (RuntimeException e) {
                 CLog.e(
                         "Exception while invoking %s#testAssumptionFailure",
                         listener.getClass().getName());
@@ -313,7 +313,7 @@ public class ResultForwarder implements ITestInvocationListener {
         for (ITestInvocationListener listener : mListeners) {
             try {
                 listener.testIgnored(test);
-            } catch (Throwable e) {
+            } catch (RuntimeException e) {
                 CLog.e("Exception while invoking %s#testIgnored", listener.getClass().getName());
                 CLog.e(e);
             }
@@ -325,7 +325,7 @@ public class ResultForwarder implements ITestInvocationListener {
         for (ITestInvocationListener listener : mListeners) {
             try {
                 listener.testModuleStarted(moduleContext);
-            } catch (Throwable e) {
+            } catch (RuntimeException e) {
                 CLog.e("Exception while invoking testModuleStarted");
                 CLog.e(e);
             }
@@ -337,7 +337,7 @@ public class ResultForwarder implements ITestInvocationListener {
         for (ITestInvocationListener listener : mListeners) {
             try {
                 listener.testModuleEnded();
-            } catch (Throwable e) {
+            } catch (RuntimeException e) {
                 CLog.e("Exception while invoking testModuleEnded");
                 CLog.e(e);
             }

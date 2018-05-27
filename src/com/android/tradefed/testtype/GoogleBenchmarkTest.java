@@ -23,6 +23,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -181,7 +182,7 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest {
                 throw e;
             } finally {
                 final long elapsedTime = System.currentTimeMillis() - startTime;
-                listener.testRunEnded(elapsedTime, metricMap);
+                listener.testRunEnded(elapsedTime, TfMetricProtoUtil.upgradeConvert(metricMap));
             }
         }
     }

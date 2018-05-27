@@ -21,12 +21,18 @@ import java.io.Serializable;
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** Class representing information about a test case. */
 public final class TestDescription implements Serializable {
 
+    /** Regex for method parameterized. For example: testName[0] */
+    public static final Pattern PARAMETERIZED_TEST_REGEX = Pattern.compile("(.*)?\\[(.*)\\]$");
+
     private final String mClassName;
     private final String mTestName;
+    private final String mTestNameNoParams;
     private Annotation[] mAnnotations;
 
     /**
@@ -42,6 +48,14 @@ public final class TestDescription implements Serializable {
         mClassName = className;
         mTestName = testName;
         mAnnotations = new Annotation[0];
+
+        // If the method looks parameterized, track the base non-parameterized name.
+        Matcher m = PARAMETERIZED_TEST_REGEX.matcher(testName);
+        if (m.find()) {
+            mTestNameNoParams = m.group(1);
+        } else {
+            mTestNameNoParams = testName;
+        }
     }
 
     /**
@@ -90,9 +104,17 @@ public final class TestDescription implements Serializable {
         return mClassName;
     }
 
-    /** Returns the name of the test. */
+    /**
+     * Returns the name of the test with the parameters, if it's parameterized test. Returns the
+     * regular test name if not a parameterized test.
+     */
     public String getTestName() {
         return mTestName;
+    }
+
+    /** Returns the name of the test without any parameters (if it's a parameterized method). */
+    public String getTestNameWithoutParams() {
+        return mTestNameNoParams;
     }
 
     @Override

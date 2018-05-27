@@ -68,16 +68,16 @@ public class MergeMultiBuildTargetPreparerTest {
         setter.setOptionValue("dest-device", "device2");
         setter.setOptionValue("key-to-copy", EXAMPLE_KEY);
 
-        mMockInfo1.setFile(EXAMPLE_KEY, new File("fake"), "id1");
-        assertEquals("id1", mMockInfo1.getTestsDirVersion());
+        mMockInfo1.setFile(EXAMPLE_KEY, new File("fake"), "some version");
+        assertEquals("some version", mMockInfo1.getTestsDirVersion());
         assertNotNull(mMockInfo1.getFile(EXAMPLE_KEY));
         assertNull(mMockInfo2.getFile(EXAMPLE_KEY));
 
         mPreparer.setUp(mContext);
         // Now mock info 2 has the file.
         assertNotNull(mMockInfo2.getFile(EXAMPLE_KEY));
-        // The build id of the provider build is set as the version.
-        assertEquals("id1", mMockInfo2.getTestsDirVersion());
+        // The version of the provider build is preserved.
+        assertEquals("some version", mMockInfo2.getTestsDirVersion());
     }
 
     /**

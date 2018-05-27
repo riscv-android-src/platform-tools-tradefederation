@@ -32,6 +32,7 @@ import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.InstrumentationTest;
+import com.android.tradefed.testtype.UiAutomatorTest;
 import com.android.tradefed.util.AbiUtils;
 
 import org.junit.Before;
@@ -39,6 +40,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -98,11 +100,30 @@ public class AtestRunnerTest {
     }
 
     @Test
-    public void testLoadTests_class() throws Exception {
+    public void testLoadTests_filter() throws Exception {
+        setter = new OptionSetter(mSpyRunner);
+        setter.setOptionValue("include-filter", "tf/uiautomator");
+        setter.setOptionValue("atest-include-filter", "tf/uiautomator:" + classA);
+        setter.setOptionValue("atest-include-filter", "tf/uiautomator:" + classB + "#" + method1);
+        LinkedHashMap<String, IConfiguration> configMap = mSpyRunner.loadTests();
+        assertEquals(1, configMap.size());
+        String testName = String.format(TEST_NAME_FMT, "tf/uiautomator");
+        assertTrue(configMap.containsKey(testName));
+        IConfiguration config = configMap.get(testName);
+        List<IRemoteTest> tests = config.getTests();
+        assertEquals(1, tests.size());
+        UiAutomatorTest test = (UiAutomatorTest) tests.get(0);
+        List<String> classFilters = new ArrayList<String>();
+        classFilters.add(classA);
+        classFilters.add(classB + "#" + method1);
+        assertEquals(classFilters, test.getClassNames());
+    }
+
+    @Test
+    public void testLoadTests_ignoreFilter() throws Exception {
         setter = new OptionSetter(mSpyRunner);
         setter.setOptionValue("include-filter", "suite/base-suite1");
-        setter.setOptionValue("module-arg", "suite/base-suite1:include-filter:" + classA);
-        setter.setOptionValue("module-arg", "suite/base-suite1:include-filter:" + classB);
+        setter.setOptionValue("atest-include-filter", "suite/base-suite1:" + classA);
         LinkedHashMap<String, IConfiguration> configMap = mSpyRunner.loadTests();
         assertEquals(1, configMap.size());
         String testName = String.format(TEST_NAME_FMT, "suite/base-suite1");
@@ -111,64 +132,7 @@ public class AtestRunnerTest {
         List<IRemoteTest> tests = config.getTests();
         assertEquals(1, tests.size());
         BaseTestSuite test = (BaseTestSuite) tests.get(0);
-        Set<String> classFilters = new HashSet<>();
-        classFilters.add(classA);
-        classFilters.add(classB);
-        assertEquals(classFilters, test.getIncludeFilter());
-    }
-
-    @Test
-    public void testLoadTests_method() throws Exception {
-        setter = new OptionSetter(mSpyRunner);
-        setter.setOptionValue("include-filter", "suite/base-suite1");
-        setter.setOptionValue(
-                "module-arg", "suite/base-suite1:include-filter:" + classA + "#" + method1);
-        setter.setOptionValue(
-                "module-arg", "suite/base-suite1:include-filter:" + classB + "#" + method1);
-        LinkedHashMap<String, IConfiguration> configMap = mSpyRunner.loadTests();
-        assertEquals(1, configMap.size());
-        String testName = String.format(TEST_NAME_FMT, "suite/base-suite1");
-        assertTrue(configMap.containsKey(testName));
-        IConfiguration config = configMap.get(testName);
-        List<IRemoteTest> tests = config.getTests();
-        assertEquals(1, tests.size());
-        BaseTestSuite test = (BaseTestSuite) tests.get(0);
-        Set<String> classFilters = new HashSet<>();
-        classFilters.add(classA + "#" + method1);
-        classFilters.add(classB + "#" + method1);
-        assertEquals(classFilters, test.getIncludeFilter());
-    }
-
-    @Test
-    public void testLoadTests_multiple() throws Exception {
-        setter = new OptionSetter(mSpyRunner);
-        setter.setOptionValue("include-filter", "suite/base-suite1");
-        setter.setOptionValue("module-arg", "suite/base-suite1:include-filter:" + classA);
-        setter.setOptionValue("include-filter", "suite/base-suite2");
-        setter.setOptionValue(
-                "module-arg", "suite/base-suite2:include-filter:" + classB + "#" + method1);
-        LinkedHashMap<String, IConfiguration> configMap = mSpyRunner.loadTests();
-        assertEquals(2, configMap.size());
-        String testName1 = String.format(TEST_NAME_FMT, "suite/base-suite1");
-        String testName2 = String.format(TEST_NAME_FMT, "suite/base-suite2");
-        assertTrue(configMap.containsKey(testName1));
-        assertTrue(configMap.containsKey(testName2));
-
-        IConfiguration config = configMap.get(testName1);
-        List<IRemoteTest> tests = config.getTests();
-        assertEquals(1, tests.size());
-        BaseTestSuite test = (BaseTestSuite) tests.get(0);
-        Set<String> classFilters = new HashSet<>();
-        classFilters.add(classA);
-        assertEquals(classFilters, test.getIncludeFilter());
-
-        IConfiguration config2 = configMap.get(testName2);
-        List<IRemoteTest> tests2 = config2.getTests();
-        assertEquals(1, tests2.size());
-        BaseTestSuite test2 = (BaseTestSuite) tests2.get(0);
-        classFilters = new HashSet<>();
-        classFilters.add(classB + "#" + method1);
-        assertEquals(classFilters, test2.getIncludeFilter());
+        assertEquals(new HashSet<String>(), test.getIncludeFilter());
     }
 
     @Test

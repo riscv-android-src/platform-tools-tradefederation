@@ -70,5 +70,5 @@ TEST_TYPE_POSTSUBMIT = 'postsubmit'
 
 # TradeFed command line args
 TF_INCLUDE_FILTER = '--include-filter'
-TF_MODULE_ARG = '--module-arg'
-TF_MODULE_ARG_VALUE_FMT = '%s:include-filter:%s'
+TF_ATEST_INCLUDE_FILTER = '--atest-include-filter'
+TF_ATEST_INCLUDE_FILTER_VALUE_FMT = '%s:%s'

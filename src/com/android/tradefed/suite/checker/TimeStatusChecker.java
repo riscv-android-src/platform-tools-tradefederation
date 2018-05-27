@@ -18,6 +18,7 @@ package com.android.tradefed.suite.checker;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.suite.checker.StatusCheckerResult.CheckStatus;
 import com.android.tradefed.util.TimeUtil;
 
 import java.util.Date;
@@ -26,16 +27,21 @@ import java.util.Date;
 public class TimeStatusChecker implements ISystemStatusChecker {
 
     @Override
-    public boolean postExecutionCheck(ITestDevice device) throws DeviceNotAvailableException {
+    public StatusCheckerResult postExecutionCheck(ITestDevice device)
+            throws DeviceNotAvailableException {
         long difference = device.getDeviceTimeOffset(new Date());
         if (difference > 5000L) {
-            CLog.w(
-                    "Found a difference of '%s' between the host and device clock, resetting the "
-                            + "device time.",
-                    TimeUtil.formatElapsedTime(difference));
+            String message =
+                    String.format(
+                            "Found a difference of '%s' between the host and device clock, "
+                                    + "resetting the device time.",
+                            TimeUtil.formatElapsedTime(difference));
+            CLog.w(message);
             device.setDate(new Date());
-            return false;
+            StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
+            result.setErrorMessage(message);
+            return result;
         }
-        return true;
+        return new StatusCheckerResult(CheckStatus.SUCCESS);
     }
 }

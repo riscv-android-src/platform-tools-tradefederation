@@ -26,11 +26,15 @@ import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.FileUtil;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Runs a set of instrumentation tests by specifying a list of line separated test classes and
@@ -44,8 +48,6 @@ class InstrumentationFileTest implements IRemoteTest {
 
     // on device test folder location where the test file should be saved
     private static final String ON_DEVICE_TEST_DIR_LOCATION = "/data/local/tmp/";
-    // used to separate fully-qualified test case class name, and one of its methods
-    private static final char METHOD_SEPARATOR = '#';
 
     private InstrumentationTest mInstrumentationTest = null;
 
@@ -134,8 +136,17 @@ class InstrumentationFileTest implements IRemoteTest {
             testFile = FileUtil.createTempFile(
                     "tf_testFile_" + InstrumentationFileTest.class.getCanonicalName(), ".txt");
             try (BufferedWriter bw = new BufferedWriter(new FileWriter(testFile))) {
-                for (TestDescription testToRun : tests) {
-                    bw.write(testToRun.getClassName() + METHOD_SEPARATOR + testToRun.getTestName());
+                // Remove parameterized tests to only re-run their base method.
+                Collection<TestDescription> uniqueMethods = createRerunSet(tests);
+
+                for (TestDescription testToRun : uniqueMethods) {
+                    // We use getTestNameNoParams to avoid attempting re-running individual
+                    // parameterized tests. Instead ask the base method to re-run them all.
+                    bw.write(
+                            String.format(
+                                    "%s#%s",
+                                    testToRun.getClassName(),
+                                    testToRun.getTestNameWithoutParams()));
                     bw.newLine();
                 }
                 CLog.d("Test file %s was successfully created", testFile.getAbsolutePath());
@@ -211,11 +222,25 @@ class InstrumentationFileTest implements IRemoteTest {
     }
 
     /**
+     * Returns a new collection of {@link TestDescription} where only one instance of each
+     * parameterized method is in the list.
+     */
+    private Collection<TestDescription> createRerunSet(Collection<TestDescription> tests) {
+        Map<String, TestDescription> uniqueMethods = new LinkedHashMap<>();
+        for (TestDescription test : tests) {
+            uniqueMethods.put(test.getTestNameWithoutParams(), test);
+        }
+        return uniqueMethods.values();
+    }
+
+    /**
      * Util method to push file to a device. Exposed for unit testing.
+     *
      * @return if file was pushed to the device successfully
      * @throws DeviceNotAvailableException
      */
-    boolean pushFileToTestDevice(File file, String destinationPath) throws DeviceNotAvailableException {
+    boolean pushFileToTestDevice(File file, String destinationPath)
+            throws DeviceNotAvailableException {
         return mInstrumentationTest.getDevice().pushFile(file, destinationPath);
     }
 
@@ -230,9 +255,8 @@ class InstrumentationFileTest implements IRemoteTest {
         }
     }
 
-    /**
-     * @return the {@link InstrumentationTest} to use. Exposed for unit testing.
-     */
+    /** @return the {@link InstrumentationTest} to use. Exposed for unit testing. */
+    @VisibleForTesting
     InstrumentationTest createInstrumentationTest() {
         return new InstrumentationTest();
     }

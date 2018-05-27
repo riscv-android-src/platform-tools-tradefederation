@@ -22,6 +22,7 @@ import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.TestDescription;
@@ -39,6 +40,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 
 /**
  * Unit tests for {@link InstrumentationFileTest}.
@@ -83,7 +85,6 @@ public class InstrumentationFileTestTest extends TestCase {
     /**
      * Test normal run scenario with a single test.
      */
-    @SuppressWarnings("unchecked")
     public void testRun_singleSuccessfulTest() throws DeviceNotAvailableException,
             ConfigurationException {
         final Collection<TestDescription> testsList = new ArrayList<>(1);
@@ -99,8 +100,8 @@ public class InstrumentationFileTestTest extends TestCase {
                         listener.testRunStarted(TEST_PACKAGE_VALUE, 1);
                         listener.testStarted(TestDescription.convertToIdentifier(test));
                         listener.testEnded(
-                                TestDescription.convertToIdentifier(test), Collections.EMPTY_MAP);
-                        listener.testRunEnded(0, Collections.EMPTY_MAP);
+                                TestDescription.convertToIdentifier(test), Collections.emptyMap());
+                        listener.testRunEnded(0, Collections.emptyMap());
                         return true;
                     }
                 };
@@ -129,8 +130,8 @@ public class InstrumentationFileTestTest extends TestCase {
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 1);
         mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
         mMockListener.testEnded(
-                EasyMock.eq(test), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
-        mMockListener.testRunEnded(0, Collections.EMPTY_MAP);
+                EasyMock.eq(test), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testRunEnded(0, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);
@@ -140,7 +141,6 @@ public class InstrumentationFileTestTest extends TestCase {
     /**
      * Test re-run scenario when 1 out of 3 tests fails to complete but is successful after re-run
      */
-    @SuppressWarnings("unchecked")
     public void testRun_reRunOneFailedToCompleteTest()
             throws DeviceNotAvailableException, ConfigurationException {
         final Collection<TestDescription> testsList = new ArrayList<>(1);
@@ -161,8 +161,8 @@ public class InstrumentationFileTestTest extends TestCase {
                         listener.testRunStarted(TEST_PACKAGE_VALUE, 2);
                         listener.testStarted(TestDescription.convertToIdentifier(test1));
                         listener.testEnded(
-                                TestDescription.convertToIdentifier(test1), Collections.EMPTY_MAP);
-                        listener.testRunEnded(1, Collections.EMPTY_MAP);
+                                TestDescription.convertToIdentifier(test1), Collections.emptyMap());
+                        listener.testRunEnded(1, Collections.emptyMap());
                         // second test started but never finished
                         listener.testStarted(TestDescription.convertToIdentifier(test2));
                         return true;
@@ -180,13 +180,13 @@ public class InstrumentationFileTestTest extends TestCase {
                         listener.testRunStarted(TEST_PACKAGE_VALUE, 2);
                         listener.testStarted(TestDescription.convertToIdentifier(test3));
                         listener.testEnded(
-                                TestDescription.convertToIdentifier(test3), Collections.EMPTY_MAP);
-                        listener.testRunEnded(1, Collections.EMPTY_MAP);
+                                TestDescription.convertToIdentifier(test3), Collections.emptyMap());
+                        listener.testRunEnded(1, Collections.emptyMap());
                         // second test is rerun but completed successfully this time
                         listener.testStarted(TestDescription.convertToIdentifier(test2));
                         listener.testEnded(
-                                TestDescription.convertToIdentifier(test2), Collections.EMPTY_MAP);
-                        listener.testRunEnded(1, Collections.EMPTY_MAP);
+                                TestDescription.convertToIdentifier(test2), Collections.emptyMap());
+                        listener.testRunEnded(1, Collections.emptyMap());
                         return true;
                     }
                 };
@@ -216,8 +216,8 @@ public class InstrumentationFileTestTest extends TestCase {
         // expect test1 to start and finish successfully
         mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
         mMockListener.testEnded(
-                EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
-        mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
+                EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
         // expect test2 to start but never finish
         mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
         // Second run:
@@ -225,13 +225,13 @@ public class InstrumentationFileTestTest extends TestCase {
         // expect test3 to start and finish successfully
         mMockListener.testStarted(EasyMock.eq(test3), EasyMock.anyLong());
         mMockListener.testEnded(
-                EasyMock.eq(test3), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
-        mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
+                EasyMock.eq(test3), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
         // expect to rerun test2 successfully
         mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
         mMockListener.testEnded(
-                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
-        mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
+                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);
@@ -241,7 +241,6 @@ public class InstrumentationFileTestTest extends TestCase {
     /**
      * Test re-run scenario when 2 remaining tests fail to complete and need to be run serially
      */
-    @SuppressWarnings("unchecked")
     public void testRun_serialReRunOfTwoFailedToCompleteTests()
             throws DeviceNotAvailableException, ConfigurationException {
         final Collection<TestDescription> testsList = new ArrayList<>(1);
@@ -277,8 +276,8 @@ public class InstrumentationFileTestTest extends TestCase {
                         listener.testRunStarted(TEST_PACKAGE_VALUE, 1);
                         listener.testStarted(TestDescription.convertToIdentifier(test1));
                         listener.testEnded(
-                                TestDescription.convertToIdentifier(test1), Collections.EMPTY_MAP);
-                        listener.testRunEnded(1, Collections.EMPTY_MAP);
+                                TestDescription.convertToIdentifier(test1), Collections.emptyMap());
+                        listener.testRunEnded(1, Collections.emptyMap());
                         return true;
                     }
                 };
@@ -294,8 +293,8 @@ public class InstrumentationFileTestTest extends TestCase {
                         listener.testRunStarted(TEST_PACKAGE_VALUE, 1);
                         listener.testStarted(TestDescription.convertToIdentifier(test2));
                         listener.testEnded(
-                                TestDescription.convertToIdentifier(test2), Collections.EMPTY_MAP);
-                        listener.testRunEnded(1, Collections.EMPTY_MAP);
+                                TestDescription.convertToIdentifier(test2), Collections.emptyMap());
+                        listener.testRunEnded(1, Collections.emptyMap());
                         return true;
                     }
                 };
@@ -331,15 +330,15 @@ public class InstrumentationFileTestTest extends TestCase {
         // expect test1 to start and finish successfully
         mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
         mMockListener.testEnded(
-                EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
-        mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
+                EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
         // first serial re-run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 1);
         // expect test2 to start and finish successfully
         mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
         mMockListener.testEnded(
-                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
-        mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
+                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);
@@ -351,7 +350,6 @@ public class InstrumentationFileTestTest extends TestCase {
     /**
      * Test no serial re-run tests fail to complete.
      */
-    @SuppressWarnings("unchecked")
     public void testRun_noSerialReRun()
             throws DeviceNotAvailableException, ConfigurationException {
         final Collection<TestDescription> testsList = new ArrayList<>(1);
@@ -409,7 +407,6 @@ public class InstrumentationFileTestTest extends TestCase {
     /**
      * Test attempting times exceed max attempts.
      */
-    @SuppressWarnings("unchecked")
     public void testRun_exceedMaxAttempts()
             throws DeviceNotAvailableException, ConfigurationException {
         final ArrayList<TestDescription> testsList = new ArrayList<>(1);
@@ -439,8 +436,8 @@ public class InstrumentationFileTestTest extends TestCase {
                         // first test started and ended successfully
                         listener.testStarted(TestDescription.convertToIdentifier(test1));
                         listener.testEnded(
-                                TestDescription.convertToIdentifier(test1), Collections.EMPTY_MAP);
-                        listener.testRunEnded(1, Collections.EMPTY_MAP);
+                                TestDescription.convertToIdentifier(test1), Collections.emptyMap());
+                        listener.testRunEnded(1, Collections.emptyMap());
                         // second test started but never finished
                         listener.testStarted(TestDescription.convertToIdentifier(test2));
                         // verify that the content of the testFile contains all expected tests
@@ -460,8 +457,8 @@ public class InstrumentationFileTestTest extends TestCase {
                         listener.testRunStarted(TEST_PACKAGE_VALUE, 5);
                         listener.testStarted(TestDescription.convertToIdentifier(test2));
                         listener.testEnded(
-                                TestDescription.convertToIdentifier(test2), Collections.EMPTY_MAP);
-                        listener.testRunEnded(1, Collections.EMPTY_MAP);
+                                TestDescription.convertToIdentifier(test2), Collections.emptyMap());
+                        listener.testRunEnded(1, Collections.emptyMap());
                         // test3 started but never finished
                         listener.testStarted(TestDescription.convertToIdentifier(test3));
                         // verify that the content of the testFile contains all expected tests
@@ -481,8 +478,8 @@ public class InstrumentationFileTestTest extends TestCase {
                         listener.testRunStarted(TEST_PACKAGE_VALUE, 4);
                         listener.testStarted(TestDescription.convertToIdentifier(test3));
                         listener.testEnded(
-                                TestDescription.convertToIdentifier(test3), Collections.EMPTY_MAP);
-                        listener.testRunEnded(1, Collections.EMPTY_MAP);
+                                TestDescription.convertToIdentifier(test3), Collections.emptyMap());
+                        listener.testRunEnded(1, Collections.emptyMap());
                         // test4 started but never finished
                         listener.testStarted(TestDescription.convertToIdentifier(test4));
                         // verify that the content of the testFile contains all expected tests
@@ -514,27 +511,123 @@ public class InstrumentationFileTestTest extends TestCase {
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 6);
         mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
         mMockListener.testEnded(
-                EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
-        mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
+                EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
         mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
 
         // Second run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 5);
         mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
         mMockListener.testEnded(
-                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
-        mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
+                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
         mMockListener.testStarted(EasyMock.eq(test3), EasyMock.anyLong());
 
         // Third run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 4);
         mMockListener.testStarted(EasyMock.eq(test3), EasyMock.anyLong());
         mMockListener.testEnded(
-                EasyMock.eq(test3), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
-        mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
+                EasyMock.eq(test3), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
         mMockListener.testStarted(EasyMock.eq(test4), EasyMock.anyLong());
 
         // MAX_ATTEMPTS is 3, so there will be no forth run.
+
+        EasyMock.replay(mMockListener, mMockTestDevice);
+        mInstrumentationFileTest.run(mMockListener);
+        assertEquals(mMockTestDevice, mMockITest.getDevice());
+    }
+
+    /** Test re-run a test instrumentation when some methods are parameterized. */
+    public void testRun_parameterized() throws DeviceNotAvailableException, ConfigurationException {
+        final Collection<TestDescription> testsList = new ArrayList<>();
+        final TestDescription test = new TestDescription("ClassFoo", "methodBar");
+        final TestDescription test1 = new TestDescription("ClassFoo", "paramMethod[0]");
+        final TestDescription test2 = new TestDescription("ClassFoo", "paramMethod[1]");
+        testsList.add(test);
+        testsList.add(test1);
+        testsList.add(test2);
+
+        // verify the mock listener is passed through to the runner, the first test pass
+        RunTestAnswer runTestResponse =
+                new RunTestAnswer() {
+                    @Override
+                    public Boolean answer(
+                            IRemoteAndroidTestRunner runner, ITestRunListener listener) {
+                        listener.testRunStarted(TEST_PACKAGE_VALUE, 3);
+                        listener.testStarted(TestDescription.convertToIdentifier(test));
+                        listener.testEnded(
+                                TestDescription.convertToIdentifier(test), Collections.emptyMap());
+                        listener.testStarted(TestDescription.convertToIdentifier(test1));
+                        listener.testRunEnded(0, Collections.emptyMap());
+                        return true;
+                    }
+                };
+        setRunTestExpectations(runTestResponse);
+
+        RunTestAnswer secondRunAnswer =
+                new RunTestAnswer() {
+                    @Override
+                    public Boolean answer(
+                            IRemoteAndroidTestRunner runner, ITestRunListener listener) {
+                        // test2 started and ended successfully
+                        listener.testRunStarted(TEST_PACKAGE_VALUE, 2);
+                        listener.testStarted(TestDescription.convertToIdentifier(test1));
+                        listener.testEnded(
+                                TestDescription.convertToIdentifier(test1), Collections.emptyMap());
+                        listener.testStarted(TestDescription.convertToIdentifier(test2));
+                        listener.testEnded(
+                                TestDescription.convertToIdentifier(test2), Collections.emptyMap());
+                        listener.testRunEnded(1, Collections.emptyMap());
+                        return true;
+                    }
+                };
+        setRunTestExpectations(secondRunAnswer);
+
+        mInstrumentationFileTest =
+                new InstrumentationFileTest(mMockITest, testsList, true, -1) {
+                    @Override
+                    InstrumentationTest createInstrumentationTest() {
+                        return mMockITest;
+                    }
+
+                    @Override
+                    boolean pushFileToTestDevice(File file, String destinationPath)
+                            throws DeviceNotAvailableException {
+                        // simulate successful push and store created file
+                        mTestFile = file;
+                        // verify that the content of the testFile contains all expected tests
+                        Collection<TestDescription> updatedList = new ArrayList<>();
+                        updatedList.add(test);
+                        updatedList.add(new TestDescription("ClassFoo", "paramMethod"));
+                        verifyTestFile(updatedList);
+                        return true;
+                    }
+
+                    @Override
+                    void deleteTestFileFromDevice(String pathToFile)
+                            throws DeviceNotAvailableException {
+                        //ignore
+                    }
+                };
+
+        // mock successful test run lifecycle for the first test
+        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 3);
+        mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
+        mMockListener.testRunEnded(0, new HashMap<String, Metric>());
+
+        // Second run:
+        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 2);
+        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);
