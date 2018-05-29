@@ -26,7 +26,6 @@ import com.android.tradefed.testtype.testdefs.XmlDefsTest;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -645,7 +644,7 @@ public class GTestResultParser extends MultiLineReceiver {
             }
         }
         // For all cases (pass or fail), we ultimately need to report test has ended
-        Map <String, String> emptyMap = Collections.emptyMap();
+        HashMap<String, Metric> emptyMap = new HashMap<>();
         for (ITestInvocationListener listener : mTestListeners) {
             // @TODO: Add reporting of test run time to ITestInvocationListener
             listener.testEnded(testId, emptyMap);
@@ -711,7 +710,7 @@ public class GTestResultParser extends MultiLineReceiver {
 
             // If there was any stack trace during the test run, append it to the "test failed"
             // error message so we have an idea of what caused the crash/failure.
-            Map<String, String> emptyMap = Collections.emptyMap();
+            HashMap<String, Metric> emptyMap = new HashMap<>();
             if (mCurrentTestResult.hasStackTrace()) {
                 testRunStackTrace = mCurrentTestResult.getTrace();
             }

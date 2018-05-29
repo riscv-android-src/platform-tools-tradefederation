@@ -18,14 +18,14 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.Log;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 
 import org.easymock.EasyMock;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Map;
+import java.util.HashMap;
 
 
 /**
@@ -59,7 +59,7 @@ public class GTestFuncTest extends DeviceTestCase {
      */
     @SuppressWarnings("unchecked")
     public void testRun() throws DeviceNotAvailableException {
-        Map<String, String> emptyMap = Collections.emptyMap();
+        HashMap<String, Metric> emptyMap = new HashMap<>();
         mGTest.setModuleName(NATIVE_SAMPLETEST_MODULE_NAME);
         Log.i(LOG_TAG, "testRun");
         mMockListener.testRunStarted(NATIVE_SAMPLETEST_MODULE_NAME, 7);
@@ -85,7 +85,8 @@ public class GTestFuncTest extends DeviceTestCase {
             }
             mMockListener.testEnded(id, emptyMap);
         }
-        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.replay(mMockListener);
         mGTest.run(mMockListener);
         EasyMock.verify(mMockListener);
@@ -98,7 +99,7 @@ public class GTestFuncTest extends DeviceTestCase {
      */
     @SuppressWarnings("unchecked")
     private void doNativeTestAppRunSingleTestFailure(TestDescription testId) {
-        Map<String, String> emptyMap = Collections.emptyMap();
+        HashMap<String, Metric> emptyMap = new HashMap<>();
         mGTest.setModuleName(NATIVE_TESTAPP_MODULE_NAME);
         mMockListener.testRunStarted(NATIVE_TESTAPP_MODULE_NAME, 1);
         mMockListener.testStarted(EasyMock.eq(testId));
@@ -106,7 +107,8 @@ public class GTestFuncTest extends DeviceTestCase {
                 EasyMock.isA(String.class));
         mMockListener.testEnded(EasyMock.eq(testId), EasyMock.eq(emptyMap));
         mMockListener.testRunFailed((String)EasyMock.anyObject());
-        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.replay(mMockListener);
     }
 

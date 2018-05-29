@@ -21,6 +21,7 @@ import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.InstrumentationTest;
@@ -29,7 +30,7 @@ import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 
-import java.util.Collections;
+import java.util.HashMap;
 
 /**
  * Unit tests for {@link InstrumentationPreparer}.
@@ -57,15 +58,16 @@ public class InstrumentationPreparerTest extends TestCase {
     public void testRun() throws Exception {
         final String packageName = "packageName";
         final TestDescription test = new TestDescription("FooTest", "testFoo");
-        mMockITest = new InstrumentationTest() {
-            @Override
-            public void run(ITestInvocationListener listener) {
-                listener.testRunStarted(packageName, 1);
-                listener.testStarted(test);
-                listener.testEnded(test, Collections.<String, String>emptyMap());
-                listener.testRunEnded(0, Collections.<String, String>emptyMap());
-            }
-        };
+        mMockITest =
+                new InstrumentationTest() {
+                    @Override
+                    public void run(ITestInvocationListener listener) {
+                        listener.testRunStarted(packageName, 1);
+                        listener.testStarted(test);
+                        listener.testEnded(test, new HashMap<String, Metric>());
+                        listener.testRunEnded(0, new HashMap<String, Metric>());
+                    }
+                };
         mInstrumentationPreparer = new InstrumentationPreparer() {
             @Override
             InstrumentationTest createInstrumentationTest() {
@@ -83,16 +85,17 @@ public class InstrumentationPreparerTest extends TestCase {
     public void testRun_testFailed() throws Exception {
         final String packageName = "packageName";
         final TestDescription test = new TestDescription("FooTest", "testFoo");
-        mMockITest = new InstrumentationTest() {
-            @Override
-            public void run(ITestInvocationListener listener) {
-                listener.testRunStarted(packageName, 1);
-                listener.testStarted(test);
-                listener.testFailed(test, null);
-                listener.testEnded(test, Collections.<String, String>emptyMap());
-                listener.testRunEnded(0, Collections.<String, String>emptyMap());
-            }
-        };
+        mMockITest =
+                new InstrumentationTest() {
+                    @Override
+                    public void run(ITestInvocationListener listener) {
+                        listener.testRunStarted(packageName, 1);
+                        listener.testStarted(test);
+                        listener.testFailed(test, null);
+                        listener.testEnded(test, new HashMap<String, Metric>());
+                        listener.testRunEnded(0, new HashMap<String, Metric>());
+                    }
+                };
         mInstrumentationPreparer = new InstrumentationPreparer() {
             @Override
             InstrumentationTest createInstrumentationTest() {
