@@ -26,6 +26,7 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.easymock.Capture;
 import org.easymock.EasyMock;
@@ -82,7 +83,7 @@ public class FilePullerLogCollectorTest {
 
         EasyMock.replay(mMockDevice, mMockListener);
         listener.testStarted(test, 0L);
-        listener.testEnded(test, 50L, metrics);
+        listener.testEnded(test, 50L, TfMetricProtoUtil.upgradeConvert(metrics));
         EasyMock.verify(mMockDevice, mMockListener);
         HashMap<String, Metric> metricCaptured = capture.getValue();
         assertEquals(
@@ -112,7 +113,7 @@ public class FilePullerLogCollectorTest {
 
         EasyMock.replay(mMockDevice, mMockListener);
         listener.testStarted(test, 0L);
-        listener.testEnded(test, 50L, metrics);
+        listener.testEnded(test, 50L, TfMetricProtoUtil.upgradeConvert(metrics));
         EasyMock.verify(mMockDevice, mMockListener);
         HashMap<String, Metric> metricCaptured = capture.getValue();
         assertEquals(
