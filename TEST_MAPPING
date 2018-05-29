@@ -1,7 +1,12 @@
 {
   "presubmit": [
     {
-      "name": "hello_world_test"
+      "name": "HelloWorldTest",
+      "options": [
+        {
+          "instrumentation-arg": "annotation:=android.support.test.filters.SmallTest"
+        }
+      ]
     }
   ]
 }

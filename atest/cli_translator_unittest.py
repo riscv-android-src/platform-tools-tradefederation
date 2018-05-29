@@ -25,6 +25,7 @@ import atest_error
 import cli_translator as cli_t
 import constants
 import test_finder_handler
+import test_mapping
 import unittest_constants as uc
 import unittest_utils
 from test_finders import test_finder_base
@@ -35,7 +36,8 @@ TEST_MAPPING_DIR = os.path.join(uc.TEST_DATA_DIR, 'test_mapping', 'folder1')
 SEARCH_DIR_RE = re.compile(r'^find ([^ ]*).*$')
 
 
-def gettestinfos_side_effect(test_names):
+#pylint: disable=unused-argument
+def gettestinfos_side_effect(test_names, test_mapping_test_details=None):
     """Mock return values for _get_test_info."""
     test_infos = set()
     for test_name in test_names:
@@ -88,6 +90,26 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertRaises(atest_error.NoTestFoundError, ctr._get_test_infos,
                           one_test)
 
+        # Check the method works for test mapping.
+        test_detail1 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST)
+        test_detail2 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST_WITH_OPTION)
+        expected_test_infos = {uc.MODULE_INFO, uc.CLASS_INFO}
+        mock_getfindmethods.return_value = [
+            test_finder_base.Finder(None, find_method_return_module_class_info)]
+        test_infos = ctr._get_test_infos(
+            mult_test, [test_detail1, test_detail2])
+        unittest_utils.assert_strict_equal(
+            self, test_infos, expected_test_infos)
+        for test_info in test_infos:
+            if test_info == uc.MODULE_INFO:
+                self.assertEqual(
+                    test_detail1.options,
+                    test_info.data[constants.TI_MODULE_ARG])
+            else:
+                self.assertEqual(
+                    test_detail2.options,
+                    test_info.data[constants.TI_MODULE_ARG])
+
     @mock.patch.object(cli_t.CLITranslator, '_find_tests_by_test_mapping')
     @mock.patch.object(cli_t.CLITranslator, '_get_test_infos',
                        side_effect=gettestinfos_side_effect)
@@ -109,7 +131,9 @@ class CLITranslatorUnittests(unittest.TestCase):
                                                               uc.CLASS_INFO})
 
         # Check that test mappings feeds into get_test_info properly.
-        mock_testmapping.return_value = ([uc.MODULE_NAME, uc.CLASS_NAME], None)
+        test_detail1 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST)
+        test_detail2 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST_WITH_OPTION)
+        mock_testmapping.return_value = ([test_detail1, test_detail2], None)
         targets, test_infos = self.ctr.translate([])
         unittest_utils.assert_strict_equal(
             self, targets, uc.MODULE_CLASS_COMBINED_BUILD_TARGETS)
@@ -127,7 +151,7 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertEqual(expected_all_tests, all_tests)
 
         tests, all_tests = self.ctr._find_tests_by_test_mapping(
-            path=TEST_MAPPING_DIR, test_type=constants.TEST_TYPE_POSTSUBMIT,
+            path=TEST_MAPPING_DIR, test_group=constants.TEST_GROUP_POSTSUBMIT,
             file_name='test_mapping_sample')
         expected = set(['test1', 'test2', 'test3'])
         self.assertEqual(expected, tests)
