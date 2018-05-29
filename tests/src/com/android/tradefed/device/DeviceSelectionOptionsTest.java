@@ -377,16 +377,18 @@ public class DeviceSelectionOptionsTest extends TestCase {
     }
 
     /**
-     * Test that battery checking works
+     * Test that when battery checking is disabled, if a min-battery is requested, no battery check
+     * occurs.
      */
     public void testMatches_forceBatteryCheckFalse() throws Exception {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
         options.setRequireBatteryCheck(false);
-        mockBatteryCheck(null);
+        mockBatteryCheck(12);
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertTrue(options.matches(mMockDevice));
         options.setMinBatteryLevel(25);
         assertTrue(options.matches(mMockDevice));
+        EasyMock.verify(mMockDevice, mMockEmulatorDevice);
     }
 
     /** Test that battery temperature checking works */
@@ -557,7 +559,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
         // Create the actual selection options, and set the parameters
         DeviceSelectionOptions options = new DeviceSelectionOptions();
         options.setMaxBatteryTemperature(maxBatteryTemp);
-        options.setRequireBatteryTempratureCheck(required);
+        options.setRequireBatteryTemperatureCheck(required);
         return options;
     }
 }
