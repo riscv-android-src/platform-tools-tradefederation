@@ -40,7 +40,6 @@ import org.mockito.Mockito;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 /** Unit tests for {@link TestsPoolPoller}. */
@@ -209,7 +208,7 @@ public class TestsPoolPollerTest {
         Mockito.verify(mListener, Mockito.times(0))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(0))
-                .testRunEnded(Mockito.anyLong(), (Map<String, String>) Mockito.any());
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
         assertEquals(0, tracker.getCount());
     }
 

@@ -28,6 +28,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
@@ -40,7 +41,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
-import java.util.Map;
+import java.util.HashMap;
 
 /** Functional tests for {@link InstrumentationTest}. */
 @RunWith(DeviceJUnit4ClassRunner.class)
@@ -95,8 +96,9 @@ public class InstrumentationTestFuncTest implements IDeviceTest {
         mMockListener.testRunStarted(TestAppConstants.TESTAPP_PACKAGE, 1);
         mMockListener.testStarted(EasyMock.eq(expectedTest));
         mMockListener.testEnded(
-                EasyMock.eq(expectedTest), (Map<String, String>) EasyMock.anyObject());
-        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+                EasyMock.eq(expectedTest), (HashMap<String, Metric>) EasyMock.anyObject());
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.replay(mMockListener);
         mInstrumentationTest.run(mMockListener);
         EasyMock.verify(mMockListener);
@@ -141,18 +143,19 @@ public class InstrumentationTestFuncTest implements IDeviceTest {
             mMockListener.testFailed(
                     EasyMock.eq(expectedTest), EasyMock.contains("RuntimeException"));
             mMockListener.testEnded(
-                    EasyMock.eq(expectedTest), (Map<String, String>) EasyMock.anyObject());
+                    EasyMock.eq(expectedTest), (HashMap<String, Metric>) EasyMock.anyObject());
             mMockListener.testRunFailed(
                     EasyMock.eq("Instrumentation run failed due to 'java.lang.RuntimeException'"));
         } else {
             mMockListener.testFailed(
                     EasyMock.eq(expectedTest), EasyMock.contains("Process crashed."));
             mMockListener.testEnded(
-                    EasyMock.eq(expectedTest), (Map<String, String>) EasyMock.anyObject());
+                    EasyMock.eq(expectedTest), (HashMap<String, Metric>) EasyMock.anyObject());
             mMockListener.testRunFailed(
                     EasyMock.eq("Instrumentation run failed due to 'Process crashed.'"));
         }
-        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         try {
             EasyMock.replay(mMockListener);
             mInstrumentationTest.run(mMockListener);

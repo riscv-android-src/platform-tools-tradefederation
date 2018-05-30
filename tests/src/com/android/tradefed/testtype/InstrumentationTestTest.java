@@ -36,6 +36,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.TestDescription;
@@ -60,7 +61,6 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -73,7 +73,7 @@ public class InstrumentationTestTest {
     private static final TestDescription TEST1 = new TestDescription("Test", "test1");
     private static final TestDescription TEST2 = new TestDescription("Test", "test2");
     private static final String RUN_ERROR_MSG = "error";
-    private static final Map<String, String> EMPTY_STRING_MAP = Collections.emptyMap();
+    private static final HashMap<String, Metric> EMPTY_STRING_MAP = new HashMap<>();
 
     /** The {@link InstrumentationTest} under test, with all dependencies mocked out */
     private InstrumentationTest mInstrumentationTest;
@@ -664,9 +664,9 @@ public class InstrumentationTestTest {
                     for (int i = 0; i < 5; i++) {
                         TestDescription tid = new TestDescription("fakeclass", "fakemethod" + i);
                         listener.testStarted(tid, 5);
-                        listener.testEnded(tid, 15, Collections.emptyMap());
+                        listener.testEnded(tid, 15, EMPTY_STRING_MAP);
                     }
-                    listener.testRunEnded(500, Collections.emptyMap());
+                    listener.testRunEnded(500, EMPTY_STRING_MAP);
                     return true;
                 };
 

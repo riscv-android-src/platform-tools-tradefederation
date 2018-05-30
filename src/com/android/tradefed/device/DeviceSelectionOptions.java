@@ -91,18 +91,20 @@ public class DeviceSelectionOptions implements IDeviceSelection {
     )
     private Integer mMaxBatteryTemperature = null;
 
-    @Option(name = "require-battery-check", description = "_If_ --min-battery and/or " +
-            "--max-battery is specified, skip devices that have an unknown battery level.  Note " +
-            "that this may leave restart-looping devices in limbo indefinitely without manual " +
-            "intervention.")
+    @Option(
+        name = "require-battery-check",
+        description =
+                "_If_ --min-battery and/or "
+                        + "--max-battery is specified, enforce the check. If "
+                        + "require-battery-check=false, then no battery check will occur."
+    )
     private boolean mRequireBatteryCheck = true;
 
     @Option(
         name = "require-battery-temp-check",
         description =
-            "_If_ --max-battery-temperature is specified, skip devices that have an " +
-                    "unknown battery temperature.  Note that this may leave restart-looping " +
-                    "devices in limbo indefinitely without manual intervention."
+                "_If_ --max-battery-temperature is specified, enforce the battery checking. If "
+                        + "require-battery-temp-check=false, then no temperature check will occur."
     )
     private boolean mRequireBatteryTemperatureCheck = true;
 
@@ -318,7 +320,7 @@ public class DeviceSelectionOptions implements IDeviceSelection {
     }
 
     /** Sets whether battery temp check is required for devices with unknown battery temperature */
-    public void setRequireBatteryTempratureCheck(boolean requireCheckTemprature) {
+    public void setRequireBatteryTemperatureCheck(boolean requireCheckTemprature) {
         mRequireBatteryTemperatureCheck = requireCheckTemprature;
     }
 
@@ -419,50 +421,56 @@ public class DeviceSelectionOptions implements IDeviceSelection {
                 return false;
             }
         }
-        if (((mMinBattery != null) || (mMaxBattery != null))
-                && (!(device instanceof StubDevice) || (device instanceof FastbootDevice))) {
-            // Only check battery on physical device. (FastbootDevice placeholder is always for a
-            // physical device
-            if (device instanceof FastbootDevice) {
-                // Ready battery of fastboot device does not work and could lead to weird log.
-                return false;
-            }
-            Integer deviceBattery = getBatteryLevel(device);
-            if (mRequireBatteryCheck && (deviceBattery == null)) {
-                // Couldn't determine battery level when that check is required; reject device
-                return false;
-            }
-            if (isLessAndNotNull(deviceBattery, mMinBattery)) {
-                // deviceBattery < mMinBattery
-                return false;
-            }
-            if (isLessEqAndNotNull(mMaxBattery, deviceBattery)) {
-                // mMaxBattery <= deviceBattery
-                return false;
+        // If battery check is required and we have a min/max battery requested
+        if (mRequireBatteryCheck) {
+            if (((mMinBattery != null) || (mMaxBattery != null))
+                    && (!(device instanceof StubDevice) || (device instanceof FastbootDevice))) {
+                // Only check battery on physical device. (FastbootDevice placeholder is always for
+                // a physical device
+                if (device instanceof FastbootDevice) {
+                    // Ready battery of fastboot device does not work and could lead to weird log.
+                    return false;
+                }
+                Integer deviceBattery = getBatteryLevel(device);
+                if (deviceBattery == null) {
+                    // Couldn't determine battery level when that check is required; reject device
+                    return false;
+                }
+                if (isLessAndNotNull(deviceBattery, mMinBattery)) {
+                    // deviceBattery < mMinBattery
+                    return false;
+                }
+                if (isLessEqAndNotNull(mMaxBattery, deviceBattery)) {
+                    // mMaxBattery <= deviceBattery
+                    return false;
+                }
             }
         }
-        if (mMaxBatteryTemperature != null
-                && (!(device instanceof StubDevice) || (device instanceof FastbootDevice))) {
-            // Only check battery temp on physical device. (FastbootDevice placeholder is
-            // always for a physical device
+        // If temperature check is required and we have a max temperature requested.
+        if (mRequireBatteryTemperatureCheck) {
+            if (mMaxBatteryTemperature != null
+                    && (!(device instanceof StubDevice) || (device instanceof FastbootDevice))) {
+                // Only check battery temp on physical device. (FastbootDevice placeholder is
+                // always for a physical device
 
-            if (device instanceof FastbootDevice) {
-                // Cannot get battery temperature
-                return false;
-            }
+                if (device instanceof FastbootDevice) {
+                    // Cannot get battery temperature
+                    return false;
+                }
 
-            // Extract the temperature from the file
-            IBatteryTemperature temp = new BatteryTemperature();
-            Integer deviceBatteryTemp = temp.getBatteryTemperature(device);
+                // Extract the temperature from the file
+                IBatteryTemperature temp = new BatteryTemperature();
+                Integer deviceBatteryTemp = temp.getBatteryTemperature(device);
 
-            if (mRequireBatteryTemperatureCheck && deviceBatteryTemp <= 0) {
-                // Couldn't determine battery temp when that check is required; reject device
-                return false;
-            }
+                if (deviceBatteryTemp <= 0) {
+                    // Couldn't determine battery temp when that check is required; reject device
+                    return false;
+                }
 
-            if (isLessEqAndNotNull(mMaxBatteryTemperature, deviceBatteryTemp)) {
-                // mMaxBatteryTemperature <= deviceBatteryTemp
-                return false;
+                if (isLessEqAndNotNull(mMaxBatteryTemperature, deviceBatteryTemp)) {
+                    // mMaxBatteryTemperature <= deviceBatteryTemp
+                    return false;
+                }
             }
         }
 
