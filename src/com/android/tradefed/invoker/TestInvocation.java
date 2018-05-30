@@ -28,6 +28,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceState;
+import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.invoker.shard.ShardBuildCloner;
 import com.android.tradefed.log.ILeveledLogOutput;
@@ -607,6 +608,12 @@ public class TestInvocation implements ITestInvocation {
                 new LogSaverResultForwarder(config.getLogSaver(), allListeners);
         IInvocationExecution invocationPath =
                 createInvocationExec(config.getConfigurationDescription().shouldUseSandbox());
+
+        // Create the Guice scope
+        InvocationScope scope = getInvocationScope();
+        scope.enter();
+        // Seed our TF objects to the Guice scope
+        scope.seedConfiguration(config);
         try {
             mStatus = "fetching build";
             config.getLogOutput().init();
@@ -657,7 +664,7 @@ public class TestInvocation implements ITestInvocation {
         } catch (IOException e) {
             CLog.e(e);
         } finally {
-
+            scope.exit();
             // Ensure build infos are always cleaned up at the end of invocation.
             invocationPath.cleanUpBuilds(context, config);
 
@@ -673,6 +680,12 @@ public class TestInvocation implements ITestInvocation {
             getLogRegistry().unregisterLogger();
             config.getLogOutput().closeLog();
         }
+    }
+
+    /** Returns the current {@link InvocationScope}. */
+    @VisibleForTesting
+    InvocationScope getInvocationScope() {
+        return InvocationScope.getDefault();
     }
 
     /**
