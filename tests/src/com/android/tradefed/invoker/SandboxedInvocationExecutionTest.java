@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.invoker;
 
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 
 import com.android.tradefed.build.IBuildProvider;
@@ -23,10 +25,13 @@ import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.LogFile;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -71,6 +76,12 @@ public class SandboxedInvocationExecutionTest {
                     protected void setExitCode(ExitCode code, Throwable stack) {
                         // empty on purpose
                     }
+
+                    @Override
+                    InvocationScope getInvocationScope() {
+                        // Avoid re-entry in the current TF invocation scope for unit tests.
+                        return new InvocationScope();
+                    }
                 };
         mConfig = new Configuration("test", "test");
         mContext = new InvocationContext();
@@ -86,6 +97,10 @@ public class SandboxedInvocationExecutionTest {
                 Configuration.CONFIGURATION_DESCRIPTION_TYPE_NAME, descriptor);
         mConfig.setLogSaver(mMockLogSaver);
         mConfig.setBuildProvider(mMockProvider);
+
+        doReturn(new LogFile("file", "url", LogDataType.TEXT))
+                .when(mMockLogSaver)
+                .saveLogData(any(), any(), any());
 
         mInvocation.invoke(mContext, mConfig, mMockRescheduler, mMockListener);
 
