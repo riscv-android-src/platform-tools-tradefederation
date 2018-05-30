@@ -57,6 +57,13 @@ class CLITranslatorUnittests(unittest.TestCase):
         """Run before execution of every test"""
         self.ctr = cli_t.CLITranslator()
 
+        # Create a mock of args.
+        self.args = mock.Mock
+        self.args.tests = []
+        # Test mapping related args
+        self.args.test_mapping = False
+        self.args.include_subdirs = False
+
     @mock.patch.object(test_finder_handler, 'get_find_methods_for_test')
     def test_get_test_infos(self, mock_getfindmethods):
         """Test _get_test_infos method."""
@@ -110,31 +117,40 @@ class CLITranslatorUnittests(unittest.TestCase):
                     test_detail2.options,
                     test_info.data[constants.TI_MODULE_ARG])
 
-    @mock.patch.object(cli_t.CLITranslator, '_find_tests_by_test_mapping')
     @mock.patch.object(cli_t.CLITranslator, '_get_test_infos',
                        side_effect=gettestinfos_side_effect)
-    #pylint: disable=unused-argument
-    def test_translate(self, _info, mock_testmapping):
-        """Test translate method."""
+    def test_translate_class(self, _info):
+        """Test translate method for tests by class name."""
         # Check that we can find a class.
-        targets, test_infos = self.ctr.translate([uc.CLASS_NAME])
+        self.args.tests = [uc.CLASS_NAME]
+        targets, test_infos = self.ctr.translate(self.args)
         unittest_utils.assert_strict_equal(
             self, targets, uc.CLASS_BUILD_TARGETS)
         unittest_utils.assert_strict_equal(self, test_infos, {uc.CLASS_INFO})
 
+    @mock.patch.object(cli_t.CLITranslator, '_get_test_infos',
+                       side_effect=gettestinfos_side_effect)
+    def test_translate_module(self, _info):
+        """Test translate method for tests by module or class name."""
         # Check that we get all the build targets we expect.
-        targets, test_infos = self.ctr.translate([uc.MODULE_NAME,
-                                                  uc.CLASS_NAME])
+        self.args.tests = [uc.MODULE_NAME, uc.CLASS_NAME]
+        targets, test_infos = self.ctr.translate(self.args)
         unittest_utils.assert_strict_equal(
             self, targets, uc.MODULE_CLASS_COMBINED_BUILD_TARGETS)
         unittest_utils.assert_strict_equal(self, test_infos, {uc.MODULE_INFO,
                                                               uc.CLASS_INFO})
 
+    @mock.patch.object(cli_t.CLITranslator, '_find_tests_by_test_mapping')
+    @mock.patch.object(cli_t.CLITranslator, '_get_test_infos',
+                       side_effect=gettestinfos_side_effect)
+    def test_translate_test_mapping(self, _info, mock_testmapping):
+        """Test translate method for tests in test mapping."""
         # Check that test mappings feeds into get_test_info properly.
         test_detail1 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST)
         test_detail2 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST_WITH_OPTION)
         mock_testmapping.return_value = ([test_detail1, test_detail2], None)
-        targets, test_infos = self.ctr.translate([])
+        self.args.tests = []
+        targets, test_infos = self.ctr.translate(self.args)
         unittest_utils.assert_strict_equal(
             self, targets, uc.MODULE_CLASS_COMBINED_BUILD_TARGETS)
         unittest_utils.assert_strict_equal(self, test_infos, {uc.MODULE_INFO,

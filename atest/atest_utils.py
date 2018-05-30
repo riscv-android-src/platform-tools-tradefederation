@@ -176,3 +176,28 @@ def get_result_server_args():
 def sort_and_group(iterable, key):
     """Sort and group helper function."""
     return itertools.groupby(sorted(iterable, key=key), key=key)
+
+
+def is_test_mapping(args):
+    """Check if the atest command intends to run tests in test mapping.
+
+    When atest runs tests in test mapping, it must have at most one test
+    specified. If a test is specified, it must be started with  `:`,
+    which means the test value is a test group name in TEST_MAPPING file, e.g.,
+    `:postsubmit`.
+
+    If any test mapping options is specified, the atest command must also be
+    set to run tests in test mapping files.
+
+    Args:
+        args: arg parsed object.
+
+    Returns:
+        True if the args indicates atest shall run tests in test mapping. False
+        otherwise.
+    """
+    return (
+        args.test_mapping or
+        args.include_subdirs or
+        not args.tests or
+        (len(args.tests) == 1 and args.tests[0][0] == ':'))

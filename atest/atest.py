@@ -51,6 +51,8 @@ TEST_RUN_DIR_PREFIX = 'atest_run_%s_'
 HELP_DESC = '''Build, install and run Android tests locally.'''
 REBUILD_MODULE_INFO_FLAG = '--rebuild-module-info'
 CUSTOM_ARG_FLAG = '--'
+OPTION_NOT_FOR_TEST_MAPPING = (
+    'Option `%s` does not work for running tests in TEST_MAPPING files')
 
 EPILOG_TEXT = '''
 
@@ -267,6 +269,44 @@ REGRESSION DETECTION
         atest --detect-regression </path/to/baseline> </path/to/new>
 
 
+- - - - - - - - - - - -
+TESTS IN TEST MAPPING
+- - - - - - - - - - - -
+
+    Atest can run tests in TEST_MAPPING files:
+
+    1) Run presubmit tests in TEST_MAPPING files in current and parent
+       directories. You can also specify a target directory.
+
+    Example:
+        atest  (run presubmit tests in TEST_MAPPING files in current and parent directories)
+        atest --test-mapping </path/to/project>
+               (run presubmit tests in TEST_MAPPING files in </path/to/project> and its parent directories)
+
+    2) Run a specified test group in TEST_MAPPING files.
+
+    Example:
+        atest :postsubmit
+              (run postsubmit tests in TEST_MAPPING files in current and parent directories)
+        atest :all
+              (Run tests from all groups in TEST_MAPPING files)
+        atest --test-mapping </path/to/project>:postsubmit
+              (run postsubmit tests in TEST_MAPPING files in </path/to/project> and its parent directories)
+
+    3) Run tests in TEST_MAPPING files including sub directories
+
+    By default, atest will only search for tests in TEST_MAPPING files in
+    current (or given directory) and its parent directories. If you want to run
+    tests in TEST_MAPPING files in the sub-directories, you can use option
+    --include-subdirs to force atest to include those tests too.
+
+    Example:
+        atest --include-subdirs [optional </path/to/project>:<test_group_name>]
+              (run presubmit tests in TEST_MAPPING files in current, sub and parent directories)
+    A path can be provided optionally if you want to search for tests in a give
+    directory, with optional test group name. By default, the test group is
+    presubmit.
+
 '''
 
 
@@ -317,6 +357,12 @@ def _parse_args(argv):
     parser.add_argument('--detect-regression', nargs='*',
                         help='Run regression detection algorithm. Supply '
                              'path to baseline and/or new metrics folders.')
+    # Options related to Test Mapping
+    parser.add_argument('-p', '--test-mapping', action='store_true',
+                        help='Run tests in TEST_MAPPING files.')
+    parser.add_argument('--include-subdirs', action='store_true',
+                        help='Include tests in TEST_MAPPING files in sub '
+                             'directories.')
     # This arg actually doesn't consume anything, it's primarily used for the
     # help description and creating custom_args in the NameSpace object.
     parser.add_argument('--', dest='custom_args', nargs='*',
@@ -485,6 +531,33 @@ def _has_valid_regression_detection_args(args):
     return True
 
 
+def _has_valid_test_mapping_args(args):
+    """Validate test mapping args.
+
+    Not all args work when running tests in TEST_MAPPING files. Validate the
+    args before running the tests.
+
+    Args:
+        args: parsed args object.
+
+    Returns:
+        True if args are valid
+    """
+    is_test_mapping = atest_utils.is_test_mapping(args)
+    if not is_test_mapping:
+        return True
+    options_to_validate = [
+        (args.generate_baseline, '--generate-baseline'),
+        (args.detect_regression, '--detect-regression'),
+        (args.generate_new_metrics, '--generate-new-metrics'),
+    ]
+    for arg_value, arg in options_to_validate:
+        if arg_value:
+            logging.error(OPTION_NOT_FOR_TEST_MAPPING, arg)
+            return False
+    return True
+
+
 def main(argv):
     """Entry point of atest script.
 
@@ -503,6 +576,8 @@ def main(argv):
         return constants.EXIT_CODE_ERROR
     if not _has_valid_regression_detection_args(args):
         return constants.EXIT_CODE_ERROR
+    if not _has_valid_test_mapping_args(args):
+        return constants.EXIT_CODE_ERROR
     results_dir = make_test_run_dir()
     mod_info = module_info.ModuleInfo(force_build=args.rebuild_module_info)
     translator = cli_translator.CLITranslator(module_info=mod_info)
@@ -510,7 +585,7 @@ def main(argv):
     test_infos = set()
     if _will_run_tests(args):
         try:
-            build_targets, test_infos = translator.translate(args.tests)
+            build_targets, test_infos = translator.translate(args)
         except atest_error.TestDiscoveryException:
             logging.exception('Error occured in test discovery:')
             logging.info('This can happen after a repo sync or if the test is '
