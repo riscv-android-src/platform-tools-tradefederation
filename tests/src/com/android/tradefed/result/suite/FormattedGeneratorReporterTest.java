@@ -19,6 +19,7 @@ import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
@@ -95,8 +96,8 @@ public class FormattedGeneratorReporterTest {
         mReporter.invocationStarted(mContext);
         mReporter.testRunStarted("run1", 1);
         mReporter.testStarted(new TestDescription("class", "method"));
-        mReporter.testEnded(new TestDescription("class", "method"), new HashMap<String, String>());
-        mReporter.testRunEnded(450L, new HashMap<String, String>());
+        mReporter.testEnded(new TestDescription("class", "method"), new HashMap<String, Metric>());
+        mReporter.testRunEnded(450L, new HashMap<String, Metric>());
         mReporter.invocationEnded(500L);
     }
 
@@ -127,8 +128,8 @@ public class FormattedGeneratorReporterTest {
         mReporter.testModuleStarted(moduleContext);
         mReporter.testRunStarted("run1", 1);
         mReporter.testStarted(new TestDescription("class", "method"));
-        mReporter.testEnded(new TestDescription("class", "method"), new HashMap<String, String>());
-        mReporter.testRunEnded(450L, new HashMap<String, String>());
+        mReporter.testEnded(new TestDescription("class", "method"), new HashMap<String, Metric>());
+        mReporter.testRunEnded(450L, new HashMap<String, Metric>());
         mReporter.testModuleEnded();
         mReporter.invocationEnded(500L);
     }

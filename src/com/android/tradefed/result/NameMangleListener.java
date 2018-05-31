@@ -98,14 +98,6 @@ public abstract class NameMangleListener implements ITestInvocationListener {
         mListener.testIgnored(mangledTestId);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
-        testRunEnded(elapsedTime, TfMetricProtoUtil.upgradeConvert(runMetrics));
-    }
-
     /** {@inheritDoc} */
     @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {

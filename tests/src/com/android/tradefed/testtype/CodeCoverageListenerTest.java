@@ -17,20 +17,22 @@
 package com.android.tradefed.testtype;
 
 import static org.junit.Assert.fail;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
+
 import com.google.common.base.VerifyException;
-import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
 
 import org.junit.Before;
@@ -45,9 +47,11 @@ import org.mockito.Spy;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 /** Unit tests for {@link CodeCoverageListener}. */
 @RunWith(JUnit4.class)
@@ -88,8 +92,9 @@ public class CodeCoverageListenerTest {
 
         // Simulate a test run.
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
-        mCodeCoverageListener.testRunEnded(
-                ELAPSED_TIME, ImmutableMap.of("coverageFilePath", DEVICE_PATH));
+        Map<String, String> metric = new HashMap<>();
+        metric.put("coverageFilePath", DEVICE_PATH);
+        mCodeCoverageListener.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
 
         // Verify testLog(..) was called with the coverage file.
         verify(mFakeListener)
@@ -100,7 +105,7 @@ public class CodeCoverageListenerTest {
     public void testFailure_noCoverageMetric() {
         // Simulate a test run.
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
-        mCodeCoverageListener.testRunEnded(ELAPSED_TIME, ImmutableMap.of());
+        mCodeCoverageListener.testRunEnded(ELAPSED_TIME, new HashMap<String, Metric>());
 
         // Verify that the test run is marked as a failure.
         verify(mFakeListener).testRunFailed(anyString());
@@ -119,8 +124,10 @@ public class CodeCoverageListenerTest {
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
 
         try {
+            Map<String, String> metric = new HashMap<>();
+            metric.put("coverageFilePath", DEVICE_PATH);
             mCodeCoverageListener.testRunEnded(
-                    ELAPSED_TIME, ImmutableMap.of("coverageFilePath", DEVICE_PATH));
+                    ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
             fail("Exception not thrown");
         } catch (VerifyException expected) {
         }

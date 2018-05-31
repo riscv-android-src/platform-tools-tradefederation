@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.suite;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
@@ -32,7 +33,7 @@ import com.android.tradefed.testtype.ITestFilterReceiver;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
@@ -86,7 +87,7 @@ public class TestSuiteStub
                     LogDataType.LOGCAT,
                     new ByteArrayInputStreamSource("test".getBytes()));
         }
-        listener.testEnded(tid, Collections.emptyMap());
+        listener.testEnded(tid, new HashMap<String, Metric>());
 
         if (mIsComplete) {
             // possibly skip this one to create some not_executed case.
@@ -101,7 +102,7 @@ public class TestSuiteStub
                         LogDataType.BUGREPORT,
                         new ByteArrayInputStreamSource("test".getBytes()));
             }
-            listener.testEnded(tid2, Collections.emptyMap());
+            listener.testEnded(tid2, new HashMap<String, Metric>());
         }
 
         TestDescription tid3 = new TestDescription("TestStub", "test3");
@@ -115,7 +116,7 @@ public class TestSuiteStub
                     LogDataType.BUGREPORT,
                     new ByteArrayInputStreamSource("test".getBytes()));
         }
-        listener.testEnded(tid3, Collections.emptyMap());
+        listener.testEnded(tid3, new HashMap<String, Metric>());
 
         if (mLogFiles) {
             // One file logged at run level
@@ -124,7 +125,7 @@ public class TestSuiteStub
                     LogDataType.EAR,
                     new ByteArrayInputStreamSource("test".getBytes()));
         }
-        listener.testRunEnded(0, Collections.emptyMap());
+        listener.testRunEnded(0, new HashMap<String, Metric>());
     }
 
     /** {@inheritDoc} */
@@ -137,7 +138,7 @@ public class TestSuiteStub
                 } else {
                     // We fake an internal retry by calling testRunStart/Ended again.
                     listener.testRunStarted(mModule, 3);
-                    listener.testRunEnded(0, Collections.emptyMap());
+                    listener.testRunEnded(0, new HashMap<String, Metric>());
                     testAttempt(listener);
                 }
             } else {
@@ -151,21 +152,21 @@ public class TestSuiteStub
                 if (mIsComplete) {
                     for (TestDescription tid : mShardedTestToRun) {
                         listener.testStarted(tid);
-                        listener.testEnded(tid, Collections.emptyMap());
+                        listener.testEnded(tid, new HashMap<String, Metric>());
                     }
                 } else {
                     TestDescription tid = mShardedTestToRun.get(0);
                     listener.testStarted(tid);
-                    listener.testEnded(tid, Collections.emptyMap());
+                    listener.testEnded(tid, new HashMap<String, Metric>());
                 }
 
                 if (mDoesOneTestFail) {
                     TestDescription tid = new TestDescription("TestStub", "failed" + mShardIndex);
                     listener.testStarted(tid);
                     listener.testFailed(tid, "shard failed this one.");
-                    listener.testEnded(tid, Collections.emptyMap());
+                    listener.testEnded(tid, new HashMap<String, Metric>());
                 }
-                listener.testRunEnded(0, Collections.emptyMap());
+                listener.testRunEnded(0, new HashMap<String, Metric>());
             }
         }
     }

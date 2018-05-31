@@ -27,10 +27,12 @@ import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.MetricsXMLResultReporter;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.metricregression.Metrics;
 import com.android.tradefed.util.MetricsXmlParser.ParseException;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.collect.ImmutableSet;
 
@@ -91,14 +93,14 @@ public class MetricsXmlParserTest {
         mResultReporter.testRunStarted("run", 3);
         final TestDescription testId0 = new TestDescription("Test", "pass1");
         mResultReporter.testStarted(testId0);
-        mResultReporter.testEnded(testId0, Collections.emptyMap());
+        mResultReporter.testEnded(testId0, new HashMap<String, Metric>());
         final TestDescription testId1 = new TestDescription("Test", "pass2");
         mResultReporter.testStarted(testId1);
-        mResultReporter.testEnded(testId1, Collections.emptyMap());
+        mResultReporter.testEnded(testId1, new HashMap<String, Metric>());
         final TestDescription testId2 = new TestDescription("Test", "pass3");
         mResultReporter.testStarted(testId2);
-        mResultReporter.testEnded(testId2, Collections.emptyMap());
-        mResultReporter.testRunEnded(3, Collections.emptyMap());
+        mResultReporter.testEnded(testId2, new HashMap<String, Metric>());
+        mResultReporter.testRunEnded(3, new HashMap<String, Metric>());
         mResultReporter.invocationEnded(5);
 
         MetricsXmlParser.parse(
@@ -122,17 +124,17 @@ public class MetricsXmlParserTest {
         mResultReporter.testStarted(testId0);
         Map<String, String> testMetrics0 = new HashMap<>();
         testMetrics0.put("metric1", "1.1");
-        mResultReporter.testEnded(testId0, testMetrics0);
+        mResultReporter.testEnded(testId0, TfMetricProtoUtil.upgradeConvert(testMetrics0));
 
         final TestDescription testId1 = new TestDescription("Test", "pass2");
         mResultReporter.testStarted(testId1);
         Map<String, String> testMetrics1 = new HashMap<>();
         testMetrics1.put("metric2", "5.5");
-        mResultReporter.testEnded(testId1, testMetrics1);
+        mResultReporter.testEnded(testId1, TfMetricProtoUtil.upgradeConvert(testMetrics1));
 
         Map<String, String> runMetrics = new HashMap<>();
         runMetrics.put("metric3", "8.8");
-        mResultReporter.testRunEnded(3, runMetrics);
+        mResultReporter.testRunEnded(3, TfMetricProtoUtil.upgradeConvert(runMetrics));
         mResultReporter.invocationEnded(5);
 
         MetricsXmlParser.parse(
@@ -157,17 +159,17 @@ public class MetricsXmlParserTest {
         mResultReporter.testStarted(testId0);
         Map<String, String> testMetrics0 = new HashMap<>();
         testMetrics0.put("metric1", "1.1");
-        mResultReporter.testEnded(testId0, testMetrics0);
+        mResultReporter.testEnded(testId0, TfMetricProtoUtil.upgradeConvert(testMetrics0));
 
         final TestDescription testId1 = new TestDescription("Test", "pass2");
         mResultReporter.testStarted(testId1);
         Map<String, String> testMetrics1 = new HashMap<>();
         testMetrics1.put("metric2", "5.5");
-        mResultReporter.testEnded(testId1, testMetrics1);
+        mResultReporter.testEnded(testId1, TfMetricProtoUtil.upgradeConvert(testMetrics1));
 
         Map<String, String> runMetrics = new HashMap<>();
         runMetrics.put("metric3", "8.8");
-        mResultReporter.testRunEnded(3, runMetrics);
+        mResultReporter.testRunEnded(3, TfMetricProtoUtil.upgradeConvert(runMetrics));
         mResultReporter.invocationEnded(5);
 
         Set<String> blacklist = ImmutableSet.of("metric1", "metric3");

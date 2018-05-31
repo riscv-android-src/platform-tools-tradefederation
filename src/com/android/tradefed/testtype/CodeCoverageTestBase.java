@@ -38,7 +38,6 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ICompressionStrategy;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
-import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -527,12 +526,6 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
         public void testRunStarted(String runName, int testCount) {
             super.testRunStarted(runName, testCount);
             mCurrentRunName = runName;
-        }
-
-        /** {@inheritDoc} */
-        @Override
-        public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
-            testRunEnded(elapsedTime, TfMetricProtoUtil.upgradeConvert(runMetrics));
         }
 
         /** {@inheritDoc} */

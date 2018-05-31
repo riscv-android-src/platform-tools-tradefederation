@@ -20,6 +20,7 @@ import static com.google.common.base.Verify.verifyNotNull;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
@@ -27,7 +28,7 @@ import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
-import java.util.Map;
+import java.util.HashMap;
 
 /**
  * A {@link ResultForwarder} that will pull coverage measurements off of the device and log them as
@@ -53,9 +54,15 @@ final class CodeCoverageListener extends ResultForwarder {
     }
 
     @Override
-    public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
+    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         // Get the path of the coverage measurement on the device.
-        String devicePath = runMetrics.get(COVERAGE_MEASUREMENT_KEY);
+        Metric devicePathMetric = runMetrics.get(COVERAGE_MEASUREMENT_KEY);
+        if (devicePathMetric == null) {
+            super.testRunFailed("No coverage measurement.");
+            super.testRunEnded(elapsedTime, runMetrics);
+            return;
+        }
+        String devicePath = devicePathMetric.getMeasurements().getSingleString();
         if (devicePath == null) {
             super.testRunFailed("No coverage measurement.");
             super.testRunEnded(elapsedTime, runMetrics);
