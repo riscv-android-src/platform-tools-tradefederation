@@ -16,12 +16,12 @@
 package com.android.tradefed.invoker;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildInfo.BuildInfoProperties;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.build.IDeviceBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo.ExternalLinkedDir;
 import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
@@ -523,12 +523,12 @@ public class InvocationExecution implements IInvocationExecution {
                         (IDeviceBuildInfo) info,
                         testsDir,
                         EnvVariable.ANDROID_TARGET_OUT_TESTCASES,
-                        ExternalLinkedDir.TARGET_LINKED_DIR.toString());
+                        BuildInfoFileKey.TARGET_LINKED_DIR.getFileKey());
                 handleLinkingExternalDirs(
                         (IDeviceBuildInfo) info,
                         testsDir,
                         EnvVariable.ANDROID_HOST_OUT_TESTCASES,
-                        ExternalLinkedDir.HOST_LINKED_DIR.toString());
+                        BuildInfoFileKey.HOST_LINKED_DIR.getFileKey());
             }
         }
     }
