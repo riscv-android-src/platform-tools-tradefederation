@@ -278,8 +278,14 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             for test_filter in info.data.get(constants.TI_FILTER, []):
                 filters.update(test_filter.to_set_of_tf_strings())
             for test_filter in filters:
+                filter_arg = constants.TF_ATEST_INCLUDE_FILTER_VALUE_FMT.format(
+                    test_name=info.test_name, test_filter=test_filter)
+                args.extend([constants.TF_ATEST_INCLUDE_FILTER, filter_arg])
+            for option in info.data.get(constants.TI_MODULE_ARG, []):
                 module_arg = (
-                    constants.TF_ATEST_INCLUDE_FILTER_VALUE_FMT %
-                    (info.test_name, test_filter))
-                args.extend([constants.TF_ATEST_INCLUDE_FILTER, module_arg])
+                    constants.TF_MODULE_ARG_VALUE_FMT.format(
+                        test_name=info.test_name, option_name=option[0],
+                        option_value=option[1]))
+                args.extend([constants.TF_MODULE_ARG, module_arg])
+
         return args

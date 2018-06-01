@@ -21,14 +21,14 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import java.util.Arrays;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +46,7 @@ public class TestRunResultTest {
         result.testStarted(test);
         assertEquals(0, result.getNumTestsInState(TestStatus.PASSED));
         assertEquals(1, result.getNumTestsInState(TestStatus.INCOMPLETE));
-        result.testEnded(test, Collections.emptyMap());
+        result.testEnded(test, new HashMap<String, Metric>());
         assertEquals(1, result.getNumTestsInState(TestStatus.PASSED));
         assertEquals(0, result.getNumTestsInState(TestStatus.INCOMPLETE));
         // Ensure our test was recorded.
@@ -67,7 +67,7 @@ public class TestRunResultTest {
         assertEquals(0, result.getNumTestsInState(TestStatus.PASSED));
         assertEquals(1, result.getNumTestsInState(TestStatus.FAILURE));
         assertEquals(0, result.getNumTestsInState(TestStatus.INCOMPLETE));
-        result.testEnded(test, Collections.emptyMap());
+        result.testEnded(test, new HashMap<String, Metric>());
         assertEquals(0, result.getNumTestsInState(TestStatus.PASSED));
         assertEquals(1, result.getNumTestsInState(TestStatus.FAILURE));
         assertEquals(0, result.getNumTestsInState(TestStatus.INCOMPLETE));
@@ -82,7 +82,7 @@ public class TestRunResultTest {
         TestRunResult result = new TestRunResult();
         result.testStarted(test, 5L);
         assertEquals(5L, result.getTestResults().get(test).getStartTime());
-        result.testEnded(test, 25L, Collections.emptyMap());
+        result.testEnded(test, 25L, new HashMap<String, Metric>());
         assertEquals(25L, result.getTestResults().get(test).getEndTime());
     }
 
@@ -98,7 +98,7 @@ public class TestRunResultTest {
         assertFalse(result.isRunComplete());
         result.testRunStarted("run", 0);
         result.testRunFailed("failure");
-        result.testRunEnded(0, Collections.emptyMap());
+        result.testRunEnded(0, new HashMap<String, Metric>());
         assertTrue(result.isRunFailure());
         assertEquals("failure", result.getRunFailureMessage());
         assertTrue(result.isRunComplete());
@@ -107,7 +107,7 @@ public class TestRunResultTest {
         // Not complete anymore, but still failed
         assertFalse(result.isRunComplete());
         assertTrue(result.isRunFailure());
-        result.testRunEnded(0, Collections.emptyMap());
+        result.testRunEnded(0, new HashMap<String, Metric>());
         assertTrue(result.isRunFailure());
         assertEquals("failure", result.getRunFailureMessage());
         assertTrue(result.isRunComplete());
@@ -130,7 +130,7 @@ public class TestRunResultTest {
         result.testFailed(test, "failure");
         result.testLogSaved("afterFailure", new LogFile("path", "url", LogDataType.TEXT));
         assertEquals(2, testRes.getLoggedFiles().size());
-        result.testEnded(test, Collections.emptyMap());
+        result.testEnded(test, new HashMap<String, Metric>());
         // Once done, the results are still available.
         assertEquals(2, testRes.getLoggedFiles().size());
     }
@@ -153,7 +153,7 @@ public class TestRunResultTest {
 
         result.testLogSaved("insideTestCase", new LogFile("path", "url", LogDataType.TEXT));
         result.testLogSaved("insideTestCase2", new LogFile("path", "url", LogDataType.TEXT));
-        result.testEnded(test, Collections.emptyMap());
+        result.testEnded(test, new HashMap<String, Metric>());
         result.testLogSaved("outsideTestCase2", new LogFile("path", "url", LogDataType.TEXT));
         // Once done, the results are still available and the test cases has its two files.
         assertEquals(2, testRes.getLoggedFiles().size());
@@ -202,28 +202,28 @@ public class TestRunResultTest {
         // Mimic the ModuleDefinition run.
         result1.testRunStarted("fake run", 3);
         result1.testStarted(testcase1);
-        result1.testEnded(testcase1, Collections.emptyMap());
+        result1.testEnded(testcase1, new HashMap<String, Metric>());
         result1.testStarted(testcase2);
         result1.testFailed(testcase2, "flaky 1");
-        result1.testEnded(testcase2, Collections.emptyMap());
+        result1.testEnded(testcase2, new HashMap<String, Metric>());
         result1.testStarted(testcase3);
         result1.testFailed(testcase3, "bad_code1");
-        result1.testRunEnded(0, Collections.emptyMap());
+        result1.testRunEnded(0, new HashMap<String, Metric>());
 
         result2.testRunStarted("fake run", 2);
         result2.testStarted(testcase2);
         result2.testFailed(testcase2, "flaky 2");
-        result2.testEnded(testcase2, Collections.emptyMap());
+        result2.testEnded(testcase2, new HashMap<String, Metric>());
         result2.testStarted(testcase3);
         result2.testFailed(testcase3, "bad_code2");
-        result2.testRunEnded(0, Collections.emptyMap());
+        result2.testRunEnded(0, new HashMap<String, Metric>());
 
         result3.testRunStarted("fake run", 2);
         result3.testStarted(testcase2);
-        result3.testEnded(testcase2, Collections.emptyMap());
+        result3.testEnded(testcase2, new HashMap<String, Metric>());
         result3.testStarted(testcase3);
         result3.testFailed(testcase3, "bad_code3");
-        result3.testRunEnded(0, Collections.emptyMap());
+        result3.testRunEnded(0, new HashMap<String, Metric>());
 
         List<TestRunResult> testResultList =
                 new ArrayList<>(Arrays.asList(result1, result2, result3));
@@ -261,25 +261,25 @@ public class TestRunResultTest {
         // Mimic the ModuleDefinition run.
         result1.testRunStarted("fake run", 1);
         result1.testStarted(testcase);
-        result1.testEnded(testcase, Collections.emptyMap());
-        result1.testRunEnded(0, Collections.emptyMap());
+        result1.testEnded(testcase, new HashMap<String, Metric>());
+        result1.testRunEnded(0, new HashMap<String, Metric>());
 
         result2.testRunStarted("fake run", 1);
         result2.testStarted(testcase);
         result2.testFailed(testcase, "Second run failed.");
-        result2.testEnded(testcase, Collections.emptyMap());
-        result2.testRunEnded(0, Collections.emptyMap());
+        result2.testEnded(testcase, new HashMap<String, Metric>());
+        result2.testRunEnded(0, new HashMap<String, Metric>());
 
         result3.testRunStarted("fake run", 1);
         result3.testStarted(testcase);
-        result3.testEnded(testcase, Collections.emptyMap());
-        result3.testRunEnded(0, Collections.emptyMap());
+        result3.testEnded(testcase, new HashMap<String, Metric>());
+        result3.testRunEnded(0, new HashMap<String, Metric>());
 
         result4.testRunStarted("fake run", 1);
         result4.testStarted(testcase);
         result4.testFailed(testcase, "Fourth run failed.");
-        result4.testEnded(testcase, Collections.emptyMap());
-        result4.testRunEnded(0, Collections.emptyMap());
+        result4.testEnded(testcase, new HashMap<String, Metric>());
+        result4.testRunEnded(0, new HashMap<String, Metric>());
 
         List<TestRunResult> testResultList =
                 new ArrayList<>(Arrays.asList(result1, result2, result3, result4));
@@ -306,13 +306,13 @@ public class TestRunResultTest {
         // Mimic the ModuleDefinition run.
         result1.testRunStarted("Fake run 1", 1);
         result1.testStarted(testcase1);
-        result1.testEnded(testcase1, Collections.emptyMap());
-        result1.testRunEnded(0, Collections.emptyMap());
+        result1.testEnded(testcase1, new HashMap<String, Metric>());
+        result1.testRunEnded(0, new HashMap<String, Metric>());
 
         result2.testRunStarted("Fake run 2", 1);
         result2.testStarted(testcase1);
-        result2.testEnded(testcase1, Collections.emptyMap());
-        result2.testRunEnded(0, Collections.emptyMap());
+        result2.testEnded(testcase1, new HashMap<String, Metric>());
+        result2.testRunEnded(0, new HashMap<String, Metric>());
 
         // Verify raise exceptoin.
         List<TestRunResult> testResultList = new ArrayList<>(Arrays.asList(result1, result2));
@@ -336,7 +336,7 @@ public class TestRunResultTest {
         result1.testRunStarted("Fake run", 1);
         result1.testLogSaved("run log", new LogFile("path1", "url", LogDataType.TEXT));
         result1.testStarted(testcase1);
-        result1.testEnded(testcase1, Collections.emptyMap());
+        result1.testEnded(testcase1, new HashMap<String, Metric>());
         runMetrics1.put("metric1", "10");
         runMetrics1.put("metric2", "1000");
         result1.testRunEnded(0, runMetrics1);
@@ -344,7 +344,7 @@ public class TestRunResultTest {
         result2.testRunStarted("Fake run", 1);
         result1.testLogSaved("run log", new LogFile("path2", "url", LogDataType.TEXT));
         result2.testStarted(testcase1);
-        result2.testEnded(testcase1, Collections.emptyMap());
+        result2.testEnded(testcase1, new HashMap<String, Metric>());
         runMetrics2.put("metric1", "5");
         runMetrics2.put("metric2", "5000");
         result2.testRunEnded(0, runMetrics2);

@@ -57,18 +57,23 @@ ANDROID_OUT_DIR = 'OUT_DIR'
 ANDROID_HOST_OUT = 'ANDROID_HOST_OUT'
 
 # Test Info data keys
+# Value of include-filter option.
 TI_FILTER = 'filter'
 TI_REL_CONFIG = 'rel_config'
+# Value of module-arg option
+TI_MODULE_ARG = 'module-arg'
 
 # Google TF
 GTF_MODULE = 'google-tradefed'
 GTF_TARGET = 'google-tradefed-core'
 
-# Test type for TEST_MAPPING
-TEST_TYPE_PRESUBMIT = 'presubmit'
-TEST_TYPE_POSTSUBMIT = 'postsubmit'
+# Test group for tests in TEST_MAPPING
+TEST_GROUP_PRESUBMIT = 'presubmit'
+TEST_GROUP_POSTSUBMIT = 'postsubmit'
 
 # TradeFed command line args
 TF_INCLUDE_FILTER = '--include-filter'
 TF_ATEST_INCLUDE_FILTER = '--atest-include-filter'
-TF_ATEST_INCLUDE_FILTER_VALUE_FMT = '%s:%s'
+TF_ATEST_INCLUDE_FILTER_VALUE_FMT = '{test_name}:{test_filter}'
+TF_MODULE_ARG = '--module-arg'
+TF_MODULE_ARG_VALUE_FMT = '{test_name}:{option_name}:{option_value}'

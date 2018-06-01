@@ -20,10 +20,12 @@ import com.android.loganalysis.item.LogcatItem;
 import com.android.loganalysis.parser.LogcatParser;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.util.StreamUtil;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -67,6 +69,13 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     }
 
     @Override
+    public void testEnded(TestDescription test, long endTime, HashMap<String, Metric> testMetrics) {
+        super.testEnded(test, endTime, testMetrics);
+        mLastStartTime = mStartTime;
+        mStartTime = null;
+    }
+
+    @Override
     public void testRunFailed(String errorMessage) {
         // Also add the failure to the run failure if the testFailed generated it.
         // A Process crash would end the instrumentation, so a testRunFailed is probably going to
@@ -83,6 +92,12 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
 
     @Override
     public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
+        super.testRunEnded(elapsedTime, runMetrics);
+        mLastStartTime = null;
+    }
+
+    @Override
+    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         super.testRunEnded(elapsedTime, runMetrics);
         mLastStartTime = null;
     }

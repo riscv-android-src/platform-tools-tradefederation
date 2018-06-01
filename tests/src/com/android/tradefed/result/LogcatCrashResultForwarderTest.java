@@ -16,6 +16,7 @@
 package com.android.tradefed.result;
 
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -49,12 +50,12 @@ public class LogcatCrashResultForwarderTest {
         EasyMock.expect(mMockDevice.getLogcatSince(0L))
                 .andReturn(new ByteArrayInputStreamSource("".getBytes()));
         mMockListener.testFailed(test, "instrumentation failed. reason: 'Process crashed.'");
-        mMockListener.testEnded(test, 5L, new HashMap<String, String>());
+        mMockListener.testEnded(test, 5L, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockListener, mMockDevice);
         mReporter.testStarted(test, 0L);
         mReporter.testFailed(test, "instrumentation failed. reason: 'Process crashed.'");
-        mReporter.testEnded(test, 5L, new HashMap<String, String>());
+        mReporter.testEnded(test, 5L, new HashMap<String, Metric>());
         EasyMock.verify(mMockListener, mMockDevice);
     }
 
@@ -90,7 +91,7 @@ public class LogcatCrashResultForwarderTest {
                 EasyMock.contains(
                         "instrumentation failed. reason: 'Process crashed.'"
                                 + "\nCrash Message:Runtime"));
-        mMockListener.testEnded(test, 5L, new HashMap<String, String>());
+        mMockListener.testEnded(test, 5L, new HashMap<String, Metric>());
         // If a run failure follows, expect it to contain the additional stack too.
         mMockListener.testRunFailed(
                 EasyMock.contains("Something went wrong.\nCrash Message:Runtime"));
@@ -98,7 +99,7 @@ public class LogcatCrashResultForwarderTest {
         EasyMock.replay(mMockListener, mMockDevice);
         mReporter.testStarted(test, 0L);
         mReporter.testFailed(test, "instrumentation failed. reason: 'Process crashed.'");
-        mReporter.testEnded(test, 5L, new HashMap<String, String>());
+        mReporter.testEnded(test, 5L, new HashMap<String, Metric>());
         mReporter.testRunFailed("Something went wrong.");
         EasyMock.verify(mMockListener, mMockDevice);
     }
@@ -131,7 +132,7 @@ public class LogcatCrashResultForwarderTest {
                 .andReturn(new ByteArrayInputStreamSource(logcat.getBytes()));
         // No crash added at the point of testFailed.
         mMockListener.testFailed(test, "Something went wrong.");
-        mMockListener.testEnded(test, 5L, new HashMap<String, String>());
+        mMockListener.testEnded(test, 5L, new HashMap<String, Metric>());
         // If a run failure comes with a crash detected, expect it to contain the additional stack.
         mMockListener.testRunFailed(
                 EasyMock.contains(
@@ -141,7 +142,7 @@ public class LogcatCrashResultForwarderTest {
         EasyMock.replay(mMockListener, mMockDevice);
         mReporter.testStarted(test, 0L);
         mReporter.testFailed(test, "Something went wrong.");
-        mReporter.testEnded(test, 5L, new HashMap<String, String>());
+        mReporter.testEnded(test, 5L, new HashMap<String, Metric>());
         mReporter.testRunFailed("instrumentation failed. reason: 'Process crashed.'");
         EasyMock.verify(mMockListener, mMockDevice);
     }

@@ -33,7 +33,6 @@ import org.junit.runners.JUnit4;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 
 /** Unit tests for {@link InstrumentationSerialTest}. */
@@ -68,8 +67,8 @@ public class InstrumentationSerialTestTest {
                     public void run(ITestInvocationListener listener) {
                         listener.testRunStarted(packageName, 1);
                         listener.testStarted(test);
-                        listener.testEnded(test, 10l, Collections.emptyMap());
-                        listener.testRunEnded(0, Collections.emptyMap());
+                        listener.testEnded(test, 10l, new HashMap<String, Metric>());
+                        listener.testRunEnded(0, new HashMap<String, Metric>());
                     }
                 };
 
@@ -88,8 +87,8 @@ public class InstrumentationSerialTestTest {
         mMockListener.testRunStarted(packageName, 1);
         mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
         mMockListener.testEnded(
-                EasyMock.eq(test), EasyMock.eq(10l), EasyMock.eq(Collections.emptyMap()));
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+                EasyMock.eq(test), EasyMock.eq(10l), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testRunEnded(0, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationSerialTest.run(mMockListener);
@@ -116,7 +115,7 @@ public class InstrumentationSerialTestTest {
                     public void run(ITestInvocationListener listener) {
                         listener.testRunStarted(packageName, 1);
                         listener.testRunFailed(runFailureMsg);
-                        listener.testRunEnded(0, Collections.emptyMap());
+                        listener.testRunEnded(0, new HashMap<String, Metric>());
                     }
                 };
         // mock out InstrumentationTest that will be used to create InstrumentationSerialTest
@@ -135,7 +134,7 @@ public class InstrumentationSerialTestTest {
         EasyMock.expectLastCall().times(expectedAttempts);
         mMockListener.testRunFailed(runFailureMsg);
         EasyMock.expectLastCall().times(expectedAttempts);
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+        mMockListener.testRunEnded(0, new HashMap<String, Metric>());
         EasyMock.expectLastCall().times(expectedAttempts - 1);
         mMockListener.testRunEnded(0, new HashMap<String, Metric>());
 
