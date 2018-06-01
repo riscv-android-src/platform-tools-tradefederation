@@ -70,6 +70,7 @@ GTF_TARGET = 'google-tradefed-core'
 # Test group for tests in TEST_MAPPING
 TEST_GROUP_PRESUBMIT = 'presubmit'
 TEST_GROUP_POSTSUBMIT = 'postsubmit'
+TEST_GROUP_ALL = 'all'
 
 # TradeFed command line args
 TF_INCLUDE_FILTER = '--include-filter'
