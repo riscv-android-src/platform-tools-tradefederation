@@ -58,11 +58,6 @@ class ExecCommandTracker implements IScheduledInvocationListener {
     }
 
     @Override
-    public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
-        testRunEnded(elapsedTime, TfMetricProtoUtil.upgradeConvert(runMetrics));
-    }
-
-    @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         mRunMetrics.putAll(runMetrics);
     }

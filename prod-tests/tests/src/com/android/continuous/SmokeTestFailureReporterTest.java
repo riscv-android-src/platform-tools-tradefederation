@@ -31,9 +31,7 @@ import junit.framework.TestCase;
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.Map;
 
 /** Unit tests for {@link SmokeTestFailureReporter} */
 public class SmokeTestFailureReporterTest extends TestCase {
@@ -103,7 +101,7 @@ public class SmokeTestFailureReporterTest extends TestCase {
                         + "target=target?, build_flavor=generic-userdebug, branch=git_master}";
         final String expBodyStart = "FooTest#testFail failed\nStack trace:\nthis is a trace\n";
 
-        final Map<String, String> emptyMap = Collections.emptyMap();
+        final HashMap<String, Metric> emptyMap = new HashMap<>();
         final String trace = "this is a trace";
         final TestDescription testFail = new TestDescription("FooTest", "testFail");
         final TestDescription testPass1 = new TestDescription("FooTest", "testPass1");

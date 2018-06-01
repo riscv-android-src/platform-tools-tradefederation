@@ -23,6 +23,7 @@ import com.android.tradefed.result.BugreportCollector.Noun;
 import com.android.tradefed.result.BugreportCollector.Predicate;
 import com.android.tradefed.result.BugreportCollector.Relation;
 import com.android.tradefed.result.BugreportCollector.SubPredicate;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import junit.framework.TestCase;
 
@@ -330,8 +331,8 @@ public class BugreportCollectorTest extends TestCase {
         if (shouldFail) {
             mCollector.testFailed(test, STACK_TRACE);
         }
-        mCollector.testEnded(test, testMetrics);
-        mCollector.testRunEnded(0, runMetrics);
+        mCollector.testEnded(test, TfMetricProtoUtil.upgradeConvert(testMetrics));
+        mCollector.testRunEnded(0, TfMetricProtoUtil.upgradeConvert(runMetrics));
         return test;
     }
 

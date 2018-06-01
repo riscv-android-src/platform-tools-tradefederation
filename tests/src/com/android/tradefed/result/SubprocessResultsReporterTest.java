@@ -20,6 +20,7 @@ import static org.junit.Assert.fail;
 
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SubprocessTestResultsParser;
 
@@ -31,6 +32,7 @@ import org.junit.runners.JUnit4;
 
 import java.io.File;
 import java.util.Collections;
+import java.util.HashMap;
 
 /**
  * Unit Tests for {@link SubprocessResultsReporter}
@@ -67,7 +69,7 @@ public class SubprocessResultsReporterTest {
         try {
             setter.setOptionValue("subprocess-report-file", tmpReportFile.getAbsolutePath());
             mReporter.testRunStarted("TEST", 5);
-            mReporter.testRunEnded(100, Collections.emptyMap());
+            mReporter.testRunEnded(100, new HashMap<String, Metric>());
             String content = FileUtil.readStringFromFile(tmpReportFile);
             assertEquals("TEST_RUN_STARTED {\"testCount\":5,\"runName\":\"TEST\"}\n"
                     + "TEST_RUN_ENDED {\"time\":100}\n", content);
