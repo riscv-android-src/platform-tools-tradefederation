@@ -25,7 +25,6 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
-import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -200,17 +199,6 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     @Override
     public final void testFailed(TestDescription test, String trace) {
         mForwarder.testFailed(test, trace);
-    }
-
-    @Override
-    public final void testEnded(TestDescription test, Map<String, String> testMetrics) {
-        testEnded(test, System.currentTimeMillis(), testMetrics);
-    }
-
-    @Override
-    public final void testEnded(
-            TestDescription test, long endTime, Map<String, String> testMetrics) {
-        testEnded(test, endTime, TfMetricProtoUtil.upgradeConvert(testMetrics));
     }
 
     @Override

@@ -15,6 +15,10 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.times;
+
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -22,24 +26,19 @@ import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.FileSystemLogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
+import com.android.tradefed.testtype.IRemoteTest;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.times;
-
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -55,7 +54,7 @@ public class GranularRetriableTestWrapperTest {
             mTestCase = new TestDescription("ClassFoo", "TestFoo");
             listener.testRunStarted("test run", 1);
             listener.testStarted(mTestCase);
-            listener.testEnded(mTestCase, Collections.emptyMap());
+            listener.testEnded(mTestCase, new HashMap<String, Metric>());
             listener.testRunEnded(0, new HashMap<String, Metric>());
         }
     }

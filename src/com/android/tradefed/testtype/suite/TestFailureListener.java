@@ -26,7 +26,6 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
-import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -102,12 +101,6 @@ public class TestFailureListener implements ITestInvocationListener {
                 mTrackStartTime.put(test, null);
             }
         }
-    }
-
-    /** Make sure we clean the map when test end to avoid too much overhead. */
-    @Override
-    public void testEnded(TestDescription test, Map<String, String> testMetrics) {
-        testEnded(test, TfMetricProtoUtil.upgradeConvert(testMetrics));
     }
 
     /** Make sure we clean the map when test end to avoid too much overhead. */
