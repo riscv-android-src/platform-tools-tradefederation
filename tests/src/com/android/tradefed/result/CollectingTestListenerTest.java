@@ -19,10 +19,11 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import junit.framework.TestCase;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -74,7 +75,7 @@ public class CollectingTestListenerTest extends TestCase {
     public void testRunFailed() {
         mCollectingTestListener.testRunStarted("foo", 1);
         mCollectingTestListener.testRunFailed("error");
-        mCollectingTestListener.testRunEnded(0, Collections.emptyMap());
+        mCollectingTestListener.testRunEnded(0, new HashMap<String, Metric>());
         TestRunResult runResult = mCollectingTestListener.getCurrentRunResults();
         assertTrue(runResult.isRunComplete());
         assertTrue(runResult.isRunFailure());
@@ -87,12 +88,12 @@ public class CollectingTestListenerTest extends TestCase {
     public void testRunFailed_counting() {
         mCollectingTestListener.testRunStarted("foo1", 1);
         mCollectingTestListener.testRunFailed("error1");
-        mCollectingTestListener.testRunEnded(0, Collections.emptyMap());
+        mCollectingTestListener.testRunEnded(0, new HashMap<String, Metric>());
         mCollectingTestListener.testRunStarted("foo2", 1);
-        mCollectingTestListener.testRunEnded(0, Collections.emptyMap());
+        mCollectingTestListener.testRunEnded(0, new HashMap<String, Metric>());
         mCollectingTestListener.testRunStarted("foo3", 1);
         mCollectingTestListener.testRunFailed("error3");
-        mCollectingTestListener.testRunEnded(0, Collections.emptyMap());
+        mCollectingTestListener.testRunEnded(0, new HashMap<String, Metric>());
         assertEquals(2, mCollectingTestListener.getNumAllFailedTestRuns());
     }
 
@@ -162,7 +163,7 @@ public class CollectingTestListenerTest extends TestCase {
     public void testSingleRun_incomplete() {
         mCollectingTestListener.testRunStarted("run", 1);
         mCollectingTestListener.testStarted(new TestDescription("FooTest", "incomplete"));
-        mCollectingTestListener.testRunEnded(0, Collections.EMPTY_MAP);
+        mCollectingTestListener.testRunEnded(0, new HashMap<String, Metric>());
         assertEquals(1, mCollectingTestListener.getNumTestsInState(TestStatus.INCOMPLETE));
     }
 
@@ -272,8 +273,8 @@ public class CollectingTestListenerTest extends TestCase {
         if (failtest) {
             mCollectingTestListener.testFailed(test, "trace");
         }
-        mCollectingTestListener.testEnded(test, testMetrics);
-        mCollectingTestListener.testRunEnded(0, runMetrics);
+        mCollectingTestListener.testEnded(test, TfMetricProtoUtil.upgradeConvert(testMetrics));
+        mCollectingTestListener.testRunEnded(0, TfMetricProtoUtil.upgradeConvert(runMetrics));
         return test;
     }
 }

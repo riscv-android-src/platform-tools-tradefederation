@@ -17,13 +17,14 @@ package com.android.tradefed.device.metric;
 
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -35,7 +36,6 @@ import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.util.HashMap;
-import java.util.Map;
 
 /** Unit tests for {@link FilePullerDeviceMetricCollector}. */
 @RunWith(JUnit4.class)
@@ -77,7 +77,7 @@ public class FilePullerDeviceMetricCollectorTest {
     @Test
     public void testNoMatchingKey() {
         mFilePuller.testRunStarted("fakeRun", 5);
-        mFilePuller.testRunEnded(500, new HashMap<String, String>());
+        mFilePuller.testRunEnded(500, new HashMap<String, Metric>());
     }
 
     /**
@@ -88,8 +88,8 @@ public class FilePullerDeviceMetricCollectorTest {
     public void testPullMatchingKey() throws Exception {
         OptionSetter setter = new OptionSetter(mFilePuller);
         setter.setOptionValue("pull-pattern-keys", "coverageFile");
-        Map<String, String> currentMetrics = new HashMap<>();
-        currentMetrics.put("coverageFile", "/data/coverage");
+        HashMap<String, Metric> currentMetrics = new HashMap<>();
+        currentMetrics.put("coverageFile", TfMetricProtoUtil.stringToMetric("/data/coverage"));
 
         Mockito.when(mMockDevice.pullFile(Mockito.eq("/data/coverage")))
                 .thenReturn(new File("fake"));
@@ -110,8 +110,8 @@ public class FilePullerDeviceMetricCollectorTest {
         OptionSetter setter = new OptionSetter(mFilePuller);
         // Using a pattern to find the file
         setter.setOptionValue("pull-pattern-keys", "coverage.*");
-        Map<String, String> currentMetrics = new HashMap<>();
-        currentMetrics.put("coverageFile", "/data/coverage");
+        HashMap<String, Metric> currentMetrics = new HashMap<>();
+        currentMetrics.put("coverageFile", TfMetricProtoUtil.stringToMetric("/data/coverage"));
 
         Mockito.when(mMockDevice.pullFile(Mockito.eq("/data/coverage")))
                 .thenReturn(new File("fake"));
@@ -129,8 +129,8 @@ public class FilePullerDeviceMetricCollectorTest {
         OptionSetter setter = new OptionSetter(mFilePuller);
         // Using a pattern to find the file but no file matches
         setter.setOptionValue("pull-pattern-keys", "wrongPattern.*");
-        Map<String, String> currentMetrics = new HashMap<>();
-        currentMetrics.put("coverageFile", "/data/coverage");
+        HashMap<String, Metric> currentMetrics = new HashMap<>();
+        currentMetrics.put("coverageFile", TfMetricProtoUtil.stringToMetric("/data/coverage"));
 
         mFilePuller.testRunStarted("fakeRun", 5);
         mFilePuller.testRunEnded(500, currentMetrics);
@@ -149,8 +149,8 @@ public class FilePullerDeviceMetricCollectorTest {
     public void testPullMatchingDirectory() throws Exception {
         OptionSetter setter = new OptionSetter(mFilePuller);
         setter.setOptionValue("directory-keys", "coverageDirectory");
-        Map<String, String> currentMetrics = new HashMap<>();
-        currentMetrics.put("coverageDirectory", "/data/coverage");
+        HashMap<String, Metric> currentMetrics = new HashMap<>();
+        currentMetrics.put("coverageDirectory", TfMetricProtoUtil.stringToMetric("/data/coverage"));
 
         Mockito.when(mMockDevice.pullDir(Mockito.eq("coverageDirectory"),
                 Mockito.any(File.class))).thenReturn(true);

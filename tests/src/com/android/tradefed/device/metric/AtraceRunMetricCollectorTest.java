@@ -17,14 +17,14 @@
 package com.android.tradefed.device.metric;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.metric.AtraceRunMetricCollector;
-import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -36,7 +36,6 @@ import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.util.HashMap;
-import java.util.Map;
 
 
 /** Unit tests for {@link AtraceRunMetricCollector}. */
@@ -72,7 +71,7 @@ public class AtraceRunMetricCollectorTest {
     @Test
     public void testNoMatchingDirectory() {
         mAtraceRunMetricCollector.testRunStarted("fake", 1);
-        mAtraceRunMetricCollector.testRunEnded(0, new HashMap<String, String>());
+        mAtraceRunMetricCollector.testRunEnded(0, new HashMap<String, Metric>());
     }
 
     /**
@@ -84,14 +83,14 @@ public class AtraceRunMetricCollectorTest {
 
         OptionSetter setter = new OptionSetter(mAtraceRunMetricCollector);
         setter.setOptionValue("directory-keys", "sdcard/srcdirectory");
-        Map<String, String> currentMetrics = new HashMap<>();
-        currentMetrics.put("srcdirectory", "sdcard/srcdirectory");
+        HashMap<String, Metric> currentMetrics = new HashMap<>();
+        currentMetrics.put("srcdirectory", TfMetricProtoUtil.stringToMetric("sdcard/srcdirectory"));
 
         Mockito.when(mMockDevice.pullDir(Mockito.eq("sdcard/srcdirectory"),
                 Mockito.any(File.class))).thenReturn(true);
 
         mAtraceRunMetricCollector.testRunStarted("fakeRun", 5);
-        mAtraceRunMetricCollector.testRunEnded(500, new HashMap<String, String>());
+        mAtraceRunMetricCollector.testRunEnded(500, new HashMap<String, Metric>());
 
         Mockito.verify(mMockListener)
                 .testLog(Mockito.eq("sdcard/srcdirectory"), Mockito.eq(LogDataType.ZIP),

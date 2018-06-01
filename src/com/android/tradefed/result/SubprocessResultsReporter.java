@@ -122,14 +122,6 @@ public class SubprocessResultsReporter
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_IGNORED, info);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void testRunEnded(long time, Map<String, String> runMetrics) {
-        testRunEnded(time, TfMetricProtoUtil.upgradeConvert(runMetrics));
-    }
-
     /** {@inheritDoc} */
     @Override
     public void testRunEnded(long time, HashMap<String, Metric> runMetrics) {

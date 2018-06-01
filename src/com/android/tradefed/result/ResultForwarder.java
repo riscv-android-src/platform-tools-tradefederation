@@ -196,21 +196,6 @@ public class ResultForwarder implements ITestInvocationListener {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
-        for (ITestInvocationListener listener : mListeners) {
-            try {
-                listener.testRunEnded(elapsedTime, runMetrics);
-            } catch (RuntimeException e) {
-                CLog.e("Exception while invoking %s#testRunEnded", listener.getClass().getName());
-                CLog.e(e);
-            }
-        }
-    }
-
     /** {@inheritDoc} */
     @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
