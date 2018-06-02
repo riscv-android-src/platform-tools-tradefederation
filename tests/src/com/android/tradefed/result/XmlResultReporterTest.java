@@ -18,13 +18,13 @@ package com.android.tradefed.result;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
 import junit.framework.TestCase;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.util.Collections;
-import java.util.Map;
+import java.util.HashMap;
 
 /**
  * Unit tests for {@link XmlResultReporter}.
@@ -115,7 +115,7 @@ public class XmlResultReporterTest extends TestCase {
      * A simple test to ensure expected output is generated for test run with a single passed test.
      */
     public void testSinglePass() {
-        Map<String, String> emptyMap = Collections.emptyMap();
+        HashMap<String, Metric> emptyMap = new HashMap<>();
         final TestDescription testId = new TestDescription("FooTest", "testFoo");
         IInvocationContext context = new InvocationContext();
         context.addDeviceBuildInfo("fakeDevice", new BuildInfo());
@@ -138,7 +138,7 @@ public class XmlResultReporterTest extends TestCase {
      * A simple test to ensure expected output is generated for test run with a single failed test.
      */
     public void testSingleFail() {
-        Map<String, String> emptyMap = Collections.emptyMap();
+        HashMap<String, Metric> emptyMap = new HashMap<>();
         final TestDescription testId = new TestDescription("FooTest", "testFoo");
         final String trace = "this is a trace";
         IInvocationContext context = new InvocationContext();

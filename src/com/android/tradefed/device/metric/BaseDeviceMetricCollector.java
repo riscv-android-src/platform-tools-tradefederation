@@ -165,11 +165,6 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     }
 
     @Override
-    public final void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
-        testRunEnded(elapsedTime, TfMetricProtoUtil.upgradeConvert(runMetrics));
-    }
-
-    @Override
     public final void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         try {
             onTestRunEnd(mRunData, runMetrics);
