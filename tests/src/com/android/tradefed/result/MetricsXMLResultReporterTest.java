@@ -23,6 +23,8 @@ import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -30,7 +32,6 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
 
 import java.io.ByteArrayOutputStream;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -80,7 +81,7 @@ public class MetricsXMLResultReporterTest {
         mResultReporter.testRunStarted("run", 1);
         mResultReporter.testStarted(testId);
         mResultReporter.testEnded(testId, map);
-        mResultReporter.testRunEnded(3, map);
+        mResultReporter.testRunEnded(3, TfMetricProtoUtil.upgradeConvert(map));
         mResultReporter.invocationEnded(1);
         String output = getOutput();
         assertTrue(output.contains("<runmetric name=\"metric-1\" value=\"1.0\" />"));
@@ -106,8 +107,8 @@ public class MetricsXMLResultReporterTest {
         mResultReporter.invocationStarted(context);
         mResultReporter.testRunStarted("run", 1);
         mResultReporter.testStarted(testId);
-        mResultReporter.testEnded(testId, map);
-        mResultReporter.testRunEnded(3, Collections.emptyMap());
+        mResultReporter.testEnded(testId, TfMetricProtoUtil.upgradeConvert(map));
+        mResultReporter.testRunEnded(3, new HashMap<String, Metric>());
         mResultReporter.invocationEnded(1);
         String output = getOutput();
         assertTrue(output.contains("<testmetric name=\"metric-1\" value=\"1.0\" />"));
@@ -132,8 +133,8 @@ public class MetricsXMLResultReporterTest {
         mResultReporter.testRunStarted("run", 1);
         mResultReporter.testStarted(testId);
         mResultReporter.testFailed(testId, trace);
-        mResultReporter.testEnded(testId, map);
-        mResultReporter.testRunEnded(3, Collections.emptyMap());
+        mResultReporter.testEnded(testId, TfMetricProtoUtil.upgradeConvert(map));
+        mResultReporter.testRunEnded(3, new HashMap<String, Metric>());
         mResultReporter.invocationEnded(1);
         String output = getOutput();
         assertTrue(output.contains("tests=\"1\" failures=\"1\""));

@@ -50,7 +50,6 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.io.File;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -73,8 +72,8 @@ public class BaseHostJUnit4TestTest {
             listener.testRunStarted("testRun", 1);
             TestDescription tid = new TestDescription("class", "test1");
             listener.testStarted(tid);
-            listener.testEnded(tid, Collections.emptyMap());
-            listener.testRunEnded(500l, Collections.emptyMap());
+            listener.testEnded(tid, new HashMap<String, Metric>());
+            listener.testRunEnded(500l, new HashMap<String, Metric>());
             return listener;
         }
     }
@@ -96,7 +95,7 @@ public class BaseHostJUnit4TestTest {
             CollectingTestListener listener = new CollectingTestListener();
             listener.testRunStarted("testRun", 1);
             listener.testRunFailed("instrumentation crashed");
-            listener.testRunEnded(50L, Collections.emptyMap());
+            listener.testRunEnded(50L, new HashMap<String, Metric>());
             return listener;
         }
     }

@@ -91,12 +91,6 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     }
 
     @Override
-    public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
-        super.testRunEnded(elapsedTime, runMetrics);
-        mLastStartTime = null;
-    }
-
-    @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         super.testRunEnded(elapsedTime, runMetrics);
         mLastStartTime = null;

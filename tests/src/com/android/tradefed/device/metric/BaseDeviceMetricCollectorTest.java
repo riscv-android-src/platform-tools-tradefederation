@@ -41,7 +41,6 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.lang.annotation.Annotation;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,10 +73,10 @@ public class BaseDeviceMetricCollectorTest {
         mBase.testFailed(test, "trace");
         mBase.testAssumptionFailure(test, "trace");
         mBase.testIgnored(test);
-        mBase.testEnded(test, Collections.emptyMap());
+        mBase.testEnded(test, new HashMap<String, Metric>());
         mBase.testRunFailed("test run failed");
         mBase.testRunStopped(0L);
-        mBase.testRunEnded(0L, Collections.emptyMap());
+        mBase.testRunEnded(0L, new HashMap<String, Metric>());
         mBase.invocationFailed(new Throwable());
         mBase.invocationEnded(0L);
 
@@ -146,10 +145,10 @@ public class BaseDeviceMetricCollectorTest {
         mBase.testFailed(test, "trace");
         mBase.testAssumptionFailure(test, "trace");
         mBase.testIgnored(test);
-        mBase.testEnded(test, Collections.emptyMap());
+        mBase.testEnded(test, new HashMap<String, Metric>());
         mBase.testRunFailed("test run failed");
         mBase.testRunStopped(0L);
-        mBase.testRunEnded(0L, Collections.emptyMap());
+        mBase.testRunEnded(0L, new HashMap<String, Metric>());
         mBase.invocationFailed(new Throwable());
         mBase.invocationEnded(0L);
 
