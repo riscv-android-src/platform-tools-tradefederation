@@ -80,7 +80,7 @@ public class MetricsXMLResultReporterTest {
         mResultReporter.invocationStarted(context);
         mResultReporter.testRunStarted("run", 1);
         mResultReporter.testStarted(testId);
-        mResultReporter.testEnded(testId, map);
+        mResultReporter.testEnded(testId, TfMetricProtoUtil.upgradeConvert(map));
         mResultReporter.testRunEnded(3, TfMetricProtoUtil.upgradeConvert(map));
         mResultReporter.invocationEnded(1);
         String output = getOutput();

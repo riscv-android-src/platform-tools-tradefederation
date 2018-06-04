@@ -23,7 +23,6 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import junit.textui.ResultPrinter;
 
 import java.util.HashMap;
-import java.util.Map;
 
 /**
  * A test result reporter that forwards results to the JUnit text result printer.
@@ -57,7 +56,7 @@ public class TextResultReporter extends InvocationToJUnitResultForwarder
 
     /** Overrides parent to explicitly print out test metrics. */
     @Override
-    public void testEnded(TestDescription testId, Map<String, String> metrics) {
+    public void testEnded(TestDescription testId, HashMap<String, Metric> metrics) {
         super.testEnded(testId, metrics);
         if (!metrics.isEmpty()) {
             ResultPrinter printer = (ResultPrinter)getJUnitListener();

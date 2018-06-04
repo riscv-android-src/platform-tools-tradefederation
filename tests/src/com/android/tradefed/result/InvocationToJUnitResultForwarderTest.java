@@ -15,14 +15,15 @@
  */
 package com.android.tradefed.result;
 
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestListener;
 
 import org.easymock.EasyMock;
 
-import java.util.Collections;
-import java.util.Map;
+import java.util.HashMap;
 
 /**
  * Unit tests for {@link InvocationToJUnitResultForwarder}.
@@ -47,15 +48,14 @@ public class InvocationToJUnitResultForwarderTest extends TestCase {
     }
 
     /**
-     * Simple test for {@link InvocationToJUnitResultForwarder#testEnded(TestDescription, Map)}.
+     * Simple test for {@link InvocationToJUnitResultForwarder#testEnded(TestDescription, HashMap)}.
      *
      * <p>Verifies that data put into TestIdentifier is forwarded in correct format
      */
     public void testTestEnded() {
-        Map<String, String> emptyMap = Collections.emptyMap();
         mJUnitListener.endTest((Test) EasyMock.anyObject());
         EasyMock.replay(mJUnitListener);
-        mTestForwarder.testEnded(mTestIdentifier, emptyMap);
+        mTestForwarder.testEnded(mTestIdentifier, new HashMap<String, Metric>());
         // TODO: check format
     }
 
