@@ -30,6 +30,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SimpleStats;
 import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -137,7 +138,7 @@ public class AtraceRunMetricCollector extends FilePullerDeviceMetricCollector {
         String scriptName[] = scriptPathArgs[scriptPathArgs.length - 1].split("\\.");
         TestDescription testId = new TestDescription(scriptName[0], testDirectory.getName());
         mListener.testStarted(testId);
-        mListener.testEnded(testId, finalResult);
+        mListener.testEnded(testId, TfMetricProtoUtil.upgradeConvert(finalResult));
         return true;
     }
 
