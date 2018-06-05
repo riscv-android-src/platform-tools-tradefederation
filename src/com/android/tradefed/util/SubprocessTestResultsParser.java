@@ -129,7 +129,7 @@ public class SubprocessTestResultsParser implements Closeable {
                 String event = null;
                 while ((event = in.readLine()) != null) {
                     try {
-                        CLog.i("received event: '%s'", event);
+                        CLog.d("received event: '%s'", event);
                         parse(event);
                     } catch (JSONException e) {
                         CLog.e(e);
