@@ -111,6 +111,7 @@ import com.android.tradefed.result.FileSystemLogSaverTest;
 import com.android.tradefed.result.InvocationFailureEmailResultReporterTest;
 import com.android.tradefed.result.InvocationToJUnitResultForwarderTest;
 import com.android.tradefed.result.JUnitToInvocationResultForwarderTest;
+import com.android.tradefed.result.LegacySubprocessResultsReporterTest;
 import com.android.tradefed.result.LogFileSaverTest;
 import com.android.tradefed.result.LogcatCrashResultForwarderTest;
 import com.android.tradefed.result.MetricsXMLResultReporterTest;
@@ -572,6 +573,7 @@ import org.junit.runners.Suite.SuiteClasses;
     HprofAllocSiteParserTest.class,
     JUnitXmlParserTest.class,
     KeyguardControllerStateTest.class,
+    LegacySubprocessResultsReporterTest.class,
     ListInstrumentationParserTest.class,
     LogcatUpdaterEventParserTest.class,
     MetricsXmlParserTest.class,

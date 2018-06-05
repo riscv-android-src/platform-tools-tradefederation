@@ -77,7 +77,7 @@ public class ConsoleResultReporterTest extends TestCase {
         Map<String, String> metrics = new HashMap<>();
         metrics.put("key2", "value2");
         metrics.put("key1", "value1");
-        reporter.testEnded(testId, metrics);
+        reporter.testEnded(testId, TfMetricProtoUtil.upgradeConvert(metrics));
         reporter.testRunEnded(0, new HashMap<String, Metric>());
         reporter.invocationEnded(0);
 
@@ -128,14 +128,14 @@ public class ConsoleResultReporterTest extends TestCase {
         Map<String, String> run1Test1Metrics = new HashMap<>();
         run1Test1Metrics.put("run1_test1_key1", "run1_test1_value1");
         run1Test1Metrics.put("run1_test1_key2", "run1_test1_value2");
-        reporter.testEnded(run1test1Id, run1Test1Metrics);
+        reporter.testEnded(run1test1Id, TfMetricProtoUtil.upgradeConvert(run1Test1Metrics));
 
         TestDescription run1test2Id = new TestDescription("class1", "method2");
         reporter.testStarted(run1test2Id);
         Map<String, String> run1Test2Metrics = new HashMap<>();
         run1Test2Metrics.put("run1_test2_key1", "run1_test2_value1");
         run1Test2Metrics.put("run1_test2_key2", "run1_test2_value2");
-        reporter.testEnded(run1test2Id, run1Test2Metrics);
+        reporter.testEnded(run1test2Id, TfMetricProtoUtil.upgradeConvert(run1Test2Metrics));
 
         TestDescription run1test3Id = new TestDescription("class1", "method3");
         reporter.testStarted(run1test3Id);
@@ -143,7 +143,7 @@ public class ConsoleResultReporterTest extends TestCase {
         Map<String, String> run1Test3Metrics = new HashMap<>();
         run1Test3Metrics.put("run1_test3_key1", "run1_test3_value1");
         run1Test3Metrics.put("run1_test3_key2", "run1_test3_value2");
-        reporter.testEnded(run1test3Id, run1Test3Metrics);
+        reporter.testEnded(run1test3Id, TfMetricProtoUtil.upgradeConvert(run1Test3Metrics));
 
         TestDescription run1test4Id = new TestDescription("class1", "method4");
         reporter.testStarted(run1test4Id);

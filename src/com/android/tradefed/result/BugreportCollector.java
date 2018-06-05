@@ -20,7 +20,6 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -28,7 +27,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Map;
 
 /**
  * A pass-through {@link ITestInvocationListener} that collects bugreports when configurable events
@@ -434,12 +432,6 @@ public class BugreportCollector implements ITestInvocationListener {
 
 
     // Methods from the {@link ITestInvocationListener} interface
-    /** {@inheritDoc} */
-    @Override
-    public void testEnded(TestDescription test, Map<String, String> testMetrics) {
-        testEnded(test, TfMetricProtoUtil.upgradeConvert(testMetrics));
-    }
-
     @Override
     public void testEnded(TestDescription test, HashMap<String, Metric> testMetrics) {
         mListener.testEnded(test, testMetrics);

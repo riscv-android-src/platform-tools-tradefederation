@@ -27,7 +27,6 @@ import junit.framework.TestResult;
 import org.junit.AssumptionViolatedException;
 
 import java.util.HashMap;
-import java.util.Map;
 
 /**
  * A class that listens to {@link ITestInvocationListener} events and forwards them to a
@@ -45,12 +44,6 @@ import java.util.Map;
 
     protected TestListener getJUnitListener() {
         return mJUnitListener;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void testEnded(TestDescription test, Map<String, String> testMetrics) {
-        mJUnitListener.endTest(new TestIdentifierResult(test));
     }
 
     /** {@inheritDoc} */
