@@ -17,6 +17,7 @@ package com.android.tradefed.testtype.suite;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
@@ -31,7 +32,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 /** Unit tests for {@link com.android.tradefed.testtype.suite.TestFailureListener} */
@@ -87,7 +88,7 @@ public class TestFailureListenerTest {
         EasyMock.replay(mMockListener, mMockDevice);
         mFailureListener.testStarted(testId);
         mFailureListener.testFailed(testId, trace);
-        mFailureListener.testEnded(testId, Collections.emptyMap());
+        mFailureListener.testEnded(testId, new HashMap<String, Metric>());
         EasyMock.verify(mMockListener, mMockDevice);
     }
 
@@ -128,7 +129,7 @@ public class TestFailureListenerTest {
         EasyMock.replay(mMockListener, mMockDevice);
         mFailureListener.testStarted(testId);
         mFailureListener.testFailed(testId, trace);
-        mFailureListener.testEnded(testId, Collections.emptyMap());
+        mFailureListener.testEnded(testId, new HashMap<String, Metric>());
         EasyMock.verify(mMockListener, mMockDevice);
     }
 
@@ -145,7 +146,7 @@ public class TestFailureListenerTest {
         EasyMock.replay(mMockListener, mMockDevice);
         mFailureListener.testStarted(testId);
         mFailureListener.testFailed(testId, trace);
-        mFailureListener.testEnded(testId, Collections.emptyMap());
+        mFailureListener.testEnded(testId, new HashMap<String, Metric>());
         EasyMock.verify(mMockListener, mMockDevice);
     }
 
@@ -170,7 +171,7 @@ public class TestFailureListenerTest {
         EasyMock.replay(mMockListener, mMockDevice, device2);
         mFailureListener.testStarted(testId);
         mFailureListener.testFailed(testId, trace);
-        mFailureListener.testEnded(testId, Collections.emptyMap());
+        mFailureListener.testEnded(testId, new HashMap<String, Metric>());
         EasyMock.verify(mMockListener, mMockDevice, device2);
     }
 }

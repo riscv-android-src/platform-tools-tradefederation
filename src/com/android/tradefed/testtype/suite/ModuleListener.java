@@ -17,6 +17,7 @@ package com.android.tradefed.testtype.suite;
 
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -28,7 +29,7 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 
-import java.util.Map;
+import java.util.HashMap;
 
 /**
  * Listener attached to each {@link IRemoteTest} of each module in order to collect the list of
@@ -99,21 +100,19 @@ public class ModuleListener extends CollectingTestListener {
         }
         mTestsRan++;
     }
-
+    
     /** {@inheritDoc} */
     @Override
-    public void testEnded(TestDescription test, Map<String, String> testMetrics) {
-        logTestPassed(test.toString());
-        super.testEnded(test, testMetrics);
+    public void testEnded(TestDescription test, HashMap<String, Metric> testMetrics) {
+        testEnded(test, System.currentTimeMillis(), testMetrics);
     }
 
     /** {@inheritDoc} */
     @Override
-    public void testEnded(TestDescription test, long endTime, Map<String, String> testMetrics) {
+    public void testEnded(TestDescription test, long endTime, HashMap<String, Metric> testMetrics) {
         logTestPassed(test.toString());
         super.testEnded(test, endTime, testMetrics);
     }
-
 
     /** {@inheritDoc} */
     @Override

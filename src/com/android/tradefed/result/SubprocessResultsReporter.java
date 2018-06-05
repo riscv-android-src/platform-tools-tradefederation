@@ -44,7 +44,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Implements {@link ITestInvocationListener} to be specified as a result_reporter and forward from
@@ -74,18 +73,6 @@ public class SubprocessResultsReporter
         FailedTestEventInfo info =
                 new FailedTestEventInfo(testId.getClassName(), testId.getTestName(), trace);
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_ASSUMPTION_FAILURE, info);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void testEnded(TestDescription testId, Map<String, String> metrics) {
-        testEnded(testId, System.currentTimeMillis(), metrics);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void testEnded(TestDescription testId, long endTime, Map<String, String> metrics) {
-        testEnded(testId, endTime, TfMetricProtoUtil.upgradeConvert(metrics));
     }
 
     /** {@inheritDoc} */
