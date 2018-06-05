@@ -18,10 +18,8 @@ package com.android.tradefed.result;
 
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import java.util.HashMap;
-import java.util.Map;
 
 /**
  * A proxy listener to translate test method, class, and package names as results are reported.
@@ -37,9 +35,9 @@ public abstract class NameMangleListener implements ITestInvocationListener {
     /**
      * This method is run on all {@link TestDescription}s that are passed to the {@link
      * #testStarted(TestDescription)}, {@link #testFailed(TestDescription, String)}, and {@link
-     * #testEnded(TestDescription, Map)} callbacks. The method should return a possibly-different
-     * {@link TestDescription} that will be passed to the downstream {@link ITestInvocationListener}
-     * that was specified during construction.
+     * #testEnded(TestDescription, HashMap)} callbacks. The method should return a
+     * possibly-different {@link TestDescription} that will be passed to the downstream {@link
+     * ITestInvocationListener} that was specified during construction.
      *
      * <p>The implementation should be careful to not modify the original {@link TestDescription}.
      *
@@ -64,11 +62,6 @@ public abstract class NameMangleListener implements ITestInvocationListener {
     }
 
     // ITestLifeCycleReceiver methods
-    /** {@inheritDoc} */
-    @Override
-    public void testEnded(TestDescription test, Map<String, String> testMetrics) {
-        testEnded(test, TfMetricProtoUtil.upgradeConvert(testMetrics));
-    }
 
     /** {@inheritDoc} */
     @Override

@@ -31,7 +31,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.File;
-import java.util.Collections;
 import java.util.HashMap;
 
 /**
@@ -55,7 +54,7 @@ public class SubprocessResultsReporterTest {
         TestDescription testId = new TestDescription("com.fakeclass", "faketest");
         mReporter.testStarted(testId);
         mReporter.testFailed(testId, "fake failure");
-        mReporter.testEnded(testId, Collections.emptyMap());
+        mReporter.testEnded(testId, new HashMap<String, Metric>());
         mReporter.printEvent(null, null);
     }
 
