@@ -19,12 +19,12 @@ import static org.mockito.Mockito.doReturn;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildInfo.BuildInfoProperties;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.build.IDeviceBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo.ExternalLinkedDir;
 import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.CommandRunner.ExitCode;
@@ -1719,7 +1719,7 @@ public class TestInvocationTest extends TestCase {
             mStubConfiguration.getTargetPreparers().add(mockCleaner);
 
             mMockBuildInfo.setFile(
-                    EasyMock.contains(ExternalLinkedDir.TARGET_LINKED_DIR.toString()),
+                    EasyMock.contains(BuildInfoFileKey.TARGET_LINKED_DIR.getFileKey()),
                     EasyMock.anyObject(),
                     EasyMock.eq("v1"));
             EasyMock.expect(((IDeviceBuildInfo) mMockBuildInfo).getTestsDir())
@@ -1739,7 +1739,7 @@ public class TestInvocationTest extends TestCase {
                     tmpTestsDir
                             .listFiles()[0]
                             .getName()
-                            .startsWith(ExternalLinkedDir.TARGET_LINKED_DIR.toString()));
+                            .startsWith(BuildInfoFileKey.TARGET_LINKED_DIR.getFileKey()));
             // testsfile.txt
             assertTrue(tmpTestsDir.listFiles()[0].listFiles().length == 1);
             assertEquals(
