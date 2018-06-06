@@ -263,6 +263,19 @@ public class TestAppInstallSetup extends BaseTargetPreparer
     }
 
     /**
+     * Sets whether or not --instant should be used when installing the apk. Will have no effect if
+     * force-install-mode is set.
+     */
+    public final void setInstantMode(boolean mode) {
+        mInstantMode = mode;
+    }
+
+    /** Returns whether or not instant mode installation has been enabled. */
+    public final boolean isInstantMode() {
+        return mInstantMode;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
