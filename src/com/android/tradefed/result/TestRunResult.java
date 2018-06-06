@@ -20,6 +20,8 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -90,13 +92,30 @@ public class TestRunResult {
 
     /** Gets the set of completed tests. */
     public Set<TestDescription> getCompletedTests() {
-        Set<TestDescription> completedTests = new LinkedHashSet<>();
-        for (Map.Entry<TestDescription, TestResult> testEntry : getTestResults().entrySet()) {
-            if (!testEntry.getValue().getStatus().equals(TestStatus.INCOMPLETE)) {
-                completedTests.add(testEntry.getKey());
+        List completedStatuses = new ArrayList<TestStatus>();
+        for (TestStatus s : TestStatus.values()) {
+            if (!s.equals(TestStatus.INCOMPLETE)) {
+                completedStatuses.add(s);
             }
         }
-        return completedTests;
+        return getTestsInState(completedStatuses);
+    }
+
+    /** Gets the set of failed tests. */
+    public Set<TestDescription> getFailedTests() {
+        return getTestsInState(Arrays.asList(TestStatus.FAILURE));
+    }
+
+    /** Gets the set of tests in given statuses. */
+    private Set<TestDescription> getTestsInState(List<TestStatus> statuses) {
+        Set<TestDescription> tests = new LinkedHashSet<>();
+        for (Map.Entry<TestDescription, TestResult> testEntry : getTestResults().entrySet()) {
+            TestStatus status = testEntry.getValue().getStatus();
+            if (statuses.contains(status)) {
+                tests.add(testEntry.getKey());
+            }
+        }
+        return tests;
     }
 
     /** @return <code>true</code> if test run failed. */
