@@ -15,9 +15,9 @@
  */
 package com.android.tradefed.result;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -29,9 +29,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-
 import java.io.File;
 import java.util.HashMap;
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Unit Tests for {@link SubprocessResultsReporter}
@@ -125,6 +126,59 @@ public class SubprocessResultsReporterTest {
             EasyMock.verify(mMockListener);
         } finally {
             receiver.close();
+        }
+    }
+
+    @Test
+    public void testTestLog() throws ConfigurationException, IOException {
+        byte[] logData = new byte[1024];
+        InputStreamSource logStreamSource = new ByteArrayInputStreamSource(logData);
+        ITestInvocationListener mMockListener = EasyMock.createMock(ITestInvocationListener.class);
+        try (SubprocessTestResultsParser receiver =
+                new SubprocessTestResultsParser(mMockListener, true, new InvocationContext())) {
+            OptionSetter setter = new OptionSetter(mReporter);
+            setter.setOptionValue(
+                    "subprocess-report-port", Integer.toString(receiver.getSocketServerPort()));
+            setter.setOptionValue("output-test-log", "true");
+            mMockListener.testLog(
+                    EasyMock.eq("subprocess-foo"),
+                    EasyMock.eq(LogDataType.TEXT),
+                    EasyMock.anyObject());
+            EasyMock.replay(mMockListener);
+
+            mReporter.testLog("foo", LogDataType.TEXT, logStreamSource);
+            mReporter.close();
+            receiver.joinReceiver(500);
+
+            EasyMock.verify(mMockListener);
+        }
+    }
+
+    @Test
+    public void testTestLog_disabled() throws ConfigurationException, IOException {
+        byte[] logData = new byte[1024];
+        InputStreamSource logStreamSource = new ByteArrayInputStreamSource(logData);
+        AtomicBoolean testLogCalled = new AtomicBoolean(false);
+        ITestInvocationListener mMockListener =
+                new CollectingTestListener() {
+                    @Override
+                    public void testLog(
+                            String dataName, LogDataType dataType, InputStreamSource dataStream) {
+                        testLogCalled.set(true);
+                    }
+                };
+        try (SubprocessTestResultsParser receiver =
+                new SubprocessTestResultsParser(mMockListener, true, new InvocationContext())) {
+            OptionSetter setter = new OptionSetter(mReporter);
+            setter.setOptionValue(
+                    "subprocess-report-port", Integer.toString(receiver.getSocketServerPort()));
+            setter.setOptionValue("output-test-log", "false");
+
+            mReporter.testLog("foo", LogDataType.TEXT, logStreamSource);
+            mReporter.close();
+            receiver.joinReceiver(500);
+
+            assertFalse(testLogCalled.get());
         }
     }
 }
