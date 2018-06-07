@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.build;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
@@ -260,8 +261,20 @@ public class BuildInfo implements IBuildInfo {
 
     /** {@inheritDoc} */
     @Override
+    public File getFile(BuildInfoFileKey key) {
+        return getFile(key.getFileKey());
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public VersionedFile getVersionedFile(String name) {
         return mVersionedFileMap.get(name);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public VersionedFile getVersionedFile(BuildInfoFileKey key) {
+        return getVersionedFile(key.getFileKey());
     }
 
     /**
@@ -284,6 +297,12 @@ public class BuildInfo implements IBuildInfo {
         return null;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public String getVersion(BuildInfoFileKey key) {
+        return getVersion(key.getFileKey());
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -295,6 +314,12 @@ public class BuildInfo implements IBuildInfo {
             return;
         }
         mVersionedFileMap.put(name, new VersionedFile(file, version));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setFile(BuildInfoFileKey key, File file, String version) {
+        setFile(key.getFileKey(), file, version);
     }
 
     /**
