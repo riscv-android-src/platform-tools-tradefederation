@@ -21,8 +21,8 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo.BuildInfoProperties;
-import com.android.tradefed.build.IDeviceBuildInfo.ExternalLinkedDir;
 import com.android.tradefed.util.FileUtil;
 
 import org.junit.After;
@@ -97,7 +97,7 @@ public class DeviceBuildInfoTest {
      */
     @Test
     public void testCloneWithProperties() throws Exception {
-        mBuildInfo.setFile(ExternalLinkedDir.HOST_LINKED_DIR.toString(), mHostLinkedDir, "v1");
+        mBuildInfo.setFile(BuildInfoFileKey.HOST_LINKED_DIR, mHostLinkedDir, "v1");
         DeviceBuildInfo copy = (DeviceBuildInfo) mBuildInfo.clone();
         try {
             assertNotEquals(copy.getTestsDir(), mBuildInfo.getTestsDir());
@@ -109,11 +109,10 @@ public class DeviceBuildInfoTest {
         mBuildInfo.setProperties(BuildInfoProperties.DO_NOT_COPY_ON_SHARDING);
         copy = (DeviceBuildInfo) mBuildInfo.clone();
         try {
-            assertEquals(copy.getTestsDir(), mBuildInfo.getTestsDir());
-            assertEquals(
-                    copy.getFile(ExternalLinkedDir.HOST_LINKED_DIR.toString()), mHostLinkedDir);
+            assertEquals(mBuildInfo.getTestsDir(), copy.getTestsDir());
+            assertEquals(mHostLinkedDir, copy.getFile(BuildInfoFileKey.HOST_LINKED_DIR));
             // Only the tests dir is not copied.
-            assertNotEquals(copy.getBasebandImageFile(), mBuildInfo.getBasebandImageFile());
+            assertNotEquals(mBuildInfo.getBasebandImageFile(), copy.getBasebandImageFile());
         } finally {
             copy.cleanUp();
         }
