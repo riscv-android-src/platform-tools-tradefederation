@@ -220,6 +220,14 @@ public abstract class ITestSuite
     )
     private boolean mRebootBeforeTest = false;
 
+    @Option(
+        name = "max-testcase-run-count",
+        description =
+                "If the IRemoteTest can have its testcases run multiple times, "
+                        + "the max number of runs for each testcase."
+    )
+    private int mMaxRunLimit = 1;
+
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private Map<ITestDevice, IBuildInfo> mDeviceInfos;
@@ -496,7 +504,7 @@ public abstract class ITestSuite
         module.setLogSaver(mMainConfiguration.getLogSaver());
 
         // Actually run the module
-        module.run(listener, moduleListeners, failureListener);
+        module.run(listener, moduleListeners, failureListener, mMaxRunLimit);
 
         if (!mSkipAllSystemStatusCheck) {
             runPostModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
