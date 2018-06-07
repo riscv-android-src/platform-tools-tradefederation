@@ -57,6 +57,13 @@ public class BuildInfo implements IBuildInfo {
     /** File handling properties: Some files of the BuildInfo might requires special handling */
     private final Set<BuildInfoProperties> mProperties = new HashSet<>();
 
+    private static final String[] FILE_NOT_TO_CLONE =
+            new String[] {
+                BuildInfoFileKey.TESTDIR_IMAGE.getFileKey(),
+                BuildInfoFileKey.HOST_LINKED_DIR.getFileKey(),
+                BuildInfoFileKey.TARGET_LINKED_DIR.getFileKey()
+            };
+
     /**
      * Creates a {@link BuildInfo} using default attribute values.
      */
@@ -240,6 +247,17 @@ public class BuildInfo implements IBuildInfo {
      */
     protected boolean applyBuildProperties(
             VersionedFile origFileConsidered, IBuildInfo build, IBuildInfo receiver) {
+        // If the no copy on sharding is set, that means the tests dir will be shared and should
+        // not be copied.
+        if (getProperties().contains(BuildInfoProperties.DO_NOT_COPY_ON_SHARDING)) {
+            for (String name : FILE_NOT_TO_CLONE) {
+                if (origFileConsidered.getFile().equals(build.getFile(name))) {
+                    receiver.setFile(
+                            name, origFileConsidered.getFile(), origFileConsidered.getVersion());
+                    return true;
+                }
+            }
+        }
         return false;
     }
 

@@ -27,13 +27,6 @@ public class DeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo {
 
     private static final long serialVersionUID = BuildSerializedVersion.VERSION;
 
-    private static final String[] FILE_NOT_TO_CLONE =
-            new String[] {
-                BuildInfoFileKey.TESTDIR_IMAGE.getFileKey(),
-                BuildInfoFileKey.HOST_LINKED_DIR.getFileKey(),
-                BuildInfoFileKey.TARGET_LINKED_DIR.getFileKey()
-            };
-
     public DeviceBuildInfo() {
         super();
     }
@@ -267,23 +260,5 @@ public class DeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo {
     @Override
     public void setRamdiskFile(File ramdisk, String version) {
         setFile(BuildInfoFileKey.RAMDISK_IMAGE, ramdisk, version);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    protected boolean applyBuildProperties(
-            VersionedFile origFileConsidered, IBuildInfo build, IBuildInfo receiver) {
-        // If the no copy on sharding is set, that means the tests dir will be shared and should
-        // not be copied.
-        if (getProperties().contains(BuildInfoProperties.DO_NOT_COPY_ON_SHARDING)) {
-            for (String name : FILE_NOT_TO_CLONE) {
-                if (origFileConsidered.getFile().equals(build.getFile(name))) {
-                    receiver.setFile(
-                            name, origFileConsidered.getFile(), origFileConsidered.getVersion());
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 }
