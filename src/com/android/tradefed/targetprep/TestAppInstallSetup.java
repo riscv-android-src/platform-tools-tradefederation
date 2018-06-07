@@ -48,6 +48,12 @@ import java.util.List;
 public class TestAppInstallSetup extends BaseTargetPreparer
         implements ITargetCleaner, IAbiReceiver {
 
+    /** The mode the apk should be install in. */
+    private enum InstallMode {
+        FULL,
+        INSTANT,
+    }
+
     // An error message that occurs when a test APK is already present on the DUT,
     // but cannot be updated. When this occurs, the package is removed from the
     // device so that installation can continue like normal.
@@ -90,6 +96,16 @@ public class TestAppInstallSetup extends BaseTargetPreparer
     @Option(name = "alt-dir-behavior", description = "The order of alternate directory to be used "
             + "when searching for apks to install")
     private AltDirBehavior mAltDirBehavior = AltDirBehavior.FALLBACK;
+
+    @Option(name = "instant-mode", description = "Whether or not to install apk in instant mode.")
+    private boolean mInstantMode = false;
+
+    @Option(
+        name = "force-install-mode",
+        description =
+                "Force the preparer to ignore instant-mode option, and install in the requested mode."
+    )
+    private InstallMode mInstallMode = null;
 
     private IAbi mAbi = null;
     private Integer mUserId = null;
@@ -204,6 +220,17 @@ public class TestAppInstallSetup extends BaseTargetPreparer
             if (abiName != null) {
                 mInstallArgs.add(String.format("--abi %s", abiName));
             }
+            // Handle instant mode: if we are forced in one installation mode or not.
+            if (mInstallMode != null) {
+                if (InstallMode.INSTANT.equals(mInstallMode)) {
+                    mInstallArgs.add("--instant");
+                }
+            } else {
+                if (mInstantMode) {
+                    mInstallArgs.add("--instant");
+                }
+            }
+
             String packageName = parsePackageName(testAppFile, device.getDeviceDescriptor());
             CLog.d("Installing apk from %s ...", testAppFile.getAbsolutePath());
             String result = installPackage(device, testAppFile);
