@@ -18,9 +18,9 @@ package com.android.tradefed.targetprep;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo.ExternalLinkedDir;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -108,8 +108,7 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
         if (buildInfo instanceof IDeviceBuildInfo) {
             IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo) buildInfo;
             // If it exists always look first in the ANDROID_TARGET_OUT_TESTCASES
-            File targetTestCases =
-                    deviceBuild.getFile(ExternalLinkedDir.TARGET_LINKED_DIR.toString());
+            File targetTestCases = deviceBuild.getFile(BuildInfoFileKey.TARGET_LINKED_DIR);
             if (targetTestCases != null) {
                 src = FileUtil.findFile(targetTestCases, fileName);
             }

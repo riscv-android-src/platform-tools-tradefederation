@@ -26,6 +26,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogSaverResultForwarder;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
@@ -34,13 +35,20 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
-// TODO: Provide a high level description about how the retry test cases is gathered,
-// how the test runner receives the retry commands, and how each retry results are stored and be
-// backward compatible with IRemoteTest FinalResultReport.
 /**
- * A wrapper class that works on the {@link IRemoteTest} to gather and retry on failed test cases up
- * to X times.
+ * A wrapper class works on the {@link IRemoteTest} to granulate the IRemoteTest in testcase level.
+ * An IRemoteTest can contain multiple testcases. Previously, these testcases are treated as a
+ * whole: When IRemoteTest runs, all testcases will run. Some IRemoteTest (The ones that implements
+ * ITestFilterReceiver) can accept a whitelist of testcases and only run those testcases. This class
+ * takes advantage of the existing feature and provides a more flexible way to run test suite.
+ *
+ * <ul>
+ *   <li> Single testcase can be retried multiple times (within the same IRemoteTest run) to reduce
+ *       the non-test-error failure rates.
+ *   <li> The retried testcases are dynamically collected from previous run failures.
+ * </ul>
  *
  * <p>Note:
  *
@@ -52,6 +60,7 @@ import java.util.List;
  */
 public class GranularRetriableTestWrapper implements IRemoteTest {
 
+    private boolean mIsGranulatedTestCaseRetriable;
     private IRemoteTest mTest;
     private boolean mSkipTestCases;
     private List<IMetricCollector> mRunMetricCollectors;
@@ -65,17 +74,27 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
     private ILogSaver mLogSaver;
     private String mModuleId;
     private boolean mIsMetricCollectorInitialized;
+    private int mMaxRunLimit;
 
     public GranularRetriableTestWrapper(
             IRemoteTest test,
             TestFailureListener failureListener,
-            List<ITestInvocationListener> moduleLevelListeners) {
+            List<ITestInvocationListener> moduleLevelListeners,
+            int maxRunLimit) {
         mTest = test;
         mTestRunResultCollector = new ArrayList<TestRunResult>();
         mFailureListener = failureListener;
         mModuleListenerCollector = new ArrayList<ModuleListener>();
         mIsMetricCollectorInitialized = false;
         mModuleLevelListeners = moduleLevelListeners;
+        mMaxRunLimit = maxRunLimit;
+        // TODO(b/77548917): Right now we only support ITestFilterReciever. We should expect to
+        // support ITestFile*Filter*Receiver in the future.
+        if (test instanceof ITestFilterReceiver) {
+            mIsGranulatedTestCaseRetriable = true;
+        } else {
+            mIsGranulatedTestCaseRetriable = false;
+        }
     }
 
     /**
@@ -188,28 +207,61 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
         return runListener;
     }
 
-    @Override
-    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        // TODO: Right now, the logic of retry-on-failure is not added. So the number of test run is
-        // still 1.
-        run(listener, 1);
-    }
-
     /**
      * Schedule a series of {@link IRemoteTest} "run". TODO: Customize the retry strategy; Each run
      * is granularized to a subset of the whole testcases.
      *
      * @param listener The ResultForwarder listener which contains a new moduleListener for each
      *     run.
-     * @param maxNumRun The max number of retries to schedule for the same {@link IRemoteTest}.
      */
-    public void run(ITestInvocationListener listener, int maxNumRun)
-            throws DeviceNotAvailableException {
+    @Override
+    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         mMainListener = listener;
         int count = 0;
-        while (count < maxNumRun) {
+        while (count < mMaxRunLimit) {
             intraModuleRun();
             count += 1;
+            ModuleListener previousTestRunListener =
+                    mModuleListenerCollector.get(mModuleListenerCollector.size() - 1);
+            if (!previousTestRunListener.hasFailedTests()) {
+                CLog.d("The test has no failed testcases. No need to retry.");
+                break;
+            }
+            if (count == mMaxRunLimit) {
+                CLog.d(
+                        "The test has reached its max number of run attempt: %d time(s)",
+                        mMaxRunLimit);
+                break;
+            }
+            if (mIsGranulatedTestCaseRetriable) {
+                Set<TestDescription> failedTests =
+                        previousTestRunListener.getCurrentRunResults().getFailedTests();
+                addRetriedTestsToIncludeFilters(failedTests);
+            } else {
+                // If the IRemoteTest can't support running a single testcase, we retry the whole
+                // testcase list.
+                CLog.d(
+                        "The test is not supported to run testcases in intra-module level. Trying "
+                                + "to run the whole test again...");
+            }
+        }
+    }
+
+    /**
+     * Update the arguments of {@link IRemoteTest} to only run failed tests. This arguments/logic is
+     * implemented differently for each IRemoteTest testtype in the overridden
+     * ITestFilterReceiver.addIncludeFilter method.
+     *
+     * @param testDescriptions The set of failed testDescriptions to retry.
+     */
+    private void addRetriedTestsToIncludeFilters(Set<TestDescription> testDescriptions) {
+        // TODO(b/77548917): Right now we only support ITestFilterReciever. We should expect to
+        // support ITestFile*Filter*Receiver in the future.
+        if (mTest instanceof ITestFilterReceiver) {
+            for (TestDescription testCase : testDescriptions) {
+                String filter = testCase.toString();
+                ((ITestFilterReceiver) mTest).addIncludeFilter(filter);
+            }
         }
     }
 
@@ -217,7 +269,8 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
      * The workflow for each individual {@link IRemoteTest} run. TODO: When this function is called,
      * the IRemoteTest should already has the subset of testcases identified.
      */
-    private void intraModuleRun() throws DeviceNotAvailableException, DeviceUnresponsiveException {
+    @VisibleForTesting
+    final void intraModuleRun() throws DeviceNotAvailableException, DeviceUnresponsiveException {
         ITestInvocationListener runListener = prepareRunListener();
         try {
             mTest.run(runListener);
@@ -244,11 +297,13 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
         }
     }
 
-    /**
-     * Get the merged TestRunResults from each {@link IRemoteTest} run. TODO: Merge TestRunResults
-     * when ag/3893676 is submitted.
-     */
-    public List<TestRunResult> getFinalTestRunResults() {
+    /** Get the merged TestRunResults from each {@link IRemoteTest} run. */
+    public TestRunResult getFinalTestRunResult() {
+        return TestRunResult.merge(mTestRunResultCollector);
+    }
+
+    @VisibleForTesting
+    List<TestRunResult> getTestRunResultCollector() {
         return mTestRunResultCollector;
     }
 
