@@ -15,7 +15,13 @@
  */
 package com.android.tradefed.testtype.suite.params;
 
+import android.platform.test.annotations.AppModeFull;
+
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.TestAppInstallSetup;
+import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestAnnotationFilterReceiver;
 
 /** Handler for {@link ModuleParameters#INSTANT_APP}. */
 public class InstantAppHandler implements IModuleParameter {
@@ -29,11 +35,20 @@ public class InstantAppHandler implements IModuleParameter {
     /** {@inheritDoc} */
     @Override
     public void applySetup(IConfiguration moduleConfiguration) {
-        // TODO:Add the special setup as described below.
         // First, force target_preparers if they support it to install app in instant mode.
-
-        // Second, notify HostTest that instant mode might be needed for apks.
+        for (ITargetPreparer preparer : moduleConfiguration.getTargetPreparers()) {
+            if (preparer instanceof TestAppInstallSetup) {
+                ((TestAppInstallSetup) preparer).setInstantMode(true);
+            }
+        }
+        // TODO: Second, notify HostTest that instant mode might be needed for apks.
 
         // Third, add filter to exclude @FullAppMode
+        for (IRemoteTest test : moduleConfiguration.getTests()) {
+            if (test instanceof ITestAnnotationFilterReceiver) {
+                ((ITestAnnotationFilterReceiver) test)
+                        .addExcludeAnnotation(AppModeFull.class.getCanonicalName());
+            }
+        }
     }
 }
