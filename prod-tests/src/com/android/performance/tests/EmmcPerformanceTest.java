@@ -15,13 +15,14 @@
  */
 package com.android.performance.tests;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.AbiFormatter;
@@ -29,13 +30,13 @@ import com.android.tradefed.util.SimplePerfResult;
 import com.android.tradefed.util.SimplePerfUtil;
 import com.android.tradefed.util.SimplePerfUtil.SimplePerfType;
 import com.android.tradefed.util.SimpleStats;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.junit.Assert;
 
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -125,10 +126,12 @@ public class EmmcPerformanceTest implements IDeviceTest, IRemoteTest {
             runSequentialWrite(mIterations, listener, metrics);
             // FIXME: Figure out cache issues with random read and reenable test.
             // runRandomRead(mIterations, listener, metrics);
-            runRandomWrite(mIterations, listener, metrics);
+            // runRandomWrite(mIterations, listener, metrics);
 
             CLog.d("Metrics: %s", metrics.toString());
-            listener.testRunEnded((System.currentTimeMillis() - beginTime), metrics);
+            listener.testRunEnded(
+                    (System.currentTimeMillis() - beginTime),
+                    TfMetricProtoUtil.upgradeConvert(metrics));
         } finally {
             cleanUp();
         }
@@ -192,7 +195,7 @@ public class EmmcPerformanceTest implements IDeviceTest, IRemoteTest {
             throws DeviceNotAvailableException {
         CLog.i("Starting test %s", testKey);
 
-        TestIdentifier id = new TestIdentifier(RUN_KEY, testKey);
+        TestDescription id = new TestDescription(RUN_KEY, testKey);
         listener.testStarted(id);
 
         Map<String, SimpleStats> simpleperfMetricsMap = new HashMap<String, SimpleStats>();
@@ -231,8 +234,7 @@ public class EmmcPerformanceTest implements IDeviceTest, IRemoteTest {
         }
         CLog.i("Test %s finished: mean=%f, stdev=%f, samples=%d", testKey, stats.mean(),
                 stats.stdev(), stats.size());
-        Map<String, String> emptyMap = Collections.emptyMap();
-        listener.testEnded(id, emptyMap);
+        listener.testEnded(id, new HashMap<String, Metric>());
     }
 
     /**
@@ -420,7 +422,7 @@ public class EmmcPerformanceTest implements IDeviceTest, IRemoteTest {
      * Clean up the device by formatting a new cache partition.
      */
     private void cleanUp() throws DeviceNotAvailableException {
-        mTestDevice.executeShellCommand(String.format("make_ext4fs %s", mCache));
+        mTestDevice.executeShellCommand(String.format("mke2fs %s", mCache));
     }
 
     /**

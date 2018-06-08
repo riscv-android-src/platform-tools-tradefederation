@@ -17,6 +17,9 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.config.ArgsOptionParser;
+import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.DeviceManager.FastbootDevice;
+
 import com.google.common.util.concurrent.SettableFuture;
 
 import junit.framework.TestCase;
@@ -38,6 +41,24 @@ public class DeviceSelectionOptionsTest extends TestCase {
     // DEVICE_TYPE and OTHER_DEVICE_TYPE should be different
     private static final String DEVICE_TYPE = "charm";
     private static final String OTHER_DEVICE_TYPE = "strange";
+
+    // For mockBatteryTemperatureCheck
+    private static final String DUMPSYS_BATTERY_OUTPUT_TEMPLATE =
+            "Current Battery Service state:\n"
+                    + "  AC powered: true\n"
+                    + "  USB powered: false\n"
+                    + "  Wireless powered: false\n"
+                    + "  Max charging current: 1500000\n"
+                    + "  Max charging voltage: 5000000\n"
+                    + "  Charge counter: 6418283\n"
+                    + "  status: 5\n"
+                    + "  health: 2\n"
+                    + "  present: true\n"
+                    + "  level: 100\n"
+                    + "  scale: 100\n"
+                    + "  voltage: 4279\n"
+                    + "  temperature: %s\n"
+                    + "  technology: Li-ion\n";
 
     /**
      * {@inheritDoc}
@@ -110,12 +131,34 @@ public class DeviceSelectionOptionsTest extends TestCase {
         };
     }
 
+    public void testGetProductVariant_legacy() throws Exception {
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT)).andReturn(null);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT_LEGACY))
+                .andReturn("legacy");
+        EasyMock.replay(mMockDevice);
+
+        assertEquals("legacy", options.getDeviceProductVariant(mMockDevice));
+    }
+
+    public void testGetProductVariant_vendor() throws Exception {
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT)).andReturn("variant");
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT_LEGACY))
+                .andReturn("legacy");
+        EasyMock.replay(mMockDevice);
+
+        assertEquals("variant", options.getDeviceProductVariant(mMockDevice));
+    }
+
     public void testGetProductType_mismatch() throws Exception {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
         options.addProductType(OTHER_DEVICE_TYPE);
 
-        EasyMock.expect(mMockDevice.getProperty("ro.hardware")).andReturn(DEVICE_TYPE);
-        EasyMock.expect(mMockDevice.getProperty("ro.product.device")).andReturn(null);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.BOARD)).andReturn(DEVICE_TYPE);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT)).andReturn(null);
         EasyMock.replay(mMockDevice);
 
         assertFalse(options.matches(mMockDevice));
@@ -125,8 +168,9 @@ public class DeviceSelectionOptionsTest extends TestCase {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
         options.addProductType(DEVICE_TYPE);
 
-        EasyMock.expect(mMockDevice.getProperty("ro.hardware")).andReturn(DEVICE_TYPE);
-        EasyMock.expect(mMockDevice.getProperty("ro.product.device")).andReturn(null);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.BOARD)).andReturn(DEVICE_TYPE);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT)).andReturn(null);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT_LEGACY)).andReturn(null);
         EasyMock.replay(mMockDevice);
         assertTrue(options.matches(mMockDevice));
     }
@@ -139,8 +183,9 @@ public class DeviceSelectionOptionsTest extends TestCase {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
         options.addProductType(DEVICE_TYPE);
 
-        EasyMock.expect(mMockDevice.getProperty("ro.hardware")).andReturn(DEVICE_TYPE);
-        EasyMock.expect(mMockDevice.getProperty("ro.product.device")).andReturn(null);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.BOARD)).andReturn(DEVICE_TYPE);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT)).andReturn(null);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT_LEGACY)).andReturn(null);
         EasyMock.replay(mMockDevice);
         assertTrue(options.matches(mMockDevice));
     }
@@ -332,15 +377,49 @@ public class DeviceSelectionOptionsTest extends TestCase {
     }
 
     /**
-     * Test that battery checking works
+     * Test that when battery checking is disabled, if a min-battery is requested, no battery check
+     * occurs.
      */
     public void testMatches_forceBatteryCheckFalse() throws Exception {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
         options.setRequireBatteryCheck(false);
-        mockBatteryCheck(null);
+        mockBatteryCheck(12);
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertTrue(options.matches(mMockDevice));
         options.setMinBatteryLevel(25);
+        assertTrue(options.matches(mMockDevice));
+        EasyMock.verify(mMockDevice, mMockEmulatorDevice);
+    }
+
+    /** Test that battery temperature checking works */
+    public void testMatches_maxBatteryTempPass() throws Exception {
+        // 50 < 100, test should pass
+        DeviceSelectionOptions options = mockBatteryTemperatureCheck(50, 100, true);
+        EasyMock.replay(mMockDevice, mMockEmulatorDevice);
+        assertTrue(options.matches(mMockDevice));
+    }
+
+    /** Test that battery temperature checking works */
+    public void testMatches_maxBatteryTempFail() throws Exception {
+        // 150 > 100, test should fail
+        DeviceSelectionOptions options = mockBatteryTemperatureCheck(150, 100, true);
+        EasyMock.replay(mMockDevice, mMockEmulatorDevice);
+        assertFalse(options.matches(mMockDevice));
+    }
+
+    /** Test that battery temperature checking works */
+    public void testMatches_forceBatteryTempCheckTrue() throws Exception {
+        // temperature unavailable, should fail
+        DeviceSelectionOptions options = mockBatteryTemperatureCheck(0, 100, true);
+        EasyMock.replay(mMockDevice, mMockEmulatorDevice);
+        assertFalse(options.matches(mMockDevice));
+    }
+
+    /** Test that battery temperature checking works */
+    public void testMatches_forceBatteryTempCheckFalse() throws Exception {
+        // temperature unavailable, should pass
+        DeviceSelectionOptions options = mockBatteryTemperatureCheck(0, 100, false);
+        EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertTrue(options.matches(mMockDevice));
     }
 
@@ -352,7 +431,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
         ArgsOptionParser p = new ArgsOptionParser(options);
         p.parse("--min-sdk-level", "15");
         EasyMock.expect(
-                mMockDevice.getProperty(DeviceSelectionOptions.DEVICE_SDK_PROPERTY))
+                mMockDevice.getProperty(DeviceProperties.SDK_VERSION))
                 .andStubReturn("10");
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertFalse(options.matches(mMockDevice));
@@ -366,7 +445,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
         ArgsOptionParser p = new ArgsOptionParser(options);
         p.parse("--min-sdk-level", "10");
         EasyMock.expect(
-                mMockDevice.getProperty(DeviceSelectionOptions.DEVICE_SDK_PROPERTY))
+                mMockDevice.getProperty(DeviceProperties.SDK_VERSION))
                 .andStubReturn("10");
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertTrue(options.matches(mMockDevice));
@@ -380,7 +459,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
         ArgsOptionParser p = new ArgsOptionParser(options);
         p.parse("--min-sdk-level", "10");
         EasyMock.expect(
-                mMockDevice.getProperty(DeviceSelectionOptions.DEVICE_SDK_PROPERTY))
+                mMockDevice.getProperty(DeviceProperties.SDK_VERSION))
                 .andStubReturn("blargh");
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertFalse(options.matches(mMockDevice));
@@ -394,7 +473,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
         ArgsOptionParser p = new ArgsOptionParser(options);
         p.parse("--max-sdk-level", "15");
         EasyMock.expect(
-                mMockDevice.getProperty(DeviceSelectionOptions.DEVICE_SDK_PROPERTY))
+                mMockDevice.getProperty(DeviceProperties.SDK_VERSION))
                 .andStubReturn("25");
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertFalse(options.matches(mMockDevice));
@@ -408,7 +487,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
         ArgsOptionParser p = new ArgsOptionParser(options);
         p.parse("--max-sdk-level", "15");
         EasyMock.expect(
-                mMockDevice.getProperty(DeviceSelectionOptions.DEVICE_SDK_PROPERTY))
+                mMockDevice.getProperty(DeviceProperties.SDK_VERSION))
                 .andStubReturn("10");
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertTrue(options.matches(mMockDevice));
@@ -422,15 +501,65 @@ public class DeviceSelectionOptionsTest extends TestCase {
         ArgsOptionParser p = new ArgsOptionParser(options);
         p.parse("--max-sdk-level", "15");
         EasyMock.expect(
-                mMockDevice.getProperty(DeviceSelectionOptions.DEVICE_SDK_PROPERTY))
+                mMockDevice.getProperty(DeviceProperties.SDK_VERSION))
                 .andStubReturn("blargh");
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertFalse(options.matches(mMockDevice));
+    }
+
+    /**
+     * Test that min-battery is not used to check non physical devices otherwise they will never
+     * match.
+     */
+    public void testStubDevice_minBattery() throws Exception {
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+        OptionSetter setter = new OptionSetter(options);
+        setter.setOptionValue("min-battery", "20");
+        setter.setOptionValue("null-device", "true");
+        assertTrue(options.matches(new NullDevice("test")));
+    }
+
+    /**
+     * A FastbootDevice does not expose a battery level so if a battery is specified we cannot match
+     * it.
+     */
+    public void testFastbootDevice_minBattery() throws Exception {
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+        OptionSetter setter = new OptionSetter(options);
+        setter.setOptionValue("min-battery", "20");
+        assertFalse(options.matches(new FastbootDevice("serial")));
+    }
+
+    /**
+     * Ensure that a fastboot device without any special condition can be matched for allocation.
+     */
+    public void testFastbootDevice() throws Exception {
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+        assertTrue(options.matches(new FastbootDevice("serial")));
     }
 
     private void mockBatteryCheck(Integer battery) {
         SettableFuture<Integer> batteryFuture = SettableFuture.create();
         batteryFuture.set(battery);
         EasyMock.expect(mMockDevice.getBattery()).andStubReturn(batteryFuture);
+    }
+
+    private DeviceSelectionOptions mockBatteryTemperatureCheck(
+            Integer batteryTemp, Integer maxBatteryTemp, Boolean required) throws Exception {
+
+        // Mock out the execution of executeShellCommand
+        String dumpsysOutput = "";
+
+        if (batteryTemp != 0) {
+            dumpsysOutput = String.format(DUMPSYS_BATTERY_OUTPUT_TEMPLATE, batteryTemp * 10);
+        }
+
+        MockDeviceHelper.injectShellResponse(mMockDevice, "dumpsys battery", dumpsysOutput, false);
+
+        // Create the actual selection options, and set the parameters
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+        options.setMaxBatteryTemperature(maxBatteryTemp);
+        options.setRequireBatteryTemperatureCheck(required);
+        return options;
     }
 }
