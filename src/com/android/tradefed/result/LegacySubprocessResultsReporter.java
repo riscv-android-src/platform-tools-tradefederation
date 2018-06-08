@@ -17,12 +17,15 @@ package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.FailedTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestStartedEventInfo;
 import com.android.tradefed.util.SubprocessTestResultsParser;
+
 import java.util.Map;
 
 /**
@@ -83,4 +86,17 @@ public final class LegacySubprocessResultsReporter extends SubprocessResultsRepo
                 new InvocationStartedEventInfo(buildInfo.getTestTag(), System.currentTimeMillis());
         printEvent(SubprocessTestResultsParser.StatusKeys.INVOCATION_STARTED, info);
     }
+
+    /** A intentionally inop function to handle incompatibility problem in CTS 8.1 */
+    @Override
+    public void testModuleStarted(IInvocationContext moduleContext) {
+        CLog.d("testModuleStarted is called but ignored intentionally");
+    }
+
+    /** A intentionally inop function to handle incompatibility problem in CTS 8.1 */
+    @Override
+    public void testModuleEnded() {
+        CLog.d("testModuleEnded is called but ignored intentionally");
+    }
+
 }
