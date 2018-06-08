@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.build;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.device.ITestDevice;
 
 import java.io.File;
@@ -140,6 +141,17 @@ public interface IBuildInfo extends Serializable {
     public Set<BuildInfoProperties> getProperties();
 
     /**
+     * Helper method to retrieve a file with given a {@link BuildInfoFileKey}.
+     *
+     * @param key the {@link BuildInfoFileKey} that is requested.
+     * @return the image file or <code>null</code> if not found
+     */
+    public default File getFile(BuildInfoFileKey key) {
+        // Default implementation for projects that don't extend BuildInfo class.
+        return null;
+    }
+
+    /**
      * Helper method to retrieve a file with given name.
      * @param name
      * @return the image file or <code>null</code> if not found
@@ -153,7 +165,18 @@ public interface IBuildInfo extends Serializable {
      * @return The versioned file or <code>null</code> if not found
      */
     public default VersionedFile getVersionedFile(String name) {
-        // Default implementation for project that don't extends BuildInfo class.
+        // Default implementation for projects that don't extend BuildInfo class.
+        return null;
+    }
+
+    /**
+     * Helper method to retrieve a {@link VersionedFile} with a given a {@link BuildInfoFileKey}.
+     *
+     * @param key The {@link BuildInfoFileKey} requested.
+     * @return The versioned file or <code>null</code> if not found
+     */
+    public default VersionedFile getVersionedFile(BuildInfoFileKey key) {
+        // Default implementation for projects that don't extend BuildInfo class.
         return null;
     }
 
@@ -170,6 +193,17 @@ public interface IBuildInfo extends Serializable {
     public String getVersion(String name);
 
     /**
+     * Helper method to retrieve a file version with given a {@link BuildInfoFileKey}.
+     *
+     * @param key The {@link BuildInfoFileKey} requested.
+     * @return the image version or <code>null</code> if not found
+     */
+    public default String getVersion(BuildInfoFileKey key) {
+        // Default implementation for project that don't extends BuildInfo class.
+        return null;
+    }
+
+    /**
      * Stores an file with given name in this build info.
      *
      * @param name the unique name of the file
@@ -177,6 +211,17 @@ public interface IBuildInfo extends Serializable {
      * @param version the file version
      */
     public void setFile(String name, File file, String version);
+
+    /**
+     * Stores an file given a {@link BuildInfoFileKey} in this build info.
+     *
+     * @param key the unique name of the file based on {@link BuildInfoFileKey}.
+     * @param file the local {@link File}
+     * @param version the file version
+     */
+    public default void setFile(BuildInfoFileKey key, File file, String version) {
+        // Default implementation for projects that don't extend BuildInfo class.
+    }
 
     /**
      * Clean up any temporary build files

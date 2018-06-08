@@ -15,11 +15,12 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.hasItem;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.fail;
 
 import com.android.tradefed.build.DeviceBuildInfo;
@@ -33,7 +34,6 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
-
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -246,6 +246,28 @@ public class BaseTestSuiteTest {
         assertEquals(2, configMap.size());
         assertTrue(configMap.containsKey("arm64-v8a suite/stubAbi"));
         assertTrue(configMap.containsKey("armeabi-v7a suite/stubAbi"));
+        EasyMock.verify(mockDevice);
+    }
+
+    /**
+     * Test for {@link BaseTestSuite#loadTests()} when loading a configuration with parameterized
+     * metadata.
+     */
+    @Test
+    public void testLoadTests_parameterizedModule() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite-parameters");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(4, configMap.size());
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized"));
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized[instant]"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/stub-parameterized"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/stub-parameterized[instant]"));
         EasyMock.verify(mockDevice);
     }
 }

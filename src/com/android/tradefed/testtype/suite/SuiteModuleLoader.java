@@ -28,6 +28,9 @@ import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFileFilterReceiver;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.suite.params.IModuleParameter;
+import com.android.tradefed.testtype.suite.params.ModuleParameters;
+import com.android.tradefed.testtype.suite.params.ModuleParametersHelper;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -62,6 +65,8 @@ public class SuiteModuleLoader {
     private Map<String, List<SuiteTestFilter>> mExcludeFilters = new HashMap<>();
     private IConfigurationFactory mConfigFactory = ConfigurationFactory.getInstance();
 
+    private boolean mAllowParameterizedModules = false;
+
     /**
      * Ctor for the SuiteModuleLoader.
      *
@@ -81,6 +86,11 @@ public class SuiteModuleLoader {
 
         parseArgs(testArgs, mTestOptions);
         parseArgs(moduleArgs, mModuleOptions);
+    }
+
+    /** Sets whether or not to allow parameterized modules. */
+    public final void setParameterizedModules(boolean allowed) {
+        mAllowParameterizedModules = allowed;
     }
 
     /** Main loading of configurations, looking into a folder */
@@ -177,8 +187,8 @@ public class SuiteModuleLoader {
             // Need to generate a different config for each ABI as we cannot guarantee the
             // configs are idempotent. This however means we parse the same file multiple times
             for (IAbi abi : abis) {
-                String id = AbiUtils.createId(abi.getName(), name);
-                if (!shouldRunModule(id)) {
+                String baseId = AbiUtils.createId(abi.getName(), name);
+                if (!shouldRunModule(baseId)) {
                     // If the module should not run tests based on the state of filters,
                     // skip this name/abi combination.
                     continue;
@@ -195,41 +205,23 @@ public class SuiteModuleLoader {
                             configFullName, suiteTag);
                     continue;
                 }
-
-                List<OptionDef> optionsToInject = new ArrayList<>();
-                if (mModuleOptions.containsKey(name)) {
-                    optionsToInject.addAll(mModuleOptions.get(name));
-                }
-                if (mModuleOptions.containsKey(id)) {
-                    optionsToInject.addAll(mModuleOptions.get(id));
-                }
-                config.injectOptionValues(optionsToInject);
-
-                // Set target preparers
-                List<ITargetPreparer> preparers = config.getTargetPreparers();
-                for (ITargetPreparer preparer : preparers) {
-                    if (preparer instanceof IAbiReceiver) {
-                        ((IAbiReceiver) preparer).setAbi(abi);
+                // Handle parameterized modules if enabled.
+                if (mAllowParameterizedModules) {
+                    List<IModuleParameter> params = getModuleParameters(config);
+                    // If we find any parameterized combination.
+                    for (IModuleParameter param : params) {
+                        String fullId =
+                                String.format("%s[%s]", baseId, param.getParameterIdentifier());
+                        IConfiguration paramConfig =
+                                mConfigFactory.createConfigurationFromArgs(pathArg);
+                        setUpConfig(name, baseId, fullId, paramConfig, abi);
+                        param.applySetup(paramConfig);
+                        toRun.put(fullId, paramConfig);
                     }
                 }
-
-                // Set IRemoteTests
-                List<IRemoteTest> tests = config.getTests();
-                for (IRemoteTest test : tests) {
-                    String className = test.getClass().getName();
-                    if (mTestOptions.containsKey(className)) {
-                        config.injectOptionValues(mTestOptions.get(className));
-                    }
-                    addFiltersToTest(test, abi, name, mIncludeFilters, mExcludeFilters);
-                    if (test instanceof IAbiReceiver) {
-                        ((IAbiReceiver) test).setAbi(abi);
-                    }
-                }
-
-                // add the abi and module name to the description
-                config.getConfigurationDescription().setAbi(abi);
-                config.getConfigurationDescription().setModuleName(name);
-                toRun.put(id, config);
+                // Always add the base regular configuration to the execution.
+                setUpConfig(name, baseId, baseId, config, abi);
+                toRun.put(baseId, config);
             }
         } catch (ConfigurationException e) {
             throw new RuntimeException(
@@ -406,5 +398,71 @@ public class SuiteModuleLoader {
             }
             listOption.add(option);
         }
+    }
+
+    /** Gets the list of {@link IModuleParameter}s associated with a module. */
+    private List<IModuleParameter> getModuleParameters(IConfiguration config) {
+        List<IModuleParameter> params = new ArrayList<>();
+        List<String> parameters =
+                config.getConfigurationDescription().getMetaData(ITestSuite.PARAMETER_KEY);
+        if (parameters == null || parameters.isEmpty()) {
+            return params;
+        }
+        for (String p : parameters) {
+            ModuleParameters suiteParam = ModuleParameters.valueOf(p.toUpperCase());
+            IModuleParameter handler = ModuleParametersHelper.getParameterHandler(suiteParam);
+            params.add(handler);
+        }
+        return params;
+    }
+
+    /**
+     * Setup the options for the module configuration.
+     *
+     * @param name The base name of the module
+     * @param id The base id name of the module.
+     * @param fullId The full id of the module.
+     * @param config The module configuration.
+     * @param abi The abi of the module.
+     * @throws ConfigurationException
+     */
+    private void setUpConfig(String name, String id, String fullId, IConfiguration config, IAbi abi)
+            throws ConfigurationException {
+        List<OptionDef> optionsToInject = new ArrayList<>();
+        if (mModuleOptions.containsKey(name)) {
+            optionsToInject.addAll(mModuleOptions.get(name));
+        }
+        if (mModuleOptions.containsKey(id)) {
+            optionsToInject.addAll(mModuleOptions.get(id));
+        }
+        if (mModuleOptions.containsKey(fullId)) {
+            optionsToInject.addAll(mModuleOptions.get(fullId));
+        }
+        config.injectOptionValues(optionsToInject);
+
+        // Set target preparers
+        List<ITargetPreparer> preparers = config.getTargetPreparers();
+        for (ITargetPreparer preparer : preparers) {
+            if (preparer instanceof IAbiReceiver) {
+                ((IAbiReceiver) preparer).setAbi(abi);
+            }
+        }
+
+        // Set IRemoteTests
+        List<IRemoteTest> tests = config.getTests();
+        for (IRemoteTest test : tests) {
+            String className = test.getClass().getName();
+            if (mTestOptions.containsKey(className)) {
+                config.injectOptionValues(mTestOptions.get(className));
+            }
+            addFiltersToTest(test, abi, name, mIncludeFilters, mExcludeFilters);
+            if (test instanceof IAbiReceiver) {
+                ((IAbiReceiver) test).setAbi(abi);
+            }
+        }
+
+        // add the abi and module name to the description
+        config.getConfigurationDescription().setAbi(abi);
+        config.getConfigurationDescription().setModuleName(name);
     }
 }

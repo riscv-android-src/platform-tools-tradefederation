@@ -166,7 +166,7 @@ public class SubprocessResultsReporter
     /** {@inheritDoc} */
     @Override
     public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
-        if (!mOutputTestlog && (mReportPort == null && mReportFile == null)) {
+        if (!mOutputTestlog || (mReportPort == null && mReportFile == null)) {
             return;
         }
         if (dataStream != null && dataStream.size() != 0) {
