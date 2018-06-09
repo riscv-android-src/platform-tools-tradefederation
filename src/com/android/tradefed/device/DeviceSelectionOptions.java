@@ -164,15 +164,13 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         mPropertyMap.put(propertyKey, propValue);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public Collection<String> getSerials() {
+    public Collection<String> getSerials(IDevice device) {
         // If no serial was explicitly set, use the environment variable ANDROID_SERIAL.
         if (mSerials.isEmpty() && !mFetchedEnvVariable) {
             String env_serial = fetchEnvironmentVariable("ANDROID_SERIAL");
-            if (env_serial != null) {
+            if (env_serial != null && !(device instanceof StubDevice)) {
                 mSerials.add(env_serial);
             }
             mFetchedEnvVariable = true;
@@ -360,7 +358,7 @@ public class DeviceSelectionOptions implements IDeviceSelection {
      */
     @Override
     public boolean matches(IDevice device) {
-        Collection<String> serials = getSerials();
+        Collection<String> serials = getSerials(device);
         Collection<String> excludeSerials = getExcludeSerials();
         Map<String, Collection<String>> productVariants = splitOnVariant(getProductTypes());
         Collection<String> productTypes = productVariants.keySet();
