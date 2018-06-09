@@ -1235,9 +1235,12 @@ public class ConfigurationFactoryTest extends TestCase {
                 .getTargetPreparers().size());
         List<String> serials = new ArrayList<String>();
         serials.add("test");
-        assertEquals(serials, config.getDeviceRequirements().getSerials());
-        assertEquals(serials, config.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME)
-                .getDeviceRequirements().getSerials());
+        assertEquals(serials, config.getDeviceRequirements().getSerials(null));
+        assertEquals(
+                serials,
+                config.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME)
+                        .getDeviceRequirements()
+                        .getSerials(null));
     }
 
     /**
