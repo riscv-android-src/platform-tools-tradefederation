@@ -28,14 +28,10 @@ import com.android.tradefed.util.StreamUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collection;
-import java.util.HashSet;
 
-/**
- * A {@link ILeveledLogOutput} that directs log messages to a file and to stdout.
- */
+/** A {@link ILeveledLogOutput} that directs log messages to a file and to stdout. */
 @OptionClass(alias = "file")
-public class FileLogger implements ILeveledLogOutput {
+public class FileLogger extends BaseLeveledLogOutput {
     private static final String TEMP_FILE_PREFIX = "tradefed_log_";
     private static final String TEMP_FILE_SUFFIX = ".txt";
 
@@ -47,27 +43,10 @@ public class FileLogger implements ILeveledLogOutput {
             importance = Importance.ALWAYS)
     private LogLevel mLogLevelDisplay = LogLevel.ERROR;
 
-    @Option(name = "log-tag-display", description = "Always display given tags logs on stdout")
-    private Collection<String> mLogTagsDisplay = new HashSet<String>();
-
     @Option(name = "max-log-size", description = "maximum allowable size of tmp log data in mB.")
     private long mMaxLogSizeMbytes = 20;
 
     private SizeLimitedOutputStream mLogStream;
-
-    /**
-     * Adds tags to the log-tag-display list
-     *
-     * @param tags collection of tags to add
-     */
-    void addLogTagsDisplay(Collection<String> tags) {
-        mLogTagsDisplay.addAll(tags);
-    }
-
-    /** Returns the collection of tags to always display on stdout. */
-    Collection<String> getLogTagsDisplay() {
-        return mLogTagsDisplay;
-    }
 
     public FileLogger() {
     }
@@ -127,9 +106,7 @@ public class FileLogger implements ILeveledLogOutput {
     private void internalPrintLog(LogLevel logLevel, String tag, String message,
             boolean forceStdout) {
         String outMessage = LogUtil.getLogFormatString(logLevel, tag, message);
-        if (forceStdout
-                || logLevel.getPriority() >= mLogLevelDisplay.getPriority()
-                || mLogTagsDisplay.contains(tag)) {
+        if (shouldDisplay(forceStdout, mLogLevelDisplay, logLevel, tag)) {
             System.out.print(outMessage);
         }
         try {

@@ -26,6 +26,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.ITargetPreparer;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -120,6 +121,25 @@ public class DeviceConfigurationHolder implements IDeviceConfiguration {
         allObject.add(mDeviceSelection);
         allObject.add(mTestDeviceOption);
         return allObject;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<Object> getAllObjectOfType(String configType) {
+        switch (configType) {
+            case Configuration.BUILD_PROVIDER_TYPE_NAME:
+                return Arrays.asList(mBuildProvider);
+            case Configuration.TARGET_PREPARER_TYPE_NAME:
+                return new ArrayList<>(mListTargetPreparer);
+            case Configuration.DEVICE_RECOVERY_TYPE_NAME:
+                return Arrays.asList(mDeviceRecovery);
+            case Configuration.DEVICE_REQUIREMENTS_TYPE_NAME:
+                return Arrays.asList(mDeviceSelection);
+            case Configuration.DEVICE_OPTIONS_TYPE_NAME:
+                return Arrays.asList(mTestDeviceOption);
+            default:
+                return new ArrayList<>();
+        }
     }
 
     /**
