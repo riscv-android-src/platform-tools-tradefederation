@@ -23,34 +23,56 @@ public class BuildInfoKey {
      * IBuildInfo#getFile(BuildInfoFileKey)}.
      */
     public enum BuildInfoFileKey {
-        DEVICE_IMAGE("device"),
-        USERDATA_IMAGE("userdata"),
-        TESTDIR_IMAGE("testsdir"),
-        BASEBAND_IMAGE("baseband"),
-        BOOTLOADER_IMAGE("bootloader"),
-        OTA_IMAGE("ota"),
-        MKBOOTIMG_IMAGE("mkbootimg"),
-        RAMDISK_IMAGE("ramdisk"),
+        DEVICE_IMAGE("device", false),
+        USERDATA_IMAGE("userdata", false),
+        TESTDIR_IMAGE("testsdir", false),
+        BASEBAND_IMAGE("baseband", false),
+        BOOTLOADER_IMAGE("bootloader", false),
+        OTA_IMAGE("ota", false),
+        MKBOOTIMG_IMAGE("mkbootimg", false),
+        RAMDISK_IMAGE("ramdisk", false),
 
         // Externally linked files in the testsdir:
         // ANDROID_HOST_OUT_TESTCASES and ANDROID_TARGET_OUT_TESTCASES are linked in the tests dir
         // of the build info.
-        TARGET_LINKED_DIR("target_testcases"),
-        HOST_LINKED_DIR("host_testcases");
+        TARGET_LINKED_DIR("target_testcases", false),
+        HOST_LINKED_DIR("host_testcases", false),
+
+        // Keys that can hold lists of files.
+        PACKAGE_FILES("package_files", true);
 
         private final String mFileKey;
+        private final boolean mCanBeList;
 
-        private BuildInfoFileKey(String fileKey) {
+        private BuildInfoFileKey(String fileKey, boolean canBeList) {
             mFileKey = fileKey;
+            mCanBeList = canBeList;
         }
 
         public String getFileKey() {
             return mFileKey;
         }
 
+        public boolean isList() {
+            return mCanBeList;
+        }
+
         @Override
         public String toString() {
             return mFileKey;
+        }
+
+        /**
+         * Convert a key name to its {@link BuildInfoFileKey} if any is found. Returns null
+         * otherwise.
+         */
+        public static BuildInfoFileKey fromString(String keyName) {
+            for (BuildInfoFileKey v : BuildInfoFileKey.values()) {
+                if (v.getFileKey().equals(keyName)) {
+                    return v;
+                }
+            }
+            return null;
         }
     }
 }

@@ -27,11 +27,12 @@ import com.google.common.base.Objects;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -49,7 +50,8 @@ public class BuildInfo implements IBuildInfo {
     private String mBuildTargetName = "stub";
     private final UniqueMultiMap<String, String> mBuildAttributes =
             new UniqueMultiMap<String, String>();
-    private Map<String, VersionedFile> mVersionedFileMap;
+    // TODO: once deployed make non-transient
+    private transient MultiMap<String, VersionedFile> mVersionedFileMap;
     private String mBuildFlavor = null;
     private String mBuildBranch = null;
     private String mDeviceSerial = null;
@@ -61,7 +63,7 @@ public class BuildInfo implements IBuildInfo {
      * Creates a {@link BuildInfo} using default attribute values.
      */
     public BuildInfo() {
-        mVersionedFileMap = new Hashtable<String, VersionedFile>();
+        mVersionedFileMap = new MultiMap<String, VersionedFile>();
     }
 
     /**
@@ -71,26 +73,9 @@ public class BuildInfo implements IBuildInfo {
      * @param buildTargetName the build target name
      */
     public BuildInfo(String buildId, String buildTargetName) {
+        this();
         mBuildId = buildId;
         mBuildTargetName = buildTargetName;
-        mVersionedFileMap = new Hashtable<String, VersionedFile>();
-    }
-
-    /**
-     * Creates a {@link BuildInfo}
-     *
-     * @param buildId the build id
-     * @param testTag the test tag name
-     * @param buildTargetName the build target name
-     * @deprecated use {@link #BuildInfo(String, String)} instead. test-tag should not be mandatory
-     * when instantiating the build info.
-     */
-    @Deprecated
-    public BuildInfo(String buildId, String testTag, String buildTargetName) {
-        mBuildId = buildId;
-        mTestTag = testTag;
-        mBuildTargetName = buildTargetName;
-        mVersionedFileMap = new Hashtable<String, VersionedFile>();
     }
 
     /**
@@ -244,7 +229,7 @@ public class BuildInfo implements IBuildInfo {
     }
 
     protected Map<String, VersionedFile> getVersionedFileMap() {
-        return mVersionedFileMap;
+        return mVersionedFileMap.getUniqueMap();
     }
 
     /**
@@ -252,11 +237,11 @@ public class BuildInfo implements IBuildInfo {
      */
     @Override
     public File getFile(String name) {
-        VersionedFile fileRecord = mVersionedFileMap.get(name);
-        if (fileRecord != null) {
-            return fileRecord.getFile();
+        List<VersionedFile> fileRecords = mVersionedFileMap.get(name);
+        if (fileRecords == null || fileRecords.isEmpty()) {
+            return null;
         }
-        return null;
+        return fileRecords.get(0).getFile();
     }
 
     /** {@inheritDoc} */
@@ -267,14 +252,28 @@ public class BuildInfo implements IBuildInfo {
 
     /** {@inheritDoc} */
     @Override
-    public VersionedFile getVersionedFile(String name) {
-        return mVersionedFileMap.get(name);
+    public final VersionedFile getVersionedFile(String name) {
+        List<VersionedFile> fileRecords = mVersionedFileMap.get(name);
+        if (fileRecords == null || fileRecords.isEmpty()) {
+            return null;
+        }
+        return fileRecords.get(0);
     }
 
     /** {@inheritDoc} */
     @Override
     public VersionedFile getVersionedFile(BuildInfoFileKey key) {
         return getVersionedFile(key.getFileKey());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public final List<VersionedFile> getVersionedFiles(BuildInfoFileKey key) {
+        if (!key.isList()) {
+            throw new UnsupportedOperationException(
+                    String.format("Key %s does not support list of files.", key.getFileKey()));
+        }
+        return mVersionedFileMap.get(key.getFileKey());
     }
 
     /**
@@ -290,11 +289,11 @@ public class BuildInfo implements IBuildInfo {
      */
     @Override
     public String getVersion(String name) {
-        VersionedFile fileRecord = mVersionedFileMap.get(name);
-        if (fileRecord != null) {
-            return fileRecord.getVersion();
+        List<VersionedFile> fileRecords = mVersionedFileMap.get(name);
+        if (fileRecords == null || fileRecords.isEmpty()) {
+            return null;
         }
-        return null;
+        return fileRecords.get(0).getVersion();
     }
 
     /** {@inheritDoc} */
@@ -309,9 +308,14 @@ public class BuildInfo implements IBuildInfo {
     @Override
     public void setFile(String name, File file, String version) {
         if (mVersionedFileMap.containsKey(name)) {
-            CLog.e("Device build already contains a file for %s in thread %s", name,
-                    Thread.currentThread().getName());
-            return;
+            BuildInfoFileKey key = BuildInfoFileKey.fromString(name);
+            // If the key is a list, we will add it to the map.
+            if (key == null || !key.isList()) {
+                CLog.e(
+                        "Device build already contains a file for %s in thread %s",
+                        name, Thread.currentThread().getName());
+                return;
+            }
         }
         mVersionedFileMap.put(name, new VersionedFile(file, version));
     }
@@ -353,8 +357,10 @@ public class BuildInfo implements IBuildInfo {
     private void refreshVersionedFiles() {
         Set<String> keys = new HashSet<>(mVersionedFileMap.keySet());
         for (String key : keys) {
-            if (!mVersionedFileMap.get(key).getFile().exists()) {
-                mVersionedFileMap.remove(key);
+            for (VersionedFile file : mVersionedFileMap.get(key)) {
+                if (!file.getFile().exists()) {
+                    mVersionedFileMap.remove(key);
+                }
             }
         }
     }
@@ -479,5 +485,21 @@ public class BuildInfo implements IBuildInfo {
                 .add("branch", mBuildBranch)
                 .add("serial", mDeviceSerial)
                 .toString();
+    }
+
+    /** Special serialization to handle the new underlying type. */
+    private void writeObject(ObjectOutputStream outputStream) throws IOException {
+        outputStream.defaultWriteObject();
+        outputStream.writeObject(mVersionedFileMap);
+    }
+
+    /** Special java method that allows for custom deserialization. */
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        try {
+            mVersionedFileMap = (MultiMap<String, VersionedFile>) in.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            mVersionedFileMap = new MultiMap<>();
+        }
     }
 }
