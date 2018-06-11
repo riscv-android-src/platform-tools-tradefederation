@@ -24,6 +24,7 @@ import sys
 import time
 
 import atest_error
+import atest_utils
 import constants
 import test_finder_handler
 import test_mapping
@@ -100,7 +101,7 @@ class CLITranslator(object):
             path: A string of path in source. Default is set to '', i.e., CWD.
             test_group: Group of tests to run. Default is set to `presubmit`.
             file_name: Name of TEST_MAPPING file. Default is set to
-                    `TEST_MAPPING`. The argument is added for testing purpose.
+                `TEST_MAPPING`. The argument is added for testing purpose.
 
         Returns:
             A tuple of (tests, all_tests), where,
@@ -126,6 +127,8 @@ class CLITranslator(object):
                     [test_mapping.TestDetail(test) for test in test_list])
             for test in test_mapping_dict.get(test_group, []):
                 tests.add(test_mapping.TestDetail(test))
+
+        # Load tests in parent directories recursively.
         parent_dir_tests, parent_dir_all_tests = (
             self._find_tests_by_test_mapping(
                 os.path.dirname(path), test_group, file_name))
@@ -135,6 +138,7 @@ class CLITranslator(object):
             for test_group_name, test_list in parent_dir_all_tests.items():
                 grouped_tests = all_tests.setdefault(test_group_name, set())
                 grouped_tests.update(test_list)
+
         if test_group == constants.TEST_GROUP_POSTSUBMIT:
             tests.update(all_tests.get(
                 constants.TEST_GROUP_PRESUBMIT, set()))
@@ -146,18 +150,19 @@ class CLITranslator(object):
             targets |= test_info.build_targets
         return targets
 
-    def translate(self, tests):
+    def translate(self, args):
         """Translate atest command line into build targets and run commands.
 
         Args:
-            tests: A list of strings referencing the tests to run.
+            args: arg parsed object.
 
         Returns:
             A tuple with set of build_target strings and list of TestInfos.
         """
+        tests = args.tests
         # Test details from TEST_MAPPING files
         test_details_list = None
-        if not tests:
+        if atest_utils.is_test_mapping(args):
             # Pull out tests from test mapping
             # TODO(dshi): Support other groups of tests in TEST_MAPPING files,
             # e.g., postsubmit.
@@ -187,8 +192,7 @@ class CLITranslator(object):
             logging.info('Test details:\n%s', details)
         start = time.time()
         test_infos = self._get_test_infos(tests, test_details_list)
-        end = time.time()
-        logging.debug('Found tests in %ss', end - start)
+        logging.debug('Found tests in %ss', time.time() - start)
         for test_info in test_infos:
             logging.debug('%s\n', test_info)
         build_targets = self._gather_build_targets(test_infos)
