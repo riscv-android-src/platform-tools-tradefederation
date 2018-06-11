@@ -625,6 +625,16 @@ public class NativeDeviceTest extends TestCase {
         fail("getSettings should have thrown an exception.");
     }
 
+    /** Unit test for {@link NativeDevice#getAllSettings(String)}. */
+    public void testGetAllSettingsSystemUser_exception() throws Exception {
+        try {
+            mTestDevice.getAllSettings("global");
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("getAllSettings should have thrown an exception");
+    }
+
     /**
      * Unit test for {@link NativeDevice#setSetting(String, String, String)}.
      */
