@@ -16,10 +16,8 @@
 
 package com.android.tradefed.util;
 
-/**
- * Event types for {@link LogcatUpdaterEventParser}.
- */
-public enum UpdaterEventType {
+/** Event types for {@link LogcatEventParser}. */
+public enum LogcatEventType {
     UPDATE_URL_CHANGED,
     UPDATE_START,
     DOWNLOAD_COMPLETE,
