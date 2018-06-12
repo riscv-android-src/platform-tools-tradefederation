@@ -31,6 +31,7 @@ import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.invoker.shard.ShardBuildCloner;
+import com.android.tradefed.log.BaseLeveledLogOutput;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.LogRegistry;
@@ -616,7 +617,11 @@ public class TestInvocation implements ITestInvocation {
         scope.seedConfiguration(config);
         try {
             mStatus = "fetching build";
-            config.getLogOutput().init();
+            ILeveledLogOutput leveledLogOutput = config.getLogOutput();
+            leveledLogOutput.init();
+            if (leveledLogOutput instanceof BaseLeveledLogOutput) {
+                ((BaseLeveledLogOutput) leveledLogOutput).initFilters(config);
+            }
             getLogRegistry().registerLogger(config.getLogOutput());
             for (String deviceName : context.getDeviceConfigNames()) {
                 context.getDevice(deviceName).clearLastConnectedWifiNetwork();
