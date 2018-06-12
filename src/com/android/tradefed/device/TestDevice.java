@@ -1136,6 +1136,35 @@ public class TestDevice extends NativeDevice {
         return null;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Map<String, String> getAllSettings(String namespace) throws DeviceNotAvailableException {
+        return getAllSettingsInternal(namespace.trim());
+    }
+
+    /** Internal helper to get all settings */
+    private Map<String, String> getAllSettingsInternal(String namespace)
+            throws DeviceNotAvailableException {
+        namespace = namespace.toLowerCase();
+        if (Arrays.asList(SETTINGS_NAMESPACE).contains(namespace)) {
+            Map<String, String> map = new HashMap<>();
+            String cmd = String.format("settings list %s", namespace);
+            String output = executeShellCommand(cmd);
+            for (String line : output.split("\\n")) {
+                // Setting's value could be empty
+                String[] pair = line.trim().split("=", -1);
+                if (pair.length > 1) {
+                    map.putIfAbsent(pair[0], pair[1]);
+                } else {
+                    CLog.e("Unable to get setting from string: %s", line);
+                }
+            }
+            return map;
+        }
+        CLog.e("Namespace requested: '%s' is not part of {system, secure, global}", namespace);
+        return null;
+    }
+
     /**
      * {@inheritDoc}
      */

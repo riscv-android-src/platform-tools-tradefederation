@@ -56,6 +56,29 @@ class AtestUnittests(unittest.TestCase):
         self.assertEqual(parsed_args.custom_args, [pos_custom_arg,
                                                    custom_arg_val])
 
+    def test_has_valid_test_mapping_args(self):
+        """Test _has_valid_test_mapping_args mehod."""
+        # Test test mapping related args are not mixed with incompatible args.
+        options_no_tm_support = [
+            ('--generate-baseline', '5'),
+            ('--detect-regression', 'path'),
+            ('--generate-new-metrics', '5')
+        ]
+        tm_options = [
+            '--test-mapping',
+            '--include-subdirs'
+        ]
+
+        for tm_option in tm_options:
+            for no_tm_option, no_tm_option_value in options_no_tm_support:
+                args = [tm_option, no_tm_option]
+                if no_tm_option_value != None:
+                    args.append(no_tm_option_value)
+                parsed_args = atest._parse_args(args)
+                self.assertFalse(
+                    atest._has_valid_test_mapping_args(parsed_args),
+                    'Failed to validate: %s' % args)
+
 
 if __name__ == '__main__':
     unittest.main()

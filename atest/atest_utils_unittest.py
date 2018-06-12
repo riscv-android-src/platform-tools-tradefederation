@@ -17,6 +17,7 @@
 """Unittests for atest_utils."""
 
 import unittest
+import mock
 
 import atest_utils
 
@@ -40,6 +41,39 @@ class AtestUtilsUnittests(unittest.TestCase):
         want_list = []
         self.assertEqual(want_list,
                          atest_utils._capture_fail_section(test_list))
+
+    def test_is_test_mapping(self):
+        """Test method is_test_mapping."""
+        tm_option_attributes = [
+            'test_mapping',
+            'include_subdirs'
+        ]
+        for attr_to_test in tm_option_attributes:
+            args = mock.Mock()
+            for attr in tm_option_attributes:
+                setattr(args, attr, attr == attr_to_test)
+            args.tests = []
+            self.assertTrue(
+                atest_utils.is_test_mapping(args),
+                'Failed to validate option %s' % attr_to_test)
+
+        args = mock.Mock()
+        for attr in tm_option_attributes:
+            setattr(args, attr, False)
+        args.tests = [':group_name']
+        self.assertTrue(atest_utils.is_test_mapping(args))
+
+        args = mock.Mock()
+        for attr in tm_option_attributes:
+            setattr(args, attr, False)
+        args.tests = [':test1', 'test2']
+        self.assertFalse(atest_utils.is_test_mapping(args))
+
+        args = mock.Mock()
+        for attr in tm_option_attributes:
+            setattr(args, attr, False)
+        args.tests = ['test2']
+        self.assertFalse(atest_utils.is_test_mapping(args))
 
 
 if __name__ == "__main__":

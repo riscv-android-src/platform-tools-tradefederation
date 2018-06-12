@@ -3707,6 +3707,12 @@ public class NativeDevice implements IManagedTestDevice {
         throw new UnsupportedOperationException("No support for setting's feature.");
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Map<String, String> getAllSettings(String namespace) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for setting's feature.");
+    }
+
     /**
      * {@inheritDoc}
      */
