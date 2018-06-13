@@ -558,6 +558,24 @@ def _has_valid_test_mapping_args(args):
     return True
 
 
+def _validate_args(args):
+    """Validate setups and args.
+
+    Exit the program with error code if any setup or arg is invalid.
+
+    Args:
+        args: parsed args object.
+    """
+    if _missing_environment_variables():
+        sys.exit(constants.EXIT_CODE_ENV_NOT_SETUP)
+    if args.generate_baseline and args.generate_new_metrics:
+        logging.error('Cannot collect both baseline and new metrics at the same time.')
+        sys.exit(constants.EXIT_CODE_ERROR)
+    if not _has_valid_regression_detection_args(args):
+        sys.exit(constants.EXIT_CODE_ERROR)
+    if not _has_valid_test_mapping_args(args):
+        sys.exit(constants.EXIT_CODE_ERROR)
+
 def main(argv):
     """Entry point of atest script.
 
@@ -569,15 +587,8 @@ def main(argv):
     """
     args = _parse_args(argv)
     _configure_logging(args.verbose)
-    if _missing_environment_variables():
-        return constants.EXIT_CODE_ENV_NOT_SETUP
-    if args.generate_baseline and args.generate_new_metrics:
-        logging.error('Cannot collect both baseline and new metrics at the same time.')
-        return constants.EXIT_CODE_ERROR
-    if not _has_valid_regression_detection_args(args):
-        return constants.EXIT_CODE_ERROR
-    if not _has_valid_test_mapping_args(args):
-        return constants.EXIT_CODE_ERROR
+    _validate_args(args)
+
     results_dir = make_test_run_dir()
     mod_info = module_info.ModuleInfo(force_build=args.rebuild_module_info)
     translator = cli_translator.CLITranslator(module_info=mod_info)
@@ -615,7 +626,8 @@ def main(argv):
         test_runner_handler.run_all_tests(results_dir, test_infos, extra_args)
     if args.detect_regression:
         regression_args = _get_regression_detection_args(args, results_dir)
-        regression_test_runner.RegressionTestRunner('').run_tests(None, regression_args)
+        regression_test_runner.RegressionTestRunner('').run_tests(
+            None, regression_args)
     return constants.EXIT_CODE_SUCCESS
 
 if __name__ == '__main__':

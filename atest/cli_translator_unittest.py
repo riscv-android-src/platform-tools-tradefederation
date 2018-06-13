@@ -31,7 +31,12 @@ import unittest_utils
 from test_finders import test_finder_base
 
 # TEST_MAPPING related consts
-TEST_MAPPING_DIR = os.path.join(uc.TEST_DATA_DIR, 'test_mapping', 'folder1')
+TEST_MAPPING_TOP_DIR = os.path.join(uc.TEST_DATA_DIR, 'test_mapping')
+TEST_MAPPING_DIR = os.path.join(TEST_MAPPING_TOP_DIR, 'folder1')
+TEST_1 = test_mapping.TestDetail({'name': 'test1'})
+TEST_2 = test_mapping.TestDetail({'name': 'test2'})
+TEST_3 = test_mapping.TestDetail({'name': 'test3'})
+TEST_4 = test_mapping.TestDetail({'name': 'test4'})
 
 SEARCH_DIR_RE = re.compile(r'^find ([^ ]*).*$')
 
@@ -156,22 +161,72 @@ class CLITranslatorUnittests(unittest.TestCase):
         unittest_utils.assert_strict_equal(self, test_infos, {uc.MODULE_INFO,
                                                               uc.CLASS_INFO})
 
-    def test_find_tests_by_test_mapping(self):
-        """Test _find_tests_by_test_mapping method."""
+    @mock.patch.object(cli_t.CLITranslator, '_find_tests_by_test_mapping')
+    @mock.patch.object(cli_t.CLITranslator, '_get_test_infos',
+                       side_effect=gettestinfos_side_effect)
+    def test_translate_test_mapping_all(self, _info, mock_testmapping):
+        """Test translate method for tests in test mapping."""
+        # Check that test mappings feeds into get_test_info properly.
+        test_detail1 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST)
+        test_detail2 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST_WITH_OPTION)
+        mock_testmapping.return_value = ([test_detail1, test_detail2], None)
+        self.args.tests = ['src_path:all']
+        self.args.test_mapping = True
+        targets, test_infos = self.ctr.translate(self.args)
+        unittest_utils.assert_strict_equal(
+            self, targets, uc.MODULE_CLASS_COMBINED_BUILD_TARGETS)
+        unittest_utils.assert_strict_equal(self, test_infos, {uc.MODULE_INFO,
+                                                              uc.CLASS_INFO})
+
+    def test_find_tests_by_test_mapping_presubmit(self):
+        """Test _find_tests_by_test_mapping method to locate presubmit tests."""
         tests, all_tests = self.ctr._find_tests_by_test_mapping(
             path=TEST_MAPPING_DIR, file_name='test_mapping_sample')
-        expected = set(['test2', 'test1'])
+        expected = set([TEST_1, TEST_2])
         expected_all_tests = {'presubmit': expected,
-                              'postsubmit': set(['test3'])}
+                              'postsubmit': set([TEST_3]),
+                              'other_group': set([TEST_4])}
         self.assertEqual(expected, tests)
         self.assertEqual(expected_all_tests, all_tests)
 
+    def test_find_tests_by_test_mapping_postsubmit(self):
+        """Test _find_tests_by_test_mapping method to locate postsubmit tests."""
         tests, all_tests = self.ctr._find_tests_by_test_mapping(
             path=TEST_MAPPING_DIR, test_group=constants.TEST_GROUP_POSTSUBMIT,
             file_name='test_mapping_sample')
-        expected = set(['test1', 'test2', 'test3'])
+        expected_presubmit = set([TEST_1, TEST_2])
+        expected = set([TEST_1, TEST_2, TEST_3])
+        expected_all_tests = {'presubmit': expected_presubmit,
+                              'postsubmit': set([TEST_3]),
+                              'other_group': set([TEST_4])}
         self.assertEqual(expected, tests)
         self.assertEqual(expected_all_tests, all_tests)
+
+    def test_find_tests_by_test_mapping_all_group(self):
+        """Test _find_tests_by_test_mapping method to locate postsubmit tests."""
+        tests, all_tests = self.ctr._find_tests_by_test_mapping(
+            path=TEST_MAPPING_DIR, test_group=constants.TEST_GROUP_ALL,
+            file_name='test_mapping_sample')
+        expected_presubmit = set([TEST_1, TEST_2])
+        expected = set([TEST_1, TEST_2, TEST_3, TEST_4])
+        expected_all_tests = {'presubmit': expected_presubmit,
+                              'postsubmit': set([TEST_3]),
+                              'other_group': set([TEST_4])}
+        self.assertEqual(expected, tests)
+        self.assertEqual(expected_all_tests, all_tests)
+
+    def test_find_tests_by_test_mapping_include_subdir(self):
+        """Test _find_tests_by_test_mapping method to include sub directory."""
+        tests, all_tests = self.ctr._find_tests_by_test_mapping(
+            path=TEST_MAPPING_TOP_DIR, file_name='test_mapping_sample',
+            include_subdirs=True)
+        expected = set([TEST_1, TEST_2])
+        expected_all_tests = {'presubmit': expected,
+                              'postsubmit': set([TEST_3]),
+                              'other_group': set([TEST_4])}
+        self.assertEqual(expected, tests)
+        self.assertEqual(expected_all_tests, all_tests)
+
 
 if __name__ == '__main__':
     unittest.main()
