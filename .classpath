@@ -21,5 +21,6 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/LongevityRunner"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/host/common/obj/JAVA_LIBRARIES/junit-params-host_intermediates/classes.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/host/common/obj/JAVA_LIBRARIES/guice_intermediates/classes.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/platform-annotations"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
