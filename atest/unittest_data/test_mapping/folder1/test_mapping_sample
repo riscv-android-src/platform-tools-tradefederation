@@ -8,5 +8,10 @@
     {
       "name": "test3"
     }
+  ],
+  "other_group": [
+    {
+      "name": "test4"
+    }
   ]
 }

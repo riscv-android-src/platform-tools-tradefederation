@@ -17,6 +17,7 @@
 Command Line Translator for atest.
 """
 
+import fnmatch
 import json
 import logging
 import os
@@ -92,9 +93,80 @@ class CLITranslator(object):
                                                    test)
         return test_infos
 
+    def _read_tests_in_test_mapping(self, test_mapping_file):
+        """Read tests from a TEST_MAPPING file.
+
+        Args:
+            test_mapping_file: Path to a TEST_MAPPING file.
+
+        Returns:
+            A dictionary of all tests in the TEST_MAPPING file, grouped by test
+            group.
+        """
+        all_tests = {}
+        test_mapping_dict = None
+        with open(test_mapping_file) as json_file:
+            test_mapping_dict = json.load(json_file)
+        for test_group_name, test_list in test_mapping_dict.items():
+            grouped_tests = all_tests.setdefault(test_group_name, set())
+            grouped_tests.update(
+                [test_mapping.TestDetail(test) for test in test_list])
+        return all_tests
+
+    def _find_files(self, path, file_name=TEST_MAPPING):
+        """Find all files with given name under the given path.
+
+        Args:
+            path: A string of path in source.
+
+        Returns:
+            A list of paths of the files with the matching name under the given
+            path.
+        """
+        test_mapping_files = []
+        for root, _, filenames in os.walk(path):
+            for filename in fnmatch.filter(filenames, file_name):
+                test_mapping_files.append(os.path.join(root, filename))
+        return test_mapping_files
+
+    def _get_tests_from_test_mapping_files(
+            self, test_group, test_mapping_files):
+        """Get tests in the given test mapping files with the match group.
+
+        Args:
+            test_group: Group of tests to run. Default is set to `presubmit`.
+            test_mapping_files: A list of path of TEST_MAPPING files.
+
+        Returns:
+            A tuple of (tests, all_tests), where,
+            tests is a set of tests (test_mapping.TestDetail) defined in
+            TEST_MAPPING file of the given path, and its parent directories,
+            with matching test_group.
+            all_tests is a dictionary of all tests in TEST_MAPPING files,
+            grouped by test group.
+        """
+        # Read and merge the tests in all TEST_MAPPING files.
+        merged_all_tests = {}
+        for test_mapping_file in test_mapping_files:
+            all_tests = self._read_tests_in_test_mapping(test_mapping_file)
+            for test_group_name, test_list in all_tests.items():
+                grouped_tests = merged_all_tests.setdefault(
+                    test_group_name, set())
+                grouped_tests.update(test_list)
+
+        tests = set(merged_all_tests.get(test_group, []))
+        # Postsubmit tests shall include all presubmit tests as well.
+        if test_group == constants.TEST_GROUP_POSTSUBMIT:
+            tests.update(merged_all_tests.get(
+                constants.TEST_GROUP_PRESUBMIT, set()))
+        elif test_group == constants.TEST_GROUP_ALL:
+            for grouped_tests in merged_all_tests.values():
+                tests.update(grouped_tests)
+        return tests, merged_all_tests
+
     def _find_tests_by_test_mapping(
             self, path='', test_group=constants.TEST_GROUP_PRESUBMIT,
-            file_name=TEST_MAPPING):
+            file_name=TEST_MAPPING, include_subdirs=False):
         """Find tests defined in TEST_MAPPING in the given path.
 
         Args:
@@ -102,6 +174,8 @@ class CLITranslator(object):
             test_group: Group of tests to run. Default is set to `presubmit`.
             file_name: Name of TEST_MAPPING file. Default is set to
                 `TEST_MAPPING`. The argument is added for testing purpose.
+            include_subdirs: True to include tests in TEST_MAPPING files in sub
+                directories.
 
         Returns:
             A tuple of (tests, all_tests), where,
@@ -112,43 +186,78 @@ class CLITranslator(object):
             grouped by test group.
         """
         path = os.path.realpath(path)
-        if path == constants.ANDROID_BUILD_TOP or path == os.sep:
-            return None, None
-        tests = set()
-        all_tests = {}
-        test_mapping_dict = None
+        test_mapping_files = set()
         test_mapping_file = os.path.join(path, file_name)
         if os.path.exists(test_mapping_file):
-            with open(test_mapping_file) as json_file:
-                test_mapping_dict = json.load(json_file)
-            for test_group_name, test_list in test_mapping_dict.items():
-                grouped_tests = all_tests.setdefault(test_group_name, set())
-                grouped_tests.update(
-                    [test_mapping.TestDetail(test) for test in test_list])
-            for test in test_mapping_dict.get(test_group, []):
-                tests.add(test_mapping.TestDetail(test))
+            test_mapping_files.add(test_mapping_file)
+        # Include all TEST_MAPPING files in parent directories if
+        # `include_subdirs` is set to True.
+        if include_subdirs:
+            test_mapping_files.update(self._find_files(path, file_name))
+        # Include all possible TEST_MAPPING files in parent directories.
+        while path != constants.ANDROID_BUILD_TOP and path != os.sep:
+            path = os.path.dirname(path)
+            test_mapping_file = os.path.join(path, file_name)
+            if os.path.exists(test_mapping_file):
+                test_mapping_files.add(test_mapping_file)
 
-        # Load tests in parent directories recursively.
-        parent_dir_tests, parent_dir_all_tests = (
-            self._find_tests_by_test_mapping(
-                os.path.dirname(path), test_group, file_name))
-        if parent_dir_tests:
-            tests.update(parent_dir_tests)
-        if parent_dir_all_tests:
-            for test_group_name, test_list in parent_dir_all_tests.items():
-                grouped_tests = all_tests.setdefault(test_group_name, set())
-                grouped_tests.update(test_list)
-
-        if test_group == constants.TEST_GROUP_POSTSUBMIT:
-            tests.update(all_tests.get(
-                constants.TEST_GROUP_PRESUBMIT, set()))
-        return tests, all_tests
+        return self._get_tests_from_test_mapping_files(
+            test_group, test_mapping_files)
 
     def _gather_build_targets(self, test_infos):
         targets = set()
         for test_info in test_infos:
             targets |= test_info.build_targets
         return targets
+
+    def _get_test_mapping_tests(self, args):
+        """Find the tests in TEST_MAPPING files.
+
+        Args:
+            args: arg parsed object.
+
+        Returns:
+            A tuple of (test_names, test_details_list), where
+            test_names: a list of test name
+            test_details_list: a list of test_mapping.TestDetail objects for
+                the tests in TEST_MAPPING files with matching test group.
+        """
+        # Pull out tests from test mapping
+        src_path = ''
+        test_group = constants.TEST_GROUP_PRESUBMIT
+        if args.tests:
+            if ':' in args.tests[0]:
+                src_path, test_group = args.tests[0].split(':')
+            else:
+                src_path = args.tests[0]
+
+        test_details, all_test_details = self._find_tests_by_test_mapping(
+            path=src_path, test_group=test_group,
+            include_subdirs=args.include_subdirs)
+        test_details_list = list(test_details)
+        if not test_details_list:
+            logging.warn(
+                'No tests of group `%s` found in TEST_MAPPING at %s or its '
+                'parent directories.\nYou might be missing atest arguments,'
+                ' try `atest --help` for more information',
+                test_group, os.path.realpath(''))
+            if all_test_details:
+                tests = ''
+                for test_group, test_list in all_test_details.items():
+                    tests += '%s:\n' % test_group
+                    for test_detail in sorted(test_list):
+                        tests += '\t%s\n' % test_detail
+                logging.warn(
+                    'All available tests in TEST_MAPPING files are:\n%s',
+                    tests)
+            sys.exit(constants.EXIT_CODE_TEST_NOT_FOUND)
+
+        logging.info(
+            'Test details:\n%s',
+            '\n'.join([str(detail) for detail in test_details_list]))
+        test_names = [detail.name for detail in test_details_list]
+        return test_names, test_details_list
+
 
     def translate(self, args):
         """Translate atest command line into build targets and run commands.
@@ -163,33 +272,8 @@ class CLITranslator(object):
         # Test details from TEST_MAPPING files
         test_details_list = None
         if atest_utils.is_test_mapping(args):
-            # Pull out tests from test mapping
-            # TODO(dshi): Support other groups of tests in TEST_MAPPING files,
-            # e.g., postsubmit.
-            test_details, all_test_details = self._find_tests_by_test_mapping()
-            test_details_list = list(test_details)
-            if test_details_list:
-                tests = [detail.name for detail in test_details_list]
-            else:
-                logging.warn(
-                    'No tests of group %s found in TEST_MAPPING at %s or its '
-                    'parent directories.\nYou might be missing atest arguments,'
-                    ' try `atest --help` for more information',
-                    constants.TEST_GROUP_PRESUBMIT, os.path.realpath(''))
-                if all_test_details:
-                    tests = ''
-                    for test_group, test_list in all_test_details.items():
-                        tests += '%s:\n' % test_group
-                        for test_detail in sorted(test_list):
-                            tests += '\t%s\n' % test_detail
-                    logging.warn(
-                        'All available tests in TEST_MAPPING files are:\n%s',
-                        tests)
-                sys.exit(constants.EXIT_CODE_TEST_NOT_FOUND)
+            tests, test_details_list = self._get_test_mapping_tests(args)
         logging.info('Finding tests: %s', tests)
-        if test_details_list:
-            details = '\n'.join([str(detail) for detail in test_details_list])
-            logging.info('Test details:\n%s', details)
         start = time.time()
         test_infos = self._get_test_infos(tests, test_details_list)
         logging.debug('Found tests in %ss', time.time() - start)
