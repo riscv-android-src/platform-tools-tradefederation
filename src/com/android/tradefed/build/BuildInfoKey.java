@@ -33,7 +33,7 @@ public class BuildInfoKey {
         RAMDISK_IMAGE("ramdisk", false),
 
         // Root folder directory
-        ROOT_DIRECTORY("rootdirectory"),
+        ROOT_DIRECTORY("rootdirectory", false),
 
         // Externally linked files in the testsdir:
         // ANDROID_HOST_OUT_TESTCASES and ANDROID_TARGET_OUT_TESTCASES are linked in the tests dir
