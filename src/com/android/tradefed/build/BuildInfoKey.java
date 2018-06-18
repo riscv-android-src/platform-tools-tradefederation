@@ -32,6 +32,9 @@ public class BuildInfoKey {
         MKBOOTIMG_IMAGE("mkbootimg"),
         RAMDISK_IMAGE("ramdisk"),
 
+        // Root folder directory
+        ROOT_DIRECTORY("rootdirectory"),
+
         // Externally linked files in the testsdir:
         // ANDROID_HOST_OUT_TESTCASES and ANDROID_TARGET_OUT_TESTCASES are linked in the tests dir
         // of the build info.
