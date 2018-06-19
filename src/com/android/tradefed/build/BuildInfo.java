@@ -33,6 +33,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -51,7 +52,8 @@ public class BuildInfo implements IBuildInfo {
     private final UniqueMultiMap<String, String> mBuildAttributes =
             new UniqueMultiMap<String, String>();
     // TODO: once deployed make non-transient
-    private transient MultiMap<String, VersionedFile> mVersionedFileMap;
+    private Map<String, VersionedFile> mVersionedFileMap;
+    private transient MultiMap<String, VersionedFile> mVersionedFileMultiMap;
     private String mBuildFlavor = null;
     private String mBuildBranch = null;
     private String mDeviceSerial = null;
@@ -70,7 +72,8 @@ public class BuildInfo implements IBuildInfo {
      * Creates a {@link BuildInfo} using default attribute values.
      */
     public BuildInfo() {
-        mVersionedFileMap = new MultiMap<String, VersionedFile>();
+        mVersionedFileMap = new Hashtable<String, VersionedFile>();
+        mVersionedFileMultiMap = new MultiMap<String, VersionedFile>();
     }
 
     /**
@@ -247,7 +250,7 @@ public class BuildInfo implements IBuildInfo {
     }
 
     protected Map<String, VersionedFile> getVersionedFileMap() {
-        return mVersionedFileMap.getUniqueMap();
+        return mVersionedFileMultiMap.getUniqueMap();
     }
 
     /**
@@ -255,7 +258,7 @@ public class BuildInfo implements IBuildInfo {
      */
     @Override
     public File getFile(String name) {
-        List<VersionedFile> fileRecords = mVersionedFileMap.get(name);
+        List<VersionedFile> fileRecords = mVersionedFileMultiMap.get(name);
         if (fileRecords == null || fileRecords.isEmpty()) {
             return null;
         }
@@ -271,7 +274,7 @@ public class BuildInfo implements IBuildInfo {
     /** {@inheritDoc} */
     @Override
     public final VersionedFile getVersionedFile(String name) {
-        List<VersionedFile> fileRecords = mVersionedFileMap.get(name);
+        List<VersionedFile> fileRecords = mVersionedFileMultiMap.get(name);
         if (fileRecords == null || fileRecords.isEmpty()) {
             return null;
         }
@@ -291,7 +294,7 @@ public class BuildInfo implements IBuildInfo {
             throw new UnsupportedOperationException(
                     String.format("Key %s does not support list of files.", key.getFileKey()));
         }
-        return mVersionedFileMap.get(key.getFileKey());
+        return mVersionedFileMultiMap.get(key.getFileKey());
     }
 
     /**
@@ -299,7 +302,7 @@ public class BuildInfo implements IBuildInfo {
      */
     @Override
     public Collection<VersionedFile> getFiles() {
-        return mVersionedFileMap.values();
+        return mVersionedFileMultiMap.values();
     }
 
     /**
@@ -307,7 +310,7 @@ public class BuildInfo implements IBuildInfo {
      */
     @Override
     public String getVersion(String name) {
-        List<VersionedFile> fileRecords = mVersionedFileMap.get(name);
+        List<VersionedFile> fileRecords = mVersionedFileMultiMap.get(name);
         if (fileRecords == null || fileRecords.isEmpty()) {
             return null;
         }
@@ -325,7 +328,10 @@ public class BuildInfo implements IBuildInfo {
      */
     @Override
     public void setFile(String name, File file, String version) {
-        if (mVersionedFileMap.containsKey(name)) {
+        if (!mVersionedFileMap.containsKey(name)) {
+            mVersionedFileMap.put(name, new VersionedFile(file, version));
+        }
+        if (mVersionedFileMultiMap.containsKey(name)) {
             BuildInfoFileKey key = BuildInfoFileKey.fromString(name);
             // If the key is a list, we will add it to the map.
             if (key == null || !key.isList()) {
@@ -335,7 +341,7 @@ public class BuildInfo implements IBuildInfo {
                 return;
             }
         }
-        mVersionedFileMap.put(name, new VersionedFile(file, version));
+        mVersionedFileMultiMap.put(name, new VersionedFile(file, version));
     }
 
     /** {@inheritDoc} */
@@ -349,10 +355,10 @@ public class BuildInfo implements IBuildInfo {
      */
     @Override
     public void cleanUp() {
-        for (VersionedFile fileRecord : mVersionedFileMap.values()) {
+        for (VersionedFile fileRecord : mVersionedFileMultiMap.values()) {
             FileUtil.recursiveDelete(fileRecord.getFile());
         }
-        mVersionedFileMap.clear();
+        mVersionedFileMultiMap.clear();
     }
 
     /** {@inheritDoc} */
@@ -361,7 +367,7 @@ public class BuildInfo implements IBuildInfo {
         if (doNotClean == null) {
             cleanUp();
         }
-        for (VersionedFile fileRecord : mVersionedFileMap.values()) {
+        for (VersionedFile fileRecord : mVersionedFileMultiMap.values()) {
             if (!doNotClean.contains(fileRecord.getFile())) {
                 FileUtil.recursiveDelete(fileRecord.getFile());
             }
@@ -373,11 +379,11 @@ public class BuildInfo implements IBuildInfo {
      * Run through all the {@link VersionedFile} and remove from the map the one that do not exists.
      */
     private void refreshVersionedFiles() {
-        Set<String> keys = new HashSet<>(mVersionedFileMap.keySet());
+        Set<String> keys = new HashSet<>(mVersionedFileMultiMap.keySet());
         for (String key : keys) {
-            for (VersionedFile file : mVersionedFileMap.get(key)) {
+            for (VersionedFile file : mVersionedFileMultiMap.get(key)) {
                 if (!file.getFile().exists()) {
-                    mVersionedFileMap.remove(key);
+                    mVersionedFileMultiMap.remove(key);
                 }
             }
         }
@@ -508,16 +514,16 @@ public class BuildInfo implements IBuildInfo {
     /** Special serialization to handle the new underlying type. */
     private void writeObject(ObjectOutputStream outputStream) throws IOException {
         outputStream.defaultWriteObject();
-        outputStream.writeObject(mVersionedFileMap);
+        outputStream.writeObject(mVersionedFileMultiMap);
     }
 
     /** Special java method that allows for custom deserialization. */
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
         try {
-            mVersionedFileMap = (MultiMap<String, VersionedFile>) in.readObject();
+            mVersionedFileMultiMap = (MultiMap<String, VersionedFile>) in.readObject();
         } catch (IOException | ClassNotFoundException e) {
-            mVersionedFileMap = new MultiMap<>();
+            mVersionedFileMultiMap = new MultiMap<>();
         }
     }
 }
