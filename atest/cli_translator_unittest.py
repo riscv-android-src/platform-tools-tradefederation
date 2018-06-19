@@ -37,6 +37,12 @@ TEST_1 = test_mapping.TestDetail({'name': 'test1'})
 TEST_2 = test_mapping.TestDetail({'name': 'test2'})
 TEST_3 = test_mapping.TestDetail({'name': 'test3'})
 TEST_4 = test_mapping.TestDetail({'name': 'test4'})
+TEST_5 = test_mapping.TestDetail({'name': 'test5'})
+TEST_6 = test_mapping.TestDetail({'name': 'test6'})
+TEST_7 = test_mapping.TestDetail({'name': 'test7'})
+TEST_8 = test_mapping.TestDetail({'name': 'test8'})
+TEST_9 = test_mapping.TestDetail({'name': 'test9'})
+TEST_10 = test_mapping.TestDetail({'name': 'test10'})
 
 SEARCH_DIR_RE = re.compile(r'^find ([^ ]*).*$')
 
@@ -180,49 +186,69 @@ class CLITranslatorUnittests(unittest.TestCase):
 
     def test_find_tests_by_test_mapping_presubmit(self):
         """Test _find_tests_by_test_mapping method to locate presubmit tests."""
-        tests, all_tests = self.ctr._find_tests_by_test_mapping(
-            path=TEST_MAPPING_DIR, file_name='test_mapping_sample')
-        expected = set([TEST_1, TEST_2])
+        os_environ_mock = {constants.ANDROID_BUILD_TOP: uc.TEST_DATA_DIR}
+        with mock.patch.dict('os.environ', os_environ_mock, clear=True):
+            tests, all_tests = self.ctr._find_tests_by_test_mapping(
+                path=TEST_MAPPING_DIR, file_name='test_mapping_sample',
+                checked_files=set())
+        expected = set([TEST_1, TEST_2, TEST_5, TEST_7, TEST_9])
         expected_all_tests = {'presubmit': expected,
-                              'postsubmit': set([TEST_3]),
+                              'postsubmit': set(
+                                  [TEST_3, TEST_6, TEST_8, TEST_10]),
                               'other_group': set([TEST_4])}
         self.assertEqual(expected, tests)
         self.assertEqual(expected_all_tests, all_tests)
 
     def test_find_tests_by_test_mapping_postsubmit(self):
-        """Test _find_tests_by_test_mapping method to locate postsubmit tests."""
-        tests, all_tests = self.ctr._find_tests_by_test_mapping(
-            path=TEST_MAPPING_DIR, test_group=constants.TEST_GROUP_POSTSUBMIT,
-            file_name='test_mapping_sample')
-        expected_presubmit = set([TEST_1, TEST_2])
-        expected = set([TEST_1, TEST_2, TEST_3])
+        """Test _find_tests_by_test_mapping method to locate postsubmit tests.
+        """
+        os_environ_mock = {constants.ANDROID_BUILD_TOP: uc.TEST_DATA_DIR}
+        with mock.patch.dict('os.environ', os_environ_mock, clear=True):
+            tests, all_tests = self.ctr._find_tests_by_test_mapping(
+                path=TEST_MAPPING_DIR,
+                test_group=constants.TEST_GROUP_POSTSUBMIT,
+                file_name='test_mapping_sample', checked_files=set())
+        expected_presubmit = set([TEST_1, TEST_2, TEST_5, TEST_7, TEST_9])
+        expected = set(
+            [TEST_1, TEST_2, TEST_3, TEST_5, TEST_6, TEST_7, TEST_8, TEST_9,
+             TEST_10])
         expected_all_tests = {'presubmit': expected_presubmit,
-                              'postsubmit': set([TEST_3]),
+                              'postsubmit': set(
+                                  [TEST_3, TEST_6, TEST_8, TEST_10]),
                               'other_group': set([TEST_4])}
         self.assertEqual(expected, tests)
         self.assertEqual(expected_all_tests, all_tests)
 
     def test_find_tests_by_test_mapping_all_group(self):
-        """Test _find_tests_by_test_mapping method to locate postsubmit tests."""
-        tests, all_tests = self.ctr._find_tests_by_test_mapping(
-            path=TEST_MAPPING_DIR, test_group=constants.TEST_GROUP_ALL,
-            file_name='test_mapping_sample')
-        expected_presubmit = set([TEST_1, TEST_2])
-        expected = set([TEST_1, TEST_2, TEST_3, TEST_4])
+        """Test _find_tests_by_test_mapping method to locate postsubmit tests.
+        """
+        os_environ_mock = {constants.ANDROID_BUILD_TOP: uc.TEST_DATA_DIR}
+        with mock.patch.dict('os.environ', os_environ_mock, clear=True):
+            tests, all_tests = self.ctr._find_tests_by_test_mapping(
+                path=TEST_MAPPING_DIR, test_group=constants.TEST_GROUP_ALL,
+                file_name='test_mapping_sample', checked_files=set())
+        expected_presubmit = set([TEST_1, TEST_2, TEST_5, TEST_7, TEST_9])
+        expected = set([
+            TEST_1, TEST_2, TEST_3, TEST_4, TEST_5, TEST_6, TEST_7, TEST_8,
+            TEST_9, TEST_10])
         expected_all_tests = {'presubmit': expected_presubmit,
-                              'postsubmit': set([TEST_3]),
+                              'postsubmit': set(
+                                  [TEST_3, TEST_6, TEST_8, TEST_10]),
                               'other_group': set([TEST_4])}
         self.assertEqual(expected, tests)
         self.assertEqual(expected_all_tests, all_tests)
 
     def test_find_tests_by_test_mapping_include_subdir(self):
         """Test _find_tests_by_test_mapping method to include sub directory."""
-        tests, all_tests = self.ctr._find_tests_by_test_mapping(
-            path=TEST_MAPPING_TOP_DIR, file_name='test_mapping_sample',
-            include_subdirs=True)
-        expected = set([TEST_1, TEST_2])
+        os_environ_mock = {constants.ANDROID_BUILD_TOP: uc.TEST_DATA_DIR}
+        with mock.patch.dict('os.environ', os_environ_mock, clear=True):
+            tests, all_tests = self.ctr._find_tests_by_test_mapping(
+                path=TEST_MAPPING_TOP_DIR, file_name='test_mapping_sample',
+                include_subdirs=True, checked_files=set())
+        expected = set([TEST_1, TEST_2, TEST_5, TEST_7, TEST_9])
         expected_all_tests = {'presubmit': expected,
-                              'postsubmit': set([TEST_3]),
+                              'postsubmit': set([
+                                  TEST_3, TEST_6, TEST_8, TEST_10]),
                               'other_group': set([TEST_4])}
         self.assertEqual(expected, tests)
         self.assertEqual(expected_all_tests, all_tests)

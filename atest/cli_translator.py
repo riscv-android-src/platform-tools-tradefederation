@@ -100,18 +100,27 @@ class CLITranslator(object):
             test_mapping_file: Path to a TEST_MAPPING file.
 
         Returns:
-            A dictionary of all tests in the TEST_MAPPING file, grouped by test
-            group.
+            A tuple of (all_tests, imports), where
+            all_tests is a dictionary of all tests in the TEST_MAPPING file,
+                grouped by test group.
+            imports is a list of test_mapping.Import to include other test
+                mapping files.
         """
         all_tests = {}
+        imports = []
         test_mapping_dict = None
         with open(test_mapping_file) as json_file:
             test_mapping_dict = json.load(json_file)
         for test_group_name, test_list in test_mapping_dict.items():
-            grouped_tests = all_tests.setdefault(test_group_name, set())
-            grouped_tests.update(
-                [test_mapping.TestDetail(test) for test in test_list])
-        return all_tests
+            if test_group_name == constants.TEST_MAPPING_IMPORTS:
+                for import_detail in test_list:
+                    imports.append(
+                        test_mapping.Import(test_mapping_file, import_detail))
+            else:
+                grouped_tests = all_tests.setdefault(test_group_name, set())
+                grouped_tests.update(
+                    [test_mapping.TestDetail(test) for test in test_list])
+        return all_tests, imports
 
     def _find_files(self, path, file_name=TEST_MAPPING):
         """Find all files with given name under the given path.
@@ -138,17 +147,22 @@ class CLITranslator(object):
             test_mapping_files: A list of path of TEST_MAPPING files.
 
         Returns:
-            A tuple of (tests, all_tests), where,
+            A tuple of (tests, all_tests, imports), where,
             tests is a set of tests (test_mapping.TestDetail) defined in
             TEST_MAPPING file of the given path, and its parent directories,
             with matching test_group.
             all_tests is a dictionary of all tests in TEST_MAPPING files,
             grouped by test group.
+            imports is a list of test_mapping.Import objects that contains the
+            details of where to import a TEST_MAPPING file.
         """
+        all_imports = []
         # Read and merge the tests in all TEST_MAPPING files.
         merged_all_tests = {}
         for test_mapping_file in test_mapping_files:
-            all_tests = self._read_tests_in_test_mapping(test_mapping_file)
+            all_tests, imports = self._read_tests_in_test_mapping(
+                test_mapping_file)
+            all_imports.extend(imports)
             for test_group_name, test_list in all_tests.items():
                 grouped_tests = merged_all_tests.setdefault(
                     test_group_name, set())
@@ -162,11 +176,13 @@ class CLITranslator(object):
         elif test_group == constants.TEST_GROUP_ALL:
             for grouped_tests in merged_all_tests.values():
                 tests.update(grouped_tests)
-        return tests, merged_all_tests
+        return tests, merged_all_tests, all_imports
 
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-locals
     def _find_tests_by_test_mapping(
             self, path='', test_group=constants.TEST_GROUP_PRESUBMIT,
-            file_name=TEST_MAPPING, include_subdirs=False):
+            file_name=TEST_MAPPING, include_subdirs=False, checked_files=None):
         """Find tests defined in TEST_MAPPING in the given path.
 
         Args:
@@ -176,6 +192,7 @@ class CLITranslator(object):
                 `TEST_MAPPING`. The argument is added for testing purpose.
             include_subdirs: True to include tests in TEST_MAPPING files in sub
                 directories.
+            checked_files: Paths of TEST_MAPPING files that have been checked.
 
         Returns:
             A tuple of (tests, all_tests), where,
@@ -187,22 +204,53 @@ class CLITranslator(object):
         """
         path = os.path.realpath(path)
         test_mapping_files = set()
+        all_tests = {}
         test_mapping_file = os.path.join(path, file_name)
         if os.path.exists(test_mapping_file):
             test_mapping_files.add(test_mapping_file)
-        # Include all TEST_MAPPING files in parent directories if
-        # `include_subdirs` is set to True.
+        # Include all TEST_MAPPING files in sub-directories if `include_subdirs`
+        # is set to True.
         if include_subdirs:
             test_mapping_files.update(self._find_files(path, file_name))
         # Include all possible TEST_MAPPING files in parent directories.
-        while path != constants.ANDROID_BUILD_TOP and path != os.sep:
+        root_dir = os.environ.get(constants.ANDROID_BUILD_TOP, os.sep)
+        while path != root_dir and path != os.sep:
             path = os.path.dirname(path)
             test_mapping_file = os.path.join(path, file_name)
             if os.path.exists(test_mapping_file):
                 test_mapping_files.add(test_mapping_file)
 
-        return self._get_tests_from_test_mapping_files(
+        if checked_files is None:
+            checked_files = set()
+        test_mapping_files.difference_update(checked_files)
+        checked_files.update(test_mapping_files)
+        if not test_mapping_files:
+            return test_mapping_files, all_tests
+
+        tests, all_tests, imports = self._get_tests_from_test_mapping_files(
             test_group, test_mapping_files)
+
+        # Load TEST_MAPPING files from imports recursively.
+        if imports:
+            for import_detail in imports:
+                path = import_detail.get_path()
+                # (b/110166535 #19) Import path might not exist if a project is
+                # located in different directory in different branches.
+                if path is None:
+                    logging.warn(
+                        'Failed to import TEST_MAPPING at %s', import_detail)
+                    continue
+                # Search for tests based on the imported search path.
+                import_tests, import_all_tests = (
+                    self._find_tests_by_test_mapping(
+                        path, test_group, file_name, include_subdirs,
+                        checked_files))
+                # Merge the collections
+                tests.update(import_tests)
+                for group, grouped_tests in import_all_tests.items():
+                    all_tests.setdefault(group, set()).update(grouped_tests)
+
+        return tests, all_tests
 
     def _gather_build_targets(self, test_infos):
         targets = set()
@@ -233,7 +281,7 @@ class CLITranslator(object):
 
         test_details, all_test_details = self._find_tests_by_test_mapping(
             path=src_path, test_group=test_group,
-            include_subdirs=args.include_subdirs)
+            include_subdirs=args.include_subdirs, checked_files=set())
         test_details_list = list(test_details)
         if not test_details_list:
             logging.warn(
