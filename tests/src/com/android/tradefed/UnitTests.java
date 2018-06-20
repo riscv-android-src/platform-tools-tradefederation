@@ -23,7 +23,6 @@ import com.android.tradefed.build.DeviceFolderBuildInfoTest;
 import com.android.tradefed.build.FileDownloadCacheTest;
 import com.android.tradefed.build.LocalDeviceBuildProviderTest;
 import com.android.tradefed.build.OtaZipfileBuildProviderTest;
-import com.android.tradefed.build.SdkBuildInfoTest;
 import com.android.tradefed.command.CommandFileParserTest;
 import com.android.tradefed.command.CommandFileWatcherTest;
 import com.android.tradefed.command.CommandOptionsTest;
@@ -304,7 +303,6 @@ import org.junit.runners.Suite.SuiteClasses;
     FileDownloadCacheTest.class,
     LocalDeviceBuildProviderTest.class,
     OtaZipfileBuildProviderTest.class,
-    SdkBuildInfoTest.class,
 
     // command
     CommandFileParserTest.class,
