@@ -27,6 +27,7 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.NullDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
@@ -798,6 +799,23 @@ public abstract class ITestSuite
     public Set<IAbi> getAbis(ITestDevice device) throws DeviceNotAvailableException {
         Set<IAbi> abis = new LinkedHashSet<>();
         Set<String> archAbis = getAbisForBuildTargetArch();
+        // Handle null-device: use the first host abi.
+        if (device.getIDevice() instanceof NullDevice) {
+            Set<String> intersection = new LinkedHashSet<>(archAbis);
+            Set<String> hostAbis = getHostAbis();
+            intersection.retainAll(hostAbis);
+            for (String abi : intersection) {
+                abis.add(new Abi(abi, AbiUtils.getBitness(abi)));
+            }
+            if (abis.isEmpty()) {
+                throw new IllegalArgumentException(
+                        String.format(
+                                "None of the abi supported by this tests suite build ('%s') are "
+                                        + "supported by the host ('%s').",
+                                archAbis, hostAbis));
+            }
+            return abis;
+        }
         if (mPrimaryAbiRun) {
             if (mAbiName == null) {
                 // Get the primary from the device and make it the --abi to run.
@@ -851,6 +869,12 @@ public abstract class ITestSuite
     protected Set<String> getAbisForBuildTargetArch() {
         // If TestSuiteInfo does not exists, the stub arch will be replaced by all possible abis.
         return AbiUtils.getAbisForArch(TestSuiteInfo.getInstance().getTargetArch());
+    }
+
+    /** Returns the host machine abis. */
+    @VisibleForTesting
+    protected Set<String> getHostAbis() {
+        return AbiUtils.getHostAbi();
     }
 
     /** Returns the abi requested with the option -a or --abi. */
