@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.sandbox;
 
+import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
@@ -78,6 +79,8 @@ public class SandboxConfigDump {
                 config.getCommandOptions().setShouldUseSandboxing(false);
                 config.getConfigurationDescription().setSandboxed(true);
                 config.setTestInvocationListener(new SubprocessResultsReporter());
+                // Set log level for sandbox
+                config.getLogOutput().setLogLevel(LogLevel.VERBOSE);
                 // Turn off some of the invocation level options that would be duplicated in the
                 // parent.
                 config.getCommandOptions().setBugreportOnInvocationEnded(false);
