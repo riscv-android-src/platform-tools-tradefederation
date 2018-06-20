@@ -71,7 +71,6 @@ $(LOCAL_INSTALLED_MODULE) : $(HOST_OUT)/tradefed/loganalysis.jar
 LOCAL_JAVA_LIBRARIES += tradefed
 LOCAL_IS_HOST_MODULE:=true
 LOCAL_MODULE_CLASS := JAVA_LIBRARIES
-LOCAL_ADDITIONAL_DEPENDENCIES := tradefed
 LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR:=build/tools/droiddoc/templates-sac
 LOCAL_DROIDDOC_OPTIONS:= \
         -package \
@@ -90,7 +89,6 @@ LOCAL_MODULE = tradefed-ds
 LOCAL_JAVA_LIBRARIES += tradefed
 LOCAL_IS_HOST_MODULE := true
 LOCAL_MODULE_CLASS := JAVA_LIBRARIES
-LOCAL_ADDITIONAL_DEPENDENCIES := tradefed
 LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR := external/doclava/res/assets/templates-sdk
 LOCAL_DROIDDOC_OPTIONS := \
         -hdf sac true \
