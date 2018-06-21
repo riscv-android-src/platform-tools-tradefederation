@@ -38,6 +38,9 @@ _CC_CLASS_RE = re.compile(r'TEST(_F)?\(', re.I)
 # Parse package name from the package declaration line of a java file.
 # Group matches "foo.bar" of line "package foo.bar;"
 _PACKAGE_RE = re.compile(r'\s*package\s+(?P<package>[^;]+)\s*;\s*', re.I)
+# Matches install paths in module_info to install location(host or device).
+_HOST_PATH_RE = re.compile(r'.*\/host\/.*', re.I)
+_DEVICE_PATH_RE = re.compile(r'.*\/target\/.*', re.I)
 
 # Explanation of FIND_REFERENCE_TYPEs:
 # ----------------------------------
@@ -765,3 +768,22 @@ def get_int_dir_from_path(path, int_dirs):
                      int_dir, path)
         return None
     return int_dir
+
+
+def get_install_locations(installed_paths):
+    """Get install locations from installed paths.
+
+    Args:
+        installed_paths: List of installed_paths from module_info.
+
+    Returns:
+        Set of install locations from module_info installed_paths. e.g.
+        set(['host', 'device'])
+    """
+    install_locations = set()
+    for path in installed_paths:
+        if _HOST_PATH_RE.match(path):
+            install_locations.add(constants.DEVICELESS_TEST)
+        elif _DEVICE_PATH_RE.match(path):
+            install_locations.add(constants.DEVICE_TEST)
+    return install_locations
