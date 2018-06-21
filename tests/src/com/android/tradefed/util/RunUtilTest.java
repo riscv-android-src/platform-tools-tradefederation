@@ -239,9 +239,8 @@ public class RunUtilTest extends TestCase {
     public void testInterrupt() {
         final String message = "it is alright now";
         mRunUtil.allowInterrupt(true);
-        mRunUtil.interrupt(Thread.currentThread(), message);
         try{
-            mRunUtil.sleep(1);
+            mRunUtil.interrupt(Thread.currentThread(), message);
             fail("RunInterruptedException was expected, but not thrown.");
         } catch (final RunInterruptedException e) {
             assertEquals(message, e.getMessage());
@@ -254,10 +253,10 @@ public class RunUtilTest extends TestCase {
      */
     public void testInterrupt_delayed() {
         final String message = "it is alright now";
-        mRunUtil.allowInterrupt(false);
-        mRunUtil.interrupt(Thread.currentThread(), message);
-        mRunUtil.sleep(1);
         try{
+            mRunUtil.allowInterrupt(false);
+            mRunUtil.interrupt(Thread.currentThread(), message);
+            mRunUtil.sleep(1);
             mRunUtil.allowInterrupt(true);
             mRunUtil.sleep(1);
             fail("RunInterruptedException was expected, but not thrown.");
@@ -274,14 +273,13 @@ public class RunUtilTest extends TestCase {
         final String message2 = "without a fight";
         final String message3 = "rock this town";
         mRunUtil.allowInterrupt(true);
-        mRunUtil.interrupt(Thread.currentThread(), message1);
-        mRunUtil.interrupt(Thread.currentThread(), message2);
-        mRunUtil.interrupt(Thread.currentThread(), message3);
-        try{
-            mRunUtil.sleep(1);
+        try {
+            mRunUtil.interrupt(Thread.currentThread(), message1);
+            mRunUtil.interrupt(Thread.currentThread(), message2);
+            mRunUtil.interrupt(Thread.currentThread(), message3);
             fail("RunInterruptedException was expected, but not thrown.");
         } catch (final RunInterruptedException e) {
-            assertEquals(message3, e.getMessage());
+            assertEquals(message1, e.getMessage());
         }
     }
 
@@ -421,11 +419,16 @@ public class RunUtilTest extends TestCase {
     public void testSetInterruptibleInFuture_beforeTimeout() {
         mRunUtil.allowInterrupt(false);
         assertFalse(mRunUtil.isInterruptAllowed());
-        mRunUtil.setInterruptibleInFuture(Thread.currentThread(), LONG_TIMEOUT_MS);
-        mRunUtil.sleep(10);
-        // Should still be false
-        assertFalse(mRunUtil.isInterruptAllowed());
-        mRunUtil.terminateTimer();
+        try {
+            mRunUtil.setInterruptibleInFuture(Thread.currentThread(), SHORT_TIMEOUT_MS);
+            mRunUtil.sleep(50);
+            // Should still be false
+            assertFalse(mRunUtil.isInterruptAllowed());
+            mRunUtil.sleep(SHORT_TIMEOUT_MS);
+            assertTrue(mRunUtil.isInterruptAllowed());
+        } finally {
+            mRunUtil.terminateTimer();
+        }
     }
 
     /**
