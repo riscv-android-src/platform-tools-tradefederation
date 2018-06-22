@@ -32,6 +32,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.NullDevice;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
 import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.device.metric.IMetricCollector;
@@ -133,6 +134,11 @@ public class ITestSuiteTest {
         protected Set<String> getAbisForBuildTargetArch() {
             return AbiUtils.getAbisForArch(FAKE_HOST_ARCH);
         }
+
+        @Override
+        protected Set<String> getHostAbis() {
+            return AbiUtils.getAbisForArch(FAKE_HOST_ARCH);
+        }
     }
 
     public static class StubCollectingTest implements IRemoteTest {
@@ -174,6 +180,7 @@ public class ITestSuiteTest {
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
         mMockSysChecker = EasyMock.createMock(ISystemStatusChecker.class);
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
@@ -1090,5 +1097,21 @@ public class ITestSuiteTest {
         mTestSuite.run(mMockListener);
         verifyMocks();
         EasyMock.verify(moduleListener);
+    }
+
+    /** If a null-device is used with the suite, ensure we pick abi of the machine hosts. */
+    @Test
+    public void testNullDeviceSuite() throws Exception {
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(new NullDevice("null-device-0"));
+        Set<String> expectedAbis = new HashSet<>();
+        expectedAbis.add("arm64-v8a");
+        expectedAbis.add("armeabi-v7a");
+        EasyMock.replay(mMockDevice);
+        Set<IAbi> res = mTestSuite.getAbis(mMockDevice);
+        assertEquals(2, res.size());
+        for (IAbi abi : res) {
+            assertTrue(expectedAbis.contains(abi.getName()));
+        }
+        EasyMock.verify(mMockDevice);
     }
 }

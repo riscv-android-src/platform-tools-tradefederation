@@ -140,6 +140,9 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
             + "This option can be repeated")
     private Set<AtraceSectionOptions> mSectionOptionSet = new HashSet<>();
 
+    @Option(name = "instantapp-url", description = "URL used to launch instant app")
+    private String mInstantAppUrl = "";
+
     private ITestDevice mDevice = null;
     private IRemoteAndroidTestRunner mRunner;
     private LogcatReceiver mLogcat;
@@ -245,6 +248,9 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
                 packageName, runnerName, device);
         runner.addInstrumentationArg("targetpackage", mtargetPackage);
         runner.addInstrumentationArg("launchcount", mlaunchCount + "");
+        if(!mInstantAppUrl.isEmpty()){
+            runner.addInstrumentationArg("instanturl", mInstantAppUrl);
+        }
         if (mactivityNames != null && !mactivityNames.isEmpty()) {
             runner.addInstrumentationArg("activitylist", mactivityNames);
         }
@@ -276,8 +282,13 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
              * actvitySet has set of activity names in the format packageName.activityName
              * logcat has the format packageName/.activityName --> activityAlias
              */
-            String activityAlias = activityName.subSequence(0, lastIndex)
-                    + "/" + activityName.subSequence(lastIndex, activityName.length());
+            String activityAlias = new String();
+            if (mInstantAppUrl.isEmpty()) {
+                activityAlias = activityName.subSequence(0, lastIndex)
+                        + "/" + activityName.subSequence(lastIndex, activityName.length());
+            } else {
+                activityAlias = mtargetPackage + ".*";
+            }
             String finalPattern = LAUNCH_PREFIX + activityAlias + LAUNCH_SUFFIX;
             activityPatternMap.put(Pattern.compile(finalPattern),
                     activityName);

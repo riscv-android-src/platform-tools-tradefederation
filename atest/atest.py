@@ -348,6 +348,8 @@ def _parse_args(argv):
                              'debugger prior to execution.')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='Display DEBUG level logging.')
+    parser.add_argument('-a', '--all-abi', action='store_true',
+                        help='Set to run tests for all abi.')
     parser.add_argument('--generate-baseline', nargs='?', type=int, const=5, default=0,
                         help='Generate baseline metrics, run 5 iterations by default. '
                              'Provide an int argument to specify # iterations.')
@@ -453,6 +455,8 @@ def get_extra_args(args):
         extra_args[constants.PRE_PATCH_ITERATIONS] = args.generate_baseline
     if args.serial:
         extra_args[constants.SERIAL] = args.serial
+    if args.all_abi:
+        extra_args[constants.ALLABI] = args.all_abi
     if args.generate_new_metrics:
         extra_args[constants.POST_PATCH_ITERATIONS] = args.generate_new_metrics
     if args.custom_args:
