@@ -456,7 +456,7 @@ def get_extra_args(args):
     if args.serial:
         extra_args[constants.SERIAL] = args.serial
     if args.all_abi:
-        extra_args[constants.ALLABI] = args.all_abi
+        extra_args[constants.ALL_ABI] = args.all_abi
     if args.generate_new_metrics:
         extra_args[constants.POST_PATCH_ITERATIONS] = args.generate_new_metrics
     if args.custom_args:
