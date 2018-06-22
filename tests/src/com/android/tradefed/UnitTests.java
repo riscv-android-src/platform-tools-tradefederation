@@ -242,7 +242,7 @@ import com.android.tradefed.util.HprofAllocSiteParserTest;
 import com.android.tradefed.util.JUnitXmlParserTest;
 import com.android.tradefed.util.KeyguardControllerStateTest;
 import com.android.tradefed.util.ListInstrumentationParserTest;
-import com.android.tradefed.util.LogcatUpdaterEventParserTest;
+import com.android.tradefed.util.LogcatEventParserTest;
 import com.android.tradefed.util.MetricsXmlParserTest;
 import com.android.tradefed.util.MultiMapTest;
 import com.android.tradefed.util.NullUtilTest;
@@ -575,7 +575,7 @@ import org.junit.runners.Suite.SuiteClasses;
     KeyguardControllerStateTest.class,
     LegacySubprocessResultsReporterTest.class,
     ListInstrumentationParserTest.class,
-    LogcatUpdaterEventParserTest.class,
+    LogcatEventParserTest.class,
     MetricsXmlParserTest.class,
     MultiMapTest.class,
     NullUtilTest.class,
