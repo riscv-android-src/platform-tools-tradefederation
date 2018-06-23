@@ -129,7 +129,8 @@ public class CommandRunner {
         DEVICE_UNAVAILABLE(4),
         FATAL_HOST_ERROR(5),
         THROWABLE_EXCEPTION(6),
-        NO_DEVICE_ALLOCATED(7);
+        NO_DEVICE_ALLOCATED(7),
+        WRONG_JAVA_VERSION(8);
 
         private final int mCodeValue;
 
