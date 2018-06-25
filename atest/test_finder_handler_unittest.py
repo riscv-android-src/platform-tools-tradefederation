@@ -92,11 +92,11 @@ class TestFinderHandlerUnittests(unittest.TestCase):
         """Test _get_test_reference_types parses reference types correctly."""
         self.assertEqual(
             test_finder_handler._get_test_reference_types('ModuleOrClassName'),
-            [REF_TYPE.INTEGRATION, REF_TYPE.MODULE, REF_TYPE.CLASS]
+            [REF_TYPE.INTEGRATION, REF_TYPE.MODULE, REF_TYPE.CLASS, REF_TYPE.CC_CLASS]
         )
         self.assertEqual(
             test_finder_handler._get_test_reference_types('Module_or_Class_name'),
-            [REF_TYPE.INTEGRATION, REF_TYPE.MODULE, REF_TYPE.CLASS]
+            [REF_TYPE.INTEGRATION, REF_TYPE.MODULE, REF_TYPE.CLASS, REF_TYPE.CC_CLASS]
         )
         self.assertEqual(
             test_finder_handler._get_test_reference_types('some.package'),
@@ -120,6 +120,18 @@ class TestFinderHandlerUnittests(unittest.TestCase):
         )
         self.assertEqual(
             test_finder_handler._get_test_reference_types('Android.bp'),
+            [REF_TYPE.MODULE_FILE_PATH]
+        )
+        self.assertEqual(
+            test_finder_handler._get_test_reference_types('SomeTest.cc'),
+            [REF_TYPE.MODULE_FILE_PATH]
+        )
+        self.assertEqual(
+            test_finder_handler._get_test_reference_types('SomeTest.cpp'),
+            [REF_TYPE.MODULE_FILE_PATH]
+        )
+        self.assertEqual(
+            test_finder_handler._get_test_reference_types('SomeTest.cc#method'),
             [REF_TYPE.MODULE_FILE_PATH]
         )
         self.assertEqual(
