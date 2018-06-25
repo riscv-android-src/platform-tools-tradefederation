@@ -33,6 +33,8 @@ import constants
 # We want to make sure we don't grab apks with paths in their name since we
 # assume the apk name is the build target.
 _APK_RE = re.compile(r'^[^/]+\.apk$', re.I)
+# RE for check if TEST or TEST_F is in a cc file or not.
+_CC_CLASS_RE = re.compile(r'TEST(_F)?\(', re.I)
 # Parse package name from the package declaration line of a java file.
 # Group matches "foo.bar" of line "package foo.bar;"
 _PACKAGE_RE = re.compile(r'\s*package\s+(?P<package>[^;]+)\s*;\s*', re.I)
@@ -45,9 +47,10 @@ _PACKAGE_RE = re.compile(r'\s*package\s+(?P<package>[^;]+)\s*;\s*', re.I)
 #.                    com.android.tradefed.testtype.HostTest.
 # 2. PACKAGE: Name of a java package.
 # 3. INTEGRATION: XML file name in one of the 4 integration config directories.
+# 4. CC_CLASS: Name of a cc class.
 
 FIND_REFERENCE_TYPE = atest_enum.AtestEnum(['CLASS', 'QUALIFIED_CLASS',
-                                            'PACKAGE', 'INTEGRATION', ])
+                                            'PACKAGE', 'INTEGRATION', 'CC_CLASS'])
 
 # Unix find commands for searching for test files based on test type input.
 # Note: Find (unlike grep) exits with status 0 if nothing found.
@@ -59,7 +62,10 @@ FIND_CMDS = {
     FIND_REFERENCE_TYPE.PACKAGE: r"find %s -type d %s -prune -o -wholename "
                                  r"'*%s' -type d -print",
     FIND_REFERENCE_TYPE.INTEGRATION: r"find %s -type d %s -prune -o -wholename "
-                                     r"'*%s.xml' -print"
+                                     r"'*%s.xml' -print",
+    FIND_REFERENCE_TYPE.CC_CLASS: r"find %s -type d %s -prune -o -type f "
+                                  r"\( -name '*.cpp' -o -name '*.cc' \)"
+                                  r" -exec grep -E 'TEST(_F)?\(%s,' {} + || true"
 }
 
 # XML parsing related constants.
@@ -150,6 +156,23 @@ def get_fully_qualified_class_name(test_path):
     raise atest_error.MissingPackageNameError(test_path)
 
 
+def has_cc_class(test_path):
+    """Find out if there is any test case in the cc file.
+
+    Args:
+        test_path: A string of absolute path to the cc file.
+
+    Returns:
+        Boolean: has cc class in test_path or not.
+    """
+    with open(test_path) as class_file:
+        for line in class_file:
+            match = _CC_CLASS_RE.match(line)
+            if match:
+                return True
+    return False
+
+
 def get_package_name(file_name):
     """Parse the package name from a java file.
 
@@ -166,7 +189,7 @@ def get_package_name(file_name):
                 return match.group('package')
 
 
-def extract_test_path(output):
+def extract_test_path(output, is_native_test=False):
     """Extract the test path from the output of a unix 'find' command.
 
     Example of find output for CLASS find cmd:
@@ -174,6 +197,8 @@ def extract_test_path(output):
 
     Args:
         output: A string output of a unix 'find' command.
+        is_native_test: A boolean variable of whether to search for a native
+        test or not.
 
     Returns:
         A string of the test path or None if output is '' or None.
@@ -181,6 +206,8 @@ def extract_test_path(output):
     if not output:
         return None
     tests = output.strip('\n').split('\n')
+    if is_native_test:
+        tests = list(set([path.split(":")[0] for path in tests]))
     count = len(tests)
     test_index = 0
     if count > 1:
@@ -278,19 +305,27 @@ def run_find_cmd(ref_type, search_dir, target):
     out = subprocess.check_output(find_cmd, shell=True)
     logging.debug('%s find completed in %ss', ref_name, time.time() - start)
     logging.debug('%s find cmd out: %s', ref_name, out)
+    if ref_type == FIND_REFERENCE_TYPE.CC_CLASS:
+        return extract_test_path(out, True)
     return extract_test_path(out)
 
 
-def find_class_file(search_dir, class_name):
+def find_class_file(search_dir, class_name, is_native_test=False):
     """Find a path to a class file given a search dir and a class name.
 
     Args:
         search_dir: A string of the dirpath to search in.
         class_name: A string of the class to search for.
+        is_native_test: A boolean variable of whether to search for a native
+        test or not.
 
     Return:
-        A string of the path to the java file.
+        A string of the path to the java/cc file.
     """
+    if is_native_test:
+        find_target = class_name
+        ref_type = FIND_REFERENCE_TYPE.CC_CLASS
+        return run_find_cmd(ref_type, search_dir, find_target)
     if '.' in class_name:
         find_target = class_name.replace('.', '/')
         ref_type = FIND_REFERENCE_TYPE.QUALIFIED_CLASS
@@ -644,3 +679,19 @@ def get_dir_path_and_filename(path):
     else:
         dir_path, file_path = path, None
     return dir_path, file_path
+
+
+def get_cc_filter(class_name, methods):
+    """Get the cc filter.
+
+    Args:
+        class_name: class name of the cc test.
+        methods: a list of method names.
+
+    Returns:
+        A formatted string for cc filter.
+        Ex: "class1.method1:class1.method2" or "class1.*"
+    """
+    if methods:
+        return ":".join(["%s.%s" % (class_name, x) for x in methods])
+    return "%s.*" % class_name

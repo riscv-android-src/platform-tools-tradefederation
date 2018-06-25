@@ -34,6 +34,7 @@ from test_runners import atest_tf_test_runner as atf_tr
 
 MODULE_CLASS = '%s:%s' % (uc.MODULE_NAME, uc.CLASS_NAME)
 MODULE_PACKAGE = '%s:%s' % (uc.MODULE_NAME, uc.PACKAGE)
+CC_MODULE_CLASS = '%s:%s' % (uc.CC_MODULE_NAME, uc.CC_CLASS_NAME)
 FLAT_METHOD_INFO = test_info.TestInfo(
     uc.MODULE_NAME,
     atf_tr.AtestTradefedTestRunner.NAME,
@@ -41,12 +42,19 @@ FLAT_METHOD_INFO = test_info.TestInfo(
     data={constants.TI_FILTER: frozenset([uc.FLAT_METHOD_FILTER]),
           constants.TI_REL_CONFIG: uc.CONFIG_FILE})
 MODULE_CLASS_METHOD = '%s#%s' % (MODULE_CLASS, uc.METHOD_NAME)
+CC_MODULE_CLASS_METHOD = '%s#%s' % (CC_MODULE_CLASS, uc.CC_METHOD_NAME)
 CLASS_INFO_MODULE_2 = test_info.TestInfo(
     uc.MODULE2_NAME,
     atf_tr.AtestTradefedTestRunner.NAME,
     uc.CLASS_BUILD_TARGETS,
     data={constants.TI_FILTER: frozenset([uc.CLASS_FILTER]),
           constants.TI_REL_CONFIG: uc.CONFIG2_FILE})
+CC_CLASS_INFO_MODULE_2 = test_info.TestInfo(
+    uc.CC_MODULE2_NAME,
+    atf_tr.AtestTradefedTestRunner.NAME,
+    uc.CLASS_BUILD_TARGETS,
+    data={constants.TI_FILTER: frozenset([uc.CC_CLASS_FILTER]),
+          constants.TI_REL_CONFIG: uc.CC_CONFIG2_FILE})
 DEFAULT_INSTALL_PATH = ['/path/to/install']
 ROBO_MOD_PATH = ['/shared/robo/path']
 NON_RUN_ROBO_MOD_NAME = 'robo_mod'
@@ -238,6 +246,40 @@ class ModuleFinderUnittests(unittest.TestCase):
     @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets')
     @mock.patch.object(module_finder.ModuleFinder, '_is_auto_gen_test_config',
                        return_value=False)
+    @mock.patch('subprocess.check_output', return_value=uc.FIND_CC_ONE)
+    @mock.patch.object(test_finder_utils, 'find_class_file',
+                       side_effect=[None, None, '/'])
+    @mock.patch('os.path.isfile', side_effect=unittest_utils.isfile_side_effect)
+    #pylint: disable=unused-argument
+    def test_find_test_by_module_and_class_part_2(self, _isfile, mock_fcf,
+                                                  mock_checkoutput, _auto, mock_build,
+                                                  _robo, _vts, _has_test_config):
+        """Test find_test_by_module_and_class for MODULE:CC_CLASS."""
+        mock_build.return_value = uc.CLASS_BUILD_TARGETS
+        mod_info = {constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
+                    constants.MODULE_PATH: [uc.CC_MODULE_DIR]}
+        self.mod_finder.module_info.get_module_info.return_value = mod_info
+        t_info = self.mod_finder.find_test_by_module_and_class(CC_MODULE_CLASS)
+        unittest_utils.assert_equal_testinfos(self, t_info, uc.CC_MODULE_CLASS_INFO)
+        # with method
+        mock_build.return_value = uc.MODULE_BUILD_TARGETS
+        mock_fcf.side_effect = [None, None, '/']
+        t_info = self.mod_finder.find_test_by_module_and_class(CC_MODULE_CLASS_METHOD)
+        unittest_utils.assert_equal_testinfos(self, t_info, uc.CC_METHOD_INFO)
+        # bad module, good class, returns None
+        bad_module = '%s:%s' % ('BadMod', uc.CC_CLASS_NAME)
+        self.mod_finder.module_info.get_module_info.return_value = None
+        self.assertIsNone(self.mod_finder.find_test_by_module_and_class(bad_module))
+
+    @mock.patch.object(module_finder.ModuleFinder, '_has_test_config',
+                       return_value=True)
+    @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
+                       return_value=False)
+    @mock.patch.object(module_finder.ModuleFinder, '_is_robolectric_test',
+                       return_value=False)
+    @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets')
+    @mock.patch.object(module_finder.ModuleFinder, '_is_auto_gen_test_config',
+                       return_value=False)
     @mock.patch('subprocess.check_output', return_value=uc.FIND_PKG)
     @mock.patch('os.path.isfile', side_effect=unittest_utils.isfile_side_effect)
     @mock.patch('os.path.isdir', return_value=True)
@@ -303,6 +345,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.mod_finder.module_info.get_module_info.return_value = mod_info
         self.assertIsNone(self.mod_finder.find_test_by_module_and_package(bad_pkg))
 
+    @mock.patch.object(test_finder_utils, 'has_cc_class',
+                       return_value=True)
     @mock.patch.object(module_finder.ModuleFinder, '_has_test_config',
                        return_value=True)
     @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets')
@@ -319,7 +363,7 @@ class ModuleFinderUnittests(unittest.TestCase):
     @mock.patch('os.path.exists')
     #pylint: disable=unused-argument
     def test_find_test_by_path(self, mock_pathexists, mock_dir, _isfile, _real,
-                               _fqcn, _robo, _vts, mock_build, _has_test_config):
+                               _fqcn, _robo, _vts, mock_build, _has_test_config, _has_cc_class):
         """Test find_test_by_path."""
         mock_build.return_value = set()
         # Check that we don't return anything with invalid test references.
@@ -353,6 +397,17 @@ class ModuleFinderUnittests(unittest.TestCase):
             self, self.mod_finder.find_test_by_path(class_with_methods),
             FLAT_METHOD_INFO)
 
+        # Cc path testing.
+        self.mod_finder.module_info.get_module_names.return_value = [uc.CC_MODULE_NAME]
+        self.mod_finder.module_info.get_module_info.return_value = {
+            constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
+            constants.MODULE_NAME: uc.CC_MODULE_NAME}
+        mock_dir.return_value = uc.CC_MODULE_DIR
+        class_path = '%s' % uc.CC_PATH
+        mock_build.return_value = uc.CLASS_BUILD_TARGETS
+        unittest_utils.assert_equal_testinfos(
+            self, uc.CC_PATH_INFO2, self.mod_finder.find_test_by_path(class_path))
+
     @mock.patch.object(module_finder.ModuleFinder, '_has_test_config',
                        return_value=True)
     @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets',
@@ -382,6 +437,14 @@ class ModuleFinderUnittests(unittest.TestCase):
         unittest_utils.assert_equal_testinfos(
             self, uc.EMPTY_PATH_INFO,
             self.mod_finder.find_test_by_path(empty_dir))
+        # Dir with cc files in it, should run as cc class
+        class_dir = os.path.join(uc.TEST_DATA_DIR, 'cc_path_testing')
+        self.mod_finder.module_info.get_module_names.return_value = [uc.CC_MODULE_NAME]
+        self.mod_finder.module_info.get_module_info.return_value = {
+            constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
+            constants.MODULE_NAME: uc.CC_MODULE_NAME}
+        unittest_utils.assert_equal_testinfos(
+            self, uc.CC_PATH_INFO, self.mod_finder.find_test_by_path(class_dir))
 
     @mock.patch.object(module_finder.ModuleFinder, '_has_test_config')
     @mock.patch.object(module_finder.ModuleFinder, '_is_robolectric_test')
@@ -455,6 +518,60 @@ class ModuleFinderUnittests(unittest.TestCase):
         mock_is_auto_gen.return_value = False
         self.assertTrue(self.mod_finder._has_test_config(mod_info))
         self.assertFalse(self.mod_finder._has_test_config({}))
+
+    @mock.patch.object(module_finder.ModuleFinder, '_has_test_config',
+                       return_value=True)
+    @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
+                       return_value=False)
+    @mock.patch.object(module_finder.ModuleFinder, '_is_robolectric_test',
+                       return_value=False)
+    @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets')
+    @mock.patch.object(module_finder.ModuleFinder, '_is_auto_gen_test_config',
+                       return_value=False)
+    @mock.patch('subprocess.check_output', return_value=uc.CC_FIND_ONE)
+    @mock.patch('os.path.isfile', side_effect=unittest_utils.isfile_side_effect)
+    @mock.patch('os.path.isdir', return_value=True)
+    #pylint: disable=unused-argument
+    def test_find_test_by_cc_class_name(self, _isdir, _isfile,
+                                        mock_checkoutput, _auto, mock_build,
+                                        _robo, _vts, _has_test_config):
+        """Test find_test_by_cc_class_name."""
+        mock_build.return_value = uc.CLASS_BUILD_TARGETS
+        self.mod_finder.module_info.get_module_names.return_value = [uc.CC_MODULE_NAME]
+        self.mod_finder.module_info.get_module_info.return_value = {
+            constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
+            constants.MODULE_NAME: uc.CC_MODULE_NAME}
+        unittest_utils.assert_equal_testinfos(
+            self, self.mod_finder.find_test_by_cc_class_name(uc.CC_CLASS_NAME), uc.CC_CLASS_INFO)
+
+        # with method
+        mock_build.return_value = uc.MODULE_BUILD_TARGETS
+        class_with_method = '%s#%s' % (uc.CC_CLASS_NAME, uc.CC_METHOD_NAME)
+        unittest_utils.assert_equal_testinfos(
+            self,
+            self.mod_finder.find_test_by_cc_class_name(class_with_method),
+            uc.CC_METHOD_INFO)
+        mock_build.return_value = uc.MODULE_BUILD_TARGETS
+        class_methods = '%s,%s' % (class_with_method, uc.CC_METHOD2_NAME)
+        unittest_utils.assert_equal_testinfos(
+            self, self.mod_finder.find_test_by_cc_class_name(class_methods),
+            uc.CC_METHOD2_INFO)
+        # module and rel_config passed in
+        mock_build.return_value = uc.CLASS_BUILD_TARGETS
+        unittest_utils.assert_equal_testinfos(
+            self, self.mod_finder.find_test_by_cc_class_name(
+                uc.CC_CLASS_NAME, uc.CC_MODULE_NAME, uc.CC_CONFIG_FILE), uc.CC_CLASS_INFO)
+        # find output fails to find class file
+        mock_checkoutput.return_value = ''
+        self.assertIsNone(self.mod_finder.find_test_by_cc_class_name(
+            'Not class'))
+        # class is outside given module path
+        mock_checkoutput.return_value = uc.CC_FIND_ONE
+        unittest_utils.assert_equal_testinfos(
+            self, self.mod_finder.find_test_by_cc_class_name(uc.CC_CLASS_NAME,
+                                                             uc.CC_MODULE2_NAME,
+                                                             uc.CC_CONFIG2_FILE),
+            CC_CLASS_INFO_MODULE_2)
 
 if __name__ == '__main__':
     unittest.main()
