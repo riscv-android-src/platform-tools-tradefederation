@@ -16,6 +16,9 @@
 package com.android.tradefed.build;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
+import com.android.tradefed.build.proto.BuildInformation;
+import com.android.tradefed.build.proto.BuildInformation.BuildFile;
+import com.android.tradefed.build.proto.BuildInformation.KeyBuildFilePair;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
@@ -509,6 +512,36 @@ public class BuildInfo implements IBuildInfo {
                 .add("branch", mBuildBranch)
                 .add("serial", mDeviceSerial)
                 .toString();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public BuildInformation.BuildInfo toProto() {
+        BuildInformation.BuildInfo.Builder protoBuilder = BuildInformation.BuildInfo.newBuilder();
+        if (getBuildId() != null) {
+            protoBuilder.setBuildId(getBuildId());
+        }
+        if (getBuildFlavor() != null) {
+            protoBuilder.setBuildFlavor(getBuildFlavor());
+        }
+        if (getBuildBranch() != null) {
+            protoBuilder.setBranch(getBuildBranch());
+        }
+        protoBuilder.putAllAttributes(getBuildAttributes());
+        // Populate the versioned file
+        for (String fileKey : mVersionedFileMultiMap.keySet()) {
+            KeyBuildFilePair.Builder buildFile = KeyBuildFilePair.newBuilder();
+            buildFile.setBuildFileKey(fileKey);
+            for (VersionedFile vFile : mVersionedFileMultiMap.get(fileKey)) {
+                BuildFile.Builder fileInformation = BuildFile.newBuilder();
+                fileInformation.setVersion(vFile.getVersion());
+                fileInformation.setLocalPath(vFile.getFile().getAbsolutePath());
+                buildFile.addFile(fileInformation);
+            }
+            protoBuilder.addVersionedFile(buildFile);
+        }
+        protoBuilder.setBuildInfoClass(this.getClass().getCanonicalName());
+        return protoBuilder.build();
     }
 
     /** Special serialization to handle the new underlying type. */
