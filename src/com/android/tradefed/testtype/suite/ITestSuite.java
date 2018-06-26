@@ -799,27 +799,11 @@ public abstract class ITestSuite
     public Set<IAbi> getAbis(ITestDevice device) throws DeviceNotAvailableException {
         Set<IAbi> abis = new LinkedHashSet<>();
         Set<String> archAbis = getAbisForBuildTargetArch();
-        // Handle null-device: use the first host abi.
-        if (device.getIDevice() instanceof NullDevice) {
-            Set<String> intersection = new LinkedHashSet<>(archAbis);
-            Set<String> hostAbis = getHostAbis();
-            intersection.retainAll(hostAbis);
-            for (String abi : intersection) {
-                abis.add(new Abi(abi, AbiUtils.getBitness(abi)));
-            }
-            if (abis.isEmpty()) {
-                throw new IllegalArgumentException(
-                        String.format(
-                                "None of the abi supported by this tests suite build ('%s') are "
-                                        + "supported by the host ('%s').",
-                                archAbis, hostAbis));
-            }
-            return abis;
-        }
+        // Handle null-device: use abi in common with host and suite build
         if (mPrimaryAbiRun) {
             if (mAbiName == null) {
                 // Get the primary from the device and make it the --abi to run.
-                mAbiName = device.getProperty(PRODUCT_CPU_ABI_KEY).trim();
+                mAbiName = getPrimaryAbi(device);
             } else {
                 CLog.d(
                         "Option --%s supersedes the option --%s, using abi: %s",
@@ -841,7 +825,7 @@ public abstract class ITestSuite
             }
         } else {
             // Run on all abi in common between the device and suite builds.
-            List<String> deviceAbis = Arrays.asList(AbiFormatter.getSupportedAbis(device, ""));
+            List<String> deviceAbis = getDeviceAbis(device);
             for (String abi : deviceAbis) {
                 if ((mSkipHostArchCheck || archAbis.contains(abi))
                         && AbiUtils.isAbiSupportedByCompatibility(abi)) {
@@ -862,6 +846,23 @@ public abstract class ITestSuite
             }
             return abis;
         }
+    }
+
+    /** Returns the primary abi of the device or host if it's a null device. */
+    private String getPrimaryAbi(ITestDevice device) throws DeviceNotAvailableException {
+        if (device.getIDevice() instanceof NullDevice) {
+            Set<String> hostAbis = getHostAbis();
+            return hostAbis.iterator().next();
+        }
+        return mAbiName = device.getProperty(PRODUCT_CPU_ABI_KEY).trim();
+    }
+
+    /** Returns the list of abis supported by the device or host if it's a null device. */
+    private List<String> getDeviceAbis(ITestDevice device) throws DeviceNotAvailableException {
+        if (device.getIDevice() instanceof NullDevice) {
+            return new ArrayList<>(getHostAbis());
+        }
+        return Arrays.asList(AbiFormatter.getSupportedAbis(device, ""));
     }
 
     /** Return the abis supported by the Host build target architecture. Exposed for testing. */
