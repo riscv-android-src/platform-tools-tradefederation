@@ -19,17 +19,17 @@ import unittest
 import mock
 
 # pylint: disable=import-error
-import test_suite_test_runner
+import suite_plan_test_runner
 import unittest_utils
 from test_finders import test_info
 
 
 # pylint: disable=protected-access
-class SuiteTestRunnerUnittests(unittest.TestCase):
+class SuitePlanTestRunnerUnittests(unittest.TestCase):
     """Unit tests for test_suite_test_runner.py"""
 
     def setUp(self):
-        self.suite_tr = test_suite_test_runner.TestSuiteTestRunner(results_dir='')
+        self.suite_tr = suite_plan_test_runner.SuitePlanTestRunner(results_dir='')
 
     def tearDown(self):
         mock.patch.stopall()
@@ -39,18 +39,21 @@ class SuiteTestRunnerUnittests(unittest.TestCase):
         """Test _generate_run_command method.
         Strategy:
             suite_name: cts --> run_cmd: cts-tradefed run commandAndExit cts
+            suite_name: cts-common --> run_cmd:
+                                cts-tradefed run commandAndExit cts-common
         """
         test_infos = set()
         suite_name = 'cts'
         t_info = test_info.TestInfo(suite_name,
-                                    test_suite_test_runner.TestSuiteTestRunner.NAME,
-                                    {suite_name})
+                                    suite_plan_test_runner.SuitePlanTestRunner.NAME,
+                                    {suite_name},
+                                    suite=suite_name)
         test_infos.add(t_info)
 
         # Basic Run Cmd
         run_cmd = []
-        exe_cmd = test_suite_test_runner.TestSuiteTestRunner.EXECUTABLE % suite_name
-        run_cmd.append(test_suite_test_runner.TestSuiteTestRunner._RUN_CMD.format(
+        exe_cmd = suite_plan_test_runner.SuitePlanTestRunner.EXECUTABLE % suite_name
+        run_cmd.append(suite_plan_test_runner.SuitePlanTestRunner._RUN_CMD.format(
             exe=exe_cmd,
             test=suite_name,
             args=''))
@@ -62,7 +65,40 @@ class SuiteTestRunnerUnittests(unittest.TestCase):
 
         # Run cmd with --serial LG123456789.
         run_cmd = []
-        run_cmd.append(test_suite_test_runner.TestSuiteTestRunner._RUN_CMD.format(
+        run_cmd.append(suite_plan_test_runner.SuitePlanTestRunner._RUN_CMD.format(
+            exe=exe_cmd,
+            test=suite_name,
+            args='--serial LG123456789'))
+        unittest_utils.assert_strict_equal(
+            self,
+            self.suite_tr._generate_run_commands(test_infos, {'SERIAL':'LG123456789'}),
+            run_cmd)
+
+        test_infos = set()
+        suite_name = 'cts-common'
+        suite = 'cts'
+        t_info = test_info.TestInfo(suite_name,
+                                    suite_plan_test_runner.SuitePlanTestRunner.NAME,
+                                    {suite_name},
+                                    suite=suite)
+        test_infos.add(t_info)
+
+        # Basic Run Cmd
+        run_cmd = []
+        exe_cmd = suite_plan_test_runner.SuitePlanTestRunner.EXECUTABLE % suite
+        run_cmd.append(suite_plan_test_runner.SuitePlanTestRunner._RUN_CMD.format(
+            exe=exe_cmd,
+            test=suite_name,
+            args=''))
+        mock_resultargs.return_value = []
+        unittest_utils.assert_strict_equal(
+            self,
+            self.suite_tr._generate_run_commands(test_infos, ''),
+            run_cmd)
+
+        # Run cmd with --serial LG123456789.
+        run_cmd = []
+        run_cmd.append(suite_plan_test_runner.SuitePlanTestRunner._RUN_CMD.format(
             exe=exe_cmd,
             test=suite_name,
             args='--serial LG123456789'))
