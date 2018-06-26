@@ -360,4 +360,78 @@ public class TestRunResultTest {
         assertTrue(result.getRunLoggedFiles().containsKey("run log"));
         assertEquals("path2", result.getRunLoggedFiles().get("run log").getPath());
     }
+
+    /** Ensure that the merging logic among multiple testRunResults for run failures is correct. */
+    @Test
+    public void testMergeRetriedRunResults_runFailures() {
+        // Test Setup.
+        TestDescription testcase = new TestDescription("Foo", "foo");
+        TestRunResult result1 = new TestRunResult();
+        TestRunResult result2 = new TestRunResult();
+        TestRunResult result3 = new TestRunResult();
+        // Mimic the ModuleDefinition run.
+        result1.testRunStarted("fake run", 1);
+        result1.testStarted(testcase);
+        result1.testEnded(testcase, new HashMap<String, Metric>());
+        result1.testRunEnded(0, new HashMap<String, Metric>());
+
+        result2.testRunStarted("fake run", 1);
+        result2.testStarted(testcase);
+        result2.testEnded(testcase, new HashMap<String, Metric>());
+        result2.testRunFailed("Second run failed.");
+        result2.testRunEnded(0, new HashMap<String, Metric>());
+
+        result3.testRunStarted("fake run", 1);
+        result3.testStarted(testcase);
+        result3.testEnded(testcase, new HashMap<String, Metric>());
+        result3.testRunFailed("Third run failed.");
+        result3.testRunEnded(0, new HashMap<String, Metric>());
+
+        List<TestRunResult> testResultList =
+                new ArrayList<>(Arrays.asList(result1, result2, result3));
+        TestRunResult result = TestRunResult.merge(testResultList);
+
+        // Verify result.
+        assertEquals("fake run", result.getName());
+        assertTrue(result.isRunFailure());
+        assertTrue(result.isRunComplete());
+        assertEquals("Second run failed.\nThird run failed.", result.getRunFailureMessage());
+    }
+
+    /** Ensure that the merging logic among multiple testRunResults for one incomplete run. */
+    @Test
+    public void testMergeRetriedRunResults_incompleteRun() {
+        // Test Setup.
+        TestDescription testcase = new TestDescription("Foo", "foo");
+        TestRunResult result1 = new TestRunResult();
+        TestRunResult result2 = new TestRunResult();
+        TestRunResult result3 = new TestRunResult();
+        // Mimic the ModuleDefinition run.
+        result1.testRunStarted("fake run", 1);
+        result1.testStarted(testcase);
+        result1.testEnded(testcase, new HashMap<String, Metric>());
+        result1.testRunEnded(0, new HashMap<String, Metric>());
+
+        result2.testRunStarted("fake run", 1);
+        result2.testStarted(testcase);
+        result2.testEnded(testcase, new HashMap<String, Metric>());
+        // Missing testRunEnded
+
+        result3.testRunStarted("fake run", 1);
+        result3.testStarted(testcase);
+        result3.testEnded(testcase, new HashMap<String, Metric>());
+        result3.testRunFailed("Third run failed.");
+        result3.testRunEnded(0, new HashMap<String, Metric>());
+
+        List<TestRunResult> testResultList =
+                new ArrayList<>(Arrays.asList(result1, result2, result3));
+        TestRunResult result = TestRunResult.merge(testResultList);
+
+        // Verify result.
+        assertEquals("fake run", result.getName());
+        assertTrue(result.isRunFailure());
+        // One of the run was incomplete so we report incomplete.
+        assertFalse(result.isRunComplete());
+        assertEquals("Third run failed.", result.getRunFailureMessage());
+    }
 }
