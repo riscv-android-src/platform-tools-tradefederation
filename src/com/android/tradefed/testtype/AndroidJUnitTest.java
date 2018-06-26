@@ -36,6 +36,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -83,21 +84,21 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
             description="The hint about the test's runtime.")
     private long mRuntimeHint = 60000;// 1 minute
 
-    @Option(name = "include-filter",
-            description="The include filters of the test name to run.")
-    private List<String> mIncludeFilters = new ArrayList<>();
+    @Option(name = "include-filter", description = "The include filters of the test name to run.")
+    private Set<String> mIncludeFilters = new HashSet<>();
 
-    @Option(name = "exclude-filter",
-            description="The exclude filters of the test name to run.")
-    private List<String> mExcludeFilters = new ArrayList<>();
+    @Option(name = "exclude-filter", description = "The exclude filters of the test name to run.")
+    private Set<String> mExcludeFilters = new HashSet<>();
 
-    @Option(name = "include-annotation",
-            description="The annotation class name of the test name to run, can be repeated")
-    private List<String> mIncludeAnnotation = new ArrayList<>();
+    @Option(
+            name = "include-annotation",
+            description = "The annotation class name of the test name to run, can be repeated")
+    private Set<String> mIncludeAnnotation = new HashSet<>();
 
-    @Option(name = "exclude-annotation",
-            description="The notAnnotation class name of the test name to run, can be repeated")
-    private List<String> mExcludeAnnotation = new ArrayList<>();
+    @Option(
+            name = "exclude-annotation",
+            description = "The notAnnotation class name of the test name to run, can be repeated")
+    private Set<String> mExcludeAnnotation = new HashSet<>();
 
     @Option(name = "test-file-include-filter",
             description="A file containing a list of line separated test classes and optionally"
@@ -234,6 +235,30 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     @Override
     public void addAllExcludeAnnotation(Set<String> excludeAnnotations) {
         mExcludeAnnotation.addAll(excludeAnnotations);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getIncludeAnnotations() {
+        return mIncludeAnnotation;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getExcludeAnnotations() {
+        return mExcludeAnnotation;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearIncludeAnnotations() {
+        mIncludeAnnotation.clear();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearExcludeAnnotations() {
+        mExcludeAnnotation.clear();
     }
 
     /**

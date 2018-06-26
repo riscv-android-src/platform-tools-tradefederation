@@ -16,12 +16,16 @@
 package com.android.tradefed.testtype.suite.params;
 
 import android.platform.test.annotations.AppModeFull;
+import android.platform.test.annotations.AppModeInstant;
 
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TestAppInstallSetup;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestAnnotationFilterReceiver;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /** Handler for {@link ModuleParameters#INSTANT_APP}. */
 public class InstantAppHandler implements IModuleParameter {
@@ -43,11 +47,20 @@ public class InstantAppHandler implements IModuleParameter {
         }
         // TODO: Second, notify HostTest that instant mode might be needed for apks.
 
-        // Third, add filter to exclude @FullAppMode
+        // Third, add filter to exclude @FullAppMode and allow @AppModeInstant
         for (IRemoteTest test : moduleConfiguration.getTests()) {
             if (test instanceof ITestAnnotationFilterReceiver) {
-                ((ITestAnnotationFilterReceiver) test)
-                        .addExcludeAnnotation(AppModeFull.class.getCanonicalName());
+                ITestAnnotationFilterReceiver filterTest = (ITestAnnotationFilterReceiver) test;
+                // Retrieve the current set of excludeAnnotations to maintain for after the
+                // clearing/reset of the annotations.
+                Set<String> excludeAnnotations = new HashSet<>(filterTest.getExcludeAnnotations());
+                // Remove any global filter on AppModeInstant so instant mode tests can run.
+                excludeAnnotations.remove(AppModeInstant.class.getCanonicalName());
+                // Prevent full mode tests from running.
+                excludeAnnotations.add(AppModeFull.class.getCanonicalName());
+                // Reset the annotations of the tests
+                filterTest.clearExcludeAnnotations();
+                filterTest.addAllExcludeAnnotation(excludeAnnotations);
             }
         }
     }
