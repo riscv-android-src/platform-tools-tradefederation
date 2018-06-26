@@ -189,9 +189,9 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
     private void logOutputFile(ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         // take a bug report, it is possible the system crashed
-        try (InputStreamSource bugreport = mTestDevice.getBugreport()) {
-            listener.testLog("bugreport.txt", LogDataType.BUGREPORT, bugreport);
-        }
+        InputStreamSource bugreport = mTestDevice.getBugreport();
+        listener.testLog("bugreport.txt", LogDataType.BUGREPORT, bugreport);
+        bugreport.cancel();
         File resFile = null;
         InputStreamSource outputSource = null;
 

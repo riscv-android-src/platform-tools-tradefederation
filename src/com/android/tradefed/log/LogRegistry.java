@@ -19,6 +19,7 @@ import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.StreamUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -144,12 +145,16 @@ public class LogRegistry implements ILogRegistry {
      */
     @Override
     public void dumpToGlobalLog(ILeveledLogOutput log) {
-        try (InputStreamSource source = log.getLog();
-                InputStream stream = source.createInputStream()) {
+        InputStreamSource source = log.getLog();
+        try {
+            InputStream stream = source.createInputStream();
             mGlobalLogger.dumpToLog(stream);
+            StreamUtil.close(stream);
         } catch (IOException e) {
             System.err.println("Failed to dump log");
             e.printStackTrace();
+        } finally {
+            source.cancel();
         }
     }
 
@@ -244,8 +249,11 @@ public class LogRegistry implements ILogRegistry {
      * @param dir directory to save file, can be null, file will be saved in tmp directory.
      */
     private void saveGlobalLogToDir(File dir) {
-        try (InputStreamSource globalLog = mGlobalLogger.getLog()) {
+        InputStreamSource globalLog = mGlobalLogger.getLog();
+        try {
             saveLog(GLOBAL_LOG_PREFIX, globalLog, dir);
+        } finally {
+            globalLog.cancel();
         }
     }
 
@@ -255,8 +263,11 @@ public class LogRegistry implements ILogRegistry {
      * @param dir directory to save file, can be null, file will be saved in tmp directory.
      */
     private void saveHistoryLogToDir(File dir) {
-        try (InputStreamSource globalLog = mHistoryLogger.getLog()) {
+        InputStreamSource globalLog = mHistoryLogger.getLog();
+        try {
             saveLog(HISTORY_LOG_PREFIX, globalLog, dir);
+        } finally {
+            globalLog.cancel();
         }
     }
 
@@ -294,8 +305,11 @@ public class LogRegistry implements ILogRegistry {
             for (Map.Entry<ThreadGroup, ILeveledLogOutput> logEntry : mLogTable.entrySet()) {
                 // use thread group name as file name - assume its descriptive
                 String filePrefix = String.format("%s_log_", logEntry.getKey().getName());
-                try (InputStreamSource logSource = logEntry.getValue().getLog()) {
+                InputStreamSource logSource = logEntry.getValue().getLog();
+                try {
                     saveLog(filePrefix, logSource, dir);
+                } finally {
+                    logSource.cancel();
                 }
             }
         }

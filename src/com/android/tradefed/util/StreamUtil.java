@@ -74,12 +74,15 @@ public class StreamUtil {
      * @throws IOException if failure occurred reading the stream
      */
     public static int countLinesFromSource(InputStreamSource source) throws IOException {
+        BufferedReader br = null;
         int lineCount = 0;
-        try (BufferedReader br =
-                new BufferedReader(new InputStreamReader(source.createInputStream()))) {
+        try {
+            br = new BufferedReader(new InputStreamReader(source.createInputStream()));
             while (br.readLine() != null) {
                 lineCount++;
             }
+        } finally {
+            close(br);
         }
         return lineCount;
     }
@@ -111,13 +114,13 @@ public class StreamUtil {
      * @throws IOException if failure occurred reading the stream
      */
     public static String getStringFromStream(InputStream stream) throws IOException {
+        Reader ir = new BufferedReader(new InputStreamReader(stream));
         int irChar = -1;
         StringBuilder builder = new StringBuilder();
-        try (Reader ir = new BufferedReader(new InputStreamReader(stream))) {
-            while ((irChar = ir.read()) != -1) {
-                builder.append((char) irChar);
-            }
+        while ((irChar = ir.read()) != -1) {
+            builder.append((char)irChar);
         }
+        StreamUtil.close(ir);
         return builder.toString();
     }
 
@@ -276,7 +279,7 @@ public class StreamUtil {
      */
     public static void cancel(InputStreamSource outputSource) {
         if (outputSource != null) {
-            outputSource.close();
+            outputSource.cancel();
         }
     }
 

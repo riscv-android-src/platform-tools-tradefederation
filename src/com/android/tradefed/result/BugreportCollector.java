@@ -285,8 +285,11 @@ public class BugreportCollector implements ITestInvocationListener {
                 CLog.e(e);
             }
         }
-        try (InputStreamSource bugreport = mTestDevice.getBugreport()) {
+        InputStreamSource bugreport = mTestDevice.getBugreport();
+        try {
             mListener.testLog(logName, LogDataType.BUGREPORT, bugreport);
+        } finally {
+            bugreport.cancel();
         }
     }
 

@@ -77,23 +77,19 @@ public class CodeCoverageTest extends InstrumentationTest {
                 coverageFile = getDevice().pullFile(mCoverageFile);
                 if (coverageFile != null) {
                     CLog.d("coverage file from device: %s", coverageFile.getAbsolutePath());
-                    try (FileInputStreamSource source = new FileInputStreamSource(coverageFile)) {
-                        listener.testLog(
-                                getPackageName() + "_runtime_coverage",
-                                LogDataType.COVERAGE,
-                                source);
-                    }
+                    FileInputStreamSource source = new FileInputStreamSource(coverageFile);
+                    listener.testLog(getPackageName() + "_runtime_coverage", LogDataType.COVERAGE,
+                            source);
+                    source.cancel();
                 }
             } else {
                 CLog.w("Missing coverage file %s. Did test crash?", mCoverageFile);
                 RunUtil.getDefault().sleep(2000);
                 // grab logcat snapshot when this happens
-                try (InputStreamSource s = getDevice().getLogcat(500 * 1024)) {
-                    listener.testLog(
-                            getPackageName() + "_coverage_crash_" + getTestSize(),
-                            LogDataType.LOGCAT,
-                            s);
-                }
+                InputStreamSource s = getDevice().getLogcat(500*1024);
+                listener.testLog(getPackageName() + "_coverage_crash_" + getTestSize(),
+                        LogDataType.LOGCAT, s);
+                s.cancel();
             }
         } finally {
             if (coverageFile != null) {

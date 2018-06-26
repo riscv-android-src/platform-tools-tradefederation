@@ -74,14 +74,8 @@ public class BuildTestsZipUtils {
                 expandedTestDirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app", apkBase));
                 expandedTestDirs.add(
                         FileUtil.getFileForPath(testsDir, "DATA", "priv-app", apkBase));
-                expandedTestDirs.add(FileUtil.getFileForPath(testsDir, apkBase));
-
-                // Files in testcases directory imported from env. variable can have a folder
-                // hierarchy, so we search for folder.
-                File testcasesSubDir = FileUtil.findFile(testsDir, apkBase);
-                if (testcasesSubDir != null) {
-                    expandedTestDirs.add(testcasesSubDir);
-                }
+                // Files in testcases directory will be in base build info tests dir.
+                expandedTestDirs.add(FileUtil.findFile(testsDir, apkBase));
             }
         }
         if (altDirBehavior == null) {
@@ -130,8 +124,6 @@ public class BuildTestsZipUtils {
                 apkTempFile.deleteOnExit();
                 return apkTempFile;
             }
-            // If we couldn't find a resource, we delete the tmp file
-            FileUtil.deleteFile(apkTempFile);
         }
         return null;
     }

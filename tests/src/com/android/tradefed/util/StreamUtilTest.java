@@ -38,15 +38,14 @@ public class StreamUtilTest extends TestCase {
     public void testGetByteArrayListFromSource() throws Exception {
         final String contents = "this is a string";
         final byte[] contentBytes = contents.getBytes();
-        try (final InputStreamSource source = new ByteArrayInputStreamSource(contentBytes)) {
-            final InputStream stream = source.createInputStream();
-            final ByteArrayList output = StreamUtil.getByteArrayListFromStream(stream);
-            final byte[] outputBytes = output.getContents();
+        final InputStreamSource source = new ByteArrayInputStreamSource(contentBytes);
+        final InputStream stream = source.createInputStream();
+        final ByteArrayList output = StreamUtil.getByteArrayListFromStream(stream);
+        final byte[] outputBytes = output.getContents();
 
-            assertEquals(contentBytes.length, outputBytes.length);
-            for (int i = 0; i < contentBytes.length; ++i) {
-                assertEquals(contentBytes[i], outputBytes[i]);
-            }
+        assertEquals(contentBytes.length, outputBytes.length);
+        for (int i = 0; i < contentBytes.length; ++i) {
+            assertEquals(contentBytes[i], outputBytes[i]);
         }
     }
 
@@ -71,11 +70,11 @@ public class StreamUtilTest extends TestCase {
      */
     public void testGetStringFromSource() throws Exception {
         final String contents = "this is a string";
-        try (InputStreamSource source = new ByteArrayInputStreamSource(contents.getBytes())) {
-            final InputStream stream = source.createInputStream();
-            final String output = StreamUtil.getStringFromStream(stream);
-            assertEquals(contents, output);
-        }
+        final InputStreamSource source = new ByteArrayInputStreamSource(contents.getBytes());
+        final InputStream stream = source.createInputStream();
+        final String output = StreamUtil.getStringFromStream(stream);
+
+        assertEquals(contents, output);
     }
 
     /**

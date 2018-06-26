@@ -16,10 +16,7 @@
 
 package com.android.tradefed.targetprep;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IBuildInfo;
@@ -190,8 +187,6 @@ public class DeviceFlashPreparerTest {
                     dfp.returnFlashingPermit();
                 }
             };
-            EasyMock.expect(mMockHostOptions.getConcurrentFlasherLimit()).andReturn(1).anyTimes();
-            EasyMock.replay(mMockHostOptions);
             dfp.setConcurrentFlashSettings(1, new Semaphore(1), true);
             // take the permit; the next attempt to take the permit should block
             dfp.takeFlashingPermit();

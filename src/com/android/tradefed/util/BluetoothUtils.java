@@ -170,7 +170,7 @@ public class BluetoothUtils {
     /**
      * Confirm branch version if it is Gold or not based on build alias
      *
-     * @param device Test device to check
+     * @param device, Test device to check
      * @throws DeviceNotAvailableException
      */
     private static boolean isGoldAndAbove(ITestDevice device) throws DeviceNotAvailableException {

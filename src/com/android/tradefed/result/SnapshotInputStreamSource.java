@@ -44,7 +44,7 @@ public class SnapshotInputStreamSource implements InputStreamSource {
             // Log an error and invalidate ourself
             CLog.e("Received IOException while trying to wrap a stream");
             CLog.e(e);
-            close();
+            cancel();
         }
     }
 
@@ -76,9 +76,11 @@ public class SnapshotInputStreamSource implements InputStreamSource {
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public synchronized void close() {
+    public synchronized void cancel() {
         mIsCancelled = true;
         FileUtil.deleteFile(mBackingFile);
         mBackingFile = null;

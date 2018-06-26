@@ -27,7 +27,6 @@ import org.kxml2.io.KXmlSerializer;
 
 import java.io.File;
 import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -38,8 +37,8 @@ public class ConfigurationUtilTest {
     private static final String DEVICE_MANAGER_TYPE_NAME = "device_manager";
 
     /**
-     * Test {@link ConfigurationUtil#dumpClassToXml(KXmlSerializer, String, Object, List)} to create
-     * a dump of a configuration.
+     * Test {@link ConfigurationUtil#dumpClassToXml(KXmlSerializer, String, Object)} to create a
+     * dump of a configuration.
      */
     @Test
     public void testDumpClassToXml() throws Throwable {
@@ -53,8 +52,7 @@ public class ConfigurationUtilTest {
             serializer.startTag(null, ConfigurationUtil.CONFIGURATION_NAME);
 
             DeviceManager deviceManager = new DeviceManager();
-            ConfigurationUtil.dumpClassToXml(
-                    serializer, DEVICE_MANAGER_TYPE_NAME, deviceManager, new ArrayList<String>());
+            ConfigurationUtil.dumpClassToXml(serializer, DEVICE_MANAGER_TYPE_NAME, deviceManager);
 
             serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
             serializer.endDocument();

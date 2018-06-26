@@ -127,13 +127,16 @@ public class StartupMetricsTest implements IDeviceTest, IRemoteTest {
         BugreportParser parser = new BugreportParser();
         BugreportItem bugreport = null;
         // Retrieve bugreport
-        try (InputStreamSource bugSource = mTestDevice.getBugreport()) {
+        InputStreamSource bugSource = mTestDevice.getBugreport();
+        try {
             listener.testLog(BUGREPORT_LOG_NAME, LogDataType.BUGREPORT, bugSource);
             bugreport = parser.parse(new BufferedReader(new InputStreamReader(
                     bugSource.createInputStream())));
         } catch (IOException e) {
             Assert.fail(String.format("Failed to fetch and parse bugreport for device %s: %s",
                     mTestDevice.getSerialNumber(), e));
+        } finally {
+            bugSource.cancel();
         }
 
         if (bugreport != null) {
@@ -184,9 +187,11 @@ public class StartupMetricsTest implements IDeviceTest, IRemoteTest {
      * Aggregates the procrank data by the pss, rss, and uss values.
      *
      * @param listener the {@link ITestInvocationListener} of test results
-     * @param procrank the {@link Map} parsed from brillopad for the procrank section
+     * @param procRankMap the {@link Map} parsed from brillopad for the procrank
+     *            section
      */
-    void parseProcRankMap(ITestInvocationListener listener, ProcrankItem procrank) {
+    void parseProcRankMap(ITestInvocationListener listener,
+            ProcrankItem procrank) {
         // final maps for pss, rss, and uss.
         Map<String, String> pssOutput = new HashMap<String, String>();
         Map<String, String> rssOutput = new HashMap<String, String>();

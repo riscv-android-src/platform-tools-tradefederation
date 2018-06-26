@@ -648,7 +648,7 @@ public class TestDeviceFuncTest implements IDeviceTest {
         Log.i(LOG_TAG, "testDisableKeyguard");
         getDevice().reboot();
         mTestDevice.waitForDeviceAvailable();
-        RunUtil.getDefault().sleep(3000);
+        RunUtil.getDefault().sleep(500);
         KeyguardControllerState keyguard = mTestDevice.getKeyguardState();
         if (keyguard == null) {
             // If the getKeyguardState is not supported.
@@ -691,7 +691,7 @@ public class TestDeviceFuncTest implements IDeviceTest {
             assertTrue(image.getHeight() > 200);
         } finally {
             FileUtil.deleteFile(tmpPngFile);
-            source.close();
+            source.cancel();
         }
     }
 
@@ -724,7 +724,7 @@ public class TestDeviceFuncTest implements IDeviceTest {
                     s.contains("testGetLogcat_size log dump 99"));
         } finally {
             FileUtil.deleteFile(tmpTxtFile);
-            source.close();
+            source.cancel();
         }
     }
 

@@ -257,9 +257,6 @@ public class ITestSuiteTest {
      */
     @Test
     public void testRun_rebootBeforeModule() throws Exception {
-        List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
-        sysChecker.add(mMockSysChecker);
-        mTestSuite.setSystemStatusChecker(sysChecker);
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue("skip-all-system-status-check", "true");
         setter.setOptionValue("reboot-per-module", "true");
@@ -278,8 +275,6 @@ public class ITestSuiteTest {
      */
     @Test
     public void testRun_unresponsiveDevice() throws Exception {
-        List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
-        sysChecker.add(mMockSysChecker);
         mTestSuite =
                 new TestSuiteImpl() {
                     @Override
@@ -302,7 +297,6 @@ public class ITestSuiteTest {
         mTestSuite.setDevice(mMockDevice);
         mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setInvocationContext(mContext);
-        mTestSuite.setSystemStatusChecker(sysChecker);
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue("skip-all-system-status-check", "true");
         setter.setOptionValue("reboot-per-module", "true");
@@ -323,8 +317,6 @@ public class ITestSuiteTest {
      */
     @Test
     public void testRun_runtimeException() throws Exception {
-        List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
-        sysChecker.add(mMockSysChecker);
         mTestSuite =
                 new TestSuiteImpl() {
                     @Override
@@ -344,7 +336,6 @@ public class ITestSuiteTest {
                         return testConfig;
                     }
                 };
-        mTestSuite.setSystemStatusChecker(sysChecker);
         mTestSuite.setDevice(mMockDevice);
         mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setInvocationContext(mContext);
@@ -384,20 +375,6 @@ public class ITestSuiteTest {
         assertEquals(1, tests.size());
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof TestSuiteImpl);
-        }
-    }
-
-    /** Test that after being sharded, ITestSuite shows the module runtime that it holds. */
-    @Test
-    public void testGetRuntimeHint() {
-        // default runtime hint is 0, it is only meant to be used for sharding.
-        assertEquals(0l, mTestSuite.getRuntimeHint());
-        mTestSuite = new TestSuiteImpl(5);
-        Collection<IRemoteTest> tests = mTestSuite.split(3);
-        for (IRemoteTest test : tests) {
-            assertTrue(test instanceof TestSuiteImpl);
-            // once sharded modules from the shard start reporting their runtime.
-            assertEquals(60000l, ((TestSuiteImpl) test).getRuntimeHint());
         }
     }
 }

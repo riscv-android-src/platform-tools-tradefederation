@@ -144,7 +144,8 @@ public class FrameworkStressTest implements IDeviceTest, IRemoteTest {
             // Retrieve bugreport
             BugreportParser parser = new BugreportParser();
             BugreportItem bugreport = null;
-            try (InputStreamSource bugSource = mTestDevice.getBugreport()) {
+            InputStreamSource bugSource = mTestDevice.getBugreport();
+            try {
                 mListener.testLog(BUGREPORT_LOG_NAME, LogDataType.BUGREPORT, bugSource);
                 bugreport = parser.parse(new BufferedReader(new InputStreamReader(
                         bugSource.createInputStream())));
@@ -153,6 +154,8 @@ public class FrameworkStressTest implements IDeviceTest, IRemoteTest {
             } catch (IOException e) {
                 Assert.fail(String.format("Failed to fetch and parse bugreport for device %s: "
                         + "%s", mTestDevice.getSerialNumber(), e));
+            } finally {
+                bugSource.cancel();
             }
             LogcatItem systemLog = bugreport.getSystemLog();
             // We only add errors found since last test run.

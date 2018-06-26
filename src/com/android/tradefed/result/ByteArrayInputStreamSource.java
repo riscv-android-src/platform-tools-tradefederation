@@ -38,9 +38,11 @@ public class ByteArrayInputStreamSource implements InputStreamSource {
         return new ByteArrayInputStream(mArray);
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public synchronized void close() {
+    public synchronized void cancel() {
         if (!mIsCancelled) {
             mIsCancelled = true;
             mArray = new byte[0];

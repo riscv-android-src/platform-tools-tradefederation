@@ -59,12 +59,6 @@ public class ConfigurationDescriptor implements Serializable {
     )
     private boolean mNotStrictShardable = false;
 
-    @Option(
-        name = "use-sandboxing",
-        description = "Option used to notify an invocation that it is running in a sandbox."
-    )
-    private boolean mUseSandboxing = false;
-
     /** Optional Abi information the configuration will be run against. */
     private IAbi mAbi = null;
 
@@ -111,15 +105,5 @@ public class ConfigurationDescriptor implements Serializable {
     /** Returns the abi the configuration is running against if known, null otherwise. */
     public IAbi getAbi() {
         return mAbi;
-    }
-
-    /** Returns true if the invocation should run in sandboxed mode. False otherwise. */
-    public boolean shouldUseSandbox() {
-        return mUseSandboxing;
-    }
-
-    /** Sets whether or not a config will run in sandboxed mode or not. */
-    public void setSandboxed(boolean useSandboxed) {
-        mUseSandboxing = useSandboxed;
     }
 }

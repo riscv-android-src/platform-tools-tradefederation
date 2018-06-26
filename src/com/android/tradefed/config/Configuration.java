@@ -87,7 +87,6 @@ public class Configuration implements IConfiguration {
     public static final String CONFIGURATION_DESCRIPTION_TYPE_NAME = "config_desc";
     public static final String DEVICE_NAME = "device";
     public static final String TEST_PROFILER_TYPE_NAME = "test_profiler";
-    public static final String SANDBOX_TYPE_NAME = "sandbox";
 
     private static Map<String, ObjTypeInfo> sObjTypeMap = null;
     private static Set<String> sMultiDeviceSupportedTag = null;
@@ -1166,12 +1165,6 @@ public class Configuration implements IConfiguration {
      */
     @Override
     public void dumpXml(PrintWriter output) throws IOException {
-        dumpXml(output, new ArrayList<String>());
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void dumpXml(PrintWriter output, List<String> excludeFilters) throws IOException {
         KXmlSerializer serializer = new KXmlSerializer();
         serializer.setOutput(output);
         serializer.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
@@ -1179,12 +1172,10 @@ public class Configuration implements IConfiguration {
         serializer.startTag(null, ConfigurationUtil.CONFIGURATION_NAME);
 
         for (IMultiTargetPreparer multipreparer : getMultiTargetPreparers()) {
-            ConfigurationUtil.dumpClassToXml(
-                    serializer, MULTI_PREPARER_TYPE_NAME, multipreparer, excludeFilters);
+            ConfigurationUtil.dumpClassToXml(serializer, MULTI_PREPARER_TYPE_NAME, multipreparer);
         }
         for (ISystemStatusChecker checker : getSystemStatusCheckers()) {
-            ConfigurationUtil.dumpClassToXml(
-                    serializer, SYSTEM_STATUS_CHECKER_TYPE_NAME, checker, excludeFilters);
+            ConfigurationUtil.dumpClassToXml(serializer, SYSTEM_STATUS_CHECKER_TYPE_NAME, checker);
         }
 
         if (getDeviceConfig().size() > 1) {
@@ -1193,70 +1184,49 @@ public class Configuration implements IConfiguration {
                 serializer.startTag(null, Configuration.DEVICE_NAME);
                 serializer.attribute(null, "name", deviceConfig.getDeviceName());
                 ConfigurationUtil.dumpClassToXml(
-                        serializer,
-                        BUILD_PROVIDER_TYPE_NAME,
-                        deviceConfig.getBuildProvider(),
-                        excludeFilters);
+                        serializer, BUILD_PROVIDER_TYPE_NAME, deviceConfig.getBuildProvider());
                 for (ITargetPreparer preparer : deviceConfig.getTargetPreparers()) {
                     ConfigurationUtil.dumpClassToXml(
-                            serializer, TARGET_PREPARER_TYPE_NAME, preparer, excludeFilters);
+                            serializer, TARGET_PREPARER_TYPE_NAME, preparer);
                 }
                 ConfigurationUtil.dumpClassToXml(
-                        serializer,
-                        DEVICE_RECOVERY_TYPE_NAME,
-                        deviceConfig.getDeviceRecovery(),
-                        excludeFilters);
+                        serializer, DEVICE_RECOVERY_TYPE_NAME, deviceConfig.getDeviceRecovery());
                 ConfigurationUtil.dumpClassToXml(
                         serializer,
                         DEVICE_REQUIREMENTS_TYPE_NAME,
-                        deviceConfig.getDeviceRequirements(),
-                        excludeFilters);
+                        deviceConfig.getDeviceRequirements());
                 ConfigurationUtil.dumpClassToXml(
-                        serializer,
-                        DEVICE_OPTIONS_TYPE_NAME,
-                        deviceConfig.getDeviceOptions(),
-                        excludeFilters);
+                        serializer, DEVICE_OPTIONS_TYPE_NAME, deviceConfig.getDeviceOptions());
                 serializer.endTag(null, Configuration.DEVICE_NAME);
             }
         } else {
             // Put single device tags
             ConfigurationUtil.dumpClassToXml(
-                    serializer, BUILD_PROVIDER_TYPE_NAME, getBuildProvider(), excludeFilters);
+                    serializer, BUILD_PROVIDER_TYPE_NAME, getBuildProvider());
             for (ITargetPreparer preparer : getTargetPreparers()) {
-                ConfigurationUtil.dumpClassToXml(
-                        serializer, TARGET_PREPARER_TYPE_NAME, preparer, excludeFilters);
+                ConfigurationUtil.dumpClassToXml(serializer, TARGET_PREPARER_TYPE_NAME, preparer);
             }
             ConfigurationUtil.dumpClassToXml(
-                    serializer, DEVICE_RECOVERY_TYPE_NAME, getDeviceRecovery(), excludeFilters);
+                    serializer, DEVICE_RECOVERY_TYPE_NAME, getDeviceRecovery());
             ConfigurationUtil.dumpClassToXml(
-                    serializer,
-                    DEVICE_REQUIREMENTS_TYPE_NAME,
-                    getDeviceRequirements(),
-                    excludeFilters);
+                    serializer, DEVICE_REQUIREMENTS_TYPE_NAME, getDeviceRequirements());
             ConfigurationUtil.dumpClassToXml(
-                    serializer, DEVICE_OPTIONS_TYPE_NAME, getDeviceOptions(), excludeFilters);
+                    serializer, DEVICE_OPTIONS_TYPE_NAME, getDeviceOptions());
         }
         for (IRemoteTest test : getTests()) {
-            ConfigurationUtil.dumpClassToXml(serializer, TEST_TYPE_NAME, test, excludeFilters);
+            ConfigurationUtil.dumpClassToXml(serializer, TEST_TYPE_NAME, test);
         }
-        ConfigurationUtil.dumpClassToXml(
-                serializer,
-                CONFIGURATION_DESCRIPTION_TYPE_NAME,
-                getConfigurationDescription(),
-                excludeFilters);
-        ConfigurationUtil.dumpClassToXml(
-                serializer, LOGGER_TYPE_NAME, getLogOutput(), excludeFilters);
-        ConfigurationUtil.dumpClassToXml(
-                serializer, LOG_SAVER_TYPE_NAME, getLogSaver(), excludeFilters);
-        for (ITestInvocationListener listener : getTestInvocationListeners()) {
-            ConfigurationUtil.dumpClassToXml(
-                    serializer, RESULT_REPORTER_TYPE_NAME, listener, excludeFilters);
-        }
-        ConfigurationUtil.dumpClassToXml(
-                serializer, CMD_OPTIONS_TYPE_NAME, getCommandOptions(), excludeFilters);
 
         ConfigurationUtil.dumpClassToXml(
-                serializer, TEST_PROFILER_TYPE_NAME, getProfiler(), excludeFilters);
+                serializer, CONFIGURATION_DESCRIPTION_TYPE_NAME, getConfigurationDescription());
+        ConfigurationUtil.dumpClassToXml(serializer, LOGGER_TYPE_NAME, getLogOutput());
+        ConfigurationUtil.dumpClassToXml(serializer, LOG_SAVER_TYPE_NAME, getLogSaver());
+        for (ITestInvocationListener listener : getTestInvocationListeners()) {
+            ConfigurationUtil.dumpClassToXml(serializer, RESULT_REPORTER_TYPE_NAME, listener);
+        }
+        ConfigurationUtil.dumpClassToXml(serializer, CMD_OPTIONS_TYPE_NAME, getCommandOptions());
+
+        ConfigurationUtil.dumpClassToXml(serializer, TEST_PROFILER_TYPE_NAME, getProfiler());
 
         serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
         serializer.endDocument();
