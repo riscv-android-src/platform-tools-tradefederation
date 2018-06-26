@@ -30,7 +30,6 @@ import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
-import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
@@ -57,7 +56,6 @@ public class ModuleDefinitionTest {
     private ITargetPreparer mMockPrep;
     private ITargetCleaner mMockCleaner;
     private List<ITargetPreparer> mTargetPrepList;
-    private List<IMultiTargetPreparer> mMultiTargetPrepList;
     private ITestInvocationListener mMockListener;
     private IBuildInfo mMockBuildInfo;
     private ITestDevice mMockDevice;
@@ -119,16 +117,11 @@ public class ModuleDefinitionTest {
         mMockCleaner = EasyMock.createMock(ITargetCleaner.class);
         mTargetPrepList.add(mMockPrep);
         mTargetPrepList.add(mMockCleaner);
-        mMultiTargetPrepList = new ArrayList<>();
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mModule =
                 new ModuleDefinition(
-                        MODULE_NAME,
-                        mTestList,
-                        mTargetPrepList,
-                        mMultiTargetPrepList,
-                        new ConfigurationDescriptor());
+                        MODULE_NAME, mTestList, mTargetPrepList, new ConfigurationDescriptor());
     }
 
     /**
@@ -204,16 +197,11 @@ public class ModuleDefinitionTest {
         });
         mModule =
                 new ModuleDefinition(
-                        MODULE_NAME,
-                        mTestList,
-                        mTargetPrepList,
-                        mMultiTargetPrepList,
-                        new ConfigurationDescriptor());
+                        MODULE_NAME, mTestList, mTargetPrepList, new ConfigurationDescriptor());
         mMockCleaner.tearDown(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo),
                 EasyMock.isNull());
         mMockListener.testRunStarted(EasyMock.eq(MODULE_NAME), EasyMock.eq(1));
-        mMockListener.testStarted(
-                new TestIdentifier(TargetSetupError.class.getCanonicalName(), "preparationError"));
+        mMockListener.testStarted(EasyMock.anyObject());
         mMockListener.testFailed(EasyMock.anyObject(), EasyMock.contains(exceptionMessage));
         mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
         mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
@@ -234,11 +222,7 @@ public class ModuleDefinitionTest {
         testList.add(new TestObject("run1", testCount, false));
         mModule =
                 new ModuleDefinition(
-                        MODULE_NAME,
-                        testList,
-                        mTargetPrepList,
-                        mMultiTargetPrepList,
-                        new ConfigurationDescriptor());
+                        MODULE_NAME, testList, mTargetPrepList, new ConfigurationDescriptor());
         mModule.setBuild(mMockBuildInfo);
         mModule.setDevice(mMockDevice);
         mMockPrep.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
@@ -270,11 +254,7 @@ public class ModuleDefinitionTest {
         testList.add(new TestObject("run1", testCount, true));
         mModule =
                 new ModuleDefinition(
-                        MODULE_NAME,
-                        testList,
-                        mTargetPrepList,
-                        mMultiTargetPrepList,
-                        new ConfigurationDescriptor());
+                        MODULE_NAME, testList, mTargetPrepList, new ConfigurationDescriptor());
         mModule.setBuild(mMockBuildInfo);
         mModule.setDevice(mMockDevice);
         mMockPrep.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
@@ -317,9 +297,7 @@ public class ModuleDefinitionTest {
         descriptor.setAbi(new Abi("arm", "32"));
         List<IRemoteTest> testList = new ArrayList<>();
         testList.add(new TestObject("run1", testCount, false));
-        mModule =
-                new ModuleDefinition(
-                        MODULE_NAME, testList, mTargetPrepList, mMultiTargetPrepList, descriptor);
+        mModule = new ModuleDefinition(MODULE_NAME, testList, mTargetPrepList, descriptor);
         // Check that the invocation module created has expected informations
         IInvocationContext moduleContext = mModule.getModuleInvocationContext();
         assertEquals(

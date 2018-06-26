@@ -133,8 +133,8 @@ public class AppLaunchTest implements IDeviceTest, IRemoteTest, IBuildReceiver {
         i.setDevice(getDevice());
         i.addInstrumentationArg("packageName", packageName);
         i.run(listener);
-        try (InputStreamSource s = getDevice().getScreenshot()) {
-            listener.testLog("screenshot", LogDataType.PNG, s);
-        }
+        InputStreamSource s = getDevice().getScreenshot();
+        listener.testLog("screenshot", LogDataType.PNG, s);
+        s.cancel();
     }
 }

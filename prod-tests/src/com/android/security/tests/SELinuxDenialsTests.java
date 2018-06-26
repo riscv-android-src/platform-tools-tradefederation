@@ -266,7 +266,7 @@ public class SELinuxDenialsTests implements IRemoteTest, IDeviceTest {
             CLog.e(String.format("Failed to fetch and parse bugreport for device %s: %s",
                     mDevice.getSerialNumber(), e));
         } finally {
-            bugreportSource.close();
+            bugreportSource.cancel();
         }
 
         return kernelLog;
@@ -336,10 +336,10 @@ public class SELinuxDenialsTests implements IRemoteTest, IDeviceTest {
             return;
 
         // in order to attach logs to the listener, they need to be of type InputStreamSource
-        try (InputStreamSource logsInputStream =
-                new ByteArrayInputStreamSource(logsStr.getBytes())) {
-            // attach logs to listener, so the logs will be available to result reporters
-            listener.testLog(dataName, dataType, logsInputStream);
-        }
+        InputStreamSource logsInputStream = new ByteArrayInputStreamSource(logsStr.getBytes());
+        // attach logs to listener, so the logs will be available to result reporters
+        listener.testLog(dataName, dataType, logsInputStream);
+        // cleanup the InputStreamSource
+        logsInputStream.cancel();
     }
 }

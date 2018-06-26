@@ -154,10 +154,4 @@ public interface ICommandOptions {
 
     /** Returns true if we should use Tf new sharding logic */
     public boolean shouldUseTfSharding();
-
-    /** Returns true if we should use Tf containers to run the invocation */
-    public boolean shouldUseSandboxing();
-
-    /** Sets whether or not we should use TF containers */
-    public void setShouldUseSandboxing(boolean use);
 }

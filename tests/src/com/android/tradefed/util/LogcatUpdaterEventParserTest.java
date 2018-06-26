@@ -50,24 +50,20 @@ public class LogcatUpdaterEventParserTest extends TestCase {
             throw new RuntimeException(e);
         }
 
-        EasyMock.expect(mMockReceiver.getLogcatData())
-                .andReturn(
-                        new InputStreamSource() {
-                            @Override
-                            public InputStream createInputStream() {
-                                return p;
-                            }
-
-                            @Override
-                            public void close() {
-                                // ignore
-                            }
-
-                            @Override
-                            public long size() {
-                                return 0;
-                            }
-                        });
+        EasyMock.expect(mMockReceiver.getLogcatData()).andReturn(new InputStreamSource() {
+            @Override
+            public InputStream createInputStream() {
+                return p;
+            }
+            @Override
+            public void cancel() {
+                // ignore
+            }
+            @Override
+            public long size() {
+                return 0;
+            }
+        });
 
         EasyMock.replay(mMockReceiver);
         mParser = new LogcatUpdaterEventParser(mMockReceiver);

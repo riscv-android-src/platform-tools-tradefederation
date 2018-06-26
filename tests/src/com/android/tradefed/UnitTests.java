@@ -63,7 +63,6 @@ import com.android.tradefed.device.TopHelperTest;
 import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
 import com.android.tradefed.invoker.InvocationContextTest;
-import com.android.tradefed.invoker.TestInvocationMultiTest;
 import com.android.tradefed.invoker.TestInvocationTest;
 import com.android.tradefed.invoker.shard.ShardHelperTest;
 import com.android.tradefed.invoker.shard.StrictShardHelperTest;
@@ -96,10 +95,6 @@ import com.android.tradefed.result.SubprocessResultsReporterTest;
 import com.android.tradefed.result.TestFailureEmailResultReporterTest;
 import com.android.tradefed.result.TestSummaryTest;
 import com.android.tradefed.result.XmlResultReporterTest;
-import com.android.tradefed.sandbox.SandboxConfigDumpTest;
-import com.android.tradefed.sandbox.SandboxConfigUtilTest;
-import com.android.tradefed.sandbox.TradefedSandboxTest;
-import com.android.tradefed.suite.checker.ActivityStatusCheckerTest;
 import com.android.tradefed.suite.checker.KeyguardStatusCheckerTest;
 import com.android.tradefed.suite.checker.SystemServerFileDescriptorCheckerTest;
 import com.android.tradefed.suite.checker.SystemServerStatusCheckerTest;
@@ -156,7 +151,6 @@ import com.android.tradefed.testtype.PythonUnitTestRunnerTest;
 import com.android.tradefed.testtype.TfTestLauncherTest;
 import com.android.tradefed.testtype.VersionedTfLauncherTest;
 import com.android.tradefed.testtype.suite.ITestSuiteIntegrationTest;
-import com.android.tradefed.testtype.suite.ITestSuiteMultiTest;
 import com.android.tradefed.testtype.suite.ITestSuiteTest;
 import com.android.tradefed.testtype.suite.ModuleDefinitionTest;
 import com.android.tradefed.testtype.suite.ModuleListenerTest;
@@ -173,7 +167,6 @@ import com.android.tradefed.util.AbiUtilsTest;
 import com.android.tradefed.util.ArrayUtilTest;
 import com.android.tradefed.util.BluetoothUtilsTest;
 import com.android.tradefed.util.BugreportTest;
-import com.android.tradefed.util.BuildTestsZipUtilsTest;
 import com.android.tradefed.util.ByteArrayListTest;
 import com.android.tradefed.util.ClassPathScannerTest;
 import com.android.tradefed.util.ConditionPriorityBlockingQueueTest;
@@ -296,7 +289,6 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // invoker
     InvocationContextTest.class,
-    TestInvocationMultiTest.class,
     TestInvocationTest.class,
 
     // invoker.shard
@@ -366,13 +358,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // targetprep.suite
     SuiteApkInstallerTest.class,
 
-    // sandbox
-    SandboxConfigDumpTest.class,
-    SandboxConfigUtilTest.class,
-    TradefedSandboxTest.class,
-
     // suite/checker
-    ActivityStatusCheckerTest.class,
     KeyguardStatusCheckerTest.class,
     SystemServerFileDescriptorCheckerTest.class,
     SystemServerStatusCheckerTest.class,
@@ -410,7 +396,6 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // testtype/suite
     ITestSuiteIntegrationTest.class,
-    ITestSuiteMultiTest.class,
     ITestSuiteTest.class,
     ModuleDefinitionTest.class,
     ModuleListenerTest.class,
@@ -431,7 +416,6 @@ import org.junit.runners.Suite.SuiteClasses;
     ArrayUtilTest.class,
     BluetoothUtilsTest.class,
     BugreportTest.class,
-    BuildTestsZipUtilsTest.class,
     ByteArrayListTest.class,
     ClassPathScannerTest.class,
     ConditionPriorityBlockingQueueTest.class,

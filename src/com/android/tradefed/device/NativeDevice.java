@@ -154,7 +154,8 @@ public class NativeDevice implements IManagedTestDevice {
     private static final String SIM_OPERATOR_PROP = "gsm.operator.alpha";
 
     static final String MAC_ADDRESS_PATTERN = "([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}";
-    static final String MAC_ADDRESS_COMMAND = "su root cat /sys/class/net/wlan0/address";
+    static final String MAC_ADDRESS_COMMAND = "cat /sys/class/net/wlan0/address";
+
 
     /** The network monitoring interval in ms. */
     private static final int NETWORK_MONITOR_INTERVAL = 10 * 1000;
@@ -367,9 +368,6 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public String getProperty(final String name) throws DeviceNotAvailableException {
-        if (getIDevice() instanceof StubDevice) {
-            return null;
-        }
         if (!DeviceState.ONLINE.equals(getIDevice().getState())) {
             CLog.d("Device %s is not online cannot get property %s.", getSerialNumber(), name);
             return null;
@@ -578,35 +576,6 @@ public class NativeDevice implements IManagedTestDevice {
                 return true;
             }
         };
-        performDeviceAction(String.format("shell %s", command), action, retryAttempts);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void executeShellCommand(
-            final String command,
-            final IShellOutputReceiver receiver,
-            final long maxTimeoutForCommand,
-            final long maxTimeToOutputShellResponse,
-            final TimeUnit timeUnit,
-            final int retryAttempts)
-            throws DeviceNotAvailableException {
-        DeviceAction action =
-                new DeviceAction() {
-                    @Override
-                    public boolean run()
-                            throws TimeoutException, IOException, AdbCommandRejectedException,
-                                    ShellCommandUnresponsiveException {
-                        getIDevice()
-                                .executeShellCommand(
-                                        command,
-                                        receiver,
-                                        maxTimeoutForCommand,
-                                        maxTimeToOutputShellResponse,
-                                        timeUnit);
-                        return true;
-                    }
-                };
         performDeviceAction(String.format("shell %s", command), action, retryAttempts);
     }
 
@@ -3829,34 +3798,5 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.w(e);
             return null;
         }
-    }
-
-    @Override
-    public File dumpHeap(String process, String devicePath) throws DeviceNotAvailableException {
-        throw new UnsupportedOperationException("dumpHeap is not supported.");
-    }
-
-    @Override
-    public String getProcessPid(String process) throws DeviceNotAvailableException {
-        String output = executeShellCommand(String.format("pidof %s", process)).trim();
-        if (checkValidPid(output)) {
-            return output;
-        }
-        CLog.e("Failed to find a valid pid for process.");
-        return null;
-    }
-
-    /** Validate that pid is an integer and not empty. */
-    private boolean checkValidPid(String output) {
-        if (output.isEmpty()) {
-            return false;
-        }
-        try {
-            Integer.parseInt(output);
-        } catch (NumberFormatException e) {
-            CLog.e(e);
-            return false;
-        }
-        return true;
     }
 }

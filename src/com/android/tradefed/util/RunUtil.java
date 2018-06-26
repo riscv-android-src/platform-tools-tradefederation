@@ -311,6 +311,7 @@ public class RunUtil implements IRunUtil {
         return process;
     }
 
+
     /**
      * {@inheritDoc}
      */
@@ -319,18 +320,11 @@ public class RunUtil implements IRunUtil {
             boolean logErrors) {
         checkInterrupted();
         RunnableNotifier runThread = new RunnableNotifier(runnable, logErrors);
-        if (logErrors) {
-            if (timeout > 0l) {
-                CLog.d("Running command with timeout: %dms", timeout);
-            } else {
-                CLog.d("Running command without timeout.");
-            }
-        }
+        CLog.d("Running command with timeout: %dms", timeout);
         runThread.start();
         long startTime = System.currentTimeMillis();
         long pollIterval = 0;
-        if (timeout > 0l && timeout < THREAD_JOIN_POLL_INTERVAL) {
-            // only set the pollInterval if we have a timeout
+        if (timeout < THREAD_JOIN_POLL_INTERVAL) {
             pollIterval = timeout;
         } else {
             pollIterval = THREAD_JOIN_POLL_INTERVAL;
@@ -348,8 +342,7 @@ public class RunUtil implements IRunUtil {
                 }
             }
             checkInterrupted();
-        } while ((timeout == 0l || (System.currentTimeMillis() - startTime) < timeout)
-                && runThread.isAlive());
+        } while ((System.currentTimeMillis() - startTime) < timeout && runThread.isAlive());
         // Snapshot the status when out of the run loop because thread may terminate and return a
         // false FAILED instead of TIMED_OUT.
         CommandStatus status = runThread.getStatus();
@@ -723,13 +716,6 @@ public class RunUtil implements IRunUtil {
                     CLog.i("interrupted while waiting for process output to be saved");
                 }
             }
-        }
-
-        @Override
-        public String toString() {
-            return "RunnableResult [command="
-                    + ((mProcessBuilder != null) ? mProcessBuilder.command() : null)
-                    + "]";
         }
     }
 

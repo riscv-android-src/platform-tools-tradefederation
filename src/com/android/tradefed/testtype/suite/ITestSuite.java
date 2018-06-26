@@ -26,7 +26,6 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
@@ -34,7 +33,6 @@ import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
@@ -148,7 +146,6 @@ public abstract class ITestSuite
             // If we are sharded and already know what to run then we just do it.
             runModules.add(mDirectModule);
             mDirectModule.setDevice(mDevice);
-            mDirectModule.setDeviceInfos(mContext.getDeviceBuildMap());
             mDirectModule.setBuild(mBuildInfo);
             return runModules;
         }
@@ -172,10 +169,8 @@ public abstract class ITestSuite
                             config.getKey(),
                             config.getValue().getTests(),
                             config.getValue().getTargetPreparers(),
-                            config.getValue().getMultiTargetPreparers(),
                             config.getValue().getConfigurationDescription());
             module.setDevice(mDevice);
-            module.setDeviceInfos(mContext.getDeviceBuildMap());
             module.setBuild(mBuildInfo);
             runModules.add(module);
         }
@@ -194,18 +189,11 @@ public abstract class ITestSuite
             return;
         }
 
-        // Allow checkers to log files for easier debbuging.
-        for (ISystemStatusChecker checker : mSystemStatusCheckers) {
-            if (checker instanceof ITestLoggerReceiver) {
-                ((ITestLoggerReceiver) checker).setTestLogger(listener);
-            }
-        }
-
         /** Setup a special listener to take actions on test failures. */
         TestFailureListener failureListener =
                 new TestFailureListener(
                         listener,
-                        mContext.getDevices(),
+                        getDevice(),
                         mBugReportOnFailure,
                         mLogcatOnFailure,
                         mScreenshotOnFailure,
@@ -234,13 +222,6 @@ public abstract class ITestSuite
 
                 try {
                     mContext.setModuleInvocationContext(module.getModuleInvocationContext());
-                    // Populate the module context with devices and builds
-                    for (String deviceName : mContext.getDeviceConfigNames()) {
-                        module.getModuleInvocationContext()
-                                .addAllocatedDevice(deviceName, mContext.getDevice(deviceName));
-                        module.getModuleInvocationContext()
-                                .addDeviceBuildInfo(deviceName, mContext.getBuildInfo(deviceName));
-                    }
                     runSingleModule(module, listener, failureListener);
                 } finally {
                     // clear out module invocation context since we are now done with module
@@ -322,12 +303,12 @@ public abstract class ITestSuite
         if (!failures.isEmpty()) {
             CLog.w("There are failed system status checkers: %s capturing a bugreport",
                     failures.toString());
-            try (InputStreamSource bugSource = device.getBugreport()) {
-                listener.testLog(
-                        String.format("bugreport-checker-pre-module-%s", moduleName),
-                        LogDataType.BUGREPORT,
-                        bugSource);
-            }
+            InputStreamSource bugSource = device.getBugreport();
+            listener.testLog(
+                    String.format("bugreport-checker-pre-module-%s", moduleName),
+                    LogDataType.BUGREPORT,
+                    bugSource);
+            bugSource.cancel();
         }
 
         // We report System checkers like tests.
@@ -357,12 +338,12 @@ public abstract class ITestSuite
         if (!failures.isEmpty()) {
             CLog.w("There are failed system status checkers: %s capturing a bugreport",
                     failures.toString());
-            try (InputStreamSource bugSource = device.getBugreport()) {
-                listener.testLog(
-                        String.format("bugreport-checker-post-module-%s", moduleName),
-                        LogDataType.BUGREPORT,
-                        bugSource);
-            }
+            InputStreamSource bugSource = device.getBugreport();
+            listener.testLog(
+                    String.format("bugreport-checker-post-module-%s", moduleName),
+                    LogDataType.BUGREPORT,
+                    bugSource);
+            bugSource.cancel();
         }
 
         // We report System checkers like tests.
@@ -437,9 +418,6 @@ public abstract class ITestSuite
                 if (test instanceof IDeviceTest) {
                     ((IDeviceTest) test).setDevice(mDevice);
                 }
-                if (test instanceof IMultiDeviceTest) {
-                    ((IMultiDeviceTest) test).setDeviceInfos(mContext.getDeviceBuildMap());
-                }
             }
         }
     }
@@ -508,7 +486,7 @@ public abstract class ITestSuite
     @Override
     public long getRuntimeHint() {
         if (mDirectModule != null) {
-            CLog.d(
+            CLog.e(
                     "    %s: %s",
                     mDirectModule.getId(),
                     TimeUtil.formatElapsedTime(mDirectModule.getRuntimeHint()));

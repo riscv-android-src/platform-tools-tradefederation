@@ -380,11 +380,8 @@ public class DeviceManagerTest extends TestCase {
         CommandResult fastbootResult = new CommandResult(CommandStatus.SUCCESS);
         fastbootResult.setStdout("serial        fastboot\n");
         EasyMock.expect(
-                        mMockRunUtil.runTimedCmdSilently(
-                                EasyMock.anyLong(),
-                                EasyMock.eq("fastboot"),
-                                EasyMock.eq("devices")))
-                .andReturn(fastbootResult);
+                mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("fastboot"),
+                        EasyMock.eq("devices"))).andReturn(fastbootResult);
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FORCE_AVAILABLE))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Available, true));
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))

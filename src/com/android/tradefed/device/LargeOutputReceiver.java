@@ -110,12 +110,12 @@ public class LargeOutputReceiver implements IShellOutputReceiver {
                 return new InputStreamSource() {
 
                     @Override
-                    public InputStream createInputStream() {
+                    public InputStream createInputStream()  {
                         return os.getData();
                     }
 
                     @Override
-                    public void close() {
+                    public void cancel() {
                         // ignore, nothing to do
                     }
 

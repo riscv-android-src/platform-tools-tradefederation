@@ -15,26 +15,21 @@
  */
 package com.android.tradefed.log;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.util.StreamUtil;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import junit.framework.TestCase;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-/** Unit tests for {@link FileLogger}. */
-@RunWith(JUnit4.class)
-public class FileLoggerTest {
+/**
+ * Unit tests for {@link FileLogger}.
+ */
+public class FileLoggerTest extends TestCase {
 
     private static final String LOG_TAG = "FileLoggerTest";
 
@@ -45,7 +40,6 @@ public class FileLoggerTest {
      * @throws IOException if unable to read from the file
      * @throws SecurityException if unable to delete the log file on cleanup
      */
-    @Test
     public void testLogToLogger() throws ConfigurationException, IOException, SecurityException {
         String Text1 = "The quick brown fox jumps over the lazy doggie.";
         String Text2 = "Betty Botter bought some butter, 'But,' she said, 'this butter's bitter.'";
@@ -102,7 +96,6 @@ public class FileLoggerTest {
     /**
      * Test behavior when {@link FileLogger#getLog()} is called after {@link FileLogger#closeLog()}.
      */
-    @Test
     public void testGetLog_afterClose() throws Exception {
         FileLogger logger = new FileLogger();
         logger.init();
@@ -112,10 +105,10 @@ public class FileLoggerTest {
     }
 
     /**
-     * Test that no unexpected Exceptions occur if {@link FileLogger#printLog(LogLevel, String,
-     * String)} is called after {@link FileLogger#closeLog()}
+     * Test that no unexpected Exceptions occur if
+     * {@link FileLogger#printLog(LogLevel, String, String)} is called after
+     * {@link FileLogger#closeLog()}
      */
-    @Test
     public void testCloseLog() throws Exception {
         FileLogger logger = new FileLogger();
         logger.init();
@@ -128,27 +121,9 @@ public class FileLoggerTest {
      * Test behavior when {@link FileLogger#getLog()} is called when {@link FileLogger#init()} has
      * not been called.
      */
-    @Test
     public void testGetLog_NoInit() {
         FileLogger logger = new FileLogger();
         // expect this to be silently handled
         logger.getLog();
-    }
-
-    /**
-     * Test that the {@link FileLogger#clone()} properly copy all the options from the original
-     * object.
-     */
-    @Test
-    public void testClone() throws Exception {
-        FileLogger logger = new FileLogger();
-        OptionSetter setter = new OptionSetter(logger);
-        setter.setOptionValue("max-log-size", "500");
-        setter.setOptionValue("log-level", "INFO");
-        FileLogger clone = (FileLogger) logger.clone();
-        assertEquals(LogLevel.INFO, clone.getLogLevel());
-        // We now have 2 distinct objects
-        assertNotEquals(logger, clone);
-        assertEquals(logger.getMaxLogSizeMbytes(), clone.getMaxLogSizeMbytes());
     }
 }

@@ -100,9 +100,10 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
             isTimedOut = (System.currentTimeMillis() - benchmarkStartTime >= TIMEOUT_MS);
 
             // get the logcat and parse
-            try (BufferedReader logcat =
+            BufferedReader logcat =
                     new BufferedReader(
-                            new InputStreamReader(device.getLogcat().createInputStream()))) {
+                            new InputStreamReader(device.getLogcat().createInputStream()));
+            try {
                 while ((line = logcat.readLine()) != null) {
                     // filter only output from the Vellamo process
                     if (!line.contains(LOGTAG)) {

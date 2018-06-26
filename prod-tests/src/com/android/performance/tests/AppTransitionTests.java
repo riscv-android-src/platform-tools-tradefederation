@@ -31,7 +31,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -43,7 +42,6 @@ import com.android.tradefed.util.ZipUtil;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -310,14 +308,9 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
      * @param logReceiver
      */
     private void stopEventsLogs(LogcatReceiver logReceiver,String launchDesc) {
-        InputStreamSource logcatData = logReceiver.getLogcatData();
-        try {
-            mListener.testLog(
-                    String.format("%s-%s", EVENTS_LOG, launchDesc), LogDataType.TEXT, logcatData);
-        } finally {
-            StreamUtil.cancel(logcatData);
-            logReceiver.stop();
-        }
+        mListener.testLog(String.format("%s-%s", EVENTS_LOG, launchDesc),
+                LogDataType.TEXT, logReceiver.getLogcatData());
+        logReceiver.stop();
     }
 
     /**
@@ -391,18 +384,12 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
      */
     private List<TransitionDelayItem> parseTransitionDelayInfo() {
         List<TransitionDelayItem> transitionDelayItems = null;
-        InputStreamSource logcatData = mLaunchEventsLogs.getLogcatData();
-        InputStream logcatStream = logcatData.createInputStream();
-        InputStreamReader streamReader = new InputStreamReader(logcatStream);
-        try (BufferedReader reader = new BufferedReader(streamReader)) {
-            transitionDelayItems = mEventsLogParser.parseTransitionDelayInfo(reader);
+        try {
+            transitionDelayItems = mEventsLogParser.parseTransitionDelayInfo(new BufferedReader(
+                    new InputStreamReader(mLaunchEventsLogs.getLogcatData().createInputStream())));
         } catch (IOException e) {
             CLog.e("Problem in parsing the transition delay items from events log");
             CLog.e(e);
-        } finally {
-            StreamUtil.cancel(logcatData);
-            StreamUtil.close(logcatStream);
-            StreamUtil.close(streamReader);
         }
         return transitionDelayItems;
     }
@@ -412,18 +399,12 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
      */
     private List<LatencyItem> parseLatencyInfo() {
         List<LatencyItem> latencyItems = null;
-        InputStreamSource logcatData = mLaunchEventsLogs.getLogcatData();
-        InputStream logcatStream = logcatData.createInputStream();
-        InputStreamReader streamReader = new InputStreamReader(logcatStream);
-        try (BufferedReader reader = new BufferedReader(streamReader)) {
-            latencyItems = mEventsLogParser.parseLatencyInfo(reader);
+        try {
+            latencyItems = mEventsLogParser.parseLatencyInfo(new BufferedReader(
+                    new InputStreamReader(mLaunchEventsLogs.getLogcatData().createInputStream())));
         } catch (IOException e) {
             CLog.e("Problem in parsing the latency items from events log");
             CLog.e(e);
-        } finally {
-            StreamUtil.cancel(logcatData);
-            StreamUtil.close(logcatStream);
-            StreamUtil.close(streamReader);
         }
         return latencyItems;
     }
@@ -667,10 +648,12 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
     }
 
     /**
-     * Reverse and returnthe given appName,componentName info map to componenetName,appName info
-     * map.
+     * Reverse the given appName,componentName info map to
+     * componenetName,appName info map.
+     *
+     * @return
      */
-    private Map<String, String> reverseAppCmpInfoMap(Map<String, String> appNameCmpNameMap) {
+    private Map<String, String> reverseAppCmpInfoMap(Map<String,String> appNameCmpNameMap) {
         Map<String, String> cmpNameAppNameMap = new HashMap<String, String>();
         for (Map.Entry<String, String> entry : appNameCmpNameMap.entrySet()) {
             cmpNameAppNameMap.put(entry.getValue(), entry.getKey());

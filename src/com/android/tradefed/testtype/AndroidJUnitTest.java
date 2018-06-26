@@ -107,7 +107,7 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
 
     @Option(
         name = "ajur-max-shard",
-        description = "The maximum number of shard we want to allow the AJUR test to shard into"
+        description = "The maximum number of shard we want to allow the test to shard into"
     )
     private Integer mMaxShard = null;
 

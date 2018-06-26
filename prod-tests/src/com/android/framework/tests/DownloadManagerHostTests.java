@@ -230,10 +230,10 @@ public class DownloadManagerHostTests extends DeviceTestCase {
                     CLog.w("dumpsys wifi did not return output");
                 } else {
                     String name = test.getTestName() +"-dumpsys-wifi";
-                    try (ByteArrayInputStreamSource stream =
-                            new ByteArrayInputStreamSource(output.getBytes())) {
-                        super.testLog(name, LogDataType.TEXT, stream);
-                    }
+                    ByteArrayInputStreamSource stream =
+                            new ByteArrayInputStreamSource(output.getBytes());
+                    super.testLog(name, LogDataType.TEXT, stream);
+                    stream.cancel();
                 }
             } catch (DeviceNotAvailableException e) {
                 CLog.e("Error getting dumpsys wifi");

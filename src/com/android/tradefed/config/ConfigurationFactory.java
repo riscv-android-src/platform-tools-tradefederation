@@ -220,7 +220,6 @@ public class ConfigurationFactory implements IConfigurationFactory {
             for (String configFileName : possibleConfigFileNames) {
                 File config = FileUtil.findFile(testCasesDir, configFileName);
                 if (config != null) {
-                    CLog.d("Using config: %s/%s", testCasesDir.getAbsoluteFile(), configFileName);
                     return config;
                 }
             }
@@ -273,7 +272,9 @@ public class ConfigurationFactory implements IConfigurationFactory {
             } else {
                 if (templateMap != null) {
                     // Clearing the map before returning the cached config to
-                    // avoid seeing them as unused.
+                    // avoid seeing them as
+                    // unused.
+                    CLog.d("Using cached configuration, ensuring map is clean.");
                     templateMap.clear();
                 }
             }
@@ -377,7 +378,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
          */
         void loadConfiguration(String name, ConfigurationDef def, Map<String, String> templateMap)
                 throws ConfigurationException {
-            //Log.d(LOG_TAG, String.format("Loading configuration '%s'", name));
+            Log.d(LOG_TAG, String.format("Loading configuration '%s'", name));
             BufferedInputStream bufStream = getConfigStream(name);
             ConfigurationXmlParser parser = new ConfigurationXmlParser(this);
             parser.parse(def, name, bufStream, templateMap);
@@ -596,17 +597,9 @@ public class ConfigurationFactory implements IConfigurationFactory {
      */
     @Override
     public List<String> getConfigList(String subPath) {
-        return getConfigList(subPath, true);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public List<String> getConfigList(String subPath, boolean loadFromEnv) {
         Set<String> configNames = getConfigSetFromClasspath(subPath);
-        if (loadFromEnv) {
-            // list config on variable path too
-            configNames.addAll(getConfigNamesFromTestCases(subPath));
-        }
+        // list config on variable path too
+        configNames.addAll(getConfigNamesFromTestCases(subPath));
         // sort the configs by name before adding to list
         SortedSet<String> configDefs = new TreeSet<String>();
         configDefs.addAll(configNames);
