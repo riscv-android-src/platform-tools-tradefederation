@@ -25,6 +25,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
+import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
@@ -39,6 +40,7 @@ import org.junit.runners.JUnit4;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Paths;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Set;
@@ -62,17 +64,7 @@ public class TestMappingSuiteRunnerTest {
     public void setUp() throws Exception {
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-        mRunner =
-                new TestMappingSuiteRunner() {
-                    @Override
-                    public Set<IAbi> getAbis(ITestDevice device)
-                            throws DeviceNotAvailableException {
-                        Set<IAbi> abis = new HashSet<>();
-                        abis.add(new Abi(ABI_1, AbiUtils.getBitness(ABI_1)));
-                        abis.add(new Abi(ABI_2, AbiUtils.getBitness(ABI_2)));
-                        return abis;
-                    }
-                };
+        mRunner = new AbiTestMappingSuite();
         mRunner.setBuild(mBuildInfo);
         mRunner.setDevice(mMockDevice);
 
@@ -80,6 +72,20 @@ public class TestMappingSuiteRunnerTest {
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn(ABI_1);
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn(ABI_2);
         EasyMock.replay(mBuildInfo, mMockDevice);
+    }
+
+    /**
+     * Test TestMappingSuiteRunner that hardcodes the abis to avoid failures related to running the
+     * tests against a particular abi build of tradefed.
+     */
+    public static class AbiTestMappingSuite extends TestMappingSuiteRunner {
+        @Override
+        public Set<IAbi> getAbis(ITestDevice device) throws DeviceNotAvailableException {
+            Set<IAbi> abis = new HashSet<>();
+            abis.add(new Abi(ABI_1, AbiUtils.getBitness(ABI_1)));
+            abis.add(new Abi(ABI_2, AbiUtils.getBitness(ABI_2)));
+            return abis;
+        }
     }
 
     /**
@@ -154,6 +160,45 @@ public class TestMappingSuiteRunnerTest {
             assertTrue(configMap.containsKey(ABI_2 + " suite/stub1"));
             assertTrue(configMap.containsKey(ABI_2 + " suite/stub2"));
 
+            EasyMock.verify(mockBuildInfo);
+        } finally {
+            FileUtil.recursiveDelete(tempDir);
+        }
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#loadTests()} for loading tests from test_mappings.zip
+     * and run with shard.
+     */
+    @Test
+    public void testLoadTests_shard() throws Exception {
+        File tempDir = null;
+        try {
+            OptionSetter setter = new OptionSetter(mRunner);
+            setter.setOptionValue("test-mapping-test-group", "postsubmit");
+
+            tempDir = FileUtil.createTempDir("test_mapping");
+
+            File srcDir = FileUtil.createTempDir("src", tempDir);
+            String srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_1";
+            InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, srcDir, TEST_MAPPING);
+            File subDir = FileUtil.createTempDir("sub_dir", srcDir);
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_2";
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, subDir, TEST_MAPPING);
+
+            File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
+            ZipUtil.createZip(srcDir, zipFile);
+
+            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+            EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(new File("non-existing-dir"));
+            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+
+            mRunner.setBuild(mockBuildInfo);
+            EasyMock.replay(mockBuildInfo);
+
+            Collection<IRemoteTest> tests = mRunner.split(2);
             EasyMock.verify(mockBuildInfo);
         } finally {
             FileUtil.recursiveDelete(tempDir);

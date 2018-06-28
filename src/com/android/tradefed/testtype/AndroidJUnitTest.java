@@ -84,20 +84,28 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
             description="The hint about the test's runtime.")
     private long mRuntimeHint = 60000;// 1 minute
 
-    @Option(name = "include-filter", description = "The include filters of the test name to run.")
+    @Option(
+            name = "include-filter",
+            description = "The include filters of the test name to run.",
+            requiredForRerun = true)
     private Set<String> mIncludeFilters = new HashSet<>();
 
-    @Option(name = "exclude-filter", description = "The exclude filters of the test name to run.")
+    @Option(
+            name = "exclude-filter",
+            description = "The exclude filters of the test name to run.",
+            requiredForRerun = true)
     private Set<String> mExcludeFilters = new HashSet<>();
 
     @Option(
             name = "include-annotation",
-            description = "The annotation class name of the test name to run, can be repeated")
+            description = "The annotation class name of the test name to run, can be repeated",
+            requiredForRerun = true)
     private Set<String> mIncludeAnnotation = new HashSet<>();
 
     @Option(
             name = "exclude-annotation",
-            description = "The notAnnotation class name of the test name to run, can be repeated")
+            description = "The notAnnotation class name of the test name to run, can be repeated",
+            requiredForRerun = true)
     private Set<String> mExcludeAnnotation = new HashSet<>();
 
     @Option(name = "test-file-include-filter",
