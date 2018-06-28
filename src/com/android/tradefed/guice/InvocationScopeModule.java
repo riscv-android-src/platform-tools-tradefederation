@@ -17,6 +17,7 @@ package com.android.tradefed.guice;
 
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.metric.target.DeviceSideCollectorSpecification;
+import com.android.tradefed.invoker.IRescheduler;
 
 import com.google.inject.AbstractModule;
 
@@ -52,6 +53,11 @@ public class InvocationScopeModule extends AbstractModule {
         // DeviceSideCollectorSpecification is a supported Guice-Tradefed object.
         bind(DeviceSideCollectorSpecification.class)
                 .toProvider(InvocationScope.<DeviceSideCollectorSpecification>seededKeyProvider())
+                .in(InvocationScoped.class);
+
+        // Bind rescheduler
+        bind(IRescheduler.class)
+                .toProvider(InvocationScope.<IRescheduler>seededKeyProvider())
                 .in(InvocationScoped.class);
     }
 }
