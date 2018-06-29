@@ -18,10 +18,15 @@ package com.android.tradefed.config;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.SerializationUtil;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+
+import java.io.File;
 
 /** Unit Tests for {@link ConfigurationDescriptor} */
 @RunWith(JUnit4.class)
@@ -60,6 +65,23 @@ public class ConfigurationDescriptorTest {
                     "Option test-suite-tag cannot be specified via command line. "
                             + "Only in the configuration xml.",
                     expected.getMessage());
+        }
+    }
+
+    /** Test to ensure ConfigurationDescriptor is serializable/deserializable properly. */
+    @Test
+    public void testSerialization() throws Exception {
+        IConfiguration config = mFactory.createConfigurationFromArgs(new String[] {"test-config"});
+        ConfigurationDescriptor descriptor = config.getConfigurationDescription();
+        descriptor.setModuleName("test");
+        assertEquals("test", descriptor.getModuleName());
+        File serialized = SerializationUtil.serialize(descriptor);
+        try {
+            ConfigurationDescriptor desc =
+                    (ConfigurationDescriptor) SerializationUtil.deserialize(serialized, true);
+            assertEquals("test", desc.getModuleName());
+        } finally {
+            FileUtil.deleteFile(serialized);
         }
     }
 }
