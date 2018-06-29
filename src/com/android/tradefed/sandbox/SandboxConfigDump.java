@@ -44,7 +44,9 @@ public class SandboxConfigDump {
         /** Only non-versioned element of the xml will be outputted */
         NON_VERSIONED_CONFIG,
         /** A run-ready config will be outputted */
-        RUN_CONFIG
+        RUN_CONFIG,
+        /** Special mode that allows the sandbox to generate another layer of sandboxing. */
+        TEST_MODE,
     }
 
     /**
@@ -75,7 +77,7 @@ public class SandboxConfigDump {
             // TODO: Handle keystore
             IConfiguration config =
                     factory.createConfigurationFromArgs(argList.toArray(new String[0]));
-            if (DumpCmd.RUN_CONFIG.equals(cmd)) {
+            if (DumpCmd.RUN_CONFIG.equals(cmd) || DumpCmd.TEST_MODE.equals(cmd)) {
                 config.getCommandOptions().setShouldUseSandboxing(false);
                 config.getConfigurationDescription().setSandboxed(true);
                 config.setTestInvocationListener(new SubprocessResultsReporter());
@@ -85,6 +87,13 @@ public class SandboxConfigDump {
                 // parent.
                 config.getCommandOptions().setBugreportOnInvocationEnded(false);
                 config.getCommandOptions().setBugreportzOnInvocationEnded(false);
+            }
+            if (DumpCmd.TEST_MODE.equals(cmd)) {
+                // We allow one more layer of sandbox to be generated
+                config.getCommandOptions().setShouldUseSandboxing(true);
+                config.getConfigurationDescription().setSandboxed(false);
+                // Ensure we turn off test mode afterward to avoid infinite sandboxing
+                config.getCommandOptions().setUseSandboxTestMode(false);
             }
             pw = new PrintWriter(resFile);
             if (DumpCmd.NON_VERSIONED_CONFIG.equals(cmd)) {
