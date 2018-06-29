@@ -20,6 +20,8 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
+import com.google.common.base.Joiner;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -373,7 +375,13 @@ public class TestRunResult {
         Map<String, LogFile> finalRunLoggedFiles = new HashMap<>();
         Map<TestDescription, TestResult> finalTestResults =
                 new HashMap<TestDescription, TestResult>();
-
+        // Keep track of if one of the run attempt failed.
+        boolean isFailed = false;
+        List<String> runErrors = new ArrayList<>();
+        // Keep track of if one of the run is not complete
+        boolean isComplete = true;
+        // Keep track of elapsed time
+        long elapsedTime = 0L;
         for (TestRunResult eachRunResult : testRunResults) {
             // Check all mTestRunNames are the same.
             if (!testRunName.equals(eachRunResult.getName())) {
@@ -382,6 +390,15 @@ public class TestRunResult {
                                 "Unabled to merge TestRunResults: The run results names are "
                                         + "different (%s, %s)",
                                 testRunName, eachRunResult.getName()));
+            }
+            elapsedTime += eachRunResult.getElapsedTime();
+            if (eachRunResult.isRunFailure()) {
+                // if one of the run fail for now consider the aggregate a failure.
+                runErrors.add(eachRunResult.getRunFailureMessage());
+                isFailed = true;
+            }
+            if (!eachRunResult.isRunComplete()) {
+                isComplete = false;
             }
             // Keep the last TestRunResult's RunMetrics, ProtoMetrics and logFiles.
             // TODO: Currently we keep a single item when multiple TestRunResult have the same
@@ -430,6 +447,15 @@ public class TestRunResult {
         finalRunResult.mRunProtoMetrics = finalRunProtoMetrics;
         finalRunResult.mRunLoggedFiles = finalRunLoggedFiles;
         finalRunResult.mTestResults = finalTestResults;
+        // Report completion status
+        if (isFailed) {
+            finalRunResult.mRunFailureError = Joiner.on("\n").join(runErrors);
+        } else {
+            finalRunResult.mRunFailureError = null;
+        }
+        finalRunResult.mIsRunComplete = isComplete;
+        // Report total elapsed times
+        finalRunResult.mElapsedTime = elapsedTime;
         return finalRunResult;
     }
 }

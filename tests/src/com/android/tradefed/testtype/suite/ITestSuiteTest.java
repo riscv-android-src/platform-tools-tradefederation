@@ -1114,4 +1114,32 @@ public class ITestSuiteTest {
         }
         EasyMock.verify(mMockDevice);
     }
+
+    /**
+     * If a null-device is used with the suite and the primary abi is requested ensure we use the
+     * primary abi of the hosts.
+     */
+    @Test
+    public void testNullDeviceSuite_primaryAbi() throws Exception {
+        OptionSetter setter = new OptionSetter(mTestSuite);
+        setter.setOptionValue(ITestSuite.PRIMARY_ABI_RUN, "true");
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(new NullDevice("null-device-0"));
+        EasyMock.replay(mMockDevice);
+        Set<IAbi> res = mTestSuite.getAbis(mMockDevice);
+        assertEquals(1, res.size());
+        assertEquals("armeabi-v7a", res.iterator().next().getName());
+        EasyMock.verify(mMockDevice);
+    }
+
+    /** If a null-device is used with the suite, ensure we pick abi of the machine hosts. */
+    @Test
+    public void testNullDeviceSuite_requestAbi() throws Exception {
+        OptionSetter setter = new OptionSetter(mTestSuite);
+        setter.setOptionValue(ITestSuite.ABI_OPTION, "arm64-v8a");
+        EasyMock.replay(mMockDevice);
+        Set<IAbi> res = mTestSuite.getAbis(mMockDevice);
+        assertEquals(1, res.size());
+        assertEquals("arm64-v8a", res.iterator().next().getName());
+        EasyMock.verify(mMockDevice);
+    }
 }
