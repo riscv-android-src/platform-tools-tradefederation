@@ -39,13 +39,15 @@ class RobolectricTestRunner(test_runner_base.TestRunnerBase):
         """Init stuff for robolectric runner class."""
         super(RobolectricTestRunner, self).__init__(results_dir)
 
-    def run_tests(self, test_infos, extra_args):
+    def run_tests(self, test_infos, extra_args, reporter):
         """Run the list of test_infos.
 
         Args:
             test_infos: List of TestInfo.
             extra_args: Dict of extra args to add to test run.
+            reporter: A ResultReporter Instance.
         """
+        reporter.register_unsupported_runner(self.NAME)
         for test_info in test_infos:
             env_vars = self.generate_env_vars(test_info, extra_args)
             atest_utils.build(set([test_info.test_name]), verbose=True,

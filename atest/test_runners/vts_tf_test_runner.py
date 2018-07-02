@@ -53,16 +53,22 @@ class VtsTradefedTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
                            self).get_test_runner_build_reqs()
         return build_req
 
-    def run_tests(self, test_infos, extra_args):
+    def run_tests(self, test_infos, extra_args, reporter):
         """Run the list of test_infos.
 
         Args:
             test_infos: List of TestInfo.
             extra_args: Dict of extra args to add to test run.
+            reporter: An instance of result_report.ResultReporter.
         """
+        reporter.register_unsupported_runner(self.NAME)
         run_cmds = self._generate_run_commands(test_infos, extra_args)
         for run_cmd in run_cmds:
-            super(VtsTradefedTestRunner, self).run(run_cmd)
+            proc = super(VtsTradefedTestRunner, self).run(run_cmd,
+                                                          output_to_stdout=True)
+            proc.wait()
+
+
 
     def _parse_extra_args(self, extra_args):
         """Convert the extra args into something vts-tf can understand.

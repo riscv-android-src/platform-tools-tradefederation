@@ -16,8 +16,13 @@
 Atest Tradefed test runner class.
 """
 
+from __future__ import print_function
+import json
 import logging
 import os
+import re
+import signal
+import socket
 import subprocess
 
 # pylint: disable=import-error
@@ -25,6 +30,30 @@ import atest_utils
 import constants
 from test_finders import test_info
 import test_runner_base
+
+PRETTY_RESULT_ENV_VAR = 'ATEST_PRETTY_RESULT'
+SOCKET_HOST = '127.0.0.1'
+SOCKET_QUEUE_MAX = 1
+SOCKET_BUFFER_SIZE = 4096
+EVENT_RE = re.compile(r'^(?P<event_name>[A-Z_]+) (?P<json_data>{.+)$')
+EVENT_NAMES = {'module_started': 'TEST_MODULE_STARTED',
+               'run_started': 'TEST_RUN_STARTED',
+               # Next three are test-level events
+               'test_started': 'TEST_STARTED',
+               'test_failed': 'TEST_FAILED',
+               'test_ended': 'TEST_ENDED',
+               # Last two failures are runner-level, not test-level.
+               # Invocation failure is broader than run failure.
+               'run_failed': 'TEST_RUN_FAILED',
+               'invocation_failed': 'INVOCATION_FAILED'}
+TEST_NAME_TEMPLATE = '%s#%s'
+
+CONNECTION_STATE = {
+    'current_test': None,
+    'last_failed': None,
+    'current_group': None,
+    'current_group_total': None
+}
 
 
 class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
@@ -43,13 +72,28 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         self.run_cmd_dict = {'exe': self.EXECUTABLE,
                              'template': self._TF_TEMPLATE,
                              'args': ''}
+        self.is_verbose = logging.getLogger().isEnabledFor(logging.DEBUG)
 
-    def run_tests(self, test_infos, extra_args):
-        """Run the list of test_infos.
+    def run_tests(self, test_infos, extra_args, reporter):
+        """Run the list of test_infos. See base class for more.
 
         Args:
-            test_infos: List of TestInfo.
+            test_infos: A list of TestInfos.
             extra_args: Dict of extra args to add to test run.
+            reporter: An instance of result_report.ResultReporter.
+        """
+        if os.getenv(PRETTY_RESULT_ENV_VAR):
+            self.run_tests_pretty(test_infos, extra_args, reporter)
+        else:
+            self.run_tests_raw(test_infos, extra_args, reporter)
+
+    def run_tests_raw(self, test_infos, extra_args, reporter):
+        """Run the list of test_infos. See base class for more.
+
+        Args:
+            test_infos: A list of TestInfos.
+            extra_args: Dict of extra args to add to test run.
+            reporter: An instance of result_report.ResultReporter.
         """
         iterations = 1
         metrics_folder = ''
@@ -60,11 +104,204 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             iterations = extra_args.pop(constants.POST_PATCH_ITERATIONS)
             metrics_folder = os.path.join(self.results_dir, 'new-metrics')
         args = self._create_test_args(test_infos)
-        run_cmd = self._generate_run_commands(args, extra_args, metrics_folder)
-        for _ in xrange(iterations):
-            super(AtestTradefedTestRunner, self).run(run_cmd)
-        if metrics_folder:
-            logging.info('Saved metrics in: %s', metrics_folder)
+
+        reporter.register_unsupported_runner(self.NAME)
+
+        for _ in range(iterations):
+            run_cmd = self._generate_run_command(args, extra_args,
+                                                 metrics_folder)
+            subproc = self.run(run_cmd, output_to_stdout=True)
+            subproc.wait()
+
+    def run_tests_pretty(self, test_infos, extra_args, reporter):
+        """Run the list of test_infos. See base class for more.
+
+        Args:
+            test_infos: A list of TestInfos.
+            extra_args: Dict of extra args to add to test run.
+            reporter: An instance of result_report.ResultReporter.
+        """
+        iterations = 1
+        metrics_folder = ''
+        if extra_args.get(constants.PRE_PATCH_ITERATIONS):
+            iterations = extra_args.pop(constants.PRE_PATCH_ITERATIONS)
+            metrics_folder = os.path.join(self.results_dir, 'baseline-metrics')
+        elif extra_args.get(constants.POST_PATCH_ITERATIONS):
+            iterations = extra_args.pop(constants.POST_PATCH_ITERATIONS)
+            metrics_folder = os.path.join(self.results_dir, 'new-metrics')
+        args = self._create_test_args(test_infos)
+
+        for _ in range(iterations):
+            server = self._start_socket_server()
+            run_cmd = self._generate_run_command(args, extra_args,
+                                                 metrics_folder,
+                                                 server.getsockname()[1])
+            subproc = self.run(run_cmd, output_to_stdout=self.is_verbose)
+            try:
+                signal.signal(signal.SIGINT, self._signal_passer(subproc))
+                # server.accept() blocks until connection received
+                conn, addr = server.accept()
+                logging.debug('Accepted connection from %s', addr)
+                self._process_connection(conn, reporter)
+                if metrics_folder:
+                    logging.info('Saved metrics in: %s', metrics_folder)
+            except Exception:
+                # If atest crashes, kill TF subproc group as well.
+                os.killpg(os.getpgid(subproc.pid), signal.SIGINT)
+                raise
+            finally:
+                server.shutdown(socket.SHUT_RDWR)
+                server.close()
+                subproc.wait()
+
+    def _signal_passer(self, proc):
+        """Return the signal_handler func bound to proc.
+
+        Args:
+            proc: The tradefed subprocess.
+
+        Returns: signal_handler function.
+        """
+        def signal_handler(_signal_number, _frame):
+            """Pass SIGINT to proc.
+
+            If user hits ctrl-c during atest run, the TradeFed subprocess
+            won't stop unless we also send it a SIGINT. The TradeFed process
+            is started in a process group, so this SIGINT is sufficient to
+            kill all the child processes TradeFed spawns as well.
+            """
+            print('Ctrl-C received. Killing Tradefed subprocess group')
+            os.killpg(os.getpgid(proc.pid), signal.SIGINT)
+        return signal_handler
+
+    def _start_socket_server(self):
+        """Start a TCP server."""
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # Port 0 lets the OS pick an open port between 1024 and 65535.
+        server.bind((SOCKET_HOST, 0))
+        server.listen(SOCKET_QUEUE_MAX)
+        logging.debug('Socket server started on port %s',
+                      server.getsockname()[1])
+        return server
+
+    def _process_connection(self, conn, reporter):
+        """Process a socket connection from TradeFed.
+
+        This involves chunking the data until we have a full EVENT msg. Then
+        parsing the event message to see if a test has finished. If a test
+        has finished then use the reporter to process that test result.
+
+        Args:
+            conn: A socket connection.
+            reporter: A result_report.ResultReporter
+        """
+        event_name_for_chunk = None
+        json_data_chunk = ''
+        connection_state = CONNECTION_STATE.copy()
+        while True:
+            logging.debug('Waiting to receive data')
+            data = conn.recv(SOCKET_BUFFER_SIZE)
+            logging.debug('received: %s', data)
+            if data:
+                # Client Socket Reporter sends data in discrete "event" blocks
+                # of the form "EVENT_NAME {JSON DATA}". So we don't need
+                # to worry about getting more than EVENT_NAME {JSON DATA}, but
+                # we need to chunk in case EVENT_NAME {JSON DATA} exceeds our
+                # recv buffer and we only get part of it.
+                match = EVENT_RE.match(data)
+                if match:
+                    event_name = match.group('event_name')
+                    try:
+                        event_data = json.loads(match.group('json_data'))
+                    except ValueError:
+                        # exceeded buffer, start chunking
+                        event_name_for_chunk = match.group('event_name')
+                        json_data_chunk = match.group('json_data')
+                        continue
+                else:
+                    assert event_name_for_chunk
+                    json_data_chunk += data
+                    try:
+                        event_data = json.loads(json_data_chunk)
+                        json_data_chunk = ''
+                        event_name = event_name_for_chunk
+                        event_name_for_chunk = None
+                    except ValueError:
+                        # json data not complete, keep chunking
+                        continue
+                # Only reach here if have event_name and full event_data.
+                self._process_event(event_name, event_data, reporter,
+                                    connection_state)
+            else:
+                # client sent empty string, so no more data.
+                conn.close()
+                break
+
+    def _process_event(self, event_name, event_data, reporter, state):
+        """Process the events of the test run and call reporter with results.
+
+        Args:
+            event_name: A string of the event name.
+            event_data: A dict of event data.
+            reporter: A ResultReporter instance.
+            state: A dict of the state of the test run.
+        """
+        if event_name == EVENT_NAMES['module_started']:
+            state['current_group'] = event_data['moduleName']
+            state['last_failed'] = None
+            state['current_test'] = None
+        elif event_name == EVENT_NAMES['run_started']:
+            # Technically there can be more than one run per module.
+            state['current_group_total'] = event_data['testCount']
+            state['last_failed'] = None
+            state['current_test'] = None
+        elif event_name == EVENT_NAMES['test_started']:
+            name = TEST_NAME_TEMPLATE % (event_data['className'],
+                                         event_data['testName'])
+            state['current_test'] = name
+        elif event_name == EVENT_NAMES['test_failed']:
+            state['last_failed'] = {'name': TEST_NAME_TEMPLATE % (
+                event_data['className'],
+                event_data['testName']),
+                                    'trace': event_data['trace']}
+        elif event_name == EVENT_NAMES['run_failed']:
+            # Module and Test Run probably started, but failure occurred.
+            reporter.process_test_result(test_runner_base.TestResult(
+                runner_name=self.NAME,
+                group_name=state['current_group'],
+                test_name=state['current_test'],
+                status=test_runner_base.ERROR_STATUS,
+                details=event_data['reason'],
+                runner_total=None,
+                group_total=state['current_group_total']))
+        elif event_name == EVENT_NAMES['invocation_failed']:
+            # Broadest possible failure. May not even start the module/test run.
+            reporter.process_test_result(test_runner_base.TestResult(
+                runner_name=self.NAME,
+                group_name=state['current_group'],
+                test_name=state['current_test'],
+                status=test_runner_base.ERROR_STATUS,
+                details=event_data['cause'],
+                runner_total=None,
+                group_total=state['current_group_total']))
+        elif event_name == EVENT_NAMES['test_ended']:
+            name = TEST_NAME_TEMPLATE % (event_data['className'],
+                                         event_data['testName'])
+            if state['last_failed'] and name == state['last_failed']['name']:
+                status = test_runner_base.FAILED_STATUS
+                trace = state['last_failed']['trace']
+            else:
+                status = test_runner_base.PASSED_STATUS
+                trace = None
+            reporter.process_test_result(test_runner_base.TestResult(
+                runner_name=self.NAME,
+                group_name=state['current_group'],
+                test_name=name,
+                status=status,
+                details=trace,
+                runner_total=None,
+                group_total=state['current_group_total']))
 
     def host_env_check(self):
         """Check that host env has everything we need.
@@ -146,25 +383,27 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             args_not_supported.append(arg)
         return args_to_append, args_not_supported
 
-    def _generate_run_commands(self, args, extra_args, metrics_folder):
-        """Generate a list of run commands from TestInfos.
+    def _generate_run_command(self, args, extra_args, metrics_folder,
+                              port=None):
+        """Generate a single run command from TestInfos.
 
         Args:
             args: A list of strings of TF arguments to run the tests.
-            extra_Args: A Dict of extra args to append.
+            extra_args: A Dict of extra args to append.
             metrics_folder: A string of the filepath to put metrics.
+            port: Optional. An int of the port number to send events to. If
+                  None, then subprocess reporter in TF won't try to connect.
 
         Returns:
             A string that contains the atest tradefed run command.
         """
         # Create a copy of args as more args could be added to the list.
         test_args = list(args)
+        if port:
+            test_args.extend(['--subprocess-report-port', str(port)])
         if metrics_folder:
             test_args.extend(['--metrics-folder', metrics_folder])
-        if logging.getLogger().isEnabledFor(logging.DEBUG):
-            log_level = 'VERBOSE'
-        else:
-            log_level = 'WARN'
+        log_level = 'VERBOSE' if self.is_verbose else 'WARN'
         test_args.extend(['--log-level', log_level])
 
         args_to_add, args_not_supported = self._parse_extra_args(extra_args)
