@@ -16,10 +16,12 @@
 package com.android.tradefed.sandbox;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -40,6 +42,8 @@ import com.android.tradefed.util.keystore.IKeyStoreClient;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -74,6 +78,7 @@ public class TradefedSandbox implements ISandbox {
         List<String> mCmdArgs = new ArrayList<>();
         mCmdArgs.add("java");
         mCmdArgs.add(String.format("-Djava.io.tmpdir=%s", mSandboxTmpFolder.getAbsolutePath()));
+        mCmdArgs.add(String.format("-DTF_JAR_DIR=%s", mRootFolder.getAbsolutePath()));
         mCmdArgs.add("-cp");
         mCmdArgs.add(createClasspath(mRootFolder));
         mCmdArgs.add(TradefedSandboxRunner.class.getCanonicalName());
@@ -81,6 +86,10 @@ public class TradefedSandbox implements ISandbox {
         mCmdArgs.add(mSerializedConfiguration.getAbsolutePath());
         mCmdArgs.add("--subprocess-report-port");
         mCmdArgs.add(Integer.toString(mEventParser.getSocketServerPort()));
+        if (config.getCommandOptions().shouldUseSandboxTestMode()) {
+            // In test mode, re-add the --use-sandbox to trigger a sandbox run again in the process
+            mCmdArgs.add("--" + CommandOptions.USE_SANDBOX);
+        }
 
         long timeout = config.getCommandOptions().getInvocationTimeout();
         CommandResult result =
@@ -153,7 +162,7 @@ public class TradefedSandbox implements ISandbox {
 
         // Prepare the context
         try {
-            mSerializedContext = prepareContext(context);
+            mSerializedContext = prepareContext(context, config);
         } catch (IOException e) {
             return e;
         }
@@ -235,13 +244,13 @@ public class TradefedSandbox implements ISandbox {
             mEventParser = new SubprocessTestResultsParser(listener, true, context);
             String[] args = QuotationAwareTokenizer.tokenizeLine(config.getCommandLine());
             mGlobalConfig = SandboxConfigUtil.dumpFilteredGlobalConfig();
+            DumpCmd mode = DumpCmd.RUN_CONFIG;
+            if (config.getCommandOptions().shouldUseSandboxTestMode()) {
+                mode = DumpCmd.TEST_MODE;
+            }
             mSerializedConfiguration =
                     SandboxConfigUtil.dumpConfigForVersion(
-                            createClasspath(mRootFolder),
-                            mRunUtil,
-                            args,
-                            DumpCmd.RUN_CONFIG,
-                            mGlobalConfig);
+                            createClasspath(mRootFolder), mRunUtil, args, mode, mGlobalConfig);
         } catch (Exception e) {
             StreamUtil.close(mEventParser);
             return e;
@@ -258,10 +267,27 @@ public class TradefedSandbox implements ISandbox {
      * Prepare and serialize the {@link IInvocationContext}.
      *
      * @param context the {@link IInvocationContext} to be prepared.
+     * @param config The {@link IConfiguration} of the sandbox.
      * @return the serialized {@link IInvocationContext}.
      * @throws IOException
      */
-    protected File prepareContext(IInvocationContext context) throws IOException {
+    protected File prepareContext(IInvocationContext context, IConfiguration config)
+            throws IOException {
+        // In test mode we need to keep the context unlocked for the next layer.
+        if (config.getCommandOptions().shouldUseSandboxTestMode()) {
+            try {
+                Method unlock = InvocationContext.class.getDeclaredMethod("unlock");
+                unlock.setAccessible(true);
+                unlock.invoke(context);
+                unlock.setAccessible(false);
+            } catch (NoSuchMethodException
+                    | SecurityException
+                    | IllegalAccessException
+                    | IllegalArgumentException
+                    | InvocationTargetException e) {
+                throw new IOException("Couldn't unlock the context.", e);
+            }
+        }
         return SerializationUtil.serialize(context);
     }
 

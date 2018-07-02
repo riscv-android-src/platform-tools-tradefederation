@@ -316,6 +316,12 @@ public class InvocationContext implements IInvocationContext {
         mLocked = true;
     }
 
+    /** Private method to unlock the attributes. Used for sandbox test mode only. */
+    @SuppressWarnings("unused")
+    private void unlock() {
+        mLocked = false;
+    }
+
     /** {@inheritDoc} */
     @Override
     public void addSerialsFromShard(Integer index, List<String> serials) {
