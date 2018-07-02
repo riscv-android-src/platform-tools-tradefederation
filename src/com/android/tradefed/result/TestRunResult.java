@@ -94,7 +94,7 @@ public class TestRunResult {
 
     /** Gets the set of completed tests. */
     public Set<TestDescription> getCompletedTests() {
-        List completedStatuses = new ArrayList<TestStatus>();
+        List<TestStatus> completedStatuses = new ArrayList<>();
         for (TestStatus s : TestStatus.values()) {
             if (!s.equals(TestStatus.INCOMPLETE)) {
                 completedStatuses.add(s);
