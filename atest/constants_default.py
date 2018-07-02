@@ -72,6 +72,8 @@ GTF_TARGET = 'google-tradefed-core'
 TEST_GROUP_PRESUBMIT = 'presubmit'
 TEST_GROUP_POSTSUBMIT = 'postsubmit'
 TEST_GROUP_ALL = 'all'
+# Key in TEST_MAPPING file for a list of imported TEST_MAPPING file
+TEST_MAPPING_IMPORTS = 'imports'
 
 # TradeFed command line args
 TF_INCLUDE_FILTER = '--include-filter'
