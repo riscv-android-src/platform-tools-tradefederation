@@ -129,9 +129,12 @@ public class NoisyDryRunTest implements IRemoteTest {
                                 .createConfigurationFromArgs(args, null, new DryRunKeyStore());
                 config.validateOptions();
             } catch (ConfigurationException e) {
-                CLog.e("Failed to parse comand line: %s.", cmdLine);
+                String errorMessage = String.format("Failed to parse command line: %s.", cmdLine);
+                CLog.e(errorMessage);
                 CLog.e(e);
-                listener.testFailed(parseCmdTest, StreamUtil.getStackTrace(e));
+                listener.testFailed(
+                        parseCmdTest,
+                        String.format("%s\n%s", errorMessage, StreamUtil.getStackTrace(e)));
             } finally {
                 listener.testEnded(parseCmdTest, new HashMap<String, Metric>());
             }
