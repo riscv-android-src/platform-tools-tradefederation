@@ -21,6 +21,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
@@ -188,6 +189,7 @@ public class TradefedSandboxTest {
 
     private void setPrepareConfigurationExpectations() throws Exception {
         EasyMock.expect(mMockConfig.getCommandLine()).andReturn("empty --arg 1").times(2);
+        EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
     }
 
     /**

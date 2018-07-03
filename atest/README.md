@@ -14,7 +14,7 @@ Just want to learn about the overall structure? [Go here.](./docs/atest_structur
 1. [Environment Setup](#environment-setup)
 2. [Basic Usage](#basic-usage)
 3. [Identifying Tests](#identifying-tests)
-4. [Specifying Steps: Build, Install or Run](#specifying-steps:-build,-install-or-run)
+4. [Specifying Steps: Build, Install or Run](#specifying-steps-build-install-or-run)
 5. [Running Specific Methods](#running-specific-methods)
 6. [Running Multiple Classes](#running-multiple-classes)
 7. [Detecting Metrics Regression](#detecting-metrics-regression)
@@ -49,36 +49,24 @@ Atest commands take the following form:
 
 #### \<optional arguments>
 
-<table>
-<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-b</td><td>--build</td>
-    <td>Build test targets.</td></tr>
-<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-i</td><td>--install</td>
-    <td>Install test artifacts (APKs) on device.</td></tr>
-<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-t</td><td>--test</td>
-    <td>Run the tests.</td></tr>
-<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-s</td><td>--serial</td>
-    <td>Run the tests on the specified device. Currently, one device can be tested at a time.</td></tr>
-<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-d</td><td>--disable-teardown</td>
-    <td>Disables test teardown and cleanup.</td></tr>
-<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-m</td><td>--rebuild-module-info</td>
-    <td>Forces a rebuild of the module-info.json file.</td></tr>
-<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-w</td><td>--wait-for-debugger</td>
-    <td>Only for instrumentation tests. Waits for debugger prior to execution.</td></tr>
-<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-v</td><td>--verbose</td>
-    <td>Display DEBUG level logging.</td></tr>
-<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </td><td>--generate-baseline</td>
-    <td>Generate baseline metrics, run 5 iterations by default.</td></tr>
-<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </td><td>--generate-new-metrics</td>
-    <td>Generate new metrics, run 5 iterations by default.</td></tr>
-<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </td><td>--detect-regression</td>
-    <td>Run regression detection algorithm.</td></tr>
-<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>--[CUSTOM_ARGS]</td>
-    <td>Specify custom args for the test runners.</td></tr>
-<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-h</td><td>--help</td>
-    <td>Show this help message and exit</td></tr>
-</table>
+Option|Long Option|Description
+:----:|:----------|-----------
+-b | --build      | Build test targets.
+-i | --install    | Install test artifacts (APKs) on device.
+-t | --test       | Run the tests.
+-s | --serial     | Run the tests on the specified device. <br>Currently, one device can be tested at a time.
+-d | --disable-teardown | Disables test teardown and cleanup.
+-m | --rebuild-module-info | Forces a rebuild of the module-info.json file.
+-w | --wait-for-debugger   | Only for instrumentation tests. Waits for debugger prior to execution.
+-v | --verbose             | Display DEBUG level logging.
+<c>| --generate-baseline   | Generate baseline metrics, run 5 iterations by default.
+<c>| --generate-new-metrics| Generate new metrics, run 5 iterations by default.
+<c>| --detect-regression   | Run regression detection algorithm.
+<c>| --[CUSTOM_ARGS]       | Specify custom args for the test runners.
+-h | --help       | Show this help message and exit.
 
-More information about **-b**, **-i** and **-t** can be found below under [Specifying Steps: Build, Install or Run.](#specifying-steps:-build,-install-or-run)
+
+More information about **-b**, **-i** and **-t** can be found below under [Specifying Steps: Build, Install or Run.](#specifying-steps-build-install-or-run)
 
 #### \<tests to run>
 
@@ -196,7 +184,7 @@ into TradeFed.
      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest com.android.server.wm`<br>
      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest android.jank.cts`<br>
 
-## <a name="specifying-steps:-build,-install-or-run">Specifying Steps: Build, Install or Run</a>
+## <a name="specifying-steps-build-install-or-run">Specifying Steps: Build, Install or Run</a>
 
 The **-b**, **-i** and **-t** options allow you to specify which steps you want
 to run. If none of those options are given, then all steps are run. If any of

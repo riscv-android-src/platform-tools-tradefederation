@@ -142,6 +142,7 @@ public class CommandOptions implements ICommandOptions {
     private boolean mUseTfSharding = false;
 
     public static final String USE_SANDBOX = "use-sandbox";
+    public static final String ENABLE_SANDBOX_TEST_MODE = "sandbox-test-mode";
 
     @Option(
         name = USE_SANDBOX,
@@ -149,6 +150,12 @@ public class CommandOptions implements ICommandOptions {
     )
     private boolean mUseSandbox = false;
 
+    @Option(
+            name = ENABLE_SANDBOX_TEST_MODE,
+            description =
+                    "Sandbox test mode where the sandbox will use itself to generate another layer "
+                            + "of sandboxing. This is used for the sandbox to validate itself.")
+    private boolean mSandboxTestMode = false;
 
     /**
      * Set the help mode for the config.
@@ -424,5 +431,17 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public void setShouldUseSandboxing(boolean use) {
         mUseSandbox = use;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldUseSandboxTestMode() {
+        return mSandboxTestMode;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setUseSandboxTestMode(boolean use) {
+        mSandboxTestMode = use;
     }
 }

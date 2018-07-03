@@ -25,7 +25,6 @@ atest is designed to support any test types that can be ran by TradeFederation.
 
 import logging
 import os
-import subprocess
 import sys
 import tempfile
 import time
@@ -36,6 +35,7 @@ import cli_translator
 # pylint: disable=import-error
 import constants
 import module_info
+import result_reporter
 import test_runner_handler
 from test_runners import regression_test_runner
 
@@ -393,7 +393,7 @@ def _configure_logging(verbose):
     if verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 
 def _missing_environment_variables():
@@ -419,19 +419,6 @@ def make_test_run_dir():
     utc_epoch_time = int(time.time())
     prefix = TEST_RUN_DIR_PREFIX % utc_epoch_time
     return tempfile.mkdtemp(prefix=prefix)
-
-
-def run_tests(run_commands):
-    """Shell out and execute tradefed run commands.
-
-    Args:
-        run_commands: A list of strings of Tradefed run commands.
-    """
-    logging.info('Running tests')
-    # TODO: Build result parser for run command. Until then display raw stdout.
-    for run_command in run_commands:
-        logging.debug('Executing command: %s', run_command)
-        subprocess.check_call(run_command, shell=True, stderr=subprocess.STDOUT)
 
 
 def get_extra_args(args):
@@ -630,8 +617,10 @@ def main(argv):
         test_runner_handler.run_all_tests(results_dir, test_infos, extra_args)
     if args.detect_regression:
         regression_args = _get_regression_detection_args(args, results_dir)
+        # TODO(b/110485713): Should not call run_tests here.
+        reporter = result_reporter.ResultReporter()
         regression_test_runner.RegressionTestRunner('').run_tests(
-            None, regression_args)
+            None, regression_args, reporter)
     return constants.EXIT_CODE_SUCCESS
 
 if __name__ == '__main__':

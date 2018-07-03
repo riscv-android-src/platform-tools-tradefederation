@@ -27,12 +27,13 @@ class ExampleTestRunner(test_runner_base.TestRunnerBase):
     _RUN_CMD = '{exe} ExampleTestRunner - test:{test}'
     _BUILD_REQ = set()
 
-    def run_tests(self, test_infos, extra_args):
+    def run_tests(self, test_infos, extra_args, reporter):
         """Run the list of test_infos.
 
         Args:
             test_infos: List of TestInfo.
             extra_args: Dict of extra args to add to test run.
+            reporter: An instance of result_report.ResultReporter
         """
         for test_info in test_infos:
             run_cmd_dict = {'exe': self.EXECUTABLE,
