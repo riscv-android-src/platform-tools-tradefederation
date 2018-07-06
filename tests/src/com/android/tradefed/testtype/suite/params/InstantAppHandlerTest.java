@@ -17,7 +17,6 @@ package com.android.tradefed.testtype.suite.params;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.config.Configuration;
@@ -33,6 +32,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.util.HashSet;
 import java.util.Set;
 
 /** Unit tests for {@link InstantAppHandler}. */
@@ -50,7 +50,7 @@ public class InstantAppHandlerTest {
 
     private class TestFilterable implements IRemoteTest, ITestAnnotationFilterReceiver {
 
-        public String mReceivedFiltered;
+        public Set<String> mReceivedFiltered = new HashSet<>();
 
         @Override
         public void addIncludeAnnotation(String annotation) {
@@ -59,7 +59,27 @@ public class InstantAppHandlerTest {
 
         @Override
         public void addExcludeAnnotation(String notAnnotation) {
-            mReceivedFiltered = notAnnotation;
+            mReceivedFiltered.add(notAnnotation);
+        }
+
+        @Override
+        public Set<String> getExcludeAnnotations() {
+            return mReceivedFiltered;
+        }
+
+        @Override
+        public Set<String> getIncludeAnnotations() {
+            return new HashSet<>();
+        }
+
+        @Override
+        public void clearIncludeAnnotations() {
+            // ignore
+        }
+
+        @Override
+        public void clearExcludeAnnotations() {
+            mReceivedFiltered.clear();
         }
 
         @Override
@@ -69,7 +89,7 @@ public class InstantAppHandlerTest {
 
         @Override
         public void addAllExcludeAnnotation(Set<String> notAnnotations) {
-            // ignore
+            mReceivedFiltered.addAll(notAnnotations);
         }
 
         @Override
@@ -84,7 +104,7 @@ public class InstantAppHandlerTest {
         SuiteApkInstaller installer = new SuiteApkInstaller();
         assertFalse(installer.isInstantMode());
         TestFilterable test = new TestFilterable();
-        assertNull(test.mReceivedFiltered);
+        assertEquals(0, test.mReceivedFiltered.size());
         mModuleConfig.setTest(test);
         mModuleConfig.setTargetPreparer(installer);
         mHandler.applySetup(mModuleConfig);
@@ -92,6 +112,9 @@ public class InstantAppHandlerTest {
         // Instant mode gets turned on.
         assertTrue(installer.isInstantMode());
         // Full mode is filtered out.
-        assertEquals("android.platform.test.annotations.AppModeFull", test.mReceivedFiltered);
+        assertEquals(1, test.mReceivedFiltered.size());
+        assertEquals(
+                "android.platform.test.annotations.AppModeFull",
+                test.mReceivedFiltered.iterator().next());
     }
 }

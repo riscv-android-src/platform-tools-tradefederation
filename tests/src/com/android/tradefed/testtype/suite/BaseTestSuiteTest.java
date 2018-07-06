@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.suite;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
@@ -261,6 +262,10 @@ public class BaseTestSuiteTest {
         setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "example-suite-parameters");
         setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.testtype.suite.TestSuiteStub:"
+                        + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
         EasyMock.replay(mockDevice);
         LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
         assertEquals(4, configMap.size());
@@ -269,5 +274,24 @@ public class BaseTestSuiteTest {
         assertTrue(configMap.containsKey("armeabi-v7a suite/stub-parameterized"));
         assertTrue(configMap.containsKey("armeabi-v7a suite/stub-parameterized[instant]"));
         EasyMock.verify(mockDevice);
+
+        TestSuiteStub testSuiteStub =
+                (TestSuiteStub)
+                        configMap
+                                .get("arm64-v8a suite/stub-parameterized[instant]")
+                                .getTests()
+                                .get(0);
+        assertEquals(0, testSuiteStub.getIncludeAnnotations().size());
+        // This is added by InstantAppHandler to avoid running full mode tests in instant mode
+        assertTrue(
+                testSuiteStub
+                        .getExcludeAnnotations()
+                        .contains("android.platform.test.annotations.AppModeFull"));
+        // This should not be set. When coming from the suite or anywhere else, in instant mode
+        // that filter is eliminated to properly run instant mode.
+        assertFalse(
+                testSuiteStub
+                        .getExcludeAnnotations()
+                        .contains("android.platform.test.annotations.AppModeInstant"));
     }
 }

@@ -387,6 +387,32 @@ public class HostTest
         mFilterHelper.addAllExcludeAnnotation(notAnnotations);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getIncludeAnnotations() {
+        return mIncludeAnnotations;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getExcludeAnnotations() {
+        return mExcludeAnnotations;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearIncludeAnnotations() {
+        mIncludeAnnotations.clear();
+        mFilterHelper.clearIncludeAnnotations();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearExcludeAnnotations() {
+        mExcludeAnnotations.clear();
+        mFilterHelper.clearExcludeAnnotations();
+    }
+
     /**
      * Helper to set the information of an object based on some of its type.
      */
