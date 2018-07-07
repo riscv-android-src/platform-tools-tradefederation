@@ -243,14 +243,16 @@ public class InvocationExecution implements IInvocationExecution {
     }
 
     /** Runs the {@link IMultiTargetPreparer} specified tearDown. */
-    private void runMultiTargetPreparersTearDown(
+    private Throwable runMultiTargetPreparersTearDown(
             List<IMultiTargetPreparer> multiPreparers,
             IInvocationContext context,
             Throwable throwable,
             String description)
-            throws DeviceNotAvailableException {
+            throws Throwable {
         ListIterator<IMultiTargetPreparer> iterator =
                 multiPreparers.listIterator(multiPreparers.size());
+        Throwable deferredThrowable = null;
+
         while (iterator.hasPrevious()) {
             IMultiTargetPreparer multipreparer = iterator.previous();
             if (multipreparer.isDisabled() || multipreparer.isTearDownDisabled()) {
@@ -258,19 +260,32 @@ public class InvocationExecution implements IInvocationExecution {
                 continue;
             }
             CLog.d("Starting %s '%s'", description, multipreparer);
-            multipreparer.tearDown(context, throwable);
+            try {
+                multipreparer.tearDown(context, throwable);
+            } catch (Throwable t) {
+                // We catch it and rethrow later to allow each multi_targetprep to be attempted.
+                // Only the first one will be thrown but all should be logged.
+                CLog.e("Deferring throw for:");
+                CLog.e(t);
+                if (deferredThrowable == null) {
+                    deferredThrowable = t;
+                }
+            }
             CLog.d("Done with %s '%s'", description, multipreparer);
         }
+
+        return deferredThrowable;
     }
 
     @Override
     public void doTeardown(IInvocationContext context, IConfiguration config, Throwable exception)
             throws Throwable {
-        Throwable throwable = null;
+        Throwable deferredThrowable = null;
 
         List<IMultiTargetPreparer> multiPreparers = config.getMultiTargetPreparers();
-        runMultiTargetPreparersTearDown(
-                multiPreparers, context, throwable, "multi target preparer teardown");
+        deferredThrowable =
+                runMultiTargetPreparersTearDown(
+                        multiPreparers, context, exception, "multi target preparer teardown");
 
         // Clear wifi settings, to prevent wifi errors from interfering with teardown process.
         for (String deviceName : context.getDeviceConfigNames()) {
@@ -301,8 +316,8 @@ public class InvocationExecution implements IInvocationExecution {
                         // Only the first one will be thrown but all should be logged.
                         CLog.e("Deferring throw for:");
                         CLog.e(e);
-                        if (throwable == null) {
-                            throwable = e;
+                        if (deferredThrowable == null) {
+                            deferredThrowable = e;
                         }
                     }
                 }
@@ -315,11 +330,18 @@ public class InvocationExecution implements IInvocationExecution {
 
         // After all, run the multi_pre_target_preparer tearDown.
         List<IMultiTargetPreparer> multiPrePreparers = config.getMultiPreTargetPreparers();
-        runMultiTargetPreparersTearDown(
-                multiPrePreparers, context, throwable, "multi pre target preparer teardown");
+        Throwable preTargetTearDownException =
+                runMultiTargetPreparersTearDown(
+                        multiPrePreparers,
+                        context,
+                        exception,
+                        "multi pre target preparer teardown");
+        if (deferredThrowable == null) {
+            deferredThrowable = preTargetTearDownException;
+        }
 
-        if (throwable != null) {
-            throw throwable;
+        if (deferredThrowable != null) {
+            throw deferredThrowable;
         }
     }
 
