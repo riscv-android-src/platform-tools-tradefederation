@@ -57,8 +57,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -279,7 +280,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
 
     private ListInstrumentationParser mListInstrumentationParser = null;
 
-    private List<String> mExtraDeviceListener = new ArrayList<>();
+    private Set<String> mExtraDeviceListener = new HashSet<>();
 
     /**
      * {@inheritDoc}
@@ -612,7 +613,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     }
 
     /** Allows to add more custom listeners to the runner */
-    public void addDeviceListener(List<String> extraListeners) {
+    public void addDeviceListeners(Set<String> extraListeners) {
         mExtraDeviceListener.addAll(extraListeners);
     }
 
