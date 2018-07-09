@@ -341,28 +341,32 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
         for (String key : loggedFiles.keySet()) {
             switch (loggedFiles.get(key).getType()) {
                 case BUGREPORT:
-                    serializer.startTag(NS, BUGREPORT_TAG);
-                    serializer.attribute(NS, LOG_FILE_NAME_ATTR, key);
-                    serializer.text(loggedFiles.get(key).getUrl());
-                    serializer.endTag(NS, BUGREPORT_TAG);
+                    addLogIfNotNull(serializer, BUGREPORT_TAG, key, loggedFiles.get(key).getUrl());
                     break;
                 case LOGCAT:
-                    serializer.startTag(NS, LOGCAT_TAG);
-                    serializer.attribute(NS, LOG_FILE_NAME_ATTR, key);
-                    serializer.text(loggedFiles.get(key).getUrl());
-                    serializer.endTag(NS, LOGCAT_TAG);
+                    addLogIfNotNull(serializer, LOGCAT_TAG, key, loggedFiles.get(key).getUrl());
                     break;
                 case PNG:
                 case JPEG:
-                    serializer.startTag(NS, SCREENSHOT_TAG);
-                    serializer.attribute(NS, LOG_FILE_NAME_ATTR, key);
-                    serializer.text(loggedFiles.get(key).getUrl());
-                    serializer.endTag(NS, SCREENSHOT_TAG);
+                    addLogIfNotNull(serializer, SCREENSHOT_TAG, key, loggedFiles.get(key).getUrl());
                     break;
                 default:
                     break;
             }
         }
+    }
+
+    private static void addLogIfNotNull(
+            XmlSerializer serializer, String tag, String key, String text)
+            throws IllegalArgumentException, IllegalStateException, IOException {
+        if (text == null) {
+            CLog.d("Text for tag '%s' and key '%s' is null. skipping it.", tag, key);
+            return;
+        }
+        serializer.startTag(NS, tag);
+        serializer.attribute(NS, LOG_FILE_NAME_ATTR, key);
+        serializer.text(text);
+        serializer.endTag(NS, tag);
     }
 
     /**
