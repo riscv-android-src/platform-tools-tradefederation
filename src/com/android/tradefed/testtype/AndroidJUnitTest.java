@@ -22,6 +22,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.metric.target.DeviceSideCollectorSpecification;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -29,6 +30,7 @@ import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.ListInstrumentationParser;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.inject.Inject;
 
 import org.junit.runner.notification.RunListener;
 
@@ -76,6 +78,11 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
      */
     public static final String NEW_RUN_LISTENER_ORDER_KEY = "newRunListenerMode";
 
+    /** Options from the collector side helper library. */
+    public static final String INCLUDE_COLLECTOR_FILTER_KEY = "include-filter-group";
+
+    public static final String EXCLUDE_COLLECTOR_FILTER_KEY = "exclude-filter-group";
+
     private static final String INCLUDE_FILE = "includes.txt";
     private static final String EXCLUDE_FILE = "excludes.txt";
 
@@ -121,12 +128,11 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     private Integer mMaxShard = null;
 
     @Option(
-        name = "device-listeners",
-        description =
-                "Specify a device side instrumentation listener to be added for the run. "
-                        + "Can be repeated."
-    )
-    private List<String> mExtraDeviceListener = new ArrayList<>();
+            name = "device-listeners",
+            description =
+                    "Specify a device side instrumentation listener to be added for the run. "
+                            + "Can be repeated.")
+    private Set<String> mExtraDeviceListener = new HashSet<>();
 
     @Option(
         name = "use-new-run-listener-order",
@@ -142,11 +148,20 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     // Flag to avoid re-sharding a test that already was.
     private boolean mIsSharded = false;
 
+    // Special object that can tune some device side aspects.
+    private DeviceSideCollectorSpecification mDeviceSideSpec;
+
     public AndroidJUnitTest() {
         super();
         // Set the runner to AJUR, this can still be overwritten by the optionsetter/optioncopier
         setRunnerName(AJUR);
         setEnforceFormat(true);
+    }
+
+    /** Guice is injected object, that can influence the instrumentation args. */
+    @Inject
+    public void setDeviceSpec(DeviceSideCollectorSpecification spec) {
+        mDeviceSideSpec = spec;
     }
 
     /**
@@ -361,6 +376,26 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
         if (mNewRunListenerOrderMode) {
             runner.addInstrumentationArg(
                     NEW_RUN_LISTENER_ORDER_KEY, Boolean.toString(mNewRunListenerOrderMode));
+        }
+
+        // Load the device side configuration from Guice
+        if (mDeviceSideSpec != null) {
+            CLog.d("Got a DeviceSideCollectorSpecification from Guice Tradefed.");
+            mExtraDeviceListener.addAll(mDeviceSideSpec.getCollectorNames());
+            for (String key : mDeviceSideSpec.getCollectorOptions().keySet()) {
+                runner.addInstrumentationArg(
+                        key, ArrayUtil.join(",", mDeviceSideSpec.getCollectorOptions().get(key)));
+            }
+            if (!mDeviceSideSpec.getExcludeGroupFilters().isEmpty()) {
+                runner.addInstrumentationArg(
+                        EXCLUDE_COLLECTOR_FILTER_KEY,
+                        ArrayUtil.join(",", mDeviceSideSpec.getExcludeGroupFilters()));
+            }
+            if (!mDeviceSideSpec.getIncludeGroupFilters().isEmpty()) {
+                runner.addInstrumentationArg(
+                        INCLUDE_COLLECTOR_FILTER_KEY,
+                        ArrayUtil.join(",", mDeviceSideSpec.getIncludeGroupFilters()));
+            }
         }
         // Add the listeners received from Options
         addDeviceListener(mExtraDeviceListener);

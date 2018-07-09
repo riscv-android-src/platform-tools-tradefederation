@@ -59,6 +59,9 @@ import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.TimeUtil;
 
+import com.google.inject.Inject;
+import com.google.inject.Injector;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -244,6 +247,32 @@ public abstract class ITestSuite
     private ModuleDefinition mDirectModule = null;
     private boolean mShouldMakeDynamicModule = true;
 
+    // Guice object
+    private Injector mInjector;
+
+    /**
+     * Get the current Guice {@link Injector} from the invocation. It should allow us to continue
+     * the object injection of modules.
+     */
+    @Inject
+    public void setInvocationInjector(Injector injector) {
+        mInjector = injector;
+    }
+
+    /** Forward our invocation scope guice objects to whoever needs them in modules. */
+    private void applyGuiceInjection(LinkedHashMap<String, IConfiguration> runConfig) {
+        if (mInjector == null) {
+            // TODO: Convert to a strong failure
+            CLog.d("No injector received by the suite.");
+            return;
+        }
+        for (IConfiguration config : runConfig.values()) {
+            for (IRemoteTest test : config.getTests()) {
+                mInjector.injectMembers(test);
+            }
+        }
+    }
+
     /**
      * Abstract method to load the tests configuration that will be run. Each tests is defined by a
      * {@link IConfiguration} and a unique name under which it will report results.
@@ -267,6 +296,9 @@ public abstract class ITestSuite
             CLog.i("No config were loaded. Nothing to run.");
             return runConfig;
         }
+        // Apply our guice scope to all modules objects
+        applyGuiceInjection(runConfig);
+
         if (mModuleMetadataIncludeFilter.isEmpty() && mModuleMetadataExcludeFilter.isEmpty()) {
             return runConfig;
         }
@@ -883,6 +915,12 @@ public abstract class ITestSuite
     /** Returns the abi requested with the option -a or --abi. */
     public final String getRequestedAbi() {
         return mAbiName;
+    }
+
+    /** Getter used to validate the proper Guice injection. */
+    @VisibleForTesting
+    final Injector getInjector() {
+        return mInjector;
     }
 
     /**
