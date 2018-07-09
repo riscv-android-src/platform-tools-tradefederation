@@ -377,7 +377,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 # let's just treat it like a simple arg to pass on through.
                 args_to_append.extend(extra_args[arg])
                 continue
-            if constants.ALLABI == arg:
+            if constants.ALL_ABI == arg:
                 args_to_append.append('--all-abi')
                 continue
             args_not_supported.append(arg)
