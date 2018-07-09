@@ -151,7 +151,7 @@ public class FileLogger extends BaseLeveledLogOutput {
      *
      * @param logLevel the minimum {@link LogLevel} to display
      */
-    void setLogLevelDisplay(LogLevel logLevel) {
+    public void setLogLevelDisplay(LogLevel logLevel) {
         mLogLevelDisplay = logLevel;
     }
 
