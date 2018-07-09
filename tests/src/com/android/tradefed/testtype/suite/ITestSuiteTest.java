@@ -17,7 +17,6 @@ package com.android.tradefed.testtype.suite;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -37,8 +36,6 @@ import com.android.tradefed.device.NullDevice;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
 import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.device.metric.IMetricCollector;
-import com.android.tradefed.guice.InvocationScope;
-import com.android.tradefed.guice.InvocationScopeModule;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -62,12 +59,8 @@ import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.MultiMap;
 
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-
 import org.easymock.Capture;
 import org.easymock.EasyMock;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -100,11 +93,6 @@ public class ITestSuiteTest {
     private List<IMetricCollector> mListCollectors;
     private IConfiguration mStubMainConfiguration;
     private ILogSaver mMockLogSaver;
-
-    // Guice scope and objects for testing
-    private InvocationScope mScope;
-    private Injector mInjector;
-    private InvocationScopeModule mInvocationScope;
 
     /**
      * Very basic implementation of {@link ITestSuite} to test it.
@@ -188,12 +176,6 @@ public class ITestSuiteTest {
 
     @Before
     public void setUp() {
-        // Start with the Guice scope setup
-        mScope = new InvocationScope();
-        mScope.enter();
-        mInvocationScope = new InvocationScopeModule(mScope);
-        mInjector = Guice.createInjector(mInvocationScope);
-
         mTestSuite = new TestSuiteImpl();
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
@@ -235,12 +217,6 @@ public class ITestSuiteTest {
                                                         .setSingleString("value2")));
                     }
                 });
-    }
-
-    @After
-    public void tearDown() {
-        // Always exit the scope at the end.
-        mScope.exit();
     }
 
     /**
@@ -1165,12 +1141,5 @@ public class ITestSuiteTest {
         assertEquals(1, res.size());
         assertEquals("arm64-v8a", res.iterator().next().getName());
         EasyMock.verify(mMockDevice);
-    }
-
-    /** Test that when {@link ITestSuite} is within a Guice scope it can receive the injector. */
-    @Test
-    public void testInjector_guice() throws Exception {
-        mInjector.injectMembers(mTestSuite);
-        assertNotNull(mTestSuite.getInjector());
     }
 }
