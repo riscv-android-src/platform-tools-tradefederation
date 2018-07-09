@@ -16,7 +16,6 @@
 package com.android.tradefed.guice;
 
 import com.android.tradefed.config.IConfiguration;
-import com.android.tradefed.device.metric.target.DeviceSideCollectorSpecification;
 
 import com.google.inject.AbstractModule;
 
@@ -47,11 +46,6 @@ public class InvocationScopeModule extends AbstractModule {
         // IConfiguration is a supported Guice-Tradefed object.
         bind(IConfiguration.class)
                 .toProvider(InvocationScope.<IConfiguration>seededKeyProvider())
-                .in(InvocationScoped.class);
-
-        // DeviceSideCollectorSpecification is a supported Guice-Tradefed object.
-        bind(DeviceSideCollectorSpecification.class)
-                .toProvider(InvocationScope.<DeviceSideCollectorSpecification>seededKeyProvider())
                 .in(InvocationScoped.class);
     }
 }

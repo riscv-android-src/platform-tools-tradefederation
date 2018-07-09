@@ -25,7 +25,6 @@ import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.metric.IMetricCollector;
-import com.android.tradefed.device.metric.target.DeviceSideCollectorSpecification;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.StdoutLogger;
 import com.android.tradefed.result.FileSystemLogSaver;
@@ -89,7 +88,6 @@ public class Configuration implements IConfiguration {
     public static final String CONFIGURATION_DESCRIPTION_TYPE_NAME = "config_desc";
     public static final String DEVICE_NAME = "device";
     public static final String DEVICE_METRICS_COLLECTOR_TYPE_NAME = "metrics_collector";
-    public static final String DEVICE_SIDE_SPEC_TYPE_NAME = "device_side_collector_spec";
     public static final String SANDBOX_TYPE_NAME = "sandbox";
     public static final String SANBOX_OPTIONS_TYPE_NAME = "sandbox_options";
 
@@ -170,9 +168,6 @@ public class Configuration implements IConfiguration {
             sObjTypeMap.put(
                     DEVICE_METRICS_COLLECTOR_TYPE_NAME,
                     new ObjTypeInfo(IMetricCollector.class, true));
-            sObjTypeMap.put(
-                    DEVICE_SIDE_SPEC_TYPE_NAME,
-                    new ObjTypeInfo(DeviceSideCollectorSpecification.class, false));
             sObjTypeMap.put(SANBOX_OPTIONS_TYPE_NAME, new ObjTypeInfo(SandboxOptions.class, false));
         }
         return sObjTypeMap;
@@ -374,19 +369,11 @@ public class Configuration implements IConfiguration {
                 RESULT_REPORTER_TYPE_NAME);
     }
 
-    /** {@inheritDoc} */
     @SuppressWarnings("unchecked")
     @Override
     public List<IMetricCollector> getMetricCollectors() {
         return (List<IMetricCollector>)
                 getConfigurationObjectList(DEVICE_METRICS_COLLECTOR_TYPE_NAME);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public DeviceSideCollectorSpecification getDeviceSideCollectorsSpec() {
-        return (DeviceSideCollectorSpecification)
-                getConfigurationObject(DEVICE_SIDE_SPEC_TYPE_NAME);
     }
 
     /** {@inheritDoc} */

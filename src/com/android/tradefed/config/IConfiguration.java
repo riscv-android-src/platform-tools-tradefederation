@@ -23,7 +23,6 @@ import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.metric.IMetricCollector;
-import com.android.tradefed.device.metric.target.DeviceSideCollectorSpecification;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -134,12 +133,6 @@ public interface IConfiguration {
 
     /** Gets the {@link IMetricCollector}s from the configuration. */
     public List<IMetricCollector> getMetricCollectors();
-
-    /**
-     * Gets the {@link DeviceSideCollectorSpecification} driving the device/target-side
-     * specification of the collectors and their options.
-     */
-    public DeviceSideCollectorSpecification getDeviceSideCollectorsSpec();
 
     /**
      * Gets the {@link ICommandOptions} to use from the configuration.
