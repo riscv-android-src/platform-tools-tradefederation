@@ -25,14 +25,14 @@ import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.FileSystemLogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestFilterReceiver;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -46,9 +46,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Unit tests for {@link com.android.tradefed.testtype.suite.GranularRetriableTestWrapper}. */
+/**
+ * Unit tests for {@link com.android.tradefed.testtype.suite.GranularRetriableTestWrapper}.
+ *
+ * <p>TODO: Needs to be completed with multiple runs per runner tests.
+ */
 @RunWith(JUnit4.class)
 public class GranularRetriableTestWrapperTest {
+
+    private static final String RUN_NAME = "test run";
 
     private class BasicFakeTest implements IRemoteTest {
 
@@ -77,7 +83,7 @@ public class GranularRetriableTestWrapperTest {
 
         @Override
         public void run(ITestInvocationListener listener) throws DeviceUnresponsiveException {
-            listener.testRunStarted("test run", mTestCases.size());
+            listener.testRunStarted(RUN_NAME, mTestCases.size());
             for (TestDescription td : mTestCases) {
                 listener.testStarted(td);
                 if (mShouldFail.get(td)) {
@@ -139,11 +145,11 @@ public class GranularRetriableTestWrapperTest {
     public void testIntraModuleRun_pass() throws Exception {
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(new FakeTest(), 1);
-        assertEquals(0, granularTestWrapper.getTestRunResultCollector().size());
+        assertEquals(0, granularTestWrapper.getTestRunResultCollected().size());
         granularTestWrapper.intraModuleRun();
-        assertEquals(1, granularTestWrapper.getTestRunResultCollector().size());
+        assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
         Set<TestDescription> completedTests =
-                granularTestWrapper.getFinalTestRunResult().getCompletedTests();
+                granularTestWrapper.getFinalTestRunResults().get(0).getCompletedTests();
         assertEquals(1, completedTests.size());
         assertEquals("ClassFoo#TestFoo", completedTests.toArray()[0].toString());
     }
@@ -180,8 +186,9 @@ public class GranularRetriableTestWrapperTest {
                 };
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 1);
         granularTestWrapper.intraModuleRun();
-        TestRunResult finalResult = granularTestWrapper.getTestRunResultCollector().get(0);
-        assertTrue(finalResult.isRunFailure());
+        TestRunResult attempResults =
+                granularTestWrapper.getTestRunResultCollected().get(RUN_NAME).get(0);
+        assertTrue(attempResults.isRunFailure());
     }
 
     /**
@@ -200,10 +207,12 @@ public class GranularRetriableTestWrapperTest {
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
         granularTestWrapper.run(new CollectingTestListener());
-        // Verify the test has run 5 times.
-        assertEquals(maxRunCount, granularTestWrapper.getTestRunResultCollector().size());
+        // Verify the test runs several times but under the same run name
+        assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
+        assertEquals(
+                maxRunCount, granularTestWrapper.getTestRunResultCollected().get(RUN_NAME).size());
         Map<TestDescription, TestResult> testResults =
-                granularTestWrapper.getFinalTestRunResult().getTestResults();
+                granularTestWrapper.getFinalTestRunResults().get(0).getTestResults();
         testResults.containsKey(fakeTestCase);
         // Verify the final TestRunResult is a merged value of every retried TestRunResults.
         assertEquals(TestStatus.FAILURE, testResults.get(fakeTestCase).getStatus());
@@ -231,19 +240,27 @@ public class GranularRetriableTestWrapperTest {
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
         granularTestWrapper.run(new CollectingTestListener());
+        // Verify the test has 3 TestRunResults, indicating it runs 3 times. And only failed test
+        // case is in the retried TestRunResult.
+        assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
+        assertEquals(
+                maxRunCount, granularTestWrapper.getTestRunResultCollected().get(RUN_NAME).size());
 
-        TestRunResult finalResult = granularTestWrapper.getFinalTestRunResult();
+        List<TestRunResult> resultCollector =
+                granularTestWrapper.getTestRunResultCollected().get(RUN_NAME);
+        TestRunResult latestRunResult = resultCollector.get(resultCollector.size() - 1);
+        assertEquals(1, latestRunResult.getNumTests());
+        latestRunResult.getTestResults().containsKey(fakeTestCase1);
+
+        // Check final results
+        List<TestRunResult> finalResults = granularTestWrapper.getFinalTestRunResults();
+        // All results for the same run have been merged.
+        assertEquals(1, finalResults.size());
+        TestRunResult finalResult = finalResults.get(0);
         assertEquals(
                 TestStatus.FAILURE, finalResult.getTestResults().get(fakeTestCase1).getStatus());
         assertEquals(
                 TestStatus.PASSED, finalResult.getTestResults().get(fakeTestCase2).getStatus());
-        // Verify the test has 3 TestRunResults, indicating it runs 3 times. And only failed test
-        // case is in the retried TestRunResult.
-        assertEquals(maxRunCount, granularTestWrapper.getTestRunResultCollector().size());
-        List<TestRunResult> resultCollector = granularTestWrapper.getTestRunResultCollector();
-        TestRunResult latestRunResult = resultCollector.get(resultCollector.size() - 1);
-        assertEquals(1, latestRunResult.getNumTests());
-        latestRunResult.getTestResults().containsKey(fakeTestCase1);
     }
 
     /**
@@ -267,8 +284,11 @@ public class GranularRetriableTestWrapperTest {
         granularTestWrapper.run(new CollectingTestListener());
         // Verify the test has 3 TestRunResults, indicating it runs 3 times. And all test cases
         // are retried.
-        assertEquals(maxRunCount, granularTestWrapper.getTestRunResultCollector().size());
-        List<TestRunResult> resultCollector = granularTestWrapper.getTestRunResultCollector();
+        assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
+        assertEquals(
+                maxRunCount, granularTestWrapper.getTestRunResultCollected().get(RUN_NAME).size());
+        List<TestRunResult> resultCollector =
+                granularTestWrapper.getTestRunResultCollected().get(RUN_NAME);
         for (TestRunResult runResult : resultCollector) {
             assertEquals(2, runResult.getNumTests());
             assertEquals(
