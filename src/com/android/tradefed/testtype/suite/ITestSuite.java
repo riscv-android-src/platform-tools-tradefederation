@@ -452,9 +452,11 @@ public abstract class ITestSuite
                     "A DeviceNotAvailableException occurred, following modules did not run: %s",
                     runModules);
             for (ModuleDefinition module : runModules) {
+                listener.testModuleStarted(module.getModuleInvocationContext());
                 listener.testRunStarted(module.getId(), 0);
                 listener.testRunFailed("Module did not run due to device not available.");
                 listener.testRunEnded(0, new HashMap<String, Metric>());
+                listener.testModuleEnded();
             }
             throw e;
         }

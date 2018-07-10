@@ -22,6 +22,8 @@ import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.log.FileLogger;
+import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.result.SubprocessResultsReporter;
 import com.android.tradefed.util.StreamUtil;
 
@@ -82,7 +84,12 @@ public class SandboxConfigDump {
                 config.getConfigurationDescription().setSandboxed(true);
                 config.setTestInvocationListener(new SubprocessResultsReporter());
                 // Set log level for sandbox
-                config.getLogOutput().setLogLevel(LogLevel.VERBOSE);
+                ILeveledLogOutput logger = config.getLogOutput();
+                logger.setLogLevel(LogLevel.VERBOSE);
+                if (logger instanceof FileLogger) {
+                    // Ensure we get the stdout logging in FileLogger case.
+                    ((FileLogger) logger).setLogLevelDisplay(LogLevel.VERBOSE);
+                }
                 // Turn off some of the invocation level options that would be duplicated in the
                 // parent.
                 config.getCommandOptions().setBugreportOnInvocationEnded(false);

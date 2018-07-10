@@ -127,12 +127,13 @@ public class CommandOptions implements ICommandOptions {
     )
     private boolean mDynamicSharding = true;
 
+    public static final String INVOCATION_DATA = "invocation-data";
+
     @Option(
-        name = "invocation-data",
-        description =
-                "A map of values that describe the invocation, these values will be added to the "
-                        + "invocation context."
-    )
+            name = INVOCATION_DATA,
+            description =
+                    "A map of values that describe the invocation, these values will be added to the "
+                            + "invocation context.")
     private UniqueMultiMap<String, String> mInvocationData = new UniqueMultiMap<>();
 
     @Option(
