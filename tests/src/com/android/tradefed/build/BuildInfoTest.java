@@ -188,5 +188,11 @@ public class BuildInfoTest {
         assertEquals("value", proto.getAttributes().get("attribute"));
         assertEquals(1, proto.getVersionedFileList().size());
         assertNotNull(proto.getVersionedFileList().get(0));
+
+        IBuildInfo deserialized = BuildInfo.fromProto(proto);
+        assertEquals("1", deserialized.getBuildId());
+        // Build flavor was not set, so it's null
+        assertNull(deserialized.getBuildFlavor());
+        assertNotNull(deserialized.getVersionedFile(FILE_KEY));
     }
 }

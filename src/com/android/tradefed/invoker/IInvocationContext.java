@@ -183,4 +183,7 @@ public interface IInvocationContext extends Serializable {
      * sharded invocation.
      */
     public Map<Integer, List<String>> getShardsSerials();
+
+    /** Serialize a the context instance into a protobuf. */
+    public com.android.tradefed.invoker.proto.InvocationContext.Context toProto();
 }
