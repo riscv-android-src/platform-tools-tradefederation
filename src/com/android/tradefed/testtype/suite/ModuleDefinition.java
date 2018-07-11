@@ -411,10 +411,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                             getId());
                     throw dnae;
                 } finally {
-                    TestRunResult finalResult = retriableTest.getFinalTestRunResult();
-                    if (finalResult != null) {
-                        mTestsResults.add(finalResult);
-                    }
+                    // A single module can generate several test runs
+                    mTestsResults.addAll(retriableTest.getFinalTestRunResults());
                     mExpectedTests += retriableTest.getNumIndividualTests();
                 }
                 // After the run, if the test failed (even after retry the final result passed) has
