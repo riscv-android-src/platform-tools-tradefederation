@@ -63,6 +63,7 @@ Option|Long Option|Description
 <c>| --generate-new-metrics| Generate new metrics, run 5 iterations by default.
 <c>| --detect-regression   | Run regression detection algorithm.
 <c>| --[CUSTOM_ARGS]       | Specify custom args for the test runners.
+-a | --all-abi    | Run the tests for all available device architectures.
 -h | --help       | Show this help message and exit.
 
 
@@ -260,6 +261,17 @@ Examples:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 `atest FrameworksServicesTests:ScreenDecorWindowTests CtsJankDeviceTestCases:CtsDeviceJankUi`
 
+## <a name="running-native-tests">Running Native Tests</a>
+
+Atest can be used to run native tests as well.
+
+Examples:<br>
+- input tests:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+`atest -a libinput_tests inputflinger_tests`
+
+Use the option '-a' to run the tests for all available device architectures,
+which in this example would be armeabi-v7a (ARM 32-bit) and arm64-v8a (ARM 64-bit).
 
 ## <a name="detecting-metrics-regression">Detecting Metrics Regression</a>
 
