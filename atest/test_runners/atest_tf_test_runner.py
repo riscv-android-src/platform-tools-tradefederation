@@ -111,7 +111,13 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             run_cmd = self._generate_run_command(args, extra_args,
                                                  metrics_folder)
             subproc = self.run(run_cmd, output_to_stdout=True)
-            subproc.wait()
+            try:
+                signal.signal(signal.SIGINT, self._signal_passer(subproc))
+                subproc.wait()
+            except:
+                # If atest crashes, kill TF subproc group as well.
+                os.killpg(os.getpgid(subproc.pid), signal.SIGINT)
+                raise
 
     def run_tests_pretty(self, test_infos, extra_args, reporter):
         """Run the list of test_infos. See base class for more.
@@ -145,7 +151,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 self._process_connection(conn, reporter)
                 if metrics_folder:
                     logging.info('Saved metrics in: %s', metrics_folder)
-            except Exception:
+            except:
                 # If atest crashes, kill TF subproc group as well.
                 os.killpg(os.getpgid(subproc.pid), signal.SIGINT)
                 raise
