@@ -59,6 +59,8 @@ public class TimeStatusCheckerTest {
     @Test
     public void testCheckTimeDiff_large() throws DeviceNotAvailableException {
         EasyMock.expect(mMockDevice.getDeviceTimeOffset(EasyMock.anyObject())).andReturn(15000L);
+        mMockDevice.logOnDevice(
+                EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.contains("reset the time."));
         mMockDevice.setDate(EasyMock.anyObject());
         EasyMock.replay(mMockDevice);
         assertEquals(CheckStatus.FAILED, mChecker.postExecutionCheck(mMockDevice).getStatus());

@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.suite.checker;
 
+import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -37,6 +38,10 @@ public class TimeStatusChecker implements ISystemStatusChecker {
                                     + "resetting the device time.",
                             TimeUtil.formatElapsedTime(difference));
             CLog.w(message);
+            device.logOnDevice(
+                    "Tradefed.TimeStatusChecker",
+                    LogLevel.VERBOSE,
+                    "Module Checker is about to reset the time.");
             device.setDate(new Date());
             StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
             result.setErrorMessage(message);
