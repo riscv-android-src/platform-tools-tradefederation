@@ -449,7 +449,8 @@ public class TestInvocation implements ITestInvocation {
         if (!(device.getIDevice() instanceof StubDevice)) {
             try (InputStreamSource logcatSource = device.getLogcat()) {
                 device.clearLogcat();
-                String name = getDeviceLogName(stage);
+                String name =
+                        String.format("%s_%s", getDeviceLogName(stage), device.getSerialNumber());
                 listener.testLog(name, LogDataType.LOGCAT, logcatSource);
             }
         }
