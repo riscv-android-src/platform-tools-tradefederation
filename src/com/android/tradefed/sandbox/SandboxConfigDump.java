@@ -82,7 +82,10 @@ public class SandboxConfigDump {
             if (DumpCmd.RUN_CONFIG.equals(cmd) || DumpCmd.TEST_MODE.equals(cmd)) {
                 config.getCommandOptions().setShouldUseSandboxing(false);
                 config.getConfigurationDescription().setSandboxed(true);
-                config.setTestInvocationListener(new SubprocessResultsReporter());
+                // Set the reporter
+                SubprocessResultsReporter reporter = new SubprocessResultsReporter();
+                reporter.setOutputTestLog(true);
+                config.setTestInvocationListener(reporter);
                 // Set log level for sandbox
                 ILeveledLogOutput logger = config.getLogOutput();
                 logger.setLogLevel(LogLevel.VERBOSE);
