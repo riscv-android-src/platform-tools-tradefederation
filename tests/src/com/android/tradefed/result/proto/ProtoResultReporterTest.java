@@ -24,12 +24,11 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.ChildReference;
+import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
+import com.android.tradefed.result.proto.TestRecordProto.TestStatus;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
-
-import com.tradefed.result.proto.TestRecordProto.ChildReference;
-import com.tradefed.result.proto.TestRecordProto.TestRecord;
-import com.tradefed.result.proto.TestRecordProto.TestStatus;
 
 import org.junit.Before;
 import org.junit.Test;
