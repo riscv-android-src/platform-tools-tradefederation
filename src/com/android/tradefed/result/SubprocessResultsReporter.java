@@ -296,4 +296,9 @@ public class SubprocessResultsReporter
         StreamUtil.close(mReportSocket);
         StreamUtil.close(mPrintWriter);
     }
+
+    /** Sets whether or not we should output the test logged or not. */
+    public void setOutputTestLog(boolean outputTestLog) {
+        mOutputTestlog = outputTestLog;
+    }
 }
