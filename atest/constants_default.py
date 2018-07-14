@@ -85,3 +85,11 @@ TF_MODULE_ARG_VALUE_FMT = '{test_name}:{option_name}:{option_value}'
 # Test Suite Names
 # TODO: Change TEST_SUITE to SUITE_PLAN on the next CL.
 TEST_SUITE_NAMES = frozenset(['cts'])
+
+# Constants used for AtestArgParser
+HELP_DESC = 'Build, install and run Android tests locally.'
+BUILD_STEP = 'build'
+INSTALL_STEP = 'install'
+TEST_STEP = 'test'
+ALL_STEPS = [BUILD_STEP, INSTALL_STEP, TEST_STEP]
+REBUILD_MODULE_INFO_FLAG = '--rebuild-module-info'
