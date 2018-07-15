@@ -54,7 +54,7 @@ import java.util.regex.Pattern;
  */
 public class TfTestLauncher extends SubprocessTfLauncher {
 
-    private static final long COVERAGE_REPORT_TIMEOUT_MS = 2 * 60 * 1000;
+    private static final long COVERAGE_REPORT_TIMEOUT_MS = 5 * 60 * 1000;
 
     @Option(name = "jacoco-code-coverage", description = "Enable jacoco code coverage on the java "
             + "sub process. Run will be slightly slower because of the overhead.")

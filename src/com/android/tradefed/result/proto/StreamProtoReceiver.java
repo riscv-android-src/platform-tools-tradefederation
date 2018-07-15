@@ -17,9 +17,8 @@ package com.android.tradefed.result.proto;
 
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.util.StreamUtil;
-
-import com.tradefed.result.proto.TestRecordProto.TestRecord;
 
 import java.io.BufferedReader;
 import java.io.Closeable;

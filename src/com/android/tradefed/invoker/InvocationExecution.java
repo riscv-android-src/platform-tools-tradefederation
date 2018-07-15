@@ -452,7 +452,10 @@ public class InvocationExecution implements IInvocationExecution {
         if (!(device.getIDevice() instanceof StubDevice)) {
             try (InputStreamSource logcatSource = device.getLogcat()) {
                 device.clearLogcat();
-                String name = TestInvocation.getDeviceLogName(stage);
+                String name =
+                        String.format(
+                                "%s_%s",
+                                TestInvocation.getDeviceLogName(stage), device.getSerialNumber());
                 listener.testLog(name, LogDataType.LOGCAT, logcatSource);
             }
         }

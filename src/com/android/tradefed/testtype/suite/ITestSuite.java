@@ -327,6 +327,7 @@ public abstract class ITestSuite
             module.setBuild(mBuildInfo);
             runModules.add(module);
         }
+        CLog.logAndDisplay(LogLevel.DEBUG, "[Total Unique Modules = %s]", runModules.size());
         // Free the map once we are done with it.
         runConfig = null;
         return runModules;

@@ -15,7 +15,7 @@
  */
 syntax = "proto3";
 
-option java_package = "com.tradefed.result.proto";
+option java_package = "com.android.tradefed.result.proto";
 option java_outer_classname = "LogFileProto";
 
 // Represents a single log file
