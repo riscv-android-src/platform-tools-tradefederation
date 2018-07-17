@@ -35,6 +35,7 @@ import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.LogFile;
+import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
@@ -338,16 +339,24 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // Run the tests
         try {
             if (preparationException != null) {
+                List<ITestInvocationListener> allListeners = new ArrayList<>();
+                allListeners.add(listener);
+                if (moduleLevelListeners != null) {
+                    allListeners.addAll(moduleLevelListeners);
+                }
+                // Report the early module failures to the moduleListeners too in order for them
+                // to know about it.
+                ITestInvocationListener forwarder = new ResultForwarder(allListeners);
                 // For reporting purpose we create a failure placeholder with the error stack
                 // similar to InitializationError of JUnit.
-                listener.testRunStarted(getId(), 1);
+                forwarder.testRunStarted(getId(), 1);
                 StringWriter sw = new StringWriter();
                 preparationException.printStackTrace(new PrintWriter(sw));
-                listener.testRunFailed(sw.toString());
+                forwarder.testRunFailed(sw.toString());
                 HashMap<String, Metric> metricsProto = new HashMap<>();
                 metricsProto.put(
                         TEST_TIME, TfMetricProtoUtil.createSingleValue(0L, "milliseconds"));
-                listener.testRunEnded(0, metricsProto);
+                forwarder.testRunEnded(0, metricsProto);
                 // If it was a not available exception rethrow it to signal the new device state.
                 if (preparationException instanceof DeviceNotAvailableException) {
                     throw (DeviceNotAvailableException) preparationException;
