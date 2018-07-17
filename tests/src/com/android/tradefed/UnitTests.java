@@ -154,7 +154,6 @@ import com.android.tradefed.targetprep.RestartSystemServerTargetPreparerTest;
 import com.android.tradefed.targetprep.RootTargetPreparerTest;
 import com.android.tradefed.targetprep.RunCommandTargetPreparerTest;
 import com.android.tradefed.targetprep.RunHostCommandTargetPreparerTest;
-import com.android.tradefed.targetprep.SdkAvdPreparerTest;
 import com.android.tradefed.targetprep.StopServicesSetupTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
 import com.android.tradefed.targetprep.TestAppInstallSetupTest;
@@ -455,7 +454,6 @@ import org.junit.runners.Suite.SuiteClasses;
     RootTargetPreparerTest.class,
     RunCommandTargetPreparerTest.class,
     RunHostCommandTargetPreparerTest.class,
-    SdkAvdPreparerTest.class,
     StopServicesSetupTest.class,
     SystemUpdaterDeviceFlasherTest.class,
     TestAppInstallSetupTest.class,
