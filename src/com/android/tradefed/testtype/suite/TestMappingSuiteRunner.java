@@ -19,8 +19,8 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.util.TestMapping;
 
-import java.util.LinkedHashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Set;
 /**
  * Implementation of {@link BaseTestSuite} to run tests specified by option include-filter, or

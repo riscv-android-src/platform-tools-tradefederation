@@ -72,7 +72,7 @@ public class ConfigurationTest extends TestCase {
 
     private static class TestConfigObject implements TestConfig {
 
-        @Option(name = OPTION_NAME, description = OPTION_DESCRIPTION)
+        @Option(name = OPTION_NAME, description = OPTION_DESCRIPTION, requiredForRerun = true)
         private boolean mBool;
 
         @Option(name = ALT_OPTION_NAME, description = OPTION_DESCRIPTION)
@@ -315,6 +315,9 @@ public class ConfigurationTest extends TestCase {
         mConfig.setConfigurationObject(CONFIG_OBJECT_TYPE_NAME, testConfigObject);
         mConfig.injectOptionValue(OPTION_NAME, Boolean.toString(true));
         assertTrue(testConfigObject.getBool());
+        assertEquals(1, mConfig.getConfigurationDescription().getRerunOptions().size());
+        OptionDef optionDef = mConfig.getConfigurationDescription().getRerunOptions().get(0);
+        assertEquals(OPTION_NAME, optionDef.name);
     }
 
     /**
@@ -403,6 +406,9 @@ public class ConfigurationTest extends TestCase {
         assertEquals(1, map.size());
         assertNotNull(map.get(key));
         assertTrue(map.get(key).booleanValue());
+        assertEquals(1, mConfig.getConfigurationDescription().getRerunOptions().size());
+        OptionDef optionDef = mConfig.getConfigurationDescription().getRerunOptions().get(0);
+        assertEquals(OPTION_NAME, optionDef.name);
     }
 
     /**
@@ -431,7 +437,6 @@ public class ConfigurationTest extends TestCase {
         // ensure help prints out options from default config types
         assertTrue("Usage text does not contain --serial option name",
                 usageString.contains("serial"));
-
     }
 
     /**

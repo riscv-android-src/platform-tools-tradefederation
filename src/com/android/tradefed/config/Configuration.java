@@ -541,16 +541,26 @@ public class Configuration implements IConfiguration {
         List<FieldDef> affectedFields = optionSetter.setOptionValue(
                 optionName, optionKey, optionValue);
 
-        if (source != null) {
-            // Update the source for each affected field
-            for (FieldDef field : affectedFields) {
+        boolean requiredForRerun = false;
+        // Update the source for each affected field
+        for (FieldDef field : affectedFields) {
+            requiredForRerun |= field.field.getAnnotation(Option.class).requiredForRerun();
+            if (source != null) {
                 // Unless the field is a Collection or MultiMap entry, it can only have one source
                 if (!Collection.class.isAssignableFrom(field.field.getType()) &&
                         !MultiMap.class.isAssignableFrom(field.field.getType())) {
                     mFieldSources.remove(field);
                 }
                 mFieldSources.put(field, source);
+            } else if (requiredForRerun) {
+                // Only need to check if the option is required for rerun once if it's set to true.
+                break;
             }
+        }
+
+        if (requiredForRerun) {
+            OptionDef optionDef = new OptionDef(optionName, optionKey, optionValue, source);
+            getConfigurationDescription().addRerunOption(optionDef);
         }
     }
 

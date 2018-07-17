@@ -169,9 +169,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     private String mRunName = null;
 
     @Option(
-        name = "instrumentation-arg",
-        description = "Additional instrumentation arguments to provide."
-    )
+            name = "instrumentation-arg",
+            description = "Additional instrumentation arguments to provide.",
+            requiredForRerun = true)
     private final Map<String, String> mInstrArgMap = new HashMap<String, String>();
 
     @Option(name = "bugreport-on-failure", description = "Sets which failed testcase events " +
