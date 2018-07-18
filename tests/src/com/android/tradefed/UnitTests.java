@@ -119,6 +119,7 @@ import com.android.tradefed.result.TestFailureEmailResultReporterTest;
 import com.android.tradefed.result.TestRunResultTest;
 import com.android.tradefed.result.TestSummaryTest;
 import com.android.tradefed.result.XmlResultReporterTest;
+import com.android.tradefed.result.proto.ProtoResultParserTest;
 import com.android.tradefed.result.proto.ProtoResultReporterTest;
 import com.android.tradefed.result.proto.StreamProtoResultReporterTest;
 import com.android.tradefed.result.suite.FormattedGeneratorReporterTest;
@@ -428,6 +429,7 @@ import org.junit.runners.Suite.SuiteClasses;
     XmlResultReporterTest.class,
 
     // result.proto
+    ProtoResultParserTest.class,
     ProtoResultReporterTest.class,
     StreamProtoResultReporterTest.class,
 
