@@ -15,20 +15,22 @@
  */
 package com.android.tradefed.testtype.suite.params;
 
-/** Special values associated with the suite "parameter" keys in the metadata of each module. */
-public enum ModuleParameters {
-    /** describes a parameterization based on app that should be installed in instant mode. */
-    INSTANT_APP("instant_app"),
-    MULTI_ABI_REQUIRED("multi_abi_required");
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.testtype.suite.SuiteModuleLoader;
 
-    private final String mName;
+/**
+ * Special handler that notify the {@link SuiteModuleLoader} that the secondary abis should create
+ * module too.
+ */
+public final class MultiAbiHandler implements IModuleParameter {
 
-    private ModuleParameters(String name) {
-        mName = name;
+    @Override
+    public String getParameterIdentifier() {
+        throw new RuntimeException("Should never be called");
     }
 
     @Override
-    public String toString() {
-        return mName;
+    public void applySetup(IConfiguration moduleConfiguration) {
+        throw new RuntimeException("Should never be called");
     }
 }
