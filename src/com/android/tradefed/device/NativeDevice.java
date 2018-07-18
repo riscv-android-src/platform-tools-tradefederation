@@ -446,6 +446,26 @@ public class NativeDevice implements IManagedTestDevice {
         return result[0];
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public boolean setProperty(String propKey, String propValue)
+            throws DeviceNotAvailableException {
+        if (propKey == null || propValue == null) {
+            throw new IllegalArgumentException("set property key or value cannot be null.");
+        }
+        if (!isAdbRoot()) {
+            CLog.e("setProperty requires adb root = true.");
+            return false;
+        }
+        CommandResult result =
+                executeShellV2Command(String.format("setprop \"%s\" \"%s\"", propKey, propValue));
+        if (CommandStatus.SUCCESS.equals(result.getStatus())) {
+            return true;
+        }
+        CLog.e("Something went wrong went setting property %s: %s", propKey, result.getStderr());
+        return false;
+    }
+
     /**
      * {@inheritDoc}
      */

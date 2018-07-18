@@ -20,6 +20,7 @@ import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -49,11 +50,12 @@ public class ConfigurationDef {
     /** The set of files (and modification times) that were used to load this config */
     private final Map<File, Long> mSourceFiles = new HashMap<>();
 
-    public static class OptionDef {
-        final String name;
-        final String key;
-        final String value;
-        final String source;
+    /** Holds the details of an option. */
+    public static final class OptionDef implements Serializable {
+        public final String name;
+        public final String key;
+        public final String value;
+        public final String source;
 
         public OptionDef(String optionName, String optionValue, String source) {
             this(optionName, null, optionValue, source);

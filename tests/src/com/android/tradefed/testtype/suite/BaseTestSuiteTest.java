@@ -69,6 +69,7 @@ public class BaseTestSuiteTest {
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn("armeabi-v7a");
         EasyMock.replay(mMockDevice);
     }
+
     /**
      * Test BaseTestSuite that hardcodes the abis to avoid failures related to running the tests
      * against a particular abi build of tradefed.

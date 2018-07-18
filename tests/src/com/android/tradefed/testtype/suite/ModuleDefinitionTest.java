@@ -313,7 +313,8 @@ public class ModuleDefinitionTest {
     }
 
     /**
-     * Test that {@link ModuleDefinition#run(ITestInvocationListener)}
+     * Test that {@link ModuleDefinition#run(ITestInvocationListener)} properly propagate an early
+     * preparation failure.
      */
     @Test
     public void testRun_failPreparation() throws Exception {
@@ -347,6 +348,54 @@ public class ModuleDefinitionTest {
         replayMocks();
         mModule.run(mMockListener);
         verifyMocks();
+    }
+
+    /**
+     * Test that {@link ModuleDefinition#run(ITestInvocationListener)} properly pass the results of
+     * early failures to both main listener and module listeners.
+     */
+    @Test
+    public void testRun_failPreparation_moduleListener() throws Exception {
+        ITestInvocationListener mockModuleListener =
+                EasyMock.createMock(ITestInvocationListener.class);
+        final String exceptionMessage = "ouch I failed";
+        mTargetPrepList.clear();
+        mTargetPrepList.add(
+                new BaseTargetPreparer() {
+                    @Override
+                    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+                            throws TargetSetupError, BuildError, DeviceNotAvailableException {
+                        DeviceDescriptor nullDescriptor = null;
+                        throw new TargetSetupError(exceptionMessage, nullDescriptor);
+                    }
+                });
+        mModule =
+                new ModuleDefinition(
+                        MODULE_NAME,
+                        mTestList,
+                        mMapDeviceTargetPreparer,
+                        mMultiTargetPrepList,
+                        new Configuration("", ""));
+        mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
+        mModule.getModuleInvocationContext()
+                .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
+        mMockCleaner.tearDown(
+                EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
+        mMockListener.testRunStarted(EasyMock.eq(MODULE_NAME), EasyMock.eq(1));
+        mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        // Ensure that module listeners receive the callbacks too.
+        mockModuleListener.testRunStarted(EasyMock.eq(MODULE_NAME), EasyMock.eq(1));
+        mockModuleListener.testRunFailed(EasyMock.contains(exceptionMessage));
+        mockModuleListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        EasyMock.replay(mockModuleListener);
+        replayMocks();
+        mModule.run(mMockListener, Arrays.asList(mockModuleListener), null);
+        verifyMocks();
+        EasyMock.verify(mockModuleListener);
     }
 
     /** Test that {@link ModuleDefinition#run(ITestInvocationListener)} */

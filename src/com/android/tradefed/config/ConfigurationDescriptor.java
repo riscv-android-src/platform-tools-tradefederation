@@ -16,6 +16,7 @@
 package com.android.tradefed.config;
 
 import com.android.tradefed.build.BuildSerializedVersion;
+import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.util.MultiMap;
 
@@ -32,6 +33,13 @@ import java.util.List;
  */
 @OptionClass(alias = "config-descriptor")
 public class ConfigurationDescriptor implements Serializable {
+
+    /** Enum used to indicate local test runner. */
+    public enum LocalTestRunner {
+        NONE,
+        ATEST;
+    }
+
     private static final long serialVersionUID = BuildSerializedVersion.VERSION;
 
     @Option(name = "test-suite-tag", description = "A membership tag to suite. Can be repeated.")
@@ -69,6 +77,9 @@ public class ConfigurationDescriptor implements Serializable {
     private IAbi mAbi = null;
     /** Optional for a module configuration, the original name of the module. */
     private String mModuleName = null;
+
+    /** a list of options applicable to rerun the test */
+    private final transient List<OptionDef> mRerunOptions = new ArrayList<>();
 
     /** Returns the list of suite tags the test is part of. */
     public List<String> getSuiteTags() {
@@ -135,5 +146,19 @@ public class ConfigurationDescriptor implements Serializable {
     /** Sets whether or not a config will run in sandboxed mode or not. */
     public void setSandboxed(boolean useSandboxed) {
         mUseSandboxing = useSandboxed;
+    }
+
+    /**
+     * Add the option to a list of options that can be used to rerun the test.
+     *
+     * @param optionDef a {@link OptionDef} object of the test option.
+     */
+    public void addRerunOption(OptionDef optionDef) {
+        mRerunOptions.add(optionDef);
+    }
+
+    /** Get the list of {@link OptionDef} that can be used for rerun. */
+    public List<OptionDef> getRerunOptions() {
+        return mRerunOptions;
     }
 }
