@@ -61,7 +61,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
     NAME = 'AtestTradefedTestRunner'
     EXECUTABLE = 'atest_tradefed.sh'
     _TF_TEMPLATE = 'template/local_min'
-    _RUN_CMD = ('{exe} run commandAndExit {template} --template:map '
+    _RUN_CMD = ('{exe} {template} --template:map '
                 'test=atest {args}')
     _BUILD_REQ = {'tradefed-core'}
 
