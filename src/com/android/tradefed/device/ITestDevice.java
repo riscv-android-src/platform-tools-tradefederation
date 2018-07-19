@@ -562,6 +562,15 @@ public interface ITestDevice extends INativeDevice {
             throws DeviceNotAvailableException;
 
     /**
+     * Return key value pairs of requested namespace.
+     *
+     * @param namespace must be one of {"system", "secure", "global"}
+     * @return the map of key value pairs. Null if namespace is not supported.
+     * @throws DeviceNotAvailableException
+     */
+    public Map<String, String> getAllSettings(String namespace) throws DeviceNotAvailableException;
+
+    /**
      * See {@link #setSetting(int, String, String, String)} and performed on system user.
      *
      * @throws DeviceNotAvailableException

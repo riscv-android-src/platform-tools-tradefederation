@@ -60,6 +60,7 @@ import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.ZipUtil2;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -2126,7 +2127,20 @@ public class NativeDevice implements IManagedTestDevice {
                     CLog.d("bugreport entry: %s", name);
                     // Only get left-over zipped data to avoid confusing data types.
                     if (name.endsWith(".zip")) {
-                        return pullFile(BUGREPORTZ_TMP_PATH + name);
+                        File pulledZip = pullFile(BUGREPORTZ_TMP_PATH + name);
+                        try {
+                            // Validate the zip before returning it.
+                            if (ZipUtil.isZipFileValid(pulledZip, false)) {
+                                return pulledZip;
+                            }
+                        } catch (IOException e) {
+                            CLog.e(e);
+                        }
+                        CLog.w("Failed to get a valid bugreportz.");
+                        // if zip validation failed, delete it and return null.
+                        FileUtil.deleteFile(pulledZip);
+                        return null;
+
                     }
                 }
                 CLog.w("Could not find a tmp bugreport file in the directory.");
@@ -3704,6 +3718,12 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public String getSetting(int userId, String namespace, String key)
             throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for setting's feature.");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Map<String, String> getAllSettings(String namespace) throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("No support for setting's feature.");
     }
 

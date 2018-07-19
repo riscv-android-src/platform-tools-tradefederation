@@ -625,6 +625,16 @@ public class NativeDeviceTest extends TestCase {
         fail("getSettings should have thrown an exception.");
     }
 
+    /** Unit test for {@link NativeDevice#getAllSettings(String)}. */
+    public void testGetAllSettingsSystemUser_exception() throws Exception {
+        try {
+            mTestDevice.getAllSettings("global");
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("getAllSettings should have thrown an exception");
+    }
+
     /**
      * Unit test for {@link NativeDevice#setSetting(String, String, String)}.
      */
@@ -1242,6 +1252,52 @@ public class NativeDeviceTest extends TestCase {
                 f.cleanFile();
             }
         }
+    }
+
+    public void testGetBugreportz_fallBack_validation() throws Exception {
+        IFileEntry entryMock = EasyMock.createMock(IFileEntry.class);
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 24;
+                    }
+
+                    @Override
+                    protected File getBugreportzInternal() {
+                        return null;
+                    }
+
+                    @Override
+                    public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException {
+                        return entryMock;
+                    }
+
+                    @Override
+                    public File pullFile(String remoteFilePath) throws DeviceNotAvailableException {
+                        try {
+                            // Return an empty zip file for the partial bugreportz
+                            return FileUtil.createTempFile("bugreportz-test", ".zip");
+                        } catch (IOException e) {
+                            throw new RuntimeException();
+                        }
+                    }
+                };
+        IFileEntry childNode = EasyMock.createMock(IFileEntry.class);
+        EasyMock.expect(entryMock.getChildren(false)).andReturn(Arrays.asList(childNode));
+        EasyMock.expect(childNode.getName()).andReturn("bugreport-test-partial.zip");
+        FileInputStreamSource f = null;
+        EasyMock.replay(entryMock, childNode);
+        try {
+            f = (FileInputStreamSource) mTestDevice.getBugreportz();
+            assertNull(f);
+        } finally {
+            StreamUtil.cancel(f);
+            if (f != null) {
+                f.cleanFile();
+            }
+        }
+        EasyMock.verify(entryMock, childNode);
     }
 
     /**

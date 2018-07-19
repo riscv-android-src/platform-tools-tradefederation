@@ -2987,6 +2987,51 @@ public class TestDeviceTest extends TestCase {
         assertNull(mTestDevice.getSetting(0, "TEST", "screen_brightness"));
     }
 
+    /** Unit test for {@link TestDevice#getAllSettings(String)}. */
+    public void testGetAllSettings() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "mobile_data=1\nmulti_sim_data_call=-1\n";
+                    }
+                };
+        Map<String, String> map = mTestDevice.getAllSettings("system");
+        assertEquals("1", map.get("mobile_data"));
+        assertEquals("-1", map.get("multi_sim_data_call"));
+    }
+
+    /** Unit test for {@link TestDevice#getAllSettings(String)} with emtpy setting value */
+    public void testGetAllSettings_EmptyValue() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "Phenotype_flags=\nmulti_sim_data_call=-1\n";
+                    }
+                };
+        Map<String, String> map = mTestDevice.getAllSettings("system");
+        assertEquals("", map.get("Phenotype_flags"));
+        assertEquals("-1", map.get("multi_sim_data_call"));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getAllSettings(String)} with a namespace that is not in
+     * {global, system, secure}.
+     */
+    public void testGetAllSettings_unexpectedNamespace() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 22;
+                    }
+                };
+        assertNull(mTestDevice.getAllSettings("TEST"));
+    }
+
     /**
      * Unit test for {@link TestDevice#setSetting(int, String, String, String)}
      * with a namespace that is not in {global, system, secure}.
