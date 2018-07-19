@@ -20,13 +20,13 @@ import logging
 
 import atest_enum
 from test_finders import test_finder_base
-from test_finders import test_suite_finder
+from test_finders import suite_plan_finder
 from test_finders import tf_integration_finder
 from test_finders import module_finder
 
 # List of default test finder classes.
 _TEST_FINDERS = {
-    test_suite_finder.TestSuiteFinder,
+    suite_plan_finder.SuitePlanFinder,
     tf_integration_finder.TFIntegrationFinder,
     module_finder.ModuleFinder,
 }
@@ -44,13 +44,14 @@ _TEST_FINDERS = {
 # 7. SUITE: Value of the "run-suite-tag" in xml config file in 4 config dirs.
 #           Same as value of "test-suite-tag" in AndroidTest.xml files.
 # 8. CC_CLASS: Test case in cc file.
-# 9. TEST_SUITE: Suite name such as cts.
-# TODO: Change TEST_SUITE to SUITE_PLAN on the next CL.
+# 9. SUITE_PLAN: Suite name such as cts.
+# 10. SUITE_PLAN_FILE_PATH: File path to config xml in the suite config directories.
 _REFERENCE_TYPE = atest_enum.AtestEnum(['MODULE', 'CLASS', 'QUALIFIED_CLASS',
                                         'MODULE_CLASS', 'PACKAGE',
                                         'MODULE_PACKAGE', 'MODULE_FILE_PATH',
                                         'INTEGRATION_FILE_PATH', 'INTEGRATION',
-                                        'SUITE', 'CC_CLASS', 'TEST_SUITE'])
+                                        'SUITE', 'CC_CLASS', 'SUITE_PLAN',
+                                        'SUITE_PLAN_FILE_PATH'])
 
 _REF_TYPE_TO_FUNC_MAP = {
     _REFERENCE_TYPE.MODULE: module_finder.ModuleFinder.find_test_by_module_name,
@@ -66,7 +67,9 @@ _REF_TYPE_TO_FUNC_MAP = {
         tf_integration_finder.TFIntegrationFinder.find_test_by_integration_name,
     _REFERENCE_TYPE.CC_CLASS:
         module_finder.ModuleFinder.find_test_by_cc_class_name,
-    _REFERENCE_TYPE.TEST_SUITE:test_suite_finder.TestSuiteFinder.find_test_by_suite_name,
+    _REFERENCE_TYPE.SUITE_PLAN:suite_plan_finder.SuitePlanFinder.find_test_by_suite_name,
+    _REFERENCE_TYPE.SUITE_PLAN_FILE_PATH:
+        suite_plan_finder.SuitePlanFinder.find_test_by_suite_path,
 }
 
 
@@ -122,14 +125,17 @@ def _get_test_reference_types(ref):
     """
     if ref.startswith('.') or '..' in ref:
         return [_REFERENCE_TYPE.INTEGRATION_FILE_PATH,
-                _REFERENCE_TYPE.MODULE_FILE_PATH]
+                _REFERENCE_TYPE.MODULE_FILE_PATH,
+                _REFERENCE_TYPE.SUITE_PLAN_FILE_PATH]
     if '/' in ref:
         if ref.startswith('/'):
             return [_REFERENCE_TYPE.INTEGRATION_FILE_PATH,
-                    _REFERENCE_TYPE.MODULE_FILE_PATH]
+                    _REFERENCE_TYPE.MODULE_FILE_PATH,
+                    _REFERENCE_TYPE.SUITE_PLAN_FILE_PATH]
         return [_REFERENCE_TYPE.INTEGRATION_FILE_PATH,
                 _REFERENCE_TYPE.MODULE_FILE_PATH,
                 _REFERENCE_TYPE.INTEGRATION,
+                _REFERENCE_TYPE.SUITE_PLAN_FILE_PATH,
                 # TODO: Comment in SUITE when it's supported
                 # _REFERENCE_TYPE.SUITE
                ]
@@ -155,19 +161,19 @@ def _get_test_reference_types(ref):
         if ref_end in ('java', 'bp', 'mk', 'cc', 'cpp'):
             return [_REFERENCE_TYPE.MODULE_FILE_PATH]
         if ref_end == 'xml':
-            return [_REFERENCE_TYPE.INTEGRATION_FILE_PATH]
+            return [_REFERENCE_TYPE.INTEGRATION_FILE_PATH,
+                    _REFERENCE_TYPE.SUITE_PLAN_FILE_PATH]
         if ref_end_is_upper:
             return [_REFERENCE_TYPE.QUALIFIED_CLASS]
         return [_REFERENCE_TYPE.PACKAGE]
     # Note: We assume that if you're referencing a file in your cwd,
     # that file must have a '.' in its name, i.e. foo.java, foo.xml.
     # If this ever becomes not the case, then we need to include path below.
-    # TODO: Change TEST_SUITE to SUITE_PLAN on next CL.
-    return [_REFERENCE_TYPE.TEST_SUITE,
-            _REFERENCE_TYPE.INTEGRATION,
+    return [_REFERENCE_TYPE.INTEGRATION,
             # TODO: Comment in SUITE when it's supported
             # _REFERENCE_TYPE.SUITE,
             _REFERENCE_TYPE.MODULE,
+            _REFERENCE_TYPE.SUITE_PLAN,
             _REFERENCE_TYPE.CLASS,
             _REFERENCE_TYPE.CC_CLASS]
 

@@ -208,9 +208,26 @@ def extract_test_path(output, is_native_test=False):
     tests = output.strip('\n').split('\n')
     if is_native_test:
         tests = list(set([path.split(":")[0] for path in tests]))
+    return extract_test_from_tests(tests)
+
+
+def extract_test_from_tests(tests):
+    """Extract the test path from the tests.
+
+    Example of find output for CLASS find cmd:
+    /<some_root>/cts/tests/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java
+
+    Args:
+        tests: A string list which contains multiple test paths.
+
+    Returns:
+        A string of the test path or None if tests is ''.
+    """
     count = len(tests)
     test_index = 0
-    if count > 1:
+    if count == 0:
+        return None
+    elif count > 1:
         numbered_list = ['%s: %s' % (i, t) for i, t in enumerate(tests)]
         print 'Multiple tests found:\n%s' % '\n'.join(numbered_list)
         test_index = int(raw_input('Please enter number of test to use:'))
@@ -694,3 +711,57 @@ def get_cc_filter(class_name, methods):
     if methods:
         return ":".join(["%s.%s" % (class_name, x) for x in methods])
     return "%s.*" % class_name
+
+
+def search_integration_dirs(name, int_dirs):
+    """Search integration dirs for name and return full path.
+
+    Args:
+        name: A string of plan name needed to be found.
+        int_dirs: A list of path needed to be searched.
+
+    Returns:
+        A string of the test path.
+        Ask user to select if multiple tests are found.
+        None if no matched test found.
+    """
+    root_dir = os.environ.get(constants.ANDROID_BUILD_TOP)
+    test_files = []
+    for integration_dir in int_dirs:
+        abs_path = os.path.join(root_dir, integration_dir)
+        test_file = run_find_cmd(FIND_REFERENCE_TYPE.INTEGRATION, abs_path,
+                                 name)
+        if test_file:
+            test_files.append(test_file)
+    return extract_test_from_tests(test_files)
+
+
+def get_int_dir_from_path(path, int_dirs):
+    """Search integration dirs for the given path and return path of dir.
+
+    Args:
+        path: A string of path needed to be found.
+        int_dirs: A list of path needed to be searched.
+
+    Returns:
+        A string of the test dir. None if no matched path found.
+    """
+    root_dir = os.environ.get(constants.ANDROID_BUILD_TOP)
+    if not os.path.exists(path):
+        return None
+    dir_path, file_name = get_dir_path_and_filename(path)
+    int_dir = None
+    for possible_dir in int_dirs:
+        abs_int_dir = os.path.join(root_dir, possible_dir)
+        if is_equal_or_sub_dir(dir_path, abs_int_dir):
+            int_dir = abs_int_dir
+            break
+    if not file_name:
+        logging.warn('Found dir (%s) matching input (%s).'
+                     ' Referencing an entire Integration/Suite dir'
+                     ' is not supported. If you are trying to reference'
+                     ' a test by its path, please input the path to'
+                     ' the integration/suite config file itself.',
+                     int_dir, path)
+        return None
+    return int_dir

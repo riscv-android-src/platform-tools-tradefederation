@@ -197,3 +197,4 @@ CC_PATH_DATA2 = {constants.TI_REL_CONFIG: CC_CONFIG_FILE,
 CC_PATH_INFO2 = test_info.TestInfo(CC_MODULE_NAME,
                                    atf_tr.AtestTradefedTestRunner.NAME,
                                    CLASS_BUILD_TARGETS, CC_PATH_DATA2)
+CTS_INT_DIR = 'test/suite_harness/tools/cts-tradefed/res/config'
