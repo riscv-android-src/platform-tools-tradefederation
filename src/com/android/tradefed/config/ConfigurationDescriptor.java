@@ -17,6 +17,10 @@ package com.android.tradefed.config;
 
 import com.android.tradefed.build.BuildSerializedVersion;
 import com.android.tradefed.config.ConfigurationDef.OptionDef;
+import com.android.tradefed.config.proto.ConfigurationDescription;
+import com.android.tradefed.config.proto.ConfigurationDescription.Descriptor;
+import com.android.tradefed.config.proto.ConfigurationDescription.Metadata;
+import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.util.MultiMap;
 
@@ -160,5 +164,64 @@ public class ConfigurationDescriptor implements Serializable {
     /** Get the list of {@link OptionDef} that can be used for rerun. */
     public List<OptionDef> getRerunOptions() {
         return mRerunOptions;
+    }
+
+    /** Convert the current instance of the descriptor into its proto format. */
+    public ConfigurationDescription.Descriptor toProto() {
+        Descriptor.Builder descriptorBuilder = Descriptor.newBuilder();
+        // Test Suite Tags
+        descriptorBuilder.addAllTestSuiteTag(mSuiteTags);
+        // Metadata
+        List<Metadata> metadatas = new ArrayList<>();
+        for (String key : mMetaData.keySet()) {
+            Metadata value =
+                    Metadata.newBuilder().setKey(key).addAllValue(mMetaData.get(key)).build();
+            metadatas.add(value);
+        }
+        descriptorBuilder.addAllMetadata(metadatas);
+        // Shardable
+        descriptorBuilder.setShardable(!mNotShardable);
+        // Strict Shardable
+        descriptorBuilder.setStrictShardable(!mNotStrictShardable);
+        // Use sandboxing
+        descriptorBuilder.setUseSandboxing(mUseSandboxing);
+        // Module name
+        if (mModuleName != null) {
+            descriptorBuilder.setModuleName(mModuleName);
+        }
+        // Abi
+        if (mAbi != null) {
+            descriptorBuilder.setAbi(mAbi.toProto());
+        }
+        return descriptorBuilder.build();
+    }
+
+    /** Inverse operation from {@link #toProto()} to get the object back. */
+    public static ConfigurationDescriptor fromProto(
+            ConfigurationDescription.Descriptor protoDescriptor) {
+        ConfigurationDescriptor configDescriptor = new ConfigurationDescriptor();
+        // Test Suite Tags
+        configDescriptor.mSuiteTags.addAll(protoDescriptor.getTestSuiteTagList());
+        // Metadata
+        for (Metadata meta : protoDescriptor.getMetadataList()) {
+            for (String value : meta.getValueList()) {
+                configDescriptor.mMetaData.put(meta.getKey(), value);
+            }
+        }
+        // Shardable
+        configDescriptor.mNotShardable = !protoDescriptor.getShardable();
+        // Strict Shardable
+        configDescriptor.mNotStrictShardable = !protoDescriptor.getStrictShardable();
+        // Use sandboxing
+        configDescriptor.mUseSandboxing = protoDescriptor.getUseSandboxing();
+        // Module Name
+        if (!protoDescriptor.getModuleName().isEmpty()) {
+            configDescriptor.mModuleName = protoDescriptor.getModuleName();
+        }
+        // Abi
+        if (protoDescriptor.hasAbi()) {
+            configDescriptor.mAbi = Abi.fromProto(protoDescriptor.getAbi());
+        }
+        return configDescriptor;
     }
 }

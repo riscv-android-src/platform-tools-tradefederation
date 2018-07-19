@@ -15,9 +15,9 @@
  */
 package com.android.tradefed.config;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
+import com.android.tradefed.config.proto.ConfigurationDescription.Descriptor;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SerializationUtil;
 
@@ -83,5 +83,22 @@ public class ConfigurationDescriptorTest {
         } finally {
             FileUtil.deleteFile(serialized);
         }
+    }
+
+    /** Test that ConfigurationDescriptor can be serialized an deserialized in proto format. */
+    @Test
+    public void testProtoSerialization() {
+        ConfigurationDescriptor descriptor = new ConfigurationDescriptor();
+        descriptor.setSandboxed(true);
+        Descriptor protoDescriptor = descriptor.toProto();
+        assertTrue(protoDescriptor.getUseSandboxing());
+        assertTrue(protoDescriptor.getShardable());
+        assertTrue(protoDescriptor.getStrictShardable());
+        // Check the deserialization
+        ConfigurationDescriptor deserialized = ConfigurationDescriptor.fromProto(protoDescriptor);
+        assertNull(deserialized.getAbi());
+        assertTrue(deserialized.shouldUseSandbox());
+        assertFalse(deserialized.isNotShardable());
+        assertFalse(deserialized.isNotStrictShardable());
     }
 }

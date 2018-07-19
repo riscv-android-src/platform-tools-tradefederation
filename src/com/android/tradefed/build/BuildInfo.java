@@ -527,6 +527,7 @@ public class BuildInfo implements IBuildInfo {
         if (getBuildBranch() != null) {
             protoBuilder.setBranch(getBuildBranch());
         }
+        // Attributes
         protoBuilder.putAllAttributes(getBuildAttributes());
         // Populate the versioned file
         for (String fileKey : mVersionedFileMultiMap.keySet()) {
@@ -558,5 +559,47 @@ public class BuildInfo implements IBuildInfo {
         } catch (IOException | ClassNotFoundException e) {
             mVersionedFileMultiMap = new MultiMap<>();
         }
+    }
+
+    /** Inverse operation to {@link #toProto()} to get the instance back. */
+    public static IBuildInfo fromProto(BuildInformation.BuildInfo protoBuild) {
+        IBuildInfo buildInfo;
+        String buildClass = protoBuild.getBuildInfoClass();
+        if (buildClass.isEmpty()) {
+            buildInfo = new BuildInfo();
+        } else {
+            // Restore the original type of build info.
+            try {
+                buildInfo = (IBuildInfo) Class.forName(buildClass).newInstance();
+            } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        // Build id
+        if (!protoBuild.getBuildId().isEmpty()) {
+            buildInfo.setBuildId(protoBuild.getBuildId());
+        }
+        // Build Flavor
+        if (!protoBuild.getBuildFlavor().isEmpty()) {
+            buildInfo.setBuildFlavor(protoBuild.getBuildFlavor());
+        }
+        // Build Branch
+        if (!protoBuild.getBranch().isEmpty()) {
+            buildInfo.setBuildBranch(protoBuild.getBranch());
+        }
+        // Attributes
+        for (String key : protoBuild.getAttributes().keySet()) {
+            buildInfo.addBuildAttribute(key, protoBuild.getAttributes().get(key));
+        }
+        // Versioned File
+        for (KeyBuildFilePair filePair : protoBuild.getVersionedFileList()) {
+            for (BuildFile buildFile : filePair.getFileList()) {
+                buildInfo.setFile(
+                        filePair.getBuildFileKey(),
+                        new File(buildFile.getLocalPath()),
+                        buildFile.getVersion());
+            }
+        }
+        return buildInfo;
     }
 }
