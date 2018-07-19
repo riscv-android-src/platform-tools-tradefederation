@@ -67,7 +67,7 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
     private static final String TYPE = "org.kxml2.io.KXmlParser,org.kxml2.io.KXmlSerializer";
     public static final String NS = null;
 
-    public static final String TEST_RESULT_FILE_NAME = "test_result_suite.xml";
+    public static final String TEST_RESULT_FILE_NAME = "test_result.xml";
 
     // XML constants
     private static final String ABI_ATTR = "abi";
@@ -394,7 +394,7 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
     public SuiteResultHolder parseResults(File resultDir) throws IOException {
         File resultFile = new File(resultDir, TEST_RESULT_FILE_NAME);
         if (!resultFile.exists()) {
-            CLog.d("Could not find %s for loading the results.", resultFile.getAbsolutePath());
+            CLog.e("Could not find %s for loading the results.", resultFile.getAbsolutePath());
             return null;
         }
         SuiteResultHolder invocation = new SuiteResultHolder();
