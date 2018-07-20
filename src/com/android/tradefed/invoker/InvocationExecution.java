@@ -16,6 +16,7 @@
 package com.android.tradefed.invoker;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
@@ -109,6 +110,9 @@ public class InvocationExecution implements IInvocationExecution {
                             LogLevel.WARN,
                             "No build found to test for device: %s",
                             device.getSerialNumber());
+                    IBuildInfo notFoundStub = new BuildInfo();
+                    updateBuild(notFoundStub, config);
+                    context.addDeviceBuildInfo(currentDeviceName, notFoundStub);
                     return false;
                 }
                 // TODO: remove build update when reporting is done on context
@@ -117,7 +121,9 @@ public class InvocationExecution implements IInvocationExecution {
         } catch (BuildRetrievalError e) {
             CLog.e(e);
             if (currentDeviceName != null) {
-                context.addDeviceBuildInfo(currentDeviceName, e.getBuildInfo());
+                IBuildInfo errorBuild = e.getBuildInfo();
+                updateBuild(errorBuild, config);
+                context.addDeviceBuildInfo(currentDeviceName, errorBuild);
                 updateInvocationContext(context, config);
             }
             throw e;
