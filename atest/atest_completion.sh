@@ -23,13 +23,13 @@ else
     PYTHON="/usr/bin/env python"
 fi
 
-
 # Get testable module names from module_info.json.
 # Will return null if module_info.json doesn't exist.
 # TODO: move the python code into an appropriate module which
 # 1. Doesn't have py2/3 compatibility issue(e.g. urllib vs urllib2)
 # 2. Doesn't import too many atest modules that affect user experience.
 fetch_testable_modules() {
+    [ -z $ANDROID_PRODUCT_OUT ] && { exit 0; }
     $PYTHON - << END
 import json
 import os
@@ -67,6 +67,7 @@ END
 # This function invoke get_args() and return each item
 # of the list for tab completion candidates.
 fetch_atest_args() {
+    [ -z $ANDROID_BUILD_TOP ] && { exit 0; }
     $PYTHON - << END
 import os
 import sys
