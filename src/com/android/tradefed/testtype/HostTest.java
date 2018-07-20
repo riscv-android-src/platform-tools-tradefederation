@@ -461,15 +461,24 @@ public class HostTest
         mFilterHelper.addAllIncludeAnnotation(mIncludeAnnotations);
         mFilterHelper.addAllExcludeAnnotation(mExcludeAnnotations);
 
-        List<Class<?>> classes = getClasses();
-        if (!mSkipTestClassCheck) {
-            if (classes.isEmpty()) {
-                throw new IllegalArgumentException("Missing Test class name");
+        try {
+            List<Class<?>> classes = getClasses();
+            if (!mSkipTestClassCheck) {
+                if (classes.isEmpty()) {
+                    throw new IllegalArgumentException("Missing Test class name");
+                }
             }
+            if (mMethodName != null && classes.size() > 1) {
+                throw new IllegalArgumentException("Method name given with multiple test classes");
+            }
+        } catch (IllegalArgumentException e) {
+            // TODO: If possible in some cases, carry the name of the failed class in the run start
+            listener.testRunStarted(this.getClass().getCanonicalName(), 0);
+            listener.testRunFailed(e.getMessage());
+            listener.testRunEnded(0L, new HashMap<String, Metric>());
+            throw e;
         }
-        if (mMethodName != null && classes.size() > 1) {
-            throw new IllegalArgumentException("Method name given with multiple test classes");
-        }
+
         // Add a pretty logger to the events to mark clearly start/end of test cases.
         if (mEnableHostDeviceLogs) {
             PrettyTestEventLogger logger = new PrettyTestEventLogger(mContext.getDevices());
