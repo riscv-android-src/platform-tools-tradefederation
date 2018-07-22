@@ -29,6 +29,11 @@ import unittest_utils
 from test_finders import test_finder_utils
 
 CLASS_DIR = 'foo/bar/jank/src/android/jank/cts/ui'
+OTHER_DIR = 'other/dir/'
+OTHER_CLASS_NAME = 'test.java'
+INT_DIR1 = os.path.join(uc.TEST_DATA_DIR, 'integration_dir_testing/int_dir1')
+INT_DIR2 = os.path.join(uc.TEST_DATA_DIR, 'integration_dir_testing/int_dir2')
+INT_FILE_NAME = 'int_dir_testing'
 FIND_TWO = uc.ROOT + 'other/dir/test.java\n' + uc.FIND_ONE
 VTS_XML = 'VtsAndroidTest.xml'
 VTS_BITNESS_XML = 'VtsBitnessAndroidTest.xml'
@@ -105,6 +110,19 @@ class TestFinderUtilsUnittests(unittest.TestCase):
         unittest_utils.assert_strict_equal(
             self, test_finder_utils.extract_test_path(uc.FIND_ONE), path)
         path = os.path.join(uc.ROOT, CLASS_DIR, uc.CLASS_NAME + '.java')
+        unittest_utils.assert_strict_equal(
+            self, test_finder_utils.extract_test_path(FIND_TWO), path)
+
+    @mock.patch('__builtin__.raw_input', return_value='1')
+    def test_extract_test_from_tests(self, mock_input):
+        """Test method extract_test_from_tests method."""
+        tests = []
+        self.assertEquals(test_finder_utils.extract_test_from_tests(tests), None)
+        path = os.path.join(uc.ROOT, CLASS_DIR, uc.CLASS_NAME + '.java')
+        unittest_utils.assert_strict_equal(
+            self, test_finder_utils.extract_test_path(uc.FIND_ONE), path)
+        path = os.path.join(uc.ROOT, OTHER_DIR, OTHER_CLASS_NAME)
+        mock_input.return_value = '0'
         unittest_utils.assert_strict_equal(
             self, test_finder_utils.extract_test_path(FIND_TWO), path)
 
@@ -306,6 +324,37 @@ class TestFinderUtilsUnittests(unittest.TestCase):
         self.assertFalse(test_finder_utils.is_2nd_arch_module(is_not_2nd_arch_module))
         self.assertFalse(test_finder_utils.is_2nd_arch_module(is_not_2nd_arch_module_again))
         self.assertFalse(test_finder_utils.is_2nd_arch_module({}))
+
+    @mock.patch('__builtin__.raw_input', return_value='0')
+    def test_search_integration_dirs(self, mock_input):
+        """Test search_integration_dirs."""
+        mock_input.return_value = '0'
+        path = os.path.join(uc.ROOT, INT_DIR1, INT_FILE_NAME+'.xml')
+        int_dirs = [INT_DIR1]
+        test_result = test_finder_utils.search_integration_dirs(INT_FILE_NAME, int_dirs)
+        unittest_utils.assert_strict_equal(self, test_result, path)
+        int_dirs = [INT_DIR1, INT_DIR2]
+        test_result = test_finder_utils.search_integration_dirs(INT_FILE_NAME, int_dirs)
+        unittest_utils.assert_strict_equal(self, test_result, path)
+
+    @mock.patch('__builtin__.raw_input', return_value='0')
+    @mock.patch.object(test_finder_utils, 'get_dir_path_and_filename')
+    @mock.patch('os.path.exists', return_value=True)
+    def test_get_int_dir_from_path(self, _exists, _find, mock_input):
+        """Test get_int_dir_from_path."""
+        mock_input.return_value = '0'
+        int_dirs = [INT_DIR1]
+        path = os.path.join(uc.ROOT, INT_DIR1, INT_FILE_NAME+'.xml')
+        _find.return_value = (INT_DIR1, INT_FILE_NAME+'.xml')
+        test_result = test_finder_utils.get_int_dir_from_path(path, int_dirs)
+        unittest_utils.assert_strict_equal(self, test_result, INT_DIR1)
+        _find.return_value = (INT_DIR1, None)
+        test_result = test_finder_utils.get_int_dir_from_path(path, int_dirs)
+        unittest_utils.assert_strict_equal(self, test_result, None)
+        int_dirs = [INT_DIR1, INT_DIR2]
+        _find.return_value = (INT_DIR1, INT_FILE_NAME+'.xml')
+        test_result = test_finder_utils.get_int_dir_from_path(path, int_dirs)
+        unittest_utils.assert_strict_equal(self, test_result, INT_DIR1)
 
 if __name__ == '__main__':
     unittest.main()

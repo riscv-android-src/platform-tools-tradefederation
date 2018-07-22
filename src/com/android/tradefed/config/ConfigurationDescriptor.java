@@ -83,7 +83,7 @@ public class ConfigurationDescriptor implements Serializable {
     private String mModuleName = null;
 
     /** a list of options applicable to rerun the test */
-    private final transient List<OptionDef> mRerunOptions = new ArrayList<>();
+    private final List<OptionDef> mRerunOptions = new ArrayList<>();
 
     /** Returns the list of suite tags the test is part of. */
     public List<String> getSuiteTags() {

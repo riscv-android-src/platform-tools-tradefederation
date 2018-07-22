@@ -615,6 +615,7 @@ public class TestInvocation implements ITestInvocation {
         InvocationScope scope = getInvocationScope();
         scope.enter();
         // Seed our TF objects to the Guice scope
+        scope.seed(IRescheduler.class, rescheduler);
         scope.seedConfiguration(config);
         try {
             mStatus = "fetching build";

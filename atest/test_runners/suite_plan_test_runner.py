@@ -25,17 +25,15 @@ import atest_utils
 import constants
 
 
-# TODO: Change TEST_SUITE to SUITE_PLAN and the relative strings as well
-# on the next CL.
-class TestSuiteTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
-    """TradeFed Test Runner class."""
-    NAME = 'TestSuiteTestRunner'
+class SuitePlanTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
+    """Suite Plan Test Runner class."""
+    NAME = 'SuitePlanTestRunner'
     EXECUTABLE = '%s-tradefed'
     _RUN_CMD = ('{exe} run commandAndExit {test} {args}')
 
     def __init__(self, results_dir, **kwargs):
         """Init stuff for suite tradefed runner class."""
-        super(TestSuiteTestRunner, self).__init__(results_dir, **kwargs)
+        super(SuitePlanTestRunner, self).__init__(results_dir, **kwargs)
         self.run_cmd_dict = {'exe': '',
                              'test': '',
                              'args': ''}
@@ -47,7 +45,7 @@ class TestSuiteTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
             Set of build targets.
         """
         build_req = set()
-        build_req |= super(TestSuiteTestRunner,
+        build_req |= super(SuitePlanTestRunner,
                            self).get_test_runner_build_reqs()
         return build_req
 
@@ -61,7 +59,7 @@ class TestSuiteTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
         reporter.register_unsupported_runner(self.NAME)
         run_cmds = self._generate_run_commands(test_infos, extra_args)
         for run_cmd in run_cmds:
-            proc = super(TestSuiteTestRunner, self).run(run_cmd,
+            proc = super(SuitePlanTestRunner, self).run(run_cmd,
                                                         output_to_stdout=True)
             proc.wait()
 
@@ -115,6 +113,6 @@ class TestSuiteTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
             cmd_dict = copy.deepcopy(self.run_cmd_dict)
             cmd_dict['test'] = test_info.test_name
             cmd_dict['args'] = ' '.join(args)
-            cmd_dict['exe'] = self.EXECUTABLE % test_info.test_name
+            cmd_dict['exe'] = self.EXECUTABLE % test_info.suite
             cmds.append(self._RUN_CMD.format(**cmd_dict))
         return cmds

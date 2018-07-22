@@ -23,14 +23,14 @@ import result_reporter
 
 from test_runners import atest_tf_test_runner
 from test_runners import robolectric_test_runner
-from test_runners import test_suite_test_runner
+from test_runners import suite_plan_test_runner
 from test_runners import vts_tf_test_runner
 
 # pylint: disable=line-too-long
 _TEST_RUNNERS = {
     atest_tf_test_runner.AtestTradefedTestRunner.NAME: atest_tf_test_runner.AtestTradefedTestRunner,
     robolectric_test_runner.RobolectricTestRunner.NAME: robolectric_test_runner.RobolectricTestRunner,
-    test_suite_test_runner.TestSuiteTestRunner.NAME: test_suite_test_runner.TestSuiteTestRunner,
+    suite_plan_test_runner.SuitePlanTestRunner.NAME: suite_plan_test_runner.SuitePlanTestRunner,
     vts_tf_test_runner.VtsTradefedTestRunner.NAME: vts_tf_test_runner.VtsTradefedTestRunner,
 }
 
