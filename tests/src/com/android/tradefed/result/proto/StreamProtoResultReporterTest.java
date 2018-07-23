@@ -15,6 +15,9 @@
  */
 package com.android.tradefed.result.proto;
 
+import static org.junit.Assert.assertNull;
+
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -36,8 +39,6 @@ import java.util.HashMap;
 
 /**
  * Unit tests for {@link StreamProtoResultReporter}.
- *
- * <p>TODO: Needs to be completed when the parser is implemented.
  */
 @RunWith(JUnit4.class)
 public class StreamProtoResultReporterTest {
@@ -50,7 +51,8 @@ public class StreamProtoResultReporterTest {
     public void setUp() {
         mReporter = new StreamProtoResultReporter();
         mInvocationContext = new InvocationContext();
-        mMockListener = EasyMock.createMock(ITestInvocationListener.class);
+        mInvocationContext.setConfigurationDescriptor(new ConfigurationDescriptor());
+        mMockListener = EasyMock.createStrictMock(ITestInvocationListener.class);
     }
 
     @Test
@@ -60,21 +62,41 @@ public class StreamProtoResultReporterTest {
         try {
             setter.setOptionValue(
                     "proto-report-port", Integer.toString(receiver.getSocketServerPort()));
+            TestDescription test1 = new TestDescription("class1", "test1");
+            TestDescription test2 = new TestDescription("class1", "test2");
+            HashMap<String, Metric> metrics = new HashMap<String, Metric>();
+            metrics.put("metric1", TfMetricProtoUtil.stringToMetric("value1"));
+            // Verify mocks
+            mMockListener.invocationStarted(EasyMock.anyObject());
+
+            mMockListener.testModuleStarted(EasyMock.anyObject());
+            mMockListener.testRunStarted("run1", 2);
+            mMockListener.testStarted(test1, 5L);
+            mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
+
+            mMockListener.testStarted(test2, 11L);
+            mMockListener.testFailed(test2, "I failed");
+            mMockListener.testEnded(
+                    EasyMock.eq(test2),
+                    EasyMock.anyLong(),
+                    (HashMap<String, Metric>) EasyMock.anyObject());
+            mMockListener.testRunEnded(
+                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+            mMockListener.testModuleEnded();
+
+            mMockListener.invocationEnded(500L);
+
             EasyMock.replay(mMockListener);
             mReporter.invocationStarted(mInvocationContext);
             // Run modules
             mReporter.testModuleStarted(createModuleContext("arm64 module1"));
             mReporter.testRunStarted("run1", 2);
 
-            TestDescription test1 = new TestDescription("class1", "test1");
             mReporter.testStarted(test1, 5L);
             mReporter.testEnded(test1, 10L, new HashMap<String, Metric>());
 
-            TestDescription test2 = new TestDescription("class1", "test2");
             mReporter.testStarted(test2, 11L);
             mReporter.testFailed(test2, "I failed");
-            HashMap<String, Metric> metrics = new HashMap<String, Metric>();
-            metrics.put("metric1", TfMetricProtoUtil.stringToMetric("value1"));
             // test log
             mReporter.logAssociation(
                     "log1", new LogFile("path", "url", false, LogDataType.TEXT, 5));
@@ -86,22 +108,21 @@ public class StreamProtoResultReporterTest {
             mReporter.testRunEnded(50L, new HashMap<String, Metric>());
 
             mReporter.testModuleEnded();
-            mReporter.testModuleStarted(createModuleContext("arm32 module1"));
-            mReporter.testModuleEnded();
             // Invocation ends
             mReporter.invocationEnded(500L);
-
-            EasyMock.verify(mMockListener);
         } finally {
             receiver.joinReceiver(5000);
             receiver.close();
         }
+        EasyMock.verify(mMockListener);
+        assertNull(receiver.getError());
     }
 
     /** Helper to create a module context. */
     private IInvocationContext createModuleContext(String moduleId) {
         IInvocationContext context = new InvocationContext();
         context.addInvocationAttribute(ModuleDefinition.MODULE_ID, moduleId);
+        context.setConfigurationDescriptor(new ConfigurationDescriptor());
         return context;
     }
 }
