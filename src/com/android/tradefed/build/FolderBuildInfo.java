@@ -26,6 +26,11 @@ public class FolderBuildInfo extends BuildInfo implements IFolderBuildInfo {
 
     private static final long serialVersionUID = BuildSerializedVersion.VERSION;
 
+    /** @see BuildInfo#BuildInfo() */
+    public FolderBuildInfo() {
+        super();
+    }
+
     /**
      * @see BuildInfo#BuildInfo(String, String)
      */
