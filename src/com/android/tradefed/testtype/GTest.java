@@ -475,8 +475,9 @@ public class GTest
         return fileName;
     }
 
-    protected boolean isDeviceFileExecutable(String fullPath) throws DeviceNotAvailableException {
-        String fileMode = mDevice.executeShellCommand(String.format("ls -l %s", fullPath));
+    protected static boolean isDeviceFileExecutable(ITestDevice device, String fullPath)
+            throws DeviceNotAvailableException {
+        String fileMode = device.executeShellCommand(String.format("ls -l %s", fullPath));
         if (fileMode != null) {
             return EXE_FILE.matcher(fileMode).find();
         }
@@ -494,7 +495,7 @@ public class GTest
             return true;
         }
         // skip any file that's not executable
-        if (!isDeviceFileExecutable(fullPath)) {
+        if (!isDeviceFileExecutable(mDevice, fullPath)) {
             return true;
         }
         if (mFileExclusionFilterRegex == null || mFileExclusionFilterRegex.isEmpty()) {
