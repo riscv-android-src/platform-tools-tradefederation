@@ -188,7 +188,7 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest {
 
     private int countExpectedTests(ITestDevice testDevice, String fullBinaryPath)
             throws DeviceNotAvailableException {
-        if (!GTest.isDeviceFileExecutable(testDevice, fullBinaryPath)) {
+        if (!testDevice.isExecutable(fullBinaryPath)) {
             CLog.d("%s does not look like an executable", fullBinaryPath);
             return 0;
         }

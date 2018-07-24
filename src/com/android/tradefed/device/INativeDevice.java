@@ -612,6 +612,13 @@ public interface INativeDevice {
     public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException;
 
     /**
+     * Returns True if the file path on the device is an executable file, false otherwise.
+     *
+     * @throws DeviceNotAvailableException
+     */
+    public boolean isExecutable(String fullPath) throws DeviceNotAvailableException;
+
+    /**
      * Return True if the path on the device is a directory, false otherwise.
      *
      * @throws DeviceNotAvailableException

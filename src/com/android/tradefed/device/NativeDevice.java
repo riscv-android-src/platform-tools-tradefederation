@@ -174,6 +174,9 @@ public class NativeDevice implements IManagedTestDevice {
     /** Wifi reconnect timeout in ms. */
     private static final int WIFI_RECONNECT_TIMEOUT = 60 * 1000;
 
+    /** Pattern to find an executable file. */
+    private static final Pattern EXE_FILE = Pattern.compile("^[-l]r.x.+");
+
     /** The time in ms to wait for a command to complete. */
     private long mCmdTimeout = 2 * 60 * 1000L;
     /** The time in ms to wait for a 'long' command to complete. */
@@ -1291,8 +1294,18 @@ public class NativeDevice implements IManagedTestDevice {
      * @throws DeviceNotAvailableException
      */
     public IFileEntry getFileEntry(FileEntry entry) throws DeviceNotAvailableException {
-        // FileEntryWrapper is going to construct the list of child fild internally.
+        // FileEntryWrapper is going to construct the list of child file internally.
         return new FileEntryWrapper(this, entry);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean isExecutable(String fullPath) throws DeviceNotAvailableException {
+        String fileMode = executeShellCommand(String.format("ls -l %s", fullPath));
+        if (fileMode != null) {
+            return EXE_FILE.matcher(fileMode).find();
+        }
+        return false;
     }
 
     /**
