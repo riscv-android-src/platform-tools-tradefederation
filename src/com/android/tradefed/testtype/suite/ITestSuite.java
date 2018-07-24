@@ -36,8 +36,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
-import com.android.tradefed.result.InputStreamSource;
-import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
@@ -588,11 +586,9 @@ public abstract class ITestSuite
         if (!failures.isEmpty()) {
             CLog.w("There are failed system status checkers: %s capturing a bugreport",
                     failures.toString());
-            try (InputStreamSource bugSource = device.getBugreport()) {
-                listener.testLog(
-                        String.format("bugreport-checker-pre-module-%s", moduleName),
-                        LogDataType.BUGREPORT,
-                        bugSource);
+            if (!(device.getIDevice() instanceof StubDevice)) {
+                device.logBugreport(
+                        String.format("bugreport-checker-pre-module-%s", moduleName), listener);
             }
         }
 
@@ -636,11 +632,9 @@ public abstract class ITestSuite
         if (!failures.isEmpty()) {
             CLog.w("There are failed system status checkers: %s capturing a bugreport",
                     failures.toString());
-            try (InputStreamSource bugSource = device.getBugreport()) {
-                listener.testLog(
-                        String.format("bugreport-checker-post-module-%s", moduleName),
-                        LogDataType.BUGREPORT,
-                        bugSource);
+            if (!(device.getIDevice() instanceof StubDevice)) {
+                device.logBugreport(
+                        String.format("bugreport-checker-post-module-%s", moduleName), listener);
             }
         }
 
