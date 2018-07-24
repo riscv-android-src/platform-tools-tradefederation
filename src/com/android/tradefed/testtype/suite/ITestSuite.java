@@ -571,7 +571,13 @@ public abstract class ITestSuite
                 continue;
             }
 
-            StatusCheckerResult result = checker.preExecutionCheck(device);
+            StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
+            try {
+                result = checker.preExecutionCheck(device);
+            } catch (RuntimeException e) {
+                // Catch RuntimeException to avoid leaking throws that go to the invocation.
+                result.setErrorMessage(e.getMessage());
+            }
             if (!CheckStatus.SUCCESS.equals(result.getStatus())) {
                 String errorMessage =
                         (result.getErrorMessage() == null) ? "" : result.getErrorMessage();
@@ -613,7 +619,13 @@ public abstract class ITestSuite
                 continue;
             }
 
-            StatusCheckerResult result = checker.postExecutionCheck(device);
+            StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
+            try {
+                result = checker.postExecutionCheck(device);
+            } catch (RuntimeException e) {
+                // Catch RuntimeException to avoid leaking throws that go to the invocation.
+                result.setErrorMessage(e.getMessage());
+            }
             if (!CheckStatus.SUCCESS.equals(result.getStatus())) {
                 String errorMessage =
                         (result.getErrorMessage() == null) ? "" : result.getErrorMessage();
