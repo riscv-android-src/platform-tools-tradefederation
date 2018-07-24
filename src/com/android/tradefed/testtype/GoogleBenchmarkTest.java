@@ -42,7 +42,6 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest {
 
     private static final String GBENCHMARK_JSON_OUTPUT_FORMAT = "--benchmark_format=json";
     private static final String GBENCHMARK_LIST_TESTS_OPTION = "--benchmark_list_tests=true";
-    private static final String EXECUTABLE_BUILD_ID = "BuildID=";
 
     @Option(name = "file-exclusion-filter-regex",
             description = "Regex to exclude certain files from executing. Can be repeated")
@@ -189,9 +188,7 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest {
 
     private int countExpectedTests(ITestDevice testDevice, String fullBinaryPath)
             throws DeviceNotAvailableException {
-        String exec = testDevice.executeShellCommand(String.format("file %s", fullBinaryPath));
-        // When inspecting our files, only the one with the marker of an executable should be ran.
-        if (!exec.contains(EXECUTABLE_BUILD_ID)) {
+        if (!GTest.isDeviceFileExecutable(testDevice, fullBinaryPath)) {
             CLog.d("%s does not look like an executable", fullBinaryPath);
             return 0;
         }
