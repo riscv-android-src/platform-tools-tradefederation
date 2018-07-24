@@ -515,7 +515,8 @@ public class GTestTest {
     }
 
     /**
-     * Verifies that {@link GTest#isDeviceFileExecutable(String)} recognizes regular executable file
+     * Verifies that {@link GTest#isDeviceFileExecutable(ITestDevice, String)} recognizes regular
+     * executable file
      *
      * @throws Exception
      */
@@ -525,14 +526,13 @@ public class GTestTest {
         EasyMock.expect(mockDevice.executeShellCommand("ls -l /system/bin/ping"))
                 .andReturn("-rwxr-xr-x 1 root shell 42824 2009-01-01 00:00 /system/bin/ping");
         EasyMock.replay(mockDevice);
-        mGTest.setDevice(mockDevice);
-        assertTrue(mGTest.isDeviceFileExecutable("/system/bin/ping"));
+        assertTrue(GTest.isDeviceFileExecutable(mockDevice, "/system/bin/ping"));
         EasyMock.verify(mockDevice);
     }
 
     /**
-     * Verifies that {@link GTest#isDeviceFileExecutable(String)} recognizes symlink'd executable
-     * file
+     * Verifies that {@link GTest#isDeviceFileExecutable(ITestDevice, String)} recognizes symlink'd
+     * executable file
      *
      * @throws Exception
      */
@@ -543,13 +543,13 @@ public class GTestTest {
                 .andReturn(
                         "lrwxr-xr-x 1 root shell 7 2009-01-01 00:00 /system/bin/start -> toolbox");
         EasyMock.replay(mockDevice);
-        mGTest.setDevice(mockDevice);
-        assertTrue(mGTest.isDeviceFileExecutable("/system/bin/start"));
+        assertTrue(GTest.isDeviceFileExecutable(mockDevice, "/system/bin/start"));
         EasyMock.verify(mockDevice);
     }
 
     /**
-     * Verifies that {@link GTest#isDeviceFileExecutable(String)} recognizes non-executable file
+     * Verifies that {@link GTest#isDeviceFileExecutable(ITestDevice, String)} recognizes
+     * non-executable file
      *
      * @throws Exception
      */
@@ -559,13 +559,13 @@ public class GTestTest {
         EasyMock.expect(mockDevice.executeShellCommand("ls -l /system/build.prop"))
                 .andReturn("-rw-r--r-- 1 root root 5020 2009-01-01 00:00 /system/build.prop");
         EasyMock.replay(mockDevice);
-        mGTest.setDevice(mockDevice);
-        assertFalse(mGTest.isDeviceFileExecutable("/system/build.prop"));
+        assertFalse(GTest.isDeviceFileExecutable(mockDevice, "/system/build.prop"));
         EasyMock.verify(mockDevice);
     }
 
     /**
-     * Verifies that {@link GTest#isDeviceFileExecutable(String)} recognizes a directory listing
+     * Verifies that {@link GTest#isDeviceFileExecutable(ITestDevice, String)} recognizes a
+     * directory listing
      *
      * @throws Exception
      */
@@ -591,8 +591,7 @@ public class GTestTest {
                                 + "drwxr-xr-x  8 root shell   4096 2009-01-01 00:00 vendor\n"
                                 + "drwxr-xr-x  2 root shell   4096 2009-01-01 00:00 xbin\n");
         EasyMock.replay(mockDevice);
-        mGTest.setDevice(mockDevice);
-        assertFalse(mGTest.isDeviceFileExecutable("/system"));
+        assertFalse(GTest.isDeviceFileExecutable(mockDevice, "/system"));
         EasyMock.verify(mockDevice);
     }
 }

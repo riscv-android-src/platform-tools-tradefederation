@@ -18,6 +18,7 @@ package com.android.tradefed.result.proto;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -56,6 +57,7 @@ public class ProtoResultReporterTest {
     public void setUp() {
         mReporter = new TestableProtoResultReporter();
         mInvocationContext = new InvocationContext();
+        mInvocationContext.setConfigurationDescriptor(new ConfigurationDescriptor());
     }
 
     /** Test an invocation with the proto being populated. */
@@ -145,6 +147,7 @@ public class ProtoResultReporterTest {
     private IInvocationContext createModuleContext(String moduleId) {
         IInvocationContext context = new InvocationContext();
         context.addInvocationAttribute(ModuleDefinition.MODULE_ID, moduleId);
+        context.setConfigurationDescriptor(new ConfigurationDescriptor());
         return context;
     }
 }

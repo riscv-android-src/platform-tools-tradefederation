@@ -39,9 +39,12 @@ public class StreamProtoReceiver implements Closeable {
 
     private EventReceiverThread mEventReceiver;
     private ITestInvocationListener mListener;
+    private ProtoResultParser mParser;
+    private Throwable mError;
 
     public StreamProtoReceiver(ITestInvocationListener listener) throws IOException {
         mListener = listener;
+        mParser = new ProtoResultParser(mListener);
         mEventReceiver = new EventReceiverThread();
         mEventReceiver.start();
     }
@@ -100,6 +103,11 @@ public class StreamProtoReceiver implements Closeable {
         return -1;
     }
 
+    /** Returns the error caugh in the receiver thread. If none it will return null. */
+    public Throwable getError() {
+        return mError;
+    }
+
     @Override
     public void close() throws IOException {
         if (mEventReceiver != null) {
@@ -124,7 +132,12 @@ public class StreamProtoReceiver implements Closeable {
     }
 
     private void parse(TestRecord receivedRecord) {
-        // TODO: add parsing of the records and matching events.
-        CLog.e("%s", receivedRecord);
+        try {
+            mParser.processNewProto(receivedRecord);
+        } catch (Throwable e) {
+            CLog.e(e);
+            mError = e;
+            throw e;
+        }
     }
 }

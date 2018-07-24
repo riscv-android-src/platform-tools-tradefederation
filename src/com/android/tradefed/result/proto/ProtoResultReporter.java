@@ -127,6 +127,7 @@ abstract class ProtoResultReporter implements ITestInvocationListener, ILogSaver
         mInvocationStartTime = System.currentTimeMillis();
         Timestamp startTime = createTimeStamp(mInvocationStartTime);
         mInvocationRecordBuilder.setStartTime(startTime);
+        mInvocationRecordBuilder.setDescription(Any.pack(context.toProto()));
 
         // Put the invocation record at the bottom of the stack
         mLatestChild.add(mInvocationRecordBuilder);
@@ -167,6 +168,7 @@ abstract class ProtoResultReporter implements ITestInvocationListener, ILogSaver
         moduleBuilder.setTestRecordId(
                 moduleContext.getAttributes().get(ModuleDefinition.MODULE_ID).get(0));
         moduleBuilder.setStartTime(createTimeStamp(System.currentTimeMillis()));
+        moduleBuilder.setDescription(Any.pack(moduleContext.toProto()));
         mLatestChild.add(moduleBuilder);
         try {
             processTestModuleStarted(moduleBuilder.build());
@@ -233,6 +235,7 @@ abstract class ProtoResultReporter implements ITestInvocationListener, ILogSaver
     @Override
     public final void testRunEnded(long elapsedTimeMillis, HashMap<String, Metric> runMetrics) {
         TestRecord.Builder runBuilder = mLatestChild.pop();
+        // TODO: Make sure the end time match the elapsed time
         runBuilder.setEndTime(createTimeStamp(System.currentTimeMillis()));
         runBuilder.putAllMetrics(runMetrics);
         TestRecord.Builder parentBuilder = mLatestChild.peek();

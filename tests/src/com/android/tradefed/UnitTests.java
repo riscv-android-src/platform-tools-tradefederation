@@ -21,6 +21,7 @@ import com.android.tradefed.build.DeviceBuildDescriptorTest;
 import com.android.tradefed.build.DeviceBuildInfoTest;
 import com.android.tradefed.build.DeviceFolderBuildInfoTest;
 import com.android.tradefed.build.FileDownloadCacheTest;
+import com.android.tradefed.build.GCSTestResourceProviderTest;
 import com.android.tradefed.build.LocalDeviceBuildProviderTest;
 import com.android.tradefed.build.OtaZipfileBuildProviderTest;
 import com.android.tradefed.command.CommandFileParserTest;
@@ -119,6 +120,7 @@ import com.android.tradefed.result.TestFailureEmailResultReporterTest;
 import com.android.tradefed.result.TestRunResultTest;
 import com.android.tradefed.result.TestSummaryTest;
 import com.android.tradefed.result.XmlResultReporterTest;
+import com.android.tradefed.result.proto.ProtoResultParserTest;
 import com.android.tradefed.result.proto.ProtoResultReporterTest;
 import com.android.tradefed.result.proto.StreamProtoResultReporterTest;
 import com.android.tradefed.result.suite.FormattedGeneratorReporterTest;
@@ -240,6 +242,7 @@ import com.android.tradefed.util.EmmaXmlReporterParserTest;
 import com.android.tradefed.util.FakeTestsZipFolderTest;
 import com.android.tradefed.util.FileUtilTest;
 import com.android.tradefed.util.FixedByteArrayOutputStreamTest;
+import com.android.tradefed.util.GCSFileDownloaderTest;
 import com.android.tradefed.util.HprofAllocSiteParserTest;
 import com.android.tradefed.util.JUnitXmlParserTest;
 import com.android.tradefed.util.KeyguardControllerStateTest;
@@ -304,6 +307,7 @@ import org.junit.runners.Suite.SuiteClasses;
     DeviceBuildDescriptorTest.class,
     DeviceFolderBuildInfoTest.class,
     FileDownloadCacheTest.class,
+    GCSTestResourceProviderTest.class,
     LocalDeviceBuildProviderTest.class,
     OtaZipfileBuildProviderTest.class,
 
@@ -428,6 +432,7 @@ import org.junit.runners.Suite.SuiteClasses;
     XmlResultReporterTest.class,
 
     // result.proto
+    ProtoResultParserTest.class,
     ProtoResultReporterTest.class,
     StreamProtoResultReporterTest.class,
 
@@ -580,6 +585,7 @@ import org.junit.runners.Suite.SuiteClasses;
     FakeTestsZipFolderTest.class,
     FileUtilTest.class,
     FixedByteArrayOutputStreamTest.class,
+    GCSFileDownloaderTest.class,
     HprofAllocSiteParserTest.class,
     JUnitXmlParserTest.class,
     KeyguardControllerStateTest.class,
