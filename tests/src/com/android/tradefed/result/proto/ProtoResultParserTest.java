@@ -15,11 +15,13 @@
  */
 package com.android.tradefed.result.proto;
 
+import static org.junit.Assert.*;
+
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
@@ -27,6 +29,7 @@ import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
+import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,8 +43,9 @@ import java.util.HashMap;
 public class ProtoResultParserTest {
 
     private ProtoResultParser mParser;
-    private ITestInvocationListener mMockListener;
+    private ILogSaverListener mMockListener;
     private TestProtoParser mTestParser;
+    private FinalTestProtoParser mFinalTestParser;
     private IInvocationContext mInvocationContext;
 
     private class TestProtoParser extends ProtoResultReporter {
@@ -87,11 +91,19 @@ public class ProtoResultParserTest {
         }
     }
 
+    private class FinalTestProtoParser extends ProtoResultReporter {
+        @Override
+        public void processFinalProto(TestRecord finalRecord) {
+            mParser.processFinalizedProto(finalRecord);
+        }
+    }
+
     @Before
     public void setUp() {
-        mMockListener = EasyMock.createStrictMock(ITestInvocationListener.class);
+        mMockListener = EasyMock.createStrictMock(ILogSaverListener.class);
         mParser = new ProtoResultParser(mMockListener);
         mTestParser = new TestProtoParser();
+        mFinalTestParser = new FinalTestProtoParser();
         mInvocationContext = new InvocationContext();
         mInvocationContext.setConfigurationDescriptor(new ConfigurationDescriptor());
     }
@@ -102,6 +114,8 @@ public class ProtoResultParserTest {
         TestDescription test2 = new TestDescription("class1", "test2");
         HashMap<String, Metric> metrics = new HashMap<String, Metric>();
         metrics.put("metric1", TfMetricProtoUtil.stringToMetric("value1"));
+        LogFile logFile = new LogFile("path", "url", false, LogDataType.TEXT, 5);
+        Capture<LogFile> capture = new Capture<>();
 
         // Verify Mocks
         mMockListener.invocationStarted(EasyMock.anyObject());
@@ -113,7 +127,9 @@ public class ProtoResultParserTest {
 
         mMockListener.testStarted(test2, 11L);
         mMockListener.testFailed(test2, "I failed");
+        mMockListener.logAssociation(EasyMock.eq("log1"), EasyMock.capture(capture));
         mMockListener.testEnded(test2, 60L, metrics);
+        mMockListener.logAssociation(EasyMock.eq("run_log1"), EasyMock.anyObject());
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         mMockListener.testModuleEnded();
@@ -133,7 +149,7 @@ public class ProtoResultParserTest {
         mTestParser.testStarted(test2, 11L);
         mTestParser.testFailed(test2, "I failed");
         // test log
-        mTestParser.logAssociation("log1", new LogFile("path", "url", false, LogDataType.TEXT, 5));
+        mTestParser.logAssociation("log1", logFile);
 
         mTestParser.testEnded(test2, 60L, metrics);
         // run log
@@ -146,6 +162,13 @@ public class ProtoResultParserTest {
         // Invocation ends
         mTestParser.invocationEnded(500L);
         EasyMock.verify(mMockListener);
+
+        // Check capture
+        LogFile capturedFile = capture.getValue();
+        assertEquals(logFile.getPath(), capturedFile.getPath());
+        assertEquals(logFile.getUrl(), capturedFile.getUrl());
+        assertEquals(logFile.getType(), capturedFile.getType());
+        assertEquals(logFile.getSize(), capturedFile.getSize());
     }
 
     /** Test that a run failure occurring inside a test case pair is handled properly. */
@@ -180,6 +203,96 @@ public class ProtoResultParserTest {
         mTestParser.testRunEnded(50L, new HashMap<String, Metric>());
         // Invocation ends
         mTestParser.invocationEnded(500L);
+        EasyMock.verify(mMockListener);
+    }
+
+    @Test
+    public void testEvents_finaleProto() {
+        TestDescription test1 = new TestDescription("class1", "test1");
+        TestDescription test2 = new TestDescription("class1", "test2");
+        HashMap<String, Metric> metrics = new HashMap<String, Metric>();
+        metrics.put("metric1", TfMetricProtoUtil.stringToMetric("value1"));
+        LogFile logFile = new LogFile("path", "url", false, LogDataType.TEXT, 5);
+
+        // Verify Mocks
+        mMockListener.invocationStarted(EasyMock.anyObject());
+
+        mMockListener.testModuleStarted(EasyMock.anyObject());
+        mMockListener.testRunStarted("run1", 2);
+        mMockListener.testStarted(test1, 5L);
+        mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
+
+        mMockListener.testStarted(test2, 11L);
+        mMockListener.testFailed(test2, "I failed");
+        mMockListener.logAssociation(EasyMock.eq("log1"), EasyMock.anyObject());
+        mMockListener.testEnded(test2, 60L, metrics);
+        mMockListener.logAssociation(EasyMock.eq("run_log1"), EasyMock.anyObject());
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        mMockListener.testModuleEnded();
+
+        mMockListener.invocationEnded(500L);
+
+        EasyMock.replay(mMockListener);
+        // Invocation start
+        mFinalTestParser.invocationStarted(mInvocationContext);
+        // Run modules
+        mFinalTestParser.testModuleStarted(createModuleContext("arm64 module1"));
+        mFinalTestParser.testRunStarted("run1", 2);
+
+        mFinalTestParser.testStarted(test1, 5L);
+        mFinalTestParser.testEnded(test1, 10L, new HashMap<String, Metric>());
+
+        mFinalTestParser.testStarted(test2, 11L);
+        mFinalTestParser.testFailed(test2, "I failed");
+        // test log
+        mFinalTestParser.logAssociation("log1", logFile);
+
+        mFinalTestParser.testEnded(test2, 60L, metrics);
+        // run log
+        mFinalTestParser.logAssociation(
+                "run_log1", new LogFile("path", "url", false, LogDataType.LOGCAT, 5));
+        mFinalTestParser.testRunEnded(50L, new HashMap<String, Metric>());
+
+        mFinalTestParser.testModuleEnded();
+
+        // Invocation ends
+        mFinalTestParser.invocationEnded(500L);
+        EasyMock.verify(mMockListener);
+    }
+
+    /** Test that a run failure occurring inside a test case pair is handled properly. */
+    @Test
+    public void testRunFail_interleavedWithTest_finalProto() {
+        TestDescription test1 = new TestDescription("class1", "test1");
+
+        // Verify Mocks
+        mMockListener.invocationStarted(EasyMock.anyObject());
+
+        mMockListener.testRunStarted("run1", 2);
+        mMockListener.testStarted(test1, 5L);
+        mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
+
+        mMockListener.testRunFailed("run failure");
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        mMockListener.invocationEnded(500L);
+
+        EasyMock.replay(mMockListener);
+        mFinalTestParser.invocationStarted(mInvocationContext);
+        // Run modules
+        mFinalTestParser.testRunStarted("run1", 2);
+
+        mFinalTestParser.testStarted(test1, 5L);
+        // test run failed inside a test
+        mFinalTestParser.testRunFailed("run failure");
+
+        mFinalTestParser.testEnded(test1, 10L, new HashMap<String, Metric>());
+
+        mFinalTestParser.testRunEnded(50L, new HashMap<String, Metric>());
+        // Invocation ends
+        mFinalTestParser.invocationEnded(500L);
         EasyMock.verify(mMockListener);
     }
 
