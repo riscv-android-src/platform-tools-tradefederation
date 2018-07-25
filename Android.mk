@@ -52,16 +52,14 @@ include $(BUILD_HOST_JAVA_LIBRARY)
 
 # makefile rules to copy jars to HOST_OUT/tradefed
 # so tradefed.sh can automatically add to classpath
-DEST_JAR := $(HOST_OUT)/tradefed/$(LOCAL_MODULE).jar
-$(DEST_JAR): $(LOCAL_BUILT_MODULE)
-	$(copy-file-to-new-target)
+deps := $(call copy-many-files,\
+  $(LOCAL_BUILT_MODULE):$(HOST_OUT)/tradefed/$(LOCAL_MODULE).jar \
+  $(HOST_OUT_JAVA_LIBRARIES)/tools-common-prebuilt.jar:$(HOST_OUT)/tradefed/tools-common-prebuilt.jar)
 
-$(HOST_OUT)/tradefed/%.jar : $(HOST_OUT_JAVA_LIBRARIES)/%.jar
-	$(copy-file-to-new-target)
-
-# this dependency ensure the above rule will be executed if jar is built
-$(LOCAL_INSTALLED_MODULE) : $(DEST_JAR)
-$(LOCAL_INSTALLED_MODULE) : $(foreach m, $(LOCAL_JAVA_LIBRARIES), $(HOST_OUT)/tradefed/$(m).jar)
+# this dependency ensures the above rule will be executed if jar is installed
+$(LOCAL_INSTALLED_MODULE) : $(deps)
+# The copy rule for loganalysis is in tools/loganalysis/Android.mk
+$(LOCAL_INSTALLED_MODULE) : $(HOST_OUT)/tradefed/loganalysis.jar
 
 #######################################################
 # intentionally skipping CLEAR_VARS
@@ -73,7 +71,6 @@ $(LOCAL_INSTALLED_MODULE) : $(foreach m, $(LOCAL_JAVA_LIBRARIES), $(HOST_OUT)/tr
 LOCAL_JAVA_LIBRARIES += tradefed
 LOCAL_IS_HOST_MODULE:=true
 LOCAL_MODULE_CLASS := JAVA_LIBRARIES
-LOCAL_ADDITIONAL_DEPENDENCIES := tradefed
 LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR:=build/tools/droiddoc/templates-sac
 LOCAL_DROIDDOC_OPTIONS:= \
         -package \
@@ -92,7 +89,6 @@ LOCAL_MODULE = tradefed-ds
 LOCAL_JAVA_LIBRARIES += tradefed
 LOCAL_IS_HOST_MODULE := true
 LOCAL_MODULE_CLASS := JAVA_LIBRARIES
-LOCAL_ADDITIONAL_DEPENDENCIES := tradefed
 LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR := external/doclava/res/assets/templates-sdk
 LOCAL_DROIDDOC_OPTIONS := \
         -hdf sac true \
