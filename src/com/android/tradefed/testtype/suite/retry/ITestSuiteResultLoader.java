@@ -16,7 +16,7 @@
 package com.android.tradefed.testtype.suite.retry;
 
 import com.android.tradefed.invoker.IInvocationContext;
-import com.android.tradefed.result.suite.SuiteResultHolder;
+import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 
 /** Interface describing an helper to load previous results in a way that can be re-run. */
 public interface ITestSuiteResultLoader {
@@ -27,6 +27,6 @@ public interface ITestSuiteResultLoader {
     /** Retrieve the original command line from the previous run. */
     public String getCommandLine();
 
-    /** Load the previous results in a {@link SuiteResultHolder} format. */
-    public SuiteResultHolder loadPreviousResults();
+    /** Load the previous results in a {@link TestRecord} format. */
+    public TestRecord loadPreviousRecord();
 }

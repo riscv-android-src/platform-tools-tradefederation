@@ -15,7 +15,7 @@
  */
 package com.android.tradefed.result.proto;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -51,7 +51,8 @@ public class ProtoResultParserTest {
     private class TestProtoParser extends ProtoResultReporter {
 
         @Override
-        public void processStartInvocation(TestRecord invocationStartRecord) {
+        public void processStartInvocation(
+                TestRecord invocationStartRecord, IInvocationContext context) {
             mParser.processNewProto(invocationStartRecord);
         }
 

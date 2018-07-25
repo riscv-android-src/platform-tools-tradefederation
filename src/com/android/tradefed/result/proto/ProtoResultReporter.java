@@ -43,7 +43,7 @@ import java.util.UUID;
  * extended to handle what to do with the final proto in {@link #processFinalProto(TestRecord)}.
  */
 @OptionClass(alias = "proto-reporter")
-abstract class ProtoResultReporter implements ITestInvocationListener, ILogSaverListener {
+public abstract class ProtoResultReporter implements ITestInvocationListener, ILogSaverListener {
 
     private Stack<TestRecord.Builder> mLatestChild;
     private TestRecord.Builder mInvocationRecordBuilder;
@@ -54,8 +54,10 @@ abstract class ProtoResultReporter implements ITestInvocationListener, ILogSaver
      * #invocationStarted(IInvocationContext)} occurred.
      *
      * @param invocationStartRecord The partial proto populated after the invocationStart.
+     * @param invocationContext The invocation {@link IInvocationContext}.
      */
-    public void processStartInvocation(TestRecord invocationStartRecord) {}
+    public void processStartInvocation(
+            TestRecord invocationStartRecord, IInvocationContext invocationContext) {}
 
     /**
      * Handling of the final proto with all results.
@@ -133,7 +135,7 @@ abstract class ProtoResultReporter implements ITestInvocationListener, ILogSaver
         // of the invocation.
         TestRecord startInvocationProto = mInvocationRecordBuilder.build();
         try {
-            processStartInvocation(startInvocationProto);
+            processStartInvocation(startInvocationProto, context);
         } catch (RuntimeException e) {
             CLog.e("Failed to process invocation started:");
             CLog.e(e);
@@ -251,6 +253,11 @@ abstract class ProtoResultReporter implements ITestInvocationListener, ILogSaver
     // test case events
 
     @Override
+    public final void testStarted(TestDescription test) {
+        testStarted(test, System.currentTimeMillis());
+    }
+
+    @Override
     public final void testStarted(TestDescription test, long startTime) {
         TestRecord.Builder testBuilder = TestRecord.newBuilder();
         TestRecord.Builder parent = mLatestChild.peek();
@@ -266,6 +273,11 @@ abstract class ProtoResultReporter implements ITestInvocationListener, ILogSaver
             CLog.e("Failed to process invocation ended:");
             CLog.e(e);
         }
+    }
+
+    @Override
+    public void testEnded(TestDescription test, HashMap<String, Metric> testMetrics) {
+        testEnded(test, System.currentTimeMillis(), testMetrics);
     }
 
     @Override
@@ -348,11 +360,14 @@ abstract class ProtoResultReporter implements ITestInvocationListener, ILogSaver
         LogFileInfo.Builder logFileBuilder = LogFileInfo.newBuilder();
         logFileBuilder
                 .setPath(logFile.getPath())
-                .setUrl(logFile.getUrl())
                 .setIsText(logFile.isText())
                 .setLogType(logFile.getType().toString())
                 .setIsCompressed(logFile.isCompressed())
                 .setSize(logFile.getSize());
+        // Url can be null so avoid NPE by checking it before setting the proto
+        if (logFile.getUrl() != null) {
+            logFileBuilder.setUrl(logFile.getUrl());
+        }
         return logFileBuilder.build();
     }
 }
