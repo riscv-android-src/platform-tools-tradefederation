@@ -31,6 +31,7 @@ import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.suite.params.IModuleParameter;
 import com.android.tradefed.testtype.suite.params.ModuleParameters;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelper;
+import com.android.tradefed.testtype.suite.params.MultiAbiHandler;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -183,10 +184,17 @@ public class SuiteModuleLoader {
         final String name = configName.replace(CONFIG_EXT, "");
         final String[] pathArg = new String[] {configFullName};
         try {
+            boolean primaryAbi = true;
+            boolean shouldCreateMultiAbi = false;
             // Invokes parser to process the test module config file
             // Need to generate a different config for each ABI as we cannot guarantee the
             // configs are idempotent. This however means we parse the same file multiple times
             for (IAbi abi : abis) {
+                // Only enable the primary abi filtering when switching to the parameterized mode
+                if (mAllowParameterizedModules && !primaryAbi && !shouldCreateMultiAbi) {
+                    continue;
+                }
+
                 String baseId = AbiUtils.createId(abi.getName(), name);
                 if (!shouldRunModule(baseId)) {
                     // If the module should not run tests based on the state of filters,
@@ -210,6 +218,10 @@ public class SuiteModuleLoader {
                     List<IModuleParameter> params = getModuleParameters(config);
                     // If we find any parameterized combination.
                     for (IModuleParameter param : params) {
+                        if (param instanceof MultiAbiHandler) {
+                            shouldCreateMultiAbi = true;
+                            continue;
+                        }
                         String fullId =
                                 String.format("%s[%s]", baseId, param.getParameterIdentifier());
                         IConfiguration paramConfig =
@@ -222,6 +234,7 @@ public class SuiteModuleLoader {
                 // Always add the base regular configuration to the execution.
                 setUpConfig(name, baseId, baseId, config, abi);
                 toRun.put(baseId, config);
+                primaryAbi = false;
             }
         } catch (ConfigurationException e) {
             throw new RuntimeException(
