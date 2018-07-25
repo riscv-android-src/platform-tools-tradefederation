@@ -61,14 +61,6 @@ public class ConsoleResultReporter extends CollectingTestListener implements ILo
     }
 
     /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setLogSaver(ILogSaver logSaver) {
-        // Ignore. This class doesn't save any additional files.
-    }
-
-    /**
      * Get the invocation summary as a string.
      */
     String getInvocationSummary() {
