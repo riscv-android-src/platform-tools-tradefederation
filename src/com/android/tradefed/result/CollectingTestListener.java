@@ -42,20 +42,23 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     // Uses a synchronized map to make thread safe.
     // Uses a LinkedHashmap to have predictable iteration order
     private Map<String, TestRunResult> mRunResultsMap =
-        Collections.synchronizedMap(new LinkedHashMap<String, TestRunResult>());
+            Collections.synchronizedMap(new LinkedHashMap<String, TestRunResult>());
     private Map<TestRunResult, IInvocationContext> mModuleContextMap =
             Collections.synchronizedMap(new LinkedHashMap<TestRunResult, IInvocationContext>());
-    private TestRunResult mCurrentResults =  new TestRunResult();
+    private TestRunResult mCurrentResults = new TestRunResult();
     private IInvocationContext mCurrentModuleContext = null;
 
-    /** represents sums of tests in each TestStatus state for all runs.
-     * Indexed by TestStatus.ordinal() */
+    /**
+     * represents sums of tests in each TestStatus state for all runs. Indexed by
+     * TestStatus.ordinal()
+     */
     private int[] mStatusCounts = new int[TestStatus.values().length];
     /** tracks if mStatusCounts is accurate, or if it needs to be recalculated */
     private boolean mIsCountDirty = true;
 
-    @Option(name = "aggregate-metrics", description =
-        "attempt to add test metrics values for test runs with the same name." )
+    @Option(
+            name = "aggregate-metrics",
+            description = "attempt to add test metrics values for test runs with the same name.")
     private boolean mIsAggregateMetrics = false;
 
     private IBuildInfo mBuildInfo;
@@ -64,17 +67,6 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     /** Toggle the 'aggregate metrics' option */
     protected void setIsAggregrateMetrics(boolean aggregate) {
         mIsAggregateMetrics = aggregate;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void invocationStarted(IInvocationContext context) {
-        mContext = context;
-        if (context != null) {
-            mBuildInfo = context.getBuildInfos().get(0);
-        }
     }
 
     /**
@@ -92,8 +84,8 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     }
 
     /**
-     * Return the invocation context that was reported via
-     * {@link #invocationStarted(IInvocationContext)}
+     * Return the invocation context that was reported via {@link
+     * #invocationStarted(IInvocationContext)}
      */
     public IInvocationContext getInvocationContext() {
         return mContext;
@@ -120,6 +112,27 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
         mBuildInfo = buildInfo;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void invocationStarted(IInvocationContext context) {
+        mContext = context;
+        if (context != null) {
+            mBuildInfo = context.getBuildInfos().get(0);
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void invocationEnded(long elapsedTime) {
+        // ignore
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void invocationFailed(Throwable cause) {
+        // ignore
+    }
+
     @Override
     public void testModuleStarted(IInvocationContext moduleContext) {
         mCurrentModuleContext = moduleContext;
@@ -130,9 +143,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
         mCurrentModuleContext = null;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void testRunStarted(String name, int numTests) {
         if (mRunResultsMap.containsKey(name)) {
@@ -151,6 +162,27 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
         }
         mCurrentResults.testRunStarted(name, numTests);
         mIsCountDirty = true;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
+        mIsCountDirty = true;
+        mCurrentResults.testRunEnded(elapsedTime, runMetrics);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testRunFailed(String errorMessage) {
+        mIsCountDirty = true;
+        mCurrentResults.testRunFailed(errorMessage);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testRunStopped(long elapsedTime) {
+        mIsCountDirty = true;
+        mCurrentResults.testRunStopped(elapsedTime);
     }
 
     /** {@inheritDoc} */
@@ -190,7 +222,6 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     public void testAssumptionFailure(TestDescription test, String trace) {
         mIsCountDirty = true;
         mCurrentResults.testAssumptionFailure(test, trace);
-
     }
 
     @Override
@@ -201,33 +232,14 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
 
     /** {@inheritDoc} */
     @Override
-    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
-        mIsCountDirty = true;
-        mCurrentResults.testRunEnded(elapsedTime, runMetrics);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void testRunFailed(String errorMessage) {
-        mIsCountDirty = true;
-        mCurrentResults.testRunFailed(errorMessage);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void testRunStopped(long elapsedTime) {
-        mIsCountDirty = true;
-        mCurrentResults.testRunStopped(elapsedTime);
+    public void logAssociation(String dataName, LogFile logFile) {
+        mCurrentResults.testLogSaved(dataName, logFile);
     }
 
     /**
      * Gets the results for the current test run.
-     * <p/>
-     * Note the results may not be complete. It is recommended to test the value of {@link
+     *
+     * <p>Note the results may not be complete. It is recommended to test the value of {@link
      * TestRunResult#isRunComplete()} and/or (@link TestRunResult#isRunFailure()} as appropriate
      * before processing the results.
      *
@@ -237,24 +249,9 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
         return mCurrentResults;
     }
 
-    /**
-     * Gets the results for all test runs.
-     */
+    /** Gets the results for all test runs. */
     public Collection<TestRunResult> getRunResults() {
         return mRunResultsMap.values();
-    }
-
-    /**
-     * Returns the {@link IInvocationContext} of the module associated with the results or null if
-     * it was not associated with any module.
-     */
-    public IInvocationContext getModuleContextForRunResult(TestRunResult res) {
-        return mModuleContextMap.get(res);
-    }
-
-    /** Returns True if the result map already has an entry for the run name. */
-    public boolean hasResultFor(String runName) {
-        return mRunResultsMap.containsKey(runName);
     }
 
     /** Gets the total number of complete tests for all runs. */
@@ -268,9 +265,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
         return total;
     }
 
-    /**
-     * Gets the number of tests in given state for this run.
-     */
+    /** Gets the number of tests in given state for this run. */
     public int getNumTestsInState(TestStatus status) {
         if (mIsCountDirty) {
             for (TestStatus s : TestStatus.values()) {
@@ -284,61 +279,9 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
         return mStatusCounts[status.ordinal()];
     }
 
-    /**
-     * @return true if invocation had any failed or assumption failed tests.
-     */
+    /** @return true if invocation had any failed or assumption failed tests. */
     public boolean hasFailedTests() {
         return getNumAllFailedTests() > 0;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void invocationEnded(long elapsedTime) {
-        // ignore
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void invocationFailed(Throwable cause) {
-        // ignore
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public TestSummary getSummary() {
-        // ignore
-        return null;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
-        // ignore, logAssociation is implemented.
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void testLogSaved(
-            String dataName, LogDataType dataType, InputStreamSource dataStream, LogFile logFile) {
-        // ignore, logAssociation is used to save the files
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void setLogSaver(ILogSaver logSaver) {
-        // CollectingTestListener does not need the logSaver
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void logAssociation(String dataName, LogFile logFile) {
-        mCurrentResults.testLogSaved(dataName, logFile);
     }
 
     /**
@@ -349,9 +292,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
         return getNumTestsInState(TestStatus.FAILURE);
     }
 
-    /**
-     * Return total number of test runs in a failure state
-     */
+    /** Return total number of test runs in a failure state */
     public int getNumAllFailedTestRuns() {
         int count = 0;
         for (Map.Entry<String, TestRunResult> e : mRunResultsMap.entrySet()) {
@@ -410,5 +351,18 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
      */
     public int getTestRunAttemptCount(String testRunName) {
         throw new UnsupportedOperationException("Not implemented");
+    }
+
+    /**
+     * Returns the {@link IInvocationContext} of the module associated with the results or null if
+     * it was not associated with any module.
+     */
+    protected IInvocationContext getModuleContextForRunResult(TestRunResult res) {
+        return mModuleContextMap.get(res);
+    }
+
+    /** Returns True if the result map already has an entry for the run name. */
+    protected boolean hasResultFor(String runName) {
+        return mRunResultsMap.containsKey(runName);
     }
 }
