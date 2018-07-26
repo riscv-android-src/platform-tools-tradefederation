@@ -37,14 +37,9 @@
 			<locationURI>TRADEFED_ROOT/external/junit/src/main/java</locationURI>
 		</link>
 		<link>
-			<name>proto_gen</name>
+			<name>tradefedproto</name>
 			<type>2</type>
-			<locationURI>TRADEFED_ROOT/out/host/common/obj/JAVA_LIBRARIES/tradefed-protos_intermediates/proto/src</locationURI>
-		</link>
-		<link>
-			<name>protobuf</name>
-			<type>2</type>
-			<locationURI>TRADEFED_ROOT/out/host/common/obj/JAVA_LIBRARIES/host-libprotobuf-java-full_intermediates/proto/src</locationURI>
+                        <locationURI>TRADEFED_ROOT/out/soong/.intermediates/tools/tradefederation/core/tradefed-protos/linux_glibc_common/javac/srcjars</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>
