@@ -64,12 +64,12 @@ public class ConsoleResultReporter extends CollectingTestListener implements ILo
      * Get the invocation summary as a string.
      */
     String getInvocationSummary() {
-        if (getRunResults().isEmpty() && mLogFiles.isEmpty()) {
+        if (getMergedTestRunResults().isEmpty() && mLogFiles.isEmpty()) {
             return "No test results\n";
         }
 
         StringBuilder sb = new StringBuilder();
-        for (TestRunResult testRunResult : getRunResults()) {
+        for (TestRunResult testRunResult : getMergedTestRunResults()) {
             sb.append(getTestRunSummary(testRunResult));
         }
         if (!mLogFiles.isEmpty()) {

@@ -135,17 +135,20 @@ public class ShardListener extends CollectingTestListener {
     public void invocationEnded(long elapsedTime) {
         super.invocationEnded(elapsedTime);
         synchronized (mMasterListener) {
-            logShardContent(getRunResults());
+            logShardContent(getMergedTestRunResults());
             IInvocationContext moduleContext = null;
-            for (TestRunResult runResult : getRunResults()) {
+            for (TestRunResult runResult : getMergedTestRunResults()) {
+
                 // Stop or start the module
                 if (moduleContext != null
-                        && !getModuleContextForRunResult(runResult).equals(moduleContext)) {
+                        && !getModuleContextForRunResult(runResult.getName())
+                                .equals(moduleContext)) {
                     mMasterListener.testModuleEnded();
                     moduleContext = null;
                 }
-                if (moduleContext == null && getModuleContextForRunResult(runResult) != null) {
-                    moduleContext = getModuleContextForRunResult(runResult);
+                if (moduleContext == null
+                        && getModuleContextForRunResult(runResult.getName()) != null) {
+                    moduleContext = getModuleContextForRunResult(runResult.getName());
                     mMasterListener.testModuleStarted(moduleContext);
                 }
 
