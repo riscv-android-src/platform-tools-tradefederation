@@ -344,7 +344,10 @@ abstract class ProtoResultReporter implements ITestInvocationListener, ILogSaver
     }
 
     private ChildReference createChildReference(TestRecord record) {
-        return ChildReference.newBuilder().setInlineTestRecord(record).build();
+        ChildReference.Builder child = ChildReference.newBuilder();
+        child.setTestRecordId(record.getTestRecordId());
+        child.setInlineTestRecord(record);
+        return child.build();
     }
 
     /** Create and populate Timestamp as recommended in the javadoc of the Timestamp proto. */
@@ -361,6 +364,7 @@ abstract class ProtoResultReporter implements ITestInvocationListener, ILogSaver
                 .setPath(logFile.getPath())
                 .setUrl(logFile.getUrl())
                 .setIsText(logFile.isText())
+                .setLogType(logFile.getType().toString())
                 .setIsCompressed(logFile.isCompressed())
                 .setSize(logFile.getSize());
         return logFileBuilder.build();

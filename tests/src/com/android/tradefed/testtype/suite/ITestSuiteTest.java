@@ -44,11 +44,8 @@ import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.InputStreamSource;
-import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.KeyguardStatusChecker;
@@ -297,8 +294,6 @@ public class ITestSuiteTest {
      */
     @Test
     public void testRun_failedSystemChecker() throws Exception {
-        final byte[] fakeData = "fakeData".getBytes();
-        InputStreamSource fakeSource = new ByteArrayInputStreamSource(fakeData);
         List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
         sysChecker.add(mMockSysChecker);
         mTestSuite.setSystemStatusChecker(sysChecker);
@@ -306,10 +301,11 @@ public class ITestSuiteTest {
         result.setErrorMessage("some failures.");
         EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
                 .andReturn(result);
-        EasyMock.expect(mMockDevice.getBugreport()).andReturn(fakeSource).times(2);
-        mMockListener.testLog((String)EasyMock.anyObject(), EasyMock.eq(LogDataType.BUGREPORT),
-                EasyMock.eq(fakeSource));
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expect(
+                        mMockDevice.logBugreport(
+                                EasyMock.anyObject(), EasyMock.same(mMockListener)))
+                .andReturn(true)
+                .times(2);
         EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
                 .andReturn(result);
         expectTestRun(mMockListener);
@@ -324,20 +320,17 @@ public class ITestSuiteTest {
      */
     @Test
     public void testRun_failedSystemChecker_runtimeException() throws Exception {
-        final byte[] fakeData = "fakeData".getBytes();
-        InputStreamSource fakeSource = new ByteArrayInputStreamSource(fakeData);
         List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
         sysChecker.add(mMockSysChecker);
         mTestSuite.setSystemStatusChecker(sysChecker);
 
         EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
                 .andThrow(new RuntimeException("I failed."));
-        EasyMock.expect(mMockDevice.getBugreport()).andReturn(fakeSource).times(2);
-        mMockListener.testLog(
-                (String) EasyMock.anyObject(),
-                EasyMock.eq(LogDataType.BUGREPORT),
-                EasyMock.eq(fakeSource));
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expect(
+                        mMockDevice.logBugreport(
+                                EasyMock.anyObject(), EasyMock.same(mMockListener)))
+                .andReturn(true)
+                .times(2);
 
         EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
                 .andThrow(new RuntimeException("I failed post."));
@@ -355,19 +348,17 @@ public class ITestSuiteTest {
     public void testRun_failedSystemChecker_reportFailure() throws Exception {
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue("report-system-checkers", "true");
-        final byte[] fakeData = "fakeData".getBytes();
-        InputStreamSource fakeSource = new ByteArrayInputStreamSource(fakeData);
         List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
         sysChecker.add(mMockSysChecker);
         mTestSuite.setSystemStatusChecker(sysChecker);
         EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
                 .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
-        EasyMock.expect(mMockDevice.getBugreport()).andReturn(fakeSource).times(1);
-        mMockListener.testLog(
-                (String) EasyMock.anyObject(),
-                EasyMock.eq(LogDataType.BUGREPORT),
-                EasyMock.eq(fakeSource));
-        EasyMock.expectLastCall().times(1);
+        EasyMock.expect(
+                        mMockDevice.logBugreport(
+                                EasyMock.anyObject(), EasyMock.same(mMockListener)))
+                .andReturn(true)
+                .times(1);
+
         StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
         result.setErrorMessage("some failures.");
         EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))

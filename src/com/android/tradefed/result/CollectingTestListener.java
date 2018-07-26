@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -359,5 +360,55 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
             }
         }
         return count;
+    }
+
+    /**
+     * Return the merged collection of results for all runs across different attempts.
+     *
+     * <p>If there are multiple results, each test run is merged, with the latest test result
+     * overwriting test results of previous runs. Test runs are ordered by attempt number.
+     *
+     * <p>Metrics for the same attempt will be merged based on the preference set by {@code
+     * aggregate-metrics}. The final metrics will be the metrics of the last attempt.
+     */
+    public Collection<TestRunResult> getMergedTestRunResults() {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    /**
+     * Return all the names for all the test runs.
+     *
+     * <p>These test runs may have run multiple times with different attempts.
+     */
+    public Collection<String> getTestRunNames() {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    /**
+     * Return all {@link TestRunResult} for a given test run, ordered by attempts.
+     *
+     * @param testRunName The name given by {{@link #testRunStarted(String, int)}.
+     */
+    public List<TestRunResult> getTestRunAttempts(String testRunName) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    /**
+     * Return the {@link TestRunResult} for a single attempt.
+     *
+     * @param testRunName The name given by {{@link #testRunStarted(String, int)}.
+     * @param attempt The attempt id.
+     */
+    public TestRunResult getTestRunAtAttempt(String testRunName, int attempt) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    /**
+     * Return the number of attempts for a given test run.
+     *
+     * @param testRunName The name given by {{@link #testRunStarted(String, int)}.
+     */
+    public int getTestRunAttemptCount(String testRunName) {
+        throw new UnsupportedOperationException("Not implemented");
     }
 }
