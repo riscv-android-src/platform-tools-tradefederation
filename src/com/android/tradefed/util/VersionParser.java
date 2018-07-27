@@ -25,7 +25,7 @@ public class VersionParser {
 
     public static final String DEFAULT_IMPLEMENTATION_VERSION = "default";
     private static final String VERSION_FILE = "version.txt";
-    private static final String TF_MAIN_JAR = "tradefed.jar";
+    private static final String TF_MAIN_JAR = "/tradefed.jar";
 
     public static String fetchVersion() {
         return getPackageVersion();
@@ -42,10 +42,8 @@ public class VersionParser {
         }
         File dir = getTradefedJarDir();
         if (dir != null) {
-            CLog.e("Version file directory: %s", dir.getAbsolutePath());
             File versionFile = new File(dir, VERSION_FILE);
             if (versionFile.exists()) {
-                CLog.e("versionFile exists: %s", versionFile.getAbsolutePath());
                 try {
                     String version = FileUtil.readStringFromFile(versionFile);
                     return version.trim();
@@ -54,21 +52,19 @@ public class VersionParser {
                     CLog.e(e);
                 }
             }
-            CLog.e("does not exists!");
+            CLog.e("Did not find Version file in directory: %s", dir.getAbsolutePath());
         }
         return null;
     }
 
     private static File getTradefedJarDir() {
         String classpath = System.getProperty("java.class.path");
-        CLog.e("Classpath: %s", classpath);
         String[] segments = classpath.split(":");
         for (String segment : segments) {
             if (segment.endsWith(TF_MAIN_JAR)) {
                 return new File(segment).getParentFile();
             }
         }
-        CLog.e("Returned null !");
         return null;
     }
 }
