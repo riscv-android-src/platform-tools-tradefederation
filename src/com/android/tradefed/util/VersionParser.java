@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.util;
 
+import com.android.tradefed.log.LogUtil.CLog;
+
 import java.io.File;
 import java.io.IOException;
 
@@ -40,27 +42,33 @@ public class VersionParser {
         }
         File dir = getTradefedJarDir();
         if (dir != null) {
+            CLog.e("Version file directory: %s", dir.getAbsolutePath());
             File versionFile = new File(dir, VERSION_FILE);
             if (versionFile.exists()) {
+                CLog.e("versionFile exists: %s", versionFile.getAbsolutePath());
                 try {
                     String version = FileUtil.readStringFromFile(versionFile);
                     return version.trim();
                 } catch (IOException e) {
                     // Failed to fetch version.
+                    CLog.e(e);
                 }
             }
+            CLog.e("does not exists!");
         }
         return null;
     }
 
     private static File getTradefedJarDir() {
         String classpath = System.getProperty("java.class.path");
+        CLog.e("Classpath: %s", classpath);
         String[] segments = classpath.split(":");
         for (String segment : segments) {
             if (segment.endsWith(TF_MAIN_JAR)) {
                 return new File(segment).getParentFile();
             }
         }
+        CLog.e("Returned null !");
         return null;
     }
 }
