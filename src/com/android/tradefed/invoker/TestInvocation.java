@@ -669,6 +669,8 @@ public class TestInvocation implements ITestInvocation {
 
             if (config.getTests() == null || config.getTests().isEmpty()) {
                 CLog.e("No tests to run");
+                startInvocation(config, context, listener);
+                listener.invocationEnded(0L);
                 return;
             }
 
