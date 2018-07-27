@@ -4042,6 +4042,31 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public long getTotalMemory() {
+        // "/proc/meminfo" always returns value in kilobytes.
+        long totalMemory = 0;
+        String output = null;
+        try {
+            output = executeShellCommand("cat /proc/meminfo | grep MemTotal");
+        } catch (DeviceNotAvailableException e) {
+            CLog.e(e);
+            return -1;
+        }
+        if (output.isEmpty()) {
+            return -1;
+        }
+        String[] results = output.split("\\s+");
+        try {
+            totalMemory = Long.parseLong(results[1].replaceAll("\\D+", ""));
+        } catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
+            CLog.e(e);
+            return -1;
+        }
+        return totalMemory * 1024;
+    }
+
     /** Validate that pid is an integer and not empty. */
     private boolean checkValidPid(String output) {
         if (output.isEmpty()) {
