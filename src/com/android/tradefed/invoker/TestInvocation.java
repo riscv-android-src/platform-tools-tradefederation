@@ -654,11 +654,17 @@ public class TestInvocation implements ITestInvocation {
                 return;
             }
 
-            mStatus = "sharding";
-            boolean sharding = invocationPath.shardConfig(config, context, rescheduler);
-            if (sharding) {
-                CLog.i("Invocation for %s has been sharded, rescheduling", context.getSerials());
-                return;
+            // If the top level invocation has --use-sandbox do not shard there. It will shard in
+            // the child invocation.
+            if (!config.getCommandOptions().shouldUseSandboxing()) {
+                mStatus = "sharding";
+                boolean sharding = invocationPath.shardConfig(config, context, rescheduler);
+                if (sharding) {
+                    CLog.i(
+                            "Invocation for %s has been sharded, rescheduling",
+                            context.getSerials());
+                    return;
+                }
             }
 
             if (config.getTests() == null || config.getTests().isEmpty()) {
