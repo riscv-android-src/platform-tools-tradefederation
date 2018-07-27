@@ -147,6 +147,7 @@ public class VersionedTfLauncherTest {
         EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn("FAKEID").times(2);
         EasyMock.expect(mMockBuildInfo.getFile("general-tests.zip"))
                 .andReturn(new File(ADDITIONAL_TEST_ZIP));
+        mMockBuildInfo.addBuildAttribute(SubprocessTfLauncher.PARENT_PROC_TAG_NAME, "true");
         EasyMock.expect(mMockTestDevice.getIDevice()).andReturn(mMockIDevice).times(2);
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andReturn(FAKE_SERIAL).times(1);
         mMockListener.testLog((String)EasyMock.anyObject(), (LogDataType)EasyMock.anyObject(),
@@ -207,6 +208,7 @@ public class VersionedTfLauncherTest {
         EasyMock.expect(mMockBuildInfo.getRootDir()).andReturn(new File(""));
         EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn("FAKEID").times(2);
         EasyMock.expect(mMockBuildInfo.getFile("general-tests.zip")).andReturn(null);
+        mMockBuildInfo.addBuildAttribute(SubprocessTfLauncher.PARENT_PROC_TAG_NAME, "true");
         EasyMock.expect(mMockTestDevice.getIDevice()).andReturn(mMockIDevice).times(1);
         mMockListener.testLog((String)EasyMock.anyObject(), (LogDataType)EasyMock.anyObject(),
                 (FileInputStreamSource)EasyMock.anyObject());
@@ -264,6 +266,7 @@ public class VersionedTfLauncherTest {
         EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn("FAKEID").times(2);
         EasyMock.expect(mMockBuildInfo.getFile("general-tests.zip"))
                 .andReturn(new File(ADDITIONAL_TEST_ZIP));
+        mMockBuildInfo.addBuildAttribute(SubprocessTfLauncher.PARENT_PROC_TAG_NAME, "true");
         EasyMock.expect(mMockTestDevice.getIDevice()).andReturn(new StubDevice("serial1")).times(2);
         mMockListener.testLog(
                 (String) EasyMock.anyObject(),
@@ -341,6 +344,7 @@ public class VersionedTfLauncherTest {
         EasyMock.expect(mMockBuildInfo.getRootDir()).andReturn(new File(""));
         EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn("FAKEID").times(2);
         EasyMock.expect(mMockBuildInfo.getFile("general-tests.zip")).andReturn(null);
+        mMockBuildInfo.addBuildAttribute(SubprocessTfLauncher.PARENT_PROC_TAG_NAME, "true");
         EasyMock.expect(mMockTestDevice.getIDevice()).andReturn(mMockIDevice).times(2);
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andReturn(FAKE_SERIAL).times(1);
         mMockListener.testLog(
