@@ -22,6 +22,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.proto.InvocationContext.Context;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -34,7 +35,6 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
-import com.android.tradefed.util.SerializationUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessTestResultsParser;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
@@ -288,7 +288,12 @@ public class TradefedSandbox implements ISandbox {
                 throw new IOException("Couldn't unlock the context.", e);
             }
         }
-        return SerializationUtil.serialize(context);
+        File protoFile =
+                FileUtil.createTempFile(
+                        "context-proto", "." + LogDataType.PB.getFileExt(), mSandboxTmpFolder);
+        Context contextProto = context.toProto();
+        contextProto.writeDelimitedTo(new FileOutputStream(protoFile));
+        return protoFile;
     }
 
     /** {@inheritDoc} */

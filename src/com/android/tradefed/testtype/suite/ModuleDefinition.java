@@ -22,6 +22,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -434,7 +435,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             long cleanStartTime = getCurrentTime();
             try {
                 // Tear down
-                runTearDown();
+                runTearDown(preparationException);
             } catch (DeviceNotAvailableException tearDownException) {
                 CLog.e(
                         "Module %s failed during tearDown with: %s",
@@ -634,7 +635,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     /** Run all the tear down steps from preparers. */
-    private void runTearDown() throws DeviceNotAvailableException {
+    private void runTearDown(Exception setupException) throws DeviceNotAvailableException {
         // Tear down
         List<IMultiTargetPreparer> cleanerList = new ArrayList<>(mMultiPreparers);
         Collections.reverse(cleanerList);
@@ -644,7 +645,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 continue;
             }
             CLog.d("Multi cleaner: %s", multiCleaner.getClass().getSimpleName());
-            multiCleaner.tearDown(mModuleInvocationContext, null);
+            multiCleaner.tearDown(mModuleInvocationContext, setupException);
         }
 
         for (String deviceName : mModuleInvocationContext.getDeviceConfigNames()) {
@@ -660,8 +661,25 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                         CLog.d("%s has been disabled. skipping.", cleaner);
                         continue;
                     }
-                    cleaner.tearDown(
-                            device, mModuleInvocationContext.getBuildInfo(deviceName), null);
+
+                    RecoveryMode origMode = null;
+                    try {
+                        // If an exception was generated in setup with a DNAE do not attempt any
+                        // recovery again in case we hit the device not available again.
+                        if (setupException != null
+                                && setupException instanceof DeviceNotAvailableException) {
+                            origMode = device.getRecoveryMode();
+                            device.setRecoveryMode(RecoveryMode.NONE);
+                        }
+                        cleaner.tearDown(
+                                device,
+                                mModuleInvocationContext.getBuildInfo(deviceName),
+                                setupException);
+                    } finally {
+                        if (origMode != null) {
+                            device.setRecoveryMode(origMode);
+                        }
+                    }
                 }
             }
         }

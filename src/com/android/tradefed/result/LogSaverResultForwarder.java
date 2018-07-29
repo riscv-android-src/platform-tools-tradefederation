@@ -140,10 +140,4 @@ public class LogSaverResultForwarder extends ResultForwarder implements ILogSave
             }
         }
     }
-
-    /** {@inheritDoc} */
-    @Override
-    public void setLogSaver(ILogSaver logSaver) {
-        // Does not need the log saver again, already received in constructor.
-    }
 }

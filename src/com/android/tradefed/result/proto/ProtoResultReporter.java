@@ -19,11 +19,8 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.InputStreamSource;
-import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.proto.LogFileProto.LogFileInfo;
@@ -321,17 +318,6 @@ abstract class ProtoResultReporter implements ITestInvocationListener, ILogSaver
     }
 
     // log events
-
-    @Override
-    public final void testLogSaved(
-            String dataName, LogDataType dataType, InputStreamSource dataStream, LogFile logFile) {
-        // Ignored
-    }
-
-    @Override
-    public final void setLogSaver(ILogSaver logSaver) {
-        // Ignored
-    }
 
     @Override
     public final void logAssociation(String dataName, LogFile logFile) {
