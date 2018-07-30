@@ -54,3 +54,79 @@ java_defaults {
   ],
 }
 
+java_library_host {
+    name: "tradefed-protos",
+    srcs: ["proto/**/*.proto"],
+    libs: [
+        "libprotobuf-java-full",
+    ],
+    proto: {
+        include_dirs: ["external/protobuf/src"],
+        type: "full",
+    },
+    static_libs: [
+        "platformprotos",
+    ],
+}
+
+java_library_host {
+    name: "tradefed",
+    defaults: ["tradefed_defaults"],
+    srcs: [
+        "src/**/*.java",
+    ],
+    java_resource_dirs: [
+        "res",
+    ],
+    openjdk9: {
+        javacflags: [
+            "-add-modules=java.xml.bind",
+        ],
+    },
+    static_libs: [
+        "junit",
+        "junit-params",
+        "kxml2-2.3.0",
+        "jline-1.0",
+        "tf-remote-client",
+        "commons-compress-prebuilt",
+        "libprotobuf-java-full",
+        "tradefed-protos",
+        "error_prone_annotations-2.0.18",
+        "longevity-host-lib",
+        "gson-prebuilt-jar",
+        "guice",
+    ],
+   libs: [
+        "loganalysis",
+        "tools-common-prebuilt",
+    ],
+    manifest: "MANIFEST.mf",
+}
+
+droiddoc_host {
+    name: "tradefed-docs",
+    srcs: [
+        "src/**/*.java",
+    ],
+    libs: [
+        "loganalysis",
+        "tradefed",
+        "tools-common-prebuilt",
+    ],
+    custom_template: "droiddoc-templates-sdk",
+    hdf: [
+        "sac true",
+        "devices true",
+        "android.whichdoc online",
+        "css.path /reference/assets/css/doclava-devsite.css",
+        "book.root toc",
+        "book.path /_book.yaml",
+    ],
+    args: "-yaml _book.yaml " +
+          "-apidocsdir reference/tradefed/ " +
+          "-werror " +
+          "-package " +
+          "-devsite ",
+    create_stubs: false,
+}
