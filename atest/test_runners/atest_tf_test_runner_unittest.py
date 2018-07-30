@@ -19,6 +19,7 @@
 import os
 import unittest
 import json
+import socket
 import mock
 
 # pylint: disable=import-error
@@ -139,6 +140,58 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
     def tearDown(self):
         mock.patch.stopall()
 
+    @mock.patch.object(atf_tr.AtestTradefedTestRunner,
+                       '_start_socket_server')
+    @mock.patch.object(atf_tr.AtestTradefedTestRunner,
+                       'run')
+    @mock.patch.object(atf_tr.AtestTradefedTestRunner,
+                       '_exec_with_tf_polling')
+    @mock.patch.object(atf_tr.AtestTradefedTestRunner,
+                       '_create_test_args', return_value=['some_args'])
+    @mock.patch.object(atf_tr.AtestTradefedTestRunner,
+                       '_generate_run_command', return_value='some_cmd')
+    @mock.patch.object(atf_tr.AtestTradefedTestRunner,
+                       '_process_connection', return_value=None)
+    @mock.patch('os.killpg', return_value=None)
+    @mock.patch('signal.signal', return_value=None)
+    def test_run_tests_pretty(self, _signal, _killpg, _process, _run_cmd,
+                              _test_args, mock_exec_w_poll, mock_run,
+                              mock_start_socket_server):
+        """Test _run_tests_pretty method."""
+        mock_subproc = mock.Mock()
+        mock_run.return_value = mock_subproc
+        mock_server = mock.Mock()
+        mock_server.getsockname.return_value = ('', '')
+        mock_start_socket_server.return_value = mock_server
+        mock_reporter = mock.Mock()
+
+        # Test no early TF exit
+        mock_exec_w_poll.return_value = ('some_conn', 'some_addr')
+        self.tr.run_tests_pretty(['test_infos'], {}, mock_reporter)
+
+        # Test early TF exit
+        mock_exec_w_poll.side_effect = atf_tr.TradeFedExitError()
+        self.assertRaises(atf_tr.TradeFedExitError, self.tr.run_tests_pretty,
+                          ['test_infos'], {}, mock_reporter)
+
+    def test_exec_with_tf_polling(self):
+        """Test _exec_with_tf_polling method."""
+        mock_socket_func = mock.Mock()
+        mock_socket_func.side_effect = [socket.timeout, socket.timeout,
+                                        socket.timeout]
+        mock_tf_subproc = mock.Mock()
+        exit_code = 7
+        mock_tf_subproc.poll.side_effect = [None, None, exit]
+        mock_tf_subproc.returncode.returns = exit_code
+        # First call should raise, because TF exits before socket_func returns
+        self.assertRaises(atf_tr.TradeFedExitError,
+                          self.tr._exec_with_tf_polling,
+                          mock_socket_func, mock_tf_subproc)
+        # Second call succeeds because socket_func returns before TF exits
+        mock_socket_func.side_effect = [socket.timeout, 'some_return_value']
+        mock_tf_subproc.poll.side_effect = [None]
+        self.tr._exec_with_tf_polling(mock_socket_func, mock_tf_subproc)
+
     def test_start_socket_server(self):
         """Test start_socket_server method."""
         server = self.tr._start_socket_server()
@@ -146,7 +199,6 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         self.assertEquals(host, atf_tr.SOCKET_HOST)
         self.assertLessEqual(port, 65535)
         self.assertGreaterEqual(port, 1024)
-        import socket
         server.shutdown(socket.SHUT_RDWR)
         server.close()
 
@@ -154,11 +206,13 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
     def test_process_connection(self, mock_pe):
         """Test _process_connection method."""
         mock_socket = mock.Mock()
+        mock_tf_subproc = mock.Mock()
         socket_data = ['%s %s' % (name, json.dumps(data))
                        for name, data in EVENTS_NORMAL]
         socket_data.append('')
         mock_socket.recv.side_effect = socket_data
-        self.tr._process_connection(mock_socket, 'fake reporter')
+        self.tr._process_connection(mock_socket, 'fake reporter',
+                                    mock_tf_subproc)
         calls = [mock.call(name, data, 'fake reporter', mock.ANY)
                  for name, data in EVENTS_NORMAL]
         mock_pe.assert_has_calls(calls)
