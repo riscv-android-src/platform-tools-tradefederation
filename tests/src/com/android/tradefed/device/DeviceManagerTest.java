@@ -1137,6 +1137,35 @@ public class DeviceManagerTest extends TestCase {
     }
 
     /**
+     * Test {@link DeviceManager#getDeviceDescriptor()} returns the device with the given serial
+     */
+    public void testGetDeviceDescriptor() throws Exception {
+        setCheckAvailableDeviceExpectations();
+        setDeviceDescriptorExpectation();
+        replayMocks();
+        DeviceManager manager = createDeviceManager(null, mMockIDevice);
+        DeviceDescriptor res = manager.getDeviceDescriptor(mMockIDevice.getSerialNumber());
+        assertEquals("[serial hardware_test:product_test bid_test]", res.toString());
+        assertEquals(MAC_ADDRESS, res.getMacAddress());
+        assertEquals(SIM_STATE, res.getSimState());
+        assertEquals(SIM_OPERATOR, res.getSimOperator());
+        verifyMocks();
+    }
+
+    /**
+     * Test that {@link DeviceManager#getDeviceDescriptor()} returns null if there are no devices
+     * with the given serial.
+     */
+    public void testGetDeviceDescriptor_noMatch() throws Exception {
+        setCheckAvailableDeviceExpectations();
+        replayMocks();
+        DeviceManager manager = createDeviceManager(null, mMockIDevice);
+        DeviceDescriptor res = manager.getDeviceDescriptor("nomatch");
+        assertNull(res);
+        verifyMocks();
+    }
+
+    /**
      * Test that {@link DeviceManager#displayDevicesInfo(PrintWriter)} properly print out the
      * device info.
      */
