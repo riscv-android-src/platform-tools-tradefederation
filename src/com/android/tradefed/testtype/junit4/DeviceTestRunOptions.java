@@ -20,7 +20,7 @@ import com.android.tradefed.device.ITestDevice;
 /** A builder class for options related to running device tests through BaseHostJUnit4Test. */
 public class DeviceTestRunOptions {
     private ITestDevice mDevice; // optional
-    private String mRunner = BaseHostJUnit4Test.AJUR_RUNNER; // optional
+    private String mRunner = null; // optional
     private final String mPackageName; // required
 
     private String mTestClassName; // optional
