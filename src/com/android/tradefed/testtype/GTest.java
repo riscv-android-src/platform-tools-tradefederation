@@ -42,7 +42,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 
 /** A Test that runs a native test package on given device. */
 @OptionClass(alias = "gtest")
@@ -56,7 +55,6 @@ public class GTest
                 IStrictShardableTest {
 
     static final String DEFAULT_NATIVETEST_PATH = "/data/nativetest";
-    private static final Pattern EXE_FILE = Pattern.compile("^[-l]r.x.+");
 
     private ITestDevice mDevice = null;
     private boolean mRunDisabledTests = false;
@@ -475,15 +473,6 @@ public class GTest
         return fileName;
     }
 
-    protected static boolean isDeviceFileExecutable(ITestDevice device, String fullPath)
-            throws DeviceNotAvailableException {
-        String fileMode = device.executeShellCommand(String.format("ls -l %s", fullPath));
-        if (fileMode != null) {
-            return EXE_FILE.matcher(fileMode).find();
-        }
-        return false;
-    }
-
     /**
      * Helper method to determine if we should skip the execution of a given file.
      *
@@ -495,7 +484,7 @@ public class GTest
             return true;
         }
         // skip any file that's not executable
-        if (!isDeviceFileExecutable(mDevice, fullPath)) {
+        if (!mDevice.isExecutable(fullPath)) {
             return true;
         }
         if (mFileExclusionFilterRegex == null || mFileExclusionFilterRegex.isEmpty()) {

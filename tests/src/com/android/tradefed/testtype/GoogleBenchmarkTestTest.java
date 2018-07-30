@@ -105,26 +105,13 @@ public class GoogleBenchmarkTestTest extends TestCase {
         mMockITestDevice.executeShellCommand(EasyMock.contains(test2), EasyMock.same(mMockReceiver),
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
 
-        EasyMock.expect(
-                        mMockITestDevice.executeShellCommand(
-                                String.format("ls -l %s/test1", nativeTestPath)))
-                .andReturn(
-                        String.format(
-                                "-rwxr-xr-x 1 root root 283388 2018-07-23 09:18 %s/test1",
-                                nativeTestPath));
-
+        EasyMock.expect(mMockITestDevice.isExecutable(nativeTestPath + "/test1")).andReturn(true);
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format(
                                         "%s/test1 --benchmark_list_tests=true", nativeTestPath)))
                 .andReturn("method1\nmethod2\nmethod3");
-        EasyMock.expect(
-                        mMockITestDevice.executeShellCommand(
-                                String.format("ls -l %s/test2", nativeTestPath)))
-                .andReturn(
-                        String.format(
-                                "-rwxr-xr-x 1 root root 283388 2018-07-23 09:18 %s/test2",
-                                nativeTestPath));
+        EasyMock.expect(mMockITestDevice.isExecutable(nativeTestPath + "/test2")).andReturn(true);
 
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
@@ -195,27 +182,13 @@ public class GoogleBenchmarkTestTest extends TestCase {
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
         mMockITestDevice.executeShellCommand(EasyMock.contains(test2), EasyMock.same(mMockReceiver),
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
-
-        EasyMock.expect(
-                        mMockITestDevice.executeShellCommand(
-                                String.format("ls -l %s/test1", nativeTestPath)))
-                .andReturn(
-                        String.format(
-                                "-rwxr-xr-x 1 root root 283388 2018-07-23 09:18 %s/test1",
-                                nativeTestPath));
+        EasyMock.expect(mMockITestDevice.isExecutable(nativeTestPath + "/test1")).andReturn(true);
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format(
                                         "%s/test1 --benchmark_list_tests=true", nativeTestPath)))
                 .andReturn("\nmethod1\nmethod2\nmethod3\n\n");
-
-        EasyMock.expect(
-                        mMockITestDevice.executeShellCommand(
-                                String.format("ls -l %s/test2", nativeTestPath)))
-                .andReturn(
-                        String.format(
-                                "-rwxr-xr-x 1 root root 283388 2018-07-23 09:18 %s/test2",
-                                nativeTestPath));
+        EasyMock.expect(mMockITestDevice.isExecutable(nativeTestPath + "/test2")).andReturn(true);
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format(
@@ -250,14 +223,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
                 .andReturn("");
         mMockITestDevice.executeShellCommand(EasyMock.contains(test1), EasyMock.same(mMockReceiver),
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
-
-        EasyMock.expect(
-                        mMockITestDevice.executeShellCommand(
-                                String.format("ls -l %s/test1", nativeTestPath)))
-                .andReturn(
-                        String.format(
-                                "-rwxr-xr-x 1 root root 283388 2018-07-23 09:18 %s/test1",
-                                nativeTestPath));
+        EasyMock.expect(mMockITestDevice.isExecutable(nativeTestPath + "/test1")).andReturn(true);
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format(
@@ -291,14 +257,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
         mMockITestDevice.executeShellCommand(EasyMock.contains(test1), EasyMock.same(mMockReceiver),
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
         EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("dnae", "serial"));
-
-        EasyMock.expect(
-                        mMockITestDevice.executeShellCommand(
-                                String.format("ls -l %s/test1", nativeTestPath)))
-                .andReturn(
-                        String.format(
-                                "-rwxr-xr-x 1 root root 283388 2018-07-23 09:18 %s/test1",
-                                nativeTestPath));
+        EasyMock.expect(mMockITestDevice.isExecutable(nativeTestPath + "/test1")).andReturn(true);
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format(
