@@ -15,24 +15,27 @@
  */
 package com.android.tradefed.testtype;
 
+import static org.junit.Assert.*;
+
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 
 import org.easymock.EasyMock;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.util.HashMap;
 import java.util.List;
 
-/**
- * Test {@link GTestListTestParser}
- */
+/** Test {@link GTestListTestParser} */
+@RunWith(JUnit4.class)
 public class GTestListTestParserTest extends GTestParserTestBase {
 
-    /**
-     * Tests the parser for a test run output with 1 class and 23 tests.
-     */
+    /** Tests the parser for a test run output with 1 class and 23 tests. */
     @SuppressWarnings("unchecked")
+    @Test
     public void testParseSimpleList() throws Exception {
         String[] contents =  readInFile(GTEST_LIST_FILE_1);
         ITestInvocationListener mockRunListener =
@@ -55,10 +58,9 @@ public class GTestListTestParserTest extends GTestParserTestBase {
         verifyTestDescriptions(parser.mTests, 1);
     }
 
-    /**
-     * Tests the parser for a test run output with 29 classes and 127 tests.
-     */
+    /** Tests the parser for a test run output with 29 classes and 127 tests. */
     @SuppressWarnings("unchecked")
+    @Test
     public void testParseMultiClassList() throws Exception {
         String[] contents =  readInFile(GTEST_LIST_FILE_2);
         ITestInvocationListener mockRunListener =
@@ -81,9 +83,8 @@ public class GTestListTestParserTest extends GTestParserTestBase {
         verifyTestDescriptions(parser.mTests, 29);
     }
 
-    /**
-     * Tests the parser against a malformed list of tests.
-     */
+    /** Tests the parser against a malformed list of tests. */
+    @Test
     public void testParseMalformedList() throws Exception {
         String[] contents =  readInFile(GTEST_LIST_FILE_3);
         ITestInvocationListener mockRunListener =
@@ -99,6 +100,7 @@ public class GTestListTestParserTest extends GTestParserTestBase {
     }
 
     /** Tests that test cases with special characters like "/" are still parsed properly. */
+    @Test
     public void testParseSimpleList_withSpecialChar() throws Exception {
         String[] contents = readInFile(GTEST_LIST_FILE_4);
         ITestInvocationListener mockRunListener =
