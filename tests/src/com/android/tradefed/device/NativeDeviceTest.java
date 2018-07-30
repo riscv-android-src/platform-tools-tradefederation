@@ -2210,6 +2210,62 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
+    /** Test if valid shell output returns correct memory size. */
+    public void testGetTotalMemory() {
+        final long expectSize = 1902936064;
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "MemTotal:        1858336 kB";
+                    }
+                };
+        assertEquals(expectSize, mTestDevice.getTotalMemory());
+    }
+
+    /** Test if empty shell output returns -1. */
+    public void testGetTotalMemory_emptyString() {
+        final long expectSize = -1;
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "";
+                    }
+                };
+        assertEquals(expectSize, mTestDevice.getTotalMemory());
+    }
+
+    /** Test if unexpected shell output returns -1. */
+    public void testGetTotalMemory_unexpectedFormat() {
+        final long expectSize = -1;
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "1858336 kB";
+                    }
+                };
+        assertEquals(expectSize, mTestDevice.getTotalMemory());
+    }
+
+    /** Test if catching exception returns -1. */
+    public void testGetTotalMemory_exception() {
+        final long expectSize = -1;
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        throw new DeviceNotAvailableException();
+                    }
+                };
+        assertEquals(expectSize, mTestDevice.getTotalMemory());
+    }
+
     /**
      * Test that when a {@link NativeDevice#getLogcatSince(long)} is requested a matching logcat
      * command is generated.
