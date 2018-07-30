@@ -126,6 +126,8 @@ public class TfTestLauncherTest {
 
         EasyMock.expect(mMockBuildInfo.getRootDir()).andReturn(new File(""));
         EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn(BUILD_ID).times(3);
+        mMockBuildInfo.addBuildAttribute(SubprocessTfLauncher.PARENT_PROC_TAG_NAME, "true");
+
         mMockListener.testLog((String)EasyMock.anyObject(), (LogDataType)EasyMock.anyObject(),
                 (FileInputStreamSource)EasyMock.anyObject());
         EasyMock.expectLastCall().times(3);
