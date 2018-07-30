@@ -16,6 +16,7 @@
 package com.android.tradefed.result.proto;
 
 import com.android.tradefed.config.Option;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.util.StreamUtil;
@@ -34,7 +35,8 @@ public final class StreamProtoResultReporter extends ProtoResultReporter {
     private Socket mReportSocket = null;
 
     @Override
-    public void processStartInvocation(TestRecord invocationStartRecord) {
+    public void processStartInvocation(
+            TestRecord invocationStartRecord, IInvocationContext context) {
         writeRecordToSocket(invocationStartRecord);
     }
 

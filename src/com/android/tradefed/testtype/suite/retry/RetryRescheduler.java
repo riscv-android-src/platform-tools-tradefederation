@@ -26,16 +26,18 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
-import com.android.tradefed.result.suite.SuiteResultHolder;
+import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.BaseTestSuite;
 import com.android.tradefed.testtype.suite.SuiteTestFilter;
 import com.android.tradefed.util.QuotationAwareTokenizer;
+import com.android.tradefed.util.TestRecordInterpreter;
 
 import com.google.inject.Inject;
 
@@ -48,8 +50,6 @@ import java.util.Set;
 /**
  * A special runner that allows to reschedule a previous run tests that failed or where not
  * executed.
- *
- * <p>TODO: This currently does not aggregate the previous results with the new one.
  *
  * <p>TODO: Ensure a configuration should not have several of that runner. Consider having this
  * configuration built-in TF.
@@ -113,7 +113,10 @@ public final class RetryRescheduler
             throw new RuntimeException(e);
         }
         // Get previous results
-        SuiteResultHolder results = previousLoader.loadPreviousResults();
+        TestRecord previousRecord = previousLoader.loadPreviousRecord();
+        CollectingTestListener collectedTests =
+                TestRecordInterpreter.interpreteRecord(previousRecord);
+
         // Appropriately update the configuration
         IRemoteTest test = originalConfig.getTests().get(0);
         if (!(test instanceof BaseTestSuite)) {
@@ -121,7 +124,10 @@ public final class RetryRescheduler
                     "RetryScheduler only works for BaseTestSuite implementations");
         }
         BaseTestSuite suite = (BaseTestSuite) test;
-        updateConfiguration(suite, results);
+        ResultsPlayer replayer = new ResultsPlayer();
+        updateRunner(suite, collectedTests, replayer);
+        updateConfiguration(originalConfig, replayer);
+
         // At the end, reschedule
         // TODO(b/110265525): The rescheduling will be done inside the same invocation to avoid
         // tracking issue from higher level components.
@@ -163,8 +169,10 @@ public final class RetryRescheduler
      *
      * @param suite The {@link BaseTestSuite} that will be re-run.
      * @param results The results of the previous run.
+     * @param replayer The {@link ResultsPlayer} that will replay the non-retried use cases.
      */
-    private void updateConfiguration(BaseTestSuite suite, SuiteResultHolder results) {
+    private void updateRunner(
+            BaseTestSuite suite, CollectingTestListener results, ResultsPlayer replayer) {
         List<RetryType> types = new ArrayList<>();
         if (mRetryType == null) {
             types.add(RetryType.FAILED);
@@ -173,20 +181,37 @@ public final class RetryRescheduler
             types.add(mRetryType);
         }
         // Prepare exclusion filters
-        for (TestRunResult moduleResult : results.runResults) {
-            // TODO: explore the replaying of the previous tests
+        for (TestRunResult moduleResult : results.getMergedTestRunResults()) {
             if (RetryResultHelper.shouldRunModule(moduleResult, types)) {
                 for (Entry<TestDescription, TestResult> result :
                         moduleResult.getTestResults().entrySet()) {
                     if (!RetryResultHelper.shouldRunTest(result.getValue(), types)) {
                         addExcludeToConfig(suite, moduleResult, result.getKey());
+                        replayer.addToReplay(
+                                results.getModuleContextForRunResult(moduleResult.getName()),
+                                moduleResult,
+                                result);
                     }
                 }
             } else {
                 // Exclude the module completely
                 addExcludeToConfig(suite, moduleResult, null);
+                replayer.addToReplay(
+                        results.getModuleContextForRunResult(moduleResult.getName()),
+                        moduleResult,
+                        null);
             }
         }
+    }
+
+    /** Update the configuration to put the replayer before all the actual real tests. */
+    private void updateConfiguration(IConfiguration config, ResultsPlayer replayer) {
+        List<IRemoteTest> tests = config.getTests();
+        List<IRemoteTest> newList = new ArrayList<>();
+        // Add the replayer first to replay all the tests cases first.
+        newList.add(replayer);
+        newList.addAll(tests);
+        config.setTests(newList);
     }
 
     /** Add the filter to the suite. */

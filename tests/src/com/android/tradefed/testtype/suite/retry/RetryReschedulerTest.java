@@ -17,7 +17,10 @@ package com.android.tradefed.testtype.suite.retry;
 
 import static org.mockito.Mockito.verify;
 
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.ConfigurationDef;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -25,8 +28,8 @@ import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.TestDescription;
-import com.android.tradefed.result.TestRunResult;
-import com.android.tradefed.result.suite.SuiteResultHolder;
+import com.android.tradefed.result.proto.ProtoResultReporter;
+import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.suite.BaseTestSuite;
 
 import org.easymock.EasyMock;
@@ -36,7 +39,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -56,7 +58,7 @@ public class RetryReschedulerTest {
     private IConfigurationFactory mMockFactory;
     private BaseTestSuite mSuite;
 
-    private SuiteResultHolder mFakeResults;
+    private TestRecord mFakeRecord;
 
     @Before
     public void setUp() throws Exception {
@@ -86,7 +88,10 @@ public class RetryReschedulerTest {
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
-        EasyMock.expect(mMockLoader.loadPreviousResults()).andReturn(mFakeResults);
+        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+
+        mRescheduledConfiguration.setTests(EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
 
         EasyMock.expect(mMockRescheduler.scheduleConfig(mRescheduledConfiguration)).andReturn(true);
         EasyMock.replay(mMockRescheduler, mMockLoader, mMockFactory, mRescheduledConfiguration);
@@ -109,7 +114,10 @@ public class RetryReschedulerTest {
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
-        EasyMock.expect(mMockLoader.loadPreviousResults()).andReturn(mFakeResults);
+        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+
+        mRescheduledConfiguration.setTests(EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
 
         EasyMock.expect(mMockRescheduler.scheduleConfig(mRescheduledConfiguration)).andReturn(true);
         EasyMock.replay(mMockRescheduler, mMockLoader, mMockFactory, mRescheduledConfiguration);
@@ -135,7 +143,10 @@ public class RetryReschedulerTest {
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
-        EasyMock.expect(mMockLoader.loadPreviousResults()).andReturn(mFakeResults);
+        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+
+        mRescheduledConfiguration.setTests(EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
 
         EasyMock.expect(mMockRescheduler.scheduleConfig(mRescheduledConfiguration)).andReturn(true);
         EasyMock.replay(mMockRescheduler, mMockLoader, mMockFactory, mRescheduledConfiguration);
@@ -161,7 +172,10 @@ public class RetryReschedulerTest {
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
-        EasyMock.expect(mMockLoader.loadPreviousResults()).andReturn(mFakeResults);
+        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+
+        mRescheduledConfiguration.setTests(EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
 
         EasyMock.expect(mMockRescheduler.scheduleConfig(mRescheduledConfiguration)).andReturn(true);
         EasyMock.replay(mMockRescheduler, mMockLoader, mMockFactory, mRescheduledConfiguration);
@@ -185,30 +199,38 @@ public class RetryReschedulerTest {
 
     private void populateFakeResults(
             int numModule, int numTests, int failedTests, int assumpFailure) {
-        mFakeResults = new SuiteResultHolder();
-        mFakeResults.runResults = new ArrayList<>();
+        ProtoResultReporter reporter =
+                new ProtoResultReporter() {
+                    @Override
+                    public void processFinalProto(TestRecord finalRecord) {
+                        mFakeRecord = finalRecord;
+                    }
+                };
+        IInvocationContext context = new InvocationContext();
+        context.setConfigurationDescriptor(new ConfigurationDescriptor());
+        context.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, new BuildInfo());
+        reporter.invocationStarted(context);
         for (int i = 0; i < numModule; i++) {
-            TestRunResult run = new TestRunResult();
-            run.testRunStarted("run" + i, numTests);
+            reporter.testRunStarted("run" + i, numTests);
             for (int j = 0; j < numTests - failedTests - assumpFailure; j++) {
                 TestDescription test = new TestDescription("test.class", "testPass" + j);
-                run.testStarted(test);
-                run.testEnded(test, new HashMap<>());
+                reporter.testStarted(test);
+                reporter.testEnded(test, new HashMap<String, Metric>());
             }
             for (int f = 0; f < failedTests; f++) {
                 TestDescription test = new TestDescription("test.class", "testFail" + f);
-                run.testStarted(test);
-                run.testFailed(test, "failure" + f);
-                run.testEnded(test, new HashMap<>());
+                reporter.testStarted(test);
+                reporter.testFailed(test, "failure" + f);
+                reporter.testEnded(test, new HashMap<String, Metric>());
             }
             for (int f = 0; f < assumpFailure; f++) {
                 TestDescription test = new TestDescription("test.class", "testAssume" + f);
-                run.testStarted(test);
-                run.testAssumptionFailure(test, "assume" + f);
-                run.testEnded(test, new HashMap<>());
+                reporter.testStarted(test);
+                reporter.testAssumptionFailure(test, "assume" + f);
+                reporter.testEnded(test, new HashMap<String, Metric>());
             }
-            run.testRunEnded(500L, new HashMap<String, Metric>());
-            mFakeResults.runResults.add(run);
+            reporter.testRunEnded(500L, new HashMap<String, Metric>());
         }
+        reporter.invocationEnded(0L);
     }
 }
