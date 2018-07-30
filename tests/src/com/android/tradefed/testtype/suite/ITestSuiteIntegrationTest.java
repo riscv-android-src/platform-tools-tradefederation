@@ -281,7 +281,7 @@ public class ITestSuiteIntegrationTest {
             assertEquals("armeabi-v7a", mListener.getModulesAbi().get("module1").getName());
             assertEquals("armeabi-v7a", mListener.getModulesAbi().get("module2").getName());
             // Check the expected file have been logged in the right place:
-            Iterator<TestRunResult> iterator = mListener.getRunResults().iterator();
+            Iterator<TestRunResult> iterator = mListener.getMergedTestRunResults().iterator();
             TestRunResult module1 = iterator.next();
 
             // Check that all the files at the end are properly associated with each of their test
