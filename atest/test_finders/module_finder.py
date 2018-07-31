@@ -341,6 +341,8 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             test_dir = os.path.dirname(test_path)
             rel_module_dir = test_finder_utils.find_parent_module_dir(
                 self.root_dir, test_dir, self.module_info)
+            if not rel_module_dir:
+                return None
             rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
         if not module_name:
             module_name = self._get_first_testable_module(os.path.dirname(
@@ -410,6 +412,8 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         if not rel_config:
             rel_module_dir = test_finder_utils.find_parent_module_dir(
                 self.root_dir, package_path, self.module_info)
+            if not rel_module_dir:
+                return None
             rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
         if not module_name:
             module_name = self._get_first_testable_module(
