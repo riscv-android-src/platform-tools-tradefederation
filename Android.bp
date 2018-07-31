@@ -80,7 +80,7 @@ java_library_host {
     ],
     openjdk9: {
         javacflags: [
-            "-add-modules=java.xml.bind",
+            "--add-modules=java.xml.bind",
         ],
     },
     static_libs: [
