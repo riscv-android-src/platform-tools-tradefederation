@@ -15,94 +15,17 @@
 LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
-# Module to compile protos for tradefed
-LOCAL_MODULE := tradefed-protos
-LOCAL_SRC_FILES := $(call all-proto-files-under, proto)
-LOCAL_JAVA_LIBRARIES := host-libprotobuf-java-full
-LOCAL_SOURCE_FILES_ALL_GENERATED := true
-LOCAL_MODULE_TAGS := optional
-
-include $(BUILD_HOST_JAVA_LIBRARY)
-
-include $(CLEAR_VARS)
-
-# Only compile source java files in this lib.
-LOCAL_SRC_FILES := $(call all-java-files-under, src)
-
-LOCAL_JAVA_RESOURCE_DIRS := res
-
-LOCAL_JAVACFLAGS += -g -Xlint
-ifdef TARGET_OPENJDK9
-LOCAL_JAVACFLAGS += --add-modules=java.xml.bind
-endif
-
--include tools/tradefederation/core/error_prone_rules.mk
-
-LOCAL_MODULE := tradefed
-
-LOCAL_MODULE_TAGS := optional
-LOCAL_STATIC_JAVA_LIBRARIES := junit-host kxml2-2.3.0 jline-1.0 tf-remote-client commons-compress-prebuilt host-libprotobuf-java-full tradefed-protos
-# emmalib is only a runtime dependency if generating code coverage reporters,
-# not a compile time dependency
-LOCAL_JAVA_LIBRARIES := loganalysis tools-common-prebuilt
-
-LOCAL_JAR_MANIFEST := MANIFEST.mf
-
-include $(BUILD_HOST_JAVA_LIBRARY)
 
 # makefile rules to copy jars to HOST_OUT/tradefed
 # so tradefed.sh can automatically add to classpath
 deps := $(call copy-many-files,\
-  $(LOCAL_BUILT_MODULE):$(HOST_OUT)/tradefed/$(LOCAL_MODULE).jar \
+  $(call intermediates-dir-for,JAVA_LIBRARIES,tradefed,HOST)/javalib.jar:$(HOST_OUT)/tradefed/tradefed.jar \
   $(HOST_OUT_JAVA_LIBRARIES)/tools-common-prebuilt.jar:$(HOST_OUT)/tradefed/tools-common-prebuilt.jar)
 
 # this dependency ensures the above rule will be executed if jar is installed
-$(LOCAL_INSTALLED_MODULE) : $(deps)
+$(HOST_OUT_JAVA_LIBRARIES)/tradefed.jar : $(deps)
 # The copy rule for loganalysis is in tools/loganalysis/Android.mk
-$(LOCAL_INSTALLED_MODULE) : $(HOST_OUT)/tradefed/loganalysis.jar
-
-#######################################################
-# intentionally skipping CLEAR_VARS
-# Enable the build process to generate javadoc
-# We need to reference symbols in the jar built above.
-
-# ==== docs for legacy sac app engine
-#LOCAL_MODULE = tradefed-sac-deprecated
-LOCAL_JAVA_LIBRARIES += tradefed
-LOCAL_IS_HOST_MODULE:=true
-LOCAL_MODULE_CLASS := JAVA_LIBRARIES
-LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR:=build/tools/droiddoc/templates-sac
-LOCAL_DROIDDOC_OPTIONS:= \
-        -package \
-        -toroot / \
-        -hdf android.whichdoc online \
-        -hdf sac true \
-        -hdf devices true \
-        -showAnnotationOverridesVisibility \
-        -showAnnotation com.android.tradefed.config.OptionClass \
-        -showAnnotation com.android.tradefed.config.Option \
-
-include $(BUILD_DROIDDOC)
-
-# ==== docs for the web (on the devsite app engine server)
-LOCAL_MODULE = tradefed-ds
-LOCAL_JAVA_LIBRARIES += tradefed
-LOCAL_IS_HOST_MODULE := true
-LOCAL_MODULE_CLASS := JAVA_LIBRARIES
-LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR := external/doclava/res/assets/templates-sdk
-LOCAL_DROIDDOC_OPTIONS := \
-        -hdf sac true \
-        -hdf devices true \
-        -hdf android.whichdoc online \
-        -hdf css.path /reference/assets/css/doclava-devsite.css \
-        -hdf book.root toc \
-        -yaml _toc.yaml \
-        -apidocsdir reference/tradefed/ \
-        -werror \
-        -package \
-        -devsite \
-
-include $(BUILD_DROIDDOC)
+$(HOST_OUT_JAVA_LIBRARIES)/tradefed.jar : $(HOST_OUT)/tradefed/loganalysis.jar
 
 #######################################################
 include $(CLEAR_VARS)
