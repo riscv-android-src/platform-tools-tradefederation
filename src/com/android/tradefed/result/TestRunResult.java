@@ -373,8 +373,7 @@ public class TestRunResult {
         Map<String, String> finalRunMetrics = new HashMap<>();
         HashMap<String, Metric> finalRunProtoMetrics = new HashMap<>();
         Map<String, LogFile> finalRunLoggedFiles = new HashMap<>();
-        Map<TestDescription, TestResult> finalTestResults =
-                new HashMap<TestDescription, TestResult>();
+        Map<TestDescription, TestResult> finalTestResults = new LinkedHashMap<>();
         // Keep track of if one of the run attempt failed.
         boolean isFailed = false;
         List<String> runErrors = new ArrayList<>();

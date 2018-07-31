@@ -108,6 +108,10 @@ def run_all_tests(results_dir, test_infos, extra_args):
     reporter = result_reporter.ResultReporter()
     reporter.print_starting_text()
     for test_runner, tests in _group_tests_by_test_runners(test_infos):
-        test_runner = test_runner(results_dir)
-        test_runner.run_tests(tests, extra_args, reporter)
+        try:
+            test_runner = test_runner(results_dir)
+            test_runner.run_tests(tests, extra_args, reporter)
+        # pylint: disable=broad-except
+        except Exception as error:
+            reporter.runner_failure(test_runner.NAME, error.message)
     reporter.print_summary()

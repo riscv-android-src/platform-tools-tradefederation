@@ -295,7 +295,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
         } finally {
             ModuleListener currentModuleListener =
                     mModuleListenerCollector.get(mModuleListenerCollector.size() - 1);
-            setRunNameForResults(currentModuleListener.getRunResults());
+            setRunNameForResults(currentModuleListener.getMergedTestRunResults());
         }
     }
 

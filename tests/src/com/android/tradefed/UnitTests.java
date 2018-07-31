@@ -221,6 +221,7 @@ import com.android.tradefed.testtype.suite.module.BaseModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.NativeBridgeModuleControllerTest;
 import com.android.tradefed.testtype.suite.params.InstantAppHandlerTest;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelperTest;
+import com.android.tradefed.testtype.suite.retry.ResultsPlayerTest;
 import com.android.tradefed.testtype.suite.retry.RetryReschedulerTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsParserTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsTestTest;
@@ -562,6 +563,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ModuleParametersHelperTest.class,
 
     // testtype/suite/retry
+    ResultsPlayerTest.class,
     RetryReschedulerTest.class,
 
     // testtype/testdefs

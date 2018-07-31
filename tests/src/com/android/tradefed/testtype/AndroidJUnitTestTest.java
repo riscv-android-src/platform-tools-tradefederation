@@ -57,6 +57,7 @@ import java.util.concurrent.TimeUnit;
 @RunWith(JUnit4.class)
 public class AndroidJUnitTestTest {
 
+    private static final String AJUR = "android.support.test.runner.AndroidJUnitRunner";
     private static final int TEST_TIMEOUT = 0;
     private static final long SHELL_TIMEOUT = 0;
     private static final String TEST_PACKAGE_VALUE = "com.foo";
@@ -95,6 +96,7 @@ public class AndroidJUnitTestTest {
                 return mMockRemoteRunner;
             }
         };
+        mAndroidJUnitTest.setRunnerName(AJUR);
         mAndroidJUnitTest.setPackageName(TEST_PACKAGE_VALUE);
         mAndroidJUnitTest.setDevice(mMockTestDevice);
         // default to no rerun, for simplicity
@@ -389,7 +391,7 @@ public class AndroidJUnitTestTest {
     /** Test that {@link AndroidJUnitTest#split()} returns null if no shards have been requested. */
     @Test
     public void testSplit_noShardRequested() {
-        assertEquals(AndroidJUnitTest.AJUR, mAndroidJUnitTest.getRunnerName());
+        assertEquals(AJUR, mAndroidJUnitTest.getRunnerName());
         assertNull(mAndroidJUnitTest.split());
     }
 
@@ -397,7 +399,8 @@ public class AndroidJUnitTestTest {
     @Test
     public void testSplit_threeShards() throws Exception {
         mAndroidJUnitTest = new AndroidJUnitTest();
-        assertEquals(AndroidJUnitTest.AJUR, mAndroidJUnitTest.getRunnerName());
+        mAndroidJUnitTest.setRunnerName(AJUR);
+        assertEquals(AJUR, mAndroidJUnitTest.getRunnerName());
         OptionSetter setter = new OptionSetter(mAndroidJUnitTest);
         setter.setOptionValue("runtime-hint", "60s");
         List<IRemoteTest> res = (List<IRemoteTest>) mAndroidJUnitTest.split(3);
@@ -418,7 +421,8 @@ public class AndroidJUnitTestTest {
     @Test
     public void testSplit_maxShard() throws Exception {
         mAndroidJUnitTest = new AndroidJUnitTest();
-        assertEquals(AndroidJUnitTest.AJUR, mAndroidJUnitTest.getRunnerName());
+        mAndroidJUnitTest.setRunnerName(AJUR);
+        assertEquals(AJUR, mAndroidJUnitTest.getRunnerName());
         OptionSetter setter = new OptionSetter(mAndroidJUnitTest);
         setter.setOptionValue("runtime-hint", "60s");
         setter.setOptionValue("ajur-max-shard", "2");

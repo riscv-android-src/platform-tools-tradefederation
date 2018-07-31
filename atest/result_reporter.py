@@ -61,6 +61,7 @@ from collections import OrderedDict
 from test_runners import test_runner_base
 
 UNSUPPORTED_FLAG = 'UNSUPPORTED_RUNNER'
+FAILURE_FLAG = 'RUNNER_FAILURE'
 
 
 class RunStat(object):
@@ -140,12 +141,28 @@ class ResultReporter(object):
         """
         if test.runner_name not in self.runners:
             self.runners[test.runner_name] = OrderedDict()
+        assert self.runners[test.runner_name] != FAILURE_FLAG
         if test.group_name not in self.runners[test.runner_name]:
             self.runners[test.runner_name][test.group_name] = RunStat()
             self._print_group_title(test)
         self._update_stats(test,
                            self.runners[test.runner_name][test.group_name])
         self._print_result(test)
+
+    def runner_failure(self, runner_name, failure_msg):
+        """Report a runner failure.
+
+        Use instead of process_test_result() when runner fails separate from
+        any particular test, e.g. during setup of runner.
+
+        Args:
+            runner_name: A string of the name of the runner.
+            failure_msg: A string of the failure message to pass to user.
+        """
+        self.runners[runner_name] = FAILURE_FLAG
+        print('\n', runner_name, '\n', '-' * len(runner_name), sep='')
+        print('Runner encountered a critical failure. Skipping.\n'
+              'FAILURE: %s' % failure_msg)
 
     def register_unsupported_runner(self, runner_name):
         """Register an unsupported runner.
@@ -180,6 +197,9 @@ class ResultReporter(object):
         for runner_name, groups in self.runners.items():
             if groups == UNSUPPORTED_FLAG:
                 print(runner_name, 'Unsupported. See raw output above.')
+                continue
+            if groups == FAILURE_FLAG:
+                print(runner_name, 'Crashed. No results to report.')
                 continue
             for group_name, stats in groups.items():
                 name = group_name if group_name else runner_name

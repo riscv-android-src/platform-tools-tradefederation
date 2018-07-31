@@ -17,6 +17,7 @@ Atest Tradefed test runner class.
 """
 
 from __future__ import print_function
+from functools import partial
 import json
 import logging
 import os
@@ -32,9 +33,10 @@ from test_finders import test_info
 import test_runner_base
 
 PRETTY_RESULT_ENV_VAR = 'ATEST_PRETTY_RESULT'
+POLL_FREQ_SECS = 10
 SOCKET_HOST = '127.0.0.1'
 SOCKET_QUEUE_MAX = 1
-SOCKET_BUFFER_SIZE = 4096
+SOCKET_BUFFER = 4096
 EVENT_RE = re.compile(r'^(?P<event_name>[A-Z_]+) (?P<json_data>{.+)$')
 EVENT_NAMES = {'module_started': 'TEST_MODULE_STARTED',
                'run_started': 'TEST_RUN_STARTED',
@@ -54,6 +56,12 @@ CONNECTION_STATE = {
     'current_group': None,
     'current_group_total': None
 }
+
+class TradeFedExitError(Exception):
+    """Raised when TradeFed exists before test run has finished."""
+
+TRADEFED_EXIT_MSG = ('TradeFed subprocess exited early with exit code=%s. '
+                     'Use --verbose to see underlying TradeFed output.')
 
 
 class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
@@ -104,7 +112,6 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             iterations = extra_args.pop(constants.POST_PATCH_ITERATIONS)
             metrics_folder = os.path.join(self.results_dir, 'new-metrics')
         args = self._create_test_args(test_infos)
-
         reporter.register_unsupported_runner(self.NAME)
 
         for _ in range(iterations):
@@ -119,6 +126,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 os.killpg(os.getpgid(subproc.pid), signal.SIGINT)
                 raise
 
+    # pylint: disable=broad-except
     def run_tests_pretty(self, test_infos, extra_args, reporter):
         """Run the list of test_infos. See base class for more.
 
@@ -146,15 +154,20 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             try:
                 signal.signal(signal.SIGINT, self._signal_passer(subproc))
                 # server.accept() blocks until connection received
-                conn, addr = server.accept()
+                conn, addr = self._exec_with_tf_polling(server.accept, subproc)
                 logging.debug('Accepted connection from %s', addr)
-                self._process_connection(conn, reporter)
+                self._process_connection(conn, reporter, subproc)
                 if metrics_folder:
                     logging.info('Saved metrics in: %s', metrics_folder)
-            except:
-                # If atest crashes, kill TF subproc group as well.
-                os.killpg(os.getpgid(subproc.pid), signal.SIGINT)
-                raise
+            except Exception as error:
+                # If atest crashes, try to kill TF subproc group as well.
+                try:
+                    logging.debug('Killing TF subproc: %s', subproc.pid)
+                    os.killpg(os.getpgid(subproc.pid), signal.SIGINT)
+                except OSError:
+                    logging.debug('Subproc (%s) already terminated, skipping')
+                finally:
+                    raise error
             finally:
                 server.shutdown(socket.SHUT_RDWR)
                 server.close()
@@ -166,7 +179,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         Args:
             proc: The tradefed subprocess.
 
-        Returns: signal_handler function.
+        Returns:
+            signal_handler function.
         """
         def signal_handler(_signal_number, _frame):
             """Pass SIGINT to proc.
@@ -187,11 +201,29 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         # Port 0 lets the OS pick an open port between 1024 and 65535.
         server.bind((SOCKET_HOST, 0))
         server.listen(SOCKET_QUEUE_MAX)
+        # timeout applies to ALL future calls of blocking socket funcs.
+        server.settimeout(POLL_FREQ_SECS)
         logging.debug('Socket server started on port %s',
                       server.getsockname()[1])
         return server
 
-    def _process_connection(self, conn, reporter):
+    def _exec_with_tf_polling(self, socket_func, tf_subproc):
+        """Check for TF subproc exit during blocking socket func.
+
+        Args:
+            socket_func: A blocking socket function, e.g. recv(), accept().
+            tf_subproc: The tradefed subprocess to poll.
+        """
+        while True:
+            try:
+                return socket_func()
+            except socket.timeout:
+                logging.debug('Polling TF Subproc for early exit.')
+                if tf_subproc.poll() is not None:
+                    raise TradeFedExitError(TRADEFED_EXIT_MSG
+                                            % tf_subproc.returncode)
+
+    def _process_connection(self, conn, reporter, tf_subproc):
         """Process a socket connection from TradeFed.
 
         This involves chunking the data until we have a full EVENT msg. Then
@@ -201,13 +233,15 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         Args:
             conn: A socket connection.
             reporter: A result_report.ResultReporter
+            tf_subproc: The tradefed subprocess.
         """
         event_name_for_chunk = None
         json_data_chunk = ''
         connection_state = CONNECTION_STATE.copy()
         while True:
             logging.debug('Waiting to receive data')
-            data = conn.recv(SOCKET_BUFFER_SIZE)
+            data = self._exec_with_tf_polling(partial(conn.recv, SOCKET_BUFFER),
+                                              tf_subproc)
             logging.debug('received: %s', data)
             if data:
                 # Client Socket Reporter sends data in discrete "event" blocks
@@ -535,5 +569,4 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                         test_name=info.test_name, option_name=option[0],
                         option_value=option[1]))
                 args.extend([constants.TF_MODULE_ARG, module_arg])
-
         return args

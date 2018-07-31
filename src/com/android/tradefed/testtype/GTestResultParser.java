@@ -24,9 +24,13 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.testdefs.XmlDefsTest;
 
+import com.google.common.base.Joiner;
+
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -102,6 +106,14 @@ public class GTestResultParser extends MultiLineReceiver {
 
     /** True if start of test has already been reported to listener. */
     private boolean mTestRunStartReported = false;
+
+    /** True if at least one testRunStart has been reported. */
+    private boolean mSeenOneTestRunStart = false;
+    /**
+     * Track all the log lines before the testRunStart is made, it is helpful on an early failure to
+     * report those logs.
+     */
+    private List<String> mTrackLogsBeforeRunStart = new ArrayList<>();
 
     /** True if current test run has been canceled by user. */
     private boolean mIsCancelled = false;
@@ -206,8 +218,6 @@ public class GTestResultParser extends MultiLineReceiver {
         // different needs (parallelism of tests) that the GTest format can't describe well.
         private static final String ALT_OK_MARKER = "[    OK    ]"; // Non GTest format
         private static final String TIMEOUT_MARKER = "[ TIMEOUT  ]"; // Non GTest format
-        // Native test failures: shared library link failure.
-        private static final String LINK_FAILURE_MARKER = "CANNOT LINK EXECUTABLE ";
     }
 
     /**
@@ -260,22 +270,14 @@ public class GTestResultParser extends MultiLineReceiver {
      */
     @Override
     public void processNewLines(String[] lines) {
-        if (lines.length != 0 && lines[0].startsWith(Prefixes.LINK_FAILURE_MARKER)) {
-            for (String line : lines) {
-                // in verbose mode, dump all adb output to log
-                CLog.v(line);
-            }
-            for (ITestInvocationListener listener : mTestListeners) {
-                listener.testRunStarted(mTestRunName, 0);
-                listener.testRunFailed(lines[0]);
-                listener.testRunEnded(0, new HashMap<String, Metric>());
-            }
-        } else {
-            for (String line : lines) {
-                parse(line);
-                // in verbose mode, dump all adb output to log
-                CLog.v(line);
-            }
+        if (!mSeenOneTestRunStart) {
+            mTrackLogsBeforeRunStart.addAll(Arrays.asList(lines));
+        }
+
+        for (String line : lines) {
+            parse(line);
+            // in verbose mode, dump all adb output to log
+            CLog.v(line);
         }
     }
 
@@ -418,6 +420,7 @@ public class GTestResultParser extends MultiLineReceiver {
                 listener.testRunStarted(mTestRunName, mNumTestsExpected);
             }
             mTestRunStartReported = true;
+            mSeenOneTestRunStart = true;
         }
     }
 
@@ -737,9 +740,17 @@ public class GTestResultParser extends MultiLineReceiver {
         if (mNumTestsExpected > mNumTestsRun) {
             handleTestRunFailed(String.format("Test run incomplete. Expected %d tests, received %d",
                     mNumTestsExpected, mNumTestsRun));
-        }
-        else if (mTestRunInProgress) {
+        } else if (mTestRunInProgress) {
             handleTestRunFailed("No test results");
+        } else if (!mSeenOneTestRunStart) {
+            for (ITestInvocationListener listener : mTestListeners) {
+                listener.testRunStarted(mTestRunName, 0);
+                listener.testRunFailed(
+                        String.format(
+                                "%s did not report any run:\n%s",
+                                mTestRunName, Joiner.on("\n").join(mTrackLogsBeforeRunStart)));
+                listener.testRunEnded(0L, new HashMap<String, Metric>());
+            }
         }
     }
 

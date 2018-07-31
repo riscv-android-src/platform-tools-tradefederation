@@ -61,6 +61,8 @@ public abstract class SubprocessTfLauncher
     /** The tag that will be passed to the TF subprocess to differentiate it */
     public static final String SUBPROCESS_TAG_NAME = "subprocess";
 
+    public static final String PARENT_PROC_TAG_NAME = "parentprocess";
+
     @Option(name = "max-run-time", description =
             "The maximum time to allow for a TF test run.", isTimeVal = true)
     private long mMaxTfRunTime = 20 * 60 * 1000;
@@ -233,6 +235,8 @@ public abstract class SubprocessTfLauncher
         mCmdArgs.add("--" + CommandOptions.INVOCATION_DATA);
         mCmdArgs.add(SUBPROCESS_TAG_NAME);
         mCmdArgs.add("true");
+        // Tag the parent invocation
+        mBuildInfo.addBuildAttribute(PARENT_PROC_TAG_NAME, "true");
     }
 
     /** {@inheritDoc} */
