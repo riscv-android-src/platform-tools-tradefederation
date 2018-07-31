@@ -20,6 +20,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IFileEntry;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.metric.FilePullerLogCollector;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -28,12 +29,15 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Helper test component that pulls files located on a device and adds them to the test logs.
- * The component provides {@link IRemoteTest} and {@link IDeviceTest} services.
- * <p>
- * The path to files on the device is specified with upload-dir or upload-pattern options.
- * The files will be removed if clean-upload-pattern option is provided.
+ * Helper test component that pulls files located on a device and adds them to the test logs. The
+ * component provides {@link IRemoteTest} and {@link IDeviceTest} services.
+ *
+ * <p>The path to files on the device is specified with upload-dir or upload-pattern options. The
+ * files will be removed if clean-upload-pattern option is provided.
+ *
+ * @deprecated use {@link FilePullerLogCollector} instead.
  */
+@Deprecated
 public class LogFilesReporter implements IRemoteTest, IDeviceTest {
 
     @Option(name = "upload-pattern",
