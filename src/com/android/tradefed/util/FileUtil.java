@@ -20,6 +20,7 @@ import com.android.tradefed.command.FatalHostError;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.testtype.IAbi;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -43,6 +44,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1022,6 +1024,46 @@ public class FileUtil {
                 .filter(path -> path.getFileName().toString().matches(filter))
                 .forEach(path -> files.add(path.toString()));
         return files;
+    }
+
+    /**
+     * Get all file paths of files in the given directory with name matching the given filter and
+     * also filter the found file by abi arch if abi is not null. Return the first match file found.
+     *
+     * @param fileName {@link String} of the regex to match file path
+     * @param abi {@link IAbi} object of the abi to match the target
+     * @param dirs a varargs array of {@link File} object of the directories to search for files
+     * @return the {@link File} or <code>null</code> if it could not be found
+     */
+    public static File findFile(String fileName, IAbi abi, File... dirs) throws IOException {
+        for (File dir : dirs) {
+            Set<File> testSrcs = findFilesObject(dir, fileName);
+            if (testSrcs.isEmpty()) {
+                continue;
+            }
+            Iterator<File> itr = testSrcs.iterator();
+            if (abi == null) {
+                // Return the first candidate be found.
+                return itr.next();
+            }
+            while (itr.hasNext()) {
+                File matchFile = itr.next();
+                if (matchFile
+                        .getParentFile()
+                        .getName()
+                        .equals(AbiUtils.getArchForAbi(abi.getName()))) {
+                    return matchFile;
+                }
+            }
+        }
+        // Scan dirs again without abi rule.
+        for (File dir : dirs) {
+            File matchFile = findFile(dir, fileName);
+            if (matchFile != null && matchFile.exists()) {
+                return matchFile;
+            }
+        }
+        return null;
     }
 
     /**
