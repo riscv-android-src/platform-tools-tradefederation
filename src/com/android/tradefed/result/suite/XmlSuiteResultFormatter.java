@@ -30,6 +30,7 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.suite.TestFailureListener;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
@@ -203,9 +204,11 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
         if (serialsShards.isEmpty()) {
             deviceList = Joiner.on(",").join(holder.context.getSerials());
         } else {
+            List<String> subList = new ArrayList<>();
             for (List<String> list : serialsShards.values()) {
-                deviceList += Joiner.on(",").join(list);
+                subList.add(Joiner.on(",").join(list));
             }
+            deviceList = Joiner.on(",").join(subList);
         }
         serializer.attribute(NS, DEVICES_ATTR, deviceList);
 
@@ -393,6 +396,17 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
         }
     }
 
+    private static TestStatus getStatusFromString(String status) {
+        switch (status) {
+            case "pass":
+                return TestStatus.PASSED;
+            case "fail":
+                return TestStatus.FAILURE;
+            default:
+                return TestStatus.valueOf(status);
+        }
+    }
+
     /** {@inheritDoc} */
     @Override
     public SuiteResultHolder parseResults(File resultDir) throws IOException {
@@ -510,8 +524,13 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
         while (parser.nextTag() == XmlPullParser.START_TAG) {
             parser.require(XmlPullParser.START_TAG, NS, TEST_TAG);
             String methodName = parser.getAttributeValue(NS, NAME_ATTR);
+            TestStatus status = getStatusFromString(parser.getAttributeValue(NS, RESULT_ATTR));
             TestDescription description = new TestDescription(className, methodName);
             currentModule.testStarted(description);
+            if (TestStatus.IGNORED.equals(status)) {
+                currentModule.testIgnored(description);
+            }
+            HashMap<String, Metric> metrics = new HashMap<String, Metric>();
             while (parser.nextTag() == XmlPullParser.START_TAG) { // Failure level
                 if (parser.getName().equals(FAILURE_TAG)) {
                     String failure = parser.getAttributeValue(NS, MESSAGE_ATTR);
@@ -519,14 +538,19 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
                         parser.require(XmlPullParser.START_TAG, NS, STACK_TAG);
                         failure = parser.nextText();
                         parser.require(XmlPullParser.END_TAG, NS, STACK_TAG);
-                        parser.nextTag();
                     }
-                    currentModule.testFailed(description, failure);
+                    if (TestStatus.FAILURE.equals(status)) {
+                        currentModule.testFailed(description, failure);
+                    } else if (TestStatus.ASSUMPTION_FAILURE.equals(status)) {
+                        currentModule.testAssumptionFailure(description, failure);
+                    }
+                    parser.nextTag();
                     parser.require(XmlPullParser.END_TAG, NS, FAILURE_TAG);
                 }
                 parseLoggedFiles(parser, currentModule);
+                metrics.putAll(parseMetrics(parser));
             }
-            currentModule.testEnded(description, new HashMap<String, Metric>());
+            currentModule.testEnded(description, metrics);
             parser.require(XmlPullParser.END_TAG, NS, TEST_TAG);
         }
     }
@@ -550,5 +574,20 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
         String logFileUrl = parser.nextText();
         currentModule.testLogSaved(name, new LogFile(logFileUrl, logFileUrl, type));
         parser.require(XmlPullParser.END_TAG, NS, tagName);
+    }
+
+    private static HashMap<String, Metric> parseMetrics(XmlPullParser parser)
+            throws XmlPullParserException, IOException {
+        HashMap<String, Metric> metrics = new HashMap<>();
+        if (parser.getName().equals(METRIC_TAG)) {
+            for (int index = 0; index < parser.getAttributeCount(); index++) {
+                String key = parser.getAttributeName(index);
+                String value = parser.getAttributeValue(NS, key);
+                metrics.put(key, TfMetricProtoUtil.stringToMetric(value));
+            }
+            parser.nextTag();
+            parser.require(XmlPullParser.END_TAG, NS, METRIC_TAG);
+        }
+        return metrics;
     }
 }
