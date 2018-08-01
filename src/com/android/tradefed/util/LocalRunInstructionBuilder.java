@@ -19,10 +19,14 @@ package com.android.tradefed.util;
 import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationDescriptor.LocalTestRunner;
+import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.TestDescription;
 
 /** Utility to compile the instruction to run test locally. */
 public class LocalRunInstructionBuilder {
 
+    // TODO(dshi): The method is added for backwards compatibility. Remove this method after lab is
+    // updated.
     /**
      * Compile the instruction to run test locally.
      *
@@ -32,13 +36,30 @@ public class LocalRunInstructionBuilder {
      */
     public static String getInstruction(
             ConfigurationDescriptor configDescriptor, LocalTestRunner runner) {
+        return getInstruction(configDescriptor, runner, null);
+    }
+
+    /**
+     * Compile the instruction to run test locally.
+     *
+     * @param configDescriptor {@link ConfigurationDescriptor} to create instruction for.
+     * @param runner {@link LocalTestRunner} to be used to build instruction.
+     * @param testId {@link TestDescription} of the test to run. It can be null when building local
+     *     run instruction for the whole module.
+     * @return {@link String} of the instruction.
+     */
+    public static String getInstruction(
+            ConfigurationDescriptor configDescriptor,
+            LocalTestRunner runner,
+            TestDescription testId) {
         if (runner == null) {
             return null;
         }
         switch (runner) {
             case ATEST:
-                return getAtestInstruction(configDescriptor);
+                return getAtestInstruction(configDescriptor, testId);
             default:
+                CLog.v("Runner %s is not supported yet, no instruction will be built.", runner);
                 return null;
         }
     }
@@ -47,12 +68,24 @@ public class LocalRunInstructionBuilder {
      * Compile the instruction to run test locally using atest.
      *
      * @param configDescriptor {@link ConfigurationDescriptor} to create instruction for.
+     * @param testId {@link TestDescription} of the test to run.
      * @return {@link String} of the instruction.
      */
-    private static String getAtestInstruction(ConfigurationDescriptor configDescriptor) {
+    private static String getAtestInstruction(
+            ConfigurationDescriptor configDescriptor, TestDescription testId) {
         StringBuilder instruction = new StringBuilder();
         instruction.append("Run following command to try the test in a local setup:\n");
-        instruction.append(String.format("atest %s --", configDescriptor.getModuleName()));
+        StringBuilder testName = new StringBuilder(configDescriptor.getModuleName());
+        if (testId != null) {
+            testName.append(String.format(":%s", testId.getClassName()));
+            // Atest doesn't support test parameter, so ignore the method filter if parameter is
+            // set.
+            if (testId.getTestName().equals(testId.getTestNameWithoutParams())) {
+                testName.append(String.format("#%s", testId.getTestName()));
+            }
+        }
+
+        instruction.append(String.format("atest %s --", testName));
         if (configDescriptor.getAbi() != null) {
             instruction.append(String.format(" --abi %s", configDescriptor.getAbi().getName()));
         }
