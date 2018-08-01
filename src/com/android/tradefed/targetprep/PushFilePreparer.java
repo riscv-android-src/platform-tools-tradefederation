@@ -25,12 +25,17 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.testtype.IAbi;
+import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * A {@link ITargetPreparer} that attempts to push any number of files from any host path to any
@@ -40,11 +45,13 @@ import java.util.Collection;
  * enabled)
  */
 @OptionClass(alias = "push-file")
-public class PushFilePreparer extends BaseTargetPreparer implements ITargetCleaner {
+public class PushFilePreparer extends BaseTargetPreparer implements ITargetCleaner, IAbiReceiver {
     private static final String LOG_TAG = "PushFilePreparer";
     private static final String MEDIA_SCAN_INTENT =
             "am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://%s "
                     + "--receiver-include-background";
+
+    private IAbi mAbi;
 
     @Option(name="push", description=
             "A push-spec, formatted as '/path/to/srcfile.txt->/path/to/destfile.txt' or " +
@@ -89,6 +96,18 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void setAbi(IAbi abi) {
+        mAbi = abi;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public IAbi getAbi() {
+        return mAbi;
+    }
+
     /**
      * Resolve relative file path via {@link IBuildInfo} and test cases directories.
      *
@@ -104,22 +123,27 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
                 return src;
             }
         }
-
         if (buildInfo instanceof IDeviceBuildInfo) {
             IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo) buildInfo;
-            // If it exists always look first in the ANDROID_TARGET_OUT_TESTCASES
+            List<File> scanDirs = new ArrayList<>();
+            // If it exists, always look first in the ANDROID_TARGET_OUT_TESTCASES
             File targetTestCases = deviceBuild.getFile(BuildInfoFileKey.TARGET_LINKED_DIR);
             if (targetTestCases != null) {
-                src = FileUtil.findFile(targetTestCases, fileName);
+                scanDirs.add(targetTestCases);
             }
-            if (src != null && src.exists()) {
-                return src;
+            File testDir = deviceBuild.getTestsDir();
+            if (testDir != null) {
+                scanDirs.add(testDir);
             }
-            // Search the full tests dir if no target dir is available.
-            File testsDir = deviceBuild.getTestsDir();
-            return FileUtil.findFile(testsDir, fileName);
+            try {
+                // Search the full tests dir if no target dir is available.
+                src = FileUtil.findFile(fileName, mAbi, scanDirs.toArray(new File[] {}));
+            } catch (IOException e) {
+                CLog.w("Failed to find test files from directory.");
+                src = null;
+            }
         }
-        return null;
+        return src;
     }
 
     /**

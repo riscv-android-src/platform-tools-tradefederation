@@ -47,6 +47,8 @@ public class PushFilePreparerTest {
         mMockDevice = EasyMock.createStrictMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
+        EasyMock.expect(mMockDevice.getProperty("ro.product.cpu.abilist"))
+                .andStubReturn("arm64-v8a");
         mPreparer = new PushFilePreparer();
         mOptionSetter = new OptionSetter(mPreparer);
     }
