@@ -54,6 +54,7 @@ public class PythonBinaryHostTest
         implements IRemoteTest, IDeviceTest, IBuildReceiver, IInvocationContextReceiver {
 
     protected static final String PYTHON_OUTPUT = "python-output";
+    protected static final String ANDROID_SERIAL_VAR = "ANDROID_SERIAL";
 
     @Option(name = "par-file-name", description = "The binary names inside the build info to run.")
     private Set<String> mBinaryNames = new HashSet<>();
@@ -71,9 +72,14 @@ public class PythonBinaryHostTest
     )
     private long mTestTimeout = 20 * 1000L;
 
+    @Option(name = "inject-android-serial")
+    private boolean mInjectAndroidSerialVar = true;
+
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private IInvocationContext mContext;
+
+    private IRunUtil mRunUtil;
 
     @Override
     public void setDevice(ITestDevice device) {
@@ -96,7 +102,7 @@ public class PythonBinaryHostTest
     }
 
     @Override
-    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         List<File> pythonFilesList = findParFiles();
         for (File pyFile : pythonFilesList) {
             if (!pyFile.exists()) {
@@ -145,6 +151,11 @@ public class PythonBinaryHostTest
             commandLine.add("-s");
             commandLine.add(getDevice().getSerialNumber());
         }
+
+        if (mInjectAndroidSerialVar) {
+            getRunUtil().setEnvVariable(ANDROID_SERIAL_VAR, getDevice().getSerialNumber());
+        }
+
         CommandResult result =
                 getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
         PythonForwarder forwarder = new PythonForwarder(listener, pyFile.getName());
@@ -178,7 +189,10 @@ public class PythonBinaryHostTest
 
     @VisibleForTesting
     IRunUtil getRunUtil() {
-        return RunUtil.getDefault();
+        if (mRunUtil == null) {
+            mRunUtil = new RunUtil();
+        }
+        return mRunUtil;
     }
 
     /** Result forwarder to replace the run name by the binary name. */
