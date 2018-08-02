@@ -267,6 +267,7 @@ import com.android.tradefed.util.SimpleStatsTest;
 import com.android.tradefed.util.SizeLimitedOutputStreamTest;
 import com.android.tradefed.util.StreamUtilTest;
 import com.android.tradefed.util.StringEscapeUtilsTest;
+import com.android.tradefed.util.StringUtilTest;
 import com.android.tradefed.util.SubprocessTestResultsParserTest;
 import com.android.tradefed.util.TableBuilderTest;
 import com.android.tradefed.util.TableFormatterTest;
@@ -612,6 +613,7 @@ import org.junit.runners.Suite.SuiteClasses;
     SizeLimitedOutputStreamTest.class,
     StreamUtilTest.class,
     StringEscapeUtilsTest.class,
+    StringUtilTest.class,
     SubprocessTestResultsParserTest.class,
     TableBuilderTest.class,
     TableFormatterTest.class,
