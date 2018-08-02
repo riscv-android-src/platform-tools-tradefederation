@@ -570,28 +570,33 @@ public class TestInvocation implements ITestInvocation {
             ITestInvocationListener listener,
             IInvocationExecution invocationPath)
             throws DeviceNotAvailableException {
+        Exception buildException = null;
+        boolean res = false;
         try {
-            boolean res = invocationPath.fetchBuild(context, config, rescheduler, listener);
-            if (!res) {
-                mStatus = "(no build to test)";
-                rescheduleTest(config, rescheduler);
-                // Set the exit code to error
-                setExitCode(ExitCode.NO_BUILD, new BuildRetrievalError("No build found to test."));
-                return false;
+            res = invocationPath.fetchBuild(context, config, rescheduler, listener);
+            if (res) {
+                // Successful fetch of build.
+                return true;
             }
-            return res;
+            // In case of build not found issues.
+            mStatus = "(no build to test)";
+            rescheduleTest(config, rescheduler);
+            // Set the exit code to error
+            buildException = new BuildRetrievalError("No build found to test.");
+            setExitCode(ExitCode.NO_BUILD, buildException);
         } catch (BuildRetrievalError e) {
-            // report an empty invocation, so this error is sent to listeners
-            startInvocation(config, context, listener);
-            // don't want to use #reportFailure, since that will call buildNotTested
-            listener.invocationFailed(e);
-            for (ITestDevice device : context.getDevices()) {
-                reportLogs(device, listener, Stage.ERROR);
-            }
-            reportHostLog(listener, config.getLogOutput());
-            listener.invocationEnded(0);
-            return false;
+            buildException = e;
         }
+        // Report an empty invocation, so this error is sent to listeners
+        startInvocation(config, context, listener);
+        // Don't want to use #reportFailure, since that will call buildNotTested
+        listener.invocationFailed(buildException);
+        for (ITestDevice device : context.getDevices()) {
+            reportLogs(device, listener, Stage.ERROR);
+        }
+        reportHostLog(listener, config.getLogOutput());
+        listener.invocationEnded(0L);
+        return false;
     }
 
     /** {@inheritDoc} */

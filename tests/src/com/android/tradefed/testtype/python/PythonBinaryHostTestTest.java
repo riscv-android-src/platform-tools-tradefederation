@@ -15,7 +15,7 @@
  */
 package com.android.tradefed.testtype.python;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.fail;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
@@ -60,6 +60,8 @@ public class PythonBinaryHostTestTest {
                 };
         mTest.setBuild(mMockBuildInfo);
         mTest.setDevice(mMockDevice);
+        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
+        mMockRunUtil.setEnvVariable(PythonBinaryHostTest.ANDROID_SERIAL_VAR, "SERIAL");
     }
 
     /** Test that when running a python binary the output is parsed to obtain results. */
@@ -84,6 +86,7 @@ public class PythonBinaryHostTestTest {
                     EasyMock.eq(LogDataType.TEXT),
                     EasyMock.anyObject());
             EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
+            
             EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
             mTest.run(mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
