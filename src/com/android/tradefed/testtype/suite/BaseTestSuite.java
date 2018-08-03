@@ -126,6 +126,14 @@ public class BaseTestSuite extends ITestSuite {
     )
     private List<String> mConfigPatterns = new ArrayList<>();
 
+    @Option(
+        name = "enable-parameterized-modules",
+        description =
+                "Whether or not to enable parameterized modules. This is a feature flag for work "
+                        + "in development."
+    )
+    private boolean mEnableParameter = false;
+
     private SuiteModuleLoader mModuleRepo;
     private Map<String, List<SuiteTestFilter>> mIncludeFiltersParsed = new HashMap<>();
     private Map<String, List<SuiteTestFilter>> mExcludeFiltersParsed = new HashMap<>();
@@ -149,6 +157,7 @@ public class BaseTestSuite extends ITestSuite {
             mModuleRepo =
                     createModuleLoader(
                             mIncludeFiltersParsed, mExcludeFiltersParsed, mTestArgs, mModuleArgs);
+            mModuleRepo.setParameterizedModules(mEnableParameter);
             // Actual loading of the configurations.
             return loadingStrategy(abis, testsDir, mSuitePrefix, mSuiteTag);
         } catch (DeviceNotAvailableException | FileNotFoundException e) {
@@ -291,6 +300,17 @@ public class BaseTestSuite extends ITestSuite {
             throw new IllegalArgumentException(
                     "Test name given without module name. Add --module <module-name>");
         }
+    }
+
+    @Override
+    void cleanUpSuiteSetup() {
+        super.cleanUpSuiteSetup();
+        // Clean the filters because at that point they have been applied to the runners.
+        // This can save several GB of memories during sharding.
+        mIncludeFilters.clear();
+        mExcludeFilters.clear();
+        mIncludeFiltersParsed.clear();
+        mExcludeFiltersParsed.clear();
     }
 
     /* Helper method designed to remove filters in a list not applicable to the given module */

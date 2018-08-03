@@ -2123,4 +2123,22 @@ public class HostTestTest extends TestCase {
             assertEquals(0, ((HostTest) test).countTestCases());
         }
     }
+
+    public void testEarlyFailure() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", "i.cannot.be.resolved");
+
+        mListener.testRunStarted(HostTest.class.getName(), 0);
+        mListener.testRunFailed("Could not load Test class i.cannot.be.resolved");
+        mListener.testRunEnded(0L, new HashMap<String, Metric>());
+
+        EasyMock.replay(mListener);
+        try {
+            mHostTest.run(mListener);
+            fail("Should have thrown an exception");
+        } catch (IllegalArgumentException expected) {
+            // expected
+        }
+        EasyMock.verify(mListener);
+    }
 }

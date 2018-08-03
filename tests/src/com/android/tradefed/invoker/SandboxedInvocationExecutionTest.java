@@ -15,7 +15,7 @@
  */
 package com.android.tradefed.invoker;
 
-import static org.mockito.Mockito.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 
@@ -32,6 +32,9 @@ import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
+import com.android.tradefed.sandbox.ISandbox;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -51,6 +54,8 @@ public class SandboxedInvocationExecutionTest {
     @Mock ITestInvocationListener mMockListener;
     @Mock ILogSaver mMockLogSaver;
     @Mock IBuildProvider mMockProvider;
+
+    @Mock ISandbox mMockSandbox;
 
     private IConfiguration mConfig;
     private IInvocationContext mContext;
@@ -106,5 +111,119 @@ public class SandboxedInvocationExecutionTest {
 
         // Ensure that in sandbox we don't download again.
         Mockito.verify(mMockProvider, times(0)).getBuild();
+    }
+
+    /**
+     * Test that the parent invocation of sandboxing does not call shardConfig. Sharding should
+     * happen in the subprocess.
+     */
+    @Test
+    public void testSandboxInvocation_sharding() throws Throwable {
+        mInvocation =
+                new TestInvocation() {
+                    @Override
+                    ILogRegistry getLogRegistry() {
+                        return mMockLogRegistry;
+                    }
+
+                    @Override
+                    protected void setExitCode(ExitCode code, Throwable stack) {
+                        // empty on purpose
+                    }
+
+                    @Override
+                    InvocationScope getInvocationScope() {
+                        // Avoid re-entry in the current TF invocation scope for unit tests.
+                        return new InvocationScope();
+                    }
+
+                    @Override
+                    public IInvocationExecution createInvocationExec(boolean isSandboxed) {
+                        return new InvocationExecution() {
+                            @Override
+                            public boolean shardConfig(
+                                    IConfiguration config,
+                                    IInvocationContext context,
+                                    IRescheduler rescheduler) {
+                                // Ensure that sharding is not called against a sandbox
+                                // configuration run
+                                throw new RuntimeException("Should not be called.");
+                            }
+                        };
+                    }
+                };
+
+        ConfigurationDescriptor descriptor = new ConfigurationDescriptor();
+        // We are the parent kick off the sandbox
+        mConfig.getCommandOptions().setShouldUseSandboxing(true);
+        mConfig.getCommandOptions().setShardCount(5);
+        mConfig.getCommandOptions().setShardIndex(1);
+        mConfig.setConfigurationObject(
+                Configuration.CONFIGURATION_DESCRIPTION_TYPE_NAME, descriptor);
+        mConfig.setConfigurationObject(Configuration.SANDBOX_TYPE_NAME, mMockSandbox);
+
+        mConfig.setLogSaver(mMockLogSaver);
+        mConfig.setBuildProvider(mMockProvider);
+
+        doReturn(new LogFile("file", "url", LogDataType.TEXT))
+                .when(mMockLogSaver)
+                .saveLogData(any(), any(), any());
+
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        doReturn(result).when(mMockSandbox).run(any(), any());
+
+        mInvocation.invoke(mContext, mConfig, mMockRescheduler, mMockListener);
+
+        // Ensure that in sandbox we don't download again.
+        Mockito.verify(mMockProvider, times(0)).getBuild();
+    }
+
+    /**
+     * Test that when sharding does not return any tests for a shard, we still report start and stop
+     * of the invocation.
+     */
+    @Test
+    public void testInvocation_sharding_notTests() throws Throwable {
+        mInvocation =
+                new TestInvocation() {
+                    @Override
+                    ILogRegistry getLogRegistry() {
+                        return mMockLogRegistry;
+                    }
+
+                    @Override
+                    protected void setExitCode(ExitCode code, Throwable stack) {
+                        // empty on purpose
+                    }
+
+                    @Override
+                    InvocationScope getInvocationScope() {
+                        // Avoid re-entry in the current TF invocation scope for unit tests.
+                        return new InvocationScope();
+                    }
+                };
+
+        ConfigurationDescriptor descriptor = new ConfigurationDescriptor();
+        mConfig.getCommandOptions().setShardCount(5);
+        mConfig.getCommandOptions().setShardIndex(1);
+        mConfig.setConfigurationObject(
+                Configuration.CONFIGURATION_DESCRIPTION_TYPE_NAME, descriptor);
+
+        mConfig.setLogSaver(mMockLogSaver);
+        mConfig.setBuildProvider(mMockProvider);
+
+        doReturn(new LogFile("file", "url", LogDataType.TEXT))
+                .when(mMockLogSaver)
+                .saveLogData(any(), any(), any());
+
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        doReturn(result).when(mMockSandbox).run(any(), any());
+
+        mInvocation.invoke(mContext, mConfig, mMockRescheduler, mMockListener);
+        // No tests to run but we still call start/end
+        Mockito.verify(mMockListener).invocationStarted(mContext);
+        Mockito.verify(mMockListener).invocationEnded(0L);
+        // Invocation did not start for real so context is not locked.
+        mContext.addInvocationAttribute("test", "test");
     }
 }

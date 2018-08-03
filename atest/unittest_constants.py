@@ -140,3 +140,61 @@ TEST_MAPPING_TEST_WITH_BAD_OPTION = {
         }
     ]
 }
+# Constrants of cc test unittest
+FIND_CC_ONE = ROOT + 'foo/bt/hci/test/pf_test.cc\n'
+CC_MODULE_NAME = 'net_test_hci'
+CC_CLASS_NAME = 'PFTest'
+CC_MODULE_DIR = 'system/bt/hci'
+CC_CLASS_FILTER = test_info.TestFilter(CC_CLASS_NAME+".*", frozenset())
+CC_CONFIG_FILE = os.path.join(CC_MODULE_DIR, constants.MODULE_CONFIG)
+CC_MODULE_CLASS_DATA = {constants.TI_REL_CONFIG: CC_CONFIG_FILE,
+                        constants.TI_FILTER: frozenset([CC_CLASS_FILTER])}
+CC_MODULE_CLASS_INFO = test_info.TestInfo(CC_MODULE_NAME,
+                                          atf_tr.AtestTradefedTestRunner.NAME,
+                                          CLASS_BUILD_TARGETS, CC_MODULE_CLASS_DATA)
+CC_MODULE2_DIR = 'foo/bar/hello'
+CC_MODULE2_NAME = 'hello_world_test'
+CC_PATH = 'pf_test.cc'
+CC_FIND_ONE = ROOT + 'system/bt/hci/test/pf_test.cc:TEST_F(PFTest, test1) {\n' +\
+    ROOT + 'system/bt/hci/test/pf_test.cc:TEST_F(PFTest, test2) {\n'
+CC_FIND_TWO = ROOT + 'other/dir/test.cpp:TEST(PFTest, test_f) {\n' +\
+                        ROOT + 'other/dir/test.cpp:TEST(PFTest, test_p) {\n'
+CC_CONFIG2_FILE = os.path.join(CC_MODULE2_DIR, constants.MODULE_CONFIG)
+CC_CLASS_FILTER = test_info.TestFilter(CC_CLASS_NAME+".*", frozenset())
+CC_CLASS_DATA = {constants.TI_REL_CONFIG: CC_CONFIG_FILE,
+                 constants.TI_FILTER: frozenset([CC_CLASS_FILTER])}
+CC_CLASS_INFO = test_info.TestInfo(CC_MODULE_NAME,
+                                   atf_tr.AtestTradefedTestRunner.NAME,
+                                   CLASS_BUILD_TARGETS, CC_CLASS_DATA)
+CC_METHOD_NAME = 'test1'
+CC_METHOD2_NAME = 'test2'
+CC_METHOD_FILTER = test_info.TestFilter(CC_CLASS_NAME+"."+CC_METHOD_NAME,
+                                        frozenset())
+CC_METHOD2_FILTER = test_info.TestFilter(CC_CLASS_NAME+"."+CC_METHOD_NAME+\
+                                         ":"+CC_CLASS_NAME+"."+CC_METHOD2_NAME,
+                                         frozenset())
+CC_METHOD_INFO = test_info.TestInfo(
+    CC_MODULE_NAME,
+    atf_tr.AtestTradefedTestRunner.NAME,
+    MODULE_BUILD_TARGETS,
+    data={constants.TI_REL_CONFIG: CC_CONFIG_FILE,
+          constants.TI_FILTER: frozenset([CC_METHOD_FILTER])})
+CC_METHOD2_INFO = test_info.TestInfo(
+    CC_MODULE_NAME,
+    atf_tr.AtestTradefedTestRunner.NAME,
+    MODULE_BUILD_TARGETS,
+    data={constants.TI_REL_CONFIG: CC_CONFIG_FILE,
+          constants.TI_FILTER: frozenset([CC_METHOD2_FILTER])})
+CC_PATH_DATA = {
+    constants.TI_REL_CONFIG: TEST_DATA_CONFIG,
+    constants.TI_FILTER: frozenset()}
+CC_PATH_INFO = test_info.TestInfo(CC_MODULE_NAME,
+                                  atf_tr.AtestTradefedTestRunner.NAME,
+                                  MODULE_BUILD_TARGETS,
+                                  CC_PATH_DATA)
+CC_PATH_DATA2 = {constants.TI_REL_CONFIG: CC_CONFIG_FILE,
+                 constants.TI_FILTER: frozenset()}
+CC_PATH_INFO2 = test_info.TestInfo(CC_MODULE_NAME,
+                                   atf_tr.AtestTradefedTestRunner.NAME,
+                                   CLASS_BUILD_TARGETS, CC_PATH_DATA2)
+CTS_INT_DIR = 'test/suite_harness/tools/cts-tradefed/res/config'

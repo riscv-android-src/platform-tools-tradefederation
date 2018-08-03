@@ -16,6 +16,7 @@
 package com.android.tradefed.invoker;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
@@ -109,6 +110,9 @@ public class InvocationExecution implements IInvocationExecution {
                             LogLevel.WARN,
                             "No build found to test for device: %s",
                             device.getSerialNumber());
+                    IBuildInfo notFoundStub = new BuildInfo();
+                    updateBuild(notFoundStub, config);
+                    context.addDeviceBuildInfo(currentDeviceName, notFoundStub);
                     return false;
                 }
                 // TODO: remove build update when reporting is done on context
@@ -117,7 +121,9 @@ public class InvocationExecution implements IInvocationExecution {
         } catch (BuildRetrievalError e) {
             CLog.e(e);
             if (currentDeviceName != null) {
-                context.addDeviceBuildInfo(currentDeviceName, e.getBuildInfo());
+                IBuildInfo errorBuild = e.getBuildInfo();
+                updateBuild(errorBuild, config);
+                context.addDeviceBuildInfo(currentDeviceName, errorBuild);
                 updateInvocationContext(context, config);
             }
             throw e;
@@ -243,14 +249,16 @@ public class InvocationExecution implements IInvocationExecution {
     }
 
     /** Runs the {@link IMultiTargetPreparer} specified tearDown. */
-    private void runMultiTargetPreparersTearDown(
+    private Throwable runMultiTargetPreparersTearDown(
             List<IMultiTargetPreparer> multiPreparers,
             IInvocationContext context,
             Throwable throwable,
             String description)
-            throws DeviceNotAvailableException {
+            throws Throwable {
         ListIterator<IMultiTargetPreparer> iterator =
                 multiPreparers.listIterator(multiPreparers.size());
+        Throwable deferredThrowable = null;
+
         while (iterator.hasPrevious()) {
             IMultiTargetPreparer multipreparer = iterator.previous();
             if (multipreparer.isDisabled() || multipreparer.isTearDownDisabled()) {
@@ -258,19 +266,32 @@ public class InvocationExecution implements IInvocationExecution {
                 continue;
             }
             CLog.d("Starting %s '%s'", description, multipreparer);
-            multipreparer.tearDown(context, throwable);
+            try {
+                multipreparer.tearDown(context, throwable);
+            } catch (Throwable t) {
+                // We catch it and rethrow later to allow each multi_targetprep to be attempted.
+                // Only the first one will be thrown but all should be logged.
+                CLog.e("Deferring throw for:");
+                CLog.e(t);
+                if (deferredThrowable == null) {
+                    deferredThrowable = t;
+                }
+            }
             CLog.d("Done with %s '%s'", description, multipreparer);
         }
+
+        return deferredThrowable;
     }
 
     @Override
     public void doTeardown(IInvocationContext context, IConfiguration config, Throwable exception)
             throws Throwable {
-        Throwable throwable = null;
+        Throwable deferredThrowable = null;
 
         List<IMultiTargetPreparer> multiPreparers = config.getMultiTargetPreparers();
-        runMultiTargetPreparersTearDown(
-                multiPreparers, context, throwable, "multi target preparer teardown");
+        deferredThrowable =
+                runMultiTargetPreparersTearDown(
+                        multiPreparers, context, exception, "multi target preparer teardown");
 
         // Clear wifi settings, to prevent wifi errors from interfering with teardown process.
         for (String deviceName : context.getDeviceConfigNames()) {
@@ -301,8 +322,8 @@ public class InvocationExecution implements IInvocationExecution {
                         // Only the first one will be thrown but all should be logged.
                         CLog.e("Deferring throw for:");
                         CLog.e(e);
-                        if (throwable == null) {
-                            throwable = e;
+                        if (deferredThrowable == null) {
+                            deferredThrowable = e;
                         }
                     }
                 }
@@ -315,11 +336,18 @@ public class InvocationExecution implements IInvocationExecution {
 
         // After all, run the multi_pre_target_preparer tearDown.
         List<IMultiTargetPreparer> multiPrePreparers = config.getMultiPreTargetPreparers();
-        runMultiTargetPreparersTearDown(
-                multiPrePreparers, context, throwable, "multi pre target preparer teardown");
+        Throwable preTargetTearDownException =
+                runMultiTargetPreparersTearDown(
+                        multiPrePreparers,
+                        context,
+                        exception,
+                        "multi pre target preparer teardown");
+        if (deferredThrowable == null) {
+            deferredThrowable = preTargetTearDownException;
+        }
 
-        if (throwable != null) {
-            throw throwable;
+        if (deferredThrowable != null) {
+            throw deferredThrowable;
         }
     }
 
@@ -430,7 +458,10 @@ public class InvocationExecution implements IInvocationExecution {
         if (!(device.getIDevice() instanceof StubDevice)) {
             try (InputStreamSource logcatSource = device.getLogcat()) {
                 device.clearLogcat();
-                String name = TestInvocation.getDeviceLogName(stage);
+                String name =
+                        String.format(
+                                "%s_%s",
+                                TestInvocation.getDeviceLogName(stage), device.getSerialNumber());
                 listener.testLog(name, LogDataType.LOGCAT, logcatSource);
             }
         }

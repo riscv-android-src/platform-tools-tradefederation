@@ -96,8 +96,9 @@ java_library_host {
         "longevity-host-lib",
         "gson-prebuilt-jar",
         "guice",
+        "platform-test-annotations",
     ],
-   libs: [
+    libs: [
         "loganalysis",
         "tools-common-prebuilt",
     ],

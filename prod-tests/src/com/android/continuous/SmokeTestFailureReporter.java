@@ -74,7 +74,7 @@ public class SmokeTestFailureReporter extends TestFailureEmailResultReporter {
     protected String generateEmailBody() {
         StringBuilder sb = new StringBuilder();
 
-        for (TestRunResult run : getRunResults()) {
+        for (TestRunResult run : getMergedTestRunResults()) {
             if (run.hasFailedTests()) {
                 final Map<TestDescription, TestResult> tests = run.getTestResults();
                 for (Map.Entry<TestDescription, TestResult> test : tests.entrySet()) {

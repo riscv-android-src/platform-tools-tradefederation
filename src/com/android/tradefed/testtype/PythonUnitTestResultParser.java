@@ -20,6 +20,8 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -95,7 +97,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     private int mFailedTestCount;
 
     // General state
-    private final Collection<ITestInvocationListener> mListeners;
+    private Collection<ITestInvocationListener> mListeners = new ArrayList<>();
     private final String mRunName;
     private Map<TestDescription, String> mTestResultCache;
     // Use a special entry to mark skipped test in mTestResultCache
@@ -145,11 +147,19 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
 
     /**
      * Create a new {@link PythonUnitTestResultParser} that reports to the given {@link
+     * ITestInvocationListener}.
+     */
+    public PythonUnitTestResultParser(ITestInvocationListener listener, String runName) {
+        this(Arrays.asList(listener), runName);
+    }
+
+    /**
+     * Create a new {@link PythonUnitTestResultParser} that reports to the given {@link
      * ITestInvocationListener}s.
      */
     public PythonUnitTestResultParser(
             Collection<ITestInvocationListener> listeners, String runName) {
-        mListeners = listeners;
+        mListeners.addAll(listeners);
         mRunName = runName;
         mTestResultCache = new HashMap<>();
     }

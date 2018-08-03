@@ -57,8 +57,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -169,9 +170,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     private String mRunName = null;
 
     @Option(
-        name = "instrumentation-arg",
-        description = "Additional instrumentation arguments to provide."
-    )
+            name = "instrumentation-arg",
+            description = "Additional instrumentation arguments to provide.",
+            requiredForRerun = true)
     private final Map<String, String> mInstrArgMap = new HashMap<String, String>();
 
     @Option(name = "bugreport-on-failure", description = "Sets which failed testcase events " +
@@ -279,7 +280,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
 
     private ListInstrumentationParser mListInstrumentationParser = null;
 
-    private List<String> mExtraDeviceListener = new ArrayList<>();
+    private Set<String> mExtraDeviceListener = new HashSet<>();
 
     /**
      * {@inheritDoc}
@@ -612,7 +613,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     }
 
     /** Allows to add more custom listeners to the runner */
-    public void addDeviceListener(List<String> extraListeners) {
+    public void addDeviceListeners(Set<String> extraListeners) {
         mExtraDeviceListener.addAll(extraListeners);
     }
 
@@ -704,7 +705,12 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     public void run(final ITestInvocationListener listener) throws DeviceNotAvailableException {
         checkArgument(mDevice != null, "Device has not been set.");
         checkArgument(mPackageName != null, "Package name has not been set.");
-
+        // Install the apk before checking the runner
+        if (mInstallFile != null) {
+            Assert.assertNull(
+                    mDevice.installPackage(
+                            mInstallFile, true, mInstallArgs.toArray(new String[] {})));
+        }
         if (mRunnerName == null) {
             setRunnerName(queryRunnerName());
             checkArgument(
@@ -712,13 +718,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
                     "Runner name has not been set and no matching instrumentations were found.");
             CLog.i("No runner name specified. Using: %s.", mRunnerName);
         }
-
         mRunner = createRemoteAndroidTestRunner(mPackageName, mRunnerName, mDevice.getIDevice());
         setRunnerArgs(mRunner);
-        if (mInstallFile != null) {
-            Assert.assertNull(mDevice.installPackage(mInstallFile, true,
-                    mInstallArgs.toArray(new String[]{})));
-        }
+
         doTestRun(listener);
         if (mInstallFile != null) {
             mDevice.uninstallPackage(mPackageName);

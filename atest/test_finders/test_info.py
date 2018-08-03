@@ -25,7 +25,8 @@ TestFilterBase = namedtuple('TestFilter', ['class_name', 'methods'])
 class TestInfo(object):
     """Information needed to identify and run a test."""
 
-    def __init__(self, test_name, test_runner, build_targets, data=None):
+    # pylint: disable=too-many-arguments
+    def __init__(self, test_name, test_runner, build_targets, data=None, suite=None):
         """Init for TestInfo.
 
         Args:
@@ -33,16 +34,18 @@ class TestInfo(object):
             test_runner: String of test runner.
             build_targets: Set of build targets.
             data: Dict of data for test runners to use.
+            suite: Suite for test runners to use.
         """
         self.test_name = test_name
         self.test_runner = test_runner
         self.build_targets = build_targets
         self.data = data if data else {}
+        self.suite = suite
 
     def __str__(self):
-        return ('test_name: %s - test_runner:%s - build_targets:%s - data:%s' %
-                (self.test_name, self.test_runner, self.build_targets,
-                 self.data))
+        return ('test_name:%s - test_runner:%s - build_targets:%s - data:%s'
+                ' - suite:%s' % (self.test_name, self.test_runner,
+                                 self.build_targets, self.data, self.suite))
 
 
 class TestFilter(TestFilterBase):

@@ -226,6 +226,12 @@ public class JarHostTestTest {
         OptionSetter setter = new OptionSetter(mTest);
         setter.setOptionValue("jar", "thisjardoesnotexistatall.jar");
         mTest.setBuild(new BuildInfo());
+
+        mListener.testRunStarted(HostTest.class.getName(), 0);
+        mListener.testRunFailed(
+                "java.io.FileNotFoundException: Could not find jar: thisjardoesnotexistatall.jar");
+        mListener.testRunEnded(0L, new HashMap<String, Metric>());
+
         EasyMock.replay(mListener);
         try {
             mTest.run(mListener);

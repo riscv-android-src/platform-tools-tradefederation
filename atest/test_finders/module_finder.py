@@ -30,6 +30,7 @@ from test_runners import atest_tf_test_runner
 from test_runners import robolectric_test_runner
 from test_runners import vts_tf_test_runner
 
+_CC_EXT_RE = re.compile(r'.*(\.cc|\.cpp)$', re.I)
 _JAVA_EXT = '.java'
 
 # Parse package name from the package declaration line of a java file.
@@ -296,7 +297,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         return None
 
     def find_test_by_class_name(self, class_name, module_name=None,
-                                rel_config=None):
+                                rel_config=None, is_native_test=False):
         """Find test files given a class name.
 
         If module_name and rel_config not given it will calculate it determine
@@ -306,6 +307,8 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             class_name: A string of the test's class name.
             module_name: Optional. A string of the module name to use.
             rel_config: Optional. A string of module dir relative to repo root.
+            is_native_test: A boolean variable of whether to search for a
+            native test or not.
 
         Returns:
             A populated TestInfo namedtuple if test found, else None.
@@ -316,22 +319,30 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                                       os.path.dirname(rel_config))
         else:
             search_dir = self.root_dir
-        test_path = test_finder_utils.find_class_file(search_dir, class_name)
+        test_path = test_finder_utils.find_class_file(search_dir, class_name,
+                                                      is_native_test)
         if not test_path and rel_config:
             logging.info('Did not find class (%s) under module path (%s), '
                          'researching from repo root.', class_name, rel_config)
             test_path = test_finder_utils.find_class_file(self.root_dir,
-                                                          class_name)
+                                                          class_name,
+                                                          is_native_test)
         if not test_path:
             return None
-        full_class_name = test_finder_utils.get_fully_qualified_class_name(
-            test_path)
-        test_filter = frozenset([test_info.TestFilter(full_class_name,
-                                                      methods)])
+        if is_native_test:
+            test_filter = frozenset([test_info.TestFilter(
+                test_finder_utils.get_cc_filter(class_name, methods), frozenset())])
+        else:
+            full_class_name = test_finder_utils.get_fully_qualified_class_name(
+                test_path)
+            test_filter = frozenset([test_info.TestFilter(full_class_name,
+                                                          methods)])
         if not rel_config:
             test_dir = os.path.dirname(test_path)
             rel_module_dir = test_finder_utils.find_parent_module_dir(
                 self.root_dir, test_dir, self.module_info)
+            if not rel_module_dir:
+                return None
             rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
         if not module_name:
             module_name = self._get_first_testable_module(os.path.dirname(
@@ -358,9 +369,16 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         module_info = self.find_test_by_module_name(module_name)
         if not module_info:
             return None
-        return self.find_test_by_class_name(
+        # Find by java class.
+        find_result = self.find_test_by_class_name(
             class_name, module_info.test_name,
             module_info.data.get(constants.TI_REL_CONFIG))
+        # Find by cc class.
+        if not find_result:
+            find_result = self.find_test_by_cc_class_name(
+                class_name, module_info.test_name,
+                module_info.data.get(constants.TI_REL_CONFIG))
+        return find_result
 
     def find_test_by_package_name(self, package, module_name=None,
                                   rel_config=None):
@@ -387,13 +405,15 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         package_path = test_finder_utils.run_find_cmd(
             test_finder_utils.FIND_REFERENCE_TYPE.PACKAGE, search_dir,
             package.replace('.', '/'))
-        # package path will be the full path to the dir represented by package
+        # Package path will be the full path to the dir represented by package.
         if not package_path:
             return None
         test_filter = frozenset([test_info.TestFilter(package, frozenset())])
         if not rel_config:
             rel_module_dir = test_finder_utils.find_parent_module_dir(
                 self.root_dir, package_path, self.module_info)
+            if not rel_module_dir:
+                return None
             rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
         if not module_name:
             module_name = self._get_first_testable_module(
@@ -427,6 +447,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
 
         Strategy:
             path_to_java_file --> Resolve to CLASS
+            path_to_cc_file --> Resolve to CC CLASS
             path_to_module_file -> Resolve to MODULE
             path_to_module_dir -> Resolve to MODULE
             path_to_dir_with_class_files--> Resolve to PACKAGE
@@ -455,13 +476,21 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
         data = {constants.TI_REL_CONFIG: rel_config,
                 constants.TI_FILTER: frozenset()}
-        # Path is to java file
+        # Path is to java file.
         if file_name and file_name.endswith(_JAVA_EXT):
             full_class_name = test_finder_utils.get_fully_qualified_class_name(
                 path)
             data[constants.TI_FILTER] = frozenset(
                 [test_info.TestFilter(full_class_name, methods)])
-        # path to non-module dir, treat as package
+        # Path is to cc file.
+        elif file_name and _CC_EXT_RE.match(file_name):
+            if not test_finder_utils.has_cc_class(path):
+                raise atest_error.MissingCCTestCaseError(path)
+            if methods:
+                data[constants.TI_FILTER] = frozenset(
+                    [test_info.TestFilter(test_finder_utils.get_cc_filter(
+                        '*', methods), frozenset())])
+        # Path to non-module dir, treat as package.
         elif (not file_name and not self._is_auto_gen_test_config(module_name)
               and rel_module_dir != os.path.relpath(path, self.root_dir)):
             dir_items = [os.path.join(path, f) for f in os.listdir(path)]
@@ -480,3 +509,21 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             test_runner=self._TEST_RUNNER,
             build_targets=set(),
             data=data))
+
+    def find_test_by_cc_class_name(self, class_name, module_name=None,
+                                   rel_config=None):
+        """Find test files given a cc class name.
+
+        If module_name and rel_config not given, test will be determined
+        by looking up the tree for files which has input class.
+
+        Args:
+            class_name: A string of the test's class name.
+            module_name: Optional. A string of the module name to use.
+            rel_config: Optional. A string of module dir relative to repo root.
+
+        Returns:
+            A populated TestInfo namedtuple if test found, else None.
+        """
+        return self.find_test_by_class_name(class_name, module_name,
+                                            rel_config, is_native_test=True)

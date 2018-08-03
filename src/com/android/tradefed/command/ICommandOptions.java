@@ -166,4 +166,10 @@ public interface ICommandOptions {
 
     /** Sets whether or not we should use TF containers */
     public void setShouldUseSandboxing(boolean use);
+
+    /** Returns true if we should use the Tf sandbox in a test mode. */
+    public boolean shouldUseSandboxTestMode();
+
+    /** Sets whether or not we should use the TF sandbox test mode. */
+    public void setUseSandboxTestMode(boolean use);
 }
