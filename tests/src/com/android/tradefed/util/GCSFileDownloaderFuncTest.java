@@ -33,32 +33,21 @@ import java.io.InputStream;
 public class GCSFileDownloaderFuncTest {
 
     private static final String GSUTIL = "gsutil";
-    private static final String BUCKET_NAME_PREFIX = "tradefed_function_test";
+    private static final String BUCKET_NAME = "tradefed_function_test";
     private static final String FILE_NAME = "a_host_config.xml";
     private static final String FILE_CONTENT = "Hello World!";
-    private static final String PROJECT_ID = "google.com:tradefed-cluster-staging";
     private static final long TIMEOUT = 10000;
-    private static String sBucketName;
-    private static String sBucketUrl;
+    private static String sRoot;
 
     private GCSFileDownloader mDownloader;
 
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
-        File tempFile = FileUtil.createTempFile(BUCKET_NAME_PREFIX, "");
-        sBucketName = tempFile.getName();
+        File tempFile =
+                FileUtil.createTempFile(GCSFileDownloaderFuncTest.class.getSimpleName(), "");
+        sRoot = tempFile.getName();
         FileUtil.deleteFile(tempFile);
-        sBucketUrl = "gs://" + sBucketName;
         CommandResult cr =
-                RunUtil.getDefault()
-                        .runTimedCmd(TIMEOUT, GSUTIL, "mb", "-p", PROJECT_ID, sBucketUrl);
-        Assert.assertEquals(
-                String.format(
-                        "Filed to create bucket %s %s: %s",
-                        PROJECT_ID, sBucketName, cr.getStderr()),
-                CommandStatus.SUCCESS,
-                cr.getStatus());
-        cr =
                 RunUtil.getDefault()
                         .runTimedCmdWithInput(
                                 TIMEOUT,
@@ -66,10 +55,11 @@ public class GCSFileDownloaderFuncTest {
                                 GSUTIL,
                                 "cp",
                                 "-",
-                                String.format("gs://%s/%s", sBucketName, FILE_NAME));
+                                String.format("gs://%s/%s/%s", BUCKET_NAME, sRoot, FILE_NAME));
         Assert.assertEquals(
                 String.format(
-                        "Filed to create file %s %s: %s", sBucketName, FILE_NAME, cr.getStderr()),
+                        "Filed to create file gs://%s/%s/%s: %s",
+                        BUCKET_NAME, sRoot, FILE_NAME, cr.getStderr()),
                 CommandStatus.SUCCESS,
                 cr.getStatus());
     }
@@ -79,14 +69,14 @@ public class GCSFileDownloaderFuncTest {
         CommandResult cr =
                 RunUtil.getDefault()
                         .runTimedCmd(
-                                TIMEOUT, GSUTIL, "rm", String.format("gs://%s/*", sBucketName));
+                                TIMEOUT,
+                                GSUTIL,
+                                "rm",
+                                "-r",
+                                String.format("gs://%s/%s", BUCKET_NAME, sRoot));
         Assert.assertEquals(
-                String.format("Filed to clear bucket %s: %s", sBucketName, cr.getStderr()),
-                CommandStatus.SUCCESS,
-                cr.getStatus());
-        cr = RunUtil.getDefault().runTimedCmd(TIMEOUT, GSUTIL, "rb", "-f", sBucketUrl);
-        Assert.assertEquals(
-                String.format("Filed to delete bucket %s: %s", sBucketName, cr.getStderr()),
+                String.format(
+                        "Filed to clear files gs://%s/%s: %s", BUCKET_NAME, sRoot, cr.getStderr()),
                 CommandStatus.SUCCESS,
                 cr.getStatus());
     }
@@ -98,7 +88,7 @@ public class GCSFileDownloaderFuncTest {
 
     @Test
     public void testDownloadFile() throws Exception {
-        InputStream inputStream = mDownloader.downloadFile(sBucketName, FILE_NAME);
+        InputStream inputStream = mDownloader.downloadFile(BUCKET_NAME, sRoot + "/" + FILE_NAME);
         String content = StreamUtil.getStringFromStream(inputStream);
         Assert.assertEquals(FILE_CONTENT, content);
     }
@@ -106,7 +96,7 @@ public class GCSFileDownloaderFuncTest {
     @Test
     public void testDownloadFile_notExist() throws Exception {
         try {
-            mDownloader.downloadFile(sBucketName, "non_exist_file");
+            mDownloader.downloadFile(BUCKET_NAME, sRoot + "/" + "non_exist_file");
             Assert.fail("Should throw IOExcepiton.");
         } catch (IOException e) {
             // Expect IOException

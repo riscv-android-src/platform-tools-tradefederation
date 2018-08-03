@@ -19,7 +19,6 @@ package com.android.tradefed.testtype.suite;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
-
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -34,7 +33,10 @@ import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -68,7 +70,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
     private TestFailureListener mFailureListener;
     private IInvocationContext mModuleInvocationContext;
     private IConfiguration mModuleConfiguration;
-    private List<TestRunResult> mTestRunResultCollector;
+    private Map<String, List<TestRunResult>> mRunNameToRunResultsMap;
     private List<ModuleListener> mModuleListenerCollector;
     private List<ITestInvocationListener> mModuleLevelListeners;
     private ILogSaver mLogSaver;
@@ -82,7 +84,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
             List<ITestInvocationListener> moduleLevelListeners,
             int maxRunLimit) {
         mTest = test;
-        mTestRunResultCollector = new ArrayList<TestRunResult>();
+        mRunNameToRunResultsMap = new LinkedHashMap<>();
         mFailureListener = failureListener;
         mModuleListenerCollector = new ArrayList<ModuleListener>();
         mIsMetricCollectorInitialized = false;
@@ -293,18 +295,36 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
         } finally {
             ModuleListener currentModuleListener =
                     mModuleListenerCollector.get(mModuleListenerCollector.size() - 1);
-            mTestRunResultCollector.addAll(currentModuleListener.getRunResults());
+            setRunNameForResults(currentModuleListener.getMergedTestRunResults());
+        }
+    }
+
+    private void setRunNameForResults(Collection<TestRunResult> results) {
+        for (TestRunResult run : results) {
+            if (!mRunNameToRunResultsMap.containsKey(run.getName())) {
+                mRunNameToRunResultsMap.put(run.getName(), new ArrayList<>());
+            }
+            mRunNameToRunResultsMap.get(run.getName()).add(run);
         }
     }
 
     /** Get the merged TestRunResults from each {@link IRemoteTest} run. */
-    public TestRunResult getFinalTestRunResult() {
-        return TestRunResult.merge(mTestRunResultCollector);
+    public List<TestRunResult> getFinalTestRunResults() {
+        List<TestRunResult> finalList = new ArrayList<>();
+        for (List<TestRunResult> result : mRunNameToRunResultsMap.values()) {
+            if (result.size() > 1 && mMaxRunLimit > 1) {
+                // If we had several runs for different attempts, merge them.
+                finalList.add(TestRunResult.merge(result));
+            } else {
+                finalList.addAll(result);
+            }
+        }
+        return finalList;
     }
 
     @VisibleForTesting
-    List<TestRunResult> getTestRunResultCollector() {
-        return mTestRunResultCollector;
+    Map<String, List<TestRunResult>> getTestRunResultCollected() {
+        return mRunNameToRunResultsMap;
     }
 
     /** Check if any testRunResult has ever failed. */

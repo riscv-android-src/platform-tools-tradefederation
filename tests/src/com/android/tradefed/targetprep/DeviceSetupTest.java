@@ -773,7 +773,8 @@ public class DeviceSetupTest extends TestCase {
     public void testSetup_set_timezone_LA() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
-        doCommandsExpectations("setprop \"persist.sys.timezone\" \"America/Los_Angeles\"");
+        EasyMock.expect(mMockDevice.setProperty("persist.sys.timezone", "America/Los_Angeles"))
+                .andReturn(true);
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setTimezone("America/Los_Angeles");

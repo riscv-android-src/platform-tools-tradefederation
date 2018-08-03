@@ -15,11 +15,13 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.hasItem;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.fail;
 
 import com.android.tradefed.build.DeviceBuildInfo;
@@ -34,7 +36,6 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 
-
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,8 +44,8 @@ import org.junit.runners.JUnit4;
 
 import java.io.File;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 /** Unit tests for {@link BaseTestSuite}. */
@@ -68,6 +69,7 @@ public class BaseTestSuiteTest {
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn("armeabi-v7a");
         EasyMock.replay(mMockDevice);
     }
+
     /**
      * Test BaseTestSuite that hardcodes the abis to avoid failures related to running the tests
      * against a particular abi build of tradefed.
@@ -75,7 +77,7 @@ public class BaseTestSuiteTest {
     public static class AbiBaseTestSuite extends BaseTestSuite {
         @Override
         public Set<IAbi> getAbis(ITestDevice device) throws DeviceNotAvailableException {
-            Set<IAbi> abis = new HashSet<>();
+            Set<IAbi> abis = new LinkedHashSet<>();
             abis.add(new Abi("arm64-v8a", AbiUtils.getBitness("arm64-v8a")));
             abis.add(new Abi("armeabi-v7a", AbiUtils.getBitness("armeabi-v7a")));
             return abis;
@@ -246,6 +248,78 @@ public class BaseTestSuiteTest {
         assertEquals(2, configMap.size());
         assertTrue(configMap.containsKey("arm64-v8a suite/stubAbi"));
         assertTrue(configMap.containsKey("armeabi-v7a suite/stubAbi"));
+        EasyMock.verify(mockDevice);
+    }
+
+    /**
+     * Test for {@link BaseTestSuite#loadTests()} when loading a configuration with parameterized
+     * metadata.
+     */
+    @Test
+    public void testLoadTests_parameterizedModule() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite-parameters");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.testtype.suite.TestSuiteStub:"
+                        + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(2, configMap.size());
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized"));
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized[instant]"));
+        EasyMock.verify(mockDevice);
+
+        TestSuiteStub testSuiteStub =
+                (TestSuiteStub)
+                        configMap
+                                .get("arm64-v8a suite/stub-parameterized[instant]")
+                                .getTests()
+                                .get(0);
+        assertEquals(0, testSuiteStub.getIncludeAnnotations().size());
+        // This is added by InstantAppHandler to avoid running full mode tests in instant mode
+        assertTrue(
+                testSuiteStub
+                        .getExcludeAnnotations()
+                        .contains("android.platform.test.annotations.AppModeFull"));
+        // This should not be set. When coming from the suite or anywhere else, in instant mode
+        // that filter is eliminated to properly run instant mode.
+        assertFalse(
+                testSuiteStub
+                        .getExcludeAnnotations()
+                        .contains("android.platform.test.annotations.AppModeInstant"));
+    }
+
+    /**
+     * Test loading a parameterized config with a multi_abi specification. In this case all abis are
+     * created.
+     */
+    @Test
+    public void testLoadTests_parameterizedModule_multiAbi() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite-parameters-abi");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.testtype.suite.TestSuiteStub:"
+                        + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(5, configMap.size());
+        // stub-parameterized-abi2 is not parameterized so only its primary abi version is created.
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi2"));
+        // stub-parameterized-abi is parameterized and multi_abi so it creates all the combinations.
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi"));
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi[instant]"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/stub-parameterized-abi"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/stub-parameterized-abi[instant]"));
         EasyMock.verify(mockDevice);
     }
 }

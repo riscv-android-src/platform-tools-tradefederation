@@ -17,6 +17,7 @@ package com.android.tradefed.invoker;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 
 import com.android.tradefed.config.Configuration;
@@ -239,5 +240,82 @@ public class InvocationExecutionTest {
         inOrder.verify(stub2).tearDown(mContext, null);
         inOrder.verify(stub1).isDisabled();
         inOrder.verify(stub1).tearDown(mContext, null);
+    }
+
+    /** Ensure that during tear down the original exception is kept. */
+    @Test
+    public void testDoTearDown() throws Throwable {
+        IMultiTargetPreparer stub1 = mock(IMultiTargetPreparer.class);
+        IMultiTargetPreparer stub2 = mock(IMultiTargetPreparer.class);
+        IMultiTargetPreparer stub3 = mock(IMultiTargetPreparer.class);
+        IMultiTargetPreparer stub4 = mock(IMultiTargetPreparer.class);
+        mConfig.setMultiPreTargetPreparers(Arrays.asList(stub1, stub2));
+        mConfig.setMultiTargetPreparers(Arrays.asList(stub3, stub4));
+
+        ITargetCleaner cleaner = mock(ITargetCleaner.class);
+        IDeviceConfiguration holder = new DeviceConfigurationHolder("default");
+        holder.addSpecificConfig(cleaner);
+        mConfig.setDeviceConfig(holder);
+        mContext.addAllocatedDevice("default", mock(ITestDevice.class));
+        // Ensure that the original error is the one passed around.
+        Throwable exception = new Throwable("Original error");
+        mExec.doTeardown(mContext, mConfig, exception);
+
+        InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
+
+        // tear down
+        inOrder.verify(stub4).isDisabled();
+        inOrder.verify(stub4).tearDown(mContext, exception);
+        inOrder.verify(stub3).isDisabled();
+        inOrder.verify(stub3).tearDown(mContext, exception);
+
+        inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any(), Mockito.any());
+
+        inOrder.verify(stub2).isDisabled();
+        inOrder.verify(stub2).tearDown(mContext, exception);
+        inOrder.verify(stub1).isDisabled();
+        inOrder.verify(stub1).tearDown(mContext, exception);
+    }
+
+    /** Ensure that the full tear down is attempted before throwning an exception. */
+    @Test
+    public void testDoTearDown_exception() throws Throwable {
+        IMultiTargetPreparer stub1 = mock(IMultiTargetPreparer.class);
+        IMultiTargetPreparer stub2 = mock(IMultiTargetPreparer.class);
+        IMultiTargetPreparer stub3 = mock(IMultiTargetPreparer.class);
+        IMultiTargetPreparer stub4 = mock(IMultiTargetPreparer.class);
+        mConfig.setMultiPreTargetPreparers(Arrays.asList(stub1, stub2));
+        mConfig.setMultiTargetPreparers(Arrays.asList(stub3, stub4));
+
+        ITargetCleaner cleaner = mock(ITargetCleaner.class);
+        IDeviceConfiguration holder = new DeviceConfigurationHolder("default");
+        holder.addSpecificConfig(cleaner);
+        mConfig.setDeviceConfig(holder);
+        mContext.addAllocatedDevice("default", mock(ITestDevice.class));
+
+        // Ensure that the original error is the one passed around.
+        Throwable exception = new Throwable("Original error");
+        doThrow(new RuntimeException("Oups I failed")).when(stub3).tearDown(mContext, exception);
+
+        try {
+            mExec.doTeardown(mContext, mConfig, exception);
+            fail("Should have thrown an exception");
+        } catch (RuntimeException expected) {
+            // Expected
+        }
+        // Ensure that even in case of exception, the full tear down goes through before throwing.
+        InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
+        // tear down
+        inOrder.verify(stub4).isDisabled();
+        inOrder.verify(stub4).tearDown(mContext, exception);
+        inOrder.verify(stub3).isDisabled();
+        inOrder.verify(stub3).tearDown(mContext, exception);
+
+        inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any(), Mockito.any());
+
+        inOrder.verify(stub2).isDisabled();
+        inOrder.verify(stub2).tearDown(mContext, exception);
+        inOrder.verify(stub1).isDisabled();
+        inOrder.verify(stub1).tearDown(mContext, exception);
     }
 }

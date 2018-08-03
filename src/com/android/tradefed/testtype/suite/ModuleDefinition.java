@@ -22,6 +22,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -35,6 +36,7 @@ import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.LogFile;
+import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
@@ -338,16 +340,24 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // Run the tests
         try {
             if (preparationException != null) {
+                List<ITestInvocationListener> allListeners = new ArrayList<>();
+                allListeners.add(listener);
+                if (moduleLevelListeners != null) {
+                    allListeners.addAll(moduleLevelListeners);
+                }
+                // Report the early module failures to the moduleListeners too in order for them
+                // to know about it.
+                ITestInvocationListener forwarder = new ResultForwarder(allListeners);
                 // For reporting purpose we create a failure placeholder with the error stack
                 // similar to InitializationError of JUnit.
-                listener.testRunStarted(getId(), 1);
+                forwarder.testRunStarted(getId(), 1);
                 StringWriter sw = new StringWriter();
                 preparationException.printStackTrace(new PrintWriter(sw));
-                listener.testRunFailed(sw.toString());
+                forwarder.testRunFailed(sw.toString());
                 HashMap<String, Metric> metricsProto = new HashMap<>();
                 metricsProto.put(
                         TEST_TIME, TfMetricProtoUtil.createSingleValue(0L, "milliseconds"));
-                listener.testRunEnded(0, metricsProto);
+                forwarder.testRunEnded(0, metricsProto);
                 // If it was a not available exception rethrow it to signal the new device state.
                 if (preparationException instanceof DeviceNotAvailableException) {
                     throw (DeviceNotAvailableException) preparationException;
@@ -411,10 +421,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                             getId());
                     throw dnae;
                 } finally {
-                    TestRunResult finalResult = retriableTest.getFinalTestRunResult();
-                    if (finalResult != null) {
-                        mTestsResults.add(finalResult);
-                    }
+                    // A single module can generate several test runs
+                    mTestsResults.addAll(retriableTest.getFinalTestRunResults());
                     mExpectedTests += retriableTest.getNumIndividualTests();
                 }
                 // After the run, if the test failed (even after retry the final result passed) has
@@ -427,7 +435,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             long cleanStartTime = getCurrentTime();
             try {
                 // Tear down
-                runTearDown();
+                runTearDown(preparationException);
             } catch (DeviceNotAvailableException tearDownException) {
                 CLog.e(
                         "Module %s failed during tearDown with: %s",
@@ -627,7 +635,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     /** Run all the tear down steps from preparers. */
-    private void runTearDown() throws DeviceNotAvailableException {
+    private void runTearDown(Exception setupException) throws DeviceNotAvailableException {
         // Tear down
         List<IMultiTargetPreparer> cleanerList = new ArrayList<>(mMultiPreparers);
         Collections.reverse(cleanerList);
@@ -637,7 +645,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 continue;
             }
             CLog.d("Multi cleaner: %s", multiCleaner.getClass().getSimpleName());
-            multiCleaner.tearDown(mModuleInvocationContext, null);
+            multiCleaner.tearDown(mModuleInvocationContext, setupException);
         }
 
         for (String deviceName : mModuleInvocationContext.getDeviceConfigNames()) {
@@ -653,8 +661,25 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                         CLog.d("%s has been disabled. skipping.", cleaner);
                         continue;
                     }
-                    cleaner.tearDown(
-                            device, mModuleInvocationContext.getBuildInfo(deviceName), null);
+
+                    RecoveryMode origMode = null;
+                    try {
+                        // If an exception was generated in setup with a DNAE do not attempt any
+                        // recovery again in case we hit the device not available again.
+                        if (setupException != null
+                                && setupException instanceof DeviceNotAvailableException) {
+                            origMode = device.getRecoveryMode();
+                            device.setRecoveryMode(RecoveryMode.NONE);
+                        }
+                        cleaner.tearDown(
+                                device,
+                                mModuleInvocationContext.getBuildInfo(deviceName),
+                                setupException);
+                    } finally {
+                        if (origMode != null) {
+                            device.setRecoveryMode(origMode);
+                        }
+                    }
                 }
             }
         }

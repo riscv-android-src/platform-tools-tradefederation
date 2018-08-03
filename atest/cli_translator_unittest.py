@@ -31,7 +31,18 @@ import unittest_utils
 from test_finders import test_finder_base
 
 # TEST_MAPPING related consts
-TEST_MAPPING_DIR = os.path.join(uc.TEST_DATA_DIR, 'test_mapping', 'folder1')
+TEST_MAPPING_TOP_DIR = os.path.join(uc.TEST_DATA_DIR, 'test_mapping')
+TEST_MAPPING_DIR = os.path.join(TEST_MAPPING_TOP_DIR, 'folder1')
+TEST_1 = test_mapping.TestDetail({'name': 'test1'})
+TEST_2 = test_mapping.TestDetail({'name': 'test2'})
+TEST_3 = test_mapping.TestDetail({'name': 'test3'})
+TEST_4 = test_mapping.TestDetail({'name': 'test4'})
+TEST_5 = test_mapping.TestDetail({'name': 'test5'})
+TEST_6 = test_mapping.TestDetail({'name': 'test6'})
+TEST_7 = test_mapping.TestDetail({'name': 'test7'})
+TEST_8 = test_mapping.TestDetail({'name': 'test8'})
+TEST_9 = test_mapping.TestDetail({'name': 'test9'})
+TEST_10 = test_mapping.TestDetail({'name': 'test10'})
 
 SEARCH_DIR_RE = re.compile(r'^find ([^ ]*).*$')
 
@@ -56,6 +67,13 @@ class CLITranslatorUnittests(unittest.TestCase):
     def setUp(self):
         """Run before execution of every test"""
         self.ctr = cli_t.CLITranslator()
+
+        # Create a mock of args.
+        self.args = mock.Mock
+        self.args.tests = []
+        # Test mapping related args
+        self.args.test_mapping = False
+        self.args.include_subdirs = False
 
     @mock.patch.object(test_finder_handler, 'get_find_methods_for_test')
     def test_get_test_infos(self, mock_getfindmethods):
@@ -110,52 +128,131 @@ class CLITranslatorUnittests(unittest.TestCase):
                     test_detail2.options,
                     test_info.data[constants.TI_MODULE_ARG])
 
-    @mock.patch.object(cli_t.CLITranslator, '_find_tests_by_test_mapping')
     @mock.patch.object(cli_t.CLITranslator, '_get_test_infos',
                        side_effect=gettestinfos_side_effect)
-    #pylint: disable=unused-argument
-    def test_translate(self, _info, mock_testmapping):
-        """Test translate method."""
+    def test_translate_class(self, _info):
+        """Test translate method for tests by class name."""
         # Check that we can find a class.
-        targets, test_infos = self.ctr.translate([uc.CLASS_NAME])
+        self.args.tests = [uc.CLASS_NAME]
+        targets, test_infos = self.ctr.translate(self.args)
         unittest_utils.assert_strict_equal(
             self, targets, uc.CLASS_BUILD_TARGETS)
         unittest_utils.assert_strict_equal(self, test_infos, {uc.CLASS_INFO})
 
+    @mock.patch.object(cli_t.CLITranslator, '_get_test_infos',
+                       side_effect=gettestinfos_side_effect)
+    def test_translate_module(self, _info):
+        """Test translate method for tests by module or class name."""
         # Check that we get all the build targets we expect.
-        targets, test_infos = self.ctr.translate([uc.MODULE_NAME,
-                                                  uc.CLASS_NAME])
+        self.args.tests = [uc.MODULE_NAME, uc.CLASS_NAME]
+        targets, test_infos = self.ctr.translate(self.args)
         unittest_utils.assert_strict_equal(
             self, targets, uc.MODULE_CLASS_COMBINED_BUILD_TARGETS)
         unittest_utils.assert_strict_equal(self, test_infos, {uc.MODULE_INFO,
                                                               uc.CLASS_INFO})
 
+    @mock.patch.object(cli_t.CLITranslator, '_find_tests_by_test_mapping')
+    @mock.patch.object(cli_t.CLITranslator, '_get_test_infos',
+                       side_effect=gettestinfos_side_effect)
+    def test_translate_test_mapping(self, _info, mock_testmapping):
+        """Test translate method for tests in test mapping."""
         # Check that test mappings feeds into get_test_info properly.
         test_detail1 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST)
         test_detail2 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST_WITH_OPTION)
         mock_testmapping.return_value = ([test_detail1, test_detail2], None)
-        targets, test_infos = self.ctr.translate([])
+        self.args.tests = []
+        targets, test_infos = self.ctr.translate(self.args)
         unittest_utils.assert_strict_equal(
             self, targets, uc.MODULE_CLASS_COMBINED_BUILD_TARGETS)
         unittest_utils.assert_strict_equal(self, test_infos, {uc.MODULE_INFO,
                                                               uc.CLASS_INFO})
 
-    def test_find_tests_by_test_mapping(self):
-        """Test _find_tests_by_test_mapping method."""
-        tests, all_tests = self.ctr._find_tests_by_test_mapping(
-            path=TEST_MAPPING_DIR, file_name='test_mapping_sample')
-        expected = set(['test2', 'test1'])
+    @mock.patch.object(cli_t.CLITranslator, '_find_tests_by_test_mapping')
+    @mock.patch.object(cli_t.CLITranslator, '_get_test_infos',
+                       side_effect=gettestinfos_side_effect)
+    def test_translate_test_mapping_all(self, _info, mock_testmapping):
+        """Test translate method for tests in test mapping."""
+        # Check that test mappings feeds into get_test_info properly.
+        test_detail1 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST)
+        test_detail2 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST_WITH_OPTION)
+        mock_testmapping.return_value = ([test_detail1, test_detail2], None)
+        self.args.tests = ['src_path:all']
+        self.args.test_mapping = True
+        targets, test_infos = self.ctr.translate(self.args)
+        unittest_utils.assert_strict_equal(
+            self, targets, uc.MODULE_CLASS_COMBINED_BUILD_TARGETS)
+        unittest_utils.assert_strict_equal(self, test_infos, {uc.MODULE_INFO,
+                                                              uc.CLASS_INFO})
+
+    def test_find_tests_by_test_mapping_presubmit(self):
+        """Test _find_tests_by_test_mapping method to locate presubmit tests."""
+        os_environ_mock = {constants.ANDROID_BUILD_TOP: uc.TEST_DATA_DIR}
+        with mock.patch.dict('os.environ', os_environ_mock, clear=True):
+            tests, all_tests = self.ctr._find_tests_by_test_mapping(
+                path=TEST_MAPPING_DIR, file_name='test_mapping_sample',
+                checked_files=set())
+        expected = set([TEST_1, TEST_2, TEST_5, TEST_7, TEST_9])
         expected_all_tests = {'presubmit': expected,
-                              'postsubmit': set(['test3'])}
+                              'postsubmit': set(
+                                  [TEST_3, TEST_6, TEST_8, TEST_10]),
+                              'other_group': set([TEST_4])}
         self.assertEqual(expected, tests)
         self.assertEqual(expected_all_tests, all_tests)
 
-        tests, all_tests = self.ctr._find_tests_by_test_mapping(
-            path=TEST_MAPPING_DIR, test_group=constants.TEST_GROUP_POSTSUBMIT,
-            file_name='test_mapping_sample')
-        expected = set(['test1', 'test2', 'test3'])
+    def test_find_tests_by_test_mapping_postsubmit(self):
+        """Test _find_tests_by_test_mapping method to locate postsubmit tests.
+        """
+        os_environ_mock = {constants.ANDROID_BUILD_TOP: uc.TEST_DATA_DIR}
+        with mock.patch.dict('os.environ', os_environ_mock, clear=True):
+            tests, all_tests = self.ctr._find_tests_by_test_mapping(
+                path=TEST_MAPPING_DIR,
+                test_group=constants.TEST_GROUP_POSTSUBMIT,
+                file_name='test_mapping_sample', checked_files=set())
+        expected_presubmit = set([TEST_1, TEST_2, TEST_5, TEST_7, TEST_9])
+        expected = set(
+            [TEST_1, TEST_2, TEST_3, TEST_5, TEST_6, TEST_7, TEST_8, TEST_9,
+             TEST_10])
+        expected_all_tests = {'presubmit': expected_presubmit,
+                              'postsubmit': set(
+                                  [TEST_3, TEST_6, TEST_8, TEST_10]),
+                              'other_group': set([TEST_4])}
         self.assertEqual(expected, tests)
         self.assertEqual(expected_all_tests, all_tests)
+
+    def test_find_tests_by_test_mapping_all_group(self):
+        """Test _find_tests_by_test_mapping method to locate postsubmit tests.
+        """
+        os_environ_mock = {constants.ANDROID_BUILD_TOP: uc.TEST_DATA_DIR}
+        with mock.patch.dict('os.environ', os_environ_mock, clear=True):
+            tests, all_tests = self.ctr._find_tests_by_test_mapping(
+                path=TEST_MAPPING_DIR, test_group=constants.TEST_GROUP_ALL,
+                file_name='test_mapping_sample', checked_files=set())
+        expected_presubmit = set([TEST_1, TEST_2, TEST_5, TEST_7, TEST_9])
+        expected = set([
+            TEST_1, TEST_2, TEST_3, TEST_4, TEST_5, TEST_6, TEST_7, TEST_8,
+            TEST_9, TEST_10])
+        expected_all_tests = {'presubmit': expected_presubmit,
+                              'postsubmit': set(
+                                  [TEST_3, TEST_6, TEST_8, TEST_10]),
+                              'other_group': set([TEST_4])}
+        self.assertEqual(expected, tests)
+        self.assertEqual(expected_all_tests, all_tests)
+
+    def test_find_tests_by_test_mapping_include_subdir(self):
+        """Test _find_tests_by_test_mapping method to include sub directory."""
+        os_environ_mock = {constants.ANDROID_BUILD_TOP: uc.TEST_DATA_DIR}
+        with mock.patch.dict('os.environ', os_environ_mock, clear=True):
+            tests, all_tests = self.ctr._find_tests_by_test_mapping(
+                path=TEST_MAPPING_TOP_DIR, file_name='test_mapping_sample',
+                include_subdirs=True, checked_files=set())
+        expected = set([TEST_1, TEST_2, TEST_5, TEST_7, TEST_9])
+        expected_all_tests = {'presubmit': expected,
+                              'postsubmit': set([
+                                  TEST_3, TEST_6, TEST_8, TEST_10]),
+                              'other_group': set([TEST_4])}
+        self.assertEqual(expected, tests)
+        self.assertEqual(expected_all_tests, all_tests)
+
 
 if __name__ == '__main__':
     unittest.main()

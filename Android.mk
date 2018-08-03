@@ -77,7 +77,8 @@ $(tradefed_dist_zip) : $(tradefed_dist_files)
 	@echo "Package: $@"
 	$(hide) rm -rf $(dir $@) && mkdir -p $(dir $@)
 	$(hide) cp -f $^ $(dir $@)
-	$(hide) cd $(dir $@) && zip -q $(notdir $@) $(notdir $^)
+	$(hide) echo $(BUILD_NUMBER_FROM_FILE) > $(dir $@)/version.txt
+	$(hide) cd $(dir $@) && zip -q $(notdir $@) $(notdir $^) version.txt
 
 $(call dist-for-goals, apps_only, $(tradefed_dist_zip))
 

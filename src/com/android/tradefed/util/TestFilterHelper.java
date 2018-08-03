@@ -127,6 +127,13 @@ public class TestFilterHelper {
         return mExcludeAnnotations;
     }
 
+    public void clearIncludeAnnotations() {
+        mIncludeAnnotations.clear();
+    }
+
+    public void clearExcludeAnnotations() {
+        mExcludeAnnotations.clear();
+    }
 
     /**
      * Check if an element that has annotation passes the filter

@@ -188,19 +188,6 @@ public class SubprocessResultsReporter
 
     /** {@inheritDoc} */
     @Override
-    public void testLogSaved(
-            String dataName, LogDataType dataType, InputStreamSource dataStream, LogFile logFile) {
-        // Do nothing, we are not passing the testLogSaved information to the parent process.
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void setLogSaver(ILogSaver logSaver) {
-        // Do nothing, this result_reporter does not need the log saver.
-    }
-
-    /** {@inheritDoc} */
-    @Override
     public void logAssociation(String dataName, LogFile logFile) {
         LogAssociationEventInfo info = new LogAssociationEventInfo(dataName, logFile);
         printEvent(SubprocessTestResultsParser.StatusKeys.LOG_ASSOCIATION, info);
@@ -295,5 +282,10 @@ public class SubprocessResultsReporter
     public void close() {
         StreamUtil.close(mReportSocket);
         StreamUtil.close(mPrintWriter);
+    }
+
+    /** Sets whether or not we should output the test logged or not. */
+    public void setOutputTestLog(boolean outputTestLog) {
+        mOutputTestlog = outputTestLog;
     }
 }

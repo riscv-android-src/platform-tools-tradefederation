@@ -42,6 +42,9 @@ public class SandboxInvocationRunner {
         // TODO: refactor TestInvocation to be more modular in the sandbox handling
         ISandbox sandbox =
                 (ISandbox) config.getConfigurationObject(Configuration.SANDBOX_TYPE_NAME);
+        if (sandbox == null) {
+            throw new RuntimeException("Couldn't find the sandbox object.");
+        }
         Exception res = sandbox.prepareEnvironment(context, config, listener);
         if (res != null) {
             CLog.w("Sandbox prepareEnvironment threw an Exception.");

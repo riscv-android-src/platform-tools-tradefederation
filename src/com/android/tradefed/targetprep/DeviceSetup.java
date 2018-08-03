@@ -701,9 +701,8 @@ public class DeviceSetup extends BaseTargetPreparer implements ITargetCleaner {
         StringBuilder sb = new StringBuilder();
         for (Map.Entry<String, String> prop : mSetProps.entrySet()) {
             if (prop.getKey().startsWith(PERSIST_PREFIX)) {
-                String command = String.format("setprop \"%s\" \"%s\"",
-                        prop.getKey(), prop.getValue());
-                device.executeShellCommand(command);
+                // TODO: Check that set was successful
+                device.setProperty(prop.getKey(), prop.getValue());
             } else {
                 sb.append(String.format("%s=%s\n", prop.getKey(), prop.getValue()));
             }

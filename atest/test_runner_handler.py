@@ -19,14 +19,18 @@ Aggregates test runners, groups tests by test runners and kicks off tests.
 import itertools
 
 import atest_error
+import result_reporter
+
 from test_runners import atest_tf_test_runner
 from test_runners import robolectric_test_runner
+from test_runners import suite_plan_test_runner
 from test_runners import vts_tf_test_runner
 
 # pylint: disable=line-too-long
 _TEST_RUNNERS = {
     atest_tf_test_runner.AtestTradefedTestRunner.NAME: atest_tf_test_runner.AtestTradefedTestRunner,
     robolectric_test_runner.RobolectricTestRunner.NAME: robolectric_test_runner.RobolectricTestRunner,
+    suite_plan_test_runner.SuitePlanTestRunner.NAME: suite_plan_test_runner.SuitePlanTestRunner,
     vts_tf_test_runner.VtsTradefedTestRunner.NAME: vts_tf_test_runner.VtsTradefedTestRunner,
 }
 
@@ -101,5 +105,13 @@ def run_all_tests(results_dir, test_infos, extra_args):
         test_infos: List of TestInfo.
         extra_args: Dict of extra args for test runners to use.
     """
+    reporter = result_reporter.ResultReporter()
+    reporter.print_starting_text()
     for test_runner, tests in _group_tests_by_test_runners(test_infos):
-        test_runner(results_dir).run_tests(tests, extra_args)
+        try:
+            test_runner = test_runner(results_dir)
+            test_runner.run_tests(tests, extra_args, reporter)
+        # pylint: disable=broad-except
+        except Exception as error:
+            reporter.runner_failure(test_runner.NAME, error.message)
+    reporter.print_summary()

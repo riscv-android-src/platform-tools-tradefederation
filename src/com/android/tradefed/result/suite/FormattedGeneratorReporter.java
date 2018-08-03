@@ -48,7 +48,7 @@ public abstract class FormattedGeneratorReporter extends SuiteResultReporter {
         final SuiteResultHolder holder = new SuiteResultHolder();
         holder.context = getInvocationContext();
 
-        holder.runResults = getRunResults();
+        holder.runResults = getMergedTestRunResults();
         //holder.loggedFiles = mLoggedFiles;
         holder.modulesAbi = getModulesAbi();
 

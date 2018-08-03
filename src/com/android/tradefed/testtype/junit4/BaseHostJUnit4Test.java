@@ -19,7 +19,6 @@ package com.android.tradefed.testtype.junit4;
 import static org.junit.Assert.assertTrue;
 
 import com.android.annotations.VisibleForTesting;
-import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
@@ -40,6 +39,8 @@ import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
+import com.android.tradefed.util.ListInstrumentationParser;
+import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
 
 import org.junit.After;
 import org.junit.Assume;
@@ -58,7 +59,6 @@ import java.util.concurrent.TimeUnit;
 public abstract class BaseHostJUnit4Test
         implements IAbiReceiver, IBuildReceiver, IDeviceTest, IInvocationContextReceiver {
 
-    static final String AJUR_RUNNER = "android.support.test.runner.AndroidJUnitRunner";
     static final long DEFAULT_TEST_TIMEOUT_MS = 10 * 60 * 1000L;
     private static final long DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS = 10 * 60 * 1000L; //10min
 
@@ -227,7 +227,7 @@ public abstract class BaseHostJUnit4Test
             throws DeviceNotAvailableException {
         return runDeviceTests(
                 getDevice(),
-                AJUR_RUNNER,
+                null,
                 pkgName,
                 testClassName,
                 null,
@@ -254,7 +254,7 @@ public abstract class BaseHostJUnit4Test
             throws DeviceNotAvailableException {
         return runDeviceTests(
                 getDevice(),
-                AJUR_RUNNER,
+                null,
                 pkgName,
                 testClassName,
                 null,
@@ -322,7 +322,7 @@ public abstract class BaseHostJUnit4Test
             throws DeviceNotAvailableException {
         return runDeviceTests(
                 device,
-                AJUR_RUNNER,
+                null,
                 pkgName,
                 testClassName,
                 testMethodName,
@@ -354,7 +354,7 @@ public abstract class BaseHostJUnit4Test
             throws DeviceNotAvailableException {
         return runDeviceTests(
                 device,
-                AJUR_RUNNER,
+                null,
                 pkgName,
                 testClassName,
                 testMethodName,
@@ -388,7 +388,7 @@ public abstract class BaseHostJUnit4Test
             throws DeviceNotAvailableException {
         return runDeviceTests(
                 device,
-                AJUR_RUNNER,
+                null,
                 pkgName,
                 testClassName,
                 testMethodName,
@@ -424,7 +424,7 @@ public abstract class BaseHostJUnit4Test
             throws DeviceNotAvailableException {
         return runDeviceTests(
                 device,
-                AJUR_RUNNER,
+                null,
                 pkgName,
                 testClassName,
                 testMethodName,
@@ -555,7 +555,7 @@ public abstract class BaseHostJUnit4Test
             Long maxInstrumentationTimeoutMs,
             boolean isHiddenApiCheckDisabled)
             throws DeviceNotAvailableException {
-        RemoteAndroidTestRunner testRunner = createTestRunner(pkgName, runner, device.getIDevice());
+        RemoteAndroidTestRunner testRunner = createTestRunner(pkgName, runner, device);
         String runOptions = "";
         // hidden-api-checks flag only exists in P and after.
         if (isHiddenApiCheckDisabled && (device.getApiLevel() >= 28)) {
@@ -599,8 +599,27 @@ public abstract class BaseHostJUnit4Test
 
     @VisibleForTesting
     RemoteAndroidTestRunner createTestRunner(
-            String packageName, String runnerName, IDevice device) {
-        return new DefaultRemoteAndroidTestRunner(packageName, runnerName, device);
+            String packageName, String runnerName, ITestDevice device)
+            throws DeviceNotAvailableException {
+        if (runnerName == null) {
+            ListInstrumentationParser parser = getListInstrumentationParser();
+            device.executeShellCommand("pm list instrumentation", parser);
+            for (InstrumentationTarget target : parser.getInstrumentationTargets()) {
+                if (packageName.equals(target.packageName)) {
+                    runnerName = target.runnerName;
+                }
+            }
+        }
+        // If the runner name is still null
+        if (runnerName == null) {
+            throw new RuntimeException("No runner was defined and couldn't dynamically find one.");
+        }
+        return new DefaultRemoteAndroidTestRunner(packageName, runnerName, device.getIDevice());
+    }
+
+    @VisibleForTesting
+    ListInstrumentationParser getListInstrumentationParser() {
+        return new ListInstrumentationParser();
     }
 
     @VisibleForTesting
