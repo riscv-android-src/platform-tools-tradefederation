@@ -87,6 +87,16 @@ public interface INativeDevice {
     public String getProperty(String name) throws DeviceNotAvailableException;
 
     /**
+     * Sets the given property value on the device. Requires adb root is true.
+     *
+     * @param propKey The key targeted to be set.
+     * @param propValue The property value to be set.
+     * @return returns <code>True</code> if the setprop command was successful, False otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    public boolean setProperty(String propKey, String propValue) throws DeviceNotAvailableException;
+
+    /**
      * Convenience method to get the bootloader version of this device.
      * <p/>
      * Will attempt to retrieve bootloader version from the device's current state. (ie if device
@@ -600,6 +610,13 @@ public interface INativeDevice {
      * @throws DeviceNotAvailableException
      */
     public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException;
+
+    /**
+     * Returns True if the file path on the device is an executable file, false otherwise.
+     *
+     * @throws DeviceNotAvailableException
+     */
+    public boolean isExecutable(String fullPath) throws DeviceNotAvailableException;
 
     /**
      * Return True if the path on the device is a directory, false otherwise.
@@ -1188,4 +1205,7 @@ public interface INativeDevice {
      * @param args the args to be replaced via String.format().
      */
     public void logOnDevice(String tag, LogLevel level, String format, Object... args);
+
+    /** Returns total physical memory size in bytes or -1 in case of internal error */
+    public long getTotalMemory();
 }

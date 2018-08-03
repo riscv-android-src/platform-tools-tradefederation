@@ -31,6 +31,7 @@ import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.invoker.shard.ShardBuildCloner;
+import com.android.tradefed.log.BaseLeveledLogOutput;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.LogRegistry;
@@ -448,7 +449,8 @@ public class TestInvocation implements ITestInvocation {
         if (!(device.getIDevice() instanceof StubDevice)) {
             try (InputStreamSource logcatSource = device.getLogcat()) {
                 device.clearLogcat();
-                String name = getDeviceLogName(stage);
+                String name =
+                        String.format("%s_%s", getDeviceLogName(stage), device.getSerialNumber());
                 listener.testLog(name, LogDataType.LOGCAT, logcatSource);
             }
         }
@@ -568,28 +570,33 @@ public class TestInvocation implements ITestInvocation {
             ITestInvocationListener listener,
             IInvocationExecution invocationPath)
             throws DeviceNotAvailableException {
+        Exception buildException = null;
+        boolean res = false;
         try {
-            boolean res = invocationPath.fetchBuild(context, config, rescheduler, listener);
-            if (!res) {
-                mStatus = "(no build to test)";
-                rescheduleTest(config, rescheduler);
-                // Set the exit code to error
-                setExitCode(ExitCode.NO_BUILD, new BuildRetrievalError("No build found to test."));
-                return false;
+            res = invocationPath.fetchBuild(context, config, rescheduler, listener);
+            if (res) {
+                // Successful fetch of build.
+                return true;
             }
-            return res;
+            // In case of build not found issues.
+            mStatus = "(no build to test)";
+            rescheduleTest(config, rescheduler);
+            // Set the exit code to error
+            buildException = new BuildRetrievalError("No build found to test.");
+            setExitCode(ExitCode.NO_BUILD, buildException);
         } catch (BuildRetrievalError e) {
-            // report an empty invocation, so this error is sent to listeners
-            startInvocation(config, context, listener);
-            // don't want to use #reportFailure, since that will call buildNotTested
-            listener.invocationFailed(e);
-            for (ITestDevice device : context.getDevices()) {
-                reportLogs(device, listener, Stage.ERROR);
-            }
-            reportHostLog(listener, config.getLogOutput());
-            listener.invocationEnded(0);
-            return false;
+            buildException = e;
         }
+        // Report an empty invocation, so this error is sent to listeners
+        startInvocation(config, context, listener);
+        // Don't want to use #reportFailure, since that will call buildNotTested
+        listener.invocationFailed(buildException);
+        for (ITestDevice device : context.getDevices()) {
+            reportLogs(device, listener, Stage.ERROR);
+        }
+        reportHostLog(listener, config.getLogOutput());
+        listener.invocationEnded(0L);
+        return false;
     }
 
     /** {@inheritDoc} */
@@ -613,10 +620,15 @@ public class TestInvocation implements ITestInvocation {
         InvocationScope scope = getInvocationScope();
         scope.enter();
         // Seed our TF objects to the Guice scope
+        scope.seed(IRescheduler.class, rescheduler);
         scope.seedConfiguration(config);
         try {
             mStatus = "fetching build";
-            config.getLogOutput().init();
+            ILeveledLogOutput leveledLogOutput = config.getLogOutput();
+            leveledLogOutput.init();
+            if (leveledLogOutput instanceof BaseLeveledLogOutput) {
+                ((BaseLeveledLogOutput) leveledLogOutput).initFilters(config);
+            }
             getLogRegistry().registerLogger(config.getLogOutput());
             for (String deviceName : context.getDeviceConfigNames()) {
                 context.getDevice(deviceName).clearLastConnectedWifiNetwork();
@@ -647,15 +659,23 @@ public class TestInvocation implements ITestInvocation {
                 return;
             }
 
-            mStatus = "sharding";
-            boolean sharding = invocationPath.shardConfig(config, context, rescheduler);
-            if (sharding) {
-                CLog.i("Invocation for %s has been sharded, rescheduling", context.getSerials());
-                return;
+            // If the top level invocation has --use-sandbox do not shard there. It will shard in
+            // the child invocation.
+            if (!config.getCommandOptions().shouldUseSandboxing()) {
+                mStatus = "sharding";
+                boolean sharding = invocationPath.shardConfig(config, context, rescheduler);
+                if (sharding) {
+                    CLog.i(
+                            "Invocation for %s has been sharded, rescheduling",
+                            context.getSerials());
+                    return;
+                }
             }
 
             if (config.getTests() == null || config.getTests().isEmpty()) {
                 CLog.e("No tests to run");
+                startInvocation(config, context, listener);
+                listener.invocationEnded(0L);
                 return;
             }
 

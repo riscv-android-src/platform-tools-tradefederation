@@ -15,6 +15,13 @@
  */
 package com.android.tradefed.device;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doThrow;
 
 import com.android.ddmlib.AdbCommandRejectedException;
@@ -47,9 +54,11 @@ import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.util.concurrent.SettableFuture;
 
-import junit.framework.TestCase;
-
 import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.io.File;
@@ -64,10 +73,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Unit tests for {@link NativeDevice}.
- */
-public class NativeDeviceTest extends TestCase {
+/** Unit tests for {@link NativeDevice}. */
+@RunWith(JUnit4.class)
+public class NativeDeviceTest {
 
     private static final String MOCK_DEVICE_SERIAL = "serial";
     private static final String FAKE_NETWORK_SSID = "FakeNet";
@@ -103,12 +111,8 @@ public class NativeDeviceTest extends TestCase {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    @Before
+    public void setUp() throws Exception {
         mMockIDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn(MOCK_DEVICE_SERIAL).anyTimes();
         mMockRecovery = EasyMock.createMock(IDeviceRecovery.class);
@@ -142,9 +146,10 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
-     * Test return exception for package installation
-     * {@link NativeDevice#installPackage(File, boolean, String...)}.
+     * Test return exception for package installation {@link NativeDevice#installPackage(File,
+     * boolean, String...)}.
      */
+    @Test
     public void testInstallPackages_exception() {
         try {
             mTestDevice.installPackage(new File(""), false);
@@ -157,9 +162,9 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
-     * Test return exception for package installation
-     * {@link NativeDevice#uninstallPackage(String)}.
+     * Test return exception for package installation {@link NativeDevice#uninstallPackage(String)}.
      */
+    @Test
     public void testUninstallPackages_exception() {
         try {
             mTestDevice.uninstallPackage("");
@@ -172,9 +177,10 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
-     * Test return exception for package installation
-     * {@link NativeDevice#installPackage(File, boolean, boolean, String...)}.
+     * Test return exception for package installation {@link NativeDevice#installPackage(File,
+     * boolean, boolean, String...)}.
      */
+    @Test
     public void testInstallPackagesBool_exception() {
         try {
             mTestDevice.installPackage(new File(""), false, false);
@@ -187,9 +193,10 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
-     * Test return exception for package installation
-     * {@link NativeDevice#installPackageForUser(File, boolean, int, String...)}.
+     * Test return exception for package installation {@link
+     * NativeDevice#installPackageForUser(File, boolean, int, String...)}.
      */
+    @Test
     public void testInstallPackagesForUser_exception() {
         try {
             mTestDevice.installPackageForUser(new File(""), false, 0);
@@ -202,9 +209,10 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
-     * Test return exception for package installation
-     * {@link NativeDevice#installPackageForUser(File, boolean, boolean, int, String...)}.
+     * Test return exception for package installation {@link
+     * NativeDevice#installPackageForUser(File, boolean, boolean, int, String...)}.
      */
+    @Test
     public void testInstallPackagesForUserWithPermission_exception() {
         try {
             mTestDevice.installPackageForUser(new File(""), false, false, 0);
@@ -216,9 +224,8 @@ public class NativeDeviceTest extends TestCase {
         fail("installPackageForUser should have thrown an exception");
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getInstalledPackageNames()}.
-     */
+    /** Unit test for {@link NativeDevice#getInstalledPackageNames()}. */
+    @Test
     public void testGetInstalledPackageNames_exception() throws Exception {
         try {
             mTestDevice.getInstalledPackageNames();
@@ -228,9 +235,8 @@ public class NativeDeviceTest extends TestCase {
         fail("getInstalledPackageNames should have thrown an exception");
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getScreenshot()}.
-     */
+    /** Unit test for {@link NativeDevice#getScreenshot()}. */
+    @Test
     public void testGetScreenshot_exception() throws Exception {
         try {
             mTestDevice.getScreenshot();
@@ -240,16 +246,14 @@ public class NativeDeviceTest extends TestCase {
         fail("getScreenshot should have thrown an exception");
     }
 
-    /**
-     * Unit test for {@link NativeDevice#pushDir(File, String)}.
-     */
+    /** Unit test for {@link NativeDevice#pushDir(File, String)}. */
+    @Test
     public void testPushDir_notADir() throws Exception {
         assertFalse(mTestDevice.pushDir(new File(""), ""));
     }
 
-    /**
-     * Unit test for {@link NativeDevice#pushDir(File, String)}.
-     */
+    /** Unit test for {@link NativeDevice#pushDir(File, String)}. */
+    @Test
     public void testPushDir_childFile() throws Exception {
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -264,9 +268,8 @@ public class NativeDeviceTest extends TestCase {
         FileUtil.recursiveDelete(testDir);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#pushDir(File, String)}.
-     */
+    /** Unit test for {@link NativeDevice#pushDir(File, String)}. */
+    @Test
     public void testPushDir_childDir() throws Exception {
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -287,6 +290,7 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /** Test {@link NativeDevice#pullDir(String, File)} when the remote directory is empty. */
+    @Test
     public void testPullDir_nothingToDo() throws Exception {
         final IFileEntry fakeEntry = EasyMock.createMock(IFileEntry.class);
         mTestDevice =
@@ -322,6 +326,7 @@ public class NativeDeviceTest extends TestCase {
      * Test {@link NativeDevice#pullDir(String, File)} when the remote directory has a file and a
      * directory.
      */
+    @Test
     public void testPullDir() throws Exception {
         final IFileEntry fakeEntry = EasyMock.createMock(IFileEntry.class);
         final IFileEntry fakeDir = EasyMock.createMock(IFileEntry.class);
@@ -389,6 +394,7 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /** Test pulling a directory when one of the pull fails. */
+    @Test
     public void testPullDir_pullFail() throws Exception {
         final IFileEntry fakeEntry = EasyMock.createMock(IFileEntry.class);
         final IFileEntry fakeDir = EasyMock.createMock(IFileEntry.class);
@@ -475,6 +481,7 @@ public class NativeDeviceTest extends TestCase {
     /**
      * Test that if the requested path is not a directory on the device side, we just fail directly.
      */
+    @Test
     public void testPullDir_invalidPath() throws Exception {
         mTestDevice =
                 new TestableAndroidNativeDevice() {
@@ -493,9 +500,8 @@ public class NativeDeviceTest extends TestCase {
         }
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getCurrentUser()}.
-     */
+    /** Unit test for {@link NativeDevice#getCurrentUser()}. */
+    @Test
     public void testGetCurrentUser_exception() throws Exception {
         try {
             mTestDevice.getScreenshot();
@@ -505,9 +511,8 @@ public class NativeDeviceTest extends TestCase {
         fail("getCurrentUser should have thrown an exception.");
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getUserFlags(int)}.
-     */
+    /** Unit test for {@link NativeDevice#getUserFlags(int)}. */
+    @Test
     public void testGetUserFlags_exception() throws Exception {
         try {
             mTestDevice.getUserFlags(0);
@@ -517,9 +522,8 @@ public class NativeDeviceTest extends TestCase {
         fail("getUserFlags should have thrown an exception.");
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getUserSerialNumber(int)}.
-     */
+    /** Unit test for {@link NativeDevice#getUserSerialNumber(int)}. */
+    @Test
     public void testGetUserSerialNumber_exception() throws Exception {
         try {
             mTestDevice.getUserSerialNumber(0);
@@ -529,9 +533,8 @@ public class NativeDeviceTest extends TestCase {
         fail("getUserSerialNumber should have thrown an exception.");
     }
 
-    /**
-     * Unit test for {@link NativeDevice#switchUser(int)}.
-     */
+    /** Unit test for {@link NativeDevice#switchUser(int)}. */
+    @Test
     public void testSwitchUser_exception() throws Exception {
         try {
             mTestDevice.switchUser(10);
@@ -541,9 +544,8 @@ public class NativeDeviceTest extends TestCase {
         fail("switchUser should have thrown an exception.");
     }
 
-    /**
-     * Unit test for {@link NativeDevice#switchUser(int, long)}.
-     */
+    /** Unit test for {@link NativeDevice#switchUser(int, long)}. */
+    @Test
     public void testSwitchUserTimeout_exception() throws Exception {
         try {
             mTestDevice.switchUser(10, 5*1000);
@@ -553,9 +555,8 @@ public class NativeDeviceTest extends TestCase {
         fail("switchUser should have thrown an exception.");
     }
 
-    /**
-     * Unit test for {@link NativeDevice#stopUser(int)}.
-     */
+    /** Unit test for {@link NativeDevice#stopUser(int)}. */
+    @Test
     public void testStopUser_exception() throws Exception {
         try {
             mTestDevice.stopUser(0);
@@ -565,9 +566,8 @@ public class NativeDeviceTest extends TestCase {
         fail("stopUser should have thrown an exception.");
     }
 
-    /**
-     * Unit test for {@link NativeDevice#stopUser(int, boolean, boolean)}.
-     */
+    /** Unit test for {@link NativeDevice#stopUser(int, boolean, boolean)}. */
+    @Test
     public void testStopUserFlags_exception() throws Exception {
         try {
             mTestDevice.stopUser(0, true, true);
@@ -577,9 +577,8 @@ public class NativeDeviceTest extends TestCase {
         fail("stopUser should have thrown an exception.");
     }
 
-    /**
-     * Unit test for {@link NativeDevice#isUserRunning(int)}.
-     */
+    /** Unit test for {@link NativeDevice#isUserRunning(int)}. */
+    @Test
     public void testIsUserIdRunning_exception() throws Exception {
         try {
             mTestDevice.isUserRunning(0);
@@ -589,9 +588,8 @@ public class NativeDeviceTest extends TestCase {
         fail("stopUser should have thrown an exception.");
     }
 
-    /**
-     * Unit test for {@link NativeDevice#hasFeature(String)}.
-     */
+    /** Unit test for {@link NativeDevice#hasFeature(String)}. */
+    @Test
     public void testHasFeature_exception() throws Exception {
         try {
             mTestDevice.hasFeature("feature:test");
@@ -601,9 +599,8 @@ public class NativeDeviceTest extends TestCase {
         fail("hasFeature should have thrown an exception.");
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getSetting(String, String)}.
-     */
+    /** Unit test for {@link NativeDevice#getSetting(String, String)}. */
+    @Test
     public void testGetSettingSystemUser_exception() throws Exception {
         try {
             mTestDevice.getSetting("global", "wifi_on");
@@ -613,9 +610,8 @@ public class NativeDeviceTest extends TestCase {
         fail("getSettings should have thrown an exception.");
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getSetting(int, String, String)}.
-     */
+    /** Unit test for {@link NativeDevice#getSetting(int, String, String)}. */
+    @Test
     public void testGetSetting_exception() throws Exception {
         try {
             mTestDevice.getSetting(0, "global", "wifi_on");
@@ -625,9 +621,19 @@ public class NativeDeviceTest extends TestCase {
         fail("getSettings should have thrown an exception.");
     }
 
-    /**
-     * Unit test for {@link NativeDevice#setSetting(String, String, String)}.
-     */
+    /** Unit test for {@link NativeDevice#getAllSettings(String)}. */
+    @Test
+    public void testGetAllSettingsSystemUser_exception() throws Exception {
+        try {
+            mTestDevice.getAllSettings("global");
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("getAllSettings should have thrown an exception");
+    }
+
+    /** Unit test for {@link NativeDevice#setSetting(String, String, String)}. */
+    @Test
     public void testSetSettingSystemUser_exception() throws Exception {
         try {
             mTestDevice.setSetting("global", "wifi_on", "0");
@@ -637,9 +643,8 @@ public class NativeDeviceTest extends TestCase {
         fail("putSettings should have thrown an exception.");
     }
 
-    /**
-     * Unit test for {@link NativeDevice#setSetting(int, String, String, String)}.
-     */
+    /** Unit test for {@link NativeDevice#setSetting(int, String, String, String)}. */
+    @Test
     public void testSetSetting_exception() throws Exception {
         try {
             mTestDevice.setSetting(0, "global", "wifi_on", "0");
@@ -649,9 +654,8 @@ public class NativeDeviceTest extends TestCase {
         fail("putSettings should have thrown an exception.");
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getAndroidId(int)}.
-     */
+    /** Unit test for {@link NativeDevice#getAndroidId(int)}. */
+    @Test
     public void testGetAndroidId_exception() throws Exception {
         try {
             mTestDevice.getAndroidId(0);
@@ -661,9 +665,8 @@ public class NativeDeviceTest extends TestCase {
         fail("getAndroidId should have thrown an exception.");
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getAndroidIds()}.
-     */
+    /** Unit test for {@link NativeDevice#getAndroidIds()}. */
+    @Test
     public void testGetAndroidIds_exception() throws Exception {
         try {
             mTestDevice.getAndroidIds();
@@ -673,9 +676,8 @@ public class NativeDeviceTest extends TestCase {
         fail("getAndroidIds should have thrown an exception.");
     }
 
-    /**
-     * Unit test for {@link NativeDevice#connectToWifiNetworkIfNeeded(String, String)}.
-     */
+    /** Unit test for {@link NativeDevice#connectToWifiNetworkIfNeeded(String, String)}. */
+    @Test
     public void testConnectToWifiNetworkIfNeeded_alreadyConnected()
             throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.checkConnectivity(mTestDevice.getOptions().getConnCheckUrl()))
@@ -686,9 +688,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockWifi);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#connectToWifiNetwork(String, String)}.
-     */
+    /** Unit test for {@link NativeDevice#connectToWifiNetwork(String, String)}. */
+    @Test
     public void testConnectToWifiNetwork_success() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.connectToNetwork(FAKE_NETWORK_SSID, FAKE_NETWORK_PASSWORD,
                 mTestDevice.getOptions().getConnCheckUrl(), false)).andReturn(true);
@@ -702,9 +703,10 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link NativeDevice#connectToWifiNetwork(String, String)} for a failure
-     * to connect case.
+     * Unit test for {@link NativeDevice#connectToWifiNetwork(String, String)} for a failure to
+     * connect case.
      */
+    @Test
     public void testConnectToWifiNetwork_failure() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.connectToNetwork(FAKE_NETWORK_SSID, FAKE_NETWORK_PASSWORD,
                 mTestDevice.getOptions().getConnCheckUrl(), false)).andReturn(false)
@@ -725,6 +727,7 @@ public class NativeDeviceTest extends TestCase {
      * Unit test for {@link NativeDevice#connectToWifiNetwork(String, String)} for limiting the time
      * trying to connect to wifi.
      */
+    @Test
     public void testConnectToWifiNetwork_maxConnectTime()
             throws DeviceNotAvailableException, ConfigurationException {
         OptionSetter deviceOptionSetter = new OptionSetter(mTestDevice.getOptions());
@@ -751,9 +754,8 @@ public class NativeDeviceTest extends TestCase {
         Mockito.verify(mockClock, Mockito.times(3)).millis();
     }
 
-    /**
-     * Unit test for {@link NativeDevice#connectToWifiNetwork(String, String, boolean)}.
-     */
+    /** Unit test for {@link NativeDevice#connectToWifiNetwork(String, String, boolean)}. */
+    @Test
     public void testConnectToWifiNetwork_scanSsid() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.connectToNetwork(FAKE_NETWORK_SSID, FAKE_NETWORK_PASSWORD,
                 mTestDevice.getOptions().getConnCheckUrl(), true)).andReturn(true);
@@ -766,9 +768,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockWifi, mMockIDevice);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#checkWifiConnection(String)}.
-     */
+    /** Unit test for {@link NativeDevice#checkWifiConnection(String)}. */
+    @Test
     public void testCheckWifiConnection() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.isWifiEnabled()).andReturn(true);
         EasyMock.expect(mMockWifi.getSSID()).andReturn("\"" + FAKE_NETWORK_SSID + "\"");
@@ -780,9 +781,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockWifi, mMockIDevice);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#checkWifiConnection(String)} for a failure.
-     */
+    /** Unit test for {@link NativeDevice#checkWifiConnection(String)} for a failure. */
+    @Test
     public void testCheckWifiConnection_failure() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.isWifiEnabled()).andReturn(false);
         EasyMock.replay(mMockWifi, mMockIDevice);
@@ -790,9 +790,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockWifi, mMockIDevice);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#isWifiEnabled()}.
-     */
+    /** Unit test for {@link NativeDevice#isWifiEnabled()}. */
+    @Test
     public void testIsWifiEnabled() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.isWifiEnabled()).andReturn(true);
         EasyMock.replay(mMockWifi, mMockIDevice);
@@ -801,9 +800,9 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link NativeDevice#isWifiEnabled()} with runtime exception from
-     * wifihelper.
+     * Unit test for {@link NativeDevice#isWifiEnabled()} with runtime exception from wifihelper.
      */
+    @Test
     public void testIsWifiEnabled_exception() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.isWifiEnabled()).andThrow(new RuntimeException());
         EasyMock.replay(mMockWifi, mMockIDevice);
@@ -811,9 +810,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockWifi, mMockIDevice);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#disconnectFromWifi()}.
-     */
+    /** Unit test for {@link NativeDevice#disconnectFromWifi()}. */
+    @Test
     public void testDisconnectFromWifi() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.disconnectFromNetwork()).andReturn(true);
         EasyMock.replay(mMockWifi, mMockIDevice);
@@ -821,9 +819,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockWifi, mMockIDevice);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#enableNetworkMonitor()}.
-     */
+    /** Unit test for {@link NativeDevice#enableNetworkMonitor()}. */
+    @Test
     public void testEnableNetworkMonitor() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.stopMonitor()).andReturn(null);
         EasyMock.expect(mMockWifi.startMonitor(EasyMock.anyLong(),
@@ -833,9 +830,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockWifi, mMockIDevice);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#enableNetworkMonitor()} in case of failure.
-     */
+    /** Unit test for {@link NativeDevice#enableNetworkMonitor()} in case of failure. */
+    @Test
     public void testEnableNetworkMonitor_failure() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.stopMonitor()).andReturn(null);
         EasyMock.expect(mMockWifi.startMonitor(EasyMock.anyLong(),
@@ -845,9 +841,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockWifi, mMockIDevice);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#disableNetworkMonitor()}.
-     */
+    /** Unit test for {@link NativeDevice#disableNetworkMonitor()}. */
+    @Test
     public void testDisableNetworkMonitor() throws DeviceNotAvailableException {
         List<Long> samples = new ArrayList<Long>();
         samples.add(Long.valueOf(42));
@@ -859,9 +854,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockWifi, mMockIDevice);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#reconnectToWifiNetwork()}.
-     */
+    /** Unit test for {@link NativeDevice#reconnectToWifiNetwork()}. */
+    @Test
     public void testReconnectToWifiNetwork() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.checkConnectivity(mTestDevice.getOptions().getConnCheckUrl()))
                 .andReturn(false);
@@ -879,9 +873,8 @@ public class NativeDeviceTest extends TestCase {
         }
     }
 
-    /**
-     * Unit test for {@link NativeDevice#isHeadless()}.
-     */
+    /** Unit test for {@link NativeDevice#isHeadless()}. */
+    @Test
     public void testIsHeadless() throws DeviceNotAvailableException {
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -892,9 +885,8 @@ public class NativeDeviceTest extends TestCase {
         assertTrue(mTestDevice.isHeadless());
     }
 
-    /**
-     * Unit test for {@link NativeDevice#isHeadless()}.
-     */
+    /** Unit test for {@link NativeDevice#isHeadless()}. */
+    @Test
     public void testIsHeadless_notHeadless() throws DeviceNotAvailableException {
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -905,9 +897,8 @@ public class NativeDeviceTest extends TestCase {
         assertFalse(mTestDevice.isHeadless());
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getDeviceDate()}.
-     */
+    /** Unit test for {@link NativeDevice#getDeviceDate()}. */
+    @Test
     public void testGetDeviceDate() throws DeviceNotAvailableException {
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -918,9 +909,8 @@ public class NativeDeviceTest extends TestCase {
         assertEquals(21692641000L, mTestDevice.getDeviceDate());
     }
 
-    /**
-     * Unit test for {@link NativeDevice#logBugreport(String, ITestLogger)}.
-     */
+    /** Unit test for {@link NativeDevice#logBugreport(String, ITestLogger)}. */
+    @Test
     public void testTestLogBugreport() {
         final String dataName = "test";
         final InputStreamSource stream = new ByteArrayInputStreamSource(null);
@@ -943,9 +933,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(listener);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#logBugreport(String, ITestLogger)}.
-     */
+    /** Unit test for {@link NativeDevice#logBugreport(String, ITestLogger)}. */
+    @Test
     public void testTestLogBugreport_oldDevice() {
         final String dataName = "test";
         final InputStreamSource stream = new ByteArrayInputStreamSource(null);
@@ -975,9 +964,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(listener);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#logBugreport(String, ITestLogger)}.
-     */
+    /** Unit test for {@link NativeDevice#logBugreport(String, ITestLogger)}. */
+    @Test
     public void testTestLogBugreport_fail() {
         mTestDevice =
                 new TestableAndroidNativeDevice() {
@@ -1002,9 +990,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(listener);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#takeBugreport()}.
-     */
+    /** Unit test for {@link NativeDevice#takeBugreport()}. */
+    @Test
     public void testTakeBugreport_apiLevelFail() {
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -1016,9 +1003,8 @@ public class NativeDeviceTest extends TestCase {
         assertNull(mTestDevice.takeBugreport());
     }
 
-    /**
-     * Unit test for {@link NativeDevice#takeBugreport()}.
-     */
+    /** Unit test for {@link NativeDevice#takeBugreport()}. */
+    @Test
     public void testTakeBugreport_oldDevice() throws Exception {
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -1036,9 +1022,8 @@ public class NativeDeviceTest extends TestCase {
         }
     }
 
-    /**
-     * Unit test for {@link NativeDevice#takeBugreport()}.
-     */
+    /** Unit test for {@link NativeDevice#takeBugreport()}. */
+    @Test
     public void testTakeBugreport() throws Exception {
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -1063,9 +1048,8 @@ public class NativeDeviceTest extends TestCase {
         }
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getDeviceDate()}.
-     */
+    /** Unit test for {@link NativeDevice#getDeviceDate()}. */
+    @Test
     public void testGetDeviceDate_wrongformat() throws DeviceNotAvailableException {
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -1076,6 +1060,7 @@ public class NativeDeviceTest extends TestCase {
         assertEquals(0, mTestDevice.getDeviceDate());
     }
 
+    @Test
     public void testGetBugreport_deviceUnavail() throws Exception {
         final String expectedOutput = "this is the output\r\n in two lines\r\n";
         mTestDevice = new TestableAndroidNativeDevice() {
@@ -1101,6 +1086,7 @@ public class NativeDeviceTest extends TestCase {
                 mTestDevice.getBugreport().createInputStream()));
     }
 
+    @Test
     public void testGetBugreport_compatibility_deviceUnavail() throws Exception {
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -1124,6 +1110,7 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockRecovery, mMockIDevice);
     }
 
+    @Test
     public void testGetBugreport_deviceUnavail_fallback() throws Exception {
         final IFileEntry fakeEntry = EasyMock.createMock(IFileEntry.class);
         mTestDevice = new TestableAndroidNativeDevice() {
@@ -1166,9 +1153,8 @@ public class NativeDeviceTest extends TestCase {
         }
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getBugreportz()}.
-     */
+    /** Unit test for {@link NativeDevice#getBugreportz()}. */
+    @Test
     public void testGetBugreportz() throws IOException {
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -1211,9 +1197,8 @@ public class NativeDeviceTest extends TestCase {
         }
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getBugreportz()}.
-     */
+    /** Unit test for {@link NativeDevice#getBugreportz()}. */
+    @Test
     public void testGetBugreportz_fails() {
         mTestDevice =
                 new TestableAndroidNativeDevice() {
@@ -1244,10 +1229,57 @@ public class NativeDeviceTest extends TestCase {
         }
     }
 
+    @Test
+    public void testGetBugreportz_fallBack_validation() throws Exception {
+        IFileEntry entryMock = EasyMock.createMock(IFileEntry.class);
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 24;
+                    }
+
+                    @Override
+                    protected File getBugreportzInternal() {
+                        return null;
+                    }
+
+                    @Override
+                    public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException {
+                        return entryMock;
+                    }
+
+                    @Override
+                    public File pullFile(String remoteFilePath) throws DeviceNotAvailableException {
+                        try {
+                            // Return an empty zip file for the partial bugreportz
+                            return FileUtil.createTempFile("bugreportz-test", ".zip");
+                        } catch (IOException e) {
+                            throw new RuntimeException();
+                        }
+                    }
+                };
+        IFileEntry childNode = EasyMock.createMock(IFileEntry.class);
+        EasyMock.expect(entryMock.getChildren(false)).andReturn(Arrays.asList(childNode));
+        EasyMock.expect(childNode.getName()).andReturn("bugreport-test-partial.zip");
+        FileInputStreamSource f = null;
+        EasyMock.replay(entryMock, childNode);
+        try {
+            f = (FileInputStreamSource) mTestDevice.getBugreportz();
+            assertNull(f);
+        } finally {
+            StreamUtil.cancel(f);
+            if (f != null) {
+                f.cleanFile();
+            }
+        }
+        EasyMock.verify(entryMock, childNode);
+    }
+
     /**
-     * Test that we can distinguish a newer file even with Timezone on the device.
-     * Seoul is GMT+9.
+     * Test that we can distinguish a newer file even with Timezone on the device. Seoul is GMT+9.
      */
+    @Test
     public void testIsNewer() throws Exception {
         TestableAndroidNativeDevice testDevice =
                 new TestableAndroidNativeDevice() {
@@ -1276,9 +1308,10 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
-     * Test that we can distinguish a newer file even with Timezone on the device.
-     * Seoul is GMT+9. Clock on device is inaccurate and in advance of host.
+     * Test that we can distinguish a newer file even with Timezone on the device. Seoul is GMT+9.
+     * Clock on device is inaccurate and in advance of host.
      */
+    @Test
     public void testIsNewer_timeOffset() throws Exception {
         TestableAndroidNativeDevice testDevice =
                 new TestableAndroidNativeDevice() {
@@ -1308,10 +1341,10 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
-     * Test that we can distinguish a newer file even with Timezone on the device.
-     * Seoul is GMT+9.
+     * Test that we can distinguish a newer file even with Timezone on the device. Seoul is GMT+9.
      * Local file is set to 10min earlier than remoteFile.
      */
+    @Test
     public void testIsNewer_fails() throws Exception {
         TestableAndroidNativeDevice testDevice =
                 new TestableAndroidNativeDevice() {
@@ -1339,9 +1372,8 @@ public class NativeDeviceTest extends TestCase {
         }
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getBuildAlias()}.
-     */
+    /** Unit test for {@link NativeDevice#getBuildAlias()}. */
+    @Test
     public void testGetBuildAlias() throws DeviceNotAvailableException {
         final String alias = "alias\n";
         mTestDevice = new TestableAndroidNativeDevice() {
@@ -1353,9 +1385,8 @@ public class NativeDeviceTest extends TestCase {
         assertEquals(alias, mTestDevice.getBuildAlias());
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getBuildAlias()}.
-     */
+    /** Unit test for {@link NativeDevice#getBuildAlias()}. */
+    @Test
     public void testGetBuildAlias_null() throws DeviceNotAvailableException {
         final String alias = null;
         final String buildId = "alias\n";
@@ -1372,9 +1403,8 @@ public class NativeDeviceTest extends TestCase {
         assertEquals(buildId, mTestDevice.getBuildAlias());
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getBuildAlias()}.
-     */
+    /** Unit test for {@link NativeDevice#getBuildAlias()}. */
+    @Test
     public void testGetBuildAlias_empty() throws DeviceNotAvailableException {
         final String alias = "";
         final String buildId = "alias\n";
@@ -1391,9 +1421,8 @@ public class NativeDeviceTest extends TestCase {
         assertEquals(buildId, mTestDevice.getBuildAlias());
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getBuildId()}.
-     */
+    /** Unit test for {@link NativeDevice#getBuildId()}. */
+    @Test
     public void testGetBuildId() throws DeviceNotAvailableException {
         final String buildId = "299865";
         mTestDevice = new TestableAndroidNativeDevice() {
@@ -1405,9 +1434,8 @@ public class NativeDeviceTest extends TestCase {
         assertEquals(buildId, mTestDevice.getBuildId());
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getBuildId()}.
-     */
+    /** Unit test for {@link NativeDevice#getBuildId()}. */
+    @Test
     public void testGetBuildId_null() throws DeviceNotAvailableException {
         final String buildId = null;
         mTestDevice = new TestableAndroidNativeDevice() {
@@ -1419,9 +1447,8 @@ public class NativeDeviceTest extends TestCase {
         assertEquals(IBuildInfo.UNKNOWN_BUILD_ID, mTestDevice.getBuildId());
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getBuildFlavor()}.
-     */
+    /** Unit test for {@link NativeDevice#getBuildFlavor()}. */
+    @Test
     public void testGetBuildFlavor() throws DeviceNotAvailableException {
         final String flavor = "ham-user";
         mTestDevice = new TestableAndroidNativeDevice() {
@@ -1433,9 +1460,8 @@ public class NativeDeviceTest extends TestCase {
         assertEquals(flavor, mTestDevice.getBuildFlavor());
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getBuildFlavor()}.
-     */
+    /** Unit test for {@link NativeDevice#getBuildFlavor()}. */
+    @Test
     public void testGetBuildFlavor_null_flavor() throws DeviceNotAvailableException {
         final String productName = "prod";
         final String buildType = "buildtype";
@@ -1457,9 +1483,8 @@ public class NativeDeviceTest extends TestCase {
         assertEquals(expected, mTestDevice.getBuildFlavor());
     }
 
-    /**
-     * Unit test for {@link NativeDevice#getBuildFlavor()}.
-     */
+    /** Unit test for {@link NativeDevice#getBuildFlavor()}. */
+    @Test
     public void testGetBuildFlavor_null() throws DeviceNotAvailableException {
         final String productName = null;
         final String buildType = "buildtype";
@@ -1480,9 +1505,8 @@ public class NativeDeviceTest extends TestCase {
         assertNull(mTestDevice.getBuildFlavor());
     }
 
-    /**
-     * Unit test for {@link NativeDevice#doAdbReboot(String)}.
-     */
+    /** Unit test for {@link NativeDevice#doAdbReboot(String)}. */
+    @Test
     public void testDoAdbReboot_emulator() throws Exception {
         final String into = "bootloader";
         mMockIDevice.reboot(into);
@@ -1492,9 +1516,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockIDevice);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#doReboot()}.
-     */
+    /** Unit test for {@link NativeDevice#doReboot()}. */
+    @Test
     public void testDoReboot() throws Exception {
         NativeDevice testDevice = new NativeDevice(mMockIDevice,
                 mMockStateMonitor, mMockDvcMonitor) {
@@ -1512,9 +1535,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#doReboot()}.
-     */
+    /** Unit test for {@link NativeDevice#doReboot()}. */
+    @Test
     public void testDoReboot_skipped() throws Exception {
         NativeDevice testDevice = new NativeDevice(mMockIDevice,
                 mMockStateMonitor, mMockDvcMonitor) {
@@ -1534,9 +1556,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#doReboot()}.
-     */
+    /** Unit test for {@link NativeDevice#doReboot()}. */
+    @Test
     public void testDoReboot_fastboot() throws Exception {
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -1556,9 +1577,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#unlockDevice()} already decrypted.
-     */
+    /** Unit test for {@link NativeDevice#unlockDevice()} already decrypted. */
+    @Test
     public void testUnlockDevice_skipping() throws Exception {
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -1575,9 +1595,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#unlockDevice()}.
-     */
+    /** Unit test for {@link NativeDevice#unlockDevice()}. */
+    @Test
     public void testUnlockDevice() throws Exception {
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -1602,9 +1621,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#unlockDevice()}.
-     */
+    /** Unit test for {@link NativeDevice#unlockDevice()}. */
+    @Test
     public void testUnlockDevice_garbageOutput() throws Exception {
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -1629,9 +1647,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#unlockDevice()}.
-     */
+    /** Unit test for {@link NativeDevice#unlockDevice()}. */
+    @Test
     public void testUnlockDevice_emptyOutput() throws Exception {
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -1656,9 +1673,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
-    /**
-     * Unit test for {@link NativeDevice#unlockDevice()}.
-     */
+    /** Unit test for {@link NativeDevice#unlockDevice()}. */
+    @Test
     public void testUnlockDevice_goodOutputPasswordEnteredCorrectly() throws Exception {
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -1685,9 +1701,10 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
-     * Test {NativeDevice#parseFreeSpaceFromModernOutput(String)} with a regular df output and
-     * mount name of numbers.
+     * Test {NativeDevice#parseFreeSpaceFromModernOutput(String)} with a regular df output and mount
+     * name of numbers.
      */
+    @Test
     public void testParseDfOutput_mountWithNumber() {
         String dfOutput = "Filesystem     1K-blocks   Used Available Use% Mounted on\n" +
                 "/dev/fuse       31154688 100576  31054112   1% /storage/3134-3433";
@@ -1697,9 +1714,10 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
-     * Test {NativeDevice#parseFreeSpaceFromModernOutput(String)} with a regular df output and
-     * mount name of mix of letters and numbers.
+     * Test {NativeDevice#parseFreeSpaceFromModernOutput(String)} with a regular df output and mount
+     * name of mix of letters and numbers.
      */
+    @Test
     public void testParseDfOutput() {
         String dfOutput = "Filesystem     1K-blocks   Used Available Use% Mounted on\n" +
                 "/dev/fuse       31154688 100576  31054112   1% /storage/sdcard58";
@@ -1709,9 +1727,10 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
-     * Test {NativeDevice#parseFreeSpaceFromModernOutput(String)} with a regular df output and
-     * mount name with incorrect field.
+     * Test {NativeDevice#parseFreeSpaceFromModernOutput(String)} with a regular df output and mount
+     * name with incorrect field.
      */
+    @Test
     public void testParseDfOutput_wrongMount() {
         String dfOutput = "Filesystem     1K-blocks   Used Available Use% Mounted on\n" +
                 "/dev/fuse       31154688 100576  31054112   1% \test\\wrongpath";
@@ -1720,9 +1739,10 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
-     * Test {NativeDevice#parseFreeSpaceFromModernOutput(String)} with a regular df output and
-     * a filesytem name with numbers in it.
+     * Test {NativeDevice#parseFreeSpaceFromModernOutput(String)} with a regular df output and a
+     * filesytem name with numbers in it.
      */
+    @Test
     public void testParseDfOutput_filesystemWithNumber() {
         String dfOutput = "Filesystem     1K-blocks   Used Available Use% Mounted on\n" +
                 "/dev/dm-1       31154688 100576  31054112   1% /";
@@ -1734,6 +1754,7 @@ public class NativeDeviceTest extends TestCase {
     /**
      * Test that {@link NativeDevice#getDeviceTimeOffset(Date)} returns the proper offset forward
      */
+    @Test
     public void testGetDeviceTimeOffset() throws DeviceNotAvailableException {
         mTestDevice =
                 new TestableAndroidNativeDevice() {
@@ -1750,6 +1771,7 @@ public class NativeDeviceTest extends TestCase {
      * Test that {@link NativeDevice#getDeviceTimeOffset(Date)}} returns the proper offset when
      * there is delay.
      */
+    @Test
     public void testGetDeviceTimeOffset_delay() throws DeviceNotAvailableException {
         mTestDevice =
                 new TestableAndroidNativeDevice() {
@@ -1765,9 +1787,10 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
-     * Test that {@link NativeDevice#setDate(Date)} returns the proper offset when
-     * there is delay with api level above 24, posix format is used.
+     * Test that {@link NativeDevice#setDate(Date)} returns the proper offset when there is delay
+     * with api level above 24, posix format is used.
      */
+    @Test
     public void testSetDate() throws DeviceNotAvailableException {
         Date date = new Date(1476958881000L);
         mTestDevice =
@@ -1795,9 +1818,10 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
-     * Test that {@link NativeDevice#setDate(Date)} returns the proper offset when
-     * there is delay with api level below 23, regular second format is used.
+     * Test that {@link NativeDevice#setDate(Date)} returns the proper offset when there is delay
+     * with api level below 23, regular second format is used.
      */
+    @Test
     public void testSetDate_lowApi() throws DeviceNotAvailableException {
         Date date = new Date(1476958881000L);
         mTestDevice =
@@ -1824,9 +1848,8 @@ public class NativeDeviceTest extends TestCase {
         mTestDevice.setDate(date);
     }
 
-    /**
-     * Test that {@link NativeDevice#setDate(Date)} does not attemp to set if bellow threshold.
-     */
+    /** Test that {@link NativeDevice#setDate(Date)} does not attemp to set if bellow threshold. */
+    @Test
     public void testSetDate_NoAction() throws DeviceNotAvailableException {
         Date date = new Date(1476958881000L);
         mTestDevice =
@@ -1847,9 +1870,8 @@ public class NativeDeviceTest extends TestCase {
         mTestDevice.setDate(date);
     }
 
-    /**
-     * Test that {@link NativeDevice#getDeviceDescriptor()} returns the proper information.
-     */
+    /** Test that {@link NativeDevice#getDeviceDescriptor()} returns the proper information. */
+    @Test
     public void testGetDeviceDescriptor() {
         final String serial = "Test";
         mTestDevice = new TestableAndroidNativeDevice() {
@@ -1868,6 +1890,7 @@ public class NativeDeviceTest extends TestCase {
      * Test that {@link NativeDevice#pullFile(String, File)} returns true when the pull is
      * successful.
      */
+    @Test
     public void testPullFile() throws Exception {
         final String fakeRemotePath = "/test/";
         SyncService s = Mockito.mock(SyncService.class);
@@ -1890,9 +1913,10 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
-     * Test that {@link NativeDevice#pullFile(String, File)} returns false when it fails to
-     * pull the file.
+     * Test that {@link NativeDevice#pullFile(String, File)} returns false when it fails to pull the
+     * file.
      */
+    @Test
     public void testPullFile_fails() throws Exception {
         final String fakeRemotePath = "/test/";
         SyncService s = Mockito.mock(SyncService.class);
@@ -1921,9 +1945,9 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
-     * Test that {@link NativeDevice#pullFile(String)} returns a file when succeed pulling the
-     * file.
+     * Test that {@link NativeDevice#pullFile(String)} returns a file when succeed pulling the file.
      */
+    @Test
     public void testPullFile_returnFileSuccess() throws Exception {
         final String fakeRemotePath = "/test/";
         mTestDevice = new TestableAndroidNativeDevice() {
@@ -1944,6 +1968,7 @@ public class NativeDeviceTest extends TestCase {
     /**
      * Test that {@link NativeDevice#pullFile(String)} returns null when failed to pull the file.
      */
+    @Test
     public void testPullFile_returnNull() throws Exception {
         final String fakeRemotePath = "/test/";
         mTestDevice = new TestableAndroidNativeDevice() {
@@ -1965,6 +1990,7 @@ public class NativeDeviceTest extends TestCase {
      * Test that {@link NativeDevice#pullFileContents(String)} returns a string when succeed pulling
      * the file.
      */
+    @Test
     public void testPullFileContents_returnFileSuccess() throws Exception {
         final String fakeRemotePath = "/test/";
         mTestDevice = new TestableAndroidNativeDevice() {
@@ -1982,6 +2008,7 @@ public class NativeDeviceTest extends TestCase {
      * Test that {@link NativeDevice#pullFileContents(String)} returns null when failed to pull the
      * file.
      */
+    @Test
     public void testPullFileContents_returnNull() throws Exception {
         final String fakeRemotePath = "/test/";
         mTestDevice = new TestableAndroidNativeDevice() {
@@ -1999,6 +2026,7 @@ public class NativeDeviceTest extends TestCase {
      * Test that {@link NativeDevice#pushFile(File, String)} returns true when the push is
      * successful.
      */
+    @Test
     public void testPushFile() throws Exception {
         final String fakeRemotePath = "/test/";
         SyncService s = Mockito.mock(SyncService.class);
@@ -2024,6 +2052,7 @@ public class NativeDeviceTest extends TestCase {
      * Test that {@link NativeDevice#pushFile(File, String)} returns false when the push is
      * unsuccessful.
      */
+    @Test
     public void testPushFile_fails() throws Exception {
         final String fakeRemotePath = "/test/";
         SyncService s = Mockito.mock(SyncService.class);
@@ -2051,9 +2080,8 @@ public class NativeDeviceTest extends TestCase {
         }
     }
 
-    /**
-     * Test validating valid MAC addresses
-     */
+    /** Test validating valid MAC addresses */
+    @Test
     public void testIsMacAddress() {
         assertTrue(mTestDevice.isMacAddress("00:00:00:00:00:00"));
         assertTrue(mTestDevice.isMacAddress("00:15:E9:2B:99:3C"));
@@ -2061,17 +2089,15 @@ public class NativeDeviceTest extends TestCase {
         assertTrue(mTestDevice.isMacAddress("58:a2:b5:7d:49:24"));
     }
 
-    /**
-     * Test validating invalid MAC addresses
-     */
+    /** Test validating invalid MAC addresses */
+    @Test
     public void testIsMacAddress_invalidInput() {
         assertFalse(mTestDevice.isMacAddress(""));
         assertFalse(mTestDevice.isMacAddress("00-15-E9-2B-99-3C")); // Invalid delimiter
     }
 
-    /**
-     * Test querying a device MAC address
-     */
+    /** Test querying a device MAC address */
+    @Test
     public void testGetMacAddress() throws Exception {
         String address = "58:a2:b5:7d:49:24";
         IDevice device = new StubDevice(MOCK_DEVICE_SERIAL) {
@@ -2089,18 +2115,16 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockIDevice);
     }
 
-    /**
-     * Test querying a device MAC address when the device is in fastboot
-     */
+    /** Test querying a device MAC address when the device is in fastboot */
+    @Test
     public void testGetMacAddress_fastboot() throws Exception {
         mTestDevice.setDeviceState(TestDeviceState.FASTBOOT);
         // Will fail if executeShellCommand is called. Which it should not.
         assertNull(mTestDevice.getMacAddress());
     }
 
-    /**
-     * Test querying a device MAC address but failing to do so
-     */
+    /** Test querying a device MAC address but failing to do so */
+    @Test
     public void testGetMacAddress_failure() throws Exception {
         IDevice device = new StubDevice(MOCK_DEVICE_SERIAL) {
             @Override
@@ -2117,9 +2141,8 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockIDevice);
     }
 
-    /**
-     * Test querying a device MAC address for a stub device
-     */
+    /** Test querying a device MAC address for a stub device */
+    @Test
     public void testGetMacAddress_stubDevice() throws Exception {
         String address = "58:a2:b5:7d:49:24";
         IDevice device = new StubDevice(MOCK_DEVICE_SERIAL) {
@@ -2135,6 +2158,7 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /** Test that a non online device return null for sim state. */
+    @Test
     public void testGetSimState_unavailableDevice() {
         mMockIDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.UNAUTHORIZED);
@@ -2145,6 +2169,7 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /** Test that a non online device return null for sim operator. */
+    @Test
     public void testGetSimOperator_unavailableDevice() {
         mMockIDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.UNAUTHORIZED);
@@ -2154,10 +2179,71 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
+    /** Test if valid shell output returns correct memory size. */
+    @Test
+    public void testGetTotalMemory() {
+        final long expectSize = 1902936064;
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "MemTotal:        1858336 kB";
+                    }
+                };
+        assertEquals(expectSize, mTestDevice.getTotalMemory());
+    }
+
+    /** Test if empty shell output returns -1. */
+    @Test
+    public void testGetTotalMemory_emptyString() {
+        final long expectSize = -1;
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "";
+                    }
+                };
+        assertEquals(expectSize, mTestDevice.getTotalMemory());
+    }
+
+    /** Test if unexpected shell output returns -1. */
+    @Test
+    public void testGetTotalMemory_unexpectedFormat() {
+        final long expectSize = -1;
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "1858336 kB";
+                    }
+                };
+        assertEquals(expectSize, mTestDevice.getTotalMemory());
+    }
+
+    /** Test if catching exception returns -1. */
+    @Test
+    public void testGetTotalMemory_exception() {
+        final long expectSize = -1;
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        throw new DeviceNotAvailableException();
+                    }
+                };
+        assertEquals(expectSize, mTestDevice.getTotalMemory());
+    }
+
     /**
      * Test that when a {@link NativeDevice#getLogcatSince(long)} is requested a matching logcat
      * command is generated.
      */
+    @Test
     public void testGetLogcatSince() throws Exception {
         long date = 1512990942000L; // 2017-12-11 03:15:42.015
         EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
@@ -2171,6 +2257,7 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockIDevice);
     }
 
+    @Test
     public void testGetProductVariant() throws Exception {
         EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.VARIANT)).andReturn("variant");
 
@@ -2179,6 +2266,7 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockIDevice);
     }
 
+    @Test
     public void testGetProductVariant_legacy() throws Exception {
         TestableAndroidNativeDevice testDevice =
                 new TestableAndroidNativeDevice() {
@@ -2197,6 +2285,7 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /** Test when {@link NativeDevice#executeShellV2Command(String)} returns a success. */
+    @Test
     public void testExecuteShellV2Command() throws Exception {
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.SUCCESS);
@@ -2213,6 +2302,7 @@ public class NativeDeviceTest extends TestCase {
      * Test when {@link NativeDevice#executeShellV2Command(String, long, TimeUnit, int)} fails and
      * repeat because of a timeout.
      */
+    @Test
     public void testExecuteShellV2Command_timeout() throws Exception {
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.TIMED_OUT);
@@ -2236,6 +2326,7 @@ public class NativeDeviceTest extends TestCase {
      * Test when {@link NativeDevice#executeShellV2Command(String, long, TimeUnit, int)} fails and
      * output.
      */
+    @Test
     public void testExecuteShellV2Command_fail() throws Exception {
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.FAILED);
@@ -2252,5 +2343,128 @@ public class NativeDeviceTest extends TestCase {
         // The final result is what RunUtil returned, so it contains full status information.
         assertSame(res, result);
         EasyMock.verify(mMockRunUtil, mMockIDevice);
+    }
+
+    /** Unit test for {@link INativeDevice#setProperty(String, String)}. */
+    @Test
+    public void testSetProperty() throws DeviceNotAvailableException {
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public boolean isAdbRoot() throws DeviceNotAvailableException {
+                        return true;
+                    }
+                };
+        CommandResult res = new CommandResult();
+        res.setStatus(CommandStatus.SUCCESS);
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                120000, "adb", "-s", "serial", "shell", "setprop", "test", "value"))
+                .andReturn(res);
+        EasyMock.replay(mMockRunUtil, mMockIDevice);
+        assertTrue(mTestDevice.setProperty("test", "value"));
+        EasyMock.verify(mMockRunUtil, mMockIDevice);
+    }
+
+    /** Unit test for {@link INativeDevice#setProperty(String, String)}. */
+    @Test
+    public void testSetProperty_notRoot() throws DeviceNotAvailableException {
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public boolean isAdbRoot() throws DeviceNotAvailableException {
+                        return false;
+                    }
+                };
+        EasyMock.replay(mMockRunUtil, mMockIDevice);
+        assertFalse(mTestDevice.setProperty("test", "value"));
+        EasyMock.verify(mMockRunUtil, mMockIDevice);
+    }
+
+    /**
+     * Verifies that {@link INativeDevice#isExecutable(String)} recognizes regular executable file
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testIsDeviceFileExecutable_executable_rwx() throws Exception {
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "-rwxr-xr-x 1 root shell 42824 2009-01-01 00:00 /system/bin/ping";
+                    }
+                };
+        assertTrue(mTestDevice.isExecutable("/system/bin/ping"));
+    }
+
+    /**
+     * Verifies that {@link INativeDevice#isExecutable(String)} recognizes symlink'd executable file
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testIsDeviceFileExecutable_executable_lrwx() throws Exception {
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "lrwxr-xr-x 1 root shell 7 2009-01-01 00:00 /system/bin/start -> toolbox";
+                    }
+                };
+        assertTrue(mTestDevice.isExecutable("/system/bin/start"));
+    }
+
+    /**
+     * Verifies that {@link INativeDevice#isExecutable(String)} recognizes non-executable file
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testIsDeviceFileExecutable_notExecutable() throws Exception {
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "-rw-r--r-- 1 root root 5020 2009-01-01 00:00 /system/build.prop";
+                    }
+                };
+        assertFalse(mTestDevice.isExecutable("/system/build.prop"));
+    }
+
+    /**
+     * Verifies that {@link INativeDevice#isExecutable(String)} recognizes a directory listing
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testIsDeviceFileExecutable_directory() throws Exception {
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "total 416\n"
+                                + "drwxr-xr-x 74 root root    4096 2009-01-01 00:00 app\n"
+                                + "drwxr-xr-x  3 root shell   8192 2009-01-01 00:00 bin\n"
+                                + "-rw-r--r--  1 root root    5020 2009-01-01 00:00 build.prop\n"
+                                + "drwxr-xr-x 15 root root    4096 2009-01-01 00:00 etc\n"
+                                + "drwxr-xr-x  2 root root    4096 2009-01-01 00:00 fake-libs\n"
+                                + "drwxr-xr-x  2 root root    8192 2009-01-01 00:00 fonts\n"
+                                + "drwxr-xr-x  4 root root    4096 2009-01-01 00:00 framework\n"
+                                + "drwxr-xr-x  6 root root    8192 2009-01-01 00:00 lib\n"
+                                + "drwx------  2 root root    4096 1970-01-01 00:00 lost+found\n"
+                                + "drwxr-xr-x  3 root root    4096 2009-01-01 00:00 media\n"
+                                + "drwxr-xr-x 68 root root    4096 2009-01-01 00:00 priv-app\n"
+                                + "-rw-r--r--  1 root root  137093 2009-01-01 00:00 recovery-from-boot.p\n"
+                                + "drwxr-xr-x  9 root root    4096 2009-01-01 00:00 usr\n"
+                                + "drwxr-xr-x  8 root shell   4096 2009-01-01 00:00 vendor\n"
+                                + "drwxr-xr-x  2 root shell   4096 2009-01-01 00:00 xbin\n";
+                    }
+                };
+        assertFalse(mTestDevice.isExecutable("/system"));
     }
 }

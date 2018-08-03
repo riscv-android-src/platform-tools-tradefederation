@@ -25,6 +25,7 @@ import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.device.metric.target.DeviceSideCollectorSpecification;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.StdoutLogger;
 import com.android.tradefed.result.FileSystemLogSaver;
@@ -88,6 +89,7 @@ public class Configuration implements IConfiguration {
     public static final String CONFIGURATION_DESCRIPTION_TYPE_NAME = "config_desc";
     public static final String DEVICE_NAME = "device";
     public static final String DEVICE_METRICS_COLLECTOR_TYPE_NAME = "metrics_collector";
+    public static final String DEVICE_SIDE_SPEC_TYPE_NAME = "device_side_collector_spec";
     public static final String SANDBOX_TYPE_NAME = "sandbox";
     public static final String SANBOX_OPTIONS_TYPE_NAME = "sandbox_options";
 
@@ -168,6 +170,9 @@ public class Configuration implements IConfiguration {
             sObjTypeMap.put(
                     DEVICE_METRICS_COLLECTOR_TYPE_NAME,
                     new ObjTypeInfo(IMetricCollector.class, true));
+            sObjTypeMap.put(
+                    DEVICE_SIDE_SPEC_TYPE_NAME,
+                    new ObjTypeInfo(DeviceSideCollectorSpecification.class, false));
             sObjTypeMap.put(SANBOX_OPTIONS_TYPE_NAME, new ObjTypeInfo(SandboxOptions.class, false));
         }
         return sObjTypeMap;
@@ -369,11 +374,19 @@ public class Configuration implements IConfiguration {
                 RESULT_REPORTER_TYPE_NAME);
     }
 
+    /** {@inheritDoc} */
     @SuppressWarnings("unchecked")
     @Override
     public List<IMetricCollector> getMetricCollectors() {
         return (List<IMetricCollector>)
                 getConfigurationObjectList(DEVICE_METRICS_COLLECTOR_TYPE_NAME);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public DeviceSideCollectorSpecification getDeviceSideCollectorsSpec() {
+        return (DeviceSideCollectorSpecification)
+                getConfigurationObject(DEVICE_SIDE_SPEC_TYPE_NAME);
     }
 
     /** {@inheritDoc} */
@@ -466,6 +479,23 @@ public class Configuration implements IConfiguration {
         return configObjects.get(0);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Collection<Object> getAllConfigurationObjectsOfType(String configType) {
+        Collection<Object> objectsCopy = new ArrayList<Object>();
+        if (doesBuiltInObjSupportMultiDevice(configType)) {
+            for (IDeviceConfiguration deviceConfig : getDeviceConfig()) {
+                objectsCopy.addAll(deviceConfig.getAllObjectOfType(configType));
+            }
+        } else {
+            List<?> configObjects = getConfigurationObjectList(configType);
+            if (configObjects != null) {
+                objectsCopy.addAll(configObjects);
+            }
+        }
+        return objectsCopy;
+    }
+
     /**
      * Return a copy of all config objects
      */
@@ -524,16 +554,26 @@ public class Configuration implements IConfiguration {
         List<FieldDef> affectedFields = optionSetter.setOptionValue(
                 optionName, optionKey, optionValue);
 
-        if (source != null) {
-            // Update the source for each affected field
-            for (FieldDef field : affectedFields) {
+        boolean requiredForRerun = false;
+        // Update the source for each affected field
+        for (FieldDef field : affectedFields) {
+            requiredForRerun |= field.field.getAnnotation(Option.class).requiredForRerun();
+            if (source != null) {
                 // Unless the field is a Collection or MultiMap entry, it can only have one source
                 if (!Collection.class.isAssignableFrom(field.field.getType()) &&
                         !MultiMap.class.isAssignableFrom(field.field.getType())) {
                     mFieldSources.remove(field);
                 }
                 mFieldSources.put(field, source);
+            } else if (requiredForRerun) {
+                // Only need to check if the option is required for rerun once if it's set to true.
+                break;
             }
+        }
+
+        if (requiredForRerun) {
+            OptionDef optionDef = new OptionDef(optionName, optionKey, optionValue, source);
+            getConfigurationDescription().addRerunOption(optionDef);
         }
     }
 
@@ -662,9 +702,16 @@ public class Configuration implements IConfiguration {
         setConfigurationObjectListNoThrow(RESULT_REPORTER_TYPE_NAME, listeners);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void setDeviceMetricCollectors(List<IMetricCollector> collectors) {
         setConfigurationObjectListNoThrow(DEVICE_METRICS_COLLECTOR_TYPE_NAME, collectors);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setDeviceSideCollectorSpec(DeviceSideCollectorSpecification deviceCollectorSpec) {
+        setConfigurationObjectNoThrow(DEVICE_SIDE_SPEC_TYPE_NAME, deviceCollectorSpec);
     }
 
     /**
@@ -782,6 +829,16 @@ public class Configuration implements IConfiguration {
     public void setTargetPreparer(ITargetPreparer preparer) {
         notAllowedInMultiMode("setTargetPreparer");
         addToDefaultDeviceConfig(preparer);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setTargetPreparers(List<ITargetPreparer> preparers) {
+        notAllowedInMultiMode("setTargetPreparers");
+        getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME).getTargetPreparers().clear();
+        for (ITargetPreparer prep : preparers) {
+            addToDefaultDeviceConfig(prep);
+        }
     }
 
     /**

@@ -27,6 +27,7 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.NullDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
@@ -35,8 +36,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
-import com.android.tradefed.result.InputStreamSource;
-import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
@@ -57,6 +56,9 @@ import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.TimeUtil;
+
+import com.google.inject.Inject;
+import com.google.inject.Injector;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -96,6 +98,8 @@ public abstract class ITestSuite
     public static final String ABI_OPTION = "abi";
     public static final String SKIP_HOST_ARCH_CHECK = "skip-host-arch-check";
     public static final String PRIMARY_ABI_RUN = "primary-abi-only";
+    public static final String PARAMETER_KEY = "parameter";
+
     private static final String PRODUCT_CPU_ABI_KEY = "ro.product.cpu.abi";
 
     // Options for test failure case
@@ -241,6 +245,32 @@ public abstract class ITestSuite
     private ModuleDefinition mDirectModule = null;
     private boolean mShouldMakeDynamicModule = true;
 
+    // Guice object
+    private Injector mInjector;
+
+    /**
+     * Get the current Guice {@link Injector} from the invocation. It should allow us to continue
+     * the object injection of modules.
+     */
+    @Inject
+    public void setInvocationInjector(Injector injector) {
+        mInjector = injector;
+    }
+
+    /** Forward our invocation scope guice objects to whoever needs them in modules. */
+    private void applyGuiceInjection(LinkedHashMap<String, IConfiguration> runConfig) {
+        if (mInjector == null) {
+            // TODO: Convert to a strong failure
+            CLog.d("No injector received by the suite.");
+            return;
+        }
+        for (IConfiguration config : runConfig.values()) {
+            for (IRemoteTest test : config.getTests()) {
+                mInjector.injectMembers(test);
+            }
+        }
+    }
+
     /**
      * Abstract method to load the tests configuration that will be run. Each tests is defined by a
      * {@link IConfiguration} and a unique name under which it will report results.
@@ -264,6 +294,9 @@ public abstract class ITestSuite
             CLog.i("No config were loaded. Nothing to run.");
             return runConfig;
         }
+        // Apply our guice scope to all modules objects
+        applyGuiceInjection(runConfig);
+
         if (mModuleMetadataIncludeFilter.isEmpty() && mModuleMetadataExcludeFilter.isEmpty()) {
             return runConfig;
         }
@@ -324,6 +357,7 @@ public abstract class ITestSuite
             module.setBuild(mBuildInfo);
             runModules.add(module);
         }
+        CLog.logAndDisplay(LogLevel.DEBUG, "[Total Unique Modules = %s]", runModules.size());
         // Free the map once we are done with it.
         runConfig = null;
         return runModules;
@@ -354,6 +388,14 @@ public abstract class ITestSuite
             preparers.addAll(holder.getTargetPreparers());
         }
         return res;
+    }
+
+    /**
+     * Opportunity to clean up all the things that were needed during the suites setup but are not
+     * required to run the tests.
+     */
+    void cleanUpSuiteSetup() {
+        // Empty by default.
     }
 
     /** Generic run method for all test loaded from {@link #loadTests()}. */
@@ -449,9 +491,11 @@ public abstract class ITestSuite
                     "A DeviceNotAvailableException occurred, following modules did not run: %s",
                     runModules);
             for (ModuleDefinition module : runModules) {
+                listener.testModuleStarted(module.getModuleInvocationContext());
                 listener.testRunStarted(module.getId(), 0);
                 listener.testRunFailed("Module did not run due to device not available.");
                 listener.testRunEnded(0, new HashMap<String, Metric>());
+                listener.testModuleEnded();
             }
             throw e;
         }
@@ -533,7 +577,13 @@ public abstract class ITestSuite
                 continue;
             }
 
-            StatusCheckerResult result = checker.preExecutionCheck(device);
+            StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
+            try {
+                result = checker.preExecutionCheck(device);
+            } catch (RuntimeException e) {
+                // Catch RuntimeException to avoid leaking throws that go to the invocation.
+                result.setErrorMessage(e.getMessage());
+            }
             if (!CheckStatus.SUCCESS.equals(result.getStatus())) {
                 String errorMessage =
                         (result.getErrorMessage() == null) ? "" : result.getErrorMessage();
@@ -544,11 +594,9 @@ public abstract class ITestSuite
         if (!failures.isEmpty()) {
             CLog.w("There are failed system status checkers: %s capturing a bugreport",
                     failures.toString());
-            try (InputStreamSource bugSource = device.getBugreport()) {
-                listener.testLog(
-                        String.format("bugreport-checker-pre-module-%s", moduleName),
-                        LogDataType.BUGREPORT,
-                        bugSource);
+            if (!(device.getIDevice() instanceof StubDevice)) {
+                device.logBugreport(
+                        String.format("bugreport-checker-pre-module-%s", moduleName), listener);
             }
         }
 
@@ -575,7 +623,13 @@ public abstract class ITestSuite
                 continue;
             }
 
-            StatusCheckerResult result = checker.postExecutionCheck(device);
+            StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
+            try {
+                result = checker.postExecutionCheck(device);
+            } catch (RuntimeException e) {
+                // Catch RuntimeException to avoid leaking throws that go to the invocation.
+                result.setErrorMessage(e.getMessage());
+            }
             if (!CheckStatus.SUCCESS.equals(result.getStatus())) {
                 String errorMessage =
                         (result.getErrorMessage() == null) ? "" : result.getErrorMessage();
@@ -586,11 +640,9 @@ public abstract class ITestSuite
         if (!failures.isEmpty()) {
             CLog.w("There are failed system status checkers: %s capturing a bugreport",
                     failures.toString());
-            try (InputStreamSource bugSource = device.getBugreport()) {
-                listener.testLog(
-                        String.format("bugreport-checker-post-module-%s", moduleName),
-                        LogDataType.BUGREPORT,
-                        bugSource);
+            if (!(device.getIDevice() instanceof StubDevice)) {
+                device.logBugreport(
+                        String.format("bugreport-checker-post-module-%s", moduleName), listener);
             }
         }
 
@@ -640,6 +692,12 @@ public abstract class ITestSuite
                         runConfig, shardCountHint, mShouldMakeDynamicModule);
         runConfig.clear();
         runConfig = null;
+
+        // Clean up the parent that will get sharded: It is fine to clean up before copying the
+        // options, because the sharded module is already created/populated so there is no need
+        // to carry these extra data.
+        cleanUpSuiteSetup();
+
         // create an association of one ITestSuite <=> one ModuleDefinition as the smallest
         // execution unit supported.
         List<IRemoteTest> splitTests = new ArrayList<>();
@@ -796,10 +854,11 @@ public abstract class ITestSuite
     public Set<IAbi> getAbis(ITestDevice device) throws DeviceNotAvailableException {
         Set<IAbi> abis = new LinkedHashSet<>();
         Set<String> archAbis = getAbisForBuildTargetArch();
+        // Handle null-device: use abi in common with host and suite build
         if (mPrimaryAbiRun) {
             if (mAbiName == null) {
                 // Get the primary from the device and make it the --abi to run.
-                mAbiName = device.getProperty(PRODUCT_CPU_ABI_KEY).trim();
+                mAbiName = getPrimaryAbi(device);
             } else {
                 CLog.d(
                         "Option --%s supersedes the option --%s, using abi: %s",
@@ -821,7 +880,7 @@ public abstract class ITestSuite
             }
         } else {
             // Run on all abi in common between the device and suite builds.
-            List<String> deviceAbis = Arrays.asList(AbiFormatter.getSupportedAbis(device, ""));
+            List<String> deviceAbis = getDeviceAbis(device);
             for (String abi : deviceAbis) {
                 if ((mSkipHostArchCheck || archAbis.contains(abi))
                         && AbiUtils.isAbiSupportedByCompatibility(abi)) {
@@ -844,6 +903,23 @@ public abstract class ITestSuite
         }
     }
 
+    /** Returns the primary abi of the device or host if it's a null device. */
+    private String getPrimaryAbi(ITestDevice device) throws DeviceNotAvailableException {
+        if (device.getIDevice() instanceof NullDevice) {
+            Set<String> hostAbis = getHostAbis();
+            return hostAbis.iterator().next();
+        }
+        return mAbiName = device.getProperty(PRODUCT_CPU_ABI_KEY).trim();
+    }
+
+    /** Returns the list of abis supported by the device or host if it's a null device. */
+    private List<String> getDeviceAbis(ITestDevice device) throws DeviceNotAvailableException {
+        if (device.getIDevice() instanceof NullDevice) {
+            return new ArrayList<>(getHostAbis());
+        }
+        return Arrays.asList(AbiFormatter.getSupportedAbis(device, ""));
+    }
+
     /** Return the abis supported by the Host build target architecture. Exposed for testing. */
     @VisibleForTesting
     protected Set<String> getAbisForBuildTargetArch() {
@@ -851,9 +927,21 @@ public abstract class ITestSuite
         return AbiUtils.getAbisForArch(TestSuiteInfo.getInstance().getTargetArch());
     }
 
+    /** Returns the host machine abis. */
+    @VisibleForTesting
+    protected Set<String> getHostAbis() {
+        return AbiUtils.getHostAbi();
+    }
+
     /** Returns the abi requested with the option -a or --abi. */
     public final String getRequestedAbi() {
         return mAbiName;
+    }
+
+    /** Getter used to validate the proper Guice injection. */
+    @VisibleForTesting
+    final Injector getInjector() {
+        return mInjector;
     }
 
     /**

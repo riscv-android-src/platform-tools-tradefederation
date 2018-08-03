@@ -32,6 +32,7 @@ POST_PATCH_ITERATIONS = 'POST_PATCH_ITERATIONS'
 PRE_PATCH_FOLDER = 'PRE_PATCH_FOLDER'
 POST_PATCH_FOLDER = 'POST_PATCH_FOLDER'
 SERIAL = 'SERIAL'
+ALL_ABI = 'ALL_ABI'
 CUSTOM_ARGS = 'CUSTOM_ARGS'
 
 # Application exit codes.
@@ -70,6 +71,9 @@ GTF_TARGET = 'google-tradefed-core'
 # Test group for tests in TEST_MAPPING
 TEST_GROUP_PRESUBMIT = 'presubmit'
 TEST_GROUP_POSTSUBMIT = 'postsubmit'
+TEST_GROUP_ALL = 'all'
+# Key in TEST_MAPPING file for a list of imported TEST_MAPPING file
+TEST_MAPPING_IMPORTS = 'imports'
 
 # TradeFed command line args
 TF_INCLUDE_FILTER = '--include-filter'
@@ -77,3 +81,14 @@ TF_ATEST_INCLUDE_FILTER = '--atest-include-filter'
 TF_ATEST_INCLUDE_FILTER_VALUE_FMT = '{test_name}:{test_filter}'
 TF_MODULE_ARG = '--module-arg'
 TF_MODULE_ARG_VALUE_FMT = '{test_name}:{option_name}:{option_value}'
+
+# Suite Plans
+SUITE_PLANS = frozenset(['cts'])
+
+# Constants used for AtestArgParser
+HELP_DESC = 'Build, install and run Android tests locally.'
+BUILD_STEP = 'build'
+INSTALL_STEP = 'install'
+TEST_STEP = 'test'
+ALL_STEPS = [BUILD_STEP, INSTALL_STEP, TEST_STEP]
+REBUILD_MODULE_INFO_FLAG = '--rebuild-module-info'

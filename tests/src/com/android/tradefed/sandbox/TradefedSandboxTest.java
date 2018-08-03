@@ -21,7 +21,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
@@ -72,6 +74,7 @@ public class TradefedSandboxTest {
         EasyMock.expect(mMockConfig.getConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME))
                 .andStubReturn(new SandboxOptions());
         mMockContext = new InvocationContext();
+        mMockContext.setConfigurationDescriptor(new ConfigurationDescriptor());
 
         mTmpFolder = FileUtil.createTempDir("tmp-tf-jar-dir");
 
@@ -188,6 +191,7 @@ public class TradefedSandboxTest {
 
     private void setPrepareConfigurationExpectations() throws Exception {
         EasyMock.expect(mMockConfig.getCommandLine()).andReturn("empty --arg 1").times(2);
+        EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
     }
 
     /**

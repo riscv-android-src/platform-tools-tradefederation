@@ -55,3 +55,6 @@ class ShouldNeverBeCalledError(Exception):
 
 class FatalIncludeError(SyntaxError):
     """Raised if expanding include tag fails."""
+
+class MissingCCTestCaseError(Exception):
+    """Raised when the cc file does not contain a test case class."""

@@ -49,7 +49,7 @@ class FakeTestRunnerA(tr_base.TestRunnerBase):
     NAME = FAKE_TR_NAME_A
     EXECUTABLE = 'echo'
 
-    def run_tests(self, test_infos, extra_args):
+    def run_tests(self, test_infos, extra_args, reporter):
         pass
 
     def host_env_check(self):

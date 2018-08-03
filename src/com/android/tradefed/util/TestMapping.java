@@ -87,6 +87,7 @@ public class TestMapping {
 
     private static final String PRESUBMIT = "presubmit";
     private static final String POSTSUBMIT = "postsubmit";
+    private static final String IMPORTS = "imports";
     private static final String KEY_NAME = "name";
     private static final String TEST_MAPPING = "TEST_MAPPING";
     private static final String TEST_MAPPINGS_ZIP = "test_mappings.zip";
@@ -110,6 +111,11 @@ public class TestMapping {
                 Iterator<String> testGroups = (Iterator<String>) root.keys();
                 while (testGroups.hasNext()) {
                     String group = testGroups.next();
+                    if (group.equals(IMPORTS)) {
+                        // TF runs tests in all TEST_MAPPING files in a build, so imports do not
+                        // need to be considered.
+                        continue;
+                    }
                     List<TestInfo> testsForGroup = new ArrayList<TestInfo>();
                     mTestCollection.put(group, testsForGroup);
                     JSONArray arr = root.getJSONArray(group);
@@ -148,7 +154,7 @@ public class TestMapping {
     }
 
     /**
-     * Helper to get all tests set in a TEST_MAPPING file for a given grou.
+     * Helper to get all tests set in a TEST_MAPPING file for a given group.
      *
      * @param testGroup A {@link String} of the test group.
      * @return A {@code List<TestInfo>} of the test infos.

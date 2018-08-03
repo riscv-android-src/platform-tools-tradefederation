@@ -260,6 +260,32 @@ public class DeviceTestCase extends MetricTestCase
         mFilterHelper.addAllExcludeAnnotation(notAnnotations);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getIncludeAnnotations() {
+        return mIncludeAnnotation;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getExcludeAnnotations() {
+        return mExcludeAnnotation;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearIncludeAnnotations() {
+        mIncludeAnnotation.clear();
+        mFilterHelper.clearIncludeAnnotations();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearExcludeAnnotations() {
+        mExcludeAnnotation.clear();
+        mFilterHelper.clearExcludeAnnotations();
+    }
+
     /**
      * Get list of test methods to run
      *

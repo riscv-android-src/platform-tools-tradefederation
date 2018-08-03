@@ -16,6 +16,7 @@
 package com.android.tradefed.build;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
+import com.android.tradefed.build.proto.BuildInformation;
 import com.android.tradefed.device.ITestDevice;
 
 import java.io.File;
@@ -170,12 +171,24 @@ public interface IBuildInfo extends Serializable {
     }
 
     /**
-     * Helper method to retrieve a {@link VersionedFile} with a given a {@link BuildInfoFileKey}.
+     * Helper method to retrieve a {@link VersionedFile} with a given {@link BuildInfoFileKey}.
      *
      * @param key The {@link BuildInfoFileKey} requested.
      * @return The versioned file or <code>null</code> if not found
      */
     public default VersionedFile getVersionedFile(BuildInfoFileKey key) {
+        // Default implementation for projects that don't extend BuildInfo class.
+        return null;
+    }
+
+    /**
+     * Helper method to retrieve a list of {@link VersionedFile}s associated with a given {@link
+     * BuildInfoFileKey}. If the key allows to store a list.
+     *
+     * @param key The {@link BuildInfoFileKey} requested.
+     * @return The versioned file or <code>null</code> if not found
+     */
+    public default List<VersionedFile> getVersionedFiles(BuildInfoFileKey key) {
         // Default implementation for projects that don't extend BuildInfo class.
         return null;
     }
@@ -235,4 +248,10 @@ public interface IBuildInfo extends Serializable {
      * Clones the {@link IBuildInfo} object.
      */
     public IBuildInfo clone();
+
+    /** Serialize a the BuildInfo instance into a protobuf. */
+    public default BuildInformation.BuildInfo toProto() {
+        // Default implementation for project that don't extends BuildInfo class.
+        return null;
+    }
 }

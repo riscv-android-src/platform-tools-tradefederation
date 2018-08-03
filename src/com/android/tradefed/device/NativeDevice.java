@@ -60,6 +60,7 @@ import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.ZipUtil2;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -172,6 +173,9 @@ public class NativeDevice implements IManagedTestDevice {
 
     /** Wifi reconnect timeout in ms. */
     private static final int WIFI_RECONNECT_TIMEOUT = 60 * 1000;
+
+    /** Pattern to find an executable file. */
+    private static final Pattern EXE_FILE = Pattern.compile("^[-l]r.x.+");
 
     /** The time in ms to wait for a command to complete. */
     private long mCmdTimeout = 2 * 60 * 1000L;
@@ -443,6 +447,26 @@ public class NativeDevice implements IManagedTestDevice {
         };
         performDeviceAction("getprop", propAction, MAX_RETRY_ATTEMPTS);
         return result[0];
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean setProperty(String propKey, String propValue)
+            throws DeviceNotAvailableException {
+        if (propKey == null || propValue == null) {
+            throw new IllegalArgumentException("set property key or value cannot be null.");
+        }
+        if (!isAdbRoot()) {
+            CLog.e("setProperty requires adb root = true.");
+            return false;
+        }
+        CommandResult result =
+                executeShellV2Command(String.format("setprop \"%s\" \"%s\"", propKey, propValue));
+        if (CommandStatus.SUCCESS.equals(result.getStatus())) {
+            return true;
+        }
+        CLog.e("Something went wrong went setting property %s: %s", propKey, result.getStderr());
+        return false;
     }
 
     /**
@@ -1270,8 +1294,18 @@ public class NativeDevice implements IManagedTestDevice {
      * @throws DeviceNotAvailableException
      */
     public IFileEntry getFileEntry(FileEntry entry) throws DeviceNotAvailableException {
-        // FileEntryWrapper is going to construct the list of child fild internally.
+        // FileEntryWrapper is going to construct the list of child file internally.
         return new FileEntryWrapper(this, entry);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean isExecutable(String fullPath) throws DeviceNotAvailableException {
+        String fileMode = executeShellCommand(String.format("ls -l %s", fullPath));
+        if (fileMode != null) {
+            return EXE_FILE.matcher(fileMode).find();
+        }
+        return false;
     }
 
     /**
@@ -2126,7 +2160,20 @@ public class NativeDevice implements IManagedTestDevice {
                     CLog.d("bugreport entry: %s", name);
                     // Only get left-over zipped data to avoid confusing data types.
                     if (name.endsWith(".zip")) {
-                        return pullFile(BUGREPORTZ_TMP_PATH + name);
+                        File pulledZip = pullFile(BUGREPORTZ_TMP_PATH + name);
+                        try {
+                            // Validate the zip before returning it.
+                            if (ZipUtil.isZipFileValid(pulledZip, false)) {
+                                return pulledZip;
+                            }
+                        } catch (IOException e) {
+                            CLog.e(e);
+                        }
+                        CLog.w("Failed to get a valid bugreportz.");
+                        // if zip validation failed, delete it and return null.
+                        FileUtil.deleteFile(pulledZip);
+                        return null;
+
                     }
                 }
                 CLog.w("Could not find a tmp bugreport file in the directory.");
@@ -3707,6 +3754,12 @@ public class NativeDevice implements IManagedTestDevice {
         throw new UnsupportedOperationException("No support for setting's feature.");
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Map<String, String> getAllSettings(String namespace) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for setting's feature.");
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -4000,6 +4053,31 @@ public class NativeDevice implements IManagedTestDevice {
             default:
                 return "i";
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public long getTotalMemory() {
+        // "/proc/meminfo" always returns value in kilobytes.
+        long totalMemory = 0;
+        String output = null;
+        try {
+            output = executeShellCommand("cat /proc/meminfo | grep MemTotal");
+        } catch (DeviceNotAvailableException e) {
+            CLog.e(e);
+            return -1;
+        }
+        if (output.isEmpty()) {
+            return -1;
+        }
+        String[] results = output.split("\\s+");
+        try {
+            totalMemory = Long.parseLong(results[1].replaceAll("\\D+", ""));
+        } catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
+            CLog.e(e);
+            return -1;
+        }
+        return totalMemory * 1024;
     }
 
     /** Validate that pid is an integer and not empty. */

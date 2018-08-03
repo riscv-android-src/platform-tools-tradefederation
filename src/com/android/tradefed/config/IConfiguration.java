@@ -23,6 +23,7 @@ import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.device.metric.target.DeviceSideCollectorSpecification;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -38,6 +39,7 @@ import org.json.JSONException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -134,6 +136,12 @@ public interface IConfiguration {
     public List<IMetricCollector> getMetricCollectors();
 
     /**
+     * Gets the {@link DeviceSideCollectorSpecification} driving the device/target-side
+     * specification of the collectors and their options.
+     */
+    public DeviceSideCollectorSpecification getDeviceSideCollectorsSpec();
+
+    /**
      * Gets the {@link ICommandOptions} to use from the configuration.
      *
      * @return the {@link ICommandOptions} provided in the configuration.
@@ -159,6 +167,14 @@ public interface IConfiguration {
      * does not exist.
      */
     public Object getConfigurationObject(String typeName);
+
+    /**
+     * Generic interface to get all the object of one given type name across devices.
+     *
+     * @param typeName the unique type of the configuration object
+     * @return The list of configuration objects of the given type.
+     */
+    public Collection<Object> getAllConfigurationObjectsOfType(String typeName);
 
     /**
      * Similar to {@link #getConfigurationObject(String)}, but for configuration
@@ -275,6 +291,13 @@ public interface IConfiguration {
     public void setTargetPreparer(ITargetPreparer preparer);
 
     /**
+     * Set the list of {@link ITargetPreparer}s, replacing any existing value.
+     *
+     * @param preparers
+     */
+    public void setTargetPreparers(List<ITargetPreparer> preparers);
+
+    /**
      * Set a {@link IDeviceConfiguration}, replacing any existing value.
      *
      * @param deviceConfig
@@ -368,6 +391,9 @@ public interface IConfiguration {
 
     /** Set the list of {@link IMetricCollector}s, replacing any existing values. */
     public void setDeviceMetricCollectors(List<IMetricCollector> collectors);
+
+    /** Set the {@link DeviceSideCollectorSpecification}, replacing any existing values. */
+    public void setDeviceSideCollectorSpec(DeviceSideCollectorSpecification deviceCollectorSpec);
 
     /**
      * Set the {@link ICommandOptions}, replacing any existing values

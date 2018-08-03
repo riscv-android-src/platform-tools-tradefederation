@@ -121,7 +121,7 @@ public class SuiteResultReporter extends CollectingTestListener {
         mElapsedTime = elapsedTime;
 
         // finalize and print results - general
-        Collection<TestRunResult> results = getRunResults();
+        Collection<TestRunResult> results = getMergedTestRunResults();
         List<TestRunResult> moduleCheckers = extractModuleCheckers(results);
 
         mTotalModules = results.size();

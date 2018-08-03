@@ -55,7 +55,7 @@ public class ModuleListener extends CollectingTestListener {
      */
     @Override
     public void testRunStarted(String name, int numTests) {
-        if (!hasResultFor(name)) {
+        if (!hasTestRunResultsForName(name)) {
             // No results for it yet, brand new set of tests, we expect them all.
             mExpectedTestCount += numTests;
         } else {

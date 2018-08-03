@@ -20,7 +20,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
+import com.android.tradefed.build.proto.BuildInformation;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SerializationUtil;
 
@@ -32,6 +35,7 @@ import org.junit.runners.JUnit4;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.List;
 
 /** Unit tests for {@link BuildInfo}. */
 @RunWith(JUnit4.class)
@@ -132,8 +136,6 @@ public class BuildInfoTest {
             mBuildInfo.setFile("name2", testFile2, "version2");
             assertNotNull(mBuildInfo.getFile("name"));
             assertNotNull(mBuildInfo.getFile("name2"));
-            assertNotNull(mBuildInfo.getFile("name"));
-            assertNotNull(mBuildInfo.getFile("name2"));
             // Clean up with an exception on one of the file
             mBuildInfo.cleanUp(Arrays.asList(testFile2));
             assertNull(mBuildInfo.getFile("name"));
@@ -143,5 +145,54 @@ public class BuildInfoTest {
             FileUtil.deleteFile(testFile);
             FileUtil.deleteFile(testFile2);
         }
+    }
+
+    /**
+     * If we call {@link IBuildInfo#getVersionedFiles(BuildInfoFileKey)} on a non-list key we get an
+     * exception.
+     */
+    @Test
+    public void testGetList_error() {
+        try {
+            mBuildInfo.getVersionedFiles(BuildInfoFileKey.TESTDIR_IMAGE);
+            fail("Should have thrown an exception.");
+        } catch (UnsupportedOperationException e) {
+            // Expected
+        }
+    }
+
+    /** Test that if the key supports list, we can save several files. */
+    @Test
+    public void testListFiles() throws Exception {
+        File testFile = FileUtil.createTempFile("fake-versioned-file", ".txt");
+        File testFile2 = FileUtil.createTempFile("fake-versioned-file2", ".txt");
+        try {
+            mBuildInfo.setFile(BuildInfoFileKey.PACKAGE_FILES, testFile, "version");
+            mBuildInfo.setFile(BuildInfoFileKey.PACKAGE_FILES, testFile2, "version2");
+            assertNotNull(mBuildInfo.getFile(BuildInfoFileKey.PACKAGE_FILES));
+            List<VersionedFile> listFiles =
+                    mBuildInfo.getVersionedFiles(BuildInfoFileKey.PACKAGE_FILES);
+            assertEquals(2, listFiles.size());
+        } finally {
+            FileUtil.deleteFile(testFile);
+            FileUtil.deleteFile(testFile2);
+        }
+    }
+
+    /** Test that the build info can be described in its proto format. */
+    @Test
+    public void testProtoSerialization() throws Exception {
+        BuildInformation.BuildInfo proto = mBuildInfo.toProto();
+        assertEquals("1", proto.getBuildId());
+        assertEquals(BuildInfo.class.getCanonicalName(), proto.getBuildInfoClass());
+        assertEquals("value", proto.getAttributes().get("attribute"));
+        assertEquals(1, proto.getVersionedFileList().size());
+        assertNotNull(proto.getVersionedFileList().get(0));
+
+        IBuildInfo deserialized = BuildInfo.fromProto(proto);
+        assertEquals("1", deserialized.getBuildId());
+        // Build flavor was not set, so it's null
+        assertNull(deserialized.getBuildFlavor());
+        assertNotNull(deserialized.getVersionedFile(FILE_KEY));
     }
 }

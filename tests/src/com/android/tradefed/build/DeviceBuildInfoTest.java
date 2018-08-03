@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo.BuildInfoProperties;
+import com.android.tradefed.build.proto.BuildInformation;
 import com.android.tradefed.util.FileUtil;
 
 import org.junit.After;
@@ -116,5 +117,16 @@ public class DeviceBuildInfoTest {
         } finally {
             copy.cleanUp();
         }
+    }
+
+    /**
+     * Test that the build info can be described in its proto format with its class properly
+     * populated.
+     */
+    @Test
+    public void testProtoSerialization() throws Exception {
+        BuildInformation.BuildInfo proto = mBuildInfo.toProto();
+        assertEquals("2", proto.getBuildId());
+        assertEquals(DeviceBuildInfo.class.getCanonicalName(), proto.getBuildInfoClass());
     }
 }

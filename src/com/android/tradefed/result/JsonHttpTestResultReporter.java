@@ -101,7 +101,7 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
             CLog.d("Skipping reporting beacuse there are invocation failures.");
         } else {
             try {
-                postResults(convertMetricsToJson(getRunResults()));
+                postResults(convertMetricsToJson(getMergedTestRunResults()));
             } catch (JSONException e) {
                 CLog.e("JSONException while converting test metrics.");
                 CLog.e(e);

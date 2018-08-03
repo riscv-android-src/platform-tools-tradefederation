@@ -96,8 +96,9 @@ java_library_host {
         "longevity-host-lib",
         "gson-prebuilt-jar",
         "guice",
+        "platform-test-annotations",
     ],
-   libs: [
+    libs: [
         "loganalysis",
         "tools-common-prebuilt",
     ],
@@ -121,7 +122,7 @@ droiddoc_host {
         "android.whichdoc online",
         "css.path /reference/assets/css/doclava-devsite.css",
         "book.root toc",
-        "book.path /reference/tradefed/_book.yaml",
+        "book.path /_book.yaml",
     ],
     args: "-yaml _book.yaml " +
           "-apidocsdir reference/tradefed/ " +
