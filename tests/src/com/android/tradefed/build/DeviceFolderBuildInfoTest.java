@@ -16,8 +16,12 @@
 package com.android.tradefed.build;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
+import com.android.tradefed.build.IBuildInfo.BuildInfoProperties;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SerializationUtil;
 
@@ -111,5 +115,25 @@ public class DeviceFolderBuildInfoTest {
         // Both sub-build properties have been copied.
         assertEquals("version 32", mDeviceFolderBuildInfo.getDeviceBuildId());
         assertEquals("version 32", test.getDeviceBuildId());
+    }
+
+    /** Ensure that the property to skip device image copying is working. */
+    @Test
+    public void testProperty_skipCopy() throws Exception {
+        File fakeDeviceImage = null;
+        IBuildInfo info = null;
+        try {
+            fakeDeviceImage = FileUtil.createTempFile("fake_image", ".img");
+            mDeviceFolderBuildInfo.setDeviceImageFile(fakeDeviceImage, "image");
+            assertNotNull(mDeviceFolderBuildInfo.getDeviceImageFile());
+            mDeviceFolderBuildInfo.setProperties(BuildInfoProperties.DO_NOT_COPY_IMAGE_FILE);
+            info = mDeviceFolderBuildInfo.clone();
+            assertNull(info.getFile(BuildInfoFileKey.DEVICE_IMAGE));
+        } finally {
+            FileUtil.deleteFile(fakeDeviceImage);
+            if (info != null) {
+                info.cleanUp();
+            }
+        }
     }
 }

@@ -33,6 +33,11 @@ public interface IBuildInfo extends Serializable {
     public enum BuildInfoProperties {
         DO_NOT_COPY_ON_SHARDING,
         DO_NOT_LINK_TESTS_DIR,
+        /**
+         * If a copy of the build is requested, do not copy the device image file. Represented by
+         * {@link BuildInfoFileKey#DEVICE_IMAGE} key.
+         */
+        DO_NOT_COPY_IMAGE_FILE,
     }
 
     /**
