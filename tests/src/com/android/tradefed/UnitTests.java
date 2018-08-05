@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.android.tradefed;
 
 import com.android.tradefed.build.BootstrapBuildProviderTest;
@@ -161,11 +162,11 @@ import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
 import com.android.tradefed.targetprep.TestAppInstallSetupTest;
 import com.android.tradefed.targetprep.TestFilePushSetupTest;
 import com.android.tradefed.targetprep.TimeSetterTargetPreparerTest;
+import com.android.tradefed.targetprep.adb.AdbStopServerPreparerTest;
 import com.android.tradefed.targetprep.multi.MergeMultiBuildTargetPreparerTest;
 import com.android.tradefed.targetprep.suite.SuiteApkInstallerTest;
 import com.android.tradefed.testtype.AndroidJUnitTestTest;
 import com.android.tradefed.testtype.CodeCoverageListenerTest;
-import com.android.tradefed.testtype.CodeCoverageTestBaseTest;
 import com.android.tradefed.testtype.DeviceBatteryLevelCheckerTest;
 import com.android.tradefed.testtype.DeviceSuiteTest;
 import com.android.tradefed.testtype.DeviceTestCaseTest;
@@ -183,7 +184,6 @@ import com.android.tradefed.testtype.InstalledInstrumentationsTestTest;
 import com.android.tradefed.testtype.InstrumentationFileTestTest;
 import com.android.tradefed.testtype.InstrumentationSerialTestTest;
 import com.android.tradefed.testtype.InstrumentationTestTest;
-import com.android.tradefed.testtype.JacocoCodeCoverageTestTest;
 import com.android.tradefed.testtype.JarHostTestTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestParserTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestTest;
@@ -267,6 +267,7 @@ import com.android.tradefed.util.SimpleStatsTest;
 import com.android.tradefed.util.SizeLimitedOutputStreamTest;
 import com.android.tradefed.util.StreamUtilTest;
 import com.android.tradefed.util.StringEscapeUtilsTest;
+import com.android.tradefed.util.StringUtilTest;
 import com.android.tradefed.util.SubprocessTestResultsParserTest;
 import com.android.tradefed.util.TableBuilderTest;
 import com.android.tradefed.util.TableFormatterTest;
@@ -471,6 +472,9 @@ import org.junit.runners.Suite.SuiteClasses;
     TestFilePushSetupTest.class,
     TimeSetterTargetPreparerTest.class,
 
+    // targetprep.adb
+    AdbStopServerPreparerTest.class,
+
     // targetprep.multi
     MergeMultiBuildTargetPreparerTest.class,
 
@@ -494,7 +498,6 @@ import org.junit.runners.Suite.SuiteClasses;
     // testtype
     AndroidJUnitTestTest.class,
     CodeCoverageListenerTest.class,
-    CodeCoverageTestBaseTest.class,
     CoverageMeasurementForwarderTest.class,
     DeviceBatteryLevelCheckerTest.class,
     DeviceSuiteTest.class,
@@ -513,7 +516,6 @@ import org.junit.runners.Suite.SuiteClasses;
     InstrumentationSerialTestTest.class,
     InstrumentationFileTestTest.class,
     InstrumentationTestTest.class,
-    JacocoCodeCoverageTestTest.class,
     JarHostTestTest.class,
     NativeBenchmarkTestParserTest.class,
     NativeBenchmarkTestTest.class,
@@ -612,6 +614,7 @@ import org.junit.runners.Suite.SuiteClasses;
     SizeLimitedOutputStreamTest.class,
     StreamUtilTest.class,
     StringEscapeUtilsTest.class,
+    StringUtilTest.class,
     SubprocessTestResultsParserTest.class,
     TableBuilderTest.class,
     TableFormatterTest.class,
