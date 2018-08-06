@@ -347,6 +347,7 @@ public class GTestTest {
         EasyMock.expect(mockDevice.isExecutable("/some/path/file/run_me")).andReturn(true);
         EasyMock.expect(mockDevice.isExecutable("/some/path/file/run_me2")).andReturn(true);
         EasyMock.expect(mockDevice.isExecutable("/some/path/file/run_me.not")).andReturn(true);
+        EasyMock.expect(mockDevice.isExecutable("/some/path/file/run_me.so")).andReturn(true);
         EasyMock.replay(mockDevice);
         mGTest.setDevice(mockDevice);
         // Skip files ending in .not
@@ -354,6 +355,8 @@ public class GTestTest {
         assertFalse(mGTest.shouldSkipFile("/some/path/file/run_me"));
         assertFalse(mGTest.shouldSkipFile("/some/path/file/run_me2"));
         assertTrue(mGTest.shouldSkipFile("/some/path/file/run_me.not"));
+        // Ensure that the default .so filter is present.
+        assertTrue(mGTest.shouldSkipFile("/some/path/file/run_me.so"));
         EasyMock.verify(mockDevice);
     }
 
