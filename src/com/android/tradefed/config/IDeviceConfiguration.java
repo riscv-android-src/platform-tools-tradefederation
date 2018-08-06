@@ -29,16 +29,23 @@ import java.util.List;
  */
 public interface IDeviceConfiguration {
 
-    /**
-     * Return The Name of the device specified in the field "name" of the configuration.
-     */
+    /** Returns The Name of the device specified in the field "name" of the configuration. */
     public String getDeviceName();
+
+    /** Returns whether the container is for a Device Under Test or not. */
+    public boolean isFake();
 
     /**
      * Return The list of all the configuration objects held the instance of
      * {@link IDeviceConfiguration}
      */
     public List<Object> getAllObjects();
+
+    /**
+     * Return The list of all the configuration objects held the instance of {@link
+     * IDeviceConfiguration} that match the configuration type requested.
+     */
+    public List<Object> getAllObjectOfType(String configType);
 
     /**
      * Pass one of the allowed objects that the Configuration Holder can keep track of.

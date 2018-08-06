@@ -15,13 +15,20 @@
  */
 package com.android.tradefed.util;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.LogDataType;
 
+import com.android.tradefed.testtype.Abi;
+import com.android.tradefed.testtype.IAbi;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -31,6 +38,7 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.util.Set;
 
 /** Unit tests for {@link FileUtil} */
+@RunWith(JUnit4.class)
 public class FileUtilTest {
 
     @Before
@@ -350,6 +358,33 @@ public class FileUtilTest {
     }
 
     /**
+     * Test that using {@link FileUtil#findFiles(File, String)} works when one of the directory is a
+     * symlink.
+     */
+    @Test
+    public void testFindFilesSuccess_symlink() throws IOException {
+        File tmpDir = FileUtil.createTempDir("find_files_test");
+        File subDir = FileUtil.createTempDir("subfolder");
+        try {
+            File matchFile1 = FileUtil.createTempFile("test", ".config", tmpDir);
+            File matchFile2 = FileUtil.createTempFile("test", ".config", subDir);
+            File destLink = new File(tmpDir, "subFolder");
+            FileUtil.symlinkFile(subDir, destLink);
+            FileUtil.createTempFile("test", ".xml", subDir);
+            Set<String> matchFiles = FileUtil.findFiles(tmpDir, ".*.config");
+            assertTrue(matchFiles.contains(matchFile1.getAbsolutePath()));
+            // The file is returned under the directory of the symlink not the original location.
+            assertTrue(
+                    matchFiles.contains(
+                            new File(destLink, matchFile2.getName()).getAbsolutePath()));
+            assertEquals(matchFiles.size(), 2);
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+            FileUtil.recursiveDelete(subDir);
+        }
+    }
+
+    /**
      * Test {@link FileUtil#findFiles(File, String)} returns empty set if no file matches filter.
      */
     @Test
@@ -400,6 +435,40 @@ public class FileUtilTest {
     }
 
     /**
+     * Test {@link FileUtil#findFile(File, String)} when finding a file that has the same name as
+     * its directory, the File should be be returned in that case.
+     */
+    @Test
+    public void testFindFile_sameDirName() throws IOException {
+        File tmpDir = FileUtil.createTempDir("find_file_test");
+        try {
+            File subDir = FileUtil.createTempDir("find_file_file", tmpDir);
+            File subFile = FileUtil.createTempFile("find_file_file", "", subDir);
+            File res = FileUtil.findFile(tmpDir, subFile.getName());
+            assertEquals(subFile.getAbsolutePath(), res.getAbsolutePath());
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
+    /**
+     * Test {@link FileUtil#findFile(File, String)} when searching a File, if a directory match the
+     * name, and not child file does, then return the directory matching the file.
+     */
+    @Test
+    public void testFindFile_directory() throws IOException {
+        File tmpDir = FileUtil.createTempDir("find_file_test");
+        try {
+            File subDir = FileUtil.createTempDir("find_file_file", tmpDir);
+            FileUtil.createTempFile("sub_file_file", ".txt", subDir);
+            File res = FileUtil.findFile(tmpDir, subDir.getName());
+            assertEquals(subDir.getAbsolutePath(), res.getAbsolutePath());
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
+    /**
      * Test {@link FileUtil#findDirsUnder(File, File)} when root dir is not a directory, it should
      * throw an exception.
      */
@@ -413,6 +482,57 @@ public class FileUtilTest {
             // expected
         } finally {
             FileUtil.recursiveDelete(illegalRoot);
+        }
+    }
+
+    /** Test {@link FileUtil#findFile(String, IAbi, File...)} can find file successfully. */
+    @Test
+    public void testfindFile_success() throws IOException {
+        File tmpDir = FileUtil.createTempDir("find_files_arch_test");
+        try {
+            FileUtil.createTempFile("test", ".config", tmpDir);
+            FileUtil.createTempFile("test2", ".config", tmpDir);
+            File subDir = new File(tmpDir, "subfolder");
+            subDir.mkdirs();
+            FileUtil.createTempFile("test", ".config", subDir);
+            File arm64Dir = new File(subDir, "arm64");
+            arm64Dir.mkdirs();
+            File arm64File = FileUtil.createTempFile("test", ".config", arm64Dir);
+
+            File armAbiDir = new File(subDir, "arm");
+            armAbiDir.mkdirs();
+            File armFile = FileUtil.createTempFile("test", ".config", armAbiDir);
+
+            File x8664AbiDir = new File(subDir, "x86_64");
+            x8664AbiDir.mkdirs();
+            File x8664File = FileUtil.createTempFile("test", ".config", x8664AbiDir);
+
+            File x86AbiDir = new File(subDir, "x86");
+            x86AbiDir.mkdirs();
+            File x86File = FileUtil.createTempFile("test", ".config", x86AbiDir);
+
+            // arm64
+            IAbi abi = new Abi("arm64-v8a", "64");
+            File findFile = FileUtil.findFile(".*.config", abi, tmpDir);
+            assertEquals(findFile.getAbsolutePath(), arm64File.getAbsolutePath());
+
+            // arm
+            abi = new Abi("armeabi-v7a", "32");
+            findFile = FileUtil.findFile(".*.config", abi, tmpDir);
+            assertEquals(findFile.getAbsolutePath(), armFile.getAbsolutePath());
+
+            // x86_64
+            abi = new Abi("x86_64", "64");
+            findFile = FileUtil.findFile(".*.config", abi, tmpDir);
+            assertEquals(findFile.getAbsolutePath(), x8664File.getAbsolutePath());
+
+            // x86
+            abi = new Abi("x86", "32");
+            findFile = FileUtil.findFile(".*.config", abi, tmpDir);
+            assertEquals(findFile.getAbsolutePath(), x86File.getAbsolutePath());
+
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
         }
     }
 }

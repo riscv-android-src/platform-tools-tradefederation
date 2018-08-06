@@ -23,8 +23,8 @@ import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.device.metric.target.DeviceSideCollectorSpecification;
 import com.android.tradefed.log.ILeveledLogOutput;
-import com.android.tradefed.profiler.ITestProfiler;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
@@ -39,6 +39,7 @@ import org.json.JSONException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -117,21 +118,28 @@ public interface IConfiguration {
     public List<IMultiTargetPreparer> getMultiTargetPreparers();
 
     /**
+     * Gets the {@link IMultiTargetPreparer}s from the configuration that should be executed before
+     * any of the devices target_preparers.
+     *
+     * @return the {@link IMultiTargetPreparer}s provided in order in the configuration
+     */
+    public List<IMultiTargetPreparer> getMultiPreTargetPreparers();
+
+    /**
      * Gets the {@link ISystemStatusChecker}s from the configuration.
      *
      * @return the {@link ISystemStatusChecker}s provided in order in the configuration
      */
     public List<ISystemStatusChecker> getSystemStatusCheckers();
 
-    /**
-     * Gets the {@link ITestProfiler} from the configuration.
-     *
-     * @return the {@link ITestProfiler} provided in the configuration.
-     */
-    public ITestProfiler getProfiler();
-
     /** Gets the {@link IMetricCollector}s from the configuration. */
     public List<IMetricCollector> getMetricCollectors();
+
+    /**
+     * Gets the {@link DeviceSideCollectorSpecification} driving the device/target-side
+     * specification of the collectors and their options.
+     */
+    public DeviceSideCollectorSpecification getDeviceSideCollectorsSpec();
 
     /**
      * Gets the {@link ICommandOptions} to use from the configuration.
@@ -159,6 +167,14 @@ public interface IConfiguration {
      * does not exist.
      */
     public Object getConfigurationObject(String typeName);
+
+    /**
+     * Generic interface to get all the object of one given type name across devices.
+     *
+     * @param typeName the unique type of the configuration object
+     * @return The list of configuration objects of the given type.
+     */
+    public Collection<Object> getAllConfigurationObjectsOfType(String typeName);
 
     /**
      * Similar to {@link #getConfigurationObject(String)}, but for configuration
@@ -275,6 +291,13 @@ public interface IConfiguration {
     public void setTargetPreparer(ITargetPreparer preparer);
 
     /**
+     * Set the list of {@link ITargetPreparer}s, replacing any existing value.
+     *
+     * @param preparers
+     */
+    public void setTargetPreparers(List<ITargetPreparer> preparers);
+
+    /**
      * Set a {@link IDeviceConfiguration}, replacing any existing value.
      *
      * @param deviceConfig
@@ -321,6 +344,22 @@ public interface IConfiguration {
     public void setMultiTargetPreparer(IMultiTargetPreparer multiTargPrep);
 
     /**
+     * Set the list of {@link IMultiTargetPreparer}s in this configuration that should be executed
+     * before any of the devices target_preparers, replacing any existing values
+     *
+     * @param multiPreTargPreps
+     */
+    public void setMultiPreTargetPreparers(List<IMultiTargetPreparer> multiPreTargPreps);
+
+    /**
+     * Convenience method to set a single {@link IMultiTargetPreparer} in this configuration that
+     * should be executed before any of the devices target_preparers, replacing any existing values
+     *
+     * @param multiPreTargPreps
+     */
+    public void setMultiPreTargetPreparer(IMultiTargetPreparer multiPreTargPreps);
+
+    /**
      * Set the list of {@link ISystemStatusChecker}s in this configuration, replacing any
      * existing values
      *
@@ -353,12 +392,8 @@ public interface IConfiguration {
     /** Set the list of {@link IMetricCollector}s, replacing any existing values. */
     public void setDeviceMetricCollectors(List<IMetricCollector> collectors);
 
-    /**
-     * Set the {@link ITestProfiler}, replacing any existing values
-     *
-     * @param profiler
-     */
-    public void setProfiler(ITestProfiler profiler);
+    /** Set the {@link DeviceSideCollectorSpecification}, replacing any existing values. */
+    public void setDeviceSideCollectorSpec(DeviceSideCollectorSpecification deviceCollectorSpec);
 
     /**
      * Set the {@link ICommandOptions}, replacing any existing values
@@ -399,6 +434,9 @@ public interface IConfiguration {
      */
     public void setConfigurationObjectList(String name, List<?> configList)
             throws ConfigurationException;
+
+    /** Returns whether or not a configured device is tagged isFake=true or not. */
+    public boolean isDeviceConfiguredFake(String deviceName);
 
     /**
      * Set the config {@link Option} fields with given set of command line arguments
@@ -497,7 +535,7 @@ public interface IConfiguration {
     public void setCommandLine(String[] arrayArgs);
 
     /**
-     * Gets the the command line used to create this {@link IConfiguration}.
+     * Gets the command line used to create this {@link IConfiguration}.
      *
      * @return the command line used to create this {@link IConfiguration}.
      */

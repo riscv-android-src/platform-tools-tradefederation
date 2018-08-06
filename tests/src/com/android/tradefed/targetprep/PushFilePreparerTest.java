@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.OptionSetter;
@@ -46,6 +47,8 @@ public class PushFilePreparerTest {
         mMockDevice = EasyMock.createStrictMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
+        EasyMock.expect(mMockDevice.getProperty("ro.product.cpu.abilist"))
+                .andStubReturn("arm64-v8a");
         mPreparer = new PushFilePreparer();
         mOptionSetter = new OptionSetter(mPreparer);
     }
@@ -145,6 +148,7 @@ public class PushFilePreparerTest {
 
             fileName = sourceFile.getName();
             EasyMock.expect(buildInfo.getFile(fileName)).andReturn(null);
+            EasyMock.expect(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null);
             EasyMock.expect(buildInfo.getTestsDir()).andReturn(testsDir);
             EasyMock.replay(buildInfo);
 

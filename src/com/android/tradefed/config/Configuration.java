@@ -25,18 +25,17 @@ import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.device.metric.target.DeviceSideCollectorSpecification;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.StdoutLogger;
-import com.android.tradefed.profiler.ITestProfiler;
-import com.android.tradefed.profiler.StubTestProfiler;
 import com.android.tradefed.result.FileSystemLogSaver;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TextResultReporter;
+import com.android.tradefed.sandbox.SandboxOptions;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
-import com.android.tradefed.targetprep.multi.StubMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.MultiMap;
@@ -75,6 +74,8 @@ public class Configuration implements IConfiguration {
     // type names for built in configuration objects
     public static final String BUILD_PROVIDER_TYPE_NAME = "build_provider";
     public static final String TARGET_PREPARER_TYPE_NAME = "target_preparer";
+    // Variation of Multi_target_preparer that runs BEFORE each device target_preparer.
+    public static final String MULTI_PRE_TARGET_PREPARER_TYPE_NAME = "multi_pre_target_preparer";
     public static final String MULTI_PREPARER_TYPE_NAME = "multi_target_preparer";
     public static final String TEST_TYPE_NAME = "test";
     public static final String DEVICE_RECOVERY_TYPE_NAME = "device_recovery";
@@ -87,9 +88,10 @@ public class Configuration implements IConfiguration {
     public static final String SYSTEM_STATUS_CHECKER_TYPE_NAME = "system_checker";
     public static final String CONFIGURATION_DESCRIPTION_TYPE_NAME = "config_desc";
     public static final String DEVICE_NAME = "device";
-    public static final String TEST_PROFILER_TYPE_NAME = "test_profiler";
     public static final String DEVICE_METRICS_COLLECTOR_TYPE_NAME = "metrics_collector";
+    public static final String DEVICE_SIDE_SPEC_TYPE_NAME = "device_side_collector_spec";
     public static final String SANDBOX_TYPE_NAME = "sandbox";
+    public static final String SANBOX_OPTIONS_TYPE_NAME = "sandbox_options";
 
     private static Map<String, ObjTypeInfo> sObjTypeMap = null;
     private static Set<String> sMultiDeviceSupportedTag = null;
@@ -141,6 +143,9 @@ public class Configuration implements IConfiguration {
             sObjTypeMap.put(BUILD_PROVIDER_TYPE_NAME, new ObjTypeInfo(IBuildProvider.class, false));
             sObjTypeMap.put(TARGET_PREPARER_TYPE_NAME,
                     new ObjTypeInfo(ITargetPreparer.class, true));
+            sObjTypeMap.put(
+                    MULTI_PRE_TARGET_PREPARER_TYPE_NAME,
+                    new ObjTypeInfo(IMultiTargetPreparer.class, true));
             sObjTypeMap.put(MULTI_PREPARER_TYPE_NAME,
                     new ObjTypeInfo(IMultiTargetPreparer.class, true));
             sObjTypeMap.put(TEST_TYPE_NAME, new ObjTypeInfo(IRemoteTest.class, true));
@@ -162,10 +167,13 @@ public class Configuration implements IConfiguration {
             sObjTypeMap.put(
                     CONFIGURATION_DESCRIPTION_TYPE_NAME,
                     new ObjTypeInfo(ConfigurationDescriptor.class, false));
-            sObjTypeMap.put(TEST_PROFILER_TYPE_NAME, new ObjTypeInfo(ITestProfiler.class, false));
             sObjTypeMap.put(
                     DEVICE_METRICS_COLLECTOR_TYPE_NAME,
                     new ObjTypeInfo(IMetricCollector.class, true));
+            sObjTypeMap.put(
+                    DEVICE_SIDE_SPEC_TYPE_NAME,
+                    new ObjTypeInfo(DeviceSideCollectorSpecification.class, false));
+            sObjTypeMap.put(SANBOX_OPTIONS_TYPE_NAME, new ObjTypeInfo(SandboxOptions.class, false));
         }
         return sObjTypeMap;
     }
@@ -212,11 +220,14 @@ public class Configuration implements IConfiguration {
         setLogOutput(new StdoutLogger());
         setLogSaver(new FileSystemLogSaver()); // FileSystemLogSaver saves to tmp by default.
         setTestInvocationListener(new TextResultReporter());
-        setMultiTargetPreparer(new StubMultiTargetPreparer());
+        // Init an empty list of target_preparers
+        setConfigurationObjectListNoThrow(TARGET_PREPARER_TYPE_NAME, new ArrayList<>());
+        setMultiPreTargetPreparers(new ArrayList<>());
+        setMultiTargetPreparers(new ArrayList<>());
         setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
         setConfigurationDescriptor(new ConfigurationDescriptor());
-        setProfiler(new StubTestProfiler());
         setDeviceMetricCollectors(new ArrayList<>());
+        setConfigurationObjectNoThrow(SANBOX_OPTIONS_TYPE_NAME, new SandboxOptions());
     }
 
     /**
@@ -335,6 +346,14 @@ public class Configuration implements IConfiguration {
         return (List<IMultiTargetPreparer>) getConfigurationObjectList(MULTI_PREPARER_TYPE_NAME);
     }
 
+    /** {@inheritDoc} */
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<IMultiTargetPreparer> getMultiPreTargetPreparers() {
+        return (List<IMultiTargetPreparer>)
+                getConfigurationObjectList(MULTI_PRE_TARGET_PREPARER_TYPE_NAME);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -355,6 +374,7 @@ public class Configuration implements IConfiguration {
                 RESULT_REPORTER_TYPE_NAME);
     }
 
+    /** {@inheritDoc} */
     @SuppressWarnings("unchecked")
     @Override
     public List<IMetricCollector> getMetricCollectors() {
@@ -363,10 +383,10 @@ public class Configuration implements IConfiguration {
     }
 
     /** {@inheritDoc} */
-    @SuppressWarnings("unchecked")
     @Override
-    public ITestProfiler getProfiler() {
-        return (ITestProfiler) getConfigurationObject(TEST_PROFILER_TYPE_NAME);
+    public DeviceSideCollectorSpecification getDeviceSideCollectorsSpec() {
+        return (DeviceSideCollectorSpecification)
+                getConfigurationObject(DEVICE_SIDE_SPEC_TYPE_NAME);
     }
 
     /** {@inheritDoc} */
@@ -459,6 +479,23 @@ public class Configuration implements IConfiguration {
         return configObjects.get(0);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Collection<Object> getAllConfigurationObjectsOfType(String configType) {
+        Collection<Object> objectsCopy = new ArrayList<Object>();
+        if (doesBuiltInObjSupportMultiDevice(configType)) {
+            for (IDeviceConfiguration deviceConfig : getDeviceConfig()) {
+                objectsCopy.addAll(deviceConfig.getAllObjectOfType(configType));
+            }
+        } else {
+            List<?> configObjects = getConfigurationObjectList(configType);
+            if (configObjects != null) {
+                objectsCopy.addAll(configObjects);
+            }
+        }
+        return objectsCopy;
+    }
+
     /**
      * Return a copy of all config objects
      */
@@ -517,16 +554,26 @@ public class Configuration implements IConfiguration {
         List<FieldDef> affectedFields = optionSetter.setOptionValue(
                 optionName, optionKey, optionValue);
 
-        if (source != null) {
-            // Update the source for each affected field
-            for (FieldDef field : affectedFields) {
+        boolean requiredForRerun = false;
+        // Update the source for each affected field
+        for (FieldDef field : affectedFields) {
+            requiredForRerun |= field.field.getAnnotation(Option.class).requiredForRerun();
+            if (source != null) {
                 // Unless the field is a Collection or MultiMap entry, it can only have one source
                 if (!Collection.class.isAssignableFrom(field.field.getType()) &&
                         !MultiMap.class.isAssignableFrom(field.field.getType())) {
                     mFieldSources.remove(field);
                 }
                 mFieldSources.put(field, source);
+            } else if (requiredForRerun) {
+                // Only need to check if the option is required for rerun once if it's set to true.
+                break;
             }
+        }
+
+        if (requiredForRerun) {
+            OptionDef optionDef = new OptionDef(optionName, optionKey, optionValue, source);
+            getConfigurationDescription().addRerunOption(optionDef);
         }
     }
 
@@ -655,9 +702,16 @@ public class Configuration implements IConfiguration {
         setConfigurationObjectListNoThrow(RESULT_REPORTER_TYPE_NAME, listeners);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void setDeviceMetricCollectors(List<IMetricCollector> collectors) {
         setConfigurationObjectListNoThrow(DEVICE_METRICS_COLLECTOR_TYPE_NAME, collectors);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setDeviceSideCollectorSpec(DeviceSideCollectorSpecification deviceCollectorSpec) {
+        setConfigurationObjectNoThrow(DEVICE_SIDE_SPEC_TYPE_NAME, deviceCollectorSpec);
     }
 
     /**
@@ -716,6 +770,18 @@ public class Configuration implements IConfiguration {
         setConfigurationObjectNoThrow(MULTI_PREPARER_TYPE_NAME, multiTargPrep);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void setMultiPreTargetPreparers(List<IMultiTargetPreparer> multiPreTargPreps) {
+        setConfigurationObjectListNoThrow(MULTI_PRE_TARGET_PREPARER_TYPE_NAME, multiPreTargPreps);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setMultiPreTargetPreparer(IMultiTargetPreparer multiPreTargPrep) {
+        setConfigurationObjectNoThrow(MULTI_PRE_TARGET_PREPARER_TYPE_NAME, multiPreTargPrep);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -730,12 +796,6 @@ public class Configuration implements IConfiguration {
     @Override
     public void setSystemStatusChecker(ISystemStatusChecker systemChecker) {
         setConfigurationObjectNoThrow(SYSTEM_STATUS_CHECKER_TYPE_NAME, systemChecker);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void setProfiler(ITestProfiler profiler) {
-        setConfigurationObjectNoThrow(TEST_PROFILER_TYPE_NAME, profiler);
     }
 
     /** {@inheritDoc} */
@@ -769,6 +829,16 @@ public class Configuration implements IConfiguration {
     public void setTargetPreparer(ITargetPreparer preparer) {
         notAllowedInMultiMode("setTargetPreparer");
         addToDefaultDeviceConfig(preparer);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setTargetPreparers(List<ITargetPreparer> preparers) {
+        notAllowedInMultiMode("setTargetPreparers");
+        getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME).getTargetPreparers().clear();
+        for (ITargetPreparer prep : preparers) {
+            addToDefaultDeviceConfig(prep);
+        }
     }
 
     /**
@@ -824,6 +894,16 @@ public class Configuration implements IConfiguration {
         for (Object configObject : configList) {
             addObject(typeName, configObject);
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean isDeviceConfiguredFake(String deviceName) {
+        IDeviceConfiguration deviceConfig = getDeviceConfigByName(deviceName);
+        if (deviceConfig == null) {
+            return false;
+        }
+        return deviceConfig.isFake();
     }
 
     /**
@@ -1196,13 +1276,17 @@ public class Configuration implements IConfiguration {
         serializer.startDocument("UTF-8", null);
         serializer.startTag(null, ConfigurationUtil.CONFIGURATION_NAME);
 
+        for (IMultiTargetPreparer multiPreTargerPrep : getMultiPreTargetPreparers()) {
+            ConfigurationUtil.dumpClassToXml(
+                    serializer,
+                    MULTI_PRE_TARGET_PREPARER_TYPE_NAME,
+                    multiPreTargerPrep,
+                    excludeFilters);
+        }
+
         for (IMultiTargetPreparer multipreparer : getMultiTargetPreparers()) {
             ConfigurationUtil.dumpClassToXml(
                     serializer, MULTI_PREPARER_TYPE_NAME, multipreparer, excludeFilters);
-        }
-        for (ISystemStatusChecker checker : getSystemStatusCheckers()) {
-            ConfigurationUtil.dumpClassToXml(
-                    serializer, SYSTEM_STATUS_CHECKER_TYPE_NAME, checker, excludeFilters);
         }
 
         if (getDeviceConfig().size() > 1) {
@@ -1273,8 +1357,21 @@ public class Configuration implements IConfiguration {
         ConfigurationUtil.dumpClassToXml(
                 serializer, CMD_OPTIONS_TYPE_NAME, getCommandOptions(), excludeFilters);
 
+        for (IMetricCollector collector : getMetricCollectors()) {
+            ConfigurationUtil.dumpClassToXml(
+                    serializer, DEVICE_METRICS_COLLECTOR_TYPE_NAME, collector, excludeFilters);
+        }
+
+        for (ISystemStatusChecker checker : getSystemStatusCheckers()) {
+            ConfigurationUtil.dumpClassToXml(
+                    serializer, SYSTEM_STATUS_CHECKER_TYPE_NAME, checker, excludeFilters);
+        }
+
         ConfigurationUtil.dumpClassToXml(
-                serializer, TEST_PROFILER_TYPE_NAME, getProfiler(), excludeFilters);
+                serializer,
+                SANBOX_OPTIONS_TYPE_NAME,
+                getConfigurationObject(SANBOX_OPTIONS_TYPE_NAME),
+                excludeFilters);
 
         serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
         serializer.endDocument();
