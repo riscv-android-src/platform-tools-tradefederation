@@ -93,10 +93,13 @@ public class ITestSuiteTest {
     private IConfiguration mStubMainConfiguration;
     private ILogSaver mMockLogSaver;
 
-    /**
-     * Very basic implementation of {@link ITestSuite} to test it.
-     */
-    static class TestSuiteImpl extends ITestSuite {
+    // Guice scope and objects for testing
+    private InvocationScope mScope;
+    private Injector mInjector;
+    private InvocationScopeModule mInvocationScope;
+
+    /** Very basic implementation of {@link ITestSuite} to test it. */
+    public static class TestSuiteImpl extends ITestSuite {
         private int mNumTests = 1;
 
         public TestSuiteImpl() {}
