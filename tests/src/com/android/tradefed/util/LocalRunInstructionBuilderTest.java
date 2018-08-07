@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationDescriptor.LocalTestRunner;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.Abi;
 
 import org.junit.Test;
@@ -34,12 +35,15 @@ public class LocalRunInstructionBuilderTest {
     private static final String OPTION_VALUE = "value";
     private static final String OPTION_NAME_ONLY = "option_only";
     private static final String OPTION_VALUE_ONLY = "value_only";
-    private static final String OPTION_SOURCE = "test_name";
+    private static final String OPTION_SOURCE = "module_name";
+    private static final String CLASS_NAME = "class_name";
+    private static final String METHOD_NAME = "method_name";
+    private static final String METHOD_NAME_WITH_PARAMETER = "method_name[parameter_value]";
     private static final String ABI_NAME = "arm";
 
     /**
      * test {@link LocalRunInstructionBuilder#getInstruction(ConfigurationDescriptor,
-     * LocalTestRunner)}
+     * LocalTestRunner, TestDescription)}
      */
     @Test
     public void testGetInstruction() {
@@ -51,11 +55,52 @@ public class LocalRunInstructionBuilderTest {
         configDescriptor.setAbi(new Abi(ABI_NAME, "32"));
         configDescriptor.setModuleName(OPTION_SOURCE);
         String instruction =
-                LocalRunInstructionBuilder.getInstruction(configDescriptor, LocalTestRunner.ATEST);
+                LocalRunInstructionBuilder.getInstruction(
+                        configDescriptor, LocalTestRunner.ATEST, null);
         assertEquals(
                 "Run following command to try the test in a local setup:\n"
-                        + "atest test_name -- --abi arm --module-arg test_name:option:key:=value "
-                        + "--module-arg test_name:option_only:value_only",
+                        + "atest module_name -- --abi arm "
+                        + "--module-arg module_name:option:key:=value "
+                        + "--module-arg module_name:option_only:value_only",
+                instruction);
+    }
+
+    /**
+     * test {@link LocalRunInstructionBuilder#getInstruction(ConfigurationDescriptor,
+     * LocalTestRunner, TestDescription)} with TestId specified.
+     */
+    @Test
+    public void testGetInstruction_withTestId() {
+        ConfigurationDescriptor configDescriptor = new ConfigurationDescriptor();
+        configDescriptor.setAbi(new Abi(ABI_NAME, "32"));
+        configDescriptor.setModuleName(OPTION_SOURCE);
+        TestDescription testId = new TestDescription(CLASS_NAME, METHOD_NAME);
+        String instruction =
+                LocalRunInstructionBuilder.getInstruction(
+                        configDescriptor, LocalTestRunner.ATEST, testId);
+        assertEquals(
+                "Run following command to try the test in a local setup:\n"
+                        + "atest module_name:class_name#method_name -- --abi arm",
+                instruction);
+    }
+
+    /**
+     * test {@link LocalRunInstructionBuilder#getInstruction(ConfigurationDescriptor,
+     * LocalTestRunner, TestDescription)} with TestId specified which contains parameter for test
+     * method.
+     */
+    @Test
+    public void testGetInstruction_withTestIdAndParameter() {
+        ConfigurationDescriptor configDescriptor = new ConfigurationDescriptor();
+        configDescriptor.setAbi(new Abi(ABI_NAME, "32"));
+        configDescriptor.setModuleName(OPTION_SOURCE);
+        TestDescription testId = new TestDescription(CLASS_NAME, METHOD_NAME_WITH_PARAMETER);
+        String instruction =
+                LocalRunInstructionBuilder.getInstruction(
+                        configDescriptor, LocalTestRunner.ATEST, testId);
+        assertEquals(
+                "Run following command to try the test in a local setup:\n"
+                        + "atest module_name:class_name -- --abi arm",
                 instruction);
     }
 }
