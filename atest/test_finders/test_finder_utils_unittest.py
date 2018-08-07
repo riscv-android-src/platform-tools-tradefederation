@@ -38,6 +38,7 @@ FIND_TWO = uc.ROOT + 'other/dir/test.java\n' + uc.FIND_ONE
 VTS_XML = 'VtsAndroidTest.xml'
 VTS_BITNESS_XML = 'VtsBitnessAndroidTest.xml'
 VTS_PUSH_DIR = 'vts_push_files'
+VTS_PLAN_DIR = 'vts_plan_files'
 VTS_XML_TARGETS = {'VtsTestName',
                    'DATA/nativetest/vts_treble_vintf_test/vts_treble_vintf_test',
                    'DATA/nativetest64/vts_treble_vintf_test/vts_treble_vintf_test',
@@ -52,7 +53,15 @@ VTS_XML_TARGETS = {'VtsTestName',
                    'push_file1_target1',
                    'push_file1_target2',
                    'push_file2_target1',
-                   'push_file2_target2'}
+                   'push_file2_target2',
+                   'CtsDeviceInfo.apk',
+                   'DATA/app/DeviceHealthTests/DeviceHealthTests.apk',
+                   'DATA/app/sl4a/sl4a.apk'}
+VTS_PLAN_TARGETS = {os.path.join(uc.TEST_DATA_DIR, VTS_PLAN_DIR, 'vts-staging-default.xml'),
+                    os.path.join(uc.TEST_DATA_DIR, VTS_PLAN_DIR, 'vts-aa.xml'),
+                    os.path.join(uc.TEST_DATA_DIR, VTS_PLAN_DIR, 'vts-bb.xml'),
+                    os.path.join(uc.TEST_DATA_DIR, VTS_PLAN_DIR, 'vts-cc.xml'),
+                    os.path.join(uc.TEST_DATA_DIR, VTS_PLAN_DIR, 'vts-dd.xml')}
 XML_TARGETS = {'CtsJankDeviceTestCases', 'perf-setup.sh', 'cts-tradefed',
                'GtsEmptyTestApp'}
 PATH_TO_MODULE_INFO_WITH_AUTOGEN = {
@@ -363,6 +372,17 @@ class TestFinderUtilsUnittests(unittest.TestCase):
         no_expect = set()
         self.assertEqual(test_finder_utils.get_install_locations(no_installed_paths),
                          no_expect)
+
+    def test_get_plans_from_vts_xml(self):
+        """Test get_plans_from_vts_xml method."""
+        xml_path = os.path.join(uc.TEST_DATA_DIR, VTS_PLAN_DIR, 'vts-staging-default.xml')
+        self.assertEqual(
+            test_finder_utils.get_plans_from_vts_xml(xml_path),
+            VTS_PLAN_TARGETS)
+        xml_path = os.path.join(uc.TEST_DATA_DIR, VTS_PLAN_DIR, 'NotExist.xml')
+        self.assertRaises(atest_error.XmlNotExistError,
+                          test_finder_utils.get_plans_from_vts_xml, xml_path)
+
 
 if __name__ == '__main__':
     unittest.main()
