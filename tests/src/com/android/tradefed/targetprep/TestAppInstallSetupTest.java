@@ -25,6 +25,7 @@ import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.util.FileUtil;
 
 import org.easymock.EasyMock;
@@ -118,6 +119,27 @@ public class TestAppInstallSetupTest {
                                 EasyMock.eq(true),
                                 EasyMock.eq("--instant")))
                 .andReturn(null);
+        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+    }
+
+    /**
+     * Ensure that the abi flag is properly passed. Also ensured that it's only added once and not
+     * once per apk.
+     */
+    @Test
+    public void testSetup_abi() throws Exception {
+        // Install the apk twice
+        mPrep.addTestFileName(APK_NAME);
+        mPrep.setAbi(new Abi("arm32", "32"));
+        EasyMock.expect(
+                        mMockTestDevice.installPackage(
+                                (File) EasyMock.anyObject(),
+                                EasyMock.eq(true),
+                                EasyMock.eq("--abi arm32")))
+                .andReturn(null)
+                .times(2);
         EasyMock.replay(mMockBuildInfo, mMockTestDevice);
         mPrep.setUp(mMockTestDevice, mMockBuildInfo);
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);
