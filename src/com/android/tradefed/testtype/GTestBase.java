@@ -22,8 +22,8 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
-
 import com.android.tradefed.util.ArrayUtil;
+
 import com.google.common.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
@@ -41,6 +41,13 @@ public abstract class GTestBase
                 IShardableTest,
                 IStrictShardableTest {
 
+    private static final List<String> DEFAULT_FILE_EXCLUDE_FILTERS = new ArrayList<>();
+
+    static {
+        // Exclude .so by default as they are not runnable.
+        DEFAULT_FILE_EXCLUDE_FILTERS.add(".*\\.so");
+    }
+
     @Option(name = "run-disable-tests", description = "Determine to run disable tests or not.")
     private boolean mRunDisabledTests = false;
 
@@ -50,7 +57,7 @@ public abstract class GTestBase
     @Option(
             name = "file-exclusion-filter-regex",
             description = "Regex to exclude certain files from executing. Can be repeated")
-    private List<String> mFileExclusionFilterRegex = new ArrayList<>();
+    private List<String> mFileExclusionFilterRegex = new ArrayList<>(DEFAULT_FILE_EXCLUDE_FILTERS);
 
     @Option(
             name = "positive-testname-filter",
