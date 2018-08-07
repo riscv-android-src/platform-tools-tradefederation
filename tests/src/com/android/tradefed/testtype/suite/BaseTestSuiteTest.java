@@ -322,4 +322,31 @@ public class BaseTestSuiteTest {
         assertTrue(configMap.containsKey("armeabi-v7a suite/stub-parameterized-abi[instant]"));
         EasyMock.verify(mockDevice);
     }
+
+    /**
+     * Test loading a parameterized config with a multiple parameter from the same family. This gets
+     * rejected as they are mutually exclusive.
+     */
+    @Test
+    public void testLoadTests_parameterizedModule_mutuallyExclusiveFamily() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite-parameters-fail");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        EasyMock.replay(mockDevice);
+        try {
+            mRunner.loadTests();
+            fail("Should have thrown an exception.");
+        } catch (RuntimeException expected) {
+            // expected
+            assertEquals(
+                    "Error parsing configuration: suite/stub-parameterized-abi3: "
+                            + "'Module suite/stub-parameterized-abi3 is declaring parameter: "
+                            + "not_instant_app and instant_app when only one expected.'",
+                    expected.getMessage());
+        }
+        EasyMock.verify(mockDevice);
+    }
 }
