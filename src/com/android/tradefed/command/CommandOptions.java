@@ -41,6 +41,7 @@ public class CommandOptions implements ICommandOptions {
     private boolean mJsonHelpMode = false;
 
     public static final String DRY_RUN_OPTION = "dry-run";
+    public static final String NOISY_DRY_RUN_OPTION = "noisy-dry-run";
 
     @Option(
         name = DRY_RUN_OPTION,
@@ -51,10 +52,13 @@ public class CommandOptions implements ICommandOptions {
     )
     private boolean mDryRunMode = false;
 
-    @Option(name = "noisy-dry-run",
-            description = "build but don't actually run the command.  This version prints the " +
-                    "command to the console.  Intended for cmdfile debugging.",
-            importance = Importance.ALWAYS)
+    @Option(
+        name = NOISY_DRY_RUN_OPTION,
+        description =
+                "build but don't actually run the command.  This version prints the "
+                        + "command to the console.  Intended for cmdfile debugging.",
+        importance = Importance.ALWAYS
+    )
     private boolean mNoisyDryRunMode = false;
 
     @Option(name = "min-loop-time", description =
@@ -123,12 +127,13 @@ public class CommandOptions implements ICommandOptions {
     )
     private boolean mDynamicSharding = true;
 
+    public static final String INVOCATION_DATA = "invocation-data";
+
     @Option(
-        name = "invocation-data",
-        description =
-                "A map of values that describe the invocation, these values will be added to the "
-                        + "invocation context."
-    )
+            name = INVOCATION_DATA,
+            description =
+                    "A map of values that describe the invocation, these values will be added to the "
+                            + "invocation context.")
     private UniqueMultiMap<String, String> mInvocationData = new UniqueMultiMap<>();
 
     @Option(
@@ -138,6 +143,7 @@ public class CommandOptions implements ICommandOptions {
     private boolean mUseTfSharding = false;
 
     public static final String USE_SANDBOX = "use-sandbox";
+    public static final String ENABLE_SANDBOX_TEST_MODE = "sandbox-test-mode";
 
     @Option(
         name = USE_SANDBOX,
@@ -145,6 +151,12 @@ public class CommandOptions implements ICommandOptions {
     )
     private boolean mUseSandbox = false;
 
+    @Option(
+            name = ENABLE_SANDBOX_TEST_MODE,
+            description =
+                    "Sandbox test mode where the sandbox will use itself to generate another layer "
+                            + "of sandboxing. This is used for the sandbox to validate itself.")
+    private boolean mSandboxTestMode = false;
 
     /**
      * Set the help mode for the config.
@@ -293,12 +305,24 @@ public class CommandOptions implements ICommandOptions {
         return mTakeBugreportOnInvocationEnded;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void setBugreportOnInvocationEnded(boolean takeBugreport) {
+        mTakeBugreportOnInvocationEnded = takeBugreport;
+    }
+
     /**
      * {@inheritDoc}
      */
     @Override
     public boolean takeBugreportzOnInvocationEnded() {
         return mTakeBugreportzOnInvocationEnded;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setBugreportzOnInvocationEnded(boolean takeBugreportz) {
+        mTakeBugreportzOnInvocationEnded = takeBugreportz;
     }
 
     /**
@@ -408,5 +432,17 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public void setShouldUseSandboxing(boolean use) {
         mUseSandbox = use;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldUseSandboxTestMode() {
+        return mSandboxTestMode;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setUseSandboxTestMode(boolean use) {
+        mSandboxTestMode = use;
     }
 }

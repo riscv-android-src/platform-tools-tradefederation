@@ -15,12 +15,15 @@
  */
 package com.android.tradefed.sandbox;
 
+import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.log.FileLogger;
+import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.result.SubprocessResultsReporter;
 import com.android.tradefed.util.StreamUtil;
 
@@ -43,7 +46,9 @@ public class SandboxConfigDump {
         /** Only non-versioned element of the xml will be outputted */
         NON_VERSIONED_CONFIG,
         /** A run-ready config will be outputted */
-        RUN_CONFIG
+        RUN_CONFIG,
+        /** Special mode that allows the sandbox to generate another layer of sandboxing. */
+        TEST_MODE,
     }
 
     /**
@@ -53,6 +58,8 @@ public class SandboxConfigDump {
     private static final List<String> VERSIONED_ELEMENTS = new ArrayList<>();
 
     static {
+        VERSIONED_ELEMENTS.add(Configuration.SYSTEM_STATUS_CHECKER_TYPE_NAME);
+        VERSIONED_ELEMENTS.add(Configuration.DEVICE_METRICS_COLLECTOR_TYPE_NAME);
         VERSIONED_ELEMENTS.add(Configuration.MULTI_PREPARER_TYPE_NAME);
         VERSIONED_ELEMENTS.add(Configuration.TARGET_PREPARER_TYPE_NAME);
         VERSIONED_ELEMENTS.add(Configuration.TEST_TYPE_NAME);
@@ -72,10 +79,31 @@ public class SandboxConfigDump {
             // TODO: Handle keystore
             IConfiguration config =
                     factory.createConfigurationFromArgs(argList.toArray(new String[0]));
-            if (DumpCmd.RUN_CONFIG.equals(cmd)) {
+            if (DumpCmd.RUN_CONFIG.equals(cmd) || DumpCmd.TEST_MODE.equals(cmd)) {
                 config.getCommandOptions().setShouldUseSandboxing(false);
                 config.getConfigurationDescription().setSandboxed(true);
-                config.setTestInvocationListener(new SubprocessResultsReporter());
+                // Set the reporter
+                SubprocessResultsReporter reporter = new SubprocessResultsReporter();
+                reporter.setOutputTestLog(true);
+                config.setTestInvocationListener(reporter);
+                // Set log level for sandbox
+                ILeveledLogOutput logger = config.getLogOutput();
+                logger.setLogLevel(LogLevel.VERBOSE);
+                if (logger instanceof FileLogger) {
+                    // Ensure we get the stdout logging in FileLogger case.
+                    ((FileLogger) logger).setLogLevelDisplay(LogLevel.VERBOSE);
+                }
+                // Turn off some of the invocation level options that would be duplicated in the
+                // parent.
+                config.getCommandOptions().setBugreportOnInvocationEnded(false);
+                config.getCommandOptions().setBugreportzOnInvocationEnded(false);
+            }
+            if (DumpCmd.TEST_MODE.equals(cmd)) {
+                // We allow one more layer of sandbox to be generated
+                config.getCommandOptions().setShouldUseSandboxing(true);
+                config.getConfigurationDescription().setSandboxed(false);
+                // Ensure we turn off test mode afterward to avoid infinite sandboxing
+                config.getCommandOptions().setUseSandboxTestMode(false);
             }
             pw = new PrintWriter(resFile);
             if (DumpCmd.NON_VERSIONED_CONFIG.equals(cmd)) {

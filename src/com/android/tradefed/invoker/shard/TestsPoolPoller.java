@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.invoker.shard;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.IConfiguration;
@@ -22,7 +23,10 @@ import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -49,7 +53,7 @@ import java.util.concurrent.CountDownLatch;
  *
  * <p>TODO: Add handling for token module/tests.
  */
-public class TestsPoolPoller
+public final class TestsPoolPoller
         implements IRemoteTest,
                 IConfigurationReceiver,
                 IDeviceTest,
@@ -57,7 +61,8 @@ public class TestsPoolPoller
                 IMultiDeviceTest,
                 IInvocationContextReceiver,
                 ISystemStatusCheckerReceiver,
-                ITestCollector {
+                ITestCollector,
+                IMetricCollectorReceiver {
 
     private static final long WAIT_RECOVERY_TIME = 15 * 60 * 1000;
 
@@ -70,7 +75,10 @@ public class TestsPoolPoller
     private Map<ITestDevice, IBuildInfo> mDeviceInfos;
     private IConfiguration mConfig;
     private List<ISystemStatusChecker> mSystemStatusCheckers;
+    private List<IMetricCollector> mCollectors;
     private boolean mShouldCollectTest = false;
+
+    private ILogRegistry mRegistry = null;
 
     /**
      * Ctor where the pool of {@link IRemoteTest} is provided.
@@ -99,6 +107,10 @@ public class TestsPoolPoller
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         try {
+            ITestInvocationListener listenerWithCollectors = listener;
+            for (IMetricCollector collector : mCollectors) {
+                listenerWithCollectors = collector.init(mContext, listenerWithCollectors);
+            }
             while (true) {
                 IRemoteTest test = poll();
                 if (test == null) {
@@ -128,15 +140,21 @@ public class TestsPoolPoller
                 }
                 // Run the test itself and prevent random exception from stopping the poller.
                 try {
-                    test.run(listener);
+                    if (test instanceof IMetricCollectorReceiver) {
+                        ((IMetricCollectorReceiver) test).setMetricCollectors(mCollectors);
+                        // If test can receive collectors then let it handle the how to set them up
+                        test.run(listener);
+                    } else {
+                        test.run(listenerWithCollectors);
+                    }
                 } catch (RuntimeException e) {
                     CLog.e(
                             "Caught an Exception in a test: %s. Proceeding to next test.",
                             test.getClass());
                     CLog.e(e);
                 } catch (DeviceUnresponsiveException due) {
-                    // being able to catch a DeviceUnresponsiveException here implies that recovery was
-                    // successful, and test execution should proceed to next test.
+                    // being able to catch a DeviceUnresponsiveException here implies that recovery
+                    // was successful, and test execution should proceed to next test.
                     CLog.w(
                             "Ignored DeviceUnresponsiveException because recovery was "
                                     + "successful, proceeding with next test. Stack trace:");
@@ -164,21 +182,24 @@ public class TestsPoolPoller
                 mDevice.reboot();
                 CLog.d("TestPoller was recovered after %s went offline", mDevice.getSerialNumber());
                 return;
+            } else {
+                // TODO(b/111141078): If the last poller is also disconnected we want to know about
+                // the tests that did not execute.
             }
-            // We catch and rethrow in order to log that the poller associated with the device
-            // that went offline is terminating.
-            CLog.e(
-                    "Test %s threw DeviceNotAvailableException. Test poller associated with "
-                            + "device %s is terminating.",
-                    test.getClass(), mDevice.getSerialNumber());
-            // Log an event to track more easily the failure
-            logDeviceEvent(
-                    EventType.SHARD_POLLER_EARLY_TERMINATION,
-                    mDevice.getSerialNumber(),
-                    originalException);
         } catch (DeviceNotAvailableException e) {
             // ignore this exception
         }
+        // We catch and rethrow in order to log that the poller associated with the device
+        // that went offline is terminating.
+        CLog.e(
+                "Test %s threw DeviceNotAvailableException. Test poller associated with "
+                        + "device %s is terminating.",
+                test.getClass(), mDevice.getSerialNumber());
+        // Log an event to track more easily the failure
+        logDeviceEvent(
+                EventType.SHARD_POLLER_EARLY_TERMINATION,
+                mDevice.getSerialNumber(),
+                originalException);
         throw originalException;
     }
 
@@ -187,7 +208,19 @@ public class TestsPoolPoller
         Map<String, String> args = new HashMap<>();
         args.put("serial", serial);
         args.put("trace", StreamUtil.getStackTrace(t));
-        LogRegistry.getLogRegistry().logEvent(LogLevel.DEBUG, event, args);
+        getLogRegistry().logEvent(LogLevel.DEBUG, event, args);
+    }
+
+    private ILogRegistry getLogRegistry() {
+        if (mRegistry != null) {
+            return mRegistry;
+        }
+        return LogRegistry.getLogRegistry();
+    }
+
+    @VisibleForTesting
+    public void setLogRegistry(ILogRegistry registry) {
+        mRegistry = registry;
     }
 
     @Override
@@ -228,5 +261,10 @@ public class TestsPoolPoller
     @Override
     public void setCollectTestsOnly(boolean shouldCollectTest) {
         mShouldCollectTest = shouldCollectTest;
+    }
+
+    @Override
+    public void setMetricCollectors(List<IMetricCollector> collectors) {
+        mCollectors = collectors;
     }
 }

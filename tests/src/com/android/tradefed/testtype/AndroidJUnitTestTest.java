@@ -15,30 +15,49 @@
  */
 package com.android.tradefed.testtype;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
-import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.metric.target.DeviceSideCollectorSpecification;
+import com.android.tradefed.guice.InvocationScope;
+import com.android.tradefed.guice.InvocationScopeModule;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.util.FileUtil;
 
-import junit.framework.TestCase;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+
+import org.easymock.EasyMock;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.io.File;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.easymock.EasyMock;
+/** Unit tests for {@link AndroidJUnitTest} */
+@RunWith(JUnit4.class)
+public class AndroidJUnitTestTest {
 
-/**
- * Unit tests for {@link AndroidJUnitTest}
- */
-public class AndroidJUnitTestTest extends TestCase {
-
+    private static final String AJUR = "android.support.test.runner.AndroidJUnitRunner";
     private static final int TEST_TIMEOUT = 0;
     private static final long SHELL_TIMEOUT = 0;
     private static final String TEST_PACKAGE_VALUE = "com.foo";
@@ -54,9 +73,14 @@ public class AndroidJUnitTestTest extends TestCase {
     private IRemoteAndroidTestRunner mMockRemoteRunner;
     private ITestInvocationListener mMockListener;
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    // Guice scope
+    private InvocationScope mScope;
+
+    @Before
+    public void setUp() throws Exception {
+        // Start with the Guice scope setup
+        mScope = new InvocationScope();
+        mScope.enter();
 
         mMockIDevice = EasyMock.createMock(IDevice.class);
         mMockTestDevice = EasyMock.createMock(ITestDevice.class);
@@ -72,6 +96,7 @@ public class AndroidJUnitTestTest extends TestCase {
                 return mMockRemoteRunner;
             }
         };
+        mAndroidJUnitTest.setRunnerName(AJUR);
         mAndroidJUnitTest.setPackageName(TEST_PACKAGE_VALUE);
         mAndroidJUnitTest.setDevice(mMockTestDevice);
         // default to no rerun, for simplicity
@@ -83,11 +108,18 @@ public class AndroidJUnitTestTest extends TestCase {
         mMockRemoteRunner.setMaxTimeout(0L, TimeUnit.MILLISECONDS);
         mMockRemoteRunner.addInstrumentationArg(InstrumentationTest.TEST_TIMEOUT_INST_ARGS_KEY,
                 Long.toString(SHELL_TIMEOUT));
+        mMockRemoteRunner.addInstrumentationArg(
+                AndroidJUnitTest.NEW_RUN_LISTENER_ORDER_KEY, "true");
     }
 
-    /**
-     * Test list of tests to run is filtered by include filters.
-     */
+    @After
+    public void tearDown() {
+        // Always exit the scope at the end.
+        mScope.exit();
+    }
+
+    /** Test list of tests to run is filtered by include filters. */
+    @Test
     public void testRun_includeFilterClass() throws Exception {
         // expect this call
         mMockRemoteRunner.addInstrumentationArg("class", TEST1.toString());
@@ -98,9 +130,8 @@ public class AndroidJUnitTestTest extends TestCase {
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
-    /**
-     * Test list of tests to run is filtered by exclude filters.
-     */
+    /** Test list of tests to run is filtered by exclude filters. */
+    @Test
     public void testRun_excludeFilterClass() throws Exception {
         // expect this call
         mMockRemoteRunner.addInstrumentationArg("notClass", TEST1.toString());
@@ -111,9 +142,8 @@ public class AndroidJUnitTestTest extends TestCase {
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
-    /**
-     * Test list of tests to run is filtered by include and exclude filters.
-     */
+    /** Test list of tests to run is filtered by include and exclude filters. */
+    @Test
     public void testRun_includeAndExcludeFilterClass() throws Exception {
         // expect this call
         mMockRemoteRunner.addInstrumentationArg("class", TEST1.getClassName());
@@ -126,9 +156,8 @@ public class AndroidJUnitTestTest extends TestCase {
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
-    /**
-     * Test list of tests to run is filtered by include filters.
-     */
+    /** Test list of tests to run is filtered by include filters. */
+    @Test
     public void testRun_includeFilterPackage() throws Exception {
         // expect this call
         mMockRemoteRunner.addInstrumentationArg("package", "com.android.test");
@@ -139,9 +168,8 @@ public class AndroidJUnitTestTest extends TestCase {
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
-    /**
-     * Test list of tests to run is filtered by exclude filters.
-     */
+    /** Test list of tests to run is filtered by exclude filters. */
+    @Test
     public void testRun_excludeFilterPackage() throws Exception {
         // expect this call
         mMockRemoteRunner.addInstrumentationArg("notPackage", "com.android.not");
@@ -152,9 +180,8 @@ public class AndroidJUnitTestTest extends TestCase {
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
-    /**
-     * Test list of tests to run is filtered by include and exclude filters.
-     */
+    /** Test list of tests to run is filtered by include and exclude filters. */
+    @Test
     public void testRun_includeAndExcludeFilterPackage() throws Exception {
         // expect this call
         mMockRemoteRunner.addInstrumentationArg("package", "com.android.test");
@@ -167,9 +194,8 @@ public class AndroidJUnitTestTest extends TestCase {
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
-    /**
-     * Test list of tests to run is filtered by include and exclude filters.
-     */
+    /** Test list of tests to run is filtered by include and exclude filters. */
+    @Test
     public void testRun_includeAndExcludeFilters() throws Exception {
         // expect this call
         mMockRemoteRunner.addInstrumentationArg("class", TEST1.getClassName());
@@ -186,9 +212,8 @@ public class AndroidJUnitTestTest extends TestCase {
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
-    /**
-     * Test list of tests to run is filtered by include file.
-     */
+    /** Test list of tests to run is filtered by include file. */
+    @Test
     public void testRun_includeFile() throws Exception {
         mMockRemoteRunner.addInstrumentationArg(
                 EasyMock.eq("testFile"), EasyMock.<String>anyObject());
@@ -211,9 +236,8 @@ public class AndroidJUnitTestTest extends TestCase {
 
     }
 
-    /**
-     * Test list of tests to run is filtered by exclude file.
-     */
+    /** Test list of tests to run is filtered by exclude file. */
+    @Test
     public void testRun_excludeFile() throws Exception {
         mMockRemoteRunner.addInstrumentationArg(
                 EasyMock.eq("notTestFile"), EasyMock.<String>anyObject());
@@ -239,6 +263,7 @@ public class AndroidJUnitTestTest extends TestCase {
     /**
      * Test list of tests to run is filtered by include file, does not override existing filters.
      */
+    @Test
     public void testRun_testFileAndFilters() throws Exception {
         mMockRemoteRunner.addInstrumentationArg(
                 EasyMock.eq("testFile"), EasyMock.<String>anyObject());
@@ -273,6 +298,7 @@ public class AndroidJUnitTestTest extends TestCase {
      * Test that when pushing the filters fails, we have a test run failure since we were not able
      * to run anything.
      */
+    @Test
     public void testRun_testFileAndFilters_fails() throws Exception {
         mMockRemoteRunner = EasyMock.createMock(IRemoteAndroidTestRunner.class);
         EasyMock.expect(
@@ -282,7 +308,7 @@ public class AndroidJUnitTestTest extends TestCase {
 
         mMockListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(0));
         mMockListener.testRunFailed("failed to push");
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+        mMockListener.testRunEnded(0, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice, mMockListener);
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
@@ -303,9 +329,8 @@ public class AndroidJUnitTestTest extends TestCase {
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice, mMockListener);
     }
 
-    /**
-     * Test that setting option for "test-file-filter" works as intended
-     */
+    /** Test that setting option for "test-file-filter" works as intended */
+    @Test
     public void testRun_setTestFileOptions() throws Exception {
         mMockRemoteRunner.addInstrumentationArg(
                 EasyMock.eq("testFile"), EasyMock.<String>anyObject());
@@ -338,40 +363,44 @@ public class AndroidJUnitTestTest extends TestCase {
     }
 
     private void setRunTestExpectations() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockTestDevice.runInstrumentationTests(EasyMock.eq(mMockRemoteRunner),
-                        (ITestRunListener)EasyMock.anyObject())).andReturn(Boolean.TRUE);
+        EasyMock.expect(
+                        mMockTestDevice.runInstrumentationTests(
+                                EasyMock.eq(mMockRemoteRunner),
+                                (ITestLifeCycleReceiver) EasyMock.anyObject()))
+                .andReturn(Boolean.TRUE);
     }
 
     /**
      * Test isClassOrMethod returns true for <package>.<class> and <package>.<class>#<method> but
      * not for <package>.
      */
+    @Test
     public void testIsClassOrMethod() throws Exception {
         assertFalse("String was just package", mAndroidJUnitTest.isClassOrMethod("android.test"));
         assertTrue("String was class", mAndroidJUnitTest.isClassOrMethod("android.test.Foo"));
         assertTrue("String was method", mAndroidJUnitTest.isClassOrMethod("android.test.Foo#bar"));
     }
 
-    /**
-     * Test that {@link AndroidJUnitTest#split()} returns null if the runner is not shardable.
-     */
+    /** Test that {@link AndroidJUnitTest#split()} returns null if the runner is not shardable. */
+    @Test
     public void testSplit_notShardable() {
         mAndroidJUnitTest.setRunnerName("fake.runner.not.shardable");
         assertNull(mAndroidJUnitTest.split());
     }
 
-    /**
-     * Test that {@link AndroidJUnitTest#split()} returns null if no shards have been requested.
-     */
+    /** Test that {@link AndroidJUnitTest#split()} returns null if no shards have been requested. */
+    @Test
     public void testSplit_noShardRequested() {
-        assertEquals(AndroidJUnitTest.AJUR, mAndroidJUnitTest.getRunnerName());
+        assertEquals(AJUR, mAndroidJUnitTest.getRunnerName());
         assertNull(mAndroidJUnitTest.split());
     }
 
     /** Test that {@link AndroidJUnitTest#split(int)} returns 3 shards when requested to do so. */
+    @Test
     public void testSplit_threeShards() throws Exception {
         mAndroidJUnitTest = new AndroidJUnitTest();
-        assertEquals(AndroidJUnitTest.AJUR, mAndroidJUnitTest.getRunnerName());
+        mAndroidJUnitTest.setRunnerName(AJUR);
+        assertEquals(AJUR, mAndroidJUnitTest.getRunnerName());
         OptionSetter setter = new OptionSetter(mAndroidJUnitTest);
         setter.setOptionValue("runtime-hint", "60s");
         List<IRemoteTest> res = (List<IRemoteTest>) mAndroidJUnitTest.split(3);
@@ -389,9 +418,11 @@ public class AndroidJUnitTestTest extends TestCase {
     /**
      * Test that {@link AndroidJUnitTest#split(int)} can only split up to the ajur-max-shard option.
      */
+    @Test
     public void testSplit_maxShard() throws Exception {
         mAndroidJUnitTest = new AndroidJUnitTest();
-        assertEquals(AndroidJUnitTest.AJUR, mAndroidJUnitTest.getRunnerName());
+        mAndroidJUnitTest.setRunnerName(AJUR);
+        assertEquals(AJUR, mAndroidJUnitTest.getRunnerName());
         OptionSetter setter = new OptionSetter(mAndroidJUnitTest);
         setter.setOptionValue("runtime-hint", "60s");
         setter.setOptionValue("ajur-max-shard", "2");
@@ -404,5 +435,40 @@ public class AndroidJUnitTestTest extends TestCase {
         // Make sure shards cannot be re-sharded
         assertNull(((AndroidJUnitTest) res.get(0)).split(2));
         assertNull(((AndroidJUnitTest) res.get(0)).split());
+    }
+
+    /**
+     * Test that the runner can get {@link DeviceSideCollectorSpecification} from the Guice scope in
+     * order to complete the instrumentation options.
+     */
+    @Test
+    public void testSetRunnerArgs_guice() throws Exception {
+        mAndroidJUnitTest =
+                new AndroidJUnitTest() {
+                    @Override
+                    IRemoteAndroidTestRunner createRemoteAndroidTestRunner(
+                            String packageName, String runnerName, IDevice device) {
+                        return mMockRemoteRunner;
+                    }
+                };
+        // default to no timeout for simplicity
+        mAndroidJUnitTest.setTestTimeout(TEST_TIMEOUT);
+        mAndroidJUnitTest.setShellTimeout(SHELL_TIMEOUT);
+
+        // Seed the Guice Scope
+        DeviceSideCollectorSpecification spec = new DeviceSideCollectorSpecification();
+        OptionSetter setter = new OptionSetter(spec);
+        setter.setOptionValue("collectors-qualified-name", "com.test.collector");
+        setter.setOptionValue("collector-options", "key", "value");
+        IConfiguration config = new Configuration("test", "test");
+        config.setDeviceSideCollectorSpec(spec);
+        mScope.seed(IConfiguration.class, config);
+
+        Injector injector = Guice.createInjector(new InvocationScopeModule(mScope));
+        injector.injectMembers(mAndroidJUnitTest);
+        mMockRemoteRunner.addInstrumentationArg("key", "value");
+        EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
+        mAndroidJUnitTest.setRunnerArgs(mMockRemoteRunner);
+        EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 }

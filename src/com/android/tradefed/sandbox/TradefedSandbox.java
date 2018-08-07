@@ -16,10 +16,18 @@
 package com.android.tradefed.sandbox;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.tradefed.command.CommandOptions;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.proto.InvocationContext.Context;
+import com.android.tradefed.log.ITestLogger;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.sandbox.SandboxConfigDump.DumpCmd;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -27,13 +35,15 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
-import com.android.tradefed.util.SerializationUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessTestResultsParser;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -55,6 +65,7 @@ public class TradefedSandbox implements ISandbox {
 
     private File mSandboxTmpFolder = null;
     private File mRootFolder = null;
+    private File mGlobalConfig = null;
     private File mSerializedContext = null;
     private File mSerializedConfiguration = null;
 
@@ -63,36 +74,49 @@ public class TradefedSandbox implements ISandbox {
     private IRunUtil mRunUtil;
 
     @Override
-    public CommandResult run(IConfiguration config) {
+    public CommandResult run(IConfiguration config, ITestLogger logger) throws Throwable {
         List<String> mCmdArgs = new ArrayList<>();
         mCmdArgs.add("java");
         mCmdArgs.add(String.format("-Djava.io.tmpdir=%s", mSandboxTmpFolder.getAbsolutePath()));
+        mCmdArgs.add(String.format("-DTF_JAR_DIR=%s", mRootFolder.getAbsolutePath()));
         mCmdArgs.add("-cp");
-        mCmdArgs.add(new File(mRootFolder, "*").getAbsolutePath());
-        mCmdArgs.add(TradefedSanboxRunner.class.getCanonicalName());
+        mCmdArgs.add(createClasspath(mRootFolder));
+        mCmdArgs.add(TradefedSandboxRunner.class.getCanonicalName());
         mCmdArgs.add(mSerializedContext.getAbsolutePath());
         mCmdArgs.add(mSerializedConfiguration.getAbsolutePath());
         mCmdArgs.add("--subprocess-report-port");
         mCmdArgs.add(Integer.toString(mEventParser.getSocketServerPort()));
+        if (config.getCommandOptions().shouldUseSandboxTestMode()) {
+            // In test mode, re-add the --use-sandbox to trigger a sandbox run again in the process
+            mCmdArgs.add("--" + CommandOptions.USE_SANDBOX);
+        }
 
         long timeout = config.getCommandOptions().getInvocationTimeout();
         CommandResult result =
                 mRunUtil.runTimedCmd(timeout, mStdout, mStderr, mCmdArgs.toArray(new String[0]));
+        // Log stdout and stderr
+        try (InputStreamSource sourceStdOut = new FileInputStreamSource(mStdoutFile)) {
+            logger.testLog("sandbox-stdout", LogDataType.TEXT, sourceStdOut);
+        }
+        try (InputStreamSource sourceStdErr = new FileInputStreamSource(mStderrFile)) {
+            logger.testLog("sandbox-stderr", LogDataType.TEXT, sourceStdErr);
+        }
 
         boolean failedStatus = false;
+        String stderrText;
+        try {
+            stderrText = FileUtil.readStringFromFile(mStderrFile);
+        } catch (IOException e) {
+            stderrText = "Could not read the stderr output from process.";
+        }
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
             failedStatus = true;
+            result.setStderr(stderrText);
         }
 
         if (!mEventParser.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS)) {
             if (!failedStatus) {
                 result.setStatus(CommandStatus.EXCEPTION);
-            }
-            String stderrText;
-            try {
-                stderrText = FileUtil.readStringFromFile(mStderrFile);
-            } catch (IOException e) {
-                stderrText = "Could not read the stderr output from process.";
             }
             result.setStderr(
                     String.format("Event receiver thread did not complete.:\n%s", stderrText));
@@ -122,7 +146,9 @@ public class TradefedSandbox implements ISandbox {
 
         try {
             mRootFolder =
-                    getTradefedEnvironment(
+                    getTradefedSandboxEnvironment(
+                            context,
+                            config,
                             QuotationAwareTokenizer.tokenizeLine(config.getCommandLine()));
         } catch (ConfigurationException e) {
             return e;
@@ -136,7 +162,7 @@ public class TradefedSandbox implements ISandbox {
 
         // Prepare the context
         try {
-            mSerializedContext = prepareContext(context);
+            mSerializedContext = prepareContext(context, config);
         } catch (IOException e) {
             return e;
         }
@@ -154,16 +180,52 @@ public class TradefedSandbox implements ISandbox {
         FileUtil.recursiveDelete(mSandboxTmpFolder);
         FileUtil.deleteFile(mSerializedContext);
         FileUtil.deleteFile(mSerializedConfiguration);
+        FileUtil.deleteFile(mGlobalConfig);
     }
 
     @Override
-    public File getTradefedEnvironment(String[] args) throws ConfigurationException {
+    public File getTradefedSandboxEnvironment(
+            IInvocationContext context, IConfiguration nonVersionedConfig, String[] args)
+            throws ConfigurationException {
+        SandboxOptions options =
+                (SandboxOptions)
+                        nonVersionedConfig.getConfigurationObject(
+                                Configuration.SANBOX_OPTIONS_TYPE_NAME);
+        // Check that we have no args conflicts.
+        if (options.getSandboxTfDirectory() != null && options.getSandboxBuildId() != null) {
+            throw new ConfigurationException(
+                    String.format(
+                            "Sandbox options %s and %s cannot be set at the same time",
+                            SandboxOptions.TF_LOCATION, SandboxOptions.SANDBOX_BUILD_ID));
+        }
+
+        if (options.getSandboxTfDirectory() != null) {
+            return options.getSandboxTfDirectory();
+        }
         String tfDir = System.getProperty("TF_JAR_DIR");
         if (tfDir == null || tfDir.isEmpty()) {
             throw new ConfigurationException(
                     "Could not read TF_JAR_DIR to get current Tradefed instance.");
         }
         return new File(tfDir);
+    }
+
+    /**
+     * Create a classpath based on the environment and the working directory returned by {@link
+     * #getTradefedSandboxEnvironment(IInvocationContext, IConfiguration, String[])}.
+     *
+     * @param workingDir the current working directory for the sandbox.
+     * @return The classpath to be use.
+     */
+    @Override
+    public String createClasspath(File workingDir) throws ConfigurationException {
+        // Get the classpath property.
+        String classpathStr = System.getProperty("java.class.path");
+        if (classpathStr == null) {
+            throw new ConfigurationException(
+                    "Could not find the classpath property: java.class.path");
+        }
+        return classpathStr;
     }
 
     /**
@@ -181,10 +243,16 @@ public class TradefedSandbox implements ISandbox {
             // TODO: add option to disable the streaming back of results.
             mEventParser = new SubprocessTestResultsParser(listener, true, context);
             String[] args = QuotationAwareTokenizer.tokenizeLine(config.getCommandLine());
+            mGlobalConfig = SandboxConfigUtil.dumpFilteredGlobalConfig();
+            DumpCmd mode = DumpCmd.RUN_CONFIG;
+            if (config.getCommandOptions().shouldUseSandboxTestMode()) {
+                mode = DumpCmd.TEST_MODE;
+            }
             mSerializedConfiguration =
                     SandboxConfigUtil.dumpConfigForVersion(
-                            mRootFolder, mRunUtil, args, DumpCmd.RUN_CONFIG);
-        } catch (ConfigurationException | IOException e) {
+                            createClasspath(mRootFolder), mRunUtil, args, mode, mGlobalConfig);
+        } catch (Exception e) {
+            StreamUtil.close(mEventParser);
             return e;
         }
         return null;
@@ -199,10 +267,41 @@ public class TradefedSandbox implements ISandbox {
      * Prepare and serialize the {@link IInvocationContext}.
      *
      * @param context the {@link IInvocationContext} to be prepared.
+     * @param config The {@link IConfiguration} of the sandbox.
      * @return the serialized {@link IInvocationContext}.
      * @throws IOException
      */
-    protected File prepareContext(IInvocationContext context) throws IOException {
-        return SerializationUtil.serialize(context);
+    protected File prepareContext(IInvocationContext context, IConfiguration config)
+            throws IOException {
+        // In test mode we need to keep the context unlocked for the next layer.
+        if (config.getCommandOptions().shouldUseSandboxTestMode()) {
+            try {
+                Method unlock = InvocationContext.class.getDeclaredMethod("unlock");
+                unlock.setAccessible(true);
+                unlock.invoke(context);
+                unlock.setAccessible(false);
+            } catch (NoSuchMethodException
+                    | SecurityException
+                    | IllegalAccessException
+                    | IllegalArgumentException
+                    | InvocationTargetException e) {
+                throw new IOException("Couldn't unlock the context.", e);
+            }
+        }
+        File protoFile =
+                FileUtil.createTempFile(
+                        "context-proto", "." + LogDataType.PB.getFileExt(), mSandboxTmpFolder);
+        Context contextProto = context.toProto();
+        contextProto.writeDelimitedTo(new FileOutputStream(protoFile));
+        return protoFile;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public IConfiguration createThinLauncherConfig(
+            String[] args, IKeyStoreClient keyStoreClient, IRunUtil runUtil, File globalConfig) {
+        // Default thin launcher cannot do anything, since this sandbox uses the same version as
+        // the parent version.
+        return null;
     }
 }

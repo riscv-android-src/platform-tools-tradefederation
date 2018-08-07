@@ -96,15 +96,6 @@ public class LogRegistry implements ILogRegistry {
      * {@inheritDoc}
      */
     @Override
-    public void setGlobalLogTagDisplay(Collection<String> logTagsDisplay) {
-        mGlobalLogger.addLogTagsDisplay(logTagsDisplay);
-        mHistoryLogger.addLogTagsDisplay(logTagsDisplay);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public LogLevel getGlobalLogDisplayLevel() {
         return mGlobalLogger.getLogLevelDisplay();
     }

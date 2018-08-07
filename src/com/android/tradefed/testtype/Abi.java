@@ -15,10 +15,14 @@
  */
 package com.android.tradefed.testtype;
 
+import com.android.tradefed.build.BuildSerializedVersion;
+import com.android.tradefed.config.proto.ConfigurationDescription;
+
 /**
  * A class representing an ABI.
  */
 public class Abi implements IAbi {
+    private static final long serialVersionUID = BuildSerializedVersion.VERSION;
 
     private final String mName;
     private final String mBitness;
@@ -47,5 +51,32 @@ public class Abi implements IAbi {
     @Override
     public String toString() {
         return "{" + mName + ", bitness=" + mBitness + "}";
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean equals(Object obj) {
+        Abi other = (Abi) obj;
+        if (!mName.equals(other.mName)) {
+            return false;
+        }
+        if (!mBitness.equals(other.mBitness)) {
+            return false;
+        }
+        return true;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public ConfigurationDescription.Abi toProto() {
+        ConfigurationDescription.Abi.Builder abiBuilder = ConfigurationDescription.Abi.newBuilder();
+        abiBuilder.setName(mName);
+        abiBuilder.setBitness(mBitness);
+        return abiBuilder.build();
+    }
+
+    /** Inverse operation from {@link #toProto()} to get the object back. */
+    public static IAbi fromProto(ConfigurationDescription.Abi protoAbi) {
+        return new Abi(protoAbi.getName(), protoAbi.getBitness());
     }
 }

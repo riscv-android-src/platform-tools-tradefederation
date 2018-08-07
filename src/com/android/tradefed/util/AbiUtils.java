@@ -15,8 +15,9 @@
  */
 package com.android.tradefed.util;
 
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -71,14 +72,13 @@ public class AbiUtils {
      */
     protected static final Set<String> ABIS_SUPPORTED_BY_COMPATIBILITY = new HashSet<String>();
 
-    /**
-     * The map of architecture to ABI.
-     */
-    private static final Map<String, Set<String>> ARCH_TO_ABIS = new HashMap<String, Set<String>>();
+    /** The map of architecture to ABI. */
+    private static final Map<String, Set<String>> ARCH_TO_ABIS =
+            new LinkedHashMap<String, Set<String>>();
 
-    private static final Map<String, String> ABI_TO_ARCH = new HashMap<String, String>();
+    private static final Map<String, String> ABI_TO_ARCH = new LinkedHashMap<String, String>();
 
-    private static final Map<String, String> ABI_TO_BASE_ARCH = new HashMap<String, String>();
+    private static final Map<String, String> ABI_TO_BASE_ARCH = new LinkedHashMap<String, String>();
 
     static {
         ABIS_32BIT.add(ABI_ARM_V7A);
@@ -138,7 +138,7 @@ public class AbiUtils {
         if (arch == null || arch.isEmpty() || !ARCH_TO_ABIS.containsKey(arch)) {
             return getAbisSupportedByCompatibility();
         }
-        return new HashSet<String>(ARCH_TO_ABIS.get(arch));
+        return new LinkedHashSet<String>(ARCH_TO_ABIS.get(arch));
     }
 
     /**
@@ -165,7 +165,7 @@ public class AbiUtils {
      * @return a new Set containing the supported ABIs.
      */
     public static Set<String> getAbisSupportedByCompatibility() {
-        return new HashSet<String>(ABIS_SUPPORTED_BY_COMPATIBILITY);
+        return new LinkedHashSet<String>(ABIS_SUPPORTED_BY_COMPATIBILITY);
     }
 
     /**
@@ -266,5 +266,12 @@ public class AbiUtils {
             }
         }
         return abiSet;
+    }
+
+    /** Returns the Set of abis supported by the host machine. */
+    public static Set<String> getHostAbi() {
+        CommandResult commandResult = RunUtil.getDefault().runTimedCmd(5000L, "uname", "-m");
+        String mainAbi = commandResult.getStdout().trim();
+        return getAbisForArch(mainAbi);
     }
 }

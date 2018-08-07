@@ -15,73 +15,80 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.ITestRunListener;
-import com.android.ddmlib.testrunner.TestIdentifier;
+import static org.junit.Assert.*;
+
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 
 import org.easymock.EasyMock;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
+import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-/**
- * Test {@link GTestListTestParser}
- */
+/** Test {@link GTestListTestParser} */
+@RunWith(JUnit4.class)
 public class GTestListTestParserTest extends GTestParserTestBase {
 
-    /**
-     * Tests the parser for a test run output with 1 class and 23 tests.
-     */
+    /** Tests the parser for a test run output with 1 class and 23 tests. */
     @SuppressWarnings("unchecked")
+    @Test
     public void testParseSimpleList() throws Exception {
         String[] contents =  readInFile(GTEST_LIST_FILE_1);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 23);
         // 11 passing test cases in this run
         for (int i = 0; i < 23; ++i) {
-            mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
-            mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                    (Map<String, String>)EasyMock.anyObject());
+            mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+            mockRunListener.testEnded(
+                    (TestDescription) EasyMock.anyObject(),
+                    (HashMap<String, Metric>) EasyMock.anyObject());
         }
-        mockRunListener.testRunEnded(EasyMock.anyLong(),
-                (Map<String, String>) EasyMock.anyObject());
+        mockRunListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.replay(mockRunListener);
         GTestListTestParser parser = new GTestListTestParser(TEST_MODULE_NAME, mockRunListener);
         parser.processNewLines(contents);
         parser.flush();
         EasyMock.verify(mockRunListener);
-        verifyTestIdentifiers(parser.mTests, 1);
+        verifyTestDescriptions(parser.mTests, 1);
     }
 
-    /**
-     * Tests the parser for a test run output with 29 classes and 127 tests.
-     */
+    /** Tests the parser for a test run output with 29 classes and 127 tests. */
     @SuppressWarnings("unchecked")
+    @Test
     public void testParseMultiClassList() throws Exception {
         String[] contents =  readInFile(GTEST_LIST_FILE_2);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 127);
         // 11 passing test cases in this run
         for (int i = 0; i < 127; ++i) {
-            mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
-            mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                    (Map<String, String>)EasyMock.anyObject());
+            mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+            mockRunListener.testEnded(
+                    (TestDescription) EasyMock.anyObject(),
+                    (HashMap<String, Metric>) EasyMock.anyObject());
         }
-        mockRunListener.testRunEnded(EasyMock.anyLong(),
-                (Map<String, String>) EasyMock.anyObject());
+        mockRunListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.replay(mockRunListener);
         GTestListTestParser parser = new GTestListTestParser(TEST_MODULE_NAME, mockRunListener);
         parser.processNewLines(contents);
         parser.flush();
         EasyMock.verify(mockRunListener);
-        verifyTestIdentifiers(parser.mTests, 29);
+        verifyTestDescriptions(parser.mTests, 29);
     }
 
-    /**
-     * Tests the parser against a malformed list of tests.
-     */
+    /** Tests the parser against a malformed list of tests. */
+    @Test
     public void testParseMalformedList() throws Exception {
         String[] contents =  readInFile(GTEST_LIST_FILE_3);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         GTestListTestParser parser = new GTestListTestParser(TEST_MODULE_NAME, mockRunListener);
         try {
             parser.processNewLines(contents);
@@ -92,11 +99,44 @@ public class GTestListTestParserTest extends GTestParserTestBase {
         }
     }
 
-    private void verifyTestIdentifiers(List<TestIdentifier> tests, int classesExpected)
+    /** Tests that test cases with special characters like "/" are still parsed properly. */
+    @Test
+    public void testParseSimpleList_withSpecialChar() throws Exception {
+        String[] contents = readInFile(GTEST_LIST_FILE_4);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
+        mockRunListener.testRunStarted(TEST_MODULE_NAME, 2);
+        TestDescription test1 =
+                new TestDescription(
+                        "SPM/AAudioOutputStreamCallbackTest",
+                        "SD/AAudioStreamBuilderDirectionTest");
+        mockRunListener.testStarted(test1);
+        mockRunListener.testEnded(
+                EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        TestDescription test2 =
+                new TestDescription(
+                        "SPM/AAudioOutputStreamCallbackTest",
+                        "testPlayback/SHARED__0__LOW_LATENCY");
+        mockRunListener.testStarted(test2);
+        mockRunListener.testEnded(
+                EasyMock.eq(test2), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        mockRunListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        EasyMock.replay(mockRunListener);
+        GTestListTestParser parser = new GTestListTestParser(TEST_MODULE_NAME, mockRunListener);
+        parser.processNewLines(contents);
+        parser.flush();
+        EasyMock.verify(mockRunListener);
+        verifyTestDescriptions(parser.mTests, 1);
+    }
+
+    private void verifyTestDescriptions(List<TestDescription> tests, int classesExpected)
             throws Exception {
         int classesFound = 0;
         String lastClass = "notaclass";
-        for (TestIdentifier test : tests) {
+        for (TestDescription test : tests) {
             String className = test.getClassName();
             String methodName = test.getTestName();
             assertFalse(String.format("Class name %s improperly formatted", className),

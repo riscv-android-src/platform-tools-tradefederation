@@ -58,7 +58,14 @@ java_library_host {
     name: "tradefed-protos",
     srcs: ["proto/**/*.proto"],
     libs: [
-        "host-libprotobuf-java-full",
+        "libprotobuf-java-full",
+    ],
+    proto: {
+        include_dirs: ["external/protobuf/src"],
+        type: "full",
+    },
+    static_libs: [
+        "platformprotos",
     ],
 }
 
@@ -77,13 +84,19 @@ java_library_host {
         ],
     },
     static_libs: [
-        "junit-host",
+        "junit",
+        "junit-params",
         "kxml2-2.3.0",
         "jline-1.0",
         "tf-remote-client",
         "commons-compress-prebuilt",
-        "host-libprotobuf-java-full",
+        "libprotobuf-java-full",
         "tradefed-protos",
+        "error_prone_annotations-2.0.18",
+        "longevity-host-lib",
+        "gson-prebuilt-jar",
+        "guice",
+        "platform-test-annotations",
     ],
     libs: [
         "loganalysis",
@@ -104,39 +117,17 @@ droiddoc_host {
     ],
     custom_template: "droiddoc-templates-sdk",
     hdf: [
-        "android.whichdoc online",
         "sac true",
         "devices true",
+        "android.whichdoc online",
+        "css.path /reference/assets/css/doclava-devsite.css",
+        "book.root toc",
+        "book.path /_book.yaml",
     ],
-    args: " -package -toroot / " +
-          " -showAnnotationOverridesVisibility " +
-          " -showAnnotation com.android.tradefed.config.OptionClass " +
-          " -showAnnotation com.android.tradefed.config.Option ",
-    create_stubs: false,
-}
-
-droiddoc_host {
-    name: "tradefed-ds-docs",
-    srcs: [
-        "src/**/*.java",
-    ],
-    libs: [
-        "loganalysis",
-        "tradefed",
-        "tools-common-prebuilt",
-    ],
-    custom_template: "droiddoc-templates-sdk",
-    hdf: [
-        "sac true ",
-        "devices true ",
-        "android.whichdoc online ",
-        "css.path /reference/assets/css/doclava-devsite.css ",
-        "book.root toc ",
-    ],
-    args: " -yaml _toc.yaml " +
-          " -apidocsdir reference/tradefed/ " +
-          " -werror " +
-          " -package " +
-          " -devsite ",
+    args: "-yaml _book.yaml " +
+          "-apidocsdir reference/tradefed/ " +
+          "-werror " +
+          "-package " +
+          "-devsite ",
     create_stubs: false,
 }
