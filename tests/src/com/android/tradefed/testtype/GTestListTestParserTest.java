@@ -15,7 +15,10 @@
  */
 package com.android.tradefed.testtype;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -130,6 +133,50 @@ public class GTestListTestParserTest extends GTestParserTestBase {
         parser.flush();
         EasyMock.verify(mockRunListener);
         verifyTestDescriptions(parser.mTests, 1);
+    }
+
+    /**
+     * Tests the parser for a test run output with 3 classes and 41 tests with a bunch of
+     * parameterized methods.
+     */
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testParseParameterized() throws Exception {
+        String[] contents = readInFile(GTEST_LIST_FILE_5);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
+        mockRunListener.testRunStarted(TEST_MODULE_NAME, 41);
+        // 41 passing test cases in this run
+        for (int i = 0; i < 41; ++i) {
+            mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+            mockRunListener.testEnded(
+                    (TestDescription) EasyMock.anyObject(),
+                    (HashMap<String, Metric>) EasyMock.anyObject());
+        }
+        mockRunListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        EasyMock.replay(mockRunListener);
+        GTestListTestParser parser = new GTestListTestParser(TEST_MODULE_NAME, mockRunListener);
+        parser.processNewLines(contents);
+        parser.flush();
+        EasyMock.verify(mockRunListener);
+        // Expect 3 differents class
+        verifyTestDescriptions(parser.mTests, 3);
+        // Ensure parameterized tests are reported like a regular run
+        int FloatMethod = 16;
+        for (int i = 0; i < FloatMethod; i++) {
+            TestDescription param =
+                    new TestDescription(
+                            "UnknownCombinationsTest/UnknownDimensionsTest", "Float/" + i);
+            assertTrue(parser.mTests.contains(param));
+        }
+        int Quantized = 16;
+        for (int i = 0; i < Quantized; i++) {
+            TestDescription param =
+                    new TestDescription(
+                            "UnknownCombinationsTest/UnknownDimensionsTest", "Quantized/" + i);
+            assertTrue(parser.mTests.contains(param));
+        }
     }
 
     private void verifyTestDescriptions(List<TestDescription> tests, int classesExpected)
