@@ -42,6 +42,7 @@ public abstract class GTestParserTestBase {
     protected static final String GTEST_LIST_FILE_2 = "gtest_list2.txt";
     protected static final String GTEST_LIST_FILE_3 = "gtest_list3.txt";
     protected static final String GTEST_LIST_FILE_4 = "gtest_list4.txt";
+    protected static final String GTEST_LIST_FILE_5 = "gtest_list5.txt";
 
     /**
      * Helper to read a file from the res/testtype directory and return its contents as a String[]
