@@ -103,10 +103,8 @@ public class ITestSuiteTest {
     private Injector mInjector;
     private InvocationScopeModule mInvocationScope;
 
-    /**
-     * Very basic implementation of {@link ITestSuite} to test it.
-     */
-    static class TestSuiteImpl extends ITestSuite {
+    /** Very basic implementation of {@link ITestSuite} to test it. */
+    public static class TestSuiteImpl extends ITestSuite {
         private int mNumTests = 1;
 
         public TestSuiteImpl() {}
