@@ -34,6 +34,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NullDevice;
+import com.android.tradefed.device.TcpDevice;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
 import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.device.metric.IMetricCollector;
@@ -1248,6 +1249,32 @@ public class ITestSuiteTest {
         Set<IAbi> res = mTestSuite.getAbis(mMockDevice);
         assertEquals(1, res.size());
         assertEquals("arm64-v8a", res.iterator().next().getName());
+        EasyMock.verify(mMockDevice);
+    }
+
+    /** If a device does not return any abi, throw an exception we cannot decide. */
+    @Test
+    public void testNoAbi() throws Exception {
+        EasyMock.reset(mMockDevice);
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(new TcpDevice("tcp-device-0"));
+        Set<String> expectedAbis = new HashSet<>();
+        expectedAbis.add("arm64-v8a");
+        expectedAbis.add("armeabi-v7a");
+
+        EasyMock.expect(mMockDevice.getProperty("ro.product.cpu.abilist")).andReturn(null);
+        EasyMock.expect(mMockDevice.getProperty("ro.product.cpu.abi")).andReturn(null);
+
+        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("SERIAL");
+
+        EasyMock.replay(mMockDevice);
+        try {
+            mTestSuite.getAbis(mMockDevice);
+            fail("Should have thrown an exception.");
+        } catch (IllegalArgumentException expected) {
+            // Expected
+            assertEquals(
+                    "Couldn't determinate the abi of the device 'SERIAL'.", expected.getMessage());
+        }
         EasyMock.verify(mMockDevice);
     }
 
