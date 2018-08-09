@@ -154,9 +154,10 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
                        '_process_connection', return_value=None)
     @mock.patch('os.killpg', return_value=None)
     @mock.patch('signal.signal', return_value=None)
-    def test_run_tests(self, _signal, _killpg, _process, _run_cmd, _test_args,
-                       mock_exec_w_poll, mock_run, mock_start_socket_server):
-        """Test _run_tests method."""
+    def test_run_tests_pretty(self, _signal, _killpg, _process, _run_cmd,
+                              _test_args, mock_exec_w_poll, mock_run,
+                              mock_start_socket_server):
+        """Test _run_tests_pretty method."""
         mock_subproc = mock.Mock()
         mock_run.return_value = mock_subproc
         mock_server = mock.Mock()
@@ -166,11 +167,11 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
 
         # Test no early TF exit
         mock_exec_w_poll.return_value = ('some_conn', 'some_addr')
-        self.tr.run_tests(['test_infos'], {}, mock_reporter)
+        self.tr.run_tests_pretty(['test_infos'], {}, mock_reporter)
 
         # Test early TF exit
         mock_exec_w_poll.side_effect = atf_tr.TradeFedExitError()
-        self.assertRaises(atf_tr.TradeFedExitError, self.tr.run_tests,
+        self.assertRaises(atf_tr.TradeFedExitError, self.tr.run_tests_pretty,
                           ['test_infos'], {}, mock_reporter)
 
     def test_exec_with_tf_polling(self):
