@@ -138,9 +138,11 @@ public class CommandOptions implements ICommandOptions {
 
     @Option(
         name = "disable-strict-sharding",
-        description = "Temporary option to disable the new sharding logic while being tested."
+        description =
+                "Whether or not using the IStrictShardableTest interface of tests when sharding. "
+                        + "Temporary option to disable the new sharding logic while being tested."
     )
-    private boolean mUseTfSharding = false;
+    private boolean mUseTfSharding = true;
 
     public static final String USE_SANDBOX = "use-sandbox";
     public static final String ENABLE_SANDBOX_TEST_MODE = "sandbox-test-mode";
@@ -420,6 +422,12 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean shouldUseTfSharding() {
         return mUseTfSharding;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setUseTfSharding(boolean useTfSharding) {
+        mUseTfSharding = useTfSharding;
     }
 
     /** {@inheritDoc} */

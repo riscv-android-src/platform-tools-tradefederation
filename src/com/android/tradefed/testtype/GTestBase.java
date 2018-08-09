@@ -38,8 +38,7 @@ public abstract class GTestBase
                 ITestFilterReceiver,
                 IRuntimeHintProvider,
                 ITestCollector,
-                IShardableTest,
-                IStrictShardableTest {
+                IShardableTest {
 
     private static final List<String> DEFAULT_FILE_EXCLUDE_FILTERS = new ArrayList<>();
 
@@ -319,27 +318,6 @@ public abstract class GTestBase
      */
     protected abstract String loadFilter(String path) throws DeviceNotAvailableException;
 
-    @Override
-    public IRemoteTest getTestShard(int shardCount, int shardIndex) {
-        GTestBase shard = null;
-        try {
-            shard = this.getClass().newInstance();
-            OptionCopier.copyOptionsNoThrow(this, shard);
-            shard.mShardIndex = shardIndex;
-            shard.mShardCount = shardCount;
-            shard.mIsSharded = true;
-            // We approximate the runtime of each shard to be equal since we can't know.
-            shard.mRuntimeHint = mRuntimeHint / shardCount;
-        } catch (InstantiationException | IllegalAccessException e) {
-            // This cannot happen because the class was already created once at that point.
-            throw new RuntimeException(
-                    String.format(
-                            "%s (%s) when attempting to create shard object",
-                            e.getClass().getSimpleName(), getExceptionMessage(e)));
-        }
-        return shard;
-    }
-
     /**
      * Helper to get the g-test filter of test to run.
      *
@@ -526,5 +504,25 @@ public abstract class GTestBase
             }
         }
         return msgBuilder.toString();
+    }
+
+    private IRemoteTest getTestShard(int shardCount, int shardIndex) {
+        GTestBase shard = null;
+        try {
+            shard = this.getClass().newInstance();
+            OptionCopier.copyOptionsNoThrow(this, shard);
+            shard.mShardIndex = shardIndex;
+            shard.mShardCount = shardCount;
+            shard.mIsSharded = true;
+            // We approximate the runtime of each shard to be equal since we can't know.
+            shard.mRuntimeHint = mRuntimeHint / shardCount;
+        } catch (InstantiationException | IllegalAccessException e) {
+            // This cannot happen because the class was already created once at that point.
+            throw new RuntimeException(
+                    String.format(
+                            "%s (%s) when attempting to create shard object",
+                            e.getClass().getSimpleName(), getExceptionMessage(e)));
+        }
+        return shard;
     }
 }

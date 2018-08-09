@@ -39,12 +39,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Runs all instrumentation found on current device.
- */
+/** Runs all instrumentation found on current device. */
 @OptionClass(alias = "installed-instrumentation")
-public class InstalledInstrumentationsTest
-        implements IDeviceTest, IResumableTest, IShardableTest, IStrictShardableTest {
+public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTest, IShardableTest {
 
     /** the metric key name for the test coverage target value */
     // TODO: move this to a more generic location
@@ -397,11 +394,7 @@ public class InstalledInstrumentationsTest
         return null;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public IRemoteTest getTestShard(int shardCount, int shardIndex) {
+    private IRemoteTest getTestShard(int shardCount, int shardIndex) {
         InstalledInstrumentationsTest shard = new InstalledInstrumentationsTest();
         try {
             OptionCopier.copyOptions(this, shard);
