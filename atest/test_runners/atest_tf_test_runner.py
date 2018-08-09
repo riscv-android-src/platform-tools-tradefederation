@@ -32,6 +32,7 @@ import constants
 from test_finders import test_info
 import test_runner_base
 
+PRETTY_RESULT_ENV_VAR = 'ATEST_PRETTY_RESULT'
 POLL_FREQ_SECS = 10
 SOCKET_HOST = '127.0.0.1'
 SOCKET_QUEUE_MAX = 1
@@ -81,8 +82,52 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                              'args': ''}
         self.is_verbose = logging.getLogger().isEnabledFor(logging.DEBUG)
 
-    # pylint: disable=broad-except
     def run_tests(self, test_infos, extra_args, reporter):
+        """Run the list of test_infos. See base class for more.
+
+        Args:
+            test_infos: A list of TestInfos.
+            extra_args: Dict of extra args to add to test run.
+            reporter: An instance of result_report.ResultReporter.
+        """
+        if os.getenv(PRETTY_RESULT_ENV_VAR):
+            self.run_tests_pretty(test_infos, extra_args, reporter)
+        else:
+            self.run_tests_raw(test_infos, extra_args, reporter)
+
+    def run_tests_raw(self, test_infos, extra_args, reporter):
+        """Run the list of test_infos. See base class for more.
+
+        Args:
+            test_infos: A list of TestInfos.
+            extra_args: Dict of extra args to add to test run.
+            reporter: An instance of result_report.ResultReporter.
+        """
+        iterations = 1
+        metrics_folder = ''
+        if extra_args.get(constants.PRE_PATCH_ITERATIONS):
+            iterations = extra_args.pop(constants.PRE_PATCH_ITERATIONS)
+            metrics_folder = os.path.join(self.results_dir, 'baseline-metrics')
+        elif extra_args.get(constants.POST_PATCH_ITERATIONS):
+            iterations = extra_args.pop(constants.POST_PATCH_ITERATIONS)
+            metrics_folder = os.path.join(self.results_dir, 'new-metrics')
+        args = self._create_test_args(test_infos)
+        reporter.register_unsupported_runner(self.NAME)
+
+        for _ in range(iterations):
+            run_cmd = self._generate_run_command(args, extra_args,
+                                                 metrics_folder)
+            subproc = self.run(run_cmd, output_to_stdout=True)
+            try:
+                signal.signal(signal.SIGINT, self._signal_passer(subproc))
+                subproc.wait()
+            except:
+                # If atest crashes, kill TF subproc group as well.
+                os.killpg(os.getpgid(subproc.pid), signal.SIGINT)
+                raise
+
+    # pylint: disable=broad-except
+    def run_tests_pretty(self, test_infos, extra_args, reporter):
         """Run the list of test_infos. See base class for more.
 
         Args:
