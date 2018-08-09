@@ -44,6 +44,7 @@ EXIT_CODE_TEST_NOT_FOUND = 4
 
 # Test finder constants.
 MODULE_CONFIG = 'AndroidTest.xml'
+MODULE_COMPATIBILITY_SUITES = 'compatibility_suites'
 MODULE_NAME = 'module_name'
 MODULE_PATH = 'path'
 MODULE_CLASS = 'class'
@@ -92,3 +93,6 @@ INSTALL_STEP = 'install'
 TEST_STEP = 'test'
 ALL_STEPS = [BUILD_STEP, INSTALL_STEP, TEST_STEP]
 REBUILD_MODULE_INFO_FLAG = '--rebuild-module-info'
+
+# ANSI code shift for colorful print
+BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
