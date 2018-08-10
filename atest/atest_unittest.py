@@ -88,10 +88,14 @@ class AtestUnittests(unittest.TestCase):
                     atest._has_valid_test_mapping_args(parsed_args),
                     'Failed to validate: %s' % args)
 
+    @mock.patch('json.load', return_value={})
+    @mock.patch('__builtin__.open', new_callable=mock.mock_open)
+    @mock.patch('os.path.isfile', return_value=True)
     @mock.patch('atest_utils._has_colors', return_value=True)
     @mock.patch.object(module_info.ModuleInfo, 'get_module_info',)
     def test_print_module_info_from_module_name(self, mock_get_module_info,
-                                                _mock_has_colors):
+                                                _mock_has_colors, _isfile,
+                                                _open, _json):
         """Test _print_module_info_from_module_name mehod."""
         mod_one_name = 'mod1'
         mod_one_path = ['src/path/mod1']
@@ -136,9 +140,13 @@ class AtestUnittests(unittest.TestCase):
         # Check if no module_info, then nothing printed to screen.
         self.assertEqual(capture_output.getvalue(), null_output)
 
+    @mock.patch('json.load', return_value={})
+    @mock.patch('__builtin__.open', new_callable=mock.mock_open)
+    @mock.patch('os.path.isfile', return_value=True)
     @mock.patch('atest_utils._has_colors', return_value=True)
     @mock.patch.object(module_info.ModuleInfo, 'get_module_info',)
-    def test_print_test_info(self, mock_get_module_info, _mock_has_colors):
+    def test_print_test_info(self, mock_get_module_info, _mock_has_colors,
+                             _isfile, _open, _json):
         """Test _print_test_info mehod."""
         mod_one_name = 'mod1'
         mod_one = {constants.MODULE_NAME: mod_one_name,
