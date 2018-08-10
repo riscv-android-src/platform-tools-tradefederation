@@ -26,6 +26,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.log.ConsoleReaderOutputStream;
 import com.android.tradefed.log.LogRegistry;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.ConfigCompletor;
 import com.android.tradefed.util.FileUtil;
@@ -39,8 +40,6 @@ import com.android.tradefed.util.keystore.IKeyStoreFactory;
 import com.android.tradefed.util.keystore.KeyStoreException;
 
 import com.google.common.annotations.VisibleForTesting;
-
-import jline.ConsoleReader;
 
 import java.io.File;
 import java.io.IOException;
@@ -56,6 +55,10 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
+
+import jline.ConsoleReader;
+import sun.misc.Signal;
+import sun.misc.SignalHandler;
 
 /**
  * Main TradeFederation console providing user with the interface to interact
@@ -242,6 +245,37 @@ public class Console extends Thread {
 
     void setKeyStoreFactory(IKeyStoreFactory factory) {
         mKeyStoreFactory = factory;
+    }
+
+    /**
+     * Register shutdown signals.
+     *
+     * <p>TSTP signal for quitting tradefed which waits all invocation finish. TERM signal for
+     * killing tradefed. We use TSTP and INT because these two signals are not used by JVM.
+     */
+    void registerShutdownSignals() {
+        Signal.handle(
+                new Signal("TSTP"),
+                new SignalHandler() {
+                    @Override
+                    public void handle(Signal sig) {
+                        CLog.logAndDisplay(
+                                LogLevel.INFO,
+                                String.format("Received signal %s. Quit.", sig.getName()));
+                        new QuitRunnable().run(new CaptureList());
+                    }
+                });
+        Signal.handle(
+                new Signal("TERM"),
+                new SignalHandler() {
+                    @Override
+                    public void handle(Signal sig) {
+                        CLog.logAndDisplay(
+                                LogLevel.INFO,
+                                String.format("Received signal %s. Kill.", sig.getName()));
+                        new ForceQuitRunnable().run(new CaptureList());
+                    }
+                });
     }
 
     /**
@@ -1109,5 +1143,6 @@ public class Console extends Thread {
         // Wait for the CommandScheduler to get started before we exit the main thread.  See full
         // explanation near the top of #run()
         console.awaitScheduler();
+        console.registerShutdownSignals();
     }
 }
