@@ -58,6 +58,14 @@ public class SuiteResultReporter extends CollectingTestListener {
     private long mSkippedTests = 0l;
     private long mAssumeFailureTests = 0l;
 
+    // Retry information
+    private long mTotalRetrySuccess = 0L;
+    private Map<String, Long> mModuleRetrySuccess = new LinkedHashMap<>();
+    private long mTotalRetryFail = 0L;
+    private Map<String, Long> mModuleRetryFail = new LinkedHashMap<>();
+    private long mTotalRetryTime = 0L;
+    private Map<String, Long> mModuleRetryTime = new LinkedHashMap<>();
+
     private Map<String, Integer> mModuleExpectedTests = new HashMap<>();
     private Map<String, String> mFailedModule = new HashMap<>();
     // Map holding the preparation time for each Module.
@@ -146,6 +154,25 @@ public class SuiteResultReporter extends CollectingTestListener {
                         moduleResult.getName(),
                         new ModulePrepTimes(Long.parseLong(prepTime), Long.parseLong(tearTime)));
             }
+
+            // If they exists, get all the retry information
+            String retrySuccess =
+                    moduleResult.getRunMetrics().get(ModuleDefinition.RETRY_SUCCESS_COUNT);
+            if (retrySuccess != null) {
+                mTotalRetrySuccess += Long.parseLong(retrySuccess);
+                mModuleRetrySuccess.put(moduleResult.getName(), Long.parseLong(retrySuccess));
+            }
+            String retryFailure =
+                    moduleResult.getRunMetrics().get(ModuleDefinition.RETRY_FAIL_COUNT);
+            if (retryFailure != null) {
+                mTotalRetryFail += Long.parseLong(retryFailure);
+                mModuleRetryFail.put(moduleResult.getName(), Long.parseLong(retryFailure));
+            }
+            String retryTime = moduleResult.getRunMetrics().get(ModuleDefinition.RETRY_TIME);
+            if (retryTime != null) {
+                mTotalRetryTime += Long.parseLong(retryTime);
+                mModuleRetryTime.put(moduleResult.getName(), Long.parseLong(retryTime));
+            }
         }
         // print a short report summary
         mSummary.append("\n============================================\n");
@@ -154,6 +181,7 @@ public class SuiteResultReporter extends CollectingTestListener {
         printTopSlowModules(results);
         printPreparationMetrics(mPreparationMap);
         printModuleCheckersMetric(moduleCheckers);
+        printModuleRetriesInformation();
         mSummary.append("=============== Summary ===============\n");
         mSummary.append(
                 String.format("Total Run time: %s\n", TimeUtil.formatElapsedTime(mElapsedTime)));
@@ -302,6 +330,34 @@ public class SuiteResultReporter extends CollectingTestListener {
         mSummary.append(
                 String.format(
                         "Total module checkers time: %s\n", TimeUtil.formatElapsedTime(totalTime)));
+        mSummary.append("====================================================\n");
+    }
+
+    private void printModuleRetriesInformation() {
+        if (mModuleRetrySuccess.isEmpty() || mTotalRetrySuccess == 0L) {
+            return;
+        }
+        mSummary.append("============== Modules Retries Information ==============\n");
+        for (String t : mModuleRetrySuccess.keySet()) {
+            mSummary.append(
+                    String.format(
+                            "    %s: Retry Success (Failed test became Pass) = %s\n"
+                                    + "        Retry Failure (Fail test stayed Fail)   = %s\n"
+                                    + "        Retry Time                              = %s\n",
+                            t,
+                            mModuleRetrySuccess.get(t),
+                            mModuleRetryFail.get(t),
+                            TimeUtil.formatElapsedTime(mModuleRetryTime.get(t))));
+        }
+        mSummary.append("Summary:\n");
+        mSummary.append(
+                String.format(
+                        "Total Retry Success (Failed test became Pass) = %s\n"
+                                + "Total Retry Failure (Fail test stayed Fail)   = %s\n"
+                                + "Total Retry Time                              = %s\n",
+                        mTotalRetrySuccess,
+                        mTotalRetryFail,
+                        TimeUtil.formatElapsedTime(mTotalRetryTime)));
         mSummary.append("====================================================\n");
     }
 
