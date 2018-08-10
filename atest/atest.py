@@ -257,6 +257,55 @@ def _validate_args(args):
     if not _has_valid_test_mapping_args(args):
         sys.exit(constants.EXIT_CODE_ERROR)
 
+
+def _print_module_info_from_module_name(mod_info, module_name):
+    """print out the related module_info for a module_name.
+
+    Args:
+        mod_info: ModuleInfo object.
+        module_name: A string of module.
+
+    Returns:
+        True if the module_info is found.
+    """
+    title_mapping = {constants.MODULE_PATH: "Source code path",
+                     constants.MODULE_INSTALLED: "Installed path",
+                     constants.MODULE_COMPATIBILITY_SUITES: "Compatibility suite"}
+    target_module_info = mod_info.get_module_info(module_name)
+    is_module_found = False
+    if target_module_info:
+        atest_utils.colorful_print(module_name, constants.GREEN, True)
+        for title_key in title_mapping.iterkeys():
+            atest_utils.colorful_print("\t%s" % title_mapping[title_key],
+                                       constants.BLUE, True)
+            for info_value in target_module_info[title_key]:
+                atest_utils.colorful_print("\t\t%s" % info_value, constants.BLUE)
+        is_module_found = True
+    return is_module_found
+
+
+def _print_test_info(mod_info, test_infos):
+    """Print the module information from TestInfos.
+
+    Args:
+        mod_info: ModuleInfo object.
+        test_infos: A list of TestInfos.
+
+    Returns:
+        Always return EXIT_CODE_SUCCESS
+    """
+    for test_info in test_infos:
+        _print_module_info_from_module_name(mod_info, test_info.test_name)
+        atest_utils.colorful_print("\tRelated build targets", constants.MAGENTA,
+                                   True)
+        atest_utils.colorful_print("\t\t%s" % str(test_info.build_targets),
+                                   constants.YELLOW, False)
+        for build_target in test_info.build_targets:
+            if build_target != test_info.test_name:
+                _print_module_info_from_module_name(mod_info, build_target)
+        atest_utils.colorful_print("", constants.WHITE)
+    return constants.EXIT_CODE_SUCCESS
+
 def main(argv):
     """Entry point of atest script.
 
@@ -284,6 +333,8 @@ def main(argv):
                          'new. Running: with "%s"  may resolve the issue.',
                          constants.REBUILD_MODULE_INFO_FLAG)
             return constants.EXIT_CODE_TEST_NOT_FOUND
+    if args.info:
+        return _print_test_info(mod_info, test_infos)
     build_targets |= test_runner_handler.get_test_runner_reqs(mod_info,
                                                               test_infos)
     extra_args = get_extra_args(args)

@@ -16,6 +16,8 @@
 Utility functions for atest.
 """
 
+from __future__ import print_function
+
 import itertools
 import logging
 import os
@@ -201,3 +203,55 @@ def is_test_mapping(args):
         args.include_subdirs or
         not args.tests or
         (len(args.tests) == 1 and args.tests[0][0] == ':'))
+
+
+def _has_colors(stream):
+    """Check the the output stream is colorful.
+
+    Args:
+        stream: The standard file stream.
+
+    Returns:
+        True if the file stream can interpreter the ANSI color code.
+    """
+    # Following from Python cookbook, #475186
+    if not hasattr(stream, "isatty"):
+        return False
+    if not stream.isatty():
+        # Auto color only on TTYs
+        return False
+    try:
+        import curses
+        curses.setupterm()
+        return curses.tigetnum("colors") > 2
+    # pylint: disable=broad-except
+    except Exception as err:
+        logging.debug('Checking colorful raised exception: %s', err)
+        return False
+
+
+def colorful_print(text, color, highlight=False, auto_wrap=True):
+    """Print out the text with color.
+
+    Args:
+        text: A string to print.
+        color: ANSI code shift for colorful print. They are defined
+               in constants_default.py.
+        highlight: True to print with highlight.
+        auto_wrap: If True, Text wraps while print.
+    """
+    clr_pref = '\033[1;'
+    clr_suff = '\033[0m'
+    has_colors = _has_colors(sys.stdout)
+    if has_colors:
+        if highlight:
+            ansi_shift = 40 + color
+        else:
+            ansi_shift = 30 + color
+        output = "%s%dm%s%s" % (clr_pref, ansi_shift, text, clr_suff)
+    else:
+        output = text
+    if auto_wrap:
+        print(output)
+    else:
+        print(output, end="")
