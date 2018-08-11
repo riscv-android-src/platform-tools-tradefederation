@@ -18,6 +18,7 @@ package com.android.tradefed.util;
 
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.MultiLineReceiver;
+import com.android.tradefed.log.LogUtil.CLog;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,9 +26,9 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.Set;
 
 /**
  * A {@link IShellOutputReceiver} that parses the output of a 'pm list instrumentation' query
@@ -134,6 +135,7 @@ public class ListInstrumentationParser extends MultiLineReceiver {
     @Override
     public void processNewLines(String[] lines) {
         for (String line : lines) {
+            CLog.d(line);
             Matcher m = LIST_INSTR_PATTERN.matcher(line);
             if (m.find()) {
                 mInstrumentationTargets.add(
