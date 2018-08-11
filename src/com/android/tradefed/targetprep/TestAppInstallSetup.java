@@ -105,7 +105,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer
         description =
                 "Force the preparer to ignore instant-mode option, and install in the requested mode."
     )
-    private InstallMode mInstallMode = null;
+    private InstallMode mInstallationMode = null;
 
     private IAbi mAbi = null;
     private Integer mUserId = null;
@@ -182,6 +182,34 @@ public class TestAppInstallSetup extends BaseTargetPreparer
             mPackagesInstalled = new ArrayList<>();
         }
 
+        // resolve abi flags
+        if (mAbi != null && mForceAbi != null) {
+            throw new IllegalStateException("cannot specify both abi flags: --abi and --force-abi");
+        }
+        String abiName = null;
+        if (mAbi != null) {
+            abiName = mAbi.getName();
+        } else if (mForceAbi != null) {
+            abiName = AbiFormatter.getDefaultAbi(device, mForceAbi);
+        }
+
+        // Set all the extra install args outside the loop to avoid adding them several times.
+        if (abiName != null) {
+            mInstallArgs.add(String.format("--abi %s", abiName));
+        }
+        // Handle instant mode: if we are forced in one installation mode or not.
+        // Some preparer are locked in one installation mode or another, they ignore the
+        // 'instant-mode' option and stays in their mode.
+        if (mInstallationMode != null) {
+            if (InstallMode.INSTANT.equals(mInstallationMode)) {
+                mInstallArgs.add("--instant");
+            }
+        } else {
+            if (mInstantMode) {
+                mInstallArgs.add("--instant");
+            }
+        }
+
         for (String testAppName : mTestFileNames) {
             if (testAppName == null || testAppName.trim().isEmpty()) {
                 continue;
@@ -205,29 +233,6 @@ public class TestAppInstallSetup extends BaseTargetPreparer
                 } else {
                     CLog.d("Could not read file %s.", testAppName);
                     continue;
-                }
-            }
-            // resolve abi flags
-            if (mAbi != null && mForceAbi != null) {
-                throw new IllegalStateException("cannot specify both abi flags");
-            }
-            String abiName = null;
-            if (mAbi != null) {
-                abiName = mAbi.getName();
-            } else if (mForceAbi != null) {
-                abiName = AbiFormatter.getDefaultAbi(device, mForceAbi);
-            }
-            if (abiName != null) {
-                mInstallArgs.add(String.format("--abi %s", abiName));
-            }
-            // Handle instant mode: if we are forced in one installation mode or not.
-            if (mInstallMode != null) {
-                if (InstallMode.INSTANT.equals(mInstallMode)) {
-                    mInstallArgs.add("--instant");
-                }
-            } else {
-                if (mInstantMode) {
-                    mInstallArgs.add("--instant");
                 }
             }
 
