@@ -23,7 +23,6 @@ source "${shdir}/script_help.sh"
 # JAVA_VERSION, RDBG_FLAG, TF_PATH, TRADEFED_OPTS
 checkPath adb
 
-
 # Note: must leave $RDBG_FLAG and $TRADEFED_OPTS unquoted so that they go away when unset
-java $RDBG_FLAG -XX:+HeapDumpOnOutOfMemoryError -XX:-OmitStackTraceInFastThrow $TRADEFED_OPTS \
+exec java $RDBG_FLAG -XX:+HeapDumpOnOutOfMemoryError -XX:-OmitStackTraceInFastThrow $TRADEFED_OPTS \
   -cp "${TF_PATH}" -DTF_JAR_DIR=${TF_JAR_DIR} com.android.tradefed.command.Console "$@"

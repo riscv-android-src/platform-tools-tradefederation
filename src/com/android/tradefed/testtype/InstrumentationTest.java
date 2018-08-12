@@ -942,6 +942,10 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     private void rerunTests(
             Collection<TestDescription> expectedTests, final ITestInvocationListener listener)
             throws DeviceNotAvailableException {
+        if (expectedTests.isEmpty()) {
+            CLog.d("No tests to re-run, all tests executed at least once.");
+            return;
+        }
         if (mRebootBeforeReRun) {
             mDevice.reboot();
         }
