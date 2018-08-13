@@ -120,6 +120,22 @@ public class DeviceBuildInfoTest {
     }
 
     /**
+     * Test that {@link BuildInfoProperties#DO_NOT_COPY_IMAGE_FILE} properly skip the copying when
+     * copying.
+     */
+    @Test
+    public void testProperty_skipCopy() {
+        mBuildInfo.setProperties(BuildInfoProperties.DO_NOT_COPY_IMAGE_FILE);
+        mBuildInfo.setDeviceImageFile(mHostLinkedDir, "1");
+        DeviceBuildInfo copy = (DeviceBuildInfo) mBuildInfo.clone();
+        try {
+            assertNull(copy.getDeviceImageFile());
+        } finally {
+            copy.cleanUp();
+        }
+    }
+
+    /**
      * Test that the build info can be described in its proto format with its class properly
      * populated.
      */
