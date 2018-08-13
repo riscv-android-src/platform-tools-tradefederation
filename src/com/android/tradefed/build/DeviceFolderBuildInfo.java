@@ -16,8 +16,8 @@
 package com.android.tradefed.build;
 
 import java.io.File;
-import java.util.Collection;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -302,6 +302,18 @@ public class DeviceFolderBuildInfo extends BuildInfo implements IDeviceBuildInfo
         mFolderBuild.cleanUp();
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void setProperties(BuildInfoProperties... properties) {
+        super.setProperties(properties);
+        if (mDeviceBuild != null) {
+            mDeviceBuild.setProperties(properties);
+        }
+        if (mFolderBuild != null) {
+            mFolderBuild.setProperties(properties);
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -309,9 +321,11 @@ public class DeviceFolderBuildInfo extends BuildInfo implements IDeviceBuildInfo
     public IBuildInfo clone() {
         DeviceFolderBuildInfo copy = new DeviceFolderBuildInfo(getBuildId(), getBuildTargetName());
         copy.addAllBuildAttributes(this);
-        IDeviceBuildInfo deviceBuildClone = (IDeviceBuildInfo)mDeviceBuild.clone();
+        copy.setProperties(this.getProperties().toArray(new BuildInfoProperties[0]));
+
+        IDeviceBuildInfo deviceBuildClone = (IDeviceBuildInfo) mDeviceBuild.clone();
         copy.setDeviceBuild(deviceBuildClone);
-        IFolderBuildInfo folderBuildClone = (IFolderBuildInfo)mFolderBuild.clone();
+        IFolderBuildInfo folderBuildClone = (IFolderBuildInfo) mFolderBuild.clone();
         copy.setFolderBuild(folderBuildClone);
 
         return copy;
