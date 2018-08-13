@@ -68,7 +68,7 @@ public class BuildInfo implements IBuildInfo {
             new String[] {
                 BuildInfoFileKey.TESTDIR_IMAGE.getFileKey(),
                 BuildInfoFileKey.HOST_LINKED_DIR.getFileKey(),
-                BuildInfoFileKey.TARGET_LINKED_DIR.getFileKey()
+                BuildInfoFileKey.TARGET_LINKED_DIR.getFileKey(),
             };
 
     /**
@@ -247,6 +247,12 @@ public class BuildInfo implements IBuildInfo {
                             name, origFileConsidered.getFile(), origFileConsidered.getVersion());
                     return true;
                 }
+            }
+        }
+        if (getProperties().contains(BuildInfoProperties.DO_NOT_COPY_IMAGE_FILE)) {
+            if (origFileConsidered.equals(build.getVersionedFile(BuildInfoFileKey.DEVICE_IMAGE))) {
+                CLog.d("Skip copying of device_image.");
+                return true;
             }
         }
         return false;
