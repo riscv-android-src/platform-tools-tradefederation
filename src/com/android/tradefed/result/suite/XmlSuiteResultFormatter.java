@@ -255,7 +255,9 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
                 serializer.attribute(NS, NAME_ATTR, module.getName());
             }
             serializer.attribute(NS, RUNTIME_ATTR, String.valueOf(module.getElapsedTime()));
-            serializer.attribute(NS, DONE_ATTR, Boolean.toString(module.isRunComplete()));
+            boolean isDone = module.isRunComplete() && !module.isRunFailure();
+
+            serializer.attribute(NS, DONE_ATTR, Boolean.toString(isDone));
             serializer.attribute(
                     NS, PASS_ATTR, Integer.toString(module.getNumTestsInState(TestStatus.PASSED)));
             serializer.attribute(NS, TOTAL_TESTS_ATTR, Integer.toString(module.getNumTests()));
@@ -409,7 +411,7 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
 
     /** {@inheritDoc} */
     @Override
-    public SuiteResultHolder parseResults(File resultDir) throws IOException {
+    public SuiteResultHolder parseResults(File resultDir, boolean shallow) throws IOException {
         File resultFile = new File(resultDir, TEST_RESULT_FILE_NAME);
         if (!resultFile.exists()) {
             CLog.e("Could not find %s for loading the results.", resultFile.getAbsolutePath());
@@ -442,7 +444,7 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
             parser.require(XmlPullParser.START_TAG, NS, BUILD_TAG);
 
             for (int index = 0; index < parser.getAttributeCount(); index++) {
-                String key = parser.getAttributeName(i);
+                String key = parser.getAttributeName(index);
                 String value = parser.getAttributeValue(NS, key);
                 // TODO: Handle list of values that are comma separated.
                 context.addInvocationAttribute(key, value);
@@ -465,13 +467,15 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
             parser.nextTag();
             parser.require(XmlPullParser.END_TAG, NS, SUMMARY_TAG);
 
-            Collection<TestRunResult> results = new ArrayList<>();
-            Map<String, IAbi> moduleAbis = new HashMap<>();
-            // Module level information parsing
-            handleModuleLevel(parser, results, moduleAbis);
-            parser.require(XmlPullParser.END_TAG, NS, RESULT_TAG);
-            invocation.runResults = results;
-            invocation.modulesAbi = moduleAbis;
+            if (!shallow) {
+                Collection<TestRunResult> results = new ArrayList<>();
+                Map<String, IAbi> moduleAbis = new HashMap<>();
+                // Module level information parsing
+                handleModuleLevel(parser, results, moduleAbis);
+                parser.require(XmlPullParser.END_TAG, NS, RESULT_TAG);
+                invocation.runResults = results;
+                invocation.modulesAbi = moduleAbis;
+            }
         } catch (XmlPullParserException e) {
             CLog.e(e);
             return null;
