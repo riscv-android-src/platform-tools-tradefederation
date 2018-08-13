@@ -25,6 +25,7 @@ import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.target.DeviceSideCollectorSpecification;
 import com.android.tradefed.log.ILeveledLogOutput;
+import com.android.tradefed.postprocessor.IPostProcessor;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
@@ -134,6 +135,9 @@ public interface IConfiguration {
 
     /** Gets the {@link IMetricCollector}s from the configuration. */
     public List<IMetricCollector> getMetricCollectors();
+
+    /** Gets the {@link IPostProcessor}s from the configuration. */
+    public List<IPostProcessor> getPostProcessors();
 
     /**
      * Gets the {@link DeviceSideCollectorSpecification} driving the device/target-side
@@ -394,6 +398,9 @@ public interface IConfiguration {
 
     /** Set the {@link DeviceSideCollectorSpecification}, replacing any existing values. */
     public void setDeviceSideCollectorSpec(DeviceSideCollectorSpecification deviceCollectorSpec);
+
+    /** Set the list of {@link IPostProcessor}s, replacing any existing values. */
+    public void setPostProcessors(List<IPostProcessor> processors);
 
     /**
      * Set the {@link ICommandOptions}, replacing any existing values
