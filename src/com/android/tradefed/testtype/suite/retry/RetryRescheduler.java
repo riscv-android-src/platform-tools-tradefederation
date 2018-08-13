@@ -109,6 +109,9 @@ public final class RetryRescheduler
                     getFactory()
                             .createConfigurationFromArgs(
                                     QuotationAwareTokenizer.tokenizeLine(commandLine));
+            // Unset the sharding options for the original command.
+            originalConfig.getCommandOptions().setShardCount(null);
+            originalConfig.getCommandOptions().setShardIndex(null);
         } catch (ConfigurationException e) {
             throw new RuntimeException(e);
         }
@@ -127,6 +130,11 @@ public final class RetryRescheduler
         ResultsPlayer replayer = new ResultsPlayer();
         updateRunner(suite, collectedTests, replayer);
         updateConfiguration(originalConfig, replayer);
+        // FIXME: This ensure that the retry rescheduler is run against the same device as the
+        // rescheduled invocation. This does not work for multi-devices.
+        originalConfig
+                .getDeviceRequirements()
+                .setSerial(mContext.getSerials().toArray(new String[0]));
 
         // At the end, reschedule
         // TODO(b/110265525): The rescheduling will be done inside the same invocation to avoid
