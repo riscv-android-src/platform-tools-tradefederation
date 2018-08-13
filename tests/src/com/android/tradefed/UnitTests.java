@@ -172,13 +172,13 @@ import com.android.tradefed.testtype.DeviceSuiteTest;
 import com.android.tradefed.testtype.DeviceTestCaseTest;
 import com.android.tradefed.testtype.DeviceTestSuiteTest;
 import com.android.tradefed.testtype.FakeTestTest;
-import com.android.tradefed.testtype.GTestBaseTest;
 import com.android.tradefed.testtype.GTestListTestParserTest;
 import com.android.tradefed.testtype.GTestResultParserTest;
 import com.android.tradefed.testtype.GTestTest;
 import com.android.tradefed.testtype.GTestXmlResultParserTest;
 import com.android.tradefed.testtype.GoogleBenchmarkResultParserTest;
 import com.android.tradefed.testtype.GoogleBenchmarkTestTest;
+import com.android.tradefed.testtype.HostGTestTest;
 import com.android.tradefed.testtype.HostTestTest;
 import com.android.tradefed.testtype.InstalledInstrumentationsTestTest;
 import com.android.tradefed.testtype.InstrumentationFileTestTest;
@@ -506,11 +506,11 @@ import org.junit.runners.Suite.SuiteClasses;
     FakeTestTest.class,
     GoogleBenchmarkResultParserTest.class,
     GoogleBenchmarkTestTest.class,
-    GTestBaseTest.class,
     GTestListTestParserTest.class,
     GTestResultParserTest.class,
     GTestTest.class,
     GTestXmlResultParserTest.class,
+    HostGTestTest.class,
     HostTestTest.class,
     InstalledInstrumentationsTestTest.class,
     InstrumentationSerialTestTest.class,
