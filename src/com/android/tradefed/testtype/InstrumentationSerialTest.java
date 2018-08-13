@@ -92,6 +92,8 @@ class InstrumentationSerialTest implements IRemoteTest {
                 InstrumentationTest runner = createInstrumentationTest(mInstrumentationTest);
                 runner.setClassName(testToRun.getClassName());
                 runner.setMethodName(testToRun.getTestName());
+                // Unset package name if any just in case to avoid conflict with classname.
+                runner.setTestPackageName(null);
                 runTest(runner, listener, testToRun);
             }
         } catch (ConfigurationException e) {
