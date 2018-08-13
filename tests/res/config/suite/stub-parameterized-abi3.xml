@@ -16,7 +16,8 @@
 <configuration description="A stub module with a parameterized metadata">
     <option name="metadata" key="parameter" value="instant_app" />
     <option name="metadata" key="parameter" value="multi_abi" />
+    <option name="metadata" key="parameter" value="not_instant_app" />
 
-    <option name="test-suite-tag" value="example-suite-parameters-abi" />
+    <option name="test-suite-tag" value="example-suite-parameters-fail" />
     <test class="com.android.tradefed.testtype.suite.TestSuiteStub" />
 </configuration>
