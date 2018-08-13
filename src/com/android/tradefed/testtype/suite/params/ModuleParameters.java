@@ -18,17 +18,35 @@ package com.android.tradefed.testtype.suite.params;
 /** Special values associated with the suite "parameter" keys in the metadata of each module. */
 public enum ModuleParameters {
     /** describes a parameterization based on app that should be installed in instant mode. */
-    INSTANT_APP("instant_app"),
-    MULTI_ABI_REQUIRED("multi_abi_required");
+    INSTANT_APP("instant_app", "instant_app_family"),
+    NOT_INSTANT_APP("not_instant_app", "instant_app_family"),
+
+    MULTI_ABI("multi_abi", "multi_abi_family"),
+    NOT_MULTI_ABI("not_multi_abi", "multi_abi_family");
+
+    private static final String INSTANT_APP_FAMILY = "instant_app_family";
+    private static final String MULTI_ABI_FAMILY = "multi_abi_family";
+    public static final String[] FAMILY_LIST =
+            new String[] {
+                INSTANT_APP_FAMILY, MULTI_ABI_FAMILY,
+            };
 
     private final String mName;
+    /** Defines whether several module parameters are associated and mutually exclusive. */
+    private final String mFamily;
 
-    private ModuleParameters(String name) {
+    private ModuleParameters(String name, String family) {
         mName = name;
+        mFamily = family;
     }
 
     @Override
     public String toString() {
         return mName;
+    }
+
+    /** Returns the family of the Module Parameter. */
+    public String getFamily() {
+        return mFamily;
     }
 }

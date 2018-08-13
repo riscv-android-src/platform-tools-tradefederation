@@ -215,7 +215,7 @@ public class SuiteModuleLoader {
                 }
                 // Handle parameterized modules if enabled.
                 if (mAllowParameterizedModules) {
-                    List<IModuleParameter> params = getModuleParameters(config);
+                    List<IModuleParameter> params = getModuleParameters(name, config);
                     // If we find any parameterized combination.
                     for (IModuleParameter param : params) {
                         if (param instanceof MultiAbiHandler) {
@@ -414,8 +414,12 @@ public class SuiteModuleLoader {
     }
 
     /** Gets the list of {@link IModuleParameter}s associated with a module. */
-    private List<IModuleParameter> getModuleParameters(IConfiguration config) {
+    private List<IModuleParameter> getModuleParameters(String moduleName, IConfiguration config)
+            throws ConfigurationException {
         List<IModuleParameter> params = new ArrayList<>();
+        // Track family of the parameters to make sure we have no duplicate.
+        Map<String, ModuleParameters> duplicateModule = new LinkedHashMap<>();
+
         List<String> parameters =
                 config.getConfigurationDescription().getMetaData(ITestSuite.PARAMETER_KEY);
         if (parameters == null || parameters.isEmpty()) {
@@ -423,6 +427,17 @@ public class SuiteModuleLoader {
         }
         for (String p : parameters) {
             ModuleParameters suiteParam = ModuleParameters.valueOf(p.toUpperCase());
+            String family = suiteParam.getFamily();
+            if (duplicateModule.containsKey(family)) {
+                // Duplicate family members are not accepted.
+                throw new ConfigurationException(
+                        String.format(
+                                "Module %s is declaring parameter: "
+                                        + "%s and %s when only one expected.",
+                                moduleName, suiteParam, duplicateModule.get(family)));
+            } else {
+                duplicateModule.put(suiteParam.getFamily(), suiteParam);
+            }
             IModuleParameter handler = ModuleParametersHelper.getParameterHandler(suiteParam);
             params.add(handler);
         }
