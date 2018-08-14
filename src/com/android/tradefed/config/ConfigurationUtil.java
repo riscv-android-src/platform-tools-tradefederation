@@ -16,6 +16,7 @@
 
 package com.android.tradefed.config;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
@@ -28,6 +29,7 @@ import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -175,7 +177,7 @@ public class ConfigurationUtil {
         List<String> patterns = new ArrayList<>();
         patterns.add(".*.config");
         patterns.add(".*.xml");
-        return getConfigNamesFileFromDirs(subPath, dirs, patterns);
+        return getConfigNamesFileFromDirs(subPath, dirs, patterns, false);
     }
 
     /**
@@ -184,10 +186,14 @@ public class ConfigurationUtil {
      * @param subPath The location where to look for configuration. Can be null.
      * @param dirs A list of {@link File} of extra directories to search for test configs
      * @param configNamePatterns the list of patterns for files to be found.
+     * @param prioritizeHostConfig If multiple copies of a config exists, utilize the host version.
      * @return the set of {@link File} that were found.
      */
     public static Set<File> getConfigNamesFileFromDirs(
-            String subPath, List<File> dirs, List<String> configNamePatterns) {
+            String subPath,
+            List<File> dirs,
+            List<String> configNamePatterns,
+            boolean prioritizeHostConfig) {
         Set<File> configNames = new HashSet<>();
         for (File dir : dirs) {
             if (subPath != null) {
@@ -205,22 +211,43 @@ public class ConfigurationUtil {
                 CLog.w("Failed to get test config files from directory %s", dir.getAbsolutePath());
             }
         }
-        return dedupFiles(configNames);
+        return dedupFiles(configNames, prioritizeHostConfig);
+    }
+
+    /**
+     * Search a particular pattern of in the given directories.
+     *
+     * @param subPath The location where to look for configuration. Can be null.
+     * @param dirs A list of {@link File} of extra directories to search for test configs
+     * @param configNamePatterns the list of patterns for files to be found.
+     * @return the set of {@link File} that were found.
+     */
+    public static Set<File> getConfigNamesFileFromDirs(
+            String subPath, List<File> dirs, List<String> configNamePatterns) {
+        return getConfigNamesFileFromDirs(subPath, dirs, configNamePatterns, false);
     }
 
     /**
      * From a same tests dir we only expect a single instance of each names, so we dedup the files
      * if that happens.
      */
-    private static Set<File> dedupFiles(Set<File> origSet) {
-        Set<String> tracker = new HashSet<>();
-        Set<File> newSet = new HashSet<>();
+    private static Set<File> dedupFiles(Set<File> origSet, boolean prioritizeHostConfig) {
+        Map<String, File> newMap = new HashMap<>();
         for (File f : origSet) {
-            if (!tracker.contains(f.getName())) {
-                tracker.add(f.getName());
-                newSet.add(f);
+            if (!newMap.keySet().contains(f.getName())) {
+                newMap.put(f.getName(), f);
+            } else {
+                if (prioritizeHostConfig
+                        && f.getAbsolutePath()
+                                .contains(BuildInfoFileKey.HOST_LINKED_DIR.toString())) {
+                    newMap.put(f.getName(), f);
+                } else if (!prioritizeHostConfig
+                        && f.getAbsolutePath()
+                                .contains(BuildInfoFileKey.TARGET_LINKED_DIR.toString())) {
+                    newMap.put(f.getName(), f);
+                }
             }
         }
-        return newSet;
+        return new HashSet<>(newMap.values());
     }
 }
