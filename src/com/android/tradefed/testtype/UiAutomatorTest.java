@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -77,10 +78,13 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
             "If unspecified will use all jars found in /data/local/tmp/")
     private List<String> mJarPaths = new ArrayList<String>();
 
-    @Option(name = "class",
-            description = "test class to run, may be repeated; multiple classess will be run"
-                    + " in the same order as provided in command line")
-    private List<String> mClasses = new ArrayList<String>();
+    @Option(
+        name = "class",
+        description =
+                "test class to run, may be repeated; multiple classess will be run"
+                        + " in the same order as provided in command line"
+    )
+    private Set<String> mClasses = new LinkedHashSet<>();
 
     @Option(name = "sync-time", description = "time to allow for initial sync, in ms")
     private long mSyncTime = 0;
@@ -493,7 +497,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
      * @return list of test class names
      */
     public List<String> getClassNames() {
-        return mClasses;
+        return new ArrayList<>(mClasses);
     }
 
     @Override
@@ -514,6 +518,30 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
 
     @Override
     public void addAllExcludeFilters(Set<String> filters) {
+        throw new UnsupportedOperationException("Exclude filters is not supported.");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearIncludeFilters() {
+        mClasses.clear();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getIncludeFilters() {
+        return mClasses;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getExcludeFilters() {
+        throw new UnsupportedOperationException("Exclude filters is not supported.");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearExcludeFilters() {
         throw new UnsupportedOperationException("Exclude filters is not supported.");
     }
 }
