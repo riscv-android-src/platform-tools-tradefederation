@@ -18,9 +18,12 @@ package com.android.tradefed.invoker;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildSerializedVersion;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.proto.BuildInformation;
 import com.android.tradefed.config.ConfigurationDescriptor;
+import com.android.tradefed.config.proto.ConfigurationDescription.Metadata;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.invoker.proto.InvocationContext.Context;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.util.MultiMap;
@@ -47,12 +50,18 @@ public class InvocationContext implements IInvocationContext {
     private Map<String, IBuildInfo> mNameAndBuildinfoMap;
     private final UniqueMultiMap<String, String> mInvocationAttributes =
             new UniqueMultiMap<String, String>();
+    private Map<IInvocationContext.TimingEvent, Long> mInvocationTimingMetrics;
     /** Invocation test-tag **/
     private String mTestTag;
     /** configuration descriptor */
     private ConfigurationDescriptor mConfigurationDescriptor;
     /** module invocation context (when running as part of a {@link ITestSuite} */
     private IInvocationContext mModuleContext;
+    /**
+     * List of map the device serials involved in the sharded invocation, empty if not a sharded
+     * invocation.
+     */
+    private Map<Integer, List<String>> mShardSerials;
 
     private boolean mLocked;
 
@@ -60,10 +69,12 @@ public class InvocationContext implements IInvocationContext {
      * Creates a {@link BuildInfo} using default attribute values.
      */
     public InvocationContext() {
+        mInvocationTimingMetrics = new LinkedHashMap<>();
         mAllocatedDeviceAndBuildMap = new LinkedHashMap<ITestDevice, IBuildInfo>();
         // Use LinkedHashMap to ensure key ordering by insertion order
         mNameAndDeviceMap = new LinkedHashMap<String, ITestDevice>();
         mNameAndBuildinfoMap = new LinkedHashMap<String, IBuildInfo>();
+        mShardSerials = new LinkedHashMap<Integer, List<String>>();
     }
 
     /**
@@ -211,6 +222,22 @@ public class InvocationContext implements IInvocationContext {
         return copy;
     }
 
+
+    /** {@inheritDoc} */
+    @Override
+    public Map<IInvocationContext.TimingEvent, Long> getInvocationTimingMetrics() {
+        return mInvocationTimingMetrics;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addInvocationTimingMetric(IInvocationContext.TimingEvent timingEvent,
+            Long durationMillis) {
+        mInvocationTimingMetrics.put(timingEvent, durationMillis);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -292,6 +319,28 @@ public class InvocationContext implements IInvocationContext {
         mLocked = true;
     }
 
+    /** Private method to unlock the attributes. Used for sandbox test mode only. */
+    @SuppressWarnings("unused")
+    private void unlock() {
+        mLocked = false;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addSerialsFromShard(Integer index, List<String> serials) {
+        if (mLocked) {
+            throw new IllegalStateException(
+                    "Attempting to add serial from shard attribute during a test.");
+        }
+        mShardSerials.put(index, serials);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Map<Integer, List<String>> getShardsSerials() {
+        return new LinkedHashMap<>(mShardSerials);
+    }
+
     /** Special java method that allows for custom deserialization. */
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         // our "pseudo-constructor"
@@ -299,5 +348,70 @@ public class InvocationContext implements IInvocationContext {
         // now we are a "live" object again, so let's init the transient field
         mAllocatedDeviceAndBuildMap = new LinkedHashMap<ITestDevice, IBuildInfo>();
         mNameAndDeviceMap = new LinkedHashMap<String, ITestDevice>();
+        // For compatibility, when parent TF does not have the invocation timing yet.
+        if (mInvocationTimingMetrics == null) {
+            mInvocationTimingMetrics = new LinkedHashMap<>();
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Context toProto() {
+        Context.Builder contextBuilder = Context.newBuilder();
+        // The invocation test tag.
+        if (mTestTag != null) {
+            contextBuilder.setTestTag(mTestTag);
+        }
+        // Map name to build info
+        Map<String, BuildInformation.BuildInfo> mapBuild = new LinkedHashMap<>();
+        for (String name : mNameAndBuildinfoMap.keySet()) {
+            mapBuild.put(name, mNameAndBuildinfoMap.get(name).toProto());
+        }
+        contextBuilder.putAllNameBuildInfo(mapBuild);
+        // Metadata
+        List<Metadata> metadatas = new ArrayList<>();
+        for (String key : mInvocationAttributes.keySet()) {
+            Metadata value =
+                    Metadata.newBuilder()
+                            .setKey(key)
+                            .addAllValue(mInvocationAttributes.get(key))
+                            .build();
+            metadatas.add(value);
+        }
+        contextBuilder.addAllMetadata(metadatas);
+        // Configuration Description
+        contextBuilder.setConfigurationDescription(mConfigurationDescriptor.toProto());
+        // Module Context if it exists
+        if (mModuleContext != null) {
+            contextBuilder.setModuleContext(mModuleContext.toProto());
+        }
+        return contextBuilder.build();
+    }
+
+    /** Inverse operation to {@link InvocationContext#toProto()} to get the instance back. */
+    public static InvocationContext fromProto(Context protoContext) {
+        InvocationContext context = new InvocationContext();
+        // Test Tag.
+        context.mTestTag = protoContext.getTestTag();
+        // Map Build Info
+        for (String key : protoContext.getNameBuildInfo().keySet()) {
+            context.mNameAndBuildinfoMap.put(
+                    key, BuildInfo.fromProto(protoContext.getNameBuildInfo().get(key)));
+        }
+        // Metadata
+        for (Metadata meta : protoContext.getMetadataList()) {
+            for (String value : meta.getValueList()) {
+                context.mInvocationAttributes.put(meta.getKey(), value);
+            }
+        }
+        // Configuration Description
+        context.mConfigurationDescriptor =
+                ConfigurationDescriptor.fromProto(protoContext.getConfigurationDescription());
+        // Module Context - context module will have some property set: module-id at the minimum
+        if (protoContext.hasModuleContext()) {
+            // TODO: Check explicitly for module-id
+            context.mModuleContext = InvocationContext.fromProto(protoContext.getModuleContext());
+        }
+        return context;
     }
 }

@@ -21,11 +21,6 @@
         <option name="test-file-name" value="AppTransitionTests.apk" />
     </target_preparer>
 
-    <target_preparer class="com.google.android.tradefed.targetprep.GoogleAccountPreparer">
-        <option name="account-sync" value="true" />
-        <option name="wait-for-sync" value="true" />
-    </target_preparer>
-
     <target_preparer class="com.google.android.tradefed.targetprep.DismissDialogsPreparer" >
         <option name="test-file-name" value="DialogDismissalUtil.apk" />
     </target_preparer>

@@ -18,21 +18,28 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.metric.target.DeviceSideCollectorSpecification;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.ListInstrumentationParser;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.inject.Inject;
+
+import org.junit.runner.notification.RunListener;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -43,8 +50,6 @@ import java.util.Set;
 public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHintProvider,
         ITestFileFilterReceiver, ITestFilterReceiver, ITestAnnotationFilterReceiver,
         IShardableTest, IStrictShardableTest {
-
-    protected static final String AJUR = "android.support.test.runner.AndroidJUnitRunner";
 
     /** instrumentation test runner argument key used for including a class/test */
     private static final String INCLUDE_CLASS_INST_ARGS_KEY = "class";
@@ -66,6 +71,16 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     private static final String SHARD_INDEX_INST_ARGS_KEY = "shardIndex";
     /** instrumentation test runner argument used to specify the total number of shards */
     private static final String NUM_SHARD_INST_ARGS_KEY = "numShards";
+    /**
+     * instrumentation test runner argument used to enable the new {@link RunListener} order on
+     * device side.
+     */
+    public static final String NEW_RUN_LISTENER_ORDER_KEY = "newRunListenerMode";
+
+    /** Options from the collector side helper library. */
+    public static final String INCLUDE_COLLECTOR_FILTER_KEY = "include-filter-group";
+
+    public static final String EXCLUDE_COLLECTOR_FILTER_KEY = "exclude-filter-group";
 
     private static final String INCLUDE_FILE = "includes.txt";
     private static final String EXCLUDE_FILE = "excludes.txt";
@@ -75,21 +90,29 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
             description="The hint about the test's runtime.")
     private long mRuntimeHint = 60000;// 1 minute
 
-    @Option(name = "include-filter",
-            description="The include filters of the test name to run.")
-    private List<String> mIncludeFilters = new ArrayList<>();
+    @Option(
+            name = "include-filter",
+            description = "The include filters of the test name to run.",
+            requiredForRerun = true)
+    private Set<String> mIncludeFilters = new HashSet<>();
 
-    @Option(name = "exclude-filter",
-            description="The exclude filters of the test name to run.")
-    private List<String> mExcludeFilters = new ArrayList<>();
+    @Option(
+            name = "exclude-filter",
+            description = "The exclude filters of the test name to run.",
+            requiredForRerun = true)
+    private Set<String> mExcludeFilters = new HashSet<>();
 
-    @Option(name = "include-annotation",
-            description="The annotation class name of the test name to run, can be repeated")
-    private List<String> mIncludeAnnotation = new ArrayList<>();
+    @Option(
+            name = "include-annotation",
+            description = "The annotation class name of the test name to run, can be repeated",
+            requiredForRerun = true)
+    private Set<String> mIncludeAnnotation = new HashSet<>();
 
-    @Option(name = "exclude-annotation",
-            description="The notAnnotation class name of the test name to run, can be repeated")
-    private List<String> mExcludeAnnotation = new ArrayList<>();
+    @Option(
+            name = "exclude-annotation",
+            description = "The notAnnotation class name of the test name to run, can be repeated",
+            requiredForRerun = true)
+    private Set<String> mExcludeAnnotation = new HashSet<>();
 
     @Option(name = "test-file-include-filter",
             description="A file containing a list of line separated test classes and optionally"
@@ -111,6 +134,20 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     )
     private Integer mMaxShard = null;
 
+    @Option(
+            name = "device-listeners",
+            description =
+                    "Specify a device side instrumentation listener to be added for the run. "
+                            + "Can be repeated.")
+    private Set<String> mExtraDeviceListeners = new HashSet<>();
+
+    @Option(
+        name = "use-new-run-listener-order",
+        description = "Enables the new RunListener Order for AJUR."
+    )
+    // Default to true as it is harmless if not supported.
+    private boolean mNewRunListenerOrderMode = true;
+
     private String mDeviceIncludeFile = null;
     private String mDeviceExcludeFile = null;
     private int mTotalShards = 0;
@@ -118,11 +155,20 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     // Flag to avoid re-sharding a test that already was.
     private boolean mIsSharded = false;
 
+    // Special object that can tune some device side aspects.
+    private DeviceSideCollectorSpecification mDeviceSideSpec = null;
+
     public AndroidJUnitTest() {
         super();
-        // Set the runner to AJUR, this can still be overwritten by the optionsetter/optioncopier
-        setRunnerName(AJUR);
         setEnforceFormat(true);
+    }
+
+    /** Guice-injected object, that can influence the instrumentation args. */
+    @Inject
+    public void setDeviceSpec(IConfiguration spec) {
+        if (spec.getDeviceSideCollectorsSpec() != null) {
+            mDeviceSideSpec = spec.getDeviceSideCollectorsSpec();
+        }
     }
 
     /**
@@ -211,6 +257,30 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     @Override
     public void addAllExcludeAnnotation(Set<String> excludeAnnotations) {
         mExcludeAnnotation.addAll(excludeAnnotations);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getIncludeAnnotations() {
+        return mIncludeAnnotation;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getExcludeAnnotations() {
+        return mExcludeAnnotation;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearIncludeAnnotations() {
+        mIncludeAnnotation.clear();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearExcludeAnnotations() {
+        mExcludeAnnotation.clear();
     }
 
     /**
@@ -310,6 +380,32 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
             runner.addInstrumentationArg(SHARD_INDEX_INST_ARGS_KEY, Integer.toString(mShardIndex));
             runner.addInstrumentationArg(NUM_SHARD_INST_ARGS_KEY, Integer.toString(mTotalShards));
         }
+        if (mNewRunListenerOrderMode) {
+            runner.addInstrumentationArg(
+                    NEW_RUN_LISTENER_ORDER_KEY, Boolean.toString(mNewRunListenerOrderMode));
+        }
+
+        // Load the device side configuration from Guice
+        if (mDeviceSideSpec != null) {
+            CLog.d("Got a DeviceSideCollectorSpecification from Guice Tradefed.");
+            mExtraDeviceListeners.addAll(mDeviceSideSpec.getCollectorNames());
+            for (String key : mDeviceSideSpec.getCollectorOptions().keySet()) {
+                runner.addInstrumentationArg(
+                        key, ArrayUtil.join(",", mDeviceSideSpec.getCollectorOptions().get(key)));
+            }
+            if (!mDeviceSideSpec.getExcludeGroupFilters().isEmpty()) {
+                runner.addInstrumentationArg(
+                        EXCLUDE_COLLECTOR_FILTER_KEY,
+                        ArrayUtil.join(",", mDeviceSideSpec.getExcludeGroupFilters()));
+            }
+            if (!mDeviceSideSpec.getIncludeGroupFilters().isEmpty()) {
+                runner.addInstrumentationArg(
+                        INCLUDE_COLLECTOR_FILTER_KEY,
+                        ArrayUtil.join(",", mDeviceSideSpec.getIncludeGroupFilters()));
+            }
+        }
+        // Add the listeners received from Options
+        addDeviceListeners(mExtraDeviceListeners);
     }
 
     /**
@@ -353,7 +449,7 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     private void reportEarlyFailure(ITestInvocationListener listener, String errorMessage) {
         listener.testRunStarted("AndroidJUnitTest_setupError", 0);
         listener.testRunFailed(errorMessage);
-        listener.testRunEnded(0, Collections.emptyMap());
+        listener.testRunEnded(0, new HashMap<String, Metric>());
     }
 
     /**

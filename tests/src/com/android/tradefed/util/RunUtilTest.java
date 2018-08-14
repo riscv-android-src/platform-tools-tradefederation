@@ -39,11 +39,14 @@ public class RunUtilTest extends TestCase {
 
     private RunUtil mRunUtil;
     private RunnableResult mMockRunnableResult;
-    private long mSleepTime = 0;
+    private long mSleepTime = 0L;
     private boolean success = false;
-    private static final long VERY_SHORT_TIMEOUT_MS = 10;
-    private static final long SHORT_TIMEOUT_MS = 200;
-    private static final long LONG_TIMEOUT_MS = 1000;
+    private static final long VERY_SHORT_TIMEOUT_MS = 10L;
+    private static final long SHORT_TIMEOUT_MS = 200L;
+    private static final long LONG_TIMEOUT_MS = 1000L;
+    // Timeout to ensure that IO depend tests have enough time to finish. They should not use the
+    // full duration in most cases.
+    private static final long VERY_LONG_TIMEOUT_MS = 5000L;
 
     @Override
     protected void setUp() throws Exception {
@@ -236,9 +239,8 @@ public class RunUtilTest extends TestCase {
     public void testInterrupt() {
         final String message = "it is alright now";
         mRunUtil.allowInterrupt(true);
-        mRunUtil.interrupt(Thread.currentThread(), message);
         try{
-            mRunUtil.sleep(1);
+            mRunUtil.interrupt(Thread.currentThread(), message);
             fail("RunInterruptedException was expected, but not thrown.");
         } catch (final RunInterruptedException e) {
             assertEquals(message, e.getMessage());
@@ -251,10 +253,10 @@ public class RunUtilTest extends TestCase {
      */
     public void testInterrupt_delayed() {
         final String message = "it is alright now";
-        mRunUtil.allowInterrupt(false);
-        mRunUtil.interrupt(Thread.currentThread(), message);
-        mRunUtil.sleep(1);
         try{
+            mRunUtil.allowInterrupt(false);
+            mRunUtil.interrupt(Thread.currentThread(), message);
+            mRunUtil.sleep(1);
             mRunUtil.allowInterrupt(true);
             mRunUtil.sleep(1);
             fail("RunInterruptedException was expected, but not thrown.");
@@ -271,14 +273,13 @@ public class RunUtilTest extends TestCase {
         final String message2 = "without a fight";
         final String message3 = "rock this town";
         mRunUtil.allowInterrupt(true);
-        mRunUtil.interrupt(Thread.currentThread(), message1);
-        mRunUtil.interrupt(Thread.currentThread(), message2);
-        mRunUtil.interrupt(Thread.currentThread(), message3);
-        try{
-            mRunUtil.sleep(1);
+        try {
+            mRunUtil.interrupt(Thread.currentThread(), message1);
+            mRunUtil.interrupt(Thread.currentThread(), message2);
+            mRunUtil.interrupt(Thread.currentThread(), message3);
             fail("RunInterruptedException was expected, but not thrown.");
         } catch (final RunInterruptedException e) {
-            assertEquals(message3, e.getMessage());
+            assertEquals(message1, e.getMessage());
         }
     }
 
@@ -418,11 +419,16 @@ public class RunUtilTest extends TestCase {
     public void testSetInterruptibleInFuture_beforeTimeout() {
         mRunUtil.allowInterrupt(false);
         assertFalse(mRunUtil.isInterruptAllowed());
-        mRunUtil.setInterruptibleInFuture(Thread.currentThread(), LONG_TIMEOUT_MS);
-        mRunUtil.sleep(10);
-        // Should still be false
-        assertFalse(mRunUtil.isInterruptAllowed());
-        mRunUtil.terminateTimer();
+        try {
+            mRunUtil.setInterruptibleInFuture(Thread.currentThread(), SHORT_TIMEOUT_MS);
+            mRunUtil.sleep(50);
+            // Should still be false
+            assertFalse(mRunUtil.isInterruptAllowed());
+            mRunUtil.sleep(SHORT_TIMEOUT_MS);
+            assertTrue(mRunUtil.isInterruptAllowed());
+        } finally {
+            mRunUtil.terminateTimer();
+        }
     }
 
     /**
@@ -435,7 +441,8 @@ public class RunUtilTest extends TestCase {
         testRunUtil.setEnvVariable(ENV_NAME, "initvalue");
         testRunUtil.unsetEnvVariable(ENV_NAME);
         CommandResult result =
-                testRunUtil.runTimedCmd(LONG_TIMEOUT_MS, "/bin/bash", "-c", "echo $" + ENV_NAME);
+                testRunUtil.runTimedCmd(
+                        VERY_LONG_TIMEOUT_MS, "/bin/bash", "-c", "echo $" + ENV_NAME);
         assertNotNull(result.getStdout());
         // Variable should be unset, some echo return empty line break.
         assertEquals("\n", result.getStdout());
