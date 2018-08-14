@@ -69,8 +69,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link NativeDevice}. */
@@ -287,6 +289,38 @@ public class NativeDeviceTest {
         FileUtil.createTempDir("test1", subDir);
         assertTrue(mTestDevice.pushDir(testDir, ""));
         FileUtil.recursiveDelete(testDir);
+    }
+
+    /** Unit test for {@link NativeDevice#pushDir(File, String, Set)}. */
+    @Test
+    public void testPushDir_childDir_filtered() throws Exception {
+        File testDir = FileUtil.createTempDir("pushDirTest");
+        Set<String> filter = new HashSet<>();
+        try {
+            File subDir = FileUtil.createTempDir("testSubDir", testDir);
+            File childDir = FileUtil.createTempDir("test1", subDir);
+            filter.add(childDir.getName());
+            mTestDevice =
+                    new TestableAndroidNativeDevice() {
+                        @Override
+                        public String executeShellCommand(String cmd)
+                                throws DeviceNotAvailableException {
+                            // Ensure we never attempt to push the excluded child.
+                            assertFalse(cmd.contains(childDir.getName()));
+                            return "";
+                        }
+
+                        @Override
+                        public boolean pushFile(File localFile, String remoteFilePath)
+                                throws DeviceNotAvailableException {
+                            return false;
+                        }
+                    };
+
+            assertTrue(mTestDevice.pushDir(testDir, "/", filter));
+        } finally {
+            FileUtil.recursiveDelete(testDir);
+        }
     }
 
     /** Test {@link NativeDevice#pullDir(String, File)} when the remote directory is empty. */

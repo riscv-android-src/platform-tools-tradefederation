@@ -28,6 +28,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
+import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
@@ -35,7 +36,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A {@link ITargetPreparer} that attempts to push any number of files from any host path to any
@@ -174,7 +177,13 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
                 continue;
             }
             if (src.isDirectory()) {
-                if (!device.pushDir(src, pair[1])) {
+                Set<String> filter = new HashSet<>();
+                if (mAbi != null) {
+                    String currentArch = AbiUtils.getArchForAbi(mAbi.getName());
+                    filter.addAll(AbiUtils.getArchSupported());
+                    filter.remove(currentArch);
+                }
+                if (!device.pushDir(src, pair[1], filter)) {
                     fail(String.format("Failed to push local '%s' to remote '%s'", pair[0],
                             pair[1]), device);
                     continue;
