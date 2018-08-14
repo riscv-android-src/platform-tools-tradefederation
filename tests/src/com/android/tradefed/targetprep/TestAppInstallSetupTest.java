@@ -25,6 +25,7 @@ import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.util.FileUtil;
 
 import org.easymock.EasyMock;
@@ -99,6 +100,60 @@ public class TestAppInstallSetupTest {
 
     @Test
     public void testSetupAndTeardown() throws Exception {
+        EasyMock.expect(
+                        mMockTestDevice.installPackage(
+                                (File) EasyMock.anyObject(), EasyMock.eq(true)))
+                .andReturn(null);
+        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+    }
+
+    @Test
+    public void testSetup_instantMode() throws Exception {
+        OptionSetter setter = new OptionSetter(mPrep);
+        setter.setOptionValue("instant-mode", "true");
+        EasyMock.expect(
+                        mMockTestDevice.installPackage(
+                                (File) EasyMock.anyObject(),
+                                EasyMock.eq(true),
+                                EasyMock.eq("--instant")))
+                .andReturn(null);
+        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+    }
+
+    /**
+     * Ensure that the abi flag is properly passed. Also ensured that it's only added once and not
+     * once per apk.
+     */
+    @Test
+    public void testSetup_abi() throws Exception {
+        // Install the apk twice
+        mPrep.addTestFileName(APK_NAME);
+        mPrep.setAbi(new Abi("arm32", "32"));
+        EasyMock.expect(
+                        mMockTestDevice.installPackage(
+                                (File) EasyMock.anyObject(),
+                                EasyMock.eq(true),
+                                EasyMock.eq("--abi arm32")))
+                .andReturn(null)
+                .times(2);
+        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+    }
+
+    /**
+     * If force-install-mode is set, we ignore "instant-mode". This allow some preparer to receive
+     * options as part of the same Tf config but keep their behavior.
+     */
+    @Test
+    public void testSetup_forceMode() throws Exception {
+        OptionSetter setter = new OptionSetter(mPrep);
+        setter.setOptionValue("instant-mode", "true");
+        setter.setOptionValue("force-install-mode", "FULL");
         EasyMock.expect(
                         mMockTestDevice.installPackage(
                                 (File) EasyMock.anyObject(), EasyMock.eq(true)))

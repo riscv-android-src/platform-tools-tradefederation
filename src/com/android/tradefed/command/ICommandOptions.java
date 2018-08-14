@@ -107,11 +107,17 @@ public interface ICommandOptions {
      */
     public boolean takeBugreportOnInvocationEnded();
 
+    /** Sets whether or not to capture a bugreport at the end of the invocation. */
+    public void setBugreportOnInvocationEnded(boolean takeBugreport);
+
     /**
      * Return true if a bugreportz should be taken instead of bugreport during the test invocation
      * final bugreport.
      */
     public boolean takeBugreportzOnInvocationEnded();
+
+    /** Sets whether or not to capture a bugreportz at the end of the invocation. */
+    public void setBugreportzOnInvocationEnded(boolean takeBugreportz);
 
     /**
      * Return the invocation timeout specified. 0 if no timeout to be used.
@@ -160,4 +166,10 @@ public interface ICommandOptions {
 
     /** Sets whether or not we should use TF containers */
     public void setShouldUseSandboxing(boolean use);
+
+    /** Returns true if we should use the Tf sandbox in a test mode. */
+    public boolean shouldUseSandboxTestMode();
+
+    /** Sets whether or not we should use the TF sandbox test mode. */
+    public void setUseSandboxTestMode(boolean use);
 }

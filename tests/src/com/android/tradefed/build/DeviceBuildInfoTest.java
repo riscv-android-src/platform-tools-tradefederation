@@ -17,9 +17,13 @@ package com.android.tradefed.build;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
+import com.android.tradefed.build.IBuildInfo.BuildInfoProperties;
+import com.android.tradefed.build.proto.BuildInformation;
 import com.android.tradefed.util.FileUtil;
 
 import org.junit.After;
@@ -37,6 +41,8 @@ public class DeviceBuildInfoTest {
     private static final String VERSION = "1";
     private DeviceBuildInfo mBuildInfo;
     private File mImageFile;
+    private File mTestsDir;
+    private File mHostLinkedDir;
 
     @Before
     public void setUp() throws Exception {
@@ -44,17 +50,23 @@ public class DeviceBuildInfoTest {
         mImageFile = FileUtil.createTempFile("image", "tmp");
         FileUtil.writeToFile("filedata", mImageFile);
         mBuildInfo.setBasebandImage(mImageFile, VERSION);
+        mTestsDir = FileUtil.createTempDir("device-info-tests-dir");
+        mBuildInfo.setTestsDir(mTestsDir, VERSION);
+        mHostLinkedDir = FileUtil.createTempDir("host-linked-dir");
     }
 
     @After
     public void tearDown() throws Exception {
         FileUtil.deleteFile(mImageFile);
+        FileUtil.recursiveDelete(mTestsDir);
+        mBuildInfo.cleanUp();
+        FileUtil.recursiveDelete(mHostLinkedDir);
     }
 
     /** Test method for {@link DeviceBuildInfo#clone()}. */
     @Test
     public void testClone() throws Exception {
-        DeviceBuildInfo copy = (DeviceBuildInfo)mBuildInfo.clone();
+        DeviceBuildInfo copy = (DeviceBuildInfo) mBuildInfo.clone();
         try {
             // ensure a copy of mImageFile was created
             assertEquals(VERSION, copy.getBasebandVersion());
@@ -67,6 +79,7 @@ public class DeviceBuildInfoTest {
             if (copy.getBasebandImageFile() != null) {
                 copy.getBasebandImageFile().delete();
             }
+            copy.cleanUp();
         }
     }
 
@@ -77,5 +90,59 @@ public class DeviceBuildInfoTest {
         mBuildInfo.cleanUp();
         assertNull(mBuildInfo.getBasebandImageFile());
         assertFalse(mImageFile.exists());
+    }
+
+    /**
+     * When the {@link BuildInfoProperties} for no sharding copy is set, the tests dir will not be
+     * copied.
+     */
+    @Test
+    public void testCloneWithProperties() throws Exception {
+        mBuildInfo.setFile(BuildInfoFileKey.HOST_LINKED_DIR, mHostLinkedDir, "v1");
+        DeviceBuildInfo copy = (DeviceBuildInfo) mBuildInfo.clone();
+        try {
+            assertNotEquals(copy.getTestsDir(), mBuildInfo.getTestsDir());
+            assertNotEquals(copy.getBasebandImageFile(), mBuildInfo.getBasebandImageFile());
+        } finally {
+            copy.cleanUp();
+        }
+
+        mBuildInfo.setProperties(BuildInfoProperties.DO_NOT_COPY_ON_SHARDING);
+        copy = (DeviceBuildInfo) mBuildInfo.clone();
+        try {
+            assertEquals(mBuildInfo.getTestsDir(), copy.getTestsDir());
+            assertEquals(mHostLinkedDir, copy.getFile(BuildInfoFileKey.HOST_LINKED_DIR));
+            // Only the tests dir is not copied.
+            assertNotEquals(mBuildInfo.getBasebandImageFile(), copy.getBasebandImageFile());
+        } finally {
+            copy.cleanUp();
+        }
+    }
+
+    /**
+     * Test that {@link BuildInfoProperties#DO_NOT_COPY_IMAGE_FILE} properly skip the copying when
+     * copying.
+     */
+    @Test
+    public void testProperty_skipCopy() {
+        mBuildInfo.setProperties(BuildInfoProperties.DO_NOT_COPY_IMAGE_FILE);
+        mBuildInfo.setDeviceImageFile(mHostLinkedDir, "1");
+        DeviceBuildInfo copy = (DeviceBuildInfo) mBuildInfo.clone();
+        try {
+            assertNull(copy.getDeviceImageFile());
+        } finally {
+            copy.cleanUp();
+        }
+    }
+
+    /**
+     * Test that the build info can be described in its proto format with its class properly
+     * populated.
+     */
+    @Test
+    public void testProtoSerialization() throws Exception {
+        BuildInformation.BuildInfo proto = mBuildInfo.toProto();
+        assertEquals("2", proto.getBuildId());
+        assertEquals(DeviceBuildInfo.class.getCanonicalName(), proto.getBuildInfoClass());
     }
 }

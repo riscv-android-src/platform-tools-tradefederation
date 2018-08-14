@@ -15,12 +15,18 @@
  */
 package com.android.tradefed.invoker;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.proto.InvocationContext.Context;
+import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.SerializationUtil;
@@ -118,5 +124,53 @@ public class InvocationContextTest {
         } finally {
             FileUtil.deleteFile(ser);
         }
+    }
+
+    @Test
+    public void testProtoSerialize() {
+        InvocationContext context = new InvocationContext();
+        ConfigurationDescriptor descriptor = new ConfigurationDescriptor();
+        descriptor.setModuleName("module");
+        context.setConfigurationDescriptor(descriptor);
+        context.setTestTag("tag");
+        context.addInvocationAttribute("test_key", "test_value");
+        Context protoContext = context.toProto();
+        // Check the proto
+        assertEquals("tag", protoContext.getTestTag());
+        assertEquals(1, protoContext.getMetadataList().size());
+        assertEquals("test_key", protoContext.getMetadataList().get(0).getKey());
+
+        // Check the deserialize
+        InvocationContext deserialized = InvocationContext.fromProto(protoContext);
+        assertNull(deserialized.getModuleInvocationContext());
+        assertNotNull(deserialized.getConfigurationDescriptor());
+        assertEquals("tag", deserialized.getTestTag());
+    }
+
+    @Test
+    public void testProtoSerialize_moduleContext() {
+        InvocationContext context = new InvocationContext();
+        ConfigurationDescriptor descriptor = new ConfigurationDescriptor();
+        descriptor.setModuleName("module");
+        context.setConfigurationDescriptor(descriptor);
+
+        InvocationContext moduleContext = new InvocationContext();
+        moduleContext.addInvocationAttribute(ModuleDefinition.MODULE_ID, "module-id");
+        moduleContext.setConfigurationDescriptor(new ConfigurationDescriptor());
+        context.setModuleInvocationContext(moduleContext);
+
+        Context protoContext = context.toProto();
+        assertNotNull(protoContext.getModuleContext());
+
+        // Check the deserialize
+        InvocationContext deserialized = InvocationContext.fromProto(protoContext);
+        assertNotNull(deserialized.getModuleInvocationContext());
+        assertEquals(
+                "module-id",
+                deserialized
+                        .getModuleInvocationContext()
+                        .getAttributes()
+                        .get(ModuleDefinition.MODULE_ID)
+                        .get(0));
     }
 }

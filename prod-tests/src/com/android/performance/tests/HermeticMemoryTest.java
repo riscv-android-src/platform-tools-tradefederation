@@ -28,11 +28,14 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.ProcessInfo;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.junit.Assert;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Test to gather post launch memory details after launching app
@@ -41,7 +44,12 @@ import java.util.Map;
 public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
 
     private static final String AM_START = "am start -n %s";
+    private static final String AM_BROADCAST = "am broadcast -a %s -n %s %s";
     private static final String PROC_MEMINFO = "cat /proc/meminfo";
+    private static final String CACHED_PROCESSES = "dumpsys meminfo|awk '/Total PSS by category:"
+            + "/{found=0} {if(found) print} /: Cached/{found=1}'|tr -d ' '";
+    private static final Pattern PID_PATTERN = Pattern.compile("^.*pid(?<processid>[0-9]*).*$");
+    private static final String DUMPSYS_PROCESS = "dumpsys meminfo %s";
     private static final String DUMPSYS_MEMINFO = "dumpsys meminfo -a ";
     private static final String MAPS_INFO = "cat /proc/%d/maps";
     private static final String SMAPS_INFO = "cat /proc/%d/smaps";
@@ -54,6 +62,10 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
     private static final String CACHED = "Cached";
     private static final int NO_PROCESS_ID = -1;
     private static final String DROP_CACHE = "echo 3 > /proc/sys/vm/drop_caches";
+    private static final String SEPARATOR ="\\s+";
+    private static final String LINE_SEPARATOR = "\\n";
+    private static final String MEM_AVAIL_PATTERN = "^MemAvailable.*";
+    private static final String MEM_TOTAL = "^\\s+TOTAL\\s+.*";
 
 
     @Option(name = "post-app-launch-delay",
@@ -64,6 +76,12 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
     @Option(name = "component-name",
             description = "package/activity name to launch the activity")
     private String mComponentName = new String();
+
+    @Option(name = "intent-action", description = "intent action to broadcast")
+    private String mIntentAction = new String();
+
+    @Option(name = "intent-params", description = "intent parameters")
+    private String mIntentParams = new String();
 
     @Option(name = "total-memory-kb",
             description = "Built in total memory of the device")
@@ -80,6 +98,8 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         mlistener = listener;
+
+        calculateFreeMem();
 
         String preMemInfo = mTestDevice.executeShellCommand(PROC_MEMINFO);
 
@@ -98,7 +118,12 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
         RunUtil.getDefault().sleep(5000);
         Assert.assertTrue("Not a valid component name to start the activity",
                 (mComponentName.split("/").length == 2));
-        mTestDevice.executeShellCommand(String.format(AM_START, mComponentName));
+        if (mIntentAction.isEmpty()) {
+            mTestDevice.executeShellCommand(String.format(AM_START, mComponentName));
+        } else {
+            mTestDevice.executeShellCommand(
+                    String.format(AM_BROADCAST, mIntentAction, mComponentName, mIntentParams));
+        }
 
         RunUtil.getDefault().sleep(mPostAppLaunchDelay);
         String postMemInfo = mTestDevice.executeShellCommand(PROC_MEMINFO);
@@ -123,7 +148,7 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
             CLog.e("Process Id not found for the activity launched");
         } else {
             if (!dumpsysMemInfo.isEmpty()) {
-                uploadLogFile(dumpsysMemInfo, "DumpsysMemInfo");
+                uploadLogFile(dumpsysMemInfo, String.format("DumpsysMemInfo_%s", mComponentName));
                 parseDumpsysInfo(dumpsysMemInfo);
             } else {
                 CLog.e("Not able to collect the Dumpsys meminfo after launching app");
@@ -185,9 +210,9 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
      * Method to parse dalvik and heap info for launched app
      */
     private void parseDumpsysInfo(String dumpInfo) {
-        String line[] = dumpInfo.split("\\n");
+        String line[] = dumpInfo.split(LINE_SEPARATOR);
         for (int lineCount = 0; lineCount < line.length; lineCount++) {
-            String dataSplit[] = line[lineCount].trim().split("\\s+");
+            String dataSplit[] = line[lineCount].trim().split(SEPARATOR);
             if ((dataSplit[0].equalsIgnoreCase(NATIVE_HEAP) && dataSplit[1]
                     .equalsIgnoreCase(HEAP)) ||
                     (dataSplit[0].equalsIgnoreCase(DALVIK_HEAP) && dataSplit[1]
@@ -213,13 +238,13 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
      * Method to parse the system memory details
      */
     private void parseProcInfo(String memInfo) {
-        String lineSplit[] = memInfo.split("\\n");
+        String lineSplit[] = memInfo.split(LINE_SEPARATOR);
         long memTotal = 0;
         long memFree = 0;
         long cached = 0;
         for (int lineCount = 0; lineCount < lineSplit.length; lineCount++) {
             String line = lineSplit[lineCount].replace(":", "").trim();
-            String dataSplit[] = line.split("\\s+");
+            String dataSplit[] = line.split(SEPARATOR);
             if (dataSplit[0].equalsIgnoreCase(MEMTOTAL) ||
                     dataSplit[0].equalsIgnoreCase(MEMFREE) ||
                     dataSplit[0].equalsIgnoreCase(CACHED)) {
@@ -240,6 +265,53 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
     }
 
     /**
+     * Method to parse the free memory based on total memory available from proc/meminfo and
+     * private dirty and private clean information of the cached processess
+     * from dumpsys meminfo.
+     */
+    private void calculateFreeMem() throws DeviceNotAvailableException {
+        String memInfo = mTestDevice.executeShellCommand(PROC_MEMINFO);
+        uploadLogFile(memInfo, "proc_meminfo_In_CacheProcDirty");
+        Pattern p = Pattern.compile(MEM_AVAIL_PATTERN, Pattern.MULTILINE);
+        Matcher m = p.matcher(memInfo);
+        String memAvailable[] = null;
+        if (m.find()) {
+            memAvailable = m.group(0).split(SEPARATOR);
+        }
+        int cacheProcDirty = Integer.parseInt(memAvailable[1]);
+
+        String cachedProcesses = mTestDevice.executeShellCommand(CACHED_PROCESSES);
+        String processes[] = cachedProcesses.split(LINE_SEPARATOR);
+        StringBuilder processesDumpsysInfo = new StringBuilder();
+        for (String process : processes) {
+            Matcher match = null;
+            if (((match = matches(PID_PATTERN, process))) != null) {
+                String processId = match.group("processid");
+                processesDumpsysInfo.append(String.format("Process Name : %s - PID : %s", process,
+                        processId));
+                processesDumpsysInfo.append("\n");
+                String processInfoStr = mTestDevice.executeShellCommand(String.format(
+                        DUMPSYS_PROCESS, processId));
+                processesDumpsysInfo.append(processInfoStr);
+                processesDumpsysInfo.append("\n");
+                Pattern p1 = Pattern.compile(MEM_TOTAL, Pattern.MULTILINE);
+                Matcher m1 = p1.matcher(processInfoStr);
+                String processInfo[] = null;
+                if (m1.find()) {
+                    processInfo = m1.group(0).split(LINE_SEPARATOR);
+                }
+                if (null != processInfo && processInfo.length > 0) {
+                    String procDetails[] = processInfo[0].trim().split(SEPARATOR);
+                    cacheProcDirty = cacheProcDirty + Integer.parseInt(procDetails[2].trim())
+                            + Integer.parseInt(procDetails[3]);
+                }
+            }
+        }
+        uploadLogFile(processesDumpsysInfo.toString(), "ProcessesDumpsysInfo_In_CacheProcDirty");
+        mMetrics.put("MemAvailable_CacheProcDirty", String.valueOf(cacheProcDirty));
+    }
+
+    /**
      * Report run metrics by creating an empty test run to stick them in
      *
      * @param listener the {@link ITestInvocationListener} of test results
@@ -251,7 +323,18 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
         // Create an empty testRun to report the parsed runMetrics
         CLog.d("About to report metrics: %s", metrics);
         listener.testRunStarted(runName, 0);
-        listener.testRunEnded(0, metrics);
+        listener.testRunEnded(0, TfMetricProtoUtil.upgradeConvert(metrics));
+    }
+
+    /**
+     * Checks whether {@code line} matches the given {@link Pattern}.
+     *
+     * @return The resulting {@link Matcher} obtained by matching the {@code line} against
+     *         {@code pattern}, or null if the {@code line} does not match.
+     */
+    private static Matcher matches(Pattern pattern, String line) {
+        Matcher ret = pattern.matcher(line);
+        return ret.matches() ? ret : null;
     }
 
     @Override
@@ -264,3 +347,6 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
         return mTestDevice;
     }
 }
+
+
+

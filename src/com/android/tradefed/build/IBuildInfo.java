@@ -15,15 +15,30 @@
  */
 package com.android.tradefed.build;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
+import com.android.tradefed.build.proto.BuildInformation;
 import com.android.tradefed.device.ITestDevice;
 
 import java.io.File;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** Holds information about the build under test. */
 public interface IBuildInfo extends Serializable {
+
+    /** Some properties that a {@link IBuildInfo} can have to tweak some handling of it. */
+    public enum BuildInfoProperties {
+        DO_NOT_COPY_ON_SHARDING,
+        DO_NOT_LINK_TESTS_DIR,
+        /**
+         * If a copy of the build is requested, do not copy the device image file. Represented by
+         * {@link BuildInfoFileKey#DEVICE_IMAGE} key.
+         */
+        DO_NOT_COPY_IMAGE_FILE,
+    }
 
     /**
      * Default value when build ID is unknown.
@@ -120,6 +135,27 @@ public interface IBuildInfo extends Serializable {
      */
     public void addBuildAttribute(String attributeName, String attributeValue);
 
+    /**
+     * Set the {@link BuildInfoProperties} for the {@link IBuildInfo} instance. Override any
+     * existing properties set before.
+     *
+     * @param properties The list of properties to add.
+     */
+    public void setProperties(BuildInfoProperties... properties);
+
+    /** Returns a copy of the properties currently set on the {@link IBuildInfo}. */
+    public Set<BuildInfoProperties> getProperties();
+
+    /**
+     * Helper method to retrieve a file with given a {@link BuildInfoFileKey}.
+     *
+     * @param key the {@link BuildInfoFileKey} that is requested.
+     * @return the image file or <code>null</code> if not found
+     */
+    public default File getFile(BuildInfoFileKey key) {
+        // Default implementation for projects that don't extend BuildInfo class.
+        return null;
+    }
 
     /**
      * Helper method to retrieve a file with given name.
@@ -127,6 +163,40 @@ public interface IBuildInfo extends Serializable {
      * @return the image file or <code>null</code> if not found
      */
     public File getFile(String name);
+
+    /**
+     * Helper method to retrieve a {@link VersionedFile} with a given name.
+     *
+     * @param name
+     * @return The versioned file or <code>null</code> if not found
+     */
+    public default VersionedFile getVersionedFile(String name) {
+        // Default implementation for projects that don't extend BuildInfo class.
+        return null;
+    }
+
+    /**
+     * Helper method to retrieve a {@link VersionedFile} with a given {@link BuildInfoFileKey}.
+     *
+     * @param key The {@link BuildInfoFileKey} requested.
+     * @return The versioned file or <code>null</code> if not found
+     */
+    public default VersionedFile getVersionedFile(BuildInfoFileKey key) {
+        // Default implementation for projects that don't extend BuildInfo class.
+        return null;
+    }
+
+    /**
+     * Helper method to retrieve a list of {@link VersionedFile}s associated with a given {@link
+     * BuildInfoFileKey}. If the key allows to store a list.
+     *
+     * @param key The {@link BuildInfoFileKey} requested.
+     * @return The versioned file or <code>null</code> if not found
+     */
+    public default List<VersionedFile> getVersionedFiles(BuildInfoFileKey key) {
+        // Default implementation for projects that don't extend BuildInfo class.
+        return null;
+    }
 
     /**
      * Returns all {@link VersionedFile}s stored in this {@link BuildInfo}.
@@ -141,6 +211,17 @@ public interface IBuildInfo extends Serializable {
     public String getVersion(String name);
 
     /**
+     * Helper method to retrieve a file version with given a {@link BuildInfoFileKey}.
+     *
+     * @param key The {@link BuildInfoFileKey} requested.
+     * @return the image version or <code>null</code> if not found
+     */
+    public default String getVersion(BuildInfoFileKey key) {
+        // Default implementation for project that don't extends BuildInfo class.
+        return null;
+    }
+
+    /**
      * Stores an file with given name in this build info.
      *
      * @param name the unique name of the file
@@ -150,12 +231,32 @@ public interface IBuildInfo extends Serializable {
     public void setFile(String name, File file, String version);
 
     /**
+     * Stores an file given a {@link BuildInfoFileKey} in this build info.
+     *
+     * @param key the unique name of the file based on {@link BuildInfoFileKey}.
+     * @param file the local {@link File}
+     * @param version the file version
+     */
+    public default void setFile(BuildInfoFileKey key, File file, String version) {
+        // Default implementation for projects that don't extend BuildInfo class.
+    }
+
+    /**
      * Clean up any temporary build files
      */
     public void cleanUp();
+
+    /** Version of {@link #cleanUp()} where some files are not deleted. */
+    public void cleanUp(List<File> doNotDelete);
 
     /**
      * Clones the {@link IBuildInfo} object.
      */
     public IBuildInfo clone();
+
+    /** Serialize a the BuildInfo instance into a protobuf. */
+    public default BuildInformation.BuildInfo toProto() {
+        // Default implementation for project that don't extends BuildInfo class.
+        return null;
+    }
 }

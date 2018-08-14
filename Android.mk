@@ -13,6 +13,8 @@
 # limitations under the License.
 
 LOCAL_PATH := $(call my-dir)
+COMPATIBILITY.tradefed_tests_dir := \
+  $(COMPATIBILITY.tradefed_tests_dir) $(LOCAL_PATH)/res/config $(LOCAL_PATH)/tests/res/config $(LOCAL_PATH)/prod-tests/res/config
 
 include $(CLEAR_VARS)
 
@@ -33,8 +35,11 @@ include $(CLEAR_VARS)
 # Create a simple alias to build all the TF-related targets
 # Note that this is incompatible with `make dist`.  If you want to make
 # the distribution, you must run `tapas` with the individual target names.
+.PHONY: tradefed-core
+tradefed-core: tradefed atest_tradefed tf-prod-tests tf-prod-metatests tradefed-contrib script_help
+
 .PHONY: tradefed-all
-tradefed-all: tradefed tradefed-tests tf-prod-tests tf-prod-metatests tradefed_win script_help verify tradefed-contrib
+tradefed-all: tradefed-core tradefed-tests tradefed_win verify loganalysis-tests
 
 # ====================================
 include $(CLEAR_VARS)
@@ -42,7 +47,7 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE_TAGS := optional
 
-LOCAL_PREBUILT_EXECUTABLES := tradefed.sh tradefed_win.bat script_help.sh verify.sh run_tf_cmd.sh
+LOCAL_PREBUILT_EXECUTABLES := tradefed.sh tradefed_win.bat script_help.sh verify.sh run_tf_cmd.sh atest_tradefed.sh
 include $(BUILD_HOST_PREBUILT)
 
 # Build all sub-directories
@@ -52,10 +57,10 @@ include $(call all-makefiles-under,$(LOCAL_PATH))
 # Zip up the built files and dist it as tradefed.zip
 ifneq (,$(filter tradefed tradefed-all, $(TARGET_BUILD_APPS)))
 
-tradefed_dist_host_jars := tradefed tradefed-tests tf-prod-tests emmalib jack-jacoco-reporter loganalysis loganalysis-tests tf-remote-client tradefed-contrib
+tradefed_dist_host_jars := tradefed tradefed-tests tf-prod-tests tf-prod-metatests emmalib jack-jacoco-reporter loganalysis loganalysis-tests tf-remote-client tradefed-contrib
 tradefed_dist_host_jar_files := $(foreach m, $(tradefed_dist_host_jars), $(HOST_OUT_JAVA_LIBRARIES)/$(m).jar)
 
-tradefed_dist_host_exes := tradefed.sh tradefed_win.bat script_help.sh verify.sh run_tf_cmd.sh
+tradefed_dist_host_exes := tradefed.sh tradefed_win.bat script_help.sh verify.sh run_tf_cmd.sh atest_tradefed.sh
 tradefed_dist_host_exe_files := $(foreach m, $(tradefed_dist_host_exes), $(BUILD_OUT_EXECUTABLES)/$(m))
 
 tradefed_dist_test_apks := TradeFedUiTestApp TradeFedTestApp DeviceSetupUtil
@@ -72,7 +77,8 @@ $(tradefed_dist_zip) : $(tradefed_dist_files)
 	@echo "Package: $@"
 	$(hide) rm -rf $(dir $@) && mkdir -p $(dir $@)
 	$(hide) cp -f $^ $(dir $@)
-	$(hide) cd $(dir $@) && zip -q $(notdir $@) $(notdir $^)
+	$(hide) echo $(BUILD_NUMBER_FROM_FILE) > $(dir $@)/version.txt
+	$(hide) cd $(dir $@) && zip -q $(notdir $@) $(notdir $^) version.txt
 
 $(call dist-for-goals, apps_only, $(tradefed_dist_zip))
 
