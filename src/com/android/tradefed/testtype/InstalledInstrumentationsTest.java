@@ -318,8 +318,17 @@ public class InstalledInstrumentationsTest
                 sendCoverage(test.getPackageName(), test.getCoverageTarget(), listener);
             }
             test.setDevice(getDevice());
-            test.setClassName(mTestClass);
-            test.setTestPackageName(mTestPackageName);
+            if (mTestClass != null) {
+                test.setClassName(mTestClass);
+                if (mTestPackageName != null) {
+                    CLog.e(
+                            "Ignoring --package option with value '%s' since it's incompatible "
+                                    + "with using --class at the same time.",
+                            mTestPackageName);
+                }
+            } else if (mTestPackageName != null) {
+                test.setTestPackageName(mTestPackageName);
+            }
             test.run(listener);
             // test completed, remove from list
             mTests.remove(0);

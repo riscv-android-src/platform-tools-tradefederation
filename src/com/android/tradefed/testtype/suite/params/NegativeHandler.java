@@ -15,10 +15,21 @@
  */
 package com.android.tradefed.testtype.suite.params;
 
-import com.android.tradefed.testtype.suite.SuiteModuleLoader;
+import com.android.tradefed.config.IConfiguration;
 
 /**
- * Special handler that notify the {@link SuiteModuleLoader} that the secondary abis should create
- * module too.
+ * Handler that specify that nothing should be done and the parameter should not create any extra
+ * module.
  */
-public final class MultiAbiHandler extends NegativeHandler {}
+public class NegativeHandler implements IModuleParameter {
+
+    @Override
+    public String getParameterIdentifier() {
+        throw new RuntimeException("Should never be called");
+    }
+
+    @Override
+    public void applySetup(IConfiguration moduleConfiguration) {
+        throw new RuntimeException("Should never be called");
+    }
+}

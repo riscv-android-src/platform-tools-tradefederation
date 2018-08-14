@@ -168,7 +168,7 @@ public class XmlSuiteResultFormatterTest {
                 "Result/Module/TestCase/Test/Failure/StackTrace",
                 "module1 failed.\nstack\nstack");
         // Test that we can read back the informations
-        SuiteResultHolder holder = mFormatter.parseResults(mResultDir);
+        SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
         assertEquals(holder.totalModules, mResultHolder.totalModules);
         assertEquals(holder.passedTests, mResultHolder.passedTests);
@@ -221,7 +221,7 @@ public class XmlSuiteResultFormatterTest {
                 "Result/Module/TestCase/Test/Failure/StackTrace",
                 "module1 failed.\nstack\nstack");
         // Test that we can read back the informations
-        SuiteResultHolder holder = mFormatter.parseResults(mResultDir);
+        SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
         assertEquals(holder.totalModules, mResultHolder.totalModules);
         assertEquals(holder.passedTests, mResultHolder.passedTests);
@@ -234,7 +234,7 @@ public class XmlSuiteResultFormatterTest {
         assertEquals(holder.runResults.size(), mResultHolder.runResults.size());
 
         // Test that the results are loadable with expected values
-        SuiteResultHolder reloaded = mFormatter.parseResults(mResultDir);
+        SuiteResultHolder reloaded = mFormatter.parseResults(mResultDir, false);
         assertEquals(1, reloaded.runResults.size());
         TestRunResult result = reloaded.runResults.iterator().next();
         assertEquals(0, result.getNumTestsInState(TestStatus.FAILURE));
@@ -274,7 +274,7 @@ public class XmlSuiteResultFormatterTest {
                 content, "Result/Module/TestCase/Test/Screenshot", "http:url/module3");
 
         // Test that we can read back the informations for log files
-        SuiteResultHolder holder = mFormatter.parseResults(mResultDir);
+        SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
         assertEquals(
                 holder.modulesAbi.get("armeabi-v7a module1"),
                 mResultHolder.modulesAbi.get("armeabi-v7a module1"));
@@ -332,7 +332,7 @@ public class XmlSuiteResultFormatterTest {
                 "Result/Module/TestCase/Test/Failure/StackTrace",
                 "module1 failed.\nstack\nstack");
         // Test that we can read back the informations
-        SuiteResultHolder holder = mFormatter.parseResults(mResultDir);
+        SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
         assertEquals(holder.totalModules, mResultHolder.totalModules);
         assertEquals(holder.passedTests, mResultHolder.passedTests);
@@ -382,6 +382,58 @@ public class XmlSuiteResultFormatterTest {
         String content = FileUtil.readStringFromFile(res);
         assertXmlContainsNode(content, "Result");
         assertXmlContainsAttribute(content, "Result", "devices", "serial1,serial2,serial3,serial4");
+    }
+
+    /** Test writing then loading a shallow representation of the results. */
+    @Test
+    public void testBasicFormat_shallow() throws Exception {
+        mResultHolder.context = mContext;
+
+        Collection<TestRunResult> runResults = new ArrayList<>();
+        runResults.add(createFakeResult("module1", 2, 1, 0, 0, true));
+        mResultHolder.runResults = runResults;
+
+        Map<String, IAbi> modulesAbi = new HashMap<>();
+        modulesAbi.put("module1", new Abi("armeabi-v7a", "32"));
+        mResultHolder.modulesAbi = modulesAbi;
+
+        mResultHolder.completeModules = 1;
+        mResultHolder.totalModules = 1;
+        mResultHolder.passedTests = 2;
+        mResultHolder.failedTests = 1;
+        mResultHolder.startTime = 0L;
+        mResultHolder.endTime = 10L;
+        File res = mFormatter.writeResults(mResultHolder, mResultDir);
+        String content = FileUtil.readStringFromFile(res);
+
+        assertXmlContainsNode(content, "Result/Module");
+        assertXmlContainsAttribute(content, "Result/Module/TestCase", "name", "com.class.module1");
+        assertXmlContainsAttribute(
+                content, "Result/Module/TestCase/Test", "name", "module1.method0");
+        assertXmlContainsAttribute(
+                content, "Result/Module/TestCase/Test", "name", "module1.method1");
+        // Check that failures are showing in the xml for the test cases
+        assertXmlContainsAttribute(
+                content, "Result/Module/TestCase/Test", "name", "module1.failed0");
+        assertXmlContainsAttribute(content, "Result/Module/TestCase/Test", "result", "fail");
+        assertXmlContainsAttribute(
+                content, "Result/Module/TestCase/Test/Failure", "message", "module1 failed.");
+        assertXmlContainsValue(
+                content,
+                "Result/Module/TestCase/Test/Failure/StackTrace",
+                "module1 failed.\nstack\nstack");
+        // Test that we can read back the informations
+        SuiteResultHolder holder = mFormatter.parseResults(mResultDir, true);
+        assertEquals(holder.completeModules, mResultHolder.completeModules);
+        assertEquals(holder.totalModules, mResultHolder.totalModules);
+        assertEquals(holder.passedTests, mResultHolder.passedTests);
+        assertEquals(holder.failedTests, mResultHolder.failedTests);
+        assertEquals(holder.startTime, mResultHolder.startTime);
+        assertEquals(holder.endTime, mResultHolder.endTime);
+
+        // Shallow loading doesn't load complex run informations.
+        assertTrue(holder.runResults == null);
+        assertTrue(holder.modulesAbi == null);
     }
 
     private TestRunResult createResultWithLog(String runName, int count, LogDataType type) {
