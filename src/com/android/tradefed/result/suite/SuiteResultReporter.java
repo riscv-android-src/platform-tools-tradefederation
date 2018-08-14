@@ -95,9 +95,10 @@ public class SuiteResultReporter extends CollectingTestListener {
     @Override
     public void testRunStarted(String name, int numTests) {
         super.testRunStarted(name, numTests);
+        // TODO: When TestRunResult Track expected number of tests, use it instead.
         if (mModuleExpectedTests.get(name) == null) {
             mModuleExpectedTests.put(name, numTests);
-        } else {
+        } else if (mModuleExpectedTests.get(name) == 0L) {
             mModuleExpectedTests.put(name, mModuleExpectedTests.get(name) + numTests);
         }
     }
