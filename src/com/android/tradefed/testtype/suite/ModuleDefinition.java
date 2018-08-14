@@ -92,6 +92,13 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     public static final String MODULE_CONTROLLER = "module_controller";
 
+    public static final String PREPARATION_TIME = "PREP_TIME";
+    public static final String TEAR_DOWN_TIME = "TEARDOWN_TIME";
+    public static final String TEST_TIME = "TEST_TIME";
+    public static final String RETRY_TIME = "MODULE_RETRY_TIME";
+    public static final String RETRY_SUCCESS_COUNT = "MODULE_RETRY_SUCCESS";
+    public static final String RETRY_FAIL_COUNT = "MODULE_RETRY_FAILED";
+
     private final IInvocationContext mModuleInvocationContext;
     private final IConfiguration mModuleConfiguration;
     private ILogSaver mLogSaver;
@@ -117,9 +124,12 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     private long mElapsedTest = 0l;
 
-    public static final String PREPARATION_TIME = "PREP_TIME";
-    public static final String TEAR_DOWN_TIME = "TEARDOWN_TIME";
-    public static final String TEST_TIME = "TEST_TIME";
+    // Tracking of retry performance
+    private long mRetryTime = 0L;
+    /** The number of test cases that passed after a failed attempt */
+    private long mSuccessRetried = 0L;
+    /** The number of test cases that remained failed after all retry attempts */
+    private long mFailedRetried = 0L;
 
     /**
      * Constructor
@@ -424,6 +434,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     // A single module can generate several test runs
                     mTestsResults.addAll(retriableTest.getFinalTestRunResults());
                     mExpectedTests += retriableTest.getNumIndividualTests();
+                    // Get information about retry
+                    mRetryTime += retriableTest.getRetryTime();
+                    mSuccessRetried += retriableTest.getRetrySuccess();
+                    mFailedRetried += retriableTest.getRetryFailed();
                 }
                 // After the run, if the test failed (even after retry the final result passed) has
                 // failed, capture a bugreport.
@@ -535,6 +549,16 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 TfMetricProtoUtil.createSingleValue(mElapsedTearDown, "milliseconds"));
         metricsProto.put(
                 TEST_TIME, TfMetricProtoUtil.createSingleValue(elapsedTime, "milliseconds"));
+        // Report all the retry informations
+        if (mRetryTime > 0L) {
+            metricsProto.put(
+                    RETRY_TIME, TfMetricProtoUtil.createSingleValue(mRetryTime, "milliseconds"));
+            metricsProto.put(
+                    RETRY_SUCCESS_COUNT, TfMetricProtoUtil.createSingleValue(mSuccessRetried, ""));
+            metricsProto.put(
+                    RETRY_FAIL_COUNT, TfMetricProtoUtil.createSingleValue(mFailedRetried, ""));
+        }
+
         if (totalExpectedTests != numResults) {
             String error =
                     String.format(
