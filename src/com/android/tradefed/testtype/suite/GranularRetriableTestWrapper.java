@@ -31,6 +31,7 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -78,6 +79,14 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
     private boolean mIsMetricCollectorInitialized;
     private int mMaxRunLimit;
 
+    // Tracking of the metrics
+    /** How much time are we spending doing the retry attempts */
+    private long mRetryTime = 0L;
+    /** The number of test cases that passed after a failed attempt */
+    private long mSuccessRetried = 0L;
+    /** The number of test cases that remained failed after all retry attempts */
+    private long mFailedRetried = 0L;
+
     public GranularRetriableTestWrapper(
             IRemoteTest test,
             TestFailureListener failureListener,
@@ -90,7 +99,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
         mIsMetricCollectorInitialized = false;
         mModuleLevelListeners = moduleLevelListeners;
         mMaxRunLimit = maxRunLimit;
-        // TODO(b/77548917): Right now we only support ITestFilterReciever. We should expect to
+        // TODO(b/77548917): Right now we only support ITestFilterReceiver. We should expect to
         // support ITestFile*Filter*Receiver in the future.
         if (test instanceof ITestFilterReceiver) {
             mIsGranulatedTestCaseRetriable = true;
@@ -219,33 +228,55 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         mMainListener = listener;
-        int count = 0;
-        while (count < mMaxRunLimit) {
-            intraModuleRun();
-            count += 1;
-            ModuleListener previousTestRunListener =
-                    mModuleListenerCollector.get(mModuleListenerCollector.size() - 1);
-            if (!previousTestRunListener.hasFailedTests()) {
-                CLog.d("The test has no failed testcases. No need to retry.");
-                break;
-            }
-            if (count == mMaxRunLimit) {
-                CLog.d(
-                        "The test has reached its max number of run attempt: %d time(s)",
-                        mMaxRunLimit);
-                break;
-            }
-            if (mIsGranulatedTestCaseRetriable) {
-                Set<TestDescription> failedTests =
+        // First do the regular run, not retried.
+        intraModuleRun();
+
+        if (mMaxRunLimit <= 1) {
+            return;
+        }
+
+        // Deal with retried attempted
+        long startTime = System.currentTimeMillis();
+        ModuleListener previousTestRunListener = null;
+        Set<TestDescription> previousFailedTests = null;
+        try {
+            CLog.d("Starting intra-module retry.");
+            for (int count = 1; count < mMaxRunLimit; count++) {
+                previousTestRunListener =
+                        mModuleListenerCollector.get(mModuleListenerCollector.size() - 1);
+                if (!previousTestRunListener.hasFailedTests()) {
+                    CLog.d("The test has no failed testcases. No need to retry.");
+                    break;
+                }
+                previousFailedTests =
                         previousTestRunListener.getCurrentRunResults().getFailedTests();
-                addRetriedTestsToIncludeFilters(failedTests);
-            } else {
-                // If the IRemoteTest can't support running a single testcase, we retry the whole
-                // testcase list.
-                CLog.d(
-                        "The test is not supported to run testcases in intra-module level. Trying "
-                                + "to run the whole test again...");
+                if (mIsGranulatedTestCaseRetriable) {
+                    addRetriedTestsToIncludeFilters(previousFailedTests);
+                } else {
+                    // If the IRemoteTest can't support running a single testcase, we retry the
+                    // whole testcase list.
+                    CLog.d(
+                            "The test is not supported to run testcases in intra-module level. "
+                                    + "Trying to run the whole test again...");
+                }
+                intraModuleRun();
+
+                // Evaluate success from what we just ran
+                Set<TestDescription> lastRun =
+                        mModuleListenerCollector
+                                .get(mModuleListenerCollector.size() - 1)
+                                .getCurrentRunResults()
+                                .getFailedTests();
+                Set<TestDescription> diff = Sets.difference(previousFailedTests, lastRun);
+                mSuccessRetried += diff.size();
+                previousFailedTests = lastRun;
             }
+        } finally {
+            if (previousFailedTests != null) {
+                mFailedRetried += previousFailedTests.size();
+            }
+            // Track how long we spend in retry
+            mRetryTime = System.currentTimeMillis() - startTime;
         }
     }
 
@@ -344,5 +375,20 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
             return 0;
         }
         return mModuleListenerCollector.get(0).getNumTotalTests();
+    }
+
+    /** Returns the elapsed time in retry attempts. */
+    public final long getRetryTime() {
+        return mRetryTime;
+    }
+
+    /** Returns the number of tests we managed to change status from failed to pass. */
+    public final long getRetrySuccess() {
+        return mSuccessRetried;
+    }
+
+    /** Returns the number of tests we couldn't change status from failed to pass. */
+    public final long getRetryFailed() {
+        return mFailedRetried;
     }
 }
