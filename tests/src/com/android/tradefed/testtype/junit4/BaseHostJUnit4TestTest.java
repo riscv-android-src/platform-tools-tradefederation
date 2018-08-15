@@ -24,6 +24,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -251,13 +252,19 @@ public class BaseHostJUnit4TestTest {
      */
     @Test
     public void testRunDeviceTestsWithOptions() throws Exception {
-        TestableHostJUnit4Test test = new TestableHostJUnit4Test();
+        RemoteAndroidTestRunner mockRunner = Mockito.mock(RemoteAndroidTestRunner.class);
+        TestableHostJUnit4Test test =
+                new TestableHostJUnit4Test() {
+                    @Override
+                    RemoteAndroidTestRunner createTestRunner(
+                            String packageName, String runnerName, ITestDevice device)
+                            throws DeviceNotAvailableException {
+                        return mockRunner;
+                    }
+                };
         test.setDevice(mMockDevice);
         test.setBuild(mMockBuild);
         test.setInvocationContext(mMockContext);
-        mMockDevice.executeShellCommand(
-                EasyMock.eq("pm list instrumentation"), EasyMock.anyObject());
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
         EasyMock.expect(
                         mMockDevice.runInstrumentationTests(
                                 (IRemoteAndroidTestRunner) EasyMock.anyObject(),
@@ -266,11 +273,17 @@ public class BaseHostJUnit4TestTest {
         EasyMock.replay(mMockBuild, mMockDevice);
         try {
             test.runDeviceTests(
-                    new DeviceTestRunOptions("com.package").setTestClassName("testClass"));
+                    new DeviceTestRunOptions("com.package")
+                            .setTestClassName("testClass")
+                            .addInstrumentationArg("test", "value")
+                            .addInstrumentationArg("test2", "value2"));
         } catch (AssumptionViolatedException e) {
             // Ensure that the Assume logic in the test does not make a false pass for the unit test
             fail("Should not have thrown an Assume exception.");
         }
+        // Our args are translated to the runner
+        Mockito.verify(mockRunner).addInstrumentationArg("test", "value");
+        Mockito.verify(mockRunner).addInstrumentationArg("test2", "value2");
         EasyMock.verify(mMockBuild, mMockDevice);
     }
 
