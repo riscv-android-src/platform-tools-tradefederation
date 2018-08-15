@@ -356,5 +356,24 @@ class TestFinderUtilsUnittests(unittest.TestCase):
         test_result = test_finder_utils.get_int_dir_from_path(path, int_dirs)
         unittest_utils.assert_strict_equal(self, test_result, INT_DIR1)
 
+    def test_get_install_locations(self):
+        """Test get_install_locations."""
+        host_installed_paths = ["out/host/a/b"]
+        host_expect = set(['host'])
+        self.assertEqual(test_finder_utils.get_install_locations(host_installed_paths),
+                         host_expect)
+        device_installed_paths = ["out/target/c/d"]
+        device_expect = set(['device'])
+        self.assertEqual(test_finder_utils.get_install_locations(device_installed_paths),
+                         device_expect)
+        both_installed_paths = ["out/host/e", "out/target/f"]
+        both_expect = set(['host', 'device'])
+        self.assertEqual(test_finder_utils.get_install_locations(both_installed_paths),
+                         both_expect)
+        no_installed_paths = []
+        no_expect = set()
+        self.assertEqual(test_finder_utils.get_install_locations(no_installed_paths),
+                         no_expect)
+
 if __name__ == '__main__':
     unittest.main()
