@@ -230,12 +230,16 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         Return:
             TestInfo that has been modified as needed.
         """
+        module_name = test.test_name
+        mod_info = self.module_info.get_module_info(module_name)
+        test.module_class = mod_info['class']
+        test.install_locations = test_finder_utils.get_install_locations(
+            mod_info['installed'])
         # Check if this is only a vts module.
         if self._is_vts_module(test.test_name):
             return self._update_to_vts_test_info(test)
         elif self._is_robolectric_test(test.test_name):
             return self._update_to_robolectric_test_info(test)
-        module_name = test.test_name
         rel_config = test.data[constants.TI_REL_CONFIG]
         test.build_targets = self._get_build_targets(module_name, rel_config)
         return test
