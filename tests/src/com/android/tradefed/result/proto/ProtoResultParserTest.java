@@ -102,7 +102,7 @@ public class ProtoResultParserTest {
     @Before
     public void setUp() {
         mMockListener = EasyMock.createStrictMock(ILogSaverListener.class);
-        mParser = new ProtoResultParser(mMockListener);
+        mParser = new ProtoResultParser(mMockListener, true);
         mTestParser = new TestProtoParser();
         mFinalTestParser = new FinalTestProtoParser();
         mInvocationContext = new InvocationContext();

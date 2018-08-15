@@ -24,7 +24,9 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.log.FileLogger;
 import com.android.tradefed.log.ILeveledLogOutput;
+import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.SubprocessResultsReporter;
+import com.android.tradefed.result.proto.StreamProtoResultReporter;
 import com.android.tradefed.util.StreamUtil;
 
 import java.io.File;
@@ -83,8 +85,13 @@ public class SandboxConfigDump {
                 config.getCommandOptions().setShouldUseSandboxing(false);
                 config.getConfigurationDescription().setSandboxed(true);
                 // Set the reporter
-                SubprocessResultsReporter reporter = new SubprocessResultsReporter();
-                reporter.setOutputTestLog(true);
+                ITestInvocationListener reporter = null;
+                if (getSandboxOptions(config).shouldUseProtoReporter()) {
+                    reporter = new StreamProtoResultReporter();
+                } else {
+                    reporter = new SubprocessResultsReporter();
+                    ((SubprocessResultsReporter) reporter).setOutputTestLog(true);
+                }
                 config.setTestInvocationListener(reporter);
                 // Set log level for sandbox
                 ILeveledLogOutput logger = config.getLogOutput();
@@ -132,5 +139,10 @@ public class SandboxConfigDump {
         SandboxConfigDump configDump = new SandboxConfigDump();
         int code = configDump.parse(mainArgs);
         System.exit(code);
+    }
+
+    private SandboxOptions getSandboxOptions(IConfiguration config) {
+        return (SandboxOptions)
+                config.getConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME);
     }
 }
