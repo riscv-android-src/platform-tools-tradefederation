@@ -100,7 +100,7 @@ public final class RetryRescheduler
         }
         ITestSuiteResultLoader previousLoader = (ITestSuiteResultLoader) loader;
         // First init the reloader.
-        previousLoader.init(mContext);
+        previousLoader.init(mContext.getDevices());
         // Then get the command line of the previous run
         String commandLine = previousLoader.getCommandLine();
         IConfiguration originalConfig;
