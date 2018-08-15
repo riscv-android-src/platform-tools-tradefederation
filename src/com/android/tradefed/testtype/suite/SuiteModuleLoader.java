@@ -100,14 +100,15 @@ public class SuiteModuleLoader {
             Set<IAbi> abis,
             String suitePrefix,
             String suiteTag,
-            List<String> patterns) {
+            List<String> patterns,
+            boolean prioritizeHostConfig) {
         LinkedHashMap<String, IConfiguration> toRun = new LinkedHashMap<>();
 
         List<File> listConfigFiles = new ArrayList<>();
         List<File> extraTestCasesDirs = Arrays.asList(testsDir);
         listConfigFiles.addAll(
                 ConfigurationUtil.getConfigNamesFileFromDirs(
-                        suitePrefix, extraTestCasesDirs, patterns));
+                        suitePrefix, extraTestCasesDirs, patterns, prioritizeHostConfig));
         // Ensure stable initial order of configurations.
         Collections.sort(listConfigFiles);
         for (File configFile : listConfigFiles) {
