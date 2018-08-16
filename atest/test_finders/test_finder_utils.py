@@ -35,17 +35,17 @@ import constants
 _APK_RE = re.compile(r'^[^/]+\.apk$', re.I)
 # RE for check if TEST or TEST_F is in a cc file or not.
 _CC_CLASS_RE = re.compile(r'TEST(_F)?\(', re.I)
-# Parse package name from the package declaration line of a java file.
-# Group matches "foo.bar" of line "package foo.bar;"
-_PACKAGE_RE = re.compile(r'\s*package\s+(?P<package>[^;]+)\s*;\s*', re.I)
+# Parse package name from the package declaration line of a java or a kotlin file.
+# Group matches "foo.bar" of line "package foo.bar;" or "package foo.bar"
+_PACKAGE_RE = re.compile(r'\s*package\s+(?P<package>[^(;|\s)]+)\s*', re.I)
 # Matches install paths in module_info to install location(host or device).
 _HOST_PATH_RE = re.compile(r'.*\/host\/.*', re.I)
 _DEVICE_PATH_RE = re.compile(r'.*\/target\/.*', re.I)
 
 # Explanation of FIND_REFERENCE_TYPEs:
 # ----------------------------------
-# 0. CLASS: Name of a java class, usually file is named the same (HostTest lives
-#           in HostTest.java)
+# 0. CLASS: Name of a java/kotlin class, usually file is named the same (HostTest lives
+#           in HostTest.java or HostTest.kt)
 # 1. QUALIFIED_CLASS: Like CLASS but also contains the package in front like
 #.                    com.android.tradefed.testtype.HostTest.
 # 2. PACKAGE: Name of a java package.
@@ -58,17 +58,18 @@ FIND_REFERENCE_TYPE = atest_enum.AtestEnum(['CLASS', 'QUALIFIED_CLASS',
 # Unix find commands for searching for test files based on test type input.
 # Note: Find (unlike grep) exits with status 0 if nothing found.
 FIND_CMDS = {
-    FIND_REFERENCE_TYPE.CLASS : r"find %s -type d %s -prune -o -type f -name "
-                                r"'%s.java' -print",
-    FIND_REFERENCE_TYPE.QUALIFIED_CLASS: r"find %s -type d %s -prune -o "
-                                         r"-wholename '*%s.java' -print",
-    FIND_REFERENCE_TYPE.PACKAGE: r"find %s -type d %s -prune -o -wholename "
-                                 r"'*%s' -type d -print",
-    FIND_REFERENCE_TYPE.INTEGRATION: r"find %s -type d %s -prune -o -wholename "
-                                     r"'*%s.xml' -print",
-    FIND_REFERENCE_TYPE.CC_CLASS: r"find %s -type d %s -prune -o -type f "
+    FIND_REFERENCE_TYPE.CLASS: r"find {0} -type d {1} -prune -o -type f -regex "
+                               r"'.*{2}.\(java\|kt\)' -print",
+    FIND_REFERENCE_TYPE.QUALIFIED_CLASS: r"find {0} -type d {1} -prune -o "
+                                         r"\( -wholename '*{2}.java' "
+                                         r"-o -wholename '*{2}.kt' \) -print",
+    FIND_REFERENCE_TYPE.PACKAGE: r"find {0} -type d {1} -prune -o -wholename "
+                                 r"'*{2}' -type d -print",
+    FIND_REFERENCE_TYPE.INTEGRATION: r"find {0} -type d {1} -prune -o -wholename "
+                                     r"'*{2}.xml' -print",
+    FIND_REFERENCE_TYPE.CC_CLASS: r"find {0} -type d {1} -prune -o -type f "
                                   r"\( -name '*.cpp' -o -name '*.cc' \)"
-                                  r" -exec grep -E 'TEST(_F)?\(%s,' {} + || true"
+                                  r" -exec grep -H -E 'TEST(_F)?\({2},' {{}} + || true"
 }
 
 # XML parsing related constants.
@@ -318,7 +319,7 @@ def run_find_cmd(ref_type, search_dir, target):
         A string of the path to the target.
     """
     prune_cond = _get_prune_cond_of_ignored_dirs()
-    find_cmd = FIND_CMDS[ref_type] % (search_dir, prune_cond, target)
+    find_cmd = FIND_CMDS[ref_type].format(search_dir, prune_cond, target)
     start = time.time()
     ref_name = FIND_REFERENCE_TYPE[ref_type]
     logging.debug('Executing %s find cmd: %s', ref_name, find_cmd)

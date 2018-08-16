@@ -258,6 +258,10 @@ class TestFinderUtilsUnittests(unittest.TestCase):
     @mock.patch('subprocess.check_output')
     def test_get_ignored_dirs(self, _mock_check_output):
         """Test _get_ignored_dirs method."""
+
+        # Clean cached value for test.
+        test_finder_utils._get_ignored_dirs.cached_ignore_dirs = []
+
         build_top = '/a/b'
         _mock_check_output.return_value = ('/a/b/c/.find-ignore\n'
                                            '/a/b/out/.out-dir\n'
@@ -325,6 +329,49 @@ class TestFinderUtilsUnittests(unittest.TestCase):
         int_dirs = [INT_DIR1, INT_DIR2]
         test_result = test_finder_utils.search_integration_dirs(INT_FILE_NAME, int_dirs)
         unittest_utils.assert_strict_equal(self, test_result, path)
+
+    @mock.patch('__builtin__.raw_input', return_value='0')
+    def test_find_class_file(self, mock_input):
+        """Test find_class_file."""
+        java_tmp_test_result = []
+        mock_input.return_value = '0'
+        java_class = os.path.join(uc.FIND_PATH, uc.FIND_PATH_TESTCASE_JAVA + '.java')
+        java_tmp_test_result.append(test_finder_utils.find_class_file(uc.FIND_PATH,
+                                                                      uc.FIND_PATH_TESTCASE_JAVA))
+
+        mock_input.return_value = '1'
+        kt_class = os.path.join(uc.FIND_PATH, uc.FIND_PATH_TESTCASE_JAVA + '.kt')
+        java_tmp_test_result.append(test_finder_utils.find_class_file(uc.FIND_PATH,
+                                                                      uc.FIND_PATH_TESTCASE_JAVA))
+
+        self.assertTrue(java_class in java_tmp_test_result)
+        self.assertTrue(kt_class in java_tmp_test_result)
+
+        del java_tmp_test_result[:]
+        mock_input.return_value = '0'
+        java_qualified_class = '{0}.{1}'.format(uc.FIND_PATH_FOLDER, uc.FIND_PATH_TESTCASE_JAVA)
+        java_tmp_test_result.append(test_finder_utils.find_class_file(uc.FIND_PATH,
+                                                                      java_qualified_class))
+        mock_input.return_value = '1'
+        java_tmp_test_result.append(test_finder_utils.find_class_file(uc.FIND_PATH,
+                                                                      java_qualified_class))
+        self.assertTrue(java_class in java_tmp_test_result)
+        self.assertTrue(kt_class in java_tmp_test_result)
+
+        cc_tmp_test_result = []
+        mock_input.return_value = '0'
+        cpp_class = os.path.join(uc.FIND_PATH, uc.FIND_PATH_FILENAME_CC + '.cpp')
+        cc_tmp_test_result.append(test_finder_utils.find_class_file(uc.FIND_PATH,
+                                                                    uc.FIND_PATH_TESTCASE_CC,
+                                                                    True))
+        mock_input.return_value = '1'
+        cc_class = os.path.join(uc.FIND_PATH, uc.FIND_PATH_FILENAME_CC + '.cc')
+        cc_tmp_test_result.append(test_finder_utils.find_class_file(uc.FIND_PATH,
+                                                                    uc.FIND_PATH_TESTCASE_CC,
+                                                                    True))
+
+        self.assertTrue(cpp_class in cc_tmp_test_result)
+        self.assertTrue(cc_class in cc_tmp_test_result)
 
     @mock.patch('__builtin__.raw_input', return_value='0')
     @mock.patch.object(test_finder_utils, 'get_dir_path_and_filename')

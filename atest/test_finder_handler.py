@@ -158,7 +158,7 @@ def _get_test_reference_types(ref):
         # foo.java#method, so let ref_end be the first part of splitting '#'.
         if "#" in ref_end:
             ref_end = ref_end.split('#')[0]
-        if ref_end in ('java', 'bp', 'mk', 'cc', 'cpp'):
+        if ref_end in ('java', 'kt', 'bp', 'mk', 'cc', 'cpp'):
             return [_REFERENCE_TYPE.MODULE_FILE_PATH]
         if ref_end == 'xml':
             return [_REFERENCE_TYPE.INTEGRATION_FILE_PATH,
