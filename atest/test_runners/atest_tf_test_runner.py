@@ -412,6 +412,11 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             if constants.DISABLE_TEARDOWN == arg:
                 args_to_append.append('--disable-teardown')
                 continue
+            if constants.HOST == arg:
+                args_to_append.append('-n')
+                args_to_append.append('--prioritize-host-config')
+                args_to_append.append('--skip-host-arch-check')
+                continue
             if constants.CUSTOM_ARGS == arg:
                 # We might need to sanitize it prior to appending but for now
                 # let's just treat it like a simple arg to pass on through.

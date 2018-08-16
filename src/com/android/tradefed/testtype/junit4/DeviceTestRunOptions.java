@@ -17,6 +17,9 @@ package com.android.tradefed.testtype.junit4;
 
 import com.android.tradefed.device.ITestDevice;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /** A builder class for options related to running device tests through BaseHostJUnit4Test. */
 public class DeviceTestRunOptions {
     private ITestDevice mDevice; // optional
@@ -31,6 +34,7 @@ public class DeviceTestRunOptions {
     private Long mMaxInstrumentationTimeoutMs; // optional
     private boolean mCheckResults = true; // optional
     private boolean mDisableHiddenApiCheck = false; // optional
+    private Map<String, String> mInstrumentationArgs = new LinkedHashMap<>(); // optional
 
     public DeviceTestRunOptions(String packageName) {
         this.mPackageName = packageName;
@@ -161,5 +165,23 @@ public class DeviceTestRunOptions {
 
     public boolean isHiddenApiCheckDisabled() {
         return mDisableHiddenApiCheck;
+    }
+
+    /** Add an argument that will be passed to the instrumentation. */
+    public DeviceTestRunOptions addInstrumentationArg(String key, String value) {
+        this.mInstrumentationArgs.put(key, value);
+        return this;
+    }
+
+    /**
+     * Clear all instrumentation arguments that have been set with {@link
+     * #addInstrumentationArg(String, String)} previously.
+     */
+    public void clearInstrumentationArgs() {
+        mInstrumentationArgs.clear();
+    }
+
+    public Map<String, String> getInstrumentationArgs() {
+        return mInstrumentationArgs;
     }
 }

@@ -38,6 +38,9 @@ _CC_CLASS_RE = re.compile(r'TEST(_F)?\(', re.I)
 # Parse package name from the package declaration line of a java file.
 # Group matches "foo.bar" of line "package foo.bar;"
 _PACKAGE_RE = re.compile(r'\s*package\s+(?P<package>[^;]+)\s*;\s*', re.I)
+# Matches install paths in module_info to install location(host or device).
+_HOST_PATH_RE = re.compile(r'.*\/host\/.*', re.I)
+_DEVICE_PATH_RE = re.compile(r'.*\/target\/.*', re.I)
 
 # Explanation of FIND_REFERENCE_TYPEs:
 # ----------------------------------
@@ -385,18 +388,6 @@ def is_robolectric_module(mod_info):
                 constants.MODULE_CLASS_ROBOLECTRIC)
     return False
 
-def is_2nd_arch_module(module_info):
-    """Check if a codule is 2nd architecture module
-
-    Args:
-        module_info: ModuleInfo to check.
-
-    Returns:
-        True is the module is 2nd architecture module, False otherwise.
-
-    """
-    for_2nd_arch = module_info.get(constants.MODULE_FOR_2ND_ARCH, [])
-    return for_2nd_arch and for_2nd_arch[0]
 
 def find_parent_module_dir(root_dir, start_dir, module_info):
     """From current dir search up file tree until root dir for module dir.
@@ -429,8 +420,7 @@ def find_parent_module_dir(root_dir, start_dir, module_info):
             rel_dir = os.path.relpath(current_dir, root_dir)
             module_list = module_info.path_to_module_info.get(rel_dir, [])
             # Verify only one module at this level has an auto_test_config.
-            if len([x for x in module_list
-                    if x.get('auto_test_config') and not is_2nd_arch_module(x)]) == 1:
+            if len([x for x in module_list if x.get('auto_test_config')]) == 1:
                 # We found a single test module!
                 module_dir = rel_dir
                 # But keep searching in case there's an AndroidTest.xml in a
@@ -765,3 +755,22 @@ def get_int_dir_from_path(path, int_dirs):
                      int_dir, path)
         return None
     return int_dir
+
+
+def get_install_locations(installed_paths):
+    """Get install locations from installed paths.
+
+    Args:
+        installed_paths: List of installed_paths from module_info.
+
+    Returns:
+        Set of install locations from module_info installed_paths. e.g.
+        set(['host', 'device'])
+    """
+    install_locations = set()
+    for path in installed_paths:
+        if _HOST_PATH_RE.match(path):
+            install_locations.add(constants.DEVICELESS_TEST)
+        elif _DEVICE_PATH_RE.match(path):
+            install_locations.add(constants.DEVICE_TEST)
+    return install_locations

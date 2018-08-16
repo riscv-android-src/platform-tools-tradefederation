@@ -33,6 +33,7 @@ PRE_PATCH_FOLDER = 'PRE_PATCH_FOLDER'
 POST_PATCH_FOLDER = 'POST_PATCH_FOLDER'
 SERIAL = 'SERIAL'
 ALL_ABI = 'ALL_ABI'
+HOST = 'HOST'
 CUSTOM_ARGS = 'CUSTOM_ARGS'
 
 # Application exit codes.
@@ -50,7 +51,8 @@ MODULE_PATH = 'path'
 MODULE_CLASS = 'class'
 MODULE_INSTALLED = 'installed'
 MODULE_CLASS_ROBOLECTRIC = 'ROBOLECTRIC'
-MODULE_FOR_2ND_ARCH = 'for_2nd_arch'
+MODULE_CLASS_NATIVE_TESTS = 'NATIVE_TESTS'
+MODULE_CLASS_JAVA_LIBRARIES = 'JAVA_LIBRARIES'
 
 # Env constants
 ANDROID_BUILD_TOP = 'ANDROID_BUILD_TOP'
@@ -62,6 +64,7 @@ ANDROID_HOST_OUT = 'ANDROID_HOST_OUT'
 # Value of include-filter option.
 TI_FILTER = 'filter'
 TI_REL_CONFIG = 'rel_config'
+TI_MODULE_CLASS = 'module_class'
 # Value of module-arg option
 TI_MODULE_ARG = 'module-arg'
 
@@ -96,3 +99,8 @@ REBUILD_MODULE_INFO_FLAG = '--rebuild-module-info'
 
 # ANSI code shift for colorful print
 BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
+
+# Value of TestInfo install_locations.
+DEVICELESS_TEST = 'host'
+DEVICE_TEST = 'device'
+BOTH_TEST = 'both'
