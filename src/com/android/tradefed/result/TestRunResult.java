@@ -62,6 +62,8 @@ public class TestRunResult {
 
     private boolean mAggregateMetrics = false;
 
+    private int mExpectedTestCount = 0;
+
     /** Create an empty{@link TestRunResult}. */
     public TestRunResult() {
         mTestRunName = "not started";
@@ -134,6 +136,15 @@ public class TestRunResult {
         mIsRunComplete = runComplete;
     }
 
+    /**
+     * Gets the number of test cases this TestRunResult expects to have. The actual number may be
+     * less than the expected number due to test crashes. Normally, such a mismatch indicates a test
+     * run failure.
+     */
+    public int getExpectedTestCount() {
+        return mExpectedTestCount;
+    }
+
     /** Gets the number of tests in given state for this run. */
     public int getNumTestsInState(TestStatus status) {
         if (mIsCountDirty) {
@@ -184,9 +195,18 @@ public class TestRunResult {
      * Notify that a test run started.
      *
      * @param runName the name associated to the test run for tracking purpose.
-     * @param testCount the number of test cases associated with the test count.
+     * @param testCount the number of expected test cases associated with the test run.
      */
     public void testRunStarted(String runName, int testCount) {
+        // A run may be started multiple times due to crashes or other reasons. Normally the first
+        // run reflect the expected number of test "testCount". To avoid latter TestRunStarted
+        // overrides the expected count, only the first testCount will be recorded.
+        // mExpectedTestCount is initialized as 0.
+        if (mExpectedTestCount == 0) {
+            mExpectedTestCount = testCount;
+        } else {
+            CLog.w("%s calls testRunStarted more than once", runName);
+        }
         mTestRunName = runName;
         mIsRunComplete = false;
         // Do not reset mRunFailureError since for re-run we want to preserve previous failures.
@@ -381,6 +401,7 @@ public class TestRunResult {
         boolean isComplete = true;
         // Keep track of elapsed time
         long elapsedTime = 0L;
+        int maxExpectedTestCount = 0;
         for (TestRunResult eachRunResult : testRunResults) {
             // Check all mTestRunNames are the same.
             if (!testRunName.equals(eachRunResult.getName())) {
@@ -399,6 +420,11 @@ public class TestRunResult {
             if (!eachRunResult.isRunComplete()) {
                 isComplete = false;
             }
+            // A run may start multiple times. Normally the first run shows the expected count
+            // (max value).
+            maxExpectedTestCount =
+                    Math.max(maxExpectedTestCount, eachRunResult.getExpectedTestCount());
+
             // Keep the last TestRunResult's RunMetrics, ProtoMetrics and logFiles.
             // TODO: Currently we keep a single item when multiple TestRunResult have the same
             // keys. In the future, we may want to improve this logic.
@@ -453,6 +479,7 @@ public class TestRunResult {
             finalRunResult.mRunFailureError = null;
         }
         finalRunResult.mIsRunComplete = isComplete;
+        finalRunResult.mExpectedTestCount = maxExpectedTestCount;
         // Report total elapsed times
         finalRunResult.mElapsedTime = elapsedTime;
         return finalRunResult;
