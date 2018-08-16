@@ -18,6 +18,7 @@ Atest Tradefed test runner class.
 
 from __future__ import print_function
 from functools import partial
+import errno
 import json
 import logging
 import os
@@ -25,6 +26,7 @@ import re
 import signal
 import socket
 import subprocess
+import sys
 
 # pylint: disable=import-error
 import atest_utils
@@ -128,6 +130,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 raise
 
     # pylint: disable=broad-except
+    # pylint: disable=too-many-locals
     def run_tests_pretty(self, test_infos, extra_args, reporter):
         """Run the list of test_infos. See base class for more.
 
@@ -154,23 +157,33 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             subproc = self.run(run_cmd, output_to_stdout=self.is_verbose)
             try:
                 signal.signal(signal.SIGINT, self._signal_passer(subproc))
-                # server.accept() blocks until connection received
                 conn, addr = self._exec_with_tf_polling(server.accept, subproc)
                 logging.debug('Accepted connection from %s', addr)
                 self._process_connection(conn, reporter, subproc)
                 if metrics_folder:
                     logging.info('Saved metrics in: %s', metrics_folder)
             except Exception as error:
+                # exc_info=1 tells logging to log the stacktrace
+                logging.debug('Caught exception:', exc_info=1)
+                # Remember our current exception scope, before new try block
+                # Python3 will make this easier, the error itself stores
+                # the scope via error.__traceback__ and it provides a
+                # "raise from error" pattern.
+                # https://docs.python.org/3.5/reference/simple_stmts.html#raise
+                exc_type, exc_msg, traceback_obj = sys.exc_info()
                 # If atest crashes, try to kill TF subproc group as well.
                 try:
                     logging.debug('Killing TF subproc: %s', subproc.pid)
                     os.killpg(os.getpgid(subproc.pid), signal.SIGINT)
                 except OSError:
-                    logging.debug('Subproc (%s) already terminated, skipping')
+                    # this wipes our previous stack context, which is why
+                    # we have to save it above.
+                    logging.debug('Subproc already terminated, skipping')
                 finally:
-                    raise error
+	            # Ignore socket.recv() raising due to ctrl-c
+                    if not error.args or error.args[0] != errno.EINTR:
+                        raise exc_type, exc_msg, traceback_obj
             finally:
-                server.shutdown(socket.SHUT_RDWR)
                 server.close()
                 subproc.wait()
 
@@ -202,7 +215,6 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         # Port 0 lets the OS pick an open port between 1024 and 65535.
         server.bind((SOCKET_HOST, 0))
         server.listen(SOCKET_QUEUE_MAX)
-        # timeout applies to ALL future calls of blocking socket funcs.
         server.settimeout(POLL_FREQ_SECS)
         logging.debug('Socket server started on port %s',
                       server.getsockname()[1])
@@ -219,8 +231,9 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             try:
                 return socket_func()
             except socket.timeout:
-                logging.debug('Polling TF Subproc for early exit.')
+                logging.debug('Polling TF subproc for early exit.')
                 if tf_subproc.poll() is not None:
+                    logging.debug('TF subproc exited early')
                     raise TradeFedExitError(TRADEFED_EXIT_MSG
                                             % tf_subproc.returncode)
 
