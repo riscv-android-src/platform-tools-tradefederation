@@ -21,11 +21,12 @@ import com.android.tradefed.config.OptionClass;
 import java.io.File;
 
 /** Class that can receive and provide options to a {@link ISandbox}. */
-@OptionClass(alias = "sandbox", global_namespace = false)
+@OptionClass(alias = "sandbox", global_namespace = true)
 public final class SandboxOptions {
 
     public static final String TF_LOCATION = "tf-location";
     public static final String SANDBOX_BUILD_ID = "sandbox-build-id";
+    public static final String USE_PROTO_REPORTER = "use-proto-reporter";
 
     @Option(
         name = TF_LOCATION,
@@ -41,6 +42,12 @@ public final class SandboxOptions {
     )
     private String mBuildId = null;
 
+    @Option(
+        name = USE_PROTO_REPORTER,
+        description = "Whether or not to use protobuf format reporting between processes."
+    )
+    private boolean mUseProtoReporter = false;
+
     /**
      * Returns the provided directories containing the Trade Federation version to use for
      * sandboxing the run.
@@ -52,5 +59,10 @@ public final class SandboxOptions {
     /** Returns the build-id forced for the sandbox to be used during the run. */
     public String getSandboxBuildId() {
         return mBuildId;
+    }
+
+    /** Returns whether or not protobuf reporting should be used. */
+    public boolean shouldUseProtoReporter() {
+        return mUseProtoReporter;
     }
 }

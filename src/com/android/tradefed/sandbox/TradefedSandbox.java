@@ -28,6 +28,8 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.proto.StreamProtoReceiver;
+import com.android.tradefed.result.proto.StreamProtoResultReporter;
 import com.android.tradefed.sandbox.SandboxConfigDump.DumpCmd;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -70,6 +72,7 @@ public class TradefedSandbox implements ISandbox {
     private File mSerializedConfiguration = null;
 
     private SubprocessTestResultsParser mEventParser = null;
+    private StreamProtoReceiver mProtoReceiver = null;
 
     private IRunUtil mRunUtil;
 
@@ -84,8 +87,13 @@ public class TradefedSandbox implements ISandbox {
         mCmdArgs.add(TradefedSandboxRunner.class.getCanonicalName());
         mCmdArgs.add(mSerializedContext.getAbsolutePath());
         mCmdArgs.add(mSerializedConfiguration.getAbsolutePath());
-        mCmdArgs.add("--subprocess-report-port");
-        mCmdArgs.add(Integer.toString(mEventParser.getSocketServerPort()));
+        if (mProtoReceiver != null) {
+            mCmdArgs.add("--" + StreamProtoResultReporter.PROTO_REPORT_PORT_OPTION);
+            mCmdArgs.add(Integer.toString(mProtoReceiver.getSocketServerPort()));
+        } else {
+            mCmdArgs.add("--subprocess-report-port");
+            mCmdArgs.add(Integer.toString(mEventParser.getSocketServerPort()));
+        }
         if (config.getCommandOptions().shouldUseSandboxTestMode()) {
             // In test mode, re-add the --use-sandbox to trigger a sandbox run again in the process
             mCmdArgs.add("--" + CommandOptions.USE_SANDBOX);
@@ -112,9 +120,20 @@ public class TradefedSandbox implements ISandbox {
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
             failedStatus = true;
             result.setStderr(stderrText);
+            try (InputStreamSource configFile =
+                    new FileInputStreamSource(mSerializedConfiguration)) {
+                logger.testLog("sandbox-config", LogDataType.XML, configFile);
+            }
         }
 
-        if (!mEventParser.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS)) {
+        boolean joinResult = false;
+        if (mProtoReceiver != null) {
+            joinResult = mProtoReceiver.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS);
+        } else {
+            joinResult = mEventParser.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS);
+        }
+
+        if (!joinResult) {
             if (!failedStatus) {
                 result.setStatus(CommandStatus.EXCEPTION);
             }
@@ -173,6 +192,7 @@ public class TradefedSandbox implements ISandbox {
     @Override
     public void tearDown() {
         StreamUtil.close(mEventParser);
+        StreamUtil.close(mProtoReceiver);
         StreamUtil.close(mStdout);
         StreamUtil.close(mStderr);
         FileUtil.deleteFile(mStdoutFile);
@@ -187,10 +207,7 @@ public class TradefedSandbox implements ISandbox {
     public File getTradefedSandboxEnvironment(
             IInvocationContext context, IConfiguration nonVersionedConfig, String[] args)
             throws ConfigurationException {
-        SandboxOptions options =
-                (SandboxOptions)
-                        nonVersionedConfig.getConfigurationObject(
-                                Configuration.SANBOX_OPTIONS_TYPE_NAME);
+        SandboxOptions options = getSandboxOptions(nonVersionedConfig);
         // Check that we have no args conflicts.
         if (options.getSandboxTfDirectory() != null && options.getSandboxBuildId() != null) {
             throw new ConfigurationException(
@@ -240,8 +257,12 @@ public class TradefedSandbox implements ISandbox {
     protected Exception prepareConfiguration(
             IInvocationContext context, IConfiguration config, ITestInvocationListener listener) {
         try {
-            // TODO: add option to disable the streaming back of results.
-            mEventParser = new SubprocessTestResultsParser(listener, true, context);
+            // TODO: switch reporting of parent and subprocess to proto
+            if (getSandboxOptions(config).shouldUseProtoReporter()) {
+                mProtoReceiver = new StreamProtoReceiver(listener, false);
+            } else {
+                mEventParser = new SubprocessTestResultsParser(listener, true, context);
+            }
             String[] args = QuotationAwareTokenizer.tokenizeLine(config.getCommandLine());
             mGlobalConfig = SandboxConfigUtil.dumpFilteredGlobalConfig();
             DumpCmd mode = DumpCmd.RUN_CONFIG;
@@ -253,6 +274,7 @@ public class TradefedSandbox implements ISandbox {
                             createClasspath(mRootFolder), mRunUtil, args, mode, mGlobalConfig);
         } catch (Exception e) {
             StreamUtil.close(mEventParser);
+            StreamUtil.close(mProtoReceiver);
             return e;
         }
         return null;
@@ -303,5 +325,10 @@ public class TradefedSandbox implements ISandbox {
         // Default thin launcher cannot do anything, since this sandbox uses the same version as
         // the parent version.
         return null;
+    }
+
+    private SandboxOptions getSandboxOptions(IConfiguration config) {
+        return (SandboxOptions)
+                config.getConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME);
     }
 }

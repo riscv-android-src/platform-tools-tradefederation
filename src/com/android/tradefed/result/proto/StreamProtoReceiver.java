@@ -30,8 +30,6 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * A receiver that translates proto TestRecord received into Tradefed events.
- *
- * <p>TODO: Needs to be completed to actually parse the protos into events.
  */
 public class StreamProtoReceiver implements Closeable {
 
@@ -42,9 +40,17 @@ public class StreamProtoReceiver implements Closeable {
     private ProtoResultParser mParser;
     private Throwable mError;
 
-    public StreamProtoReceiver(ITestInvocationListener listener) throws IOException {
+    /**
+     * Ctor.
+     *
+     * @param listener the {@link ITestInvocationListener} where to report the results.
+     * @param reportInvocation Whether or not to report the invocation level events.
+     * @throws IOException
+     */
+    public StreamProtoReceiver(ITestInvocationListener listener, boolean reportInvocation)
+            throws IOException {
         mListener = listener;
-        mParser = new ProtoResultParser(mListener);
+        mParser = new ProtoResultParser(mListener, reportInvocation);
         mEventReceiver = new EventReceiverThread();
         mEventReceiver.start();
     }
