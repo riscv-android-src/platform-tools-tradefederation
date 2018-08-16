@@ -97,7 +97,7 @@ public class RetryReschedulerTest {
     @Test
     public void testReschedule_onlyPassTests() throws Exception {
         populateFakeResults(2, 2, 0, 0);
-        mMockLoader.init(mMockContext);
+        mMockLoader.init(mMockContext.getDevices());
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
@@ -133,7 +133,7 @@ public class RetryReschedulerTest {
     @Test
     public void testReschedule_someFailedTests() throws Exception {
         populateFakeResults(2, 2, 1, 0);
-        mMockLoader.init(mMockContext);
+        mMockLoader.init(mMockContext.getDevices());
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
@@ -172,7 +172,7 @@ public class RetryReschedulerTest {
     @Test
     public void testReschedule_someAssumptionFailures() throws Exception {
         populateFakeResults(2, 2, 0, 1);
-        mMockLoader.init(mMockContext);
+        mMockLoader.init(mMockContext.getDevices());
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
@@ -211,7 +211,7 @@ public class RetryReschedulerTest {
     @Test
     public void testReschedule_mixedFailedAssumptionFailures() throws Exception {
         populateFakeResults(2, 3, 1, 1);
-        mMockLoader.init(mMockContext);
+        mMockLoader.init(mMockContext.getDevices());
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
