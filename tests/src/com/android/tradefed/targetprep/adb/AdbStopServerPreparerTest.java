@@ -48,12 +48,14 @@ public class AdbStopServerPreparerTest {
     private ITestDevice mMockDevice;
     private IBuildInfo mMockBuild;
     private File mFakeAdbFile;
+    private String mEnvironment;
 
     @Before
     public void setUp() throws Exception {
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
         mMockManager = EasyMock.createMock(IDeviceManager.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
+        mEnvironment = null;
         mPreparer =
                 new AdbStopServerPreparer() {
                     @Override
@@ -64,6 +66,11 @@ public class AdbStopServerPreparerTest {
                     @Override
                     IDeviceManager getDeviceManager() {
                         return mMockManager;
+                    }
+
+                    @Override
+                    String getEnvironment(String key) {
+                        return mEnvironment;
                     }
                 };
         mMockBuild = new BuildInfo();
@@ -163,6 +170,43 @@ public class AdbStopServerPreparerTest {
                             .contains("Could not find a new version of adb to tests."));
         }
         EasyMock.verify(mMockRunUtil, mMockManager, mMockDevice);
+    }
+
+    /** Test getting the adb binary from the local path. */
+    @Test
+    public void testAdbFromEnv() throws Exception {
+        File tmpDir = FileUtil.createTempDir("adb-preparer-tests");
+        try {
+            FileUtil.mkdirsRWX(new File(tmpDir, "bin"));
+            File fakeAdb = new File(tmpDir, "bin/adb");
+            fakeAdb.createNewFile();
+            mEnvironment = tmpDir.getAbsolutePath();
+            mMockManager.stopAdbBridge();
+            CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+            // setUp
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmd(
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq("adb"),
+                                    EasyMock.eq("kill-server")))
+                    .andReturn(result);
+            mMockRunUtil.setEnvVariable(
+                    EasyMock.eq("PATH"), EasyMock.eq(fakeAdb.getAbsolutePath()));
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmd(
+                                    EasyMock.anyLong(),
+                                    EasyMock.contains("adb"),
+                                    EasyMock.eq("start-server")))
+                    .andReturn(result);
+            // tear down
+            mockTearDown();
+            EasyMock.replay(mMockRunUtil, mMockManager, mMockDevice);
+            mPreparer.setUp(mMockDevice, mMockBuild);
+            mPreparer.tearDown(mMockDevice, mMockBuild, null);
+            EasyMock.verify(mMockRunUtil, mMockManager, mMockDevice);
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
     }
 
     private void mockTearDown() {
