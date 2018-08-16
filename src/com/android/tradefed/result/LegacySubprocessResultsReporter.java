@@ -137,4 +137,22 @@ public final class LegacySubprocessResultsReporter extends SubprocessResultsRepo
         CLog.d("testModuleEnded is called but ignored intentionally");
     }
 
+    /** A intentionally inop function to handle incompatibility problem in CTS 8.1 */
+    @Override
+    public void testLogSaved(
+            String dataName, LogDataType dataType, InputStreamSource dataStream, LogFile logFile) {
+        CLog.d("testLogSaved is called but ignored intentionally");
+    }
+
+    /** A intentionally inop function to handle incompatibility problem in CTS 8.1 */
+    @Override
+    public void logAssociation(String dataName, LogFile logFile) {
+        CLog.d("logAssociation is called but ignored intentionally");
+    }
+
+    /** A intentionally inop function to handle incompatibility problem in CTS 8.1 */
+    @Override
+    public void setLogSaver(ILogSaver logSaver) {
+        CLog.d("setLogSaver is called but ignored intentionally");
+    }
 }
