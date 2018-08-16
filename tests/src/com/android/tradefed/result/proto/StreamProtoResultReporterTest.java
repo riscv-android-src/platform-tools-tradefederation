@@ -57,7 +57,7 @@ public class StreamProtoResultReporterTest {
 
     @Test
     public void testStream() throws Exception {
-        StreamProtoReceiver receiver = new StreamProtoReceiver(mMockListener);
+        StreamProtoReceiver receiver = new StreamProtoReceiver(mMockListener, true);
         OptionSetter setter = new OptionSetter(mReporter);
         try {
             setter.setOptionValue(
@@ -85,6 +85,69 @@ public class StreamProtoResultReporterTest {
             mMockListener.testModuleEnded();
 
             mMockListener.invocationEnded(500L);
+
+            EasyMock.replay(mMockListener);
+            mReporter.invocationStarted(mInvocationContext);
+            // Run modules
+            mReporter.testModuleStarted(createModuleContext("arm64 module1"));
+            mReporter.testRunStarted("run1", 2);
+
+            mReporter.testStarted(test1, 5L);
+            mReporter.testEnded(test1, 10L, new HashMap<String, Metric>());
+
+            mReporter.testStarted(test2, 11L);
+            mReporter.testFailed(test2, "I failed");
+            // test log
+            mReporter.logAssociation(
+                    "log1", new LogFile("path", "url", false, LogDataType.TEXT, 5));
+
+            mReporter.testEnded(test2, 60L, metrics);
+            // run log
+            mReporter.logAssociation(
+                    "run_log1", new LogFile("path", "url", false, LogDataType.LOGCAT, 5));
+            mReporter.testRunEnded(50L, new HashMap<String, Metric>());
+
+            mReporter.testModuleEnded();
+            // Invocation ends
+            mReporter.invocationEnded(500L);
+        } finally {
+            receiver.joinReceiver(5000);
+            receiver.close();
+        }
+        EasyMock.verify(mMockListener);
+        assertNull(receiver.getError());
+    }
+
+    @Test
+    public void testStream_noInvocationReporting() throws Exception {
+        StreamProtoReceiver receiver =
+                new StreamProtoReceiver(
+                        mMockListener,
+                        /** No invocation reporting */
+                        false);
+        OptionSetter setter = new OptionSetter(mReporter);
+        try {
+            setter.setOptionValue(
+                    "proto-report-port", Integer.toString(receiver.getSocketServerPort()));
+            TestDescription test1 = new TestDescription("class1", "test1");
+            TestDescription test2 = new TestDescription("class1", "test2");
+            HashMap<String, Metric> metrics = new HashMap<String, Metric>();
+            metrics.put("metric1", TfMetricProtoUtil.stringToMetric("value1"));
+            // Verify mocks
+            mMockListener.testModuleStarted(EasyMock.anyObject());
+            mMockListener.testRunStarted("run1", 2);
+            mMockListener.testStarted(test1, 5L);
+            mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
+
+            mMockListener.testStarted(test2, 11L);
+            mMockListener.testFailed(test2, "I failed");
+            mMockListener.testEnded(
+                    EasyMock.eq(test2),
+                    EasyMock.anyLong(),
+                    (HashMap<String, Metric>) EasyMock.anyObject());
+            mMockListener.testRunEnded(
+                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+            mMockListener.testModuleEnded();
 
             EasyMock.replay(mMockListener);
             mReporter.invocationStarted(mInvocationContext);
