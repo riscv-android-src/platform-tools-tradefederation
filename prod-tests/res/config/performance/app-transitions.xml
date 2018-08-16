@@ -21,10 +21,6 @@
         <option name="test-file-name" value="AppTransitionTests.apk" />
     </target_preparer>
 
-    <target_preparer class="com.google.android.tradefed.targetprep.DismissDialogsPreparer" >
-        <option name="test-file-name" value="DialogDismissalUtil.apk" />
-    </target_preparer>
-
     <target_preparer class="com.android.tradefed.targetprep.RunCommandTargetPreparer" />
 
     <test class="com.android.performance.tests.AppTransitionTests" />
