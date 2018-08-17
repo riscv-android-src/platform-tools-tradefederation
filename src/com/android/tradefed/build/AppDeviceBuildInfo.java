@@ -17,7 +17,6 @@
 package com.android.tradefed.build;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
-import com.android.tradefed.util.MultiMap;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -58,23 +57,11 @@ public class AppDeviceBuildInfo extends DeviceBuildInfo implements IAppBuildInfo
 
     /** Copy all the files from the {@link IAppBuildInfo}. */
     public void setAppBuild(IAppBuildInfo appBuild) {
-        MultiMap<String, VersionedFile> versionedMap =
-                ((BuildInfo) appBuild).getVersionedFileMapFull();
-        for (String versionedFile : versionedMap.keySet()) {
-            for (VersionedFile vFile : versionedMap.get(versionedFile)) {
-                setFile(versionedFile, vFile.getFile(), vFile.getVersion());
-            }
-        }
+        copyAllFileFrom((BuildInfo) appBuild);
     }
 
     /** Copy all the files from the {@link IDeviceBuildInfo}. */
     public void setDeviceBuild(IDeviceBuildInfo deviceBuild) {
-        MultiMap<String, VersionedFile> versionedMap =
-                ((BuildInfo) deviceBuild).getVersionedFileMapFull();
-        for (String versionedFile : versionedMap.keySet()) {
-            for (VersionedFile vFile : versionedMap.get(versionedFile)) {
-                setFile(versionedFile, vFile.getFile(), vFile.getVersion());
-            }
-        }
+        copyAllFileFrom((BuildInfo) deviceBuild);
     }
 }
