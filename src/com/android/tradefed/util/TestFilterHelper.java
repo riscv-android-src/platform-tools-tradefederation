@@ -119,6 +119,14 @@ public class TestFilterHelper {
         return mExcludeFilters;
     }
 
+    public void clearIncludeFilters() {
+        mIncludeFilters.clear();
+    }
+
+    public void clearExcludeFilters() {
+        mExcludeFilters.clear();
+    }
+
     public Set<String> getIncludeAnnotation() {
         return mIncludeAnnotations;
     }
