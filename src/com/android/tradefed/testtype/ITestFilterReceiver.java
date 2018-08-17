@@ -49,4 +49,26 @@ public interface ITestFilterReceiver {
      * Adds the {@link Set} of filters of which tests to exclude.
      */
     void addAllExcludeFilters(Set<String> filters);
+
+    // TODO: All following interfaces default implementation should be removed when all runner have
+    // been updated.
+    /** Returns the current {@link Set} of include filters. */
+    default Set<String> getIncludeFilters() {
+        throw new IllegalArgumentException("getIncludeFilters has not been implemented.");
+    }
+
+    /** Returns the current {@link Set} of exclude filters. */
+    default Set<String> getExcludeFilters() {
+        throw new IllegalArgumentException("getExcludeFilters has not been implemented.");
+    }
+
+    /** Delete all the include filters currently tracked. */
+    default void clearIncludeFilters() {
+        throw new IllegalArgumentException("clearIncludeFilters has not been implemented.");
+    }
+
+    /** Delete all the exclude filters currently tracked. */
+    default void clearExcludeFilters() {
+        throw new IllegalArgumentException("clearExcludeFilters has not been implemented.");
+    }
 }

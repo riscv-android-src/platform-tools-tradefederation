@@ -224,6 +224,32 @@ public class DeviceTestCase extends MetricTestCase
         mFilterHelper.addAllExcludeFilters(filters);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void clearIncludeFilters() {
+        mIncludeFilters.clear();
+        mFilterHelper.clearIncludeFilters();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getIncludeFilters() {
+        return mIncludeFilters;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getExcludeFilters() {
+        return mExcludeFilters;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearExcludeFilters() {
+        mExcludeFilters.clear();
+        mFilterHelper.clearExcludeFilters();
+    }
+
     /**
      * {@inheritDoc}
      */
