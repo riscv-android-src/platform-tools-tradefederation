@@ -130,6 +130,13 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
     private String mRunnerName =
         "android.support.test.uiautomator.UiAutomatorInstrumentationTestRunner";
 
+    @Option(
+        name = "hidden-api-checks",
+        description =
+                "If set to false, the '--no-hidden-api-checks' flag will be passed to the am "
+                        + "instrument command. Only works for P or later."
+    )
+    private boolean mHiddenApiChecks = true;
 
     /**
      * {@inheritDoc}
@@ -210,13 +217,17 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
 
     }
 
-    protected IRemoteAndroidTestRunner createTestRunner() {
+    protected IRemoteAndroidTestRunner createTestRunner() throws DeviceNotAvailableException {
         if (isInstrumentationTest()) {
             if (mPackage == null) {
                 throw new IllegalArgumentException("package name has not been set");
             }
-            IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(mPackage, mRunnerName,
-                    getDevice().getIDevice());
+            RemoteAndroidTestRunner runner =
+                    new RemoteAndroidTestRunner(mPackage, mRunnerName, getDevice().getIDevice());
+            // hidden-api-checks flag only exists in P and after.
+            if (!mHiddenApiChecks && getDevice().getApiLevel() >= 28) {
+                runner.setRunOptions("--no-hidden-api-checks ");
+            }
             return runner;
         } else {
             return new UiAutomatorRunner(getDevice().getIDevice(),
