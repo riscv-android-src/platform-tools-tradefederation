@@ -162,7 +162,7 @@ public class GTestXmlResultParser {
         String classname = testcase.getAttribute("classname");
         String testname = testcase.getAttribute("name");
         String runtime = testcase.getAttribute("time");
-        ParsedTestInfo parsedResults = new ParsedTestInfo(classname, testname, runtime);
+        ParsedTestInfo parsedResults = new ParsedTestInfo(testname, classname, runtime);
         TestDescription testId =
                 new TestDescription(parsedResults.mTestClassName, parsedResults.mTestName);
         mNumTestsRun++;
