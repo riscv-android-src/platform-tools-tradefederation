@@ -35,7 +35,9 @@ import com.google.common.collect.Sets;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -63,7 +65,6 @@ import java.util.Set;
  */
 public class GranularRetriableTestWrapper implements IRemoteTest {
 
-    private boolean mIsGranulatedTestCaseRetriable;
     private IRemoteTest mTest;
     private boolean mSkipTestCases;
     private List<IMetricCollector> mRunMetricCollectors;
@@ -99,13 +100,6 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
         mIsMetricCollectorInitialized = false;
         mModuleLevelListeners = moduleLevelListeners;
         mMaxRunLimit = maxRunLimit;
-        // TODO(b/77548917): Right now we only support ITestFilterReceiver. We should expect to
-        // support ITestFile*Filter*Receiver in the future.
-        if (test instanceof ITestFilterReceiver) {
-            mIsGranulatedTestCaseRetriable = true;
-        } else {
-            mIsGranulatedTestCaseRetriable = false;
-        }
     }
 
     /**
@@ -239,9 +233,30 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
         long startTime = System.currentTimeMillis();
         ModuleListener previousTestRunListener = null;
         Set<TestDescription> previousFailedTests = null;
+        Set<String> originalFilters = new HashSet<>();
+
+        // TODO(b/77548917): Right now we only support ITestFilterReceiver. We should expect to
+        // support ITestFile*Filter*Receiver in the future.
+        if (mTest instanceof ITestFilterReceiver) {
+            ITestFilterReceiver test = (ITestFilterReceiver) mTest;
+            originalFilters = new LinkedHashSet<>(test.getIncludeFilters());
+        } else {
+            CLog.d(
+                    "%s does not implement ITestFilterReceiver, thus cannot work with "
+                            + "intra-module retry.",
+                    mTest);
+            return;
+        }
+
         try {
             CLog.d("Starting intra-module retry.");
             for (int count = 1; count < mMaxRunLimit; count++) {
+                if (mTest instanceof ITestFilterReceiver) {
+                    // Reset the filters to original.
+                    ((ITestFilterReceiver) mTest).clearIncludeFilters();
+                    ((ITestFilterReceiver) mTest).addAllIncludeFilters(originalFilters);
+                }
+
                 previousTestRunListener =
                         mModuleListenerCollector.get(mModuleListenerCollector.size() - 1);
                 if (!previousTestRunListener.hasFailedTests()) {
@@ -250,15 +265,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
                 }
                 previousFailedTests =
                         previousTestRunListener.getCurrentRunResults().getFailedTests();
-                if (mIsGranulatedTestCaseRetriable) {
-                    addRetriedTestsToIncludeFilters(previousFailedTests);
-                } else {
-                    // If the IRemoteTest can't support running a single testcase, we retry the
-                    // whole testcase list.
-                    CLog.d(
-                            "The test is not supported to run testcases in intra-module level. "
-                                    + "Trying to run the whole test again...");
-                }
+                addRetriedTestsToIncludeFilters(mTest, previousFailedTests);
                 intraModuleRun();
 
                 // Evaluate success from what we just ran
@@ -285,15 +292,15 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
      * implemented differently for each IRemoteTest testtype in the overridden
      * ITestFilterReceiver.addIncludeFilter method.
      *
+     * @param test The {@link IRemoteTest} to evaluate as ITestFilterReceiver.
      * @param testDescriptions The set of failed testDescriptions to retry.
      */
-    private void addRetriedTestsToIncludeFilters(Set<TestDescription> testDescriptions) {
-        // TODO(b/77548917): Right now we only support ITestFilterReciever. We should expect to
-        // support ITestFile*Filter*Receiver in the future.
-        if (mTest instanceof ITestFilterReceiver) {
+    private void addRetriedTestsToIncludeFilters(
+            IRemoteTest test, Set<TestDescription> testDescriptions) {
+        if (test instanceof ITestFilterReceiver) {
             for (TestDescription testCase : testDescriptions) {
                 String filter = testCase.toString();
-                ((ITestFilterReceiver) mTest).addIncludeFilter(filter);
+                ((ITestFilterReceiver) test).addIncludeFilter(filter);
             }
         }
     }
