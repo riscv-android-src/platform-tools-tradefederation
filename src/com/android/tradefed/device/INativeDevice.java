@@ -39,6 +39,7 @@ import java.io.InputStream;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -565,6 +566,20 @@ public interface INativeDevice {
      * recovered.
      */
     public boolean pushDir(File localDir, String deviceFilePath)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Recursively push directory contents to device while excluding some directories that are
+     * filtered.
+     *
+     * @param localDir the local directory to push
+     * @param deviceFilePath the absolute file path of the remote destination
+     * @param excludedDirectories Set of excluded directories names that shouldn't be pushed.
+     * @return <code>true</code> if file was pushed successfully. <code>false</code> otherwise.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     */
+    public boolean pushDir(File localDir, String deviceFilePath, Set<String> excludedDirectories)
             throws DeviceNotAvailableException;
 
     /**
