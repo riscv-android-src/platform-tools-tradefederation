@@ -31,6 +31,8 @@ UNEXPECTED_MOD_TARGET = 'this_should_not_be_in_module-info.json'
 MOD_NO_PATH = 'module-no-path'
 PATH_TO_MULT_MODULES = 'shared/path/to/be/used'
 MULT_MOODULES_WITH_SHARED_PATH = ['module2', 'module1']
+PATH_TO_MULT_MODULES_WITH_MULTI_ARCH = 'shared/path/to/be/used2'
+TESTABLE_MODULES_WITH_SHARED_PATH = ['multiarch1', 'multiarch2', 'multiarch3', 'multiarch3_32']
 
 #pylint: disable=protected-access
 class ModuleInfoUnittests(unittest.TestCase):
@@ -87,14 +89,20 @@ class ModuleInfoUnittests(unittest.TestCase):
         mod_two = 'mod2'
         mod_path_one = '/path/to/mod1'
         mod_path_two = '/path/to/mod2'
-        mod_info_dict = {mod_one: {constants.MODULE_PATH: [mod_path_one]},
-                         mod_two: {constants.MODULE_PATH: [mod_path_two]}}
+        mod_info_dict = {mod_one: {constants.MODULE_PATH: [mod_path_one],
+                                   constants.MODULE_NAME: [mod_one]},
+                         mod_two: {constants.MODULE_PATH: [mod_path_two],
+                                   constants.MODULE_NAME: [mod_two]}}
         mock_load_module.return_value = ('mod_target', mod_info_dict)
         path_to_mod_info = {mod_path_one: [{constants.MODULE_NAME: mod_one,
                                             constants.MODULE_PATH: [mod_path_one]}],
                             mod_path_two: [{constants.MODULE_NAME: mod_two,
                                             constants.MODULE_PATH: [mod_path_two]}]}
         mod_info = module_info.ModuleInfo()
+        mod_info_dict = {mod_one: {constants.MODULE_PATH: [mod_path_one],
+                                   constants.MODULE_NAME: [mod_one]},
+                         mod_two: {constants.MODULE_PATH: [mod_path_two],
+                                   constants.MODULE_NAME: [mod_two]}}
         self.assertDictEqual(path_to_mod_info,
                              mod_info._get_path_to_module_info(mod_info_dict))
 
@@ -121,6 +129,15 @@ class ModuleInfoUnittests(unittest.TestCase):
         self.assertEqual(mod_info.get_module_names(PATH_TO_MULT_MODULES),
                          MULT_MOODULES_WITH_SHARED_PATH)
 
+    def test_path_to_mod_info(self):
+        """test that we get the module name properly."""
+        mod_info = module_info.ModuleInfo(module_file=JSON_FILE_PATH)
+        module_list = []
+        for path_to_mod_info in mod_info.path_to_module_info[PATH_TO_MULT_MODULES_WITH_MULTI_ARCH]:
+            module_list.append(path_to_mod_info.get(constants.MODULE_NAME))
+        module_list.sort()
+        TESTABLE_MODULES_WITH_SHARED_PATH.sort()
+        self.assertEqual(module_list, TESTABLE_MODULES_WITH_SHARED_PATH)
 
 
 if __name__ == '__main__':
