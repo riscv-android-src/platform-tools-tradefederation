@@ -17,21 +17,26 @@
 package com.android.tradefed.targetprep;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
+import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.util.FileUtil;
 
+import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.util.Set;
 
 /** Unit tests for {@link PushFilePreparer} */
 public class PushFilePreparerTest {
@@ -47,8 +52,6 @@ public class PushFilePreparerTest {
         mMockDevice = EasyMock.createStrictMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
-        EasyMock.expect(mMockDevice.getProperty("ro.product.cpu.abilist"))
-                .andStubReturn("arm64-v8a");
         mPreparer = new PushFilePreparer();
         mOptionSetter = new OptionSetter(mPreparer);
     }
@@ -158,6 +161,35 @@ public class PushFilePreparerTest {
             EasyMock.verify(buildInfo);
         } finally {
             FileUtil.recursiveDelete(testsDir);
+        }
+    }
+
+    /** Test when pushing a directory and the subfolders are abi marked. */
+    @Test
+    public void testPush_abiDirectory() throws Exception {
+        mOptionSetter.setOptionValue("push", "debugger->/data/local/tmp/debugger");
+        mPreparer.setAbi(new Abi("x86", "32"));
+        IDeviceBuildInfo info = new DeviceBuildInfo();
+        File tmpFolder = FileUtil.createTempDir("push-file-tests-dir");
+        try {
+            File debuggerFile = new File(tmpFolder, "target/testcases/debugger/x86/debugger32");
+            FileUtil.mkdirsRWX(debuggerFile);
+            info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
+            Capture<Set<String>> capture = new Capture<>();
+            EasyMock.expect(
+                            mMockDevice.pushDir(
+                                    EasyMock.eq(new File(tmpFolder, "target/testcases/debugger")),
+                                    EasyMock.eq("/data/local/tmp/debugger"),
+                                    EasyMock.capture(capture)))
+                    .andReturn(true);
+            EasyMock.replay(mMockDevice);
+            mPreparer.setUp(mMockDevice, info);
+            EasyMock.verify(mMockDevice);
+            // The x86 folder was not filtered
+            Set<String> capValue = capture.getValue();
+            assertFalse(capValue.contains("x86"));
+        } finally {
+            FileUtil.recursiveDelete(tmpFolder);
         }
     }
 }
