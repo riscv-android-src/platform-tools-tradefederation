@@ -63,8 +63,8 @@ public class AdbStopServerPreparer extends BaseTargetPreparer implements ITarget
         getRunUtil().runTimedCmd(CMD_TIMEOUT, "adb", "kill-server");
 
         File adb = null;
-        if (System.getenv(ANDROID_HOST_OUT) != null) {
-            String hostOut = System.getenv(ANDROID_HOST_OUT);
+        if (getEnvironment(ANDROID_HOST_OUT) != null) {
+            String hostOut = getEnvironment(ANDROID_HOST_OUT);
             adb = new File(hostOut, "bin/adb");
             if (adb.exists()) {
                 adb.setExecutable(true);
@@ -117,6 +117,11 @@ public class AdbStopServerPreparer extends BaseTargetPreparer implements ITarget
     @VisibleForTesting
     IRunUtil createRunUtil() {
         return new RunUtil();
+    }
+
+    @VisibleForTesting
+    String getEnvironment(String key) {
+        return System.getenv(key);
     }
 
     private IRunUtil getRunUtil() {

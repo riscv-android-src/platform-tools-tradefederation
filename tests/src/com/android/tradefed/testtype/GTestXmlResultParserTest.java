@@ -76,12 +76,16 @@ public class GTestXmlResultParserTest extends TestCase {
     @SuppressWarnings("unchecked")
     public void testParseSimpleFile() throws Exception {
         File contents =  readInFile(GTEST_OUTPUT_FILE_1);
+        TestDescription firstInFile = new TestDescription("InteropTest", "test_lookup_hit");
         try {
             ITestInvocationListener mockRunListener =
                     EasyMock.createMock(ITestInvocationListener.class);
             mockRunListener.testRunStarted(TEST_MODULE_NAME, 6);
-            // 6 passing test cases in this run
-            for (int i=0; i<6; ++i) {
+            mockRunListener.testStarted(firstInFile);
+            mockRunListener.testEnded(
+                    EasyMock.eq(firstInFile), (HashMap<String, Metric>) EasyMock.anyObject());
+            // 5 more passing test cases in this run
+            for (int i = 0; i < 5; ++i) {
                 mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
                 mockRunListener.testEnded(
                         (TestDescription) EasyMock.anyObject(),
