@@ -23,6 +23,8 @@ import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.IMultiDeviceRecovery;
 import com.android.tradefed.host.IHostOptions;
+import com.android.tradefed.host.IHostResourceManager;
+import com.android.tradefed.host.LocalHostResourceManager;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.hostmetric.IHostMonitor;
@@ -45,10 +47,18 @@ public interface IGlobalConfiguration {
     public IHostOptions getHostOptions();
 
     /**
+     * Gets the {@link IHostResourceManager} from the global config.
+     *
+     * @return the {@link IHostResourceManager} from the global config, or default implementation
+     *     {@link LocalHostResourceManager} if none is specified in host config.
+     */
+    public IHostResourceManager getHostResourceManager();
+
+    /**
      * Gets the list of {@link IDeviceMonitor} from the global config.
      *
-     * @return the list of {@link IDeviceMonitor} from the global config, or <code>null</code> if none
-     *         was specified.
+     * @return the list of {@link IDeviceMonitor} from the global config, or <code>null</code> if
+     *     none was specified.
      */
     public List<IDeviceMonitor> getDeviceMonitors();
 
@@ -208,8 +218,15 @@ public interface IGlobalConfiguration {
     public void setHostOptions(IHostOptions hostOptions);
 
     /**
-     * Set the {@link IDeviceManager}, replacing any existing values. This sets the manager
-     * for the test devices
+     * Set the {@link IHostResourceManager}, replacing any existing values.
+     *
+     * @param hostResourceManager
+     */
+    public void setHostResourceManager(IHostResourceManager hostResourceManager);
+
+    /**
+     * Set the {@link IDeviceManager}, replacing any existing values. This sets the manager for the
+     * test devices
      *
      * @param deviceManager
      */
@@ -296,4 +313,14 @@ public interface IGlobalConfiguration {
      * @throws IOException
      */
     public void cloneConfigWithFilter(File outputXml, String[] whitelistConfigs) throws IOException;
+
+    /**
+     * Proper setup at the start of tradefed.
+     *
+     * @throws ConfigurationException
+     */
+    public void setup() throws ConfigurationException;
+
+    /** Proper cleanup when tradefed shutdown. */
+    public void cleanup();
 }
