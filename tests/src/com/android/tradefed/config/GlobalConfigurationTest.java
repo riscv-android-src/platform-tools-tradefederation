@@ -135,6 +135,7 @@ public class GlobalConfigurationTest extends TestCase {
         assertNotNull(mGlobalConfig.getDeviceMonitors());
         assertNotNull(mGlobalConfig.getWtfHandler());
         assertNotNull(mGlobalConfig.getKeyStoreFactory());
+        assertNotNull(mGlobalConfig.getHostResourceManager());
         mGlobalConfig.validateOptions();
         // Only --test-tag test remains, the global config name has been removed.
         assertTrue(nonGlobalArgs.size() == 2);
