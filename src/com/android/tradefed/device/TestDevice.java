@@ -642,11 +642,24 @@ public class TestDevice extends NativeDevice {
                 CLog.v("framework reboot: device unresponsive to shell command, using fallback");
                 return false;
             }
-            return waitForDeviceNotAvailable(30 * 1000);
+            boolean notAvailable = waitForDeviceNotAvailable(30 * 1000);
+            if (notAvailable) {
+                postAdbFrameworkReboot();
+            }
+            return notAvailable;
         } else {
             CLog.v("framework reboot: not supported");
             return false;
         }
+    }
+
+    /**
+     * Possible extra actions that can be taken after a framework reboot.
+     *
+     * @throws DeviceNotAvailableException
+     */
+    protected void postAdbFrameworkReboot() throws DeviceNotAvailableException {
+        // Default implementation empty on purpose.
     }
 
     /**
