@@ -183,9 +183,6 @@ public class InvocationExecution implements IInvocationExecution {
                 if (device instanceof ITestLoggerReceiver) {
                     ((ITestLoggerReceiver) context.getDevice(deviceName)).setTestLogger(listener);
                 }
-                if (!config.getCommandOptions().shouldSkipPreDeviceSetup()) {
-                    device.preInvocationSetup(context.getBuildInfo(deviceName));
-                }
                 for (ITargetPreparer preparer :
                         config.getDeviceConfigByName(deviceName).getTargetPreparers()) {
                     // do not call the preparer if it was disabled
@@ -212,7 +209,6 @@ public class InvocationExecution implements IInvocationExecution {
                     listener,
                     context,
                     "multi target preparer setup");
-
         } finally {
             // Note: These metrics are handled in a try in case of a kernel reset or device issue.
             // Setup timing metric. It does not include flashing time on boot tests.
@@ -222,6 +218,37 @@ public class InvocationExecution implements IInvocationExecution {
             // Upload the setup logcat after setup is complete.
             for (String deviceName : context.getDeviceConfigNames()) {
                 reportLogs(context.getDevice(deviceName), listener, Stage.SETUP);
+            }
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public final void runDevicePreInvocationSetup(
+            IInvocationContext context, IConfiguration config, ITestLogger logger)
+            throws DeviceNotAvailableException, TargetSetupError {
+        for (String deviceName : context.getDeviceConfigNames()) {
+            ITestDevice device = context.getDevice(deviceName);
+
+            CLog.d("Starting device pre invocation setup for : '%s'", device.getSerialNumber());
+            if (device instanceof ITestLoggerReceiver) {
+                ((ITestLoggerReceiver) context.getDevice(deviceName)).setTestLogger(logger);
+            }
+            if (!config.getCommandOptions().shouldSkipPreDeviceSetup()) {
+                device.preInvocationSetup(context.getBuildInfo(deviceName));
+            }
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public final void runDevicePostInvocationTearDown(
+            IInvocationContext context, IConfiguration config) {
+        // Extra tear down step for the device
+        for (String deviceName : context.getDeviceConfigNames()) {
+            ITestDevice device = context.getDevice(deviceName);
+            if (!config.getCommandOptions().shouldSkipPreDeviceSetup()) {
+                device.postInvocationTearDown();
             }
         }
     }
@@ -328,11 +355,10 @@ public class InvocationExecution implements IInvocationExecution {
                     }
                 }
             }
-            // Extra tear down step for the device
-            if (!config.getCommandOptions().shouldSkipPreDeviceSetup()) {
-                device.postInvocationTearDown();
-            }
         }
+
+        // Extra tear down step for the device
+        runDevicePostInvocationTearDown(context, config);
 
         // After all, run the multi_pre_target_preparer tearDown.
         List<IMultiTargetPreparer> multiPrePreparers = config.getMultiPreTargetPreparers();

@@ -19,20 +19,26 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.CommandRunner.ExitCode;
 import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.log.ILogRegistry;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.sandbox.ISandbox;
+import com.android.tradefed.targetprep.ITargetCleaner;
+import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 
@@ -44,6 +50,8 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
+import java.util.Arrays;
+
 /** Unit tests for {@link SandboxedInvocationExecution}. */
 @RunWith(JUnit4.class)
 public class SandboxedInvocationExecutionTest {
@@ -54,6 +62,9 @@ public class SandboxedInvocationExecutionTest {
     @Mock ITestInvocationListener mMockListener;
     @Mock ILogSaver mMockLogSaver;
     @Mock IBuildProvider mMockProvider;
+    @Mock ITargetPreparer mMockPreparer;
+    @Mock ITargetCleaner mMockCleaner;
+    @Mock ITestDevice mMockDevice;
 
     @Mock ISandbox mMockSandbox;
 
@@ -90,6 +101,9 @@ public class SandboxedInvocationExecutionTest {
                 };
         mConfig = new Configuration("test", "test");
         mContext = new InvocationContext();
+        mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
+
+        doReturn(new ByteArrayInputStreamSource("".getBytes())).when(mMockDevice).getLogcat();
     }
 
     /** Basic test to go through the flow of a sandbox invocation. */
@@ -118,7 +132,7 @@ public class SandboxedInvocationExecutionTest {
      * happen in the subprocess.
      */
     @Test
-    public void testSandboxInvocation_sharding() throws Throwable {
+    public void testParentSandboxInvocation_sharding() throws Throwable {
         mInvocation =
                 new TestInvocation() {
                     @Override
@@ -173,9 +187,37 @@ public class SandboxedInvocationExecutionTest {
         doReturn(result).when(mMockSandbox).run(any(), any());
 
         mInvocation.invoke(mContext, mConfig, mMockRescheduler, mMockListener);
+    }
 
-        // Ensure that in sandbox we don't download again.
-        Mockito.verify(mMockProvider, times(0)).getBuild();
+    /**
+     * Test that the parent sandbox process does not call clean up when target prep was not called.
+     */
+    @Test
+    public void testParentSandboxInvocation() throws Throwable {
+        ConfigurationDescriptor descriptor = new ConfigurationDescriptor();
+        // We are the parent kick off the sandbox
+        mConfig.getCommandOptions().setShouldUseSandboxing(true);
+        mConfig.setConfigurationObject(
+                Configuration.CONFIGURATION_DESCRIPTION_TYPE_NAME, descriptor);
+        mConfig.setLogSaver(mMockLogSaver);
+        mConfig.setBuildProvider(mMockProvider);
+        mConfig.setTargetPreparers(Arrays.asList(mMockPreparer, mMockCleaner));
+        mConfig.setConfigurationObject(Configuration.SANDBOX_TYPE_NAME, mMockSandbox);
+
+        doReturn(new LogFile("file", "url", LogDataType.TEXT))
+                .when(mMockLogSaver)
+                .saveLogData(any(), any(), any());
+
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        doReturn(result).when(mMockSandbox).run(any(), any());
+
+        doReturn(new BuildInfo()).when(mMockProvider).getBuild();
+
+        mInvocation.invoke(mContext, mConfig, mMockRescheduler, mMockListener);
+
+        // Ensure no preparer and cleaner are called in parent process
+        Mockito.verify(mMockPreparer, times(0)).setUp(any(), any());
+        Mockito.verify(mMockCleaner, times(0)).tearDown(any(), any(), any());
     }
 
     /**
@@ -219,11 +261,17 @@ public class SandboxedInvocationExecutionTest {
         CommandResult result = new CommandResult(CommandStatus.SUCCESS);
         doReturn(result).when(mMockSandbox).run(any(), any());
 
+        doReturn(new BuildInfo()).when(mMockProvider).getBuild();
+
         mInvocation.invoke(mContext, mConfig, mMockRescheduler, mMockListener);
         // No tests to run but we still call start/end
         Mockito.verify(mMockListener).invocationStarted(mContext);
         Mockito.verify(mMockListener).invocationEnded(0L);
         // Invocation did not start for real so context is not locked.
         mContext.addInvocationAttribute("test", "test");
+        // Device early preInvocationSetup was called and even if no tests run we still call tear
+        // down
+        Mockito.verify(mMockDevice).preInvocationSetup(any());
+        Mockito.verify(mMockDevice).postInvocationTearDown();
     }
 }
