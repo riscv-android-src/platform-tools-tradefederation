@@ -26,7 +26,9 @@ import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.IMultiDeviceRecovery;
 import com.android.tradefed.host.HostOptions;
+import com.android.tradefed.host.LocalHostResourceManager;
 import com.android.tradefed.host.IHostOptions;
+import com.android.tradefed.host.IHostResourceManager;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.ITerribleFailureHandler;
@@ -61,6 +63,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     public static final String DEVICE_MANAGER_TYPE_NAME = "device_manager";
     public static final String WTF_HANDLER_TYPE_NAME = "wtf_handler";
     public static final String HOST_OPTIONS_TYPE_NAME = "host_options";
+    public static final String HOST_RESOURCE_MANAGER_TYPE_NAME = "host_resource_manager";
     public static final String DEVICE_REQUIREMENTS_TYPE_NAME = "device_requirements";
     public static final String SCHEDULER_TYPE_NAME = "command_scheduler";
     public static final String MULTI_DEVICE_RECOVERY_TYPE_NAME = "multi_device_recovery";
@@ -259,6 +262,9 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         if (sObjTypeMap == null) {
             sObjTypeMap = new HashMap<String, ObjTypeInfo>();
             sObjTypeMap.put(HOST_OPTIONS_TYPE_NAME, new ObjTypeInfo(IHostOptions.class, false));
+            sObjTypeMap.put(
+                    HOST_RESOURCE_MANAGER_TYPE_NAME,
+                    new ObjTypeInfo(IHostResourceManager.class, false));
             sObjTypeMap.put(DEVICE_MONITOR_TYPE_NAME, new ObjTypeInfo(IDeviceMonitor.class, true));
             sObjTypeMap.put(HOST_MONITOR_TYPE_NAME, new ObjTypeInfo(IHostMonitor.class, true));
             sObjTypeMap.put(DEVICE_MANAGER_TYPE_NAME, new ObjTypeInfo(IDeviceManager.class, false));
@@ -288,11 +294,24 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         mConfigMap = new LinkedHashMap<String, List<Object>>();
         mOptionMap = new MultiMap<String, String>();
         setHostOptions(new HostOptions());
+        setHostResourceManager(new LocalHostResourceManager());
         setDeviceRequirements(new DeviceSelectionOptions());
         setDeviceManager(new DeviceManager());
         setCommandScheduler(new CommandScheduler());
         setKeyStoreFactory(new StubKeyStoreFactory());
         setShardingStrategy(new StrictShardHelper());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setup() throws ConfigurationException {
+        getHostResourceManager().setup();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void cleanup() {
+        getHostResourceManager().cleanup();
     }
 
     /**
@@ -315,6 +334,12 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @Override
     public IHostOptions getHostOptions() {
         return (IHostOptions) getConfigurationObject(HOST_OPTIONS_TYPE_NAME);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public IHostResourceManager getHostResourceManager() {
+        return (IHostResourceManager) getConfigurationObject(HOST_RESOURCE_MANAGER_TYPE_NAME);
     }
 
     /** {@inheritDoc} */
@@ -474,6 +499,12 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @Override
     public void setHostOptions(IHostOptions hostOptions) {
         setConfigurationObjectNoThrow(HOST_OPTIONS_TYPE_NAME, hostOptions);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setHostResourceManager(IHostResourceManager hostResourceManager) {
+        setConfigurationObjectNoThrow(HOST_RESOURCE_MANAGER_TYPE_NAME, hostResourceManager);
     }
 
     /**

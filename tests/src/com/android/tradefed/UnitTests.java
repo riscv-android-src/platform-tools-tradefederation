@@ -85,6 +85,8 @@ import com.android.tradefed.device.metric.ScheduledDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.TemperatureCollectorTest;
 import com.android.tradefed.device.metric.TraceMetricCollectorTest;
 import com.android.tradefed.guice.InvocationScopeTest;
+import com.android.tradefed.host.LocalHostResourceManagerTest;
+import com.android.tradefed.host.gcs.GCSHostResourceManagerTest;
 import com.android.tradefed.invoker.InvocationContextTest;
 import com.android.tradefed.invoker.InvocationExecutionTest;
 import com.android.tradefed.invoker.SandboxedInvocationExecutionTest;
@@ -390,6 +392,12 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // Guice
     InvocationScopeTest.class,
+
+    // host
+    LocalHostResourceManagerTest.class,
+
+    // host.gcs
+    GCSHostResourceManagerTest.class,
 
     // invoker
     InvocationContextTest.class,
