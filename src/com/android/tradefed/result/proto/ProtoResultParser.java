@@ -201,8 +201,15 @@ public class ProtoResultParser {
     }
 
     private void handleTestRunStart(TestRecord runProto) {
-        mListener.testRunStarted(
-                runProto.getTestRecordId(), (int) runProto.getNumExpectedChildren());
+        if (runProto.getAttemptId() != 0) {
+            mListener.testRunStarted(
+                    runProto.getTestRecordId(),
+                    (int) runProto.getNumExpectedChildren(),
+                    (int) runProto.getAttemptId());
+        } else {
+            mListener.testRunStarted(
+                    runProto.getTestRecordId(), (int) runProto.getNumExpectedChildren());
+        }
     }
 
     private void handleTestRunEnd(TestRecord runProto) {
