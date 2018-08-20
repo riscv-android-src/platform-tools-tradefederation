@@ -555,6 +555,16 @@ public class BuildInfo implements IBuildInfo {
         return protoBuilder.build();
     }
 
+    /** Copy all the {@link VersionedFile} from a given build to this one. */
+    public final void copyAllFileFrom(BuildInfo build) {
+        MultiMap<String, VersionedFile> versionedMap = build.getVersionedFileMapFull();
+        for (String versionedFile : versionedMap.keySet()) {
+            for (VersionedFile vFile : versionedMap.get(versionedFile)) {
+                setFile(versionedFile, vFile.getFile(), vFile.getVersion());
+            }
+        }
+    }
+
     /** Special serialization to handle the new underlying type. */
     private void writeObject(ObjectOutputStream outputStream) throws IOException {
         outputStream.defaultWriteObject();
