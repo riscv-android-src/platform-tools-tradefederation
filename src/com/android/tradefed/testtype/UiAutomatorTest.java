@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -77,10 +78,13 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
             "If unspecified will use all jars found in /data/local/tmp/")
     private List<String> mJarPaths = new ArrayList<String>();
 
-    @Option(name = "class",
-            description = "test class to run, may be repeated; multiple classess will be run"
-                    + " in the same order as provided in command line")
-    private List<String> mClasses = new ArrayList<String>();
+    @Option(
+        name = "class",
+        description =
+                "test class to run, may be repeated; multiple classess will be run"
+                        + " in the same order as provided in command line"
+    )
+    private Set<String> mClasses = new LinkedHashSet<>();
 
     @Option(name = "sync-time", description = "time to allow for initial sync, in ms")
     private long mSyncTime = 0;
@@ -130,6 +134,13 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
     private String mRunnerName =
         "android.support.test.uiautomator.UiAutomatorInstrumentationTestRunner";
 
+    @Option(
+        name = "hidden-api-checks",
+        description =
+                "If set to false, the '--no-hidden-api-checks' flag will be passed to the am "
+                        + "instrument command. Only works for P or later."
+    )
+    private boolean mHiddenApiChecks = true;
 
     /**
      * {@inheritDoc}
@@ -210,13 +221,17 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
 
     }
 
-    protected IRemoteAndroidTestRunner createTestRunner() {
+    protected IRemoteAndroidTestRunner createTestRunner() throws DeviceNotAvailableException {
         if (isInstrumentationTest()) {
             if (mPackage == null) {
                 throw new IllegalArgumentException("package name has not been set");
             }
-            IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(mPackage, mRunnerName,
-                    getDevice().getIDevice());
+            RemoteAndroidTestRunner runner =
+                    new RemoteAndroidTestRunner(mPackage, mRunnerName, getDevice().getIDevice());
+            // hidden-api-checks flag only exists in P and after.
+            if (!mHiddenApiChecks && getDevice().getApiLevel() >= 28) {
+                runner.setRunOptions("--no-hidden-api-checks ");
+            }
             return runner;
         } else {
             return new UiAutomatorRunner(getDevice().getIDevice(),
@@ -493,7 +508,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
      * @return list of test class names
      */
     public List<String> getClassNames() {
-        return mClasses;
+        return new ArrayList<>(mClasses);
     }
 
     @Override
@@ -514,6 +529,30 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
 
     @Override
     public void addAllExcludeFilters(Set<String> filters) {
+        throw new UnsupportedOperationException("Exclude filters is not supported.");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearIncludeFilters() {
+        mClasses.clear();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getIncludeFilters() {
+        return mClasses;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getExcludeFilters() {
+        throw new UnsupportedOperationException("Exclude filters is not supported.");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearExcludeFilters() {
         throw new UnsupportedOperationException("Exclude filters is not supported.");
     }
 }

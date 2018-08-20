@@ -314,17 +314,6 @@ class TestFinderUtilsUnittests(unittest.TestCase):
             self.assertEqual(ignore_dirs, cached_answer)
             self.assertNotEqual(ignore_dirs, none_cached_answer)
 
-    def test_is_2nd_arch_module(self):
-        """Test is_2nd_arch_module correctly detects the module."""
-        is_2nd_arch_module = {'for_2nd_arch': [True]}
-        is_not_2nd_arch_module = {'for_2nd_arch': [False]}
-        is_not_2nd_arch_module_again = {'for_2nd_arch': []}
-
-        self.assertTrue(test_finder_utils.is_2nd_arch_module(is_2nd_arch_module))
-        self.assertFalse(test_finder_utils.is_2nd_arch_module(is_not_2nd_arch_module))
-        self.assertFalse(test_finder_utils.is_2nd_arch_module(is_not_2nd_arch_module_again))
-        self.assertFalse(test_finder_utils.is_2nd_arch_module({}))
-
     @mock.patch('__builtin__.raw_input', return_value='0')
     def test_search_integration_dirs(self, mock_input):
         """Test search_integration_dirs."""
@@ -355,6 +344,25 @@ class TestFinderUtilsUnittests(unittest.TestCase):
         _find.return_value = (INT_DIR1, INT_FILE_NAME+'.xml')
         test_result = test_finder_utils.get_int_dir_from_path(path, int_dirs)
         unittest_utils.assert_strict_equal(self, test_result, INT_DIR1)
+
+    def test_get_install_locations(self):
+        """Test get_install_locations."""
+        host_installed_paths = ["out/host/a/b"]
+        host_expect = set(['host'])
+        self.assertEqual(test_finder_utils.get_install_locations(host_installed_paths),
+                         host_expect)
+        device_installed_paths = ["out/target/c/d"]
+        device_expect = set(['device'])
+        self.assertEqual(test_finder_utils.get_install_locations(device_installed_paths),
+                         device_expect)
+        both_installed_paths = ["out/host/e", "out/target/f"]
+        both_expect = set(['host', 'device'])
+        self.assertEqual(test_finder_utils.get_install_locations(both_installed_paths),
+                         both_expect)
+        no_installed_paths = []
+        no_expect = set()
+        self.assertEqual(test_finder_utils.get_install_locations(no_installed_paths),
+                         no_expect)
 
 if __name__ == '__main__':
     unittest.main()

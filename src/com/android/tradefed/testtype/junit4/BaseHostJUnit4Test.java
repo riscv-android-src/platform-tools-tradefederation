@@ -45,6 +45,7 @@ import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget
 import org.junit.After;
 import org.junit.Assume;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +61,8 @@ public abstract class BaseHostJUnit4Test
         implements IAbiReceiver, IBuildReceiver, IDeviceTest, IInvocationContextReceiver {
 
     static final long DEFAULT_TEST_TIMEOUT_MS = 10 * 60 * 1000L;
-    private static final long DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS = 10 * 60 * 1000L; //10min
+    private static final long DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS = 10 * 60 * 1000L; // 10min
+    private static final Map<String, String> DEFAULT_INSTRUMENTATION_ARGS = new HashMap<>();
 
     private ITestDevice mDevice;
     private IBuildInfo mBuild;
@@ -236,7 +238,8 @@ public abstract class BaseHostJUnit4Test
                 DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS,
                 0L,
                 true,
-                false);
+                false,
+                DEFAULT_INSTRUMENTATION_ARGS);
     }
 
     /**
@@ -263,7 +266,8 @@ public abstract class BaseHostJUnit4Test
                 DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS,
                 0L,
                 true,
-                false);
+                false,
+                DEFAULT_INSTRUMENTATION_ARGS);
     }
 
     /**
@@ -304,7 +308,8 @@ public abstract class BaseHostJUnit4Test
                 DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS,
                 0L,
                 true,
-                false);
+                false,
+                DEFAULT_INSTRUMENTATION_ARGS);
     }
 
     /**
@@ -331,7 +336,8 @@ public abstract class BaseHostJUnit4Test
                 DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS,
                 0L,
                 true,
-                false);
+                false,
+                DEFAULT_INSTRUMENTATION_ARGS);
     }
 
     /**
@@ -363,7 +369,8 @@ public abstract class BaseHostJUnit4Test
                 DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS,
                 0L,
                 true,
-                false);
+                false,
+                DEFAULT_INSTRUMENTATION_ARGS);
     }
 
     /**
@@ -397,7 +404,8 @@ public abstract class BaseHostJUnit4Test
                 DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS,
                 0L,
                 true,
-                false);
+                false,
+                DEFAULT_INSTRUMENTATION_ARGS);
     }
 
     /**
@@ -433,7 +441,8 @@ public abstract class BaseHostJUnit4Test
                 maxTimeToOutputMs,
                 maxInstrumentationTimeoutMs,
                 true,
-                false);
+                false,
+                DEFAULT_INSTRUMENTATION_ARGS);
     }
 
     /**
@@ -456,7 +465,8 @@ public abstract class BaseHostJUnit4Test
                 options.getMaxTimeToOutputMs(),
                 options.getMaxInstrumentationTimeoutMs(),
                 options.shouldCheckResults(),
-                options.isHiddenApiCheckDisabled());
+                options.isHiddenApiCheckDisabled(),
+                options.getInstrumentationArgs());
     }
 
     /**
@@ -473,6 +483,7 @@ public abstract class BaseHostJUnit4Test
      * @param maxInstrumentationTimeoutMs the max timeout the full instrumentation has to complete.
      * @param checkResults whether or not the results are checked for crashes.
      * @param isHiddenApiCheckDisabled whether or not we should disable the hidden api check.
+     * @param instrumentationArgs arguments to pass to the instrumentation.
      * @return True if it succeeded without failure. False otherwise.
      */
     public final boolean runDeviceTests(
@@ -486,7 +497,8 @@ public abstract class BaseHostJUnit4Test
             Long maxTimeToOutputMs,
             Long maxInstrumentationTimeoutMs,
             boolean checkResults,
-            boolean isHiddenApiCheckDisabled)
+            boolean isHiddenApiCheckDisabled,
+            Map<String, String> instrumentationArgs)
             throws DeviceNotAvailableException {
         TestRunResult runResult =
                 doRunTests(
@@ -499,7 +511,8 @@ public abstract class BaseHostJUnit4Test
                         testTimeoutMs,
                         maxTimeToOutputMs,
                         maxInstrumentationTimeoutMs,
-                        isHiddenApiCheckDisabled);
+                        isHiddenApiCheckDisabled,
+                        instrumentationArgs);
         mLatestInstruRes = runResult;
         printTestResult(runResult);
         if (checkResults) {
@@ -553,7 +566,8 @@ public abstract class BaseHostJUnit4Test
             Long testTimeoutMs,
             Long maxTimeToOutputMs,
             Long maxInstrumentationTimeoutMs,
-            boolean isHiddenApiCheckDisabled)
+            boolean isHiddenApiCheckDisabled,
+            Map<String, String> instrumentationArgs)
             throws DeviceNotAvailableException {
         RemoteAndroidTestRunner testRunner = createTestRunner(pkgName, runner, device);
         String runOptions = "";
@@ -586,6 +600,10 @@ public abstract class BaseHostJUnit4Test
         }
         if (maxInstrumentationTimeoutMs != null) {
             testRunner.setMaxTimeout(maxInstrumentationTimeoutMs, TimeUnit.MILLISECONDS);
+        }
+        // Pass all the instrumentation arguments
+        for (String key : instrumentationArgs.keySet()) {
+            testRunner.addInstrumentationArg(key, instrumentationArgs.get(key));
         }
 
         CollectingTestListener listener = createListener();

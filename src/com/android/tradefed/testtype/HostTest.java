@@ -267,6 +267,12 @@ public class HostTest
         mFilterHelper.addAllIncludeFilters(filters);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void clearIncludeFilters() {
+        mFilterHelper.clearIncludeFilters();
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -275,12 +281,30 @@ public class HostTest
         mFilterHelper.addExcludeFilter(filter);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getIncludeFilters() {
+        return mIncludeAnnotations;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getExcludeFilters() {
+        return mExcludeAnnotations;
+    }
+
     /**
      * {@inheritDoc}
      */
     @Override
     public void addAllExcludeFilters(Set<String> filters) {
         mFilterHelper.addAllExcludeFilters(filters);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearExcludeFilters() {
+        mFilterHelper.clearExcludeFilters();
     }
 
     /**

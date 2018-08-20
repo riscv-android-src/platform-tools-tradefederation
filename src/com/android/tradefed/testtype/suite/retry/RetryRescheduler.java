@@ -100,7 +100,7 @@ public final class RetryRescheduler
         }
         ITestSuiteResultLoader previousLoader = (ITestSuiteResultLoader) loader;
         // First init the reloader.
-        previousLoader.init(mContext);
+        previousLoader.init(mContext.getDevices());
         // Then get the command line of the previous run
         String commandLine = previousLoader.getCommandLine();
         IConfiguration originalConfig;
@@ -193,6 +193,10 @@ public final class RetryRescheduler
             if (RetryResultHelper.shouldRunModule(moduleResult, types)) {
                 for (Entry<TestDescription, TestResult> result :
                         moduleResult.getTestResults().entrySet()) {
+                    if (types.contains(RetryType.NOT_EXECUTED)) {
+                        // Clear the run failure since we are attempting to rerun all non-executed
+                        moduleResult.testRunFailed(null);
+                    }
                     if (!RetryResultHelper.shouldRunTest(result.getValue(), types)) {
                         addExcludeToConfig(suite, moduleResult, result.getKey());
                         replayer.addToReplay(
@@ -202,7 +206,7 @@ public final class RetryRescheduler
                     }
                 }
             } else {
-                // Exclude the module completely
+                // Exclude the module completely - it will keep its current status
                 addExcludeToConfig(suite, moduleResult, null);
                 replayer.addToReplay(
                         results.getModuleContextForRunResult(moduleResult.getName()),

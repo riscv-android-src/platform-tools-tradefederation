@@ -77,6 +77,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -1363,6 +1364,14 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean pushDir(File localFileDir, String deviceFilePath)
             throws DeviceNotAvailableException {
+        return pushDir(localFileDir, deviceFilePath, new HashSet<>());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean pushDir(
+            File localFileDir, String deviceFilePath, Set<String> excludedDirectories)
+            throws DeviceNotAvailableException {
         if (!localFileDir.isDirectory()) {
             CLog.e("file %s is not a directory", localFileDir.getAbsolutePath());
             return false;
@@ -1375,8 +1384,15 @@ public class NativeDevice implements IManagedTestDevice {
         for (File childFile : childFiles) {
             String remotePath = String.format("%s/%s", deviceFilePath, childFile.getName());
             if (childFile.isDirectory()) {
+                // If we encounter a filtered directory do not push it.
+                if (excludedDirectories.contains(childFile.getName())) {
+                    CLog.d(
+                            "%s directory was not pushed because it was filtered.",
+                            childFile.getAbsolutePath());
+                    continue;
+                }
                 executeShellCommand(String.format("mkdir -p \"%s\"", remotePath));
-                if (!pushDir(childFile, remotePath)) {
+                if (!pushDir(childFile, remotePath, excludedDirectories)) {
                     return false;
                 }
             } else if (childFile.isFile()) {

@@ -136,6 +136,8 @@ def get_extra_args(args):
         extra_args[constants.ALL_ABI] = args.all_abi
     if args.generate_new_metrics:
         extra_args[constants.POST_PATCH_ITERATIONS] = args.generate_new_metrics
+    if args.host:
+        extra_args[constants.HOST] = args.host
     if args.custom_args:
         extra_args[constants.CUSTOM_ARGS] = args.custom_args
     return extra_args
@@ -160,6 +162,38 @@ def _get_regression_detection_args(args, results_dir):
     regression_args[constants.POST_PATCH_FOLDER] = post_patch_folder
     return regression_args
 
+
+def _validate_exec_mode(args, test_infos):
+    """Validate all test execution modes are not in conflict.
+
+    Exit the program with error code if have device-only and host-only.
+    If no conflict and host side, add args.host=True.
+
+    Args:
+        args: parsed args object.
+        test_info: TestInfo object.
+
+    Returns:
+        Updated args.
+    """
+    all_device_modes = [x.get_supported_exec_mode() for x in test_infos]
+    # In the case of '$atest <device-only> --host', exit.
+    if args.host and constants.DEVICE_TEST in all_device_modes:
+        err_msg = ('Test side and option(--host) conflict. Please remove '
+                   '--host if the test run on device side.')
+        logging.error(err_msg)
+        sys.exit(constants.EXIT_CODE_ERROR)
+    # In the case of '$atest <host-only> <device-only> --host' or
+    # '$atest <host-only> <device-only>', exit.
+    if (constants.DEVICELESS_TEST in all_device_modes and
+            constants.DEVICE_TEST in all_device_modes):
+        err_msg = 'There are host-only and device-only tests in command.'
+        logging.error(err_msg)
+        sys.exit(constants.EXIT_CODE_ERROR)
+    # In the case of '$atest <host-only>', we add --host to run on host-side.
+    if not args.host:
+        args.host = bool(constants.DEVICELESS_TEST in all_device_modes)
+    return args
 
 def _will_run_tests(args):
     """Determine if there are tests to run.
@@ -327,6 +361,7 @@ def main(argv):
     if _will_run_tests(args):
         try:
             build_targets, test_infos = translator.translate(args)
+            args = _validate_exec_mode(args, test_infos)
         except atest_error.TestDiscoveryException:
             logging.exception('Error occured in test discovery:')
             logging.info('This can happen after a repo sync or if the test is '

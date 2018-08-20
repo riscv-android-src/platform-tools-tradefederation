@@ -60,7 +60,7 @@ public class GranularRetriableTestWrapperTest {
     private class BasicFakeTest implements IRemoteTest {
 
         protected ArrayList<TestDescription> mTestCases;
-        protected Set<TestDescription> mShouldRun = new HashSet<>();
+        protected Set<String> mShouldRun = new HashSet<>();
 
         private Map<TestDescription, Integer> mBecomePass = new HashMap<>();
         private Map<TestDescription, Boolean> mShouldFail;
@@ -95,7 +95,7 @@ public class GranularRetriableTestWrapperTest {
         public void run(ITestInvocationListener listener) throws DeviceUnresponsiveException {
             listener.testRunStarted(RUN_NAME, mTestCases.size());
             for (TestDescription td : mTestCases) {
-                if (!mShouldRun.isEmpty() && !mShouldRun.contains(td)) {
+                if (!mShouldRun.isEmpty() && !mShouldRun.contains(td.toString())) {
                     continue;
                 }
                 listener.testStarted(td);
@@ -127,8 +127,7 @@ public class GranularRetriableTestWrapperTest {
 
         @Override
         public void addIncludeFilter(String filter) {
-            String[] descriptionStr = filter.split("#");
-            mShouldRun.add(new TestDescription(descriptionStr[0], descriptionStr[1]));
+            mShouldRun.add(filter);
         }
 
         @Override
@@ -139,6 +138,24 @@ public class GranularRetriableTestWrapperTest {
 
         @Override
         public void addAllExcludeFilters(Set<String> filters) {}
+
+        @Override
+        public void clearIncludeFilters() {
+            mShouldRun.clear();
+        }
+
+        @Override
+        public Set<String> getIncludeFilters() {
+            return mShouldRun;
+        }
+
+        @Override
+        public Set<String> getExcludeFilters() {
+            return new HashSet<>();
+        }
+
+        @Override
+        public void clearExcludeFilters() {}
     }
 
     private GranularRetriableTestWrapper createGranularTestWrapper(
@@ -409,9 +426,13 @@ public class GranularRetriableTestWrapperTest {
                         .get(2)
                         .getTestResults()
                         .containsKey(fakeTestCase2));
-        // FIXME(b/112468193): Failed tests that pass should stop running
-        // assertFalse(granularTestWrapper.getTestRunResultCollected()
-        // .get(RUN_NAME).get(3).getTestResults().containsKey(fakeTestCase2));
+        assertFalse(
+                granularTestWrapper
+                        .getTestRunResultCollected()
+                        .get(RUN_NAME)
+                        .get(3)
+                        .getTestResults()
+                        .containsKey(fakeTestCase2));
 
         // One success since one test recover, one test never recover so one failure
         assertEquals(2, granularTestWrapper.getRetrySuccess());
@@ -437,11 +458,10 @@ public class GranularRetriableTestWrapperTest {
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
         granularTestWrapper.run(new CollectingTestListener());
-        // Verify the test has 3 TestRunResults, indicating it runs 3 times. And all test cases
-        // are retried.
+
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
-        assertEquals(
-                maxRunCount, granularTestWrapper.getTestRunResultCollected().get(RUN_NAME).size());
+        // Expect only 1 run since it does not support ITestFilterReceiver
+        assertEquals(1, granularTestWrapper.getTestRunResultCollected().get(RUN_NAME).size());
         List<TestRunResult> resultCollector =
                 granularTestWrapper.getTestRunResultCollected().get(RUN_NAME);
         // Check that all test cases where rerun

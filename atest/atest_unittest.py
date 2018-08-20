@@ -213,5 +213,62 @@ class AtestUnittests(unittest.TestCase):
                           "\x1b[1;37m\x1b[0m\n")
         self.assertEqual(capture_output.getvalue(), correct_output)
 
+    def test_validate_exec_mode(self):
+        """Test _validate_exec_mode."""
+        args = []
+        parsed_args = atest._parse_args(args)
+        no_install_test_info = test_info.TestInfo(
+            'mod', '', set(), data={}, module_class=["JAVA_LIBRARIES"],
+            install_locations=set(['device']))
+        host_test_info = test_info.TestInfo(
+            'mod', '', set(), data={}, module_class=["NATIVE_TESTS"],
+            install_locations=set(['host']))
+        device_test_info = test_info.TestInfo(
+            'mod', '', set(), data={}, module_class=["NATIVE_TESTS"],
+            install_locations=set(['device']))
+        both_test_info = test_info.TestInfo(
+            'mod', '', set(), data={}, module_class=["NATIVE_TESTS"],
+            install_locations=set(['host', 'device']))
+
+        # $atest <host-only>
+        test_infos = []
+        test_infos.append(host_test_info)
+        updated_args = atest._validate_exec_mode(parsed_args, test_infos)
+        self.assertTrue(updated_args.host)
+
+        # $atest <Both-support>
+        args = []
+        parsed_args = atest._parse_args(args)
+        test_infos = []
+        test_infos.append(both_test_info)
+        updated_args = atest._validate_exec_mode(parsed_args, test_infos)
+        self.assertFalse(updated_args.host)
+
+        # $atest <host-only> <both-support>
+        args = []
+        parsed_args = atest._parse_args(args)
+        test_infos = []
+        test_infos.append(both_test_info)
+        test_infos.append(host_test_info)
+        updated_args = atest._validate_exec_mode(parsed_args, test_infos)
+        self.assertTrue(updated_args.host)
+
+        # $atest <device-only> <host-only>
+        args = []
+        parsed_args = atest._parse_args(args)
+        test_infos = []
+        test_infos.append(device_test_info)
+        test_infos.append(host_test_info)
+        self.assertRaises(SystemExit, atest._validate_exec_mode,
+                          parsed_args, test_infos)
+
+        # $atest <no_install_test_info>
+        args = []
+        parsed_args = atest._parse_args(args)
+        test_infos = []
+        test_infos.append(no_install_test_info)
+        updated_args = atest._validate_exec_mode(parsed_args, test_infos)
+        self.assertFalse(updated_args.host)
+
 if __name__ == '__main__':
     unittest.main()

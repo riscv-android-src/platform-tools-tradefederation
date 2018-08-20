@@ -27,9 +27,12 @@ import java.net.Socket;
 /** An implementation of {@link ProtoResultReporter} */
 public final class StreamProtoResultReporter extends ProtoResultReporter {
 
+    public static final String PROTO_REPORT_PORT_OPTION = "proto-report-port";
+
     @Option(
-            name = "proto-report-port",
-            description = "the port where to connect to send the protos.")
+        name = PROTO_REPORT_PORT_OPTION,
+        description = "the port where to connect to send the protos."
+    )
     private Integer mReportPort = null;
 
     private Socket mReportSocket = null;
