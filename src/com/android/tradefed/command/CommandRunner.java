@@ -48,6 +48,7 @@ public class CommandRunner {
     @VisibleForTesting
     void initGlobalConfig(String[] args) throws ConfigurationException {
         GlobalConfiguration.createGlobalConfiguration(args);
+        GlobalConfiguration.getInstance().setup();
     }
 
     /** Get the {@link ICommandScheduler} instance from the global configuration. */
@@ -104,6 +105,8 @@ public class CommandRunner {
         } catch (InterruptedException e) {
             e.printStackTrace();
             mErrorCode = ExitCode.THROWABLE_EXCEPTION;
+        } finally {
+            GlobalConfiguration.getInstance().cleanup();
         }
         if (!ExitCode.NO_ERROR.equals(mErrorCode)
                 && mScheduler.getLastInvocationThrowable() != null) {
