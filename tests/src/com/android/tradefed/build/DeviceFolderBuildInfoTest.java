@@ -136,4 +136,28 @@ public class DeviceFolderBuildInfoTest {
             }
         }
     }
+
+    /**
+     * Test that when setting the device and folger build, the DeviceFolderBuildInfo gets all their
+     * file.
+     */
+    @Test
+    public void testSettingBuilds() {
+        IFolderBuildInfo folderBuilder = new FolderBuildInfo("5555", "build_target2");
+        folderBuilder.setRootDir(new File("package"));
+        assertNotNull(folderBuilder.getRootDir());
+        // Original build doesn't have the root dir yet.
+        assertNull(mDeviceFolderBuildInfo.getRootDir());
+        mDeviceFolderBuildInfo.setFolderBuild(folderBuilder);
+        // folderBuild gave its file to the main build
+        assertNotNull(mDeviceFolderBuildInfo.getRootDir());
+
+        IDeviceBuildInfo deviceBuild = new DeviceBuildInfo("3333", "build_target3");
+        deviceBuild.setBootloaderImageFile(new File("bootloader"), "v2");
+        assertNull(mDeviceFolderBuildInfo.getBootloaderImageFile());
+
+        mDeviceFolderBuildInfo.setDeviceBuild(deviceBuild);
+        // deviceBuild gave its file to the main build
+        assertNotNull(mDeviceFolderBuildInfo.getBootloaderImageFile());
+    }
 }

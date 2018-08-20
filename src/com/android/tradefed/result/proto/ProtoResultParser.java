@@ -42,10 +42,16 @@ public class ProtoResultParser {
 
     private ITestInvocationListener mListener;
     private String mCurrentRunName = null;
+    /**
+     * We don't always want to report the invocation level events again. If we are within an
+     * invocation scope we should not report it again.
+     */
+    private boolean mReportInvocation = false;
 
     /** Ctor. */
-    public ProtoResultParser(ITestInvocationListener listener) {
+    public ProtoResultParser(ITestInvocationListener listener, boolean reportInvocation) {
         mListener = listener;
+        mReportInvocation = reportInvocation;
     }
 
     /**
@@ -129,6 +135,10 @@ public class ProtoResultParser {
     }
 
     private void handleInvocationStart(TestRecord startInvocationProto) {
+        if (!mReportInvocation) {
+            CLog.d("Skipping invocation start reporting.");
+            return;
+        }
         // invocation starting
         Any anyDescription = startInvocationProto.getDescription();
         if (!anyDescription.is(Context.class)) {
@@ -144,6 +154,10 @@ public class ProtoResultParser {
     }
 
     private void handleInvocationEnded(TestRecord endInvocationProto) {
+        if (!mReportInvocation) {
+            CLog.d("Skipping invocation ended reporting.");
+            return;
+        }
         long elapsedTime =
                 timeStampToMillis(endInvocationProto.getEndTime())
                         - timeStampToMillis(endInvocationProto.getStartTime());
@@ -187,8 +201,15 @@ public class ProtoResultParser {
     }
 
     private void handleTestRunStart(TestRecord runProto) {
-        mListener.testRunStarted(
-                runProto.getTestRecordId(), (int) runProto.getNumExpectedChildren());
+        if (runProto.getAttemptId() != 0) {
+            mListener.testRunStarted(
+                    runProto.getTestRecordId(),
+                    (int) runProto.getNumExpectedChildren(),
+                    (int) runProto.getAttemptId());
+        } else {
+            mListener.testRunStarted(
+                    runProto.getTestRecordId(), (int) runProto.getNumExpectedChildren());
+        }
     }
 
     private void handleTestRunEnd(TestRecord runProto) {

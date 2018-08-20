@@ -186,7 +186,8 @@ public class TestInvocation implements ITestInvocation {
             IInvocationContext context,
             IInvocationExecution invocationPath,
             IRescheduler rescheduler,
-            ITestInvocationListener listener)
+            ITestInvocationListener listener,
+            boolean devicePreSetupDone)
             throws Throwable {
 
         boolean resumed = false;
@@ -197,11 +198,15 @@ public class TestInvocation implements ITestInvocation {
         Throwable tearDownException = null;
         ITestDevice badDevice = null;
 
-        startInvocation(config, context, listener);
         // Ensure that no unexpected attributes are added afterward
         ((InvocationContext) context).lockAttributes();
         try {
             logDeviceBatteryLevel(context, "initial");
+            // Run the preInvocationSetup on devices.
+            if (!devicePreSetupDone) {
+                invocationPath.runDevicePreInvocationSetup(context, config, listener);
+            }
+            // Then run the regular setup and run
             prepareAndRun(config, context, invocationPath, listener);
         } catch (BuildError e) {
             exception = e;
@@ -286,29 +291,41 @@ public class TestInvocation implements ITestInvocation {
                 }
             }
             mStatus = "tearing down";
-            try {
-                invocationPath.doTeardown(context, config, exception);
-            } catch (Throwable e) {
-                tearDownException = e;
-                CLog.e("Exception when tearing down invocation: %s", tearDownException.toString());
-                CLog.e(tearDownException);
-                if (exception == null) {
-                    // only report when the exception is new during tear down
-                    reportFailure(
-                            tearDownException,
-                            listener,
-                            config,
-                            context,
-                            rescheduler,
-                            invocationPath);
+            // TODO: extract in new TestInvocation type the sandbox handling
+            // If we are the parent invocation of the sandbox, setUp has been skipped since it's
+            // done in the sandbox, so tearDown should be skipped.
+            if (!config.getCommandOptions().shouldUseSandboxing()) {
+                try {
+                    invocationPath.doTeardown(context, config, exception);
+                } catch (Throwable e) {
+                    tearDownException = e;
+                    CLog.e(
+                            "Exception when tearing down invocation: %s",
+                            tearDownException.toString());
+                    CLog.e(tearDownException);
+                    if (exception == null) {
+                        // only report when the exception is new during tear down
+                        reportFailure(
+                                tearDownException,
+                                listener,
+                                config,
+                                context,
+                                rescheduler,
+                                invocationPath);
+                    }
                 }
             }
             mStatus = "done running tests";
             try {
-                // Clean up host.
-                invocationPath.doCleanUp(context, config, exception);
-                for (ITestDevice device : context.getDevices()) {
-                    reportLogs(device, listener, Stage.TEARDOWN);
+                // TODO: extract in new TestInvocation type the sandbox handling
+                // Similarly to tearDown, in a sandbox invocation, these calls are done by the
+                // sandbox and not the parent.
+                if (!config.getCommandOptions().shouldUseSandboxing()) {
+                    // Clean up host.
+                    invocationPath.doCleanUp(context, config, exception);
+                    for (ITestDevice device : context.getDevices()) {
+                        reportLogs(device, listener, Stage.TEARDOWN);
+                    }
                 }
                 if (mStopRequested) {
                     CLog.e(
@@ -659,10 +676,37 @@ public class TestInvocation implements ITestInvocation {
                 return;
             }
 
+            boolean deviceInit = false;
             // If the top level invocation has --use-sandbox do not shard there. It will shard in
             // the child invocation.
             if (!config.getCommandOptions().shouldUseSandboxing()) {
                 mStatus = "sharding";
+
+                // TODO: Handle local sharding and special devices
+                Integer shardCount = config.getCommandOptions().getShardCount();
+                Integer shardIndex = config.getCommandOptions().getShardIndex();
+                // Special Handling in case of sharding within the same invocation (in-place): Some
+                // devices (Remote devices for example) require extra preparation step to be
+                // available, but sharding requires the device to be available in some cases. So
+                // we call the device setup early to meet all the requirements.
+                if (shardCount != null && shardIndex != null) {
+                    deviceInit = true;
+                    startInvocation(config, context, listener);
+                    try {
+                        invocationPath.runDevicePreInvocationSetup(context, config, listener);
+                    } catch (DeviceNotAvailableException | TargetSetupError e) {
+                        CLog.e(e);
+                        setExitCode(ExitCode.THROWABLE_EXCEPTION, e);
+                        try {
+                            invocationPath.runDevicePostInvocationTearDown(context, config);
+                        } finally {
+                            listener.invocationFailed(e);
+                            listener.invocationEnded(0L);
+                        }
+                        return;
+                    }
+                }
+
                 boolean sharding = invocationPath.shardConfig(config, context, rescheduler);
                 if (sharding) {
                     CLog.i(
@@ -671,15 +715,21 @@ public class TestInvocation implements ITestInvocation {
                     return;
                 }
             }
-
+            // Once we have all the information we can start the invocation.
+            if (!deviceInit) {
+                startInvocation(config, context, listener);
+            }
             if (config.getTests() == null || config.getTests().isEmpty()) {
                 CLog.e("No tests to run");
-                startInvocation(config, context, listener);
+                if (deviceInit) {
+                    // If we did an early setup, do the tear down.
+                    invocationPath.runDevicePostInvocationTearDown(context, config);
+                }
                 listener.invocationEnded(0L);
                 return;
             }
 
-            performInvocation(config, context, invocationPath, rescheduler, listener);
+            performInvocation(config, context, invocationPath, rescheduler, listener, deviceInit);
             setExitCode(ExitCode.NO_ERROR, null);
         } catch (IOException e) {
             CLog.e(e);

@@ -102,7 +102,7 @@ public class ProtoResultParserTest {
     @Before
     public void setUp() {
         mMockListener = EasyMock.createStrictMock(ILogSaverListener.class);
-        mParser = new ProtoResultParser(mMockListener);
+        mParser = new ProtoResultParser(mMockListener, true);
         mTestParser = new TestProtoParser();
         mFinalTestParser = new FinalTestProtoParser();
         mInvocationContext = new InvocationContext();
@@ -294,6 +294,52 @@ public class ProtoResultParserTest {
         mFinalTestParser.testRunEnded(50L, new HashMap<String, Metric>());
         // Invocation ends
         mFinalTestParser.invocationEnded(500L);
+        EasyMock.verify(mMockListener);
+    }
+
+    /**
+     * Ensure the testRunStart specified with an attempt number is carried through our proto test
+     * record.
+     */
+    @Test
+    public void testRun_withAttempts() {
+        TestDescription test1 = new TestDescription("class1", "test1");
+
+        // Verify Mocks
+        mMockListener.invocationStarted(EasyMock.anyObject());
+
+        mMockListener.testRunStarted("run1", 2);
+        mMockListener.testStarted(test1, 5L);
+        mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
+
+        mMockListener.testRunFailed("run failure");
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        mMockListener.testRunStarted("run1", 1, 1);
+        mMockListener.testStarted(test1, 5L);
+        mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        mMockListener.invocationEnded(500L);
+
+        EasyMock.replay(mMockListener);
+        mTestParser.invocationStarted(mInvocationContext);
+        // Run modules
+        mTestParser.testRunStarted("run1", 2);
+        mTestParser.testStarted(test1, 5L);
+        // test run failed inside a test
+        mTestParser.testRunFailed("run failure");
+        mTestParser.testEnded(test1, 10L, new HashMap<String, Metric>());
+        mTestParser.testRunEnded(50L, new HashMap<String, Metric>());
+
+        mTestParser.testRunStarted("run1", 1, 1);
+        mTestParser.testStarted(test1, 5L);
+        mTestParser.testEnded(test1, 10L, new HashMap<String, Metric>());
+        mTestParser.testRunEnded(50L, new HashMap<String, Metric>());
+        // Invocation ends
+        mTestParser.invocationEnded(500L);
         EasyMock.verify(mMockListener);
     }
 

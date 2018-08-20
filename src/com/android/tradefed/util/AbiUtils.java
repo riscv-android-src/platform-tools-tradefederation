@@ -67,10 +67,11 @@ public class AbiUtils {
      */
     private static final Set<String> MIPS_ABIS = new HashSet<String>();
 
-    /**
-     * The set of ABI names which Compatibility supports.
-     */
-    protected static final Set<String> ABIS_SUPPORTED_BY_COMPATIBILITY = new HashSet<String>();
+    /** The set of ABI names which Compatibility supports. */
+    protected static final Set<String> ABIS_SUPPORTED_BY_COMPATIBILITY = new LinkedHashSet<>();
+
+    /** The set of Architecture supported. */
+    private static final Set<String> ARCH_SUPPORTED = new LinkedHashSet<>();
 
     /** The map of architecture to ABI. */
     private static final Map<String, Set<String>> ARCH_TO_ABIS =
@@ -122,6 +123,13 @@ public class AbiUtils {
         ABI_TO_BASE_ARCH.put(ABI_X86_64, BASE_ARCH_X86);
         ABI_TO_BASE_ARCH.put(ABI_MIPS, BASE_ARCH_MIPS);
         ABI_TO_BASE_ARCH.put(ABI_MIPS64, BASE_ARCH_MIPS);
+
+        ARCH_SUPPORTED.add(BASE_ARCH_ARM);
+        ARCH_SUPPORTED.add(ARCH_ARM64);
+        ARCH_SUPPORTED.add(BASE_ARCH_X86);
+        ARCH_SUPPORTED.add(ARCH_X86_64);
+        ARCH_SUPPORTED.add(BASE_ARCH_MIPS);
+        ARCH_SUPPORTED.add(ARCH_MIPS64);
     }
 
     /**
@@ -166,6 +174,11 @@ public class AbiUtils {
      */
     public static Set<String> getAbisSupportedByCompatibility() {
         return new LinkedHashSet<String>(ABIS_SUPPORTED_BY_COMPATIBILITY);
+    }
+
+    /** Returns the set of supported architecture representations. */
+    public static Set<String> getArchSupported() {
+        return new LinkedHashSet<String>(ARCH_SUPPORTED);
     }
 
     /**

@@ -154,6 +154,8 @@ class InstrumentationFileTest implements IRemoteTest {
             // push test file to the device and run
             mFilePathOnDevice = ON_DEVICE_TEST_DIR_LOCATION + testFile.getName();
             if (pushFileToTestDevice(testFile, mFilePathOnDevice)) {
+                // Unset package name if any just in case to avoid conflict with classname.
+                mInstrumentationTest.setTestPackageName(null);
                 mInstrumentationTest.setTestFilePathOnDevice(mFilePathOnDevice);
                 CLog.d("Test file %s was successfully pushed to %s on device",
                         testFile.getAbsolutePath(), mFilePathOnDevice);

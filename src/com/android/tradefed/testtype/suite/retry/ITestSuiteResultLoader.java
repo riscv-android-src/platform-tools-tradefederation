@@ -15,14 +15,16 @@
  */
 package com.android.tradefed.testtype.suite.retry;
 
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
+
+import java.util.List;
 
 /** Interface describing an helper to load previous results in a way that can be re-run. */
 public interface ITestSuiteResultLoader {
 
     /** Initialization of the loader. */
-    public void init(IInvocationContext context);
+    public void init(List<ITestDevice> devices);
 
     /** Retrieve the original command line from the previous run. */
     public String getCommandLine();

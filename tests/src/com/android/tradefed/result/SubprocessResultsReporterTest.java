@@ -71,8 +71,10 @@ public class SubprocessResultsReporterTest {
             mReporter.testRunStarted("TEST", 5);
             mReporter.testRunEnded(100, new HashMap<String, Metric>());
             String content = FileUtil.readStringFromFile(tmpReportFile);
-            assertEquals("TEST_RUN_STARTED {\"testCount\":5,\"runName\":\"TEST\"}\n"
-                    + "TEST_RUN_ENDED {\"time\":100}\n", content);
+            assertEquals(
+                    "TEST_RUN_STARTED {\"testCount\":5,\"runName\":\"TEST\",\"runAttempt\":0}\n"
+                            + "TEST_RUN_ENDED {\"time\":100}\n",
+                    content);
         } finally {
             FileUtil.deleteFile(tmpReportFile);
         }

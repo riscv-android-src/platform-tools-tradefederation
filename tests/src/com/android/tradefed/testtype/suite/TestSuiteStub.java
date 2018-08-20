@@ -230,6 +230,22 @@ public class TestSuiteStub
     public void addAllExcludeFilters(Set<String> filters) {}
 
     @Override
+    public void clearIncludeFilters() {}
+
+    @Override
+    public Set<String> getIncludeFilters() {
+        return new HashSet<>();
+    }
+
+    @Override
+    public Set<String> getExcludeFilters() {
+        return new HashSet<>();
+    }
+
+    @Override
+    public void clearExcludeFilters() {}
+
+    @Override
     public void addIncludeAnnotation(String annotation) {
         mIncludeAnnotationFilter.add(annotation);
     }

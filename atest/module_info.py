@@ -115,6 +115,10 @@ class ModuleInfo(object):
         """
         path_to_module_info = {}
         for mod_name, mod_info in name_to_module_info.iteritems():
+            # Cross-compiled and multi-arch modules actually all belong to
+            # a single target so filter out these extra modules.
+            if mod_name != mod_info.get(constants.MODULE_NAME, [''])[0]:
+                continue
             for path in mod_info.get(constants.MODULE_PATH, []):
                 mod_info[constants.MODULE_NAME] = mod_name
                 # There could be multiple modules in a path.

@@ -75,6 +75,11 @@ class AtestArgParser(argparse.ArgumentParser):
                           help='Run tests in TEST_MAPPING files.')
         self.add_argument('--include-subdirs', action='store_true',
                           help='Include tests in TEST_MAPPING files in sub directories.')
+        # Options related to deviceless testing.
+        self.add_argument('--host', action='store_true',
+                          help='Run the test completely on the host without '
+                               'a device. (Note: running a host test that '
+                               'requires a device with --host will fail.)')
         # This arg actually doesn't consume anything, it's primarily used for the
         # help description and creating custom_args in the NameSpace object.
         self.add_argument('--', dest='custom_args', nargs='*',

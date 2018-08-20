@@ -61,7 +61,6 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         """Validate if this module has a test config.
 
         A module can have a test config in the following manner:
-          - The module name is not for 2nd architecture.
           - AndroidTest.xml at the module path.
           - Auto-generated config via the auto_test_config key in module-info.json.
 
@@ -71,10 +70,6 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         Returns:
             True if this module has a test config, False otherwise.
         """
-        # Check if the module is for 2nd architecture.
-        if test_finder_utils.is_2nd_arch_module(mod_info):
-            return False
-
         # Check for AndroidTest.xml at the module path.
         for path in mod_info.get(constants.MODULE_PATH, []):
             if os.path.isfile(os.path.join(self.root_dir, path,
@@ -230,12 +225,16 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         Return:
             TestInfo that has been modified as needed.
         """
+        module_name = test.test_name
+        mod_info = self.module_info.get_module_info(module_name)
+        test.module_class = mod_info['class']
+        test.install_locations = test_finder_utils.get_install_locations(
+            mod_info['installed'])
         # Check if this is only a vts module.
         if self._is_vts_module(test.test_name):
             return self._update_to_vts_test_info(test)
         elif self._is_robolectric_test(test.test_name):
             return self._update_to_robolectric_test_info(test)
-        module_name = test.test_name
         rel_config = test.data[constants.TI_REL_CONFIG]
         test.build_targets = self._get_build_targets(module_name, rel_config)
         return test

@@ -106,6 +106,14 @@ public class BaseTestSuite extends ITestSuite {
     private String mSuiteTag = null;
 
     @Option(
+        name = "prioritize-host-config",
+        description =
+                "If there are duplicate test configs for host/target, prioritize the host config, "
+                        + "otherwise use the target config."
+    )
+    private boolean mPrioritizeHostConfig = false;
+
+    @Option(
         name = "suite-config-prefix",
         description = "Search only configs with given prefix for suite tags."
     )
@@ -190,10 +198,16 @@ public class BaseTestSuite extends ITestSuite {
             mConfigPatterns.add(".*\\.config");
             mConfigPatterns.add(".*\\.xml");
         }
+
         loadedConfigs.putAll(
                 getModuleLoader()
                         .loadConfigsFromDirectory(
-                                testsDir, abis, suitePrefix, suiteTag, mConfigPatterns));
+                                testsDir,
+                                abis,
+                                suitePrefix,
+                                suiteTag,
+                                mConfigPatterns,
+                                mPrioritizeHostConfig));
         return loadedConfigs;
     }
 

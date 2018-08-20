@@ -36,6 +36,14 @@ public class MultiMap<K, V> implements Serializable {
         mInternalMap = new HashMap<K, List<V>>();
     }
 
+    public MultiMap(MultiMap<K, V> map) {
+        this();
+        for (K key : map.keySet()) {
+            List<V> value = map.get(key);
+            mInternalMap.put(key, value);
+        }
+    }
+
     /**
      * Clears the map.
      */
