@@ -198,12 +198,18 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
 
     @Override
     public final void testRunStarted(String runName, int testCount) {
+        testRunStarted(runName, testCount, 0);
+    }
+
+    @Override
+    public void testRunStarted(String runName, int testCount, int attemptNumber) {
         TestRecord.Builder runBuilder = TestRecord.newBuilder();
         TestRecord.Builder parent = mLatestChild.peek();
         runBuilder.setParentTestRecordId(parent.getTestRecordId());
         runBuilder.setTestRecordId(runName);
         runBuilder.setNumExpectedChildren(testCount);
         runBuilder.setStartTime(createTimeStamp(System.currentTimeMillis()));
+        runBuilder.setAttemptId(attemptNumber);
 
         mLatestChild.add(runBuilder);
         try {
