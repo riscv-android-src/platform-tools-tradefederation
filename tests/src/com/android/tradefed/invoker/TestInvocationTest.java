@@ -1581,9 +1581,7 @@ public class TestInvocationTest extends TestCase {
         context.addAllocatedDevice("DEFAULT_DEVICE", device1);
         EasyMock.expect(device1.getSerialNumber()).andReturn("serial1").anyTimes();
         EasyMock.expect(device1.getIDevice()).andReturn(idevice).anyTimes();
-        EasyMock.expect(device1.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(1);
-        device1.clearLogcat();
-        EasyMock.expectLastCall().once();
+
         device1.preInvocationSetup((IBuildInfo) EasyMock.anyObject());
         EasyMock.expectLastCall().once();
 
@@ -1591,18 +1589,11 @@ public class TestInvocationTest extends TestCase {
         OptionSetter setter = new OptionSetter(commandOption);
         setter.setOptionValue("skip-pre-device-setup", "false");
         mStubConfiguration.setCommandOptions(commandOption);
-
-        EasyMock.expect(mMockPreparer.isDisabled()).andReturn(true);
         // Not expect isTearDownDisabled.
-
         ITestInvocationListener listener = EasyMock.createStrictMock(ITestInvocationListener.class);
-        listener.testLog(
-                EasyMock.startsWith(LOGCAT_NAME_SETUP),
-                EasyMock.eq(LogDataType.LOGCAT),
-                (InputStreamSource) EasyMock.anyObject());
-
         EasyMock.replay(device1, listener, mMockPreparer);
-        new InvocationExecution().doSetup(context, mStubConfiguration, listener);
+        new InvocationExecution()
+                .runDevicePreInvocationSetup(context, mStubConfiguration, listener);
         EasyMock.verify(device1, listener, mMockPreparer);
 
     }
