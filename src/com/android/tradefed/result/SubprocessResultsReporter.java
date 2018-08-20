@@ -125,9 +125,17 @@ public class SubprocessResultsReporter
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_RUN_FAILED, info);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void testRunStarted(String runName, int testCount) {
-        TestRunStartedEventInfo info = new TestRunStartedEventInfo(runName, testCount);
+        testRunStarted(runName, testCount, 0);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testRunStarted(String runName, int testCount, int attemptNumber) {
+        TestRunStartedEventInfo info =
+                new TestRunStartedEventInfo(runName, testCount, attemptNumber);
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_RUN_STARTED, info);
     }
 
