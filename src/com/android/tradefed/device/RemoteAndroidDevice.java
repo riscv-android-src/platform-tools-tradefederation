@@ -16,7 +16,6 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
-import com.android.tradefed.device.TestDeviceOptions.InstanceType;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -69,19 +68,6 @@ public class RemoteAndroidDevice extends TestDevice {
         // adb unroot.
         adbTcpConnect(getHostName(), getPortNum());
         waitForAdbConnect(WAIT_FOR_ADB_CONNECT);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    protected void postAdbFrameworkReboot() throws DeviceNotAvailableException {
-        super.postAdbFrameworkReboot();
-        // A remote nested device does not loose the ssh bridge when rebooted only adb connect is
-        // required.
-        InstanceType type = mOptions.getInstanceType();
-        if (InstanceType.CUTTLEFISH.equals(type) || InstanceType.REMOTE_NESTED_AVD.equals(type)) {
-            adbTcpConnect(getHostName(), getPortNum());
-            waitForAdbConnect(WAIT_FOR_ADB_CONNECT);
-        }
     }
 
     /**

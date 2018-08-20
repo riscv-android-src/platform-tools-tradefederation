@@ -25,20 +25,6 @@ import java.util.List;
  */
 public class TestDeviceOptions {
 
-    public enum InstanceType {
-        /** A device that we remotely access via ssh and adb connect */
-        GCE,
-        REMOTE_AVD,
-        /**
-         * A remote device inside an emulator that we access via ssh to the instance hosting the
-         * emulator then adb connect.
-         */
-        CUTTLEFISH,
-        REMOTE_NESTED_AVD,
-        /** An android emulator. */
-        EMULATOR,
-    }
-
     /** Do not provide a setter method for that Option as it might be misused. */
     @Option(name = "enable-root", description = "enable adb root on boot.")
     private boolean mEnableAdbRoot = true;
@@ -128,9 +114,6 @@ public class TestDeviceOptions {
     @Option(name = "cutoff-battery", description =
             "the minimum battery level required to continue the invocation. Scale: 0-100")
     private Integer mCutoffBattery = null;
-
-    @Option(name = "instance-type", description = "The type of virtual device instance to create")
-    private InstanceType mInstanceType = InstanceType.GCE;
 
     /**
      * Check whether adb root should be enabled on boot for this device
@@ -356,10 +339,5 @@ public class TestDeviceOptions {
     /** @return the wifiutil apk path */
     public String getWifiUtilAPKPath() {
         return mWifiUtilAPKPath;
-    }
-
-    /** Returns the instance type of virtual device that should be created */
-    public InstanceType getInstanceType() {
-        return mInstanceType;
     }
 }
