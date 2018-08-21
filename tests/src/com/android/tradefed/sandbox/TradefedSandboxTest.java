@@ -123,7 +123,8 @@ public class TradefedSandboxTest {
                                 EasyMock.anyObject(),
                                 EasyMock.eq("empty"),
                                 EasyMock.eq("--arg"),
-                                EasyMock.eq("1")))
+                                EasyMock.eq("1"),
+                                EasyMock.eq("--no-use-proto-reporter")))
                 .andReturn(result);
         setPrepareConfigurationExpectations();
         EasyMock.replay(mMockConfig, mMockListener, mMockRunUtil);
@@ -159,7 +160,8 @@ public class TradefedSandboxTest {
                                 EasyMock.anyObject(),
                                 EasyMock.eq("empty"),
                                 EasyMock.eq("--arg"),
-                                EasyMock.eq("1")))
+                                EasyMock.eq("1"),
+                                EasyMock.eq("--no-use-proto-reporter")))
                 .andReturn(result);
         setPrepareConfigurationExpectations();
         EasyMock.replay(mMockConfig, mMockListener, mMockRunUtil);
