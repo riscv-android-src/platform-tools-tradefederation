@@ -14,14 +14,6 @@
      limitations under the License.
 -->
 <configuration description="Runs tests to report preloaded classes information">
-    <!-- Provide account sign-in -->
-    <target_preparer class="com.google.android.tradefed.targetprep.GoogleAccountPreparer">
-        <option name="account-sync" value="true" />
-    </target_preparer>
-    <!-- Disable auto-updates -->
-    <target_preparer class="com.google.android.tradefed.targetprep.GoogleAppsSetup">
-        <option name="vending-auto-update" value="OFF" />
-    </target_preparer>
     <!-- Download preload tool -->
     <option name="device-launch-control:additional-files-filter" value=".*preload2.jar" />
     <!-- Install test apps -->
