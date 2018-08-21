@@ -41,6 +41,7 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -49,22 +50,21 @@ import java.util.Set;
 
 /**
  * Unit tests for {@link com.android.tradefed.testtype.suite.GranularRetriableTestWrapper}.
- *
- * <p>TODO: Needs to be completed with multiple runs per runner tests.
  */
 @RunWith(JUnit4.class)
 public class GranularRetriableTestWrapperTest {
 
     private static final String RUN_NAME = "test run";
+    private static final String RUN_NAME_2 = "test run 2";
 
     private class BasicFakeTest implements IRemoteTest {
 
         protected ArrayList<TestDescription> mTestCases;
         protected Set<String> mShouldRun = new HashSet<>();
 
-        private Map<TestDescription, Integer> mBecomePass = new HashMap<>();
-        private Map<TestDescription, Boolean> mShouldFail;
-        private int mAttempts = 0;
+        protected Map<TestDescription, Integer> mBecomePass = new HashMap<>();
+        protected Map<TestDescription, Boolean> mShouldFail;
+        protected int mAttempts = 0;
 
         public BasicFakeTest() {
             mTestCases = new ArrayList<>();
@@ -156,6 +156,62 @@ public class GranularRetriableTestWrapperTest {
 
         @Override
         public void clearExcludeFilters() {}
+    }
+
+    private class MultiTestOneRunFakeTest extends FakeTest {
+
+        private static final String RUN_NAME_2 = "test run 2";
+        private Map<String, List<TestDescription>> mRunTestsMap;
+        private Integer mMaxTestCount;
+
+        public MultiTestOneRunFakeTest() {
+            mRunTestsMap = new HashMap<String, List<TestDescription>>();
+            mMaxTestCount = 0;
+            mAttempts = 0;
+        }
+
+        public void setTestCasesByRun(String runName, List<TestDescription> testCases) {
+            mRunTestsMap.put(runName, testCases);
+            for (TestDescription testCase : testCases) {
+                mShouldFail.put(testCase, false);
+            }
+            mMaxTestCount = Math.max(mMaxTestCount, testCases.size());
+        }
+
+        @Override
+        public void run(ITestInvocationListener listener) throws DeviceUnresponsiveException {
+            Set<String> testRuns = mRunTestsMap.keySet();
+            for (int idx = 0; idx < mMaxTestCount; idx++) {
+                // Tests in different runs are called alternatively. This example describes the risk
+                // condition that a single IRemoteTest has two run names (RUN_NAME, RUN_NAME_2). 
+                // The test cases in those two runs are called alternatively.
+                for (String runName : testRuns) {
+                    List<TestDescription> testCases = mRunTestsMap.get(runName);
+                    if (idx >= testCases.size()) {
+                        continue;
+                    }
+                    TestDescription td = testCases.get(idx);
+                    if (!mShouldRun.isEmpty() && !mShouldRun.contains(td.toString())) {
+                        continue;
+                    }
+                    listener.testRunStarted(runName, testCases.size());
+                    listener.testStarted(td);
+                    int passAttempt = -1;
+                    if (mBecomePass.get(td) != null) {
+                        passAttempt = mBecomePass.get(td);
+                    }
+                    if (mShouldFail.get(td)) {
+                        if (passAttempt == -1 || mAttempts < passAttempt) {
+                            listener.testFailed(
+                                    td, String.format("Fake failure %s", td.toString()));
+                        }
+                    }
+                    listener.testEnded(td, new HashMap<String, Metric>());
+                    listener.testRunEnded(0, new HashMap<String, Metric>());
+                }
+            }
+            mAttempts++;
+        }
     }
 
     private GranularRetriableTestWrapper createGranularTestWrapper(
@@ -440,8 +496,8 @@ public class GranularRetriableTestWrapperTest {
     }
 
     /**
-     * Test that if IRemoteTest doesn't implement ITestFilterReceiver, the "run" method will retry
-     * all test cases.
+     * Test that if IRemoteTest doesn't implement ITestFilterReceiver, the "run" method will not
+     * retry.
      */
     @Test
     public void testRun_retryAllTestCasesIfNotSupportTestFilterReceiver() throws Exception {
@@ -472,5 +528,56 @@ public class GranularRetriableTestWrapperTest {
             assertEquals(
                     TestStatus.PASSED, runResult.getTestResults().get(fakeTestCase2).getStatus());
         }
+    }
+
+    /**
+     * Test that if one run attempt includes multiple runs (IRemoteTest has multiple run names), the
+     * GranularRetriableWrapper retries all the failed testcases from each run in the next attempt.
+     */
+    @Test
+    public void testRun_retryMultiTestsForOneRun() throws Exception {
+        MultiTestOneRunFakeTest test = new MultiTestOneRunFakeTest();
+        TestDescription fakeTestCase1 = new TestDescription("Class1", "Test1");
+        TestDescription fakeTestCase2 = new TestDescription("Class2", "Test2");
+        TestDescription fakeTestCase3 = new TestDescription("Class3", "Test3");
+        TestDescription fakeTestCase4 = new TestDescription("Class4", "Test4");
+        List<TestDescription> testCasesForRun1 = Arrays.asList(fakeTestCase1, fakeTestCase2);
+        List<TestDescription> testCasesForRun2 = Arrays.asList(fakeTestCase3, fakeTestCase4);
+        test.setTestCasesByRun(RUN_NAME, testCasesForRun1);
+        test.setTestCasesByRun(RUN_NAME_2, testCasesForRun2);
+        test.addFailedTestCase(fakeTestCase1);
+        test.addFailedTestCase(fakeTestCase3);
+        test.addTestBecomePass(fakeTestCase1, 1);
+        int maxRunCount = 5;
+
+        GranularRetriableTestWrapper granularTestWrapper =
+                createGranularTestWrapper(test, maxRunCount);
+        granularTestWrapper.run(new CollectingTestListener());
+        // Two runs.
+        assertEquals(2, granularTestWrapper.getTestRunResultCollected().size());
+        List<TestRunResult> resultCollector1 =
+                granularTestWrapper.getTestRunResultCollected().get(RUN_NAME);
+        // 1st test run passes after one retry.
+        assertEquals(2, resultCollector1.size());
+        List<TestRunResult> resultCollector2 =
+                granularTestWrapper.getTestRunResultCollected().get(RUN_NAME_2);
+        // 2nd test run doesn't pass after all retries.
+        assertEquals(maxRunCount, resultCollector2.size());
+
+        List<TestRunResult> finalResult = granularTestWrapper.getFinalTestRunResults();
+        assertEquals(2, finalResult.size());
+        TestRunResult runResult1 = finalResult.get(0);
+        TestRunResult runResult2 = finalResult.get(1);
+
+        // Verify the final result includes two completed test runs. The failed test in the 1st run
+        // passes after one retry, and the second test run retried maxRunCount times and stil has
+        // failed test cases.
+        assertEquals(RUN_NAME, runResult1.getName());
+        assertEquals(RUN_NAME_2, runResult2.getName());
+        assertEquals(TestStatus.PASSED, runResult1.getTestResults().get(fakeTestCase1).getStatus());
+        assertEquals(TestStatus.PASSED, runResult1.getTestResults().get(fakeTestCase2).getStatus());
+        assertEquals(
+                TestStatus.FAILURE, runResult2.getTestResults().get(fakeTestCase3).getStatus());
+        assertEquals(TestStatus.PASSED, runResult2.getTestResults().get(fakeTestCase4).getStatus());
     }
 }
