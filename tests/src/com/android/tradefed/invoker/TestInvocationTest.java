@@ -876,8 +876,8 @@ public class TestInvocationTest extends TestCase {
 
     /**
      * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
-     * ITestInvocationListener[])}
-     * scenario with {@link IStrictShardableTest} when a shard index is given.
+     * ITestInvocationListener[])} scenario with {@link IStrictShardableTest} when a shard index is
+     * given (strict sharding scenario: both shard-count and shard-index are given)
      */
     public void testInvoke_strictShardableTest_withShardIndex() throws Throwable {
         mTestInvocation =
@@ -917,6 +917,7 @@ public class TestInvocationTest extends TestCase {
         mStubConfiguration.setCommandLine(commandLine);
         mStubConfiguration.getCommandOptions().setShardCount(shardCount);
         mStubConfiguration.getCommandOptions().setShardIndex(shardIndex);
+        mStubConfiguration.getCommandOptions().setUseTfSharding(false);
 
         setupInvokeWithBuild();
         setupMockSuccessListeners();
@@ -936,8 +937,8 @@ public class TestInvocationTest extends TestCase {
 
     /**
      * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
-     * ITestInvocationListener[])}
-     * scenario with non-{@link IStrictShardableTest} when shard index 0 is given.
+     * ITestInvocationListener[])} scenario with non-{@link IStrictShardableTest} when shard index 0
+     * is given (strict sharding scenario: both shard-count and shard-index are given)
      */
     public void testInvoke_nonStrictShardableTest_withShardIndexZero() throws Throwable {
         String[] commandLine = {"config", "arg"};
@@ -948,6 +949,7 @@ public class TestInvocationTest extends TestCase {
         mStubConfiguration.setCommandLine(commandLine);
         mStubConfiguration.getCommandOptions().setShardCount(shardCount);
         mStubConfiguration.getCommandOptions().setShardIndex(shardIndex);
+        mStubConfiguration.getCommandOptions().setUseTfSharding(false);
 
         setupInvokeWithBuild();
         setupMockSuccessListeners();
@@ -966,8 +968,8 @@ public class TestInvocationTest extends TestCase {
 
     /**
      * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
-     * ITestInvocationListener[])}
-     * scenario with non-{@link IStrictShardableTest} when a shard index non-0 is given.
+     * ITestInvocationListener[])} scenario with non-{@link IStrictShardableTest} when a shard index
+     * non-0 is given (strict sharding scenario: both shard-count and shard-index are given)
      */
     public void testInvoke_nonStrictShardableTest_withShardIndexNonZero() throws Throwable {
         mTestInvocation =
@@ -1010,6 +1012,7 @@ public class TestInvocationTest extends TestCase {
         mStubConfiguration.setCommandLine(commandLine);
         mStubConfiguration.getCommandOptions().setShardCount(shardCount);
         mStubConfiguration.getCommandOptions().setShardIndex(shardIndex);
+        mStubConfiguration.getCommandOptions().setUseTfSharding(false);
 
         setupInvokeWithBuild();
         setupMockSuccessListeners();

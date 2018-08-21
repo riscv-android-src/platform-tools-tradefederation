@@ -19,7 +19,10 @@ package com.android.tradefed.testtype;
  * A {@link IRemoteTest} that can be sharded into separately executable sub-tests. The splitting
  * into sub-tests is expected to be deterministic and each sub-test should be independent in order
  * to allow for execution of different shards on different hosts.
+ *
+ * @deprecated Use {@link IShardableTest} interface instead.
  */
+@Deprecated
 public interface IStrictShardableTest extends IRemoteTest {
 
     /**
