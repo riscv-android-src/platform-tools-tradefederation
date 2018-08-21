@@ -121,6 +121,21 @@ python_test_host {
     defaults: ["atest_py2_default"],
 }
 
+python_test_host {
+    name: "atest_integration_tests",
+    main: "atest_integration_tests.py",
+    pkg_path: "atest",
+    srcs: [
+        "atest_integration_tests.py",
+    ],
+    data: [
+        "INTEGRATION_TESTS",
+    ],
+    test_config: "atest_integration_tests.xml",
+    test_suites: ["general-tests"],
+    defaults: ["atest_py2_default"],
+}
+
 python_library_host {
     name: "atest_proto",
     defaults: ["atest_py2_default"],
