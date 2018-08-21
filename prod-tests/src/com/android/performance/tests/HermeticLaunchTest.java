@@ -69,7 +69,8 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
         DRAW("draw"),
         BINDAPPLICATION("bindApplication"),
         ACTIVITYSTART("activityStart"),
-        ONCREATE("onCreate");
+        ONCREATE("onCreate"),
+        INFLATE("inflate");
 
         private final String name;
 
@@ -165,6 +166,7 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
                 mSectionOptionSet.add(AtraceSectionOptions.BINDAPPLICATION);
                 mSectionOptionSet.add(AtraceSectionOptions.ACTIVITYSTART);
                 mSectionOptionSet.add(AtraceSectionOptions.ONCREATE);
+                mSectionOptionSet.add(AtraceSectionOptions.INFLATE);
             } else if (mSectionOptionSet.contains(AtraceSectionOptions.LAYOUT)) {
                 // If layout is added, draw should also be included
                 mSectionOptionSet.add(AtraceSectionOptions.DRAW);

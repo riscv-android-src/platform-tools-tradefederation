@@ -1025,6 +1025,7 @@ public class Console extends Thread {
             e.printStackTrace();
         } finally {
             mScheduler.shutdown();
+            GlobalConfiguration.getInstance().cleanup();
             // Make sure that we don't quit with messages still in the buffers
             System.err.flush();
             System.out.flush();
@@ -1133,7 +1134,7 @@ public class Console extends Thread {
     public static void startConsole(Console console, String[] args) throws InterruptedException,
             ConfigurationException {
         List<String> nonGlobalArgs = GlobalConfiguration.createGlobalConfiguration(args);
-
+        GlobalConfiguration.getInstance().setup();
         console.setArgs(nonGlobalArgs);
         console.setCommandScheduler(GlobalConfiguration.getInstance().getCommandScheduler());
         console.setKeyStoreFactory(GlobalConfiguration.getInstance().getKeyStoreFactory());

@@ -61,6 +61,10 @@ message TestRecord {
 
   // Metadata describing the test that was run.
   google.protobuf.Any description = 11;
+
+  // The attempt number of a target if the target ran several times. First
+  // attempt is 0 (Default value).
+  int64 attempt_id = 12;
 }
 
 // A reference to a finer-grained TestRecord.

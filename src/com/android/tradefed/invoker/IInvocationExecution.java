@@ -16,13 +16,20 @@
 package com.android.tradefed.invoker;
 
 import com.android.tradefed.build.BuildRetrievalError;
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.shard.IShardHelper;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
 
+/**
+ * Interface describing the actions that will be done as part of an invocation. The invocation
+ * {@link TestInvocation} itself ensure the order of the calls.
+ */
 public interface IInvocationExecution {
 
     /**
@@ -70,6 +77,30 @@ public interface IInvocationExecution {
             IConfiguration config,
             final ITestInvocationListener listener)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {}
+
+    /**
+     * Invoke the {@link ITestDevice#preInvocationSetup(IBuildInfo)} for each device part of the
+     * invocation.
+     *
+     * @param context the {@link IInvocationContext} of the invocation.
+     * @param config the {@link IConfiguration} of this test run.
+     * @param logger the {@link ITestLogger} to report logs.
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    public default void runDevicePreInvocationSetup(
+            IInvocationContext context, IConfiguration config, ITestLogger logger)
+            throws DeviceNotAvailableException, TargetSetupError {}
+
+    /**
+     * Invoke the {@link ITestDevice#postInvocationTearDown()} for each device part of the
+     * invocation.
+     *
+     * @param context the {@link IInvocationContext} of the invocation.
+     * @param config the {@link IConfiguration} of this test run.
+     */
+    public default void runDevicePostInvocationTearDown(
+            IInvocationContext context, IConfiguration config) {}
 
     /**
      * Execute the target_preparer and multi_target_preparer teardown step. Does the devices tear

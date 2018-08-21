@@ -898,6 +898,12 @@ public abstract class ITestSuite
         } else {
             // Run on all abi in common between the device and suite builds.
             List<String> deviceAbis = getDeviceAbis(device);
+            if (deviceAbis.isEmpty()) {
+                throw new IllegalArgumentException(
+                        String.format(
+                                "Couldn't determinate the abi of the device '%s'.",
+                                device.getSerialNumber()));
+            }
             for (String abi : deviceAbis) {
                 if ((mSkipHostArchCheck || archAbis.contains(abi))
                         && AbiUtils.isAbiSupportedByCompatibility(abi)) {
@@ -926,7 +932,7 @@ public abstract class ITestSuite
             Set<String> hostAbis = getHostAbis();
             return hostAbis.iterator().next();
         }
-        return mAbiName = device.getProperty(PRODUCT_CPU_ABI_KEY).trim();
+        return device.getProperty(PRODUCT_CPU_ABI_KEY).trim();
     }
 
     /** Returns the list of abis supported by the device or host if it's a null device. */
@@ -934,7 +940,8 @@ public abstract class ITestSuite
         if (device.getIDevice() instanceof NullDevice) {
             return new ArrayList<>(getHostAbis());
         }
-        return Arrays.asList(AbiFormatter.getSupportedAbis(device, ""));
+        // Make it an arrayList to be able to modify the content.
+        return new ArrayList<>(Arrays.asList(AbiFormatter.getSupportedAbis(device, "")));
     }
 
     /** Return the abis supported by the Host build target architecture. Exposed for testing. */
