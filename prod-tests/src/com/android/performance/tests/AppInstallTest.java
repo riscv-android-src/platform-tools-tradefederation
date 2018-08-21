@@ -26,12 +26,10 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
-
-import org.junit.Assert;
-
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import org.junit.Assert;
 
 @OptionClass(alias = "app-install-perf")
 // Test framework that measures the install time for all apk files located under a given directory.
@@ -49,6 +47,20 @@ public class AppInstallTest implements IDeviceTest, IRemoteTest {
     @Option(name = "test-start-delay",
             description = "Delay in ms to wait for before starting the install test.")
     private long mTestStartDelay = 60000;
+
+    @Option(name = "test-use-dex-metedata",
+            description = "If the test should install the dex metadata files.")
+    private boolean mUseDexMetadata = false;
+
+    @Option(name = "test-dex-metedata-variant",
+            description = "The dex metadata variant that should be used." +
+                    "When specified, the DM file name for foo.apk will be " +
+                    "constructed as fooVARIANT.dm")
+    private String mDexMetadataVariant = "";
+
+    @Option(name = "test-uninstall-after",
+            description = "If the apk should be uninstalled after.")
+    private boolean mUninstallAfter = true;
 
     private ITestDevice mDevice;
 
@@ -117,16 +129,56 @@ public class AppInstallTest implements IDeviceTest, IRemoteTest {
         if (!mDevice.pushFile(packageFile, remotePath)) {
             throw new RuntimeException("Failed to push " + packageFile.getAbsolutePath());
         }
+
+        String dmRemotePath = null;
+        if (mUseDexMetadata) {
+            File dexMetadataFile = getDexMetadataFile(packageFile);
+            dmRemotePath = "/data/local/tmp/" + dexMetadataFile.getName();
+            if (!mDevice.pushFile(dexMetadataFile, dmRemotePath)) {
+                throw new RuntimeException("Failed to push " + dexMetadataFile.getAbsolutePath());
+            }
+        }
+
         long start = System.currentTimeMillis();
-        String output = mDevice.executeShellCommand(
-                String.format("pm install -r \"%s\"", remotePath));
-        long end = System.currentTimeMillis();
-        if (output == null || output.indexOf("Success") == -1) {
-            CLog.e("Failed to install package %s with error %s", packageFile, output);
+
+        // Create install session.
+        String output = mDevice.executeShellCommand("pm install-create -r -d");
+        if (!checkSuccess(output, packageFile, "install-create")) {
             return -1;
         }
+        String session = sessionFromInstallCreateOutput(output);
+
+        // Write the files to the session
+        output = mDevice.executeShellCommand(String.format(
+            "pm install-write %s %s %s", session, "base.apk", remotePath));
+        if (!checkSuccess(output, packageFile, "install-write base.apk")) {
+            return -1;
+        }
+
+        if (mUseDexMetadata) {
+            output = mDevice.executeShellCommand(String.format(
+                "pm install-write %s %s %s", session, "base.dm", dmRemotePath));
+            if (!checkSuccess(output, packageFile, "install-write base.dm")) {
+                return -1;
+            }
+        }
+
+        // Commit the session.
+        output = mDevice.executeShellCommand(String.format("pm install-commit %s", session));
+
+        long end = System.currentTimeMillis();
+        if (!checkSuccess(output, packageFile, "install-commit")) {
+            return -1;
+        }
+
+        // Remove the temp files.
         mDevice.executeShellCommand(String.format("rm \"%s\"", remotePath));
-        if (packageName != null) {
+        if (mUseDexMetadata) {
+            mDevice.executeShellCommand(String.format("rm \"%s\"", dmRemotePath));
+        }
+
+        // Uninstall the package if needed.
+        if (mUninstallAfter && packageName != null) {
             CLog.d("Uninstalling: %s", packageName);
             mDevice.uninstallPackage(packageName);
         }
@@ -146,5 +198,31 @@ public class AppInstallTest implements IDeviceTest, IRemoteTest {
         CLog.d("About to report metrics: %s", metrics);
         listener.testRunStarted(runName, 0);
         listener.testRunEnded(0, TfMetricProtoUtil.upgradeConvert(metrics));
+    }
+
+    /**
+     * Extracts the session id from 'pm install-create' output.
+     * Usual output is: "Success: created install session [710542260]"
+     */
+    private String sessionFromInstallCreateOutput(String output) {
+        int start = output.indexOf("[");
+        int end = output.indexOf("]");
+        return output.substring(start + 1, end);
+    }
+
+    /**
+     * Verifies that the output contains the "Success" mark.
+     */
+    private boolean checkSuccess(String output, File packageFile, String stepForErrorLog) {
+        if (output == null || output.indexOf("Success") == -1) {
+            CLog.e("Failed to execute [%s] for package %s with error %s",
+                stepForErrorLog, packageFile, output);
+            return false;
+        }
+        return true;
+    }
+
+    private File getDexMetadataFile(File packageFile) {
+        return new File(packageFile.getAbsolutePath().replace(".apk", mDexMetadataVariant + ".dm"));
     }
 }
