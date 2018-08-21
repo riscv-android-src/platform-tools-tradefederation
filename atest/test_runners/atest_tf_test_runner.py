@@ -49,6 +49,7 @@ EVENT_NAMES = {'module_started': 'TEST_MODULE_STARTED',
                'run_failed': 'TEST_RUN_FAILED',
                'invocation_failed': 'INVOCATION_FAILED'}
 TEST_NAME_TEMPLATE = '%s#%s'
+EXEC_DEPENDENCIES = ('adb', 'aapt')
 
 CONNECTION_STATE = {
     'current_test': None,
@@ -353,17 +354,16 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         pass
 
     @staticmethod
-    def _is_missing_adb():
-        """Check if system built adb is available.
+    def _is_missing_exec(executable):
+        """Check if system build executable is available.
 
-        TF requires adb and we want to make sure we use the latest built adb
-        (vs. system adb that might be too old).
-
+        Args:
+            executable: Executable we are checking for.
         Returns:
-            True if adb is missing, False otherwise.
+            True if executable is missing, False otherwise.
         """
         try:
-            output = subprocess.check_output(['which', 'adb'])
+            output = subprocess.check_output(['which', executable])
         except subprocess.CalledProcessError:
             return True
         # TODO: Check if there is a clever way to determine if system adb is
@@ -382,8 +382,9 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         if self.module_info.is_module(constants.GTF_MODULE):
             build_req = {constants.GTF_TARGET}
         # Add adb if we can't find it.
-        if self._is_missing_adb():
-            build_req.add('adb')
+        for executable in EXEC_DEPENDENCIES:
+            if self._is_missing_exec(executable):
+                build_req.add(executable)
         return build_req
 
     @staticmethod
