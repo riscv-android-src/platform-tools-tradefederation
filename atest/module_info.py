@@ -75,8 +75,8 @@ class ModuleInfo(object):
                 os.environ.get('ANDROID_PRODUCT_OUT'), _MODULE_INFO)
             module_info_target = module_file_path
         if not os.path.isfile(module_file_path) or force_build:
-            logging.info('Generating %s - this is required for '
-                         'initial runs.', _MODULE_INFO)
+            logging.debug('Generating %s - this is required for '
+                          'initial runs.', _MODULE_INFO)
             atest_utils.build([module_info_target],
                               logging.getLogger().isEnabledFor(logging.DEBUG))
         return module_info_target, module_file_path
