@@ -194,6 +194,8 @@ class ResultReporter(object):
 
     def print_summary(self):
         """Print summary of all test runs."""
+        if not self.runners:
+            return
         print('\n%s' % au.colorize('Summary', constants.CYAN))
         print('-------')
         for runner_name, groups in self.runners.items():
@@ -205,17 +207,14 @@ class ResultReporter(object):
                 continue
             for group_name, stats in groups.items():
                 name = group_name if group_name else runner_name
-                print('%s: %s: %s, %s: %s' % (name,
-                                              au.colorize('Passed', constants.GREEN),
-                                              stats.passed,
-                                              au.colorize('Failed', constants.RED),
-                                              stats.failed))
+                summary = '%s: %s: %s, %s: %s' % (name,
+                                                  au.colorize('Passed', constants.GREEN),
+                                                  stats.passed,
+                                                  au.colorize('Failed', constants.RED),
+                                                  stats.failed)
                 if stats.run_errors:
-                    print('(Errors occurred during above test run. '
-                          'Counts may be inaccurate.)')
-        if self.run_stats.run_errors:
-            print('WARNING: Errors occurred during test run. '
-                  'Counts may be inaccurate.')
+                    summary += ' (Completed With ERRORS)'
+                print(summary)
         print()
 
     def _update_stats(self, test, group):
@@ -265,6 +264,9 @@ class ResultReporter(object):
         Args:
             test: a TestResult namedtuple.
         """
+        if test.status == test_runner_base.ERROR_STATUS:
+            print('RUNNER ERROR: %s\n' % test.details)
+            return
         if test.test_name:
             if test.status == test_runner_base.PASSED_STATUS:
                 print('%s: %s' % (test.test_name,
@@ -274,5 +276,3 @@ class ResultReporter(object):
                                   au.colorize(test.status, constants.RED)))
         if test.status == test_runner_base.FAILED_STATUS:
             print('\nSTACKTRACE:\n%s' % test.details)
-        elif test.status == test_runner_base.ERROR_STATUS:
-            print('ERROR EXECUTING TEST RUN:', test.details)
