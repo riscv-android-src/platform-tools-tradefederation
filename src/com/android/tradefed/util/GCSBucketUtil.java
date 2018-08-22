@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -38,6 +39,7 @@ public class GCSBucketUtil {
 
     private static final String CMD_COPY = "cp";
     private static final String CMD_MAKE_BUCKET = "mb";
+    private static final String CMD_LS = "ls";
     private static final String CMD_REMOVE = "rm";
     private static final String CMD_REMOVE_BUCKET = "rb";
     private static final String CMD_VERSION = "-v";
@@ -287,6 +289,70 @@ public class GCSBucketUtil {
         }
 
         return res;
+    }
+
+    /**
+     * List files under a GCS path.
+     *
+     * @param bucketPath the GCS path
+     * @return a list of {@link String}s that are files under the GCS path
+     * @throws IOException
+     */
+    public List<String> ls(Path bucketPath) throws IOException {
+        checkGSUtil();
+        CLog.d("Check stat of %s %s", mBucketName, bucketPath);
+
+        List<String> command = new ArrayList<>();
+        command.add(GSUTIL);
+        command.add(CMD_LS);
+
+        command.add(getUriForGcsPath(bucketPath));
+
+        CommandResult res =
+                getRunUtil()
+                        .runTimedCmdRetry(
+                                mTimeoutMs,
+                                mRetryInterval,
+                                mAttempts,
+                                command.toArray(new String[0]));
+
+        if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
+            throw new IOException(
+                    String.format(
+                            "Failed to list path '%s %s' with %s\nstdout: %s\nstderr: %s",
+                            mBucketName,
+                            bucketPath,
+                            res.getStatus(),
+                            res.getStdout(),
+                            res.getStderr()));
+        }
+        return Arrays.asList(res.getStdout().split("\n"));
+    }
+
+    /**
+     * Check a GCS file is a file or not a file (a folder).
+     *
+     * <p>If the filename ends with '/', then it's a folder. gsutil ls gs://filename should return
+     * the gs://filename if it's a file. gsutil ls gs://folder name should return the files in the
+     * folder if there are files in the folder. And it will return gs://folder/ if there is no files
+     * in the folder.
+     *
+     * @param path the path relative to bucket..
+     * @return it's a file or not a file.
+     * @throws IOException
+     */
+    public boolean isFile(String path) throws IOException {
+        if (path.endsWith("/")) {
+            return false;
+        }
+        List<String> files = ls(Paths.get(path));
+        if (files.size() > 1) {
+            return false;
+        }
+        if (files.size() == 1) {
+            return files.get(0).equals(getUriForGcsPath(Paths.get(path)));
+        }
+        return false;
     }
 
     /**

@@ -37,6 +37,7 @@ public class GCSFileDownloader implements IFileDownloader {
     private static final long RETRY_INTERVAL = 1000; // 1s
     private static final int ATTETMPTS = 3;
     private static final Pattern GCS_PATH_PATTERN = Pattern.compile("gs://([^/]*)(/.*)");
+    private static final String PATH_SEP = "/";
 
     /**
      * Download a file from a GCS bucket file.
@@ -46,11 +47,7 @@ public class GCSFileDownloader implements IFileDownloader {
      * @return {@link InputStream} with the file content.
      */
     public InputStream downloadFile(String bucketName, String filename) throws IOException {
-        GCSBucketUtil bucket = new GCSBucketUtil(bucketName);
-        bucket.setTimeoutMs(TIMEOUT);
-        bucket.setRetryInterval(RETRY_INTERVAL);
-        bucket.setAttempts(ATTETMPTS);
-
+        GCSBucketUtil bucket = getGCSBucketUtil(bucketName);
         Path path = Paths.get(filename);
         String contents = bucket.pullContents(path);
         return new ByteArrayInputStream(contents.getBytes());
@@ -93,17 +90,30 @@ public class GCSFileDownloader implements IFileDownloader {
     void downloadFile(String bucketName, String filename, File localFile)
             throws BuildRetrievalError {
         CLog.i("Downloading %s %s to %s", bucketName, filename, localFile.getAbsolutePath());
-        GCSBucketUtil bucket = new GCSBucketUtil(bucketName);
-        bucket.setTimeoutMs(TIMEOUT);
-        bucket.setRetryInterval(RETRY_INTERVAL);
-        bucket.setAttempts(ATTETMPTS);
-        bucket.setRecursive(true);
+
+        GCSBucketUtil bucketUtil = getGCSBucketUtil(bucketName);
         try {
-            bucket.pull(Paths.get(filename), localFile);
+            if (!bucketUtil.isFile(filename)) {
+                if (!filename.endsWith(PATH_SEP)) {
+                    filename += PATH_SEP;
+                }
+                filename += "*";
+                localFile.mkdirs();
+                bucketUtil.setRecursive(true);
+            }
+            bucketUtil.pull(Paths.get(filename), localFile);
         } catch (IOException e) {
             CLog.e("Failed to download %s, clean up.", localFile.getAbsoluteFile());
             throw new BuildRetrievalError(e.getMessage(), e);
         }
+    }
+
+    private GCSBucketUtil getGCSBucketUtil(String bucketName) {
+        GCSBucketUtil bucketUtil = new GCSBucketUtil(bucketName);
+        bucketUtil.setTimeoutMs(TIMEOUT);
+        bucketUtil.setRetryInterval(RETRY_INTERVAL);
+        bucketUtil.setAttempts(ATTETMPTS);
+        return bucketUtil;
     }
 
     /**
@@ -113,7 +123,8 @@ public class GCSFileDownloader implements IFileDownloader {
      *
      * @param remoteFilePath the remote path to construct the name from
      */
-    private File createTempFile(String remoteFilePath, File rootDir) throws BuildRetrievalError {
+    @VisibleForTesting
+    File createTempFile(String remoteFilePath, File rootDir) throws BuildRetrievalError {
         try {
             // create a unique file.
             File tmpFile = FileUtil.createTempFileForRemote(remoteFilePath, rootDir);
