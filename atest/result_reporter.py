@@ -49,7 +49,6 @@ FrameworksServicesTests: Passed: 1, Failed: 0
 HelloWorldTests: Passed: 0, Failed: 0
 (Errors occurred during above test run. Counts may be inaccurate.)
 
-Total: 8, Passed: 8, Failed: 0
 WARNING: Errors occurred during test run. Counts may be inaccurate.
 
 TODO(b/79699032): Update reporter to add color and implement final formatting.
@@ -57,6 +56,9 @@ TODO(b/79699032): Update reporter to add color and implement final formatting.
 
 from __future__ import print_function
 from collections import OrderedDict
+
+import constants
+import atest_utils as au
 
 from test_runners import test_runner_base
 
@@ -188,11 +190,11 @@ class ResultReporter(object):
 
     def print_starting_text(self):
         """Print starting text for running tests."""
-        print('Running Tests ...')
+        print(au.colorize('\nRunning Tests...', constants.CYAN))
 
     def print_summary(self):
         """Print summary of all test runs."""
-        print('\nSUMMARY')
+        print('\n%s' % au.colorize('Summary', constants.CYAN))
         print('-------')
         for runner_name, groups in self.runners.items():
             if groups == UNSUPPORTED_FLAG:
@@ -203,13 +205,14 @@ class ResultReporter(object):
                 continue
             for group_name, stats in groups.items():
                 name = group_name if group_name else runner_name
-                print('%s: Passed: %s, Failed: %s' % (name, stats.passed,
-                                                      stats.failed))
+                print('%s: %s: %s, %s: %s' % (name,
+                                              au.colorize('Passed', constants.GREEN),
+                                              stats.passed,
+                                              au.colorize('Failed', constants.RED),
+                                              stats.failed))
                 if stats.run_errors:
                     print('(Errors occurred during above test run. '
                           'Counts may be inaccurate.)')
-        print('\nTotal: %s, Passed: %s, Failed: %s' % (
-            self.run_stats.total, self.run_stats.passed, self.run_stats.failed))
         if self.run_stats.run_errors:
             print('WARNING: Errors occurred during test run. '
                   'Counts may be inaccurate.')
@@ -263,7 +266,12 @@ class ResultReporter(object):
             test: a TestResult namedtuple.
         """
         if test.test_name:
-            print('%s: %s' % (test.test_name, test.status))
+            if test.status == test_runner_base.PASSED_STATUS:
+                print('%s: %s' % (test.test_name,
+                                  au.colorize(test.status, constants.GREEN)))
+            else:
+                print('%s: %s' % (test.test_name,
+                                  au.colorize(test.status, constants.RED)))
         if test.status == test_runner_base.FAILED_STATUS:
             print('\nSTACKTRACE:\n%s' % test.details)
         elif test.status == test_runner_base.ERROR_STATUS:

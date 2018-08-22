@@ -135,7 +135,9 @@ def build(build_targets, verbose=False, env_vars=None):
     full_env_vars = os.environ.copy()
     if env_vars:
         full_env_vars.update(env_vars)
-    logging.info('Building targets: %s', ' '.join(build_targets))
+    print('\n%s\n%s' % (colorize("Building Dependencies...", constants.CYAN),
+                        ', '.join(build_targets)))
+    logging.debug('Building Dependencies: %s', ' '.join(build_targets))
     cmd = _BUILD_CMD + list(build_targets)
     logging.debug('Executing command: %s', cmd)
     try:
@@ -230,6 +232,32 @@ def _has_colors(stream):
         return False
 
 
+def colorize(text, color, highlight=False):
+    """ Convert to coloful string with ANSI escape code.
+
+    Args:
+        text: A string to print.
+        color: ANSI code shift for colorful print. They are defined
+               in constants_default.py.
+        highlight: True to print with highlight.
+
+    Returns:
+        Coloful string with ANSI escape code.
+    """
+    clr_pref = '\033[1;'
+    clr_suff = '\033[0m'
+    has_colors = _has_colors(sys.stdout)
+    if has_colors:
+        if highlight:
+            ansi_shift = 40 + color
+        else:
+            ansi_shift = 30 + color
+        clr_str = "%s%dm%s%s" % (clr_pref, ansi_shift, text, clr_suff)
+    else:
+        clr_str = text
+    return clr_str
+
+
 def colorful_print(text, color, highlight=False, auto_wrap=True):
     """Print out the text with color.
 
@@ -240,17 +268,7 @@ def colorful_print(text, color, highlight=False, auto_wrap=True):
         highlight: True to print with highlight.
         auto_wrap: If True, Text wraps while print.
     """
-    clr_pref = '\033[1;'
-    clr_suff = '\033[0m'
-    has_colors = _has_colors(sys.stdout)
-    if has_colors:
-        if highlight:
-            ansi_shift = 40 + color
-        else:
-            ansi_shift = 30 + color
-        output = "%s%dm%s%s" % (clr_pref, ansi_shift, text, clr_suff)
-    else:
-        output = text
+    output = colorize(text, color, highlight)
     if auto_wrap:
         print(output)
     else:
