@@ -105,6 +105,34 @@ class AtestUtilsUnittests(unittest.TestCase):
         mock_curses_tigetnum.return_value = 256
         self.assertTrue(atest_utils._has_colors(stream))
 
+
+    @mock.patch('atest_utils._has_colors')
+    def test_colorize(self, mock_has_colors):
+        """Test method colorize."""
+        original_str = "test string"
+        green_no = 2
+
+        # _has_colors() return False.
+        mock_has_colors.return_value = False
+        converted_str = atest_utils.colorize(original_str, green_no,
+                                             highlight=True)
+        self.assertEqual(original_str, converted_str)
+
+        # Green with highlight.
+        mock_has_colors.return_value = True
+        converted_str = atest_utils.colorize(original_str, green_no,
+                                             highlight=True)
+        green_highlight_string = '\x1b[1;42m%s\x1b[0m' % original_str
+        self.assertEqual(green_highlight_string, converted_str)
+
+        # Green, no highlight.
+        mock_has_colors.return_value = True
+        converted_str = atest_utils.colorize(original_str, green_no,
+                                             highlight=False)
+        green_no_highlight_string = '\x1b[1;32m%s\x1b[0m' % original_str
+        self.assertEqual(green_no_highlight_string, converted_str)
+
+
     @mock.patch('atest_utils._has_colors')
     def test_colorful_print(self, mock_has_colors):
         """Test method colorful_print."""
