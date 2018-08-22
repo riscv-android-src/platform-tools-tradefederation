@@ -258,12 +258,16 @@ public class TradefedSandbox implements ISandbox {
             IInvocationContext context, IConfiguration config, ITestInvocationListener listener) {
         try {
             // TODO: switch reporting of parent and subprocess to proto
+            String commandLine = config.getCommandLine();
             if (getSandboxOptions(config).shouldUseProtoReporter()) {
                 mProtoReceiver = new StreamProtoReceiver(listener, false);
+                // Force the child to the same mode as the parent.
+                commandLine = commandLine + " --" + SandboxOptions.USE_PROTO_REPORTER;
             } else {
                 mEventParser = new SubprocessTestResultsParser(listener, true, context);
+                commandLine = commandLine + " --no-" + SandboxOptions.USE_PROTO_REPORTER;
             }
-            String[] args = QuotationAwareTokenizer.tokenizeLine(config.getCommandLine());
+            String[] args = QuotationAwareTokenizer.tokenizeLine(commandLine);
             mGlobalConfig = SandboxConfigUtil.dumpFilteredGlobalConfig();
             DumpCmd mode = DumpCmd.RUN_CONFIG;
             if (config.getCommandOptions().shouldUseSandboxTestMode()) {
