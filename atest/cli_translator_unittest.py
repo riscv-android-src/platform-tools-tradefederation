@@ -91,20 +91,21 @@ class CLITranslatorUnittests(unittest.TestCase):
         # Let's make sure we return what we expect.
         expected_test_infos = {uc.MODULE_INFO}
         mock_getfindmethods.return_value = [
-            test_finder_base.Finder(None, find_method_return_module_info)]
+            test_finder_base.Finder(None, find_method_return_module_info, None)]
         unittest_utils.assert_strict_equal(
             self, ctr._get_test_infos(one_test), expected_test_infos)
 
         # Check we receive multiple test infos.
         expected_test_infos = {uc.MODULE_INFO, uc.CLASS_INFO}
         mock_getfindmethods.return_value = [
-            test_finder_base.Finder(None, find_method_return_module_class_info)]
+            test_finder_base.Finder(None, find_method_return_module_class_info,
+                                    None)]
         unittest_utils.assert_strict_equal(
             self, ctr._get_test_infos(mult_test), expected_test_infos)
 
         # Let's make sure we raise an error when we have no tests found.
         mock_getfindmethods.return_value = [
-            test_finder_base.Finder(None, find_method_return_nothing)]
+            test_finder_base.Finder(None, find_method_return_nothing, None)]
         self.assertRaises(atest_error.NoTestFoundError, ctr._get_test_infos,
                           one_test)
 
@@ -113,7 +114,8 @@ class CLITranslatorUnittests(unittest.TestCase):
         test_detail2 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST_WITH_OPTION)
         expected_test_infos = {uc.MODULE_INFO, uc.CLASS_INFO}
         mock_getfindmethods.return_value = [
-            test_finder_base.Finder(None, find_method_return_module_class_info)]
+            test_finder_base.Finder(None, find_method_return_module_class_info,
+                                    None)]
         test_infos = ctr._get_test_infos(
             mult_test, [test_detail1, test_detail2])
         unittest_utils.assert_strict_equal(
