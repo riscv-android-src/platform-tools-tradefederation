@@ -100,20 +100,29 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             return True
         return False
 
-    def _get_first_testable_module(self, path):
-        """Returns first testable module given module path.
+    def _determine_testable_module(self, path):
+        """Determine which module the user is trying to test.
+
+        Returns the module to test. If there are multiple possibilities, will
+        ask the user. Otherwise will return the only module found.
 
         Args:
             path: String path of module to look for.
 
         Returns:
-            String of first installed module name.
+            String of the module name.
         """
+        testable_modules = []
         for mod in self.module_info.get_module_names(path):
             mod_info = self.module_info.get_module_info(mod)
+            # Robolectric tests always exist in pairs of 2, one module to build
+            # the test and another to run it. For now, we are assuming they are
+            # isolated in their own folders and will return if we find one.
+            if self._is_robolectric_test(mod):
+                return mod
             if self._is_testable_module(mod_info):
-                return mod_info.get(constants.MODULE_NAME)
-        return None
+                testable_modules.append(mod_info.get(constants.MODULE_NAME))
+        return test_finder_utils.extract_test_from_tests(testable_modules)
 
     def _is_vts_module(self, module_name):
         """Returns True if the module is a vts module, else False."""
@@ -344,7 +353,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                 return None
             rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
         if not module_name:
-            module_name = self._get_first_testable_module(os.path.dirname(
+            module_name = self._determine_testable_module(os.path.dirname(
                 rel_config))
         return self._process_test_info(test_info.TestInfo(
             test_name=module_name,
@@ -415,7 +424,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                 return None
             rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
         if not module_name:
-            module_name = self._get_first_testable_module(
+            module_name = self._determine_testable_module(
                 os.path.dirname(rel_config))
         return self._process_test_info(test_info.TestInfo(
             test_name=module_name,
@@ -471,7 +480,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             self.root_dir, dir_path, self.module_info)
         if not rel_module_dir:
             return None
-        module_name = self._get_first_testable_module(rel_module_dir)
+        module_name = self._determine_testable_module(rel_module_dir)
         rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
         data = {constants.TI_REL_CONFIG: rel_config,
                 constants.TI_FILTER: frozenset()}
