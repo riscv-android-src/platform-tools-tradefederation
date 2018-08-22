@@ -17,6 +17,7 @@ Aggregates test runners, groups tests by test runners and kicks off tests.
 """
 
 import itertools
+import traceback
 
 import atest_error
 import result_reporter
@@ -112,6 +113,6 @@ def run_all_tests(results_dir, test_infos, extra_args):
             test_runner = test_runner(results_dir)
             test_runner.run_tests(tests, extra_args, reporter)
         # pylint: disable=broad-except
-        except Exception as error:
-            reporter.runner_failure(test_runner.NAME, error.message)
+        except Exception:
+            reporter.runner_failure(test_runner.NAME, traceback.format_exc())
     reporter.print_summary()
