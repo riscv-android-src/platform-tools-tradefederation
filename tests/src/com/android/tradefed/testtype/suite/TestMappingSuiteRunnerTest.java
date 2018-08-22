@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.suite;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
@@ -68,6 +69,7 @@ public class TestMappingSuiteRunnerTest {
         mRunner.setBuild(mBuildInfo);
         mRunner.setDevice(mMockDevice);
 
+        EasyMock.expect(mBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null);
         EasyMock.expect(mBuildInfo.getTestsDir()).andReturn(new File(NON_EXISTING_DIR));
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn(ABI_1);
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn(ABI_2);
@@ -131,6 +133,8 @@ public class TestMappingSuiteRunnerTest {
             ZipUtil.createZip(srcDir, zipFile);
 
             IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
+                    .andReturn(null);
             EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(new File("non-existing-dir"));
             EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
 
@@ -192,6 +196,8 @@ public class TestMappingSuiteRunnerTest {
             ZipUtil.createZip(srcDir, zipFile);
 
             IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
+                    .andReturn(null);
             EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(new File("non-existing-dir"));
             EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
 

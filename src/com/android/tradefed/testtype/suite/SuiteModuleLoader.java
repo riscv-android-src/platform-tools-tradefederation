@@ -96,19 +96,15 @@ public class SuiteModuleLoader {
 
     /** Main loading of configurations, looking into a folder */
     public LinkedHashMap<String, IConfiguration> loadConfigsFromDirectory(
-            File testsDir,
+            List<File> testsDirs,
             Set<IAbi> abis,
             String suitePrefix,
             String suiteTag,
-            List<String> patterns,
-            boolean prioritizeHostConfig) {
+            List<String> patterns) {
         LinkedHashMap<String, IConfiguration> toRun = new LinkedHashMap<>();
-
         List<File> listConfigFiles = new ArrayList<>();
-        List<File> extraTestCasesDirs = Arrays.asList(testsDir);
         listConfigFiles.addAll(
-                ConfigurationUtil.getConfigNamesFileFromDirs(
-                        suitePrefix, extraTestCasesDirs, patterns, prioritizeHostConfig));
+                ConfigurationUtil.getConfigNamesFileFromDirs(suitePrefix, testsDirs, patterns));
         // Ensure stable initial order of configurations.
         Collections.sort(listConfigFiles);
         for (File configFile : listConfigFiles) {
