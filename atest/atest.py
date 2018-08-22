@@ -80,10 +80,12 @@ def _configure_logging(verbose):
     Args:
         verbose: A boolean. If true display DEBUG level logs.
     """
+    log_format = '%(asctime)s %(filename)s:%(lineno)s:%(levelname)s: %(message)s'
+    datefmt = '%Y-%m-%d %H:%M:%S'
     if verbose:
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG, format=log_format, datefmt=datefmt)
     else:
-        logging.basicConfig(level=logging.INFO, format='%(message)s')
+        logging.basicConfig(level=logging.INFO, format=log_format, datefmt=datefmt)
 
 
 def _missing_environment_variables():
