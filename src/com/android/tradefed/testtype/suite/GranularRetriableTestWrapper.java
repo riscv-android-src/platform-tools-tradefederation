@@ -263,17 +263,14 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
                     CLog.d("The test has no failed testcases. No need to retry.");
                     break;
                 }
-                previousFailedTests =
-                        previousTestRunListener.getCurrentRunResults().getFailedTests();
+                previousFailedTests = getFailedTestCases(previousTestRunListener);
                 addRetriedTestsToIncludeFilters(mTest, previousFailedTests);
                 intraModuleRun();
 
                 // Evaluate success from what we just ran
-                Set<TestDescription> lastRun =
-                        mModuleListenerCollector
-                                .get(mModuleListenerCollector.size() - 1)
-                                .getCurrentRunResults()
-                                .getFailedTests();
+                ModuleListener lastListener = 
+                        mModuleListenerCollector.get(mModuleListenerCollector.size() - 1);
+                Set<TestDescription> lastRun = getFailedTestCases(lastListener);
                 Set<TestDescription> diff = Sets.difference(previousFailedTests, lastRun);
                 mSuccessRetried += diff.size();
                 previousFailedTests = lastRun;
@@ -285,6 +282,23 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
             // Track how long we spend in retry
             mRetryTime = System.currentTimeMillis() - startTime;
         }
+    }
+
+    /**
+     * Collect failed test cases from listener.
+     * TODO: Change the individual ModuleListener per attempt to a single ModuleListener, and this
+     * function should be getFailedTestCases(listener, attemptNumber).
+     *
+     * @param listener The listener which contains the failed test cases.
+     */
+    private Set<TestDescription> getFailedTestCases(ModuleListener listener) {
+        Set<TestDescription> failedTestCases = new HashSet<TestDescription>();
+        for (String runName: listener.getTestRunNames()) {
+            for (TestRunResult run: listener.getTestRunAttempts(runName)) {
+                failedTestCases.addAll(run.getFailedTests());
+            }
+        }
+        return failedTestCases;
     }
 
     /**
