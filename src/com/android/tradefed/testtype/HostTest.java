@@ -91,7 +91,6 @@ public class HostTest
                 IBuildReceiver,
                 IAbiReceiver,
                 IShardableTest,
-                IStrictShardableTest,
                 IRuntimeHintProvider,
                 IMultiDeviceTest,
                 IInvocationContextReceiver {
@@ -1081,66 +1080,6 @@ public class HostTest
         test.mJars = new HashSet<>();
         // Copy the abi if available
         test.setAbi(mAbi);
-        return test;
-    }
-
-    @Override
-    public IRemoteTest getTestShard(int shardCount, int shardIndex) {
-        List<Class<?>> classes = getClasses();
-        if (classes.isEmpty()) {
-            throw new IllegalArgumentException("Missing Test class name");
-        }
-        if (mMethodName != null && classes.size() > 1) {
-            throw new IllegalArgumentException("Method name given with multiple test classes");
-        }
-        HostTest test = createTestShard(shardCount, shardIndex);
-        // In case we don't have enough classes to shard, we return a Stub.
-        if (test == null) {
-            test = createHostTest(null);
-            test.mSkipTestClassCheck = true;
-            test.mClasses.clear();
-            test.mRuntimeHint = 0l;
-        } else {
-            int newCount = test.countTestCases();
-            int numTotalTestCases = countTestCases();
-            // In case of counting inconsistency we raise the issue. Should not happen if we are
-            // counting properly. Here as a security.
-            if (newCount > numTotalTestCases) {
-                throw new RuntimeException(
-                        "Tests count number after sharding is higher than initial count.");
-            }
-            // update the runtime hint on pro-rate of number of tests.
-            if (newCount == 0) {
-                // In case there is not tests left.
-                test.mRuntimeHint = 0L;
-            } else {
-                test.mRuntimeHint = (mRuntimeHint * newCount) / numTotalTestCases;
-            }
-        }
-        return test;
-    }
-
-    private HostTest createTestShard(int shardCount, int shardIndex) {
-        int i = 0;
-        HostTest test = null;
-        List<? extends Object> tests = shardUnitIsMethod() ? getTestMethods() : getClasses();
-        for (Object testObj : tests) {
-            Class<?> classObj = Class.class.isInstance(testObj) ? (Class<?>)testObj : null;
-            if (i % shardCount == shardIndex) {
-                if (test == null) {
-                    test = createHostTest(classObj);
-                }
-                if (classObj != null) {
-                    test.addClassName(classObj.getName());
-                } else {
-                    test.addTestMethod(testObj);
-                }
-                // Carry over non-annotation filters to shards.
-                test.addAllExcludeFilters(mFilterHelper.getExcludeFilters());
-                test.addAllIncludeFilters(mFilterHelper.getIncludeFilters());
-            }
-            i++;
-        }
         return test;
     }
 
