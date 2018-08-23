@@ -37,6 +37,7 @@ import org.junit.runners.JUnit4;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -118,7 +119,8 @@ public class SuiteModuleLoaderTest {
         patterns.add(".*.config");
         patterns.add(".*.xml");
         LinkedHashMap<String, IConfiguration> res =
-                mRepo.loadConfigsFromDirectory(mTestsDir, mAbis, null, null, patterns, false);
+                mRepo.loadConfigsFromDirectory(
+                        Arrays.asList(mTestsDir), mAbis, null, null, patterns);
         assertNotNull(res.get("armeabi-v7a module1"));
         IConfiguration config = res.get("armeabi-v7a module1");
 
@@ -166,7 +168,8 @@ public class SuiteModuleLoaderTest {
         patterns.add(".*.config");
         patterns.add(".*.xml");
         LinkedHashMap<String, IConfiguration> res =
-                mRepo.loadConfigsFromDirectory(mTestsDir, mAbis, null, null, patterns, false);
+                mRepo.loadConfigsFromDirectory(
+                        Arrays.asList(mTestsDir), mAbis, null, null, patterns);
         assertNotNull(res.get("armeabi-v7a module1"));
         IConfiguration config = res.get("armeabi-v7a module1");
 

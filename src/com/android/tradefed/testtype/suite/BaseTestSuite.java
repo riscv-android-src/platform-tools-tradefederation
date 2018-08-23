@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.IConfiguration;
@@ -166,8 +167,27 @@ public class BaseTestSuite extends ITestSuite {
                     createModuleLoader(
                             mIncludeFiltersParsed, mExcludeFiltersParsed, mTestArgs, mModuleArgs);
             mModuleRepo.setParameterizedModules(mEnableParameter);
+
+            List<File> testsDirectories = new ArrayList<>();
+
+            // Include host or target first in the search if it exists, we have to this in
+            // BaseTestSuite because it's the only one with the BuildInfo knowledge of linked files
+            if (mPrioritizeHostConfig) {
+                File hostSubDir = getBuildInfo().getFile(BuildInfoFileKey.HOST_LINKED_DIR);
+                if (hostSubDir != null && hostSubDir.exists()) {
+                    testsDirectories.add(hostSubDir);
+                }
+            } else {
+                File targetSubDir = getBuildInfo().getFile(BuildInfoFileKey.TARGET_LINKED_DIR);
+                if (targetSubDir != null && targetSubDir.exists()) {
+                    testsDirectories.add(targetSubDir);
+                }
+            }
+
+            // Finally add the full test cases directory in case there is no special sub-dir.
+            testsDirectories.add(testsDir);
             // Actual loading of the configurations.
-            return loadingStrategy(abis, testsDir, mSuitePrefix, mSuiteTag);
+            return loadingStrategy(abis, testsDirectories, mSuitePrefix, mSuiteTag);
         } catch (DeviceNotAvailableException | FileNotFoundException e) {
             throw new RuntimeException(e);
         }
@@ -178,13 +198,13 @@ public class BaseTestSuite extends ITestSuite {
      * extended or replaced.
      *
      * @param abis The set of abis to run against.
-     * @param testsDir The tests directory.
+     * @param testsDirs The tests directory.
      * @param suitePrefix A prefix to filter the resource directory.
      * @param suiteTag The suite tag a module should have to be included. Can be null.
      * @return A list of loaded configuration for the suite.
      */
     public LinkedHashMap<String, IConfiguration> loadingStrategy(
-            Set<IAbi> abis, File testsDir, String suitePrefix, String suiteTag) {
+            Set<IAbi> abis, List<File> testsDirs, String suitePrefix, String suiteTag) {
         LinkedHashMap<String, IConfiguration> loadedConfigs = new LinkedHashMap<>();
         // Load configs that are part of the resources
         if (!mSkipJarLoading) {
@@ -202,12 +222,7 @@ public class BaseTestSuite extends ITestSuite {
         loadedConfigs.putAll(
                 getModuleLoader()
                         .loadConfigsFromDirectory(
-                                testsDir,
-                                abis,
-                                suitePrefix,
-                                suiteTag,
-                                mConfigPatterns,
-                                mPrioritizeHostConfig));
+                                testsDirs, abis, suitePrefix, suiteTag, mConfigPatterns));
         return loadedConfigs;
     }
 
