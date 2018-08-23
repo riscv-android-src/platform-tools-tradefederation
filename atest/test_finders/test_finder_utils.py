@@ -98,8 +98,11 @@ _VTS_BITNESS = 'append-bitness'
 _VTS_BITNESS_TRUE = 'true'
 _VTS_BITNESS_32 = '32'
 _VTS_BITNESS_64 = '64'
+_VTS_TEST_FILE = 'test-file-name'
+_VTS_APK = 'apk'
 # Matches 'DATA/target' in '_32bit::DATA/target'
 _VTS_BINARY_SRC_DELIM_RE = re.compile(r'.*::(?P<target>.*)$')
+_VTS_OUT_DATA_APP_PATH = 'DATA/app'
 
 # pylint: disable=inconsistent-return-statements
 def split_methods(user_input):
@@ -610,17 +613,49 @@ def _get_vts_binary_src_target(value, rel_out_dir):
     return target
 
 
+def get_plans_from_vts_xml(xml_file):
+    """Get configs which are included by xml_file.
+
+    We're looking for option(include) to get all dependency plan configs.
+
+    Args:
+        xml_file: Absolute path to xml file.
+
+    Returns:
+        A set of plan config paths which are depended by xml_file.
+    """
+    if not os.path.exists(xml_file):
+        raise atest_error.XmlNotExistError(xml_file)
+    plans = set()
+    xml_root = ET.parse(xml_file).getroot()
+    plans.add(xml_file)
+    option_tags = xml_root.findall('.//include')
+    if not option_tags:
+        return plans
+    # Currently, all vts xmls live in the same dir :
+    # https://android.googlesource.com/platform/test/vts/+/master/tools/vts-tradefed/res/config/
+    # If the vts plans start using folders to organize the plans, the logic here
+    # should be changed.
+    xml_dir = os.path.dirname(xml_file)
+    for tag in option_tags:
+        name = tag.attrib[_XML_NAME].strip()
+        plans |= get_plans_from_vts_xml(os.path.join(xml_dir, name + ".xml"))
+    return plans
+
+
 def get_targets_from_vts_xml(xml_file, rel_out_dir, module_info):
     """Parse a vts xml for test dependencies we need to build.
 
     We have a separate vts parsing function because we make a big assumption
     on the targets (the way they're formatted and what they represent) and we
     also create these build targets in a very special manner as well.
-    The 4 options we're looking for are:
+    The 6 options we're looking for are:
       - binary-test-source
       - push-group
       - push
       - test-module-name
+      - test-file-name
+      - apk
 
     Args:
         module_info: ModuleInfo class used to verify targets are valid modules.
@@ -658,6 +693,23 @@ def get_targets_from_vts_xml(xml_file, rel_out_dir, module_info):
                 targets.add(os.path.join(rel_out_dir, push_target + _VTS_BITNESS_64))
             else:
                 targets.add(os.path.join(rel_out_dir, push_target))
+        elif name == _VTS_TEST_FILE:
+            # The _VTS_TEST_FILE values can be set in 2 possible ways:
+            #   1. test_file.apk
+            #   2. DATA/app/test_file/test_file.apk
+            # We'll assume that test_file.apk (#1) is in an expected path (but
+            # that is not true, see b/76158619) and create the full path for it
+            # and then append the _VTS_TEST_FILE value to targets to build.
+            target = os.path.join(rel_out_dir, value)
+            # If value is just an APK, specify the path that we expect it to be in
+            # e.g. out/host/linux-x86/vts/android-vts/testcases/DATA/app/test_file/test_file.apk
+            head, _ = os.path.split(value)
+            if not head:
+                target = os.path.join(rel_out_dir, _VTS_OUT_DATA_APP_PATH,
+                                      _get_apk_target(value), value)
+            targets.add(target)
+        elif name == _VTS_APK:
+            targets.add(os.path.join(rel_out_dir, value))
     logging.debug('Targets found in config file: %s', targets)
     return targets
 

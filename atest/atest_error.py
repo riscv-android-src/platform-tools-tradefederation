@@ -58,3 +58,6 @@ class FatalIncludeError(SyntaxError):
 
 class MissingCCTestCaseError(Exception):
     """Raised when the cc file does not contain a test case class."""
+
+class XmlNotExistError(Exception):
+    """Raised when the xml file does not exist."""
