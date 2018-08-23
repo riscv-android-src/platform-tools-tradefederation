@@ -526,6 +526,10 @@ class ModuleFinderUnittests(unittest.TestCase):
         mock_is_auto_gen.return_value = False
         self.assertTrue(self.mod_finder._has_test_config(mod_info))
         self.assertFalse(self.mod_finder._has_test_config({}))
+        # Validate the case with MODULE_TEST_CONFIG be set
+        mod_info2 = {constants.MODULE_PATH:[uc.TEST_CONFIG_DATA_DIR],
+                     constants.MODULE_TEST_CONFIG:[os.path.join(uc.TEST_CONFIG_DATA_DIR, "a.xml")]}
+        self.assertTrue(self.mod_finder._has_test_config(mod_info2))
 
     @mock.patch.object(module_finder.ModuleFinder, '_has_test_config',
                        return_value=True)

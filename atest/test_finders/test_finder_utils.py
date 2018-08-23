@@ -423,6 +423,9 @@ def find_parent_module_dir(root_dir, start_dir, module_info):
         for mod in module_info.path_to_module_info.get(rel_dir, []):
             if is_robolectric_module(mod):
                 return rel_dir
+            for test_config in mod.get(constants.MODULE_TEST_CONFIG, []):
+                if os.path.isfile(os.path.join(root_dir, test_config)):
+                    return rel_dir
             if mod.get('auto_test_config'):
                 auto_gen_dir = rel_dir
                 # Don't return for auto_gen, keep checking for real config, because
