@@ -41,6 +41,7 @@ FIND_PKG = ROOT + 'foo/bar/jank/src/android/jank/cts/ui\n'
 INT_NAME = 'example/reboot'
 GTF_INT_NAME = 'some/gtf_int_test'
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'unittest_data')
+TEST_CONFIG_DATA_DIR = os.path.join(TEST_DATA_DIR, 'test_config')
 
 INT_DIR = 'tf/contrib/res/config'
 GTF_INT_DIR = 'gtf/core/res/config'
