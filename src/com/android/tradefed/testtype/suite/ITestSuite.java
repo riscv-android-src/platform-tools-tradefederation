@@ -92,6 +92,29 @@ public abstract class ITestSuite
                 IConfigurationReceiver,
                 IReportNotExecuted {
 
+    /** The Retry Strategy to be used when re-running some tests. */
+    public enum RetryStrategy {
+        /** Rerun all the tests for the number of attempts specified. */
+        ITERATIONS,
+        /**
+         * Rerun all the tests until the max count is reached or a failure occurs whichever come
+         * first.
+         */
+        RERUN_UNTIL_FAILURE,
+        /**
+         * Rerun all the test case failures until passed or the max number of attempts specified.
+         */
+        RETRY_TEST_CASE_FAILURE,
+        /** Rerun all the test run failures until passed or the max number of attempts specified. */
+        RETRY_TEST_RUN_FAILURE,
+        /**
+         * Rerun all the test run and test cases failures until passed or the max number of attempts
+         * specified. Test run failures are rerun in priority (a.k.a. if a run failure and a test
+         * case failure occur, the run failure is rerun).
+         */
+        RETRY_ANY_FAILURE,
+    }
+
     public static final String SKIP_SYSTEM_STATUS_CHECKER = "skip-system-status-check";
     public static final String RUNNER_WHITELIST = "runner-whitelist";
     public static final String PREPARER_WHITELIST = "preparer-whitelist";
@@ -233,6 +256,14 @@ public abstract class ITestSuite
                         + "the max number of runs for each testcase."
     )
     private int mMaxRunLimit = 1;
+
+    @Option(
+        name = "retry-strategy",
+        description =
+                "The retry strategy to be used when re-running some tests with "
+                        + "--max-testcase-run-count"
+    )
+    private RetryStrategy mRetryStrategy = RetryStrategy.RETRY_TEST_CASE_FAILURE;
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
@@ -548,6 +579,8 @@ public abstract class ITestSuite
         module.setMetricCollectors(mMetricCollectors);
         // Pass the main invocation logSaver
         module.setLogSaver(mMainConfiguration.getLogSaver());
+        // Pass the retry strategy to the module
+        module.setRetryStrategy(mRetryStrategy);
 
         // Actually run the module
         module.run(listener, moduleListeners, failureListener, mMaxRunLimit);
