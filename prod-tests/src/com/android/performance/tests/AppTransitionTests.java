@@ -33,6 +33,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestResult;
+import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
@@ -156,7 +157,7 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
                 mLaunchEventsLogs = new LogcatReceiver(getDevice(), EVENTS_CMD, EVENTS_LOGCAT_SIZE,
                         0);
                 startEventsLogs(mLaunchEventsLogs, TEST_COLD_LAUNCH);
-                mDevice.runInstrumentationTests(mRunner, mLaunchListener);
+                runTests();
                 analyzeColdLaunchDelay(parseTransitionDelayInfo());
             } finally {
                 stopEventsLogs(mLaunchEventsLogs, TEST_COLD_LAUNCH);
@@ -173,7 +174,7 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
                 mLaunchEventsLogs = new LogcatReceiver(getDevice(), EVENTS_CMD, EVENTS_LOGCAT_SIZE,
                         0);
                 startEventsLogs(mLaunchEventsLogs, TEST_HOT_LAUNCH);
-                mDevice.runInstrumentationTests(mRunner, mLaunchListener);
+                runTests();
                 analyzeHotLaunchDelay(parseTransitionDelayInfo());
             } finally {
                 stopEventsLogs(mLaunchEventsLogs, TEST_HOT_LAUNCH);
@@ -192,7 +193,7 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
                 mLaunchEventsLogs = new LogcatReceiver(getDevice(), EVENTS_CMD, EVENTS_LOGCAT_SIZE,
                         0);
                 startEventsLogs(mLaunchEventsLogs, TEST_APP_TO_RECENT);
-                mDevice.runInstrumentationTests(mRunner, mLaunchListener);
+                runTests();
                 analyzeAppToRecentsDelay(parseTransitionDelayInfo());
             } finally {
                 stopEventsLogs(mLaunchEventsLogs, TEST_APP_TO_RECENT);
@@ -212,7 +213,7 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
                 mLaunchEventsLogs = new LogcatReceiver(getDevice(), EVENTS_CMD, EVENTS_LOGCAT_SIZE,
                         0);
                 startEventsLogs(mLaunchEventsLogs, TEST_HOT_LAUNCH_FROM_RECENTS);
-                mDevice.runInstrumentationTests(mRunner, mLaunchListener);
+                runTests();
                 analyzeRecentsToAppDelay(parseTransitionDelayInfo());
             } finally {
                 stopEventsLogs(mLaunchEventsLogs, TEST_HOT_LAUNCH_FROM_RECENTS);
@@ -229,7 +230,7 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
                 mLaunchEventsLogs = new LogcatReceiver(getDevice(), EVENTS_CMD, EVENTS_LOGCAT_SIZE,
                         0);
                 startEventsLogs(mLaunchEventsLogs, TEST_LATENCY);
-                mDevice.runInstrumentationTests(mRunner, mLaunchListener);
+                runTests();
                 analyzeLatencyInfo(parseLatencyInfo());
             } finally {
                 stopEventsLogs(mLaunchEventsLogs, TEST_LATENCY);
@@ -239,6 +240,17 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
             }
         }
 
+    }
+
+    private void runTests() throws DeviceNotAvailableException {
+        mDevice.runInstrumentationTests(mRunner, mLaunchListener);
+        final TestRunResult runResults = mLaunchListener.getCurrentRunResults();
+        if (runResults.isRunFailure()) {
+            throw new RuntimeException("Error: test run failed!");
+        }
+        if (runResults.hasFailedTests()) {
+            throw new RuntimeException("Error: some tests failed!");
+        }
     }
 
     /**
