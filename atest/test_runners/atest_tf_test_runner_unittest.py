@@ -153,10 +153,11 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
     @mock.patch.object(atf_tr.AtestTradefedTestRunner,
                        '_process_connection', return_value=None)
     @mock.patch('os.killpg', return_value=None)
+    @mock.patch('os.getpgid', return_value=None)
     @mock.patch('signal.signal', return_value=None)
-    def test_run_tests_pretty(self, _signal, _killpg, _process, _run_cmd,
-                              _test_args, mock_exec_w_poll, mock_run,
-                              mock_start_socket_server):
+    def test_run_tests_pretty(self, _signal, _pgid, _killpg, _process,
+                              _run_cmd, _test_args, mock_exec_w_poll,
+                              mock_run, mock_start_socket_server):
         """Test _run_tests_pretty method."""
         mock_subproc = mock.Mock()
         mock_run.return_value = mock_subproc
@@ -199,7 +200,6 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         self.assertEquals(host, atf_tr.SOCKET_HOST)
         self.assertLessEqual(port, 65535)
         self.assertGreaterEqual(port, 1024)
-        server.shutdown(socket.SHUT_RDWR)
         server.close()
 
     @mock.patch.object(atf_tr.AtestTradefedTestRunner, '_process_event')

@@ -17,6 +17,8 @@
 Command Line Translator for atest.
 """
 
+from __future__ import print_function
+
 import fnmatch
 import json
 import logging
@@ -87,6 +89,9 @@ class CLITranslator(object):
                             tm_test_detail.options)
                     test_infos.add(test_info)
                     test_found = True
+                    finder_info = finder.finder_info
+                    clr_test_name = atest_utils.colorize(test, constants.GREEN)
+                    print("Found '%s' as %s" % (clr_test_name, finder_info))
                     break
             if not test_found:
                 raise atest_error.NoTestFoundError('No test found for: %s' %
@@ -300,7 +305,7 @@ class CLITranslator(object):
                     tests)
             sys.exit(constants.EXIT_CODE_TEST_NOT_FOUND)
 
-        logging.info(
+        logging.debug(
             'Test details:\n%s',
             '\n'.join([str(detail) for detail in test_details_list]))
         test_names = [detail.name for detail in test_details_list]
@@ -321,7 +326,8 @@ class CLITranslator(object):
         test_details_list = None
         if atest_utils.is_test_mapping(args):
             tests, test_details_list = self._get_test_mapping_tests(args)
-        logging.info('Finding tests: %s', tests)
+        atest_utils.colorful_print("Finding Tests...", constants.CYAN)
+        logging.debug('Finding Tests: %s', tests)
         start = time.time()
         test_infos = self._get_test_infos(tests, test_details_list)
         logging.debug('Found tests in %ss', time.time() - start)

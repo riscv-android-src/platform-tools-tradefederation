@@ -217,8 +217,8 @@ def extract_test_path(output, is_native_test=False):
 def extract_test_from_tests(tests):
     """Extract the test path from the tests.
 
-    Example of find output for CLASS find cmd:
-    /<some_root>/cts/tests/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java
+    Return the test to run from tests. If more than one option, prompt the user
+    to select one.
 
     Args:
         tests: A string list which contains multiple test paths.
@@ -400,41 +400,32 @@ def find_parent_module_dir(root_dir, start_dir, module_info):
 
     Returns:
         A string of the module dir relative to root, None if no Module Dir
-        found.
+        found. There may be multiple testable modules at this level.
 
     Exceptions:
         ValueError: Raised if cur_dir not dir or not subdir of root dir.
     """
     if not is_equal_or_sub_dir(start_dir, root_dir):
         raise ValueError('%s not in repo %s' % (start_dir, root_dir))
-    module_dir = None
+    auto_gen_dir = None
     current_dir = start_dir
     while current_dir != root_dir:
-        # If we find an AndroidTest.xml, we know we found the right directory.
+        # TODO (b/112904944) - migrate module_finder functions to here and
+        # reuse them.
+        rel_dir = os.path.relpath(current_dir, root_dir)
+        # Check if actual config file here
         if os.path.isfile(os.path.join(current_dir, constants.MODULE_CONFIG)):
-            module_dir = os.path.relpath(current_dir, root_dir)
-            break
-        # If we haven't found a possible auto-generated config location, check
-        # now.
-        if not module_dir:
-            rel_dir = os.path.relpath(current_dir, root_dir)
-            module_list = module_info.path_to_module_info.get(rel_dir, [])
-            # Verify only one module at this level has an auto_test_config.
-            if len([x for x in module_list if x.get('auto_test_config')]) == 1:
-                # We found a single test module!
-                module_dir = rel_dir
-                # But keep searching in case there's an AndroidTest.xml in a
-                # parent folder. Example: a class belongs to an test apk that's
-                # part of a hostside test setup (common in cts).
-            # Check if a robolectric module lives here.
-            for mod in module_list:
-                if is_robolectric_module(mod):
-                    module_dir = rel_dir
-                    break
+            return rel_dir
+        # Check module_info if auto_gen config or robo (non-config) here
+        for mod in module_info.path_to_module_info.get(rel_dir, []):
+            if is_robolectric_module(mod):
+                return rel_dir
+            if mod.get('auto_test_config'):
+                auto_gen_dir = rel_dir
+                # Don't return for auto_gen, keep checking for real config, because
+                # common in cts for class in apk that's in hostside test setup.
         current_dir = os.path.dirname(current_dir)
-    if not module_dir:
-        return None
-    return module_dir
+    return auto_gen_dir
 
 
 def get_targets_from_xml(xml_file, module_info):
