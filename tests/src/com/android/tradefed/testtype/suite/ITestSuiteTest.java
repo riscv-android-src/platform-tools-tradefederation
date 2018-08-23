@@ -56,6 +56,7 @@ import com.android.tradefed.targetprep.StubTargetPreparer;
 import com.android.tradefed.testtype.FakeTest;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.MultiMap;
@@ -103,6 +104,7 @@ public class ITestSuiteTest {
     private InvocationScope mScope;
     private Injector mInjector;
     private InvocationScopeModule mInvocationScope;
+    private String mTestFailedMessage = "I failed!";
 
     /** Very basic implementation of {@link ITestSuite} to test it. */
     public static class TestSuiteImpl extends ITestSuite {
@@ -149,9 +151,10 @@ public class ITestSuiteTest {
         }
     }
 
-    public static class StubCollectingTest implements IRemoteTest {
+    public static class StubCollectingTest implements IRemoteTest, ITestFilterReceiver {
         private DeviceNotAvailableException mException;
         private RuntimeException mRunException;
+        private String mFailed;
 
         public StubCollectingTest() {}
 
@@ -161,6 +164,10 @@ public class ITestSuiteTest {
 
         public StubCollectingTest(RuntimeException e) {
             mRunException = e;
+        }
+
+        public void setFailed(String errMessage) {
+            mFailed = errMessage;
         }
 
         @Override
@@ -175,10 +182,55 @@ public class ITestSuiteTest {
                 }
                 TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
                 listener.testStarted(test, 0);
+                if (mFailed != null) {
+                    listener.testFailed(test, mFailed);
+                }
                 listener.testEnded(test, 5, new HashMap<String, Metric>());
             } finally {
                 listener.testRunEnded(0, new HashMap<String, Metric>());
             }
+        }
+
+        @Override
+        public void addIncludeFilter(String filter) {
+            // ignored
+        }
+
+        @Override
+        public void addAllIncludeFilters(Set<String> filters) {
+            // ignored
+        }
+
+        @Override
+        public void addExcludeFilter(String filter) {
+            // ignored
+        }
+
+        @Override
+        public void addAllExcludeFilters(Set<String> filters) {
+            // ignored
+        }
+
+        @Override
+        public Set<String> getIncludeFilters() {
+            // ignored
+            return new HashSet<>();
+        }
+
+        @Override
+        public Set<String> getExcludeFilters() {
+            // ignored
+            return new HashSet<>();
+        }
+
+        @Override
+        public void clearIncludeFilters() {
+            // ignored
+        }
+
+        @Override
+        public void clearExcludeFilters() {
+            // ignored
         }
     }
 
@@ -255,12 +307,44 @@ public class ITestSuiteTest {
 
     /** Helper to expect the test run callback. */
     private void expectTestRun(ITestInvocationListener listener) {
+        expectTestRun(listener, false);
+    }
+
+    /** Helper to expect the test run callback. */
+    private void expectTestRun(ITestInvocationListener listener, boolean testFailed) {
+        expectTestRun(listener, mTestFailedMessage, testFailed);
+    }
+
+    /** Helper to expect the test run callback. */
+    private void expectTestRun(
+            ITestInvocationListener listener, String message, boolean testFailed) {
         listener.testModuleStarted(EasyMock.anyObject());
         listener.testRunStarted(TEST_CONFIG_NAME, 1);
         TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
         listener.testStarted(test, 0);
+        if (testFailed) {
+            listener.testFailed(test, message);
+        }
         listener.testEnded(test, 5, new HashMap<String, Metric>());
         listener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        listener.testModuleEnded();
+    }
+
+    /** Helper to expect the test run callback. */
+    private void expectIntraModuleTestRun(
+            ITestInvocationListener listener, int totalAttempt, boolean testFailed) {
+        listener.testModuleStarted(EasyMock.anyObject());
+        for (int attemptNumber = 0; attemptNumber < totalAttempt; attemptNumber++) {
+            listener.testRunStarted(TEST_CONFIG_NAME, 1, attemptNumber);
+            TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
+            listener.testStarted(test, 0);
+            if (testFailed) {
+                listener.testFailed(test, mTestFailedMessage);
+            }
+            listener.testEnded(test, 5, new HashMap<String, Metric>());
+            listener.testRunEnded(
+                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        }
         listener.testModuleEnded();
     }
 
@@ -1200,7 +1284,71 @@ public class ITestSuiteTest {
                 .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
         expectTestRun(mMockListener);
         // We expect the full test run on the module listener too
-        expectTestRun(moduleListener);
+        expectIntraModuleTestRun(moduleListener, 1, false);
+        replayMocks();
+        EasyMock.replay(moduleListener);
+        mTestSuite.run(mMockListener);
+        verifyMocks();
+        EasyMock.verify(moduleListener);
+    }
+
+    /** Test for {@link ITestSuite#run(ITestInvocationListener)} when a module listener is used. */
+    @Test
+    public void testRun_GranularRerunwithModuleListener() throws Exception {
+        ITestInvocationListener moduleListener = EasyMock.createMock(ITestInvocationListener.class);
+        final int maxRunLimit = 3;
+        StubCollectingTest test = new StubCollectingTest();
+        test.setFailed(mTestFailedMessage);
+        mTestSuite =
+                new TestSuiteImpl() {
+                    @Override
+                    protected List<ITestInvocationListener> createModuleListeners() {
+                        List<ITestInvocationListener> list = super.createModuleListeners();
+                        list.add(moduleListener);
+                        return list;
+                    }
+
+                    @Override
+                    public LinkedHashMap<String, IConfiguration> loadTests() {
+                        LinkedHashMap<String, IConfiguration> testConfig = new LinkedHashMap<>();
+                        try {
+                            IConfiguration fake =
+                                    ConfigurationFactory.getInstance()
+                                            .createConfigurationFromArgs(
+                                                    new String[] {EMPTY_CONFIG});
+                            fake.setTest(test);
+                            testConfig.put(TEST_CONFIG_NAME, fake);
+                        } catch (ConfigurationException e) {
+                            CLog.e(e);
+                            throw new RuntimeException(e);
+                        }
+                        return testConfig;
+                    }
+                };
+        mTestSuite.setDevice(mMockDevice);
+        mTestSuite.setBuild(mMockBuildInfo);
+        mTestSuite.setConfiguration(mStubMainConfiguration);
+        mTestSuite.setMaxRunLimit(maxRunLimit);
+        mContext = new InvocationContext();
+        mTestSuite.setInvocationContext(mContext);
+        mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
+
+        List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
+        sysChecker.add(mMockSysChecker);
+        mTestSuite.setSystemStatusChecker(sysChecker);
+        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
+                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
+                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        // The main listener get the aggregated message failures.
+        expectTestRun(
+                mMockListener,
+                String.format(
+                        "%s\n%s\n%s", mTestFailedMessage, mTestFailedMessage, mTestFailedMessage),
+                true);
+        // Verify that when the suite is intra-module retried, the moduleListener receives every
+        // run attempt's result.
+        expectIntraModuleTestRun(moduleListener, maxRunLimit, true);
         replayMocks();
         EasyMock.replay(moduleListener);
         mTestSuite.run(mMockListener);

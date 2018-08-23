@@ -35,7 +35,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -67,14 +66,11 @@ import java.util.Set;
 public class GranularRetriableTestWrapper implements IRemoteTest {
 
     private IRemoteTest mTest;
-    private boolean mSkipTestCases;
     private List<IMetricCollector> mRunMetricCollectors;
-    private ITestInvocationListener mMainListener;
     private TestFailureListener mFailureListener;
     private IInvocationContext mModuleInvocationContext;
     private IConfiguration mModuleConfiguration;
-    private Map<String, List<TestRunResult>> mRunNameToRunResultsMap;
-    private List<ModuleListener> mModuleListenerCollector;
+    private ModuleListener mMainGranularRunListener;
     private List<ITestInvocationListener> mModuleLevelListeners;
     private ILogSaver mLogSaver;
     private String mModuleId;
@@ -93,13 +89,13 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
 
     public GranularRetriableTestWrapper(
             IRemoteTest test,
+            ITestInvocationListener mainListener,
             TestFailureListener failureListener,
             List<ITestInvocationListener> moduleLevelListeners,
             int maxRunLimit) {
         mTest = test;
-        mRunNameToRunResultsMap = new LinkedHashMap<>();
+        mMainGranularRunListener = new ModuleListener(mainListener);
         mFailureListener = failureListener;
-        mModuleListenerCollector = new ArrayList<ModuleListener>();
         mIsMetricCollectorInitialized = false;
         mModuleLevelListeners = moduleLevelListeners;
         mMaxRunLimit = maxRunLimit;
@@ -121,7 +117,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
      * @param skipTestCases whether the testcases should be skipped.
      */
     public void setMarkTestsSkipped(boolean skipTestCases) {
-        mSkipTestCases = skipTestCases;
+        mMainGranularRunListener.setMarkTestsSkipped(skipTestCases);
     }
 
     /**
@@ -168,11 +164,6 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
         mRetryStrategy = retryStrategy;
     }
 
-    @VisibleForTesting
-    ModuleListener createModuleListener() {
-        return new ModuleListener(mMainListener);
-    }
-
     /**
      * Initialize a new {@link ModuleListener} for each test run.
      *
@@ -181,19 +172,22 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
      *     TestFailureListener}, and wrapped by RunMetricsCollector and Module MetricCollector (if
      *     not initialized).
      */
-    private ITestInvocationListener prepareRunListener() {
-        ModuleListener moduleListener = createModuleListener();
-        mModuleListenerCollector.add(moduleListener);
-        moduleListener.setMarkTestsSkipped(mSkipTestCases);
+    private ITestInvocationListener prepareRunListener(int attemptNumber) {
         List<ITestInvocationListener> currentTestListener = new ArrayList<>();
         // Add all the module level listeners, including TestFailureListener
         if (mModuleLevelListeners != null) {
             currentTestListener.addAll(mModuleLevelListeners);
         }
-        currentTestListener.add(moduleListener);
+        currentTestListener.add(mMainGranularRunListener);
 
         ITestInvocationListener runListener =
-                new LogSaverResultForwarder(mLogSaver, currentTestListener);
+                new LogSaverResultForwarder(mLogSaver, currentTestListener) {
+                    // Propagate the attempt number to TestRunStarted.
+                    @Override
+                    public void testRunStarted(String runName, int testCount) {
+                        testRunStarted(runName, testCount, attemptNumber);
+                    }
+                };
         if (mFailureListener != null) {
             mFailureListener.setLogger(runListener);
             currentTestListener.add(mFailureListener);
@@ -229,9 +223,9 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        mMainListener = listener;
         // First do the regular run, not retried.
-        intraModuleRun();
+        int initAttempt = 0;
+        intraModuleRun(initAttempt);
 
         if (mMaxRunLimit <= 1) {
             return;
@@ -239,11 +233,10 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
 
         // If the very first attempt failed, then don't proceed.
         if (RetryStrategy.RERUN_UNTIL_FAILURE.equals(mRetryStrategy)) {
-            ModuleListener lastListener =
-                    mModuleListenerCollector.get(mModuleListenerCollector.size() - 1);
-            Set<TestDescription> lastRun = getFailedTestCases(lastListener);
+            Set<TestDescription> lastRun = getFailedTestCases(initAttempt);
             // If we encountered a failure
-            if (!lastRun.isEmpty() || lastListener.hasFailed()) {
+            if (!lastRun.isEmpty()
+                    || mMainGranularRunListener.hasRunCrashedAtAttempt(initAttempt)) {
                 CLog.w("%s failed after the first run. Stopping.", lastRun);
                 return;
             }
@@ -251,7 +244,6 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
 
         // Deal with retried attempted
         long startTime = System.currentTimeMillis();
-        ModuleListener previousTestRunListener = null;
         Set<TestDescription> previousFailedTests = null;
         Set<String> originalFilters = new HashSet<>();
 
@@ -270,21 +262,19 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
 
         try {
             CLog.d("Starting intra-module retry.");
-            for (int count = 1; count < mMaxRunLimit; count++) {
+            for (int attemptNumber = 1; attemptNumber < mMaxRunLimit; attemptNumber++) {
                 // Reset the filters to original.
                 if (mTest instanceof ITestFilterReceiver) {
                     ((ITestFilterReceiver) mTest).clearIncludeFilters();
                     ((ITestFilterReceiver) mTest).addAllIncludeFilters(originalFilters);
                 }
-                previousTestRunListener =
-                        mModuleListenerCollector.get(mModuleListenerCollector.size() - 1);
                 // TODO: sort out the collection of metrics for each strategy
                 if (shouldHandleFailure(mRetryStrategy)) {
                     boolean shouldContinue = false;
                     // In case of test run failure and we should retry test runs
                     if (RetryStrategy.RETRY_TEST_RUN_FAILURE.equals(mRetryStrategy)
                             || RetryStrategy.RETRY_ANY_FAILURE.equals(mRetryStrategy)) {
-                        if (previousTestRunListener.hasFailed()) {
+                        if (mMainGranularRunListener.hasRunCrashedAtAttempt(attemptNumber - 1)) {
                             CLog.d("Retrying the run failure.");
                             shouldContinue = true;
                         }
@@ -293,10 +283,10 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
                     if (RetryStrategy.RETRY_TEST_CASE_FAILURE.equals(mRetryStrategy)
                             || RetryStrategy.RETRY_ANY_FAILURE.equals(mRetryStrategy)) {
                         // In case of test case failure, we retry with filters.
-                        if (previousTestRunListener.hasFailedTests() && !shouldContinue) {
+                        previousFailedTests = getFailedTestCases(attemptNumber - 1);
+                        if (previousFailedTests.size() > 0 && !shouldContinue) {
                             CLog.d("Retrying the test case failure.");
                             shouldContinue = true;
-                            previousFailedTests = getFailedTestCases(previousTestRunListener);
                             addRetriedTestsToIncludeFilters(mTest, previousFailedTests);
                         }
                     }
@@ -308,11 +298,9 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
                 }
 
                 // Run the tests again
-                intraModuleRun();
+                intraModuleRun(attemptNumber);
 
-                ModuleListener lastListener =
-                        mModuleListenerCollector.get(mModuleListenerCollector.size() - 1);
-                Set<TestDescription> lastRun = getFailedTestCases(lastListener);
+                Set<TestDescription> lastRun = getFailedTestCases(attemptNumber);
                 if (shouldHandleFailure(mRetryStrategy)) {
                     // Evaluate success from what we just ran
                     if (previousFailedTests != null) {
@@ -324,8 +312,9 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
 
                 if (RetryStrategy.RERUN_UNTIL_FAILURE.equals(mRetryStrategy)) {
                     // If we encountered a failure do not proceed
-                    if (!lastRun.isEmpty() || lastListener.hasFailed()) {
-                        CLog.w("%s failed at iteration %s. Stopping.", lastRun, count);
+                    if (!lastRun.isEmpty()
+                            || mMainGranularRunListener.hasRunCrashedAtAttempt(attemptNumber)) {
+                        CLog.w("%s failed at iteration %s. Stopping.", lastRun, attemptNumber);
                         break;
                     }
                 }
@@ -351,15 +340,15 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
 
     /**
      * Collect failed test cases from listener.
-     * TODO: Change the individual ModuleListener per attempt to a single ModuleListener, and this
-     * function should be getFailedTestCases(listener, attemptNumber).
      *
-     * @param listener The listener which contains the failed test cases.
+     * @param attemptNumber the 0-indexed integer indicating which attempt to gather failed cases.
      */
-    private Set<TestDescription> getFailedTestCases(ModuleListener listener) {
+    private Set<TestDescription> getFailedTestCases(int attemptNumber) {
         Set<TestDescription> failedTestCases = new HashSet<TestDescription>();
-        for (String runName: listener.getTestRunNames()) {
-            for (TestRunResult run: listener.getTestRunAttempts(runName)) {
+        for (String runName : mMainGranularRunListener.getTestRunNames()) {
+            TestRunResult run =
+                    mMainGranularRunListener.getTestRunAtAttempt(runName, attemptNumber);
+            if (run != null) {
                 failedTestCases.addAll(run.getFailedTests());
             }
         }
@@ -389,8 +378,8 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
      * the IRemoteTest should already has the subset of testcases identified.
      */
     @VisibleForTesting
-    final void intraModuleRun() throws DeviceNotAvailableException {
-        ITestInvocationListener runListener = prepareRunListener();
+    final void intraModuleRun(int attemptNumber) throws DeviceNotAvailableException {
+        ITestInvocationListener runListener = prepareRunListener(attemptNumber);
         try {
             mTest.run(runListener);
         } catch (RuntimeException re) {
@@ -407,49 +396,26 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
             CLog.w(due);
             CLog.w("Proceeding to the next test.");
             runListener.testRunFailed(due.getMessage());
-        } finally {
-            ModuleListener currentModuleListener =
-                    mModuleListenerCollector.get(mModuleListenerCollector.size() - 1);
-            setRunNameForResults(currentModuleListener.getMergedTestRunResults());
-        }
-    }
-
-    private void setRunNameForResults(Collection<TestRunResult> results) {
-        for (TestRunResult run : results) {
-            if (!mRunNameToRunResultsMap.containsKey(run.getName())) {
-                mRunNameToRunResultsMap.put(run.getName(), new ArrayList<>());
-            }
-            mRunNameToRunResultsMap.get(run.getName()).add(run);
         }
     }
 
     /** Get the merged TestRunResults from each {@link IRemoteTest} run. */
     public List<TestRunResult> getFinalTestRunResults() {
-        List<TestRunResult> finalList = new ArrayList<>();
-        for (List<TestRunResult> result : mRunNameToRunResultsMap.values()) {
-            if (result.size() > 1 && mMaxRunLimit > 1) {
-                // If we had several runs for different attempts, merge them.
-                finalList.add(TestRunResult.merge(result));
-            } else {
-                finalList.addAll(result);
-            }
-        }
-        return finalList;
+        return mMainGranularRunListener.getMergedTestRunResults();
     }
 
     @VisibleForTesting
     Map<String, List<TestRunResult>> getTestRunResultCollected() {
-        return mRunNameToRunResultsMap;
+        Map<String, List<TestRunResult>> runResultMap = new LinkedHashMap<>();
+        for (String runName : mMainGranularRunListener.getTestRunNames()) {
+            runResultMap.put(runName, mMainGranularRunListener.getTestRunAttempts(runName));
+        }
+        return runResultMap;
     }
 
-    /** Check if any testRunResult has ever failed. */
+    /** Check if any testRunResult has ever failed. This check is used for bug report only. */
     public boolean hasFailed() {
-        for (ModuleListener listener : mModuleListenerCollector) {
-            if (listener.hasFailed()) {
-                return true;
-            }
-        }
-        return false;
+        return mMainGranularRunListener.hasFailed();
     }
 
     /**
@@ -457,10 +423,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
      * testcases that are rescheduled multiple times.
      */
     public int getNumIndividualTests() {
-        if (mModuleListenerCollector.isEmpty()) {
-            return 0;
-        }
-        return mModuleListenerCollector.get(0).getNumTotalTests();
+        return mMainGranularRunListener.getNumTotalTests();
     }
 
     /** Returns the elapsed time in retry attempts. */
