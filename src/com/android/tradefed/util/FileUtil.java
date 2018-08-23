@@ -790,7 +790,7 @@ public class FileUtil {
                     }
                 }
                 // after exploring the sub-dir, if the dir itself is the only match return it.
-                if (file.getName().equals(fileName)) {
+                if (file.getName().matches(fileName)) {
                     return file;
                 }
             }
