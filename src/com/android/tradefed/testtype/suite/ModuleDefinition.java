@@ -21,8 +21,8 @@ import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -53,6 +53,7 @@ import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.ITestCollector;
+import com.android.tradefed.testtype.suite.ITestSuite.RetryStrategy;
 import com.android.tradefed.testtype.suite.module.BaseModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
 import com.android.tradefed.util.StreamUtil;
@@ -130,6 +131,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private long mSuccessRetried = 0L;
     /** The number of test cases that remained failed after all retry attempts */
     private long mFailedRetried = 0L;
+
+    private RetryStrategy mRetryStrategy;
 
     /**
      * Constructor
@@ -494,6 +497,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         retriableTest.setModuleConfig(mModuleConfiguration);
         retriableTest.setInvocationContext(mModuleInvocationContext);
         retriableTest.setLogSaver(mLogSaver);
+        retriableTest.setRetryStrategy(mRetryStrategy);
         return retriableTest;
     }
 
@@ -717,6 +721,11 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     @Override
     public void setCollectTestsOnly(boolean collectTestsOnly) {
         mCollectTestsOnly = collectTestsOnly;
+    }
+
+    /** Sets the {@link RetryStrategy} to be used when retrying. */
+    public final void setRetryStrategy(RetryStrategy retryStrategy) {
+        mRetryStrategy = retryStrategy;
     }
 
     /** Returns a list of tests that ran in this module. */
