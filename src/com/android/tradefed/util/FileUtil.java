@@ -45,6 +45,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1074,7 +1075,7 @@ public class FileUtil {
      * @return a set of {@link File} of the file objects. @See {@link #findFiles(File, String)}
      */
     public static Set<File> findFilesObject(File dir, String filter) throws IOException {
-        Set<File> files = new HashSet<>();
+        Set<File> files = new LinkedHashSet<>();
         Files.walk(Paths.get(dir.getAbsolutePath()), FileVisitOption.FOLLOW_LINKS)
                 .filter(path -> path.getFileName().toString().matches(filter))
                 .forEach(path -> files.add(path.toFile()));

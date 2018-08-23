@@ -17,7 +17,7 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.IShellOutputReceiver;
-import com.android.tradefed.build.BuildInfoKey;
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionClass;
@@ -146,7 +146,7 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
         // If the directory is null, then get testcase directory from getTestDir() since *TS will
         // invoke setTestDir().
         List<File> scanDirs = new ArrayList<>();
-        File hostLinkedDir = mBuildInfo.getFile(BuildInfoKey.BuildInfoFileKey.HOST_LINKED_DIR);
+        File hostLinkedDir = mBuildInfo.getFile(BuildInfoFileKey.HOST_LINKED_DIR);
         if (hostLinkedDir != null) {
             scanDirs.add(hostLinkedDir);
         }
