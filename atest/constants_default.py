@@ -104,3 +104,6 @@ BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
 DEVICELESS_TEST = 'host'
 DEVICE_TEST = 'device'
 BOTH_TEST = 'both'
+
+# VTS plans
+VTS_STAGING_PLAN = 'vts-staging-default'
