@@ -206,13 +206,11 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
     def test_process_connection(self, mock_pe):
         """Test _process_connection method."""
         mock_socket = mock.Mock()
-        mock_tf_subproc = mock.Mock()
         socket_data = ['%s %s' % (name, json.dumps(data))
                        for name, data in EVENTS_NORMAL]
         socket_data.append('')
         mock_socket.recv.side_effect = socket_data
-        self.tr._process_connection(mock_socket, 'fake reporter',
-                                    mock_tf_subproc)
+        self.tr._process_connection(mock_socket, 'fake reporter')
         calls = [mock.call(name, data, 'fake reporter', mock.ANY)
                  for name, data in EVENTS_NORMAL]
         mock_pe.assert_has_calls(calls)
