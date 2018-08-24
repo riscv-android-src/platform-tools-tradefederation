@@ -33,7 +33,7 @@ import constants
 from test_finders import test_info
 import test_runner_base
 
-PRETTY_RESULT_ENV_VAR = 'ATEST_PRETTY_RESULT'
+OLD_OUTPUT_ENV_VAR = 'ATEST_OLD_OUTPUT'
 POLL_FREQ_SECS = 10
 SOCKET_HOST = '127.0.0.1'
 SOCKET_QUEUE_MAX = 1
@@ -92,10 +92,10 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             extra_args: Dict of extra args to add to test run.
             reporter: An instance of result_report.ResultReporter.
         """
-        if os.getenv(PRETTY_RESULT_ENV_VAR):
-            self.run_tests_pretty(test_infos, extra_args, reporter)
-        else:
+        if os.getenv(OLD_OUTPUT_ENV_VAR):
             self.run_tests_raw(test_infos, extra_args, reporter)
+        else:
+            self.run_tests_pretty(test_infos, extra_args, reporter)
 
     def run_tests_raw(self, test_infos, extra_args, reporter):
         """Run the list of test_infos. See base class for more.
