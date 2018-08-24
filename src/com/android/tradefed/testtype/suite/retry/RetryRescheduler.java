@@ -22,6 +22,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
@@ -43,6 +44,7 @@ import com.google.inject.Inject;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -69,6 +71,17 @@ public final class RetryRescheduler
                     "used to retry tests of a certain status. Possible values include \"failed\" "
                             + "and \"not_executed\".")
     private RetryType mRetryType = null;
+
+    /**
+     * It's possible to add extra exclusion from the rerun. But these tests will not change their
+     * state.
+     */
+    @Option(
+        name = BaseTestSuite.EXCLUDE_FILTER_OPTION,
+        description = "the exclude module filters to apply.",
+        importance = Importance.ALWAYS
+    )
+    private Set<String> mExcludeFilters = new HashSet<>();
 
     public static final String PREVIOUS_LOADER_NAME = "previous_loader";
 
@@ -190,7 +203,9 @@ public final class RetryRescheduler
         }
         // Prepare exclusion filters
         for (TestRunResult moduleResult : results.getMergedTestRunResults()) {
-            if (RetryResultHelper.shouldRunModule(moduleResult, types)) {
+            // If the module is explicitly excluded from retries, preserve the original results.
+            if (!mExcludeFilters.contains(moduleResult.getName())
+                    && RetryResultHelper.shouldRunModule(moduleResult, types)) {
                 for (Entry<TestDescription, TestResult> result :
                         moduleResult.getTestResults().entrySet()) {
                     if (types.contains(RetryType.NOT_EXECUTED)) {
@@ -234,7 +249,7 @@ public final class RetryRescheduler
             filter = String.format("%s %s", filter, testDescription.toString());
         }
         SuiteTestFilter testFilter = SuiteTestFilter.createFrom(filter);
-        Set<String> excludeFilter = new HashSet<>();
+        Set<String> excludeFilter = new LinkedHashSet<>();
         excludeFilter.add(testFilter.toString());
         suite.setExcludeFilter(excludeFilter);
     }
