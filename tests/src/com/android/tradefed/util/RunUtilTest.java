@@ -15,6 +15,11 @@
  */
 package com.android.tradefed.util;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
@@ -22,9 +27,11 @@ import com.android.tradefed.util.IRunUtil.EnvPriority;
 import com.android.tradefed.util.IRunUtil.IRunnableResult;
 import com.android.tradefed.util.RunUtil.RunnableResult;
 
-import junit.framework.TestCase;
-
 import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.io.ByteArrayInputStream;
@@ -35,7 +42,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /** Unit tests for {@link RunUtil} */
-public class RunUtilTest extends TestCase {
+@RunWith(JUnit4.class)
+public class RunUtilTest {
 
     private RunUtil mRunUtil;
     private RunnableResult mMockRunnableResult;
@@ -48,9 +56,8 @@ public class RunUtilTest extends TestCase {
     // full duration in most cases.
     private static final long VERY_LONG_TIMEOUT_MS = 5000L;
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    @Before
+    public void setUp() throws Exception {
         mRunUtil = new RunUtil();
         mMockRunnableResult = null;
     }
@@ -93,9 +100,8 @@ public class RunUtilTest extends TestCase {
         }
     }
 
-    /**
-     * Test success case for {@link RunUtil#runTimed(long, IRunnableResult, boolean)}.
-     */
+    /** Test success case for {@link RunUtil#runTimed(long, IRunnableResult, boolean)}. */
+    @Test
     public void testRunTimed() throws Exception {
         IRunUtil.IRunnableResult mockRunnable = EasyMock.createStrictMock(
                 IRunUtil.IRunnableResult.class);
@@ -105,9 +111,8 @@ public class RunUtilTest extends TestCase {
                 mRunUtil.runTimed(SHORT_TIMEOUT_MS, mockRunnable, true));
     }
 
-    /**
-     * Test failure case for {@link RunUtil#runTimed(long, IRunnableResult, boolean)}.
-     */
+    /** Test failure case for {@link RunUtil#runTimed(long, IRunnableResult, boolean)}. */
+    @Test
     public void testRunTimed_failed() throws Exception {
         IRunUtil.IRunnableResult mockRunnable = EasyMock.createStrictMock(
                 IRunUtil.IRunnableResult.class);
@@ -117,9 +122,8 @@ public class RunUtilTest extends TestCase {
                 mRunUtil.runTimed(SHORT_TIMEOUT_MS, mockRunnable, true));
     }
 
-    /**
-     * Test exception case for {@link RunUtil#runTimed(long, IRunnableResult, boolean)}.
-     */
+    /** Test exception case for {@link RunUtil#runTimed(long, IRunnableResult, boolean)}. */
+    @Test
     public void testRunTimed_exception() throws Exception {
         IRunUtil.IRunnableResult mockRunnable = EasyMock.createStrictMock(
                 IRunUtil.IRunnableResult.class);
@@ -130,12 +134,11 @@ public class RunUtilTest extends TestCase {
                 mRunUtil.runTimed(SHORT_TIMEOUT_MS, mockRunnable, true));
     }
 
-    /**
-     * Test that {@link RunUtil#runTimedCmd(long, String[])} fails when given a garbage command.
-     */
+    /** Test that {@link RunUtil#runTimedCmd(long, String[])} fails when given a garbage command. */
+    @Test
     public void testRunTimedCmd_failed() {
         RunUtil spyUtil = new SpyRunUtil(true);
-        CommandResult result = spyUtil.runTimedCmd(1000, "blahggggwarggg");
+        CommandResult result = spyUtil.runTimedCmd(VERY_LONG_TIMEOUT_MS, "blahggggwarggg");
         assertEquals(CommandStatus.EXCEPTION, result.getStatus());
         assertEquals("", result.getStdout());
         assertEquals("", result.getStderr());
@@ -145,6 +148,7 @@ public class RunUtilTest extends TestCase {
      * Test that {@link RunUtil#runTimedCmd(long, String[])} is returning timed out state when the
      * command does not return in time.
      */
+    @Test
     public void testRunTimedCmd_timeout() {
         String[] command = {"sleep", "10000"};
         CommandResult result = mRunUtil.runTimedCmd(VERY_SHORT_TIMEOUT_MS, command);
@@ -156,6 +160,7 @@ public class RunUtilTest extends TestCase {
     /**
      * Verify that calling {@link RunUtil#setWorkingDir(File)} is not allowed on default instance.
      */
+    @Test
     public void testSetWorkingDir_default() {
         try {
             RunUtil.getDefault().setWorkingDir(new File("foo"));
@@ -169,6 +174,7 @@ public class RunUtilTest extends TestCase {
      * Verify that calling {@link RunUtil#setEnvVariable(String, String)} is not allowed on default
      * instance.
      */
+    @Test
     public void testSetEnvVariable_default() {
         try {
             RunUtil.getDefault().setEnvVariable("foo", "bar");
@@ -182,6 +188,7 @@ public class RunUtilTest extends TestCase {
      * Verify that calling {@link RunUtil#unsetEnvVariable(String)} is not allowed on default
      * instance.
      */
+    @Test
     public void testUnsetEnvVariable_default() {
         try {
             RunUtil.getDefault().unsetEnvVariable("foo");
@@ -195,6 +202,7 @@ public class RunUtilTest extends TestCase {
      * Test that {@link RunUtil#runEscalatingTimedRetry(long, long, long, long, IRunnableResult)}
      * fails when operation continually fails, and that the maxTime variable is respected.
      */
+    @Test
     public void testRunEscalatingTimedRetry_timeout() throws Exception {
         // create a RunUtil fixture with methods mocked out for
         // fast execution
@@ -233,9 +241,8 @@ public class RunUtilTest extends TestCase {
         EasyMock.verify(mockRunnable);
     }
 
-    /**
-     * Test a success case for {@link RunUtil#interrupt}.
-     */
+    /** Test a success case for {@link RunUtil#interrupt}. */
+    @Test
     public void testInterrupt() {
         final String message = "it is alright now";
         mRunUtil.allowInterrupt(true);
@@ -251,6 +258,7 @@ public class RunUtilTest extends TestCase {
      * Test whether a {@link RunUtil#interrupt} call is respected when called while interrupts are
      * not allowed.
      */
+    @Test
     public void testInterrupt_delayed() {
         final String message = "it is alright now";
         try{
@@ -265,9 +273,8 @@ public class RunUtilTest extends TestCase {
         }
     }
 
-    /**
-     * Test whether a {@link RunUtil#interrupt} call is respected when called multiple times.
-     */
+    /** Test whether a {@link RunUtil#interrupt} call is respected when called multiple times. */
+    @Test
     public void testInterrupt_multiple() {
         final String message1 = "it is alright now";
         final String message2 = "without a fight";
@@ -284,9 +291,10 @@ public class RunUtilTest extends TestCase {
     }
 
     /**
-     * Test whether a {@link RunUtil#runTimedCmd(long, OutputStream, OutputStream, String[])}
-     * call correctly redirect the output to files.
+     * Test whether a {@link RunUtil#runTimedCmd(long, OutputStream, OutputStream, String[])} call
+     * correctly redirect the output to files.
      */
+    @Test
     public void testRuntimedCmd_withFileOutputStream() {
         File stdout = null;
         File stderr = null;
@@ -327,6 +335,7 @@ public class RunUtilTest extends TestCase {
      * correctly redirect the output to stdout because files are null. Replace the process by a fake
      * one to avoid waiting on real system IO.
      */
+    @Test
     public void testRuntimedCmd_regularOutput_fileNull() {
         RunUtil spyUtil = new SpyRunUtil(false);
         String[] command = {"echo", "TEST"};
@@ -340,6 +349,7 @@ public class RunUtilTest extends TestCase {
      * Test whether a {@link RunUtil#runTimedCmd(long, OutputStream, OutputStream, String[])}
      * redirect to the file even if they become non-writable afterward.
      */
+    @Test
     public void testRuntimedCmd_notWritable() {
         File stdout = null;
         File stderr = null;
@@ -383,6 +393,7 @@ public class RunUtilTest extends TestCase {
      * Test whether a {@link RunUtil#setInterruptibleInFuture} change properly the interruptible
      * state.
      */
+    @Test
     public void testSetInterruptibleInFuture() {
         final Thread test =
                 new Thread(
@@ -413,9 +424,8 @@ public class RunUtilTest extends TestCase {
         assertTrue(success);
     }
 
-    /**
-     * Test whether a {@link RunUtil#setInterruptibleInFuture} has not change the state yet.
-     */
+    /** Test whether a {@link RunUtil#setInterruptibleInFuture} has not change the state yet. */
+    @Test
     public void testSetInterruptibleInFuture_beforeTimeout() {
         mRunUtil.allowInterrupt(false);
         assertFalse(mRunUtil.isInterruptAllowed());
@@ -431,9 +441,8 @@ public class RunUtilTest extends TestCase {
         }
     }
 
-    /**
-     * Test {@link RunUtil#setEnvVariablePriority(EnvPriority)} properly prioritize unset.
-     */
+    /** Test {@link RunUtil#setEnvVariablePriority(EnvPriority)} properly prioritize unset. */
+    @Test
     public void testUnsetPriority() {
         final String ENV_NAME = "TF_GLO";
         RunUtil testRunUtil = new RunUtil();
@@ -448,9 +457,8 @@ public class RunUtilTest extends TestCase {
         assertEquals("\n", result.getStdout());
     }
 
-    /**
-     * Test {@link RunUtil#setEnvVariablePriority(EnvPriority)} properly prioritize set.
-     */
+    /** Test {@link RunUtil#setEnvVariablePriority(EnvPriority)} properly prioritize set. */
+    @Test
     public void testUnsetPriority_inverted() {
         final String ENV_NAME = "TF_GLO";
         final String expected = "initvalue";
@@ -459,7 +467,8 @@ public class RunUtilTest extends TestCase {
         testRunUtil.setEnvVariable(ENV_NAME, expected);
         testRunUtil.unsetEnvVariable(ENV_NAME);
         CommandResult result =
-                testRunUtil.runTimedCmd(LONG_TIMEOUT_MS, "/bin/bash", "-c", "echo $" + ENV_NAME);
+                testRunUtil.runTimedCmd(
+                        VERY_LONG_TIMEOUT_MS, "/bin/bash", "-c", "echo $" + ENV_NAME);
         assertNotNull(result.getStdout());
         // Variable should be set and returned.
         assertEquals(expected + "\n", result.getStdout());
