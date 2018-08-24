@@ -163,6 +163,20 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
             throw new RuntimeException(e);
         }
 
+        if (gTestFile == null || gTestFile.isDirectory()) {
+            // If we ended up here we most likely failed to find the proper file as is, so we
+            // search for it with a potential suffix (which is allowed).
+            try {
+                File byBaseName =
+                        FileUtil.findFile(moduleName + ".*", mAbi, scanDirs.toArray(new File[] {}));
+                if (byBaseName != null && byBaseName.isFile()) {
+                    gTestFile = byBaseName;
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
         if (gTestFile == null) {
             throw new RuntimeException(
                     String.format(
@@ -173,7 +187,6 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
             throw new RuntimeException(
                     String.format("%s is not executable!", gTestFile.getAbsolutePath()));
         }
-
         IShellOutputReceiver resultParser = createResultParser(gTestFile.getName(), listener);
         String flags = getAllGTestFlags(gTestFile.getName());
         CLog.i("Running gtest %s %s", gTestFile.getName(), flags);
