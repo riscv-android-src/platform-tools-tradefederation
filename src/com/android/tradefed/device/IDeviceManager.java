@@ -181,16 +181,24 @@ public interface IDeviceManager {
     public void restartAdbBridge();
 
     /**
-     * Returns a map of all known devices and their state
+     * Returns a list of DeviceDescriptors for all known devices
      *
-     * @return a list of device serials and their {@link
-     *     com.android.tradefed.device.DeviceAllocationState}
+     * @return a list of {@link DeviceDescriptor} for all known devices
      */
     public List<DeviceDescriptor> listAllDevices();
 
     /**
-     * Output a user-friendly description containing list of known devices, their state, and
-     * values for commonly used {@link IDeviceSelection} options.
+     * Returns the DeviceDescriptor with the given serial.
+     *
+     * @param serial serial number for the device to get
+     * @return the {@link DeviceDescriptor} for the selected device, or null if the serial does not
+     *     match a known device.
+     */
+    public DeviceDescriptor getDeviceDescriptor(String serial);
+
+    /**
+     * Output a user-friendly description containing list of known devices, their state, and values
+     * for commonly used {@link IDeviceSelection} options.
      *
      * @param printWriter the {@link PrintWriter} to output the description to
      */

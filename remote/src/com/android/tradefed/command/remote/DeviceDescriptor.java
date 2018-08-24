@@ -40,6 +40,10 @@ public class DeviceDescriptor {
     private final String mSimOperator;
     private final IDevice mIDevice;
 
+    public DeviceDescriptor() {
+        this(null, false, null, null, null, null, null, null);
+    }
+
     public DeviceDescriptor(String serial, boolean isStubDevice, DeviceAllocationState state,
             String product, String productVariant, String sdkVersion, String buildId,
             String batteryLevel) {
@@ -99,6 +103,25 @@ public class DeviceDescriptor {
         mIDevice = idevice;
     }
 
+    /** Used for easy state updating in ClusterDeviceMonitor. */
+    public DeviceDescriptor(DeviceDescriptor d, DeviceAllocationState state) {
+        this(
+                d.getSerial(),
+                d.isStubDevice(),
+                d.getDeviceState(),
+                state,
+                d.getProduct(),
+                d.getProductVariant(),
+                d.getSdkVersion(),
+                d.getBuildId(),
+                d.getBatteryLevel(),
+                d.getDeviceClass(),
+                d.getMacAddress(),
+                d.getSimState(),
+                d.getSimOperator(),
+                d.getIDevice());
+    }
+
     public String getSerial() {
         return mSerial;
     }
@@ -152,6 +175,10 @@ public class DeviceDescriptor {
 
     public String getSimOperator() {
         return mSimOperator;
+    }
+
+    private IDevice getIDevice() {
+        return mIDevice;
     }
 
     public String getProperty(String name) {
