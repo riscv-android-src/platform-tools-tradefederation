@@ -278,4 +278,32 @@ public class HostGTestTest {
         mHostGTest.run(mMockInvocationListener);
         verifyMocks();
     }
+
+    /** Test the run method for a binary with a suffix. */
+    @Test
+    public void testRun_withSuffix() throws Exception {
+        String moduleName = "hello_world_test";
+        String hostLinkedFolderName = "hosttestcases";
+        File hostLinkedFolder = createSubFolder(hostLinkedFolderName);
+        // The actual execution file has a suffix
+        File hostTestcaseExecutedCheckFile =
+                createExecutableFile(hostLinkedFolder.getAbsolutePath(), moduleName + "32");
+
+        String testFolderName = "testcases";
+        File testcasesFolder = createSubFolder(testFolderName);
+        File testfolderTestcaseCheckExecuted =
+                createExecutableFile(testcasesFolder.getAbsolutePath(), moduleName + "32");
+
+        mSetter.setOptionValue("module-name", moduleName);
+        DeviceBuildInfo buildInfo = new DeviceBuildInfo();
+        buildInfo.setFile(BuildInfoKey.BuildInfoFileKey.HOST_LINKED_DIR, hostLinkedFolder, "0.0");
+        buildInfo.setTestsDir(testcasesFolder, "0.0");
+        mHostGTest.setBuild(buildInfo);
+
+        replayMocks();
+        mHostGTest.run(mMockInvocationListener);
+        assertTrue(hostTestcaseExecutedCheckFile.exists());
+        assertFalse(testfolderTestcaseCheckExecuted.exists());
+        verifyMocks();
+    }
 }
