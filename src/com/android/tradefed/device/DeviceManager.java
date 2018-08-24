@@ -90,6 +90,7 @@ public class DeviceManager implements IDeviceManager {
     private static final String NULL_DEVICE_SERIAL_PREFIX = "null-device";
     private static final String EMULATOR_SERIAL_PREFIX = "emulator";
     private static final String TCP_DEVICE_SERIAL_PREFIX = "tcp-device";
+    private static final String GCE_DEVICE_SERIAL_PREFIX = "gce-device";
 
     /**
      * Pattern for a device listed by 'adb devices':
@@ -135,6 +136,11 @@ public class DeviceManager implements IDeviceManager {
     @Option(name = "max-tcp-devices",
             description = "the maximum number of tcp devices that can be allocated at one time")
     private int mNumTcpDevicesSupported = 1;
+
+    @Option(
+            name = "max-gce-devices",
+            description = "the maximum number of remote devices that can be allocated at one time")
+    private int mNumRemoteDevicesSupported = 1;
 
     private boolean mSynchronousMode = false;
 
@@ -262,6 +268,7 @@ public class DeviceManager implements IDeviceManager {
         addEmulators();
         addNullDevices();
         addTcpDevices();
+        addGceDevices();
 
         List<IMultiDeviceRecovery> recoverers = getGlobalConfig().getMultiDeviceRecoveryHandlers();
         if (recoverers != null) {
@@ -442,6 +449,14 @@ public class DeviceManager implements IDeviceManager {
     private void addTcpDevices() {
         for (int i = 0; i < mNumTcpDevicesSupported; i++) {
             addAvailableDevice(new TcpDevice(String.format("%s-%d", TCP_DEVICE_SERIAL_PREFIX, i)));
+        }
+    }
+
+    /** Add placeholder objects for the max number of tcp devices that can be connected */
+    private void addGceDevices() {
+        for (int i = 0; i < mNumRemoteDevicesSupported; i++) {
+            addAvailableDevice(
+                    new RemoteAvdIDevice(String.format("%s:%d", GCE_DEVICE_SERIAL_PREFIX, i)));
         }
     }
 
@@ -1259,6 +1274,11 @@ public class DeviceManager implements IDeviceManager {
     @VisibleForTesting
     void setMaxTcpDevices(int tcpDevices) {
         mNumTcpDevicesSupported = tcpDevices;
+    }
+
+    @VisibleForTesting
+    void setMaxRemoteDevices(int remoteDevices) {
+        mNumRemoteDevicesSupported = remoteDevices;
     }
 
     @Override

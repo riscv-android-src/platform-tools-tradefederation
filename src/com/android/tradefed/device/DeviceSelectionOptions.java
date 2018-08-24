@@ -73,6 +73,11 @@ public class DeviceSelectionOptions implements IDeviceSelection {
             "start a placeholder for a tcp device that will be connected later.")
     private boolean mTcpDeviceRequested = false;
 
+    @Option(
+            name = "gce-device",
+            description = "start a placeholder for a gce device that will be connected later.")
+    private boolean mGceDeviceRequested = false;
+
     @Option(name = "min-battery", description =
         "only run this test on a device whose battery level is at least the given amount. " +
         "Scale: 0-100")
@@ -226,8 +231,16 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         return mNullDeviceRequested;
     }
 
+    /** {@inheritDoc} */
+    @Override
     public boolean tcpDeviceRequested() {
         return mTcpDeviceRequested;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean gceDeviceRequested() {
+        return mGceDeviceRequested;
     }
 
     /**
@@ -407,6 +420,11 @@ public class DeviceSelectionOptions implements IDeviceSelection {
             // We only match an exact TcpDevice here, no child class.
             return false;
         }
+        if (gceDeviceRequested() != (RemoteAvdIDevice.class.equals(device.getClass()))) {
+            // We only match an exact RemoteAvdIDevice here, no child class.
+            return false;
+        }
+
         if ((mMinSdk != null) || (mMaxSdk != null)) {
             int deviceSdkLevel = getDeviceSdkLevel(device);
             if (deviceSdkLevel < 0) {
@@ -472,15 +490,6 @@ public class DeviceSelectionOptions implements IDeviceSelection {
             }
         }
 
-        return extraMatching(device);
-    }
-
-    /** Extra validation step that maybe overridden if it does not make sense. */
-    protected boolean extraMatching(IDevice device) {
-        // Any device that extends TcpDevice and is not a TcpDevice will be rejected.
-        if (device instanceof TcpDevice && !device.getClass().isAssignableFrom(TcpDevice.class)) {
-            return false;
-        }
         return true;
     }
 
