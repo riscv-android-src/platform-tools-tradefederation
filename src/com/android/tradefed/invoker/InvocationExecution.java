@@ -594,6 +594,16 @@ public class InvocationExecution implements IInvocationExecution {
             IDeviceBuildInfo info, File testsDir, EnvVariable var, String baseName) {
         File externalDir = getExternalTestCasesDirs(var);
         if (externalDir == null) {
+            String path = SystemUtil.ENV_VARIABLE_PATHS_IN_TESTS_DIR.get(var);
+            File varDir = FileUtil.getFileForPath(testsDir, path);
+            if (varDir.exists()) {
+                // If we found a dir already in the tests dir we keep track of it
+                info.setFile(
+                        baseName,
+                        varDir,
+                        /** version */
+                        "v1");
+            }
             return;
         }
         try {

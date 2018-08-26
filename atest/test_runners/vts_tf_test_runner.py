@@ -29,7 +29,7 @@ class VtsTradefedTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
     """TradeFed Test Runner class."""
     NAME = 'VtsTradefedTestRunner'
     EXECUTABLE = 'vts-tradefed'
-    _RUN_CMD = ('{exe} run commandAndExit vts-staging-default -m {test} {args}')
+    _RUN_CMD = ('{exe} run commandAndExit {plan} -m {test} {args}')
     _BUILD_REQ = {'vts-tradefed-standalone'}
     _DEFAULT_ARGS = ['--skip-all-system-status-check',
                      '--skip-preconditions',
@@ -117,6 +117,7 @@ class VtsTradefedTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
         args.extend(atest_utils.get_result_server_args())
         for test_info in test_infos:
             cmd_dict = copy.deepcopy(self.run_cmd_dict)
+            cmd_dict['plan'] = constants.VTS_STAGING_PLAN
             cmd_dict['test'] = test_info.test_name
             cmd_dict['args'] = ' '.join(args)
             cmds.append(self._RUN_CMD.format(**cmd_dict))

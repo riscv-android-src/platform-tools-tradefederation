@@ -17,7 +17,6 @@ Atest Tradefed test runner class.
 """
 
 from __future__ import print_function
-from functools import partial
 import errno
 import json
 import logging
@@ -34,7 +33,7 @@ import constants
 from test_finders import test_info
 import test_runner_base
 
-PRETTY_RESULT_ENV_VAR = 'ATEST_PRETTY_RESULT'
+OLD_OUTPUT_ENV_VAR = 'ATEST_OLD_OUTPUT'
 POLL_FREQ_SECS = 10
 SOCKET_HOST = '127.0.0.1'
 SOCKET_QUEUE_MAX = 1
@@ -93,10 +92,10 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             extra_args: Dict of extra args to add to test run.
             reporter: An instance of result_report.ResultReporter.
         """
-        if os.getenv(PRETTY_RESULT_ENV_VAR):
-            self.run_tests_pretty(test_infos, extra_args, reporter)
-        else:
+        if os.getenv(OLD_OUTPUT_ENV_VAR):
             self.run_tests_raw(test_infos, extra_args, reporter)
+        else:
+            self.run_tests_pretty(test_infos, extra_args, reporter)
 
     def run_tests_raw(self, test_infos, extra_args, reporter):
         """Run the list of test_infos. See base class for more.
@@ -159,7 +158,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 signal.signal(signal.SIGINT, self._signal_passer(subproc))
                 conn, addr = self._exec_with_tf_polling(server.accept, subproc)
                 logging.debug('Accepted connection from %s', addr)
-                self._process_connection(conn, reporter, subproc)
+                self._process_connection(conn, reporter)
                 if metrics_folder:
                     logging.info('Saved metrics in: %s', metrics_folder)
             except Exception as error:
@@ -237,7 +236,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                     raise TradeFedExitError(TRADEFED_EXIT_MSG
                                             % tf_subproc.returncode)
 
-    def _process_connection(self, conn, reporter, tf_subproc):
+    def _process_connection(self, conn, reporter):
         """Process a socket connection from TradeFed.
 
         This involves chunking the data until we have a full EVENT msg. Then
@@ -247,15 +246,15 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         Args:
             conn: A socket connection.
             reporter: A result_report.ResultReporter
-            tf_subproc: The tradefed subprocess.
         """
         event_name_for_chunk = None
         json_data_chunk = ''
         connection_state = CONNECTION_STATE.copy()
+        # recv() fails immediately in osx if any timeout set.
+        conn.settimeout(None)
         while True:
             logging.debug('Waiting to receive data')
-            data = self._exec_with_tf_polling(partial(conn.recv, SOCKET_BUFFER),
-                                              tf_subproc)
+            data = conn.recv(SOCKET_BUFFER)
             logging.debug('received: %s', data)
             if data:
                 # Client Socket Reporter sends data in discrete "event" blocks

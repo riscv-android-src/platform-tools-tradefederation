@@ -44,6 +44,11 @@ _ANDROID_MK = 'Android.mk'
 # we can ignore them.
 _SUITES_TO_IGNORE = frozenset({'general-tests', 'device-tests', 'tests'})
 
+# TODO: get _VTS_PLAN_DIR from module-info.json by function and for different
+# test plans.
+_VTS_PLAN_DIR = os.path.join(os.environ.get(constants.ANDROID_BUILD_TOP, ''),
+                             'test', 'vts', 'tools', 'vts-tradefed', 'res',
+                             'config')
 
 class ModuleFinder(test_finder_base.TestFinderBase):
     """Module finder class."""
@@ -62,6 +67,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
 
         A module can have a test config in the following manner:
           - AndroidTest.xml at the module path.
+          - test_config be set in module-info.json.
           - Auto-generated config via the auto_test_config key in module-info.json.
 
         Args:
@@ -70,12 +76,15 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         Returns:
             True if this module has a test config, False otherwise.
         """
+        # Check if test_config in module-info is set.
+        for test_config in mod_info.get(constants.MODULE_TEST_CONFIG, []):
+            if os.path.isfile(os.path.join(self.root_dir, test_config)):
+                return True
         # Check for AndroidTest.xml at the module path.
         for path in mod_info.get(constants.MODULE_PATH, []):
             if os.path.isfile(os.path.join(self.root_dir, path,
                                            constants.MODULE_CONFIG)):
                 return True
-
         # Check if the module has an auto-generated config.
         return self._is_auto_gen_test_config(mod_info.get(constants.MODULE_NAME))
 
@@ -157,10 +166,14 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         if custom_out_dir is None or not os.path.isabs(custom_out_dir):
             out_dir = os.path.relpath(out_dir, self.root_dir)
         vts_out_dir = os.path.join(out_dir, 'vts', 'android-vts', 'testcases')
-
-        # Add in vts test build targets.
-        test.build_targets = test_finder_utils.get_targets_from_vts_xml(
-            config_file, vts_out_dir, self.module_info)
+        # Parse dependency of default staging plans.
+        xml_path = os.path.join(_VTS_PLAN_DIR, constants.VTS_STAGING_PLAN + '.xml')
+        vts_xmls = test_finder_utils.get_plans_from_vts_xml(xml_path)
+        vts_xmls.add(config_file)
+        for config_file in vts_xmls:
+            # Add in vts test build targets.
+            test.build_targets |= test_finder_utils.get_targets_from_vts_xml(
+                config_file, vts_out_dir, self.module_info)
         test.build_targets.add('vts-test-core')
         test.build_targets.add(test.test_name)
         return test
@@ -282,6 +295,30 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         targets.add(_MODULES_IN % mod_dir)
         return targets
 
+    def _get_module_test_config(self, module_name, rel_config=None):
+        """Get the value of test_config in module_info.
+
+        Get the value of 'test_config' in module_info if its
+        auto_test_config is not true.
+        In this case, the test_config is specified by user.
+        If not, return rel_config.
+
+        Args:
+            module_name: A string of the test's module name.
+            rel_config: XML for the given test.
+
+        Returns:
+            A string of test_config path if found, else return rel_config.
+        """
+        mod_info = self.module_info.get_module_info(module_name)
+        test_config = ''
+        test_config_list = mod_info.get(constants.MODULE_TEST_CONFIG, [])
+        if test_config_list:
+            test_config = test_config_list[0]
+        if not self._is_auto_gen_test_config(module_name) and test_config != '':
+            return test_config
+        return rel_config
+
     def find_test_by_module_name(self, module_name):
         """Find test for the given module name.
 
@@ -296,6 +333,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             # path is a list with only 1 element.
             rel_config = os.path.join(mod_info['path'][0],
                                       constants.MODULE_CONFIG)
+            rel_config = self._get_module_test_config(module_name, rel_config=rel_config)
             return self._process_test_info(test_info.TestInfo(
                 test_name=module_name,
                 test_runner=self._TEST_RUNNER,
@@ -355,6 +393,8 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         if not module_name:
             module_name = self._determine_testable_module(os.path.dirname(
                 rel_config))
+        # The real test config might be record in module-info.
+        rel_config = self._get_module_test_config(module_name, rel_config=rel_config)
         return self._process_test_info(test_info.TestInfo(
             test_name=module_name,
             test_runner=self._TEST_RUNNER,
@@ -426,6 +466,8 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         if not module_name:
             module_name = self._determine_testable_module(
                 os.path.dirname(rel_config))
+        # The real test config might be record in module-info.
+        rel_config = self._get_module_test_config(module_name, rel_config=rel_config)
         return self._process_test_info(test_info.TestInfo(
             test_name=module_name,
             test_runner=self._TEST_RUNNER,
@@ -482,6 +524,8 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             return None
         module_name = self._determine_testable_module(rel_module_dir)
         rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
+        # The real test config might be record in module-info.
+        rel_config = self._get_module_test_config(module_name, rel_config=rel_config)
         data = {constants.TI_REL_CONFIG: rel_config,
                 constants.TI_FILTER: frozenset()}
         # Path is to java file.

@@ -90,6 +90,7 @@ public class DeviceManager implements IDeviceManager {
     private static final String NULL_DEVICE_SERIAL_PREFIX = "null-device";
     private static final String EMULATOR_SERIAL_PREFIX = "emulator";
     private static final String TCP_DEVICE_SERIAL_PREFIX = "tcp-device";
+    private static final String GCE_DEVICE_SERIAL_PREFIX = "gce-device";
 
     /**
      * Pattern for a device listed by 'adb devices':
@@ -125,6 +126,7 @@ public class DeviceManager implements IDeviceManager {
     private FastbootMonitor mFastbootMonitor;
     private boolean mIsTerminated = false;
     private IDeviceSelection mGlobalDeviceFilter;
+    private IDeviceSelection mDeviceSelectionOptions;
 
     @Option(name = "max-emulators",
             description = "the maximum number of emulators that can be allocated at one time")
@@ -135,6 +137,11 @@ public class DeviceManager implements IDeviceManager {
     @Option(name = "max-tcp-devices",
             description = "the maximum number of tcp devices that can be allocated at one time")
     private int mNumTcpDevicesSupported = 1;
+
+    @Option(
+            name = "max-gce-devices",
+            description = "the maximum number of remote devices that can be allocated at one time")
+    private int mNumRemoteDevicesSupported = 1;
 
     private boolean mSynchronousMode = false;
 
@@ -253,6 +260,11 @@ public class DeviceManager implements IDeviceManager {
                 public List<DeviceDescriptor> listDevices() {
                     return listAllDevices();
                 }
+
+                @Override
+                public DeviceDescriptor getDeviceDescriptor(String serial) {
+                    return DeviceManager.this.getDeviceDescriptor(serial);
+                }
             });
             mDvcMon.run();
             mDvcMonRunning = true;
@@ -262,6 +274,7 @@ public class DeviceManager implements IDeviceManager {
         addEmulators();
         addNullDevices();
         addTcpDevices();
+        addGceDevices();
 
         List<IMultiDeviceRecovery> recoverers = getGlobalConfig().getMultiDeviceRecoveryHandlers();
         if (recoverers != null) {
@@ -442,6 +455,14 @@ public class DeviceManager implements IDeviceManager {
     private void addTcpDevices() {
         for (int i = 0; i < mNumTcpDevicesSupported; i++) {
             addAvailableDevice(new TcpDevice(String.format("%s-%d", TCP_DEVICE_SERIAL_PREFIX, i)));
+        }
+    }
+
+    /** Add placeholder objects for the max number of tcp devices that can be connected */
+    private void addGceDevices() {
+        for (int i = 0; i < mNumRemoteDevicesSupported; i++) {
+            addAvailableDevice(
+                    new RemoteAvdIDevice(String.format("%s:%d", GCE_DEVICE_SERIAL_PREFIX, i)));
         }
     }
 
@@ -914,27 +935,40 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public List<DeviceDescriptor> listAllDevices() {
         final List<DeviceDescriptor> serialStates = new ArrayList<DeviceDescriptor>();
-        IDeviceSelection selector = getDeviceSelectionOptions();
         for (IManagedTestDevice d : mManagedDeviceList) {
-            IDevice idevice = d.getIDevice();
-            serialStates.add(
-                    new DeviceDescriptor(
-                            idevice.getSerialNumber(),
-                            idevice instanceof StubDevice,
-                            idevice.getState(),
-                            d.getAllocationState(),
-                            getDisplay(selector.getDeviceProductType(idevice)),
-                            getDisplay(selector.getDeviceProductVariant(idevice)),
-                            getDisplay(idevice.getProperty("ro.build.version.sdk")),
-                            getDisplay(idevice.getProperty("ro.build.id")),
-                            getDisplay(selector.getBatteryLevel(idevice)),
-                            d.getDeviceClass(),
-                            getDisplay(d.getMacAddress()),
-                            getDisplay(d.getSimState()),
-                            getDisplay(d.getSimOperator()),
-                            idevice));
+            serialStates.add(buildDeviceDescriptor(d));
         }
         return serialStates;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public DeviceDescriptor getDeviceDescriptor(String serial) {
+        return buildDeviceDescriptor(mManagedDeviceList.find(serial));
+    }
+
+    /** Creates a DeviceDescriptor from a given IManagedTestDevice */
+    private DeviceDescriptor buildDeviceDescriptor(IManagedTestDevice d) {
+        if (d == null) {
+            return null;
+        }
+        IDeviceSelection selector = getDeviceSelectionOptions();
+        IDevice idevice = d.getIDevice();
+        return new DeviceDescriptor(
+                idevice.getSerialNumber(),
+                idevice instanceof StubDevice,
+                idevice.getState(),
+                d.getAllocationState(),
+                getDisplay(selector.getDeviceProductType(idevice)),
+                getDisplay(selector.getDeviceProductVariant(idevice)),
+                getDisplay(idevice.getProperty("ro.build.version.sdk")),
+                getDisplay(idevice.getProperty("ro.build.id")),
+                getDisplay(selector.getBatteryLevel(idevice)),
+                d.getDeviceClass(),
+                getDisplay(d.getMacAddress()),
+                getDisplay(d.getSimState()),
+                getDisplay(d.getSimOperator()),
+                idevice);
     }
 
     @Override
@@ -978,7 +1012,10 @@ public class DeviceManager implements IDeviceManager {
      * Exposed for unit testing.
      */
     IDeviceSelection getDeviceSelectionOptions() {
-        return new DeviceSelectionOptions();
+        if(mDeviceSelectionOptions == null) {
+            mDeviceSelectionOptions = new DeviceSelectionOptions();
+        }
+        return mDeviceSelectionOptions;
     }
 
     private void addDevicesInfo(List<List<String>> displayRows,
@@ -1259,6 +1296,11 @@ public class DeviceManager implements IDeviceManager {
     @VisibleForTesting
     void setMaxTcpDevices(int tcpDevices) {
         mNumTcpDevicesSupported = tcpDevices;
+    }
+
+    @VisibleForTesting
+    void setMaxRemoteDevices(int remoteDevices) {
+        mNumRemoteDevicesSupported = remoteDevices;
     }
 
     @Override
