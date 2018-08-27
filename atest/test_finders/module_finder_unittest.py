@@ -388,6 +388,12 @@ class ModuleFinderUnittests(unittest.TestCase):
 
         # Happy path testing.
         mock_dir.return_value = uc.MODULE_DIR
+
+        class_path = '%s.kt' % uc.CLASS_NAME
+        mock_build.return_value = uc.CLASS_BUILD_TARGETS
+        unittest_utils.assert_equal_testinfos(
+            self, uc.CLASS_INFO, self.mod_finder.find_test_by_path(class_path))
+
         class_path = '%s.java' % uc.CLASS_NAME
         mock_build.return_value = uc.CLASS_BUILD_TARGETS
         unittest_utils.assert_equal_testinfos(
