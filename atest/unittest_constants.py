@@ -198,3 +198,9 @@ CC_PATH_INFO2 = test_info.TestInfo(CC_MODULE_NAME,
                                    atf_tr.AtestTradefedTestRunner.NAME,
                                    CLASS_BUILD_TARGETS, CC_PATH_DATA2)
 CTS_INT_DIR = 'test/suite_harness/tools/cts-tradefed/res/config'
+# Constrants of java, kt, cc, cpp test_find_class_file() unittest
+FIND_PATH_TESTCASE_JAVA = 'hello_world_test'
+FIND_PATH_FILENAME_CC = 'hello_world_test'
+FIND_PATH_TESTCASE_CC = 'HelloWorldTest'
+FIND_PATH_FOLDER = 'class_file_path_testing'
+FIND_PATH = os.path.join(TEST_DATA_DIR, FIND_PATH_FOLDER)
