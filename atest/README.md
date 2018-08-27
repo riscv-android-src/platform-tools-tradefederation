@@ -53,10 +53,11 @@ Option|Long Option|Description
 :----:|:----------|-----------
 -b | --build      | Build test targets.
 -i | --install    | Install test artifacts (APKs) on device.
-<c>| --info       | Show the relevant info of the specified targets and exit.
 -t | --test       | Run the tests.
 -s | --serial     | Run the tests on the specified device. <br>Currently, one device can be tested at a time.
 -d | --disable-teardown | Disables test teardown and cleanup.
+<c>| --info       | Show the relevant info of the specified targets and exit.
+<c>| --dry-run    | A synonym of --info.
 -m | --rebuild-module-info | Forces a rebuild of the module-info.json file.
 -w | --wait-for-debugger   | Only for instrumentation tests. Waits for debugger prior to execution.
 -v | --verbose             | Display DEBUG level logging.
