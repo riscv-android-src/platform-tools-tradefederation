@@ -31,11 +31,7 @@ from test_runners import robolectric_test_runner
 from test_runners import vts_tf_test_runner
 
 _CC_EXT_RE = re.compile(r'.*(\.cc|\.cpp)$', re.I)
-_JAVA_EXT = '.java'
-
-# Parse package name from the package declaration line of a java file.
-# Group matches "foo.bar" of line "package foo.bar;"
-_PACKAGE_RE = re.compile(r'\s*package\s+(?P<package>[^;]+)\s*;\s*', re.I)
+_JAVA_EXT_RE = re.compile(r'.*(\.java|\.kt)$', re.I)
 
 _MODULES_IN = 'MODULES-IN-%s'
 _ANDROID_MK = 'Android.mk'
@@ -529,7 +525,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         data = {constants.TI_REL_CONFIG: rel_config,
                 constants.TI_FILTER: frozenset()}
         # Path is to java file.
-        if file_name and file_name.endswith(_JAVA_EXT):
+        if file_name and _JAVA_EXT_RE.match(file_name):
             full_class_name = test_finder_utils.get_fully_qualified_class_name(
                 path)
             data[constants.TI_FILTER] = frozenset(
@@ -547,7 +543,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
               and rel_module_dir != os.path.relpath(path, self.root_dir)):
             dir_items = [os.path.join(path, f) for f in os.listdir(path)]
             for dir_item in dir_items:
-                if dir_item.endswith(_JAVA_EXT):
+                if _JAVA_EXT_RE.match(dir_item):
                     package_name = test_finder_utils.get_package_name(dir_item)
                     if package_name:
                         # methods should be empty frozenset for package.
