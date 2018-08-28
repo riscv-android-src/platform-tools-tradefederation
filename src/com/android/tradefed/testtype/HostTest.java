@@ -119,7 +119,9 @@ public class HostTest
                     + "separated by colon \":\"; for example, if class under test supports "
                     + "\"--iteration 1\" from a command line, it should be passed in as"
                     + " \"--set-option iteration:1\" or \"--set-option iteration:key=value\" for "
-                    + "passing options to map; escaping of \":\" \"=\" is currently not supported";
+                    + "passing options to map; escaping of \":\" \"=\" is currently not supported."
+                    + "A particular class can be targetted by specifying it. "
+                    + "\" --set-option <fully qualified class>:<option name>:<option value>\"";
 
     @Option(name = SET_OPTION_NAME, description = SET_OPTION_DESC)
     private List<String> mKeyValueOptions = new ArrayList<>();
@@ -893,28 +895,45 @@ public class HostTest
                 OptionSetter setter = new OptionSetter(testObj);
                 for (String item : keyValueOptions) {
                     String[] fields = item.split(":");
-                    if (fields.length == 2) {
-                        if (fields[1].contains("=")) {
-                            String[] values = fields[1].split("=");
-                            if (values.length != 2) {
-                                throw new RuntimeException(
-                                        String.format(
-                                                "set-option provided '%s' format is invalid. Only one "
-                                                        + "'=' is allowed",
-                                                item));
-                            }
-                            setter.setOptionValue(fields[0], values[0], values[1]);
+                    if (fields.length == 3) {
+                        String target = fields[0];
+                        if (testObj.getClass().getName().equals(target)) {
+                            injectOption(setter, item, fields[1], fields[2]);
                         } else {
-                            setter.setOptionValue(fields[0], fields[1]);
+                            // TODO: We should track that all targeted option end up assigned
+                            // eventually.
+                            CLog.d(
+                                    "Targeted option %s is not applicable to %s",
+                                    item, testObj.getClass().getName());
                         }
+                    } else if (fields.length == 2) {
+                        injectOption(setter, item, fields[0], fields[1]);
                     } else {
                         throw new RuntimeException(
                                 String.format("invalid option spec \"%s\"", item));
                     }
                 }
             } catch (ConfigurationException ce) {
+                CLog.e(ce);
                 throw new RuntimeException("error passing options down to test class", ce);
             }
+        }
+    }
+
+    private static void injectOption(OptionSetter setter, String origItem, String key, String value)
+            throws ConfigurationException {
+        if (value.contains("=")) {
+            String[] values = value.split("=");
+            if (values.length != 2) {
+                throw new RuntimeException(
+                        String.format(
+                                "set-option provided '%s' format is invalid. Only one "
+                                        + "'=' is allowed",
+                                origItem));
+            }
+            setter.setOptionValue(key, values[0], values[1]);
+        } else {
+            setter.setOptionValue(key, value);
         }
     }
 
