@@ -16,18 +16,18 @@
 package com.android.tradefed.testtype.suite;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
-
+import java.util.HashMap;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-
-import java.util.HashMap;
 
 /** Unit tests for {@link ModuleListener} * */
 @RunWith(JUnit4.class)
@@ -120,5 +120,37 @@ public class ModuleListenerTest {
         mListener.testRunEnded(0, new HashMap<String, Metric>());
         assertEquals(numTests * 2, mListener.getNumTotalTests());
         assertEquals(numTests * 2, mListener.getNumTestsInState(TestStatus.PASSED));
+    }
+
+    /**
+     * Test that as long as a run crashed at attempt X, hasRunCrashedAtAttempt returns True at that
+     * attempt.
+     */
+    @Test
+    public void testhasRunCrashedAtAttempt() throws Exception {
+        int maxRunLimit = 5;
+        int clearRun1FailureAtAttempt = 3;
+        int clearRun2FailureAtAttempt = 1;
+
+        for (int attempt = 0; attempt < maxRunLimit; attempt++) {
+            mListener.testRunStarted("run1", 0, attempt);
+            if (attempt < clearRun1FailureAtAttempt) {
+                mListener.testRunFailed("I failed!");
+            }
+            mListener.testRunEnded(0, new HashMap<String, Metric>());
+            mListener.testRunStarted("run2", 0, attempt);
+            if (attempt < clearRun2FailureAtAttempt) {
+                mListener.testRunFailed("I failed!");
+            }
+            mListener.testRunEnded(0, new HashMap<String, Metric>());
+        }
+        int finalRunFailureAtAttempt =
+                Math.max(clearRun1FailureAtAttempt, clearRun2FailureAtAttempt);
+        for (int attempt = 0; attempt < finalRunFailureAtAttempt; attempt++) {
+            assertTrue(mListener.hasRunCrashedAtAttempt(attempt));
+        }
+        for (int attempt = finalRunFailureAtAttempt; attempt < maxRunLimit; attempt++) {
+            assertFalse(mListener.hasRunCrashedAtAttempt(attempt));
+        }
     }
 }

@@ -234,7 +234,7 @@ public class GranularRetriableTestWrapperTest {
     private GranularRetriableTestWrapper createGranularTestWrapper(
             IRemoteTest test, int maxRunCount) {
         GranularRetriableTestWrapper granularTestWrapper =
-                new GranularRetriableTestWrapper(test, null, null, maxRunCount);
+                new GranularRetriableTestWrapper(test, null, null, null, maxRunCount);
         granularTestWrapper.setModuleId("test module");
         granularTestWrapper.setMarkTestsSkipped(false);
         granularTestWrapper.setMetricCollectors(new ArrayList<IMetricCollector>());
@@ -258,7 +258,7 @@ public class GranularRetriableTestWrapperTest {
                 createGranularTestWrapper(new FakeTest(), 99);
         granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_CASE_FAILURE);
         assertEquals(0, granularTestWrapper.getTestRunResultCollected().size());
-        granularTestWrapper.intraModuleRun();
+        granularTestWrapper.intraModuleRun(0);
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
         assertEquals(1, granularTestWrapper.getFinalTestRunResults().size());
         Set<TestDescription> completedTests =
@@ -284,7 +284,7 @@ public class GranularRetriableTestWrapperTest {
                 .run(Mockito.any(ITestInvocationListener.class));
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(mockTest, 1);
         // Verify.
-        granularTestWrapper.intraModuleRun();
+        granularTestWrapper.intraModuleRun(0);
     }
 
     /**
@@ -303,7 +303,7 @@ public class GranularRetriableTestWrapperTest {
                     }
                 };
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 1);
-        granularTestWrapper.intraModuleRun();
+        granularTestWrapper.intraModuleRun(0);
         TestRunResult attempResults =
                 granularTestWrapper.getTestRunResultCollected().get(RUN_NAME).get(0);
         assertTrue(attempResults.isRunFailure());
