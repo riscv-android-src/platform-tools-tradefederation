@@ -1428,15 +1428,6 @@ public class HostTestTest extends TestCase {
 
     /** Test {@link IShardableTest} interface and check the sharding is correct. */
     public void testGetTestShardable_wrapping_shardUnit_method() throws Exception {
-        getTestShardable_wrapping_shardUnit_method_helper();
-    }
-
-    /**
-     * Shard by method and verify that each shard contains the expected classes
-     *
-     * @throws Exception
-     */
-    private void getTestShardable_wrapping_shardUnit_method_helper() throws Exception {
         final ITestDevice device = EasyMock.createMock(ITestDevice.class);
         mHostTest.setDevice(device);
         OptionSetter setter = new OptionSetter(mHostTest);
