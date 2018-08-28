@@ -66,6 +66,7 @@ Option|Long Option|Description
 <c>| --[CUSTOM_ARGS]       | Specify custom args for the test runners.
 -a | --all-abi    | Run the tests for all available device architectures.
 -h | --help       | Show this help message and exit.
+<c>| --host       | Run the test completely on the host without a device.<br>(Note: running a host test that requires a device with --host will fail.)
 
 
 More information about **-b**, **-i** and **-t** can be found below under [Specifying Steps: Build, Install or Run.](#specifying-steps-build-install-or-run)
