@@ -128,6 +128,10 @@ class TestFinderHandlerUnittests(unittest.TestCase):
             [REF_TYPE.MODULE_FILE_PATH]
         )
         self.assertEqual(
+            test_finder_handler._get_test_reference_types('SomeClass.kt'),
+            [REF_TYPE.MODULE_FILE_PATH]
+        )
+        self.assertEqual(
             test_finder_handler._get_test_reference_types('Android.mk'),
             [REF_TYPE.MODULE_FILE_PATH]
         )
