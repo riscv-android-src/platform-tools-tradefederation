@@ -198,7 +198,8 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(SERIAL);
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(null);
         mMockDevice.setRecovery(mMockRecovery);
-        mMockDevice.preInvocationSetup((IBuildInfo)EasyMock.anyObject());
+        mMockDevice.preInvocationSetup(
+                (IBuildInfo) EasyMock.anyObject(), (List<IBuildInfo>) EasyMock.anyObject());
         EasyMock.expectLastCall().anyTimes();
         mMockDevice.postInvocationTearDown();
         EasyMock.expectLastCall().anyTimes();
@@ -211,6 +212,7 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mMockBuildInfo.getBuildBranch()).andStubReturn("branch");
         EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andStubReturn("flavor");
         EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(new HashSet<>());
+        EasyMock.expect(mMockBuildInfo.isTestResourceBuild()).andStubReturn(false);
 
         // always expect logger initialization and cleanup calls
         mMockLogRegistry.registerLogger(mMockLogger);
@@ -1574,7 +1576,7 @@ public class TestInvocationTest extends TestCase {
     }
 
     /**
-     * Test {@link INativeDevice#preInvocationSetup(IBuildInfo info)} is called when command option
+     * Test {@link INativeDevice#preInvocationSetup(IBuildInfo, List)} is called when command option
      * skip-pre-device-setup is not set.
      */
     public void testNotSkipPreDeviceSetup() throws Throwable {
@@ -1582,10 +1584,16 @@ public class TestInvocationTest extends TestCase {
         ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
         IDevice idevice = Mockito.mock(IDevice.class);
         context.addAllocatedDevice("DEFAULT_DEVICE", device1);
+        IBuildInfo testResourceBuildInfo = new BuildInfo();
+        testResourceBuildInfo.setTestResourceBuild(true);
+        context.addDeviceBuildInfo("test-resource", testResourceBuildInfo);
+        List<IBuildInfo> testResourceBuildInfos = new ArrayList<>();
+        testResourceBuildInfos.add(testResourceBuildInfo);
         EasyMock.expect(device1.getSerialNumber()).andReturn("serial1").anyTimes();
         EasyMock.expect(device1.getIDevice()).andReturn(idevice).anyTimes();
 
-        device1.preInvocationSetup((IBuildInfo) EasyMock.anyObject());
+        device1.preInvocationSetup(
+                (IBuildInfo) EasyMock.anyObject(), EasyMock.eq(testResourceBuildInfos));
         EasyMock.expectLastCall().once();
 
         CommandOptions commandOption = new CommandOptions();
@@ -1676,6 +1684,7 @@ public class TestInvocationTest extends TestCase {
                 };
         mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
         EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(new HashSet<>());
+        EasyMock.expect(mMockBuildInfo.isTestResourceBuild()).andStubReturn(false);
         IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
         ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
         EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
@@ -1760,6 +1769,7 @@ public class TestInvocationTest extends TestCase {
             EasyMock.expect(((IDeviceBuildInfo) mMockBuildInfo).getTestsDir())
                     .andReturn(tmpTestsDir);
             EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(new HashSet<>());
+            EasyMock.expect(mMockBuildInfo.isTestResourceBuild()).andStubReturn(false);
 
             setupMockSuccessListeners();
             setupNormalInvoke(test);
@@ -1839,6 +1849,7 @@ public class TestInvocationTest extends TestCase {
             Set<BuildInfoProperties> prop = new HashSet<>();
             prop.add(BuildInfoProperties.DO_NOT_LINK_TESTS_DIR);
             EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(prop);
+            EasyMock.expect(mMockBuildInfo.isTestResourceBuild()).andStubReturn(false);
 
             setupMockSuccessListeners();
             setupNormalInvoke(test);
