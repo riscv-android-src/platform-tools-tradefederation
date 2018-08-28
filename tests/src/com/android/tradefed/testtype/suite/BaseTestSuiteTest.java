@@ -84,7 +84,7 @@ public class BaseTestSuiteTest {
         }
     }
 
-    /** Test for {@#link BaseTestSuite#setupFilters()} implementation, no modules match. */
+    /** Test for {@link BaseTestSuite#setupFilters(File)} implementation, no modules match. */
     @Test
     public void testSetupFilters_noMatch() throws Exception {
         File tmpDir = FileUtil.createTempDir(TEST_MODULE);
@@ -102,7 +102,9 @@ public class BaseTestSuiteTest {
         }
     }
 
-    /** Test for {@#link BaseTestSuite#setupFilters()} implementation, only one module matches. */
+    /**
+     * Test for {@link BaseTestSuite#setupFilters(File)} implementation, only one module matches.
+     */
     @Test
     public void testSetupFilters_oneMatch() throws Exception {
         File tmpDir = FileUtil.createTempDir(TEST_MODULE);
@@ -126,8 +128,8 @@ public class BaseTestSuiteTest {
     }
 
     /**
-     * Test for {@#link BaseTestSuite#setupFilters()} implementation, multi modules match prefix but
-     * don't exact match.
+     * Test for {@link BaseTestSuite#setupFilters(File)} implementation, multi modules match prefix
+     * but don't exact match.
      */
     @Test
     public void testSetupFilters_multiMatchNoExactMatch() throws Exception {
@@ -151,8 +153,8 @@ public class BaseTestSuiteTest {
     }
 
     /**
-     * Test for {@#link BaseTestSuite#setupFilters()} implementation, multi modules match prefix and
-     * one matches exactly.
+     * Test for {@link BaseTestSuite#setupFilters(File)} implementation, multi modules match prefix
+     * and one matches exactly.
      */
     @Test
     public void testSetupFilters_multiMatchOneExactMatch() throws Exception {

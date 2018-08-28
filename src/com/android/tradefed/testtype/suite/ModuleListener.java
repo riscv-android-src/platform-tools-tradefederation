@@ -50,22 +50,18 @@ public class ModuleListener extends CollectingTestListener {
         setIsAggregrateMetrics(true);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void testRunStarted(String name, int numTests) {
-        if (!hasTestRunResultsForName(name)) {
-            // No results for it yet, brand new set of tests, we expect them all.
-            mExpectedTestCount += numTests;
-        } else {
-            TestRunResult currentResult = getCurrentRunResults();
-            // We have results but the run wasn't complete.
-            if (!currentResult.isRunComplete()) {
+    public void testRunStarted(String name, int numTests, int attemptNumber) {
+        // Only increment the number of expected tests on the first attempt.
+        if (attemptNumber == 0) {
+            if (!hasTestRunResultsForName(name) || !getCurrentRunResults().isRunComplete()) {
+                // Only record when it's a brand new set of tests (expect them all) or the previous
+                // result was incomplete.
                 mExpectedTestCount += numTests;
             }
         }
-        super.testRunStarted(name, numTests);
+        super.testRunStarted(name, numTests, attemptNumber);
     }
 
     /** {@inheritDoc} */
@@ -100,7 +96,7 @@ public class ModuleListener extends CollectingTestListener {
         }
         mTestsRan++;
     }
-    
+
     /** {@inheritDoc} */
     @Override
     public void testEnded(TestDescription test, HashMap<String, Metric> testMetrics) {
@@ -165,5 +161,21 @@ public class ModuleListener extends CollectingTestListener {
             ((ILogSaverListener) mMainListener)
                     .testLogSaved(dataName, dataType, dataStream, logFile);
         }
+    }
+
+    /**
+     * Check if any runs in the given attempt have incompleted (aka "run failure").
+     *
+     * @param attemptNumber indicates which attempt should the test runs come from.
+     * @return true if any of the runs in the given attempt has crashed.
+     */
+    public boolean hasRunCrashedAtAttempt(int attemptNumber) {
+        for (String runName : getTestRunNames()) {
+            TestRunResult run = getTestRunAtAttempt(runName, attemptNumber);
+            if (run != null && run.isRunFailure()) {
+                return true;
+            }
+        }
+        return false;
     }
 }

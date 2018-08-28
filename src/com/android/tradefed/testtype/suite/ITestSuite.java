@@ -852,6 +852,11 @@ public abstract class ITestSuite
         mContext = invocationContext;
     }
 
+    /** Set the max number of run attempt for each module. */
+    public final void setMaxRunLimit(int maxRunLimit) {
+        mMaxRunLimit = maxRunLimit;
+    }
+
     /** {@inheritDoc} */
     @Override
     public long getRuntimeHint() {
