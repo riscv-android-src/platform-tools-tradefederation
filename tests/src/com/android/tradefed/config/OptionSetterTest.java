@@ -16,6 +16,15 @@
 
 package com.android.tradefed.config;
 
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Pattern;
+
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -27,14 +36,6 @@ import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.TimeVal;
 
 import junit.framework.TestCase;
-
-import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Unit tests for {@link OptionSetter}.
@@ -192,6 +193,9 @@ public class OptionSetterTest extends TestCase {
         @Option(name = "enumCollection")
         private Collection<DefaultEnumClass> mEnumCollection =
                 new ArrayList<DefaultEnumClass>();
+
+        @Option(name = "pattern")
+        private Pattern mPattern = null;
     }
 
     @OptionClass(alias = "parent")
@@ -776,6 +780,24 @@ public class OptionSetterTest extends TestCase {
         assertTrue(1000 * (45 + 60 * 60 * 2) == optionSource.mTimeVal.asLong());
         assertSetOptionValue(optionSource, "timeVal", "12345");
         assertTrue(12345 == optionSource.mTimeVal.asLong());
+    }
+
+    /**
+     * Test {@link OptionSetter#setOptionValue(String, String)} for a Pattern.
+     */
+    public void testSetOptionValue_pattern() throws ConfigurationException {
+        AllTypesOptionSource optionSource = new AllTypesOptionSource();
+        String rawPattern = "^foo(\\d+)";
+        assertSetOptionValue(optionSource, "pattern", rawPattern);
+        assertEquals(rawPattern, optionSource.mPattern.pattern());
+    }
+
+    /**
+     * Test {@link OptionSetter#setOptionValue(String, String)} for a Pattern with invalid input.
+     */
+    public void testSetOptionValue_patternInvalid() throws ConfigurationException {
+        AllTypesOptionSource optionSource = new AllTypesOptionSource();
+        assertSetOptionValueInvalid(optionSource, "pattern", "\\");
     }
 
     /**
