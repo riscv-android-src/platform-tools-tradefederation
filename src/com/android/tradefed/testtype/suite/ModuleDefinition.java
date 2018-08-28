@@ -412,6 +412,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 GranularRetriableTestWrapper retriableTest =
                         prepareGranularRetriableWrapper(
                                 test,
+                                listener,
                                 failureListener,
                                 moduleLevelListeners,
                                 skipTestCases,
@@ -484,13 +485,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     @VisibleForTesting
     GranularRetriableTestWrapper prepareGranularRetriableWrapper(
             IRemoteTest test,
+            ITestInvocationListener listener,
             TestFailureListener failureListener,
             List<ITestInvocationListener> moduleLevelListeners,
             boolean skipTestCases,
             int maxRunLimit) {
         GranularRetriableTestWrapper retriableTest =
                 new GranularRetriableTestWrapper(
-                        test, failureListener, moduleLevelListeners, maxRunLimit);
+                        test, listener, failureListener, moduleLevelListeners, maxRunLimit);
         retriableTest.setModuleId(getId());
         retriableTest.setMarkTestsSkipped(skipTestCases);
         retriableTest.setMetricCollectors(mRunMetricCollectors);
