@@ -362,8 +362,9 @@ class TestFinderUtilsUnittests(unittest.TestCase):
         test_result = test_finder_utils.search_integration_dirs(INT_FILE_NAME, int_dirs)
         unittest_utils.assert_strict_equal(self, test_result, path)
 
+    @mock.patch('os.environ.get', return_value=uc.TEST_CONFIG_DATA_DIR)
     @mock.patch('__builtin__.raw_input', return_value='0')
-    def test_find_class_file(self, mock_input):
+    def test_find_class_file(self, mock_input, _mock_env):
         """Test find_class_file."""
         java_tmp_test_result = []
         mock_input.return_value = '0'
