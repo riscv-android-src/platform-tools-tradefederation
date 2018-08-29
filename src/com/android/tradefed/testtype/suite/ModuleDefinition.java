@@ -132,7 +132,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     /** The number of test cases that remained failed after all retry attempts */
     private long mFailedRetried = 0L;
 
-    private RetryStrategy mRetryStrategy;
+    private RetryStrategy mRetryStrategy = RetryStrategy.RETRY_TEST_CASE_FAILURE;
 
     /**
      * Constructor
