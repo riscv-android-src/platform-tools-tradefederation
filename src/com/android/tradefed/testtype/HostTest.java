@@ -283,13 +283,13 @@ public class HostTest
     /** {@inheritDoc} */
     @Override
     public Set<String> getIncludeFilters() {
-        return mIncludeAnnotations;
+        return mFilterHelper.getIncludeFilters();
     }
 
     /** {@inheritDoc} */
     @Override
     public Set<String> getExcludeFilters() {
-        return mExcludeAnnotations;
+        return mFilterHelper.getExcludeFilters();
     }
 
     /**
