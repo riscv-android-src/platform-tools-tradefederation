@@ -24,6 +24,7 @@ import com.android.tradefed.config.IConfigurationServer;
 
 import java.io.BufferedInputStream;
 import java.io.InputStream;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 
@@ -106,7 +107,11 @@ public class GCSConfigurationFactory extends ConfigurationFactory {
          * @return normalized path
          */
         String getPath(String parent, String filename) {
-            return Paths.get(parent).getParent().resolve(filename).normalize().toString();
+            Path parentPath = Paths.get(parent).getParent();
+            if (parentPath == null) {
+                return filename;
+            }
+            return parentPath.resolve(filename).normalize().toString();
         }
 
         /** {@inheritDoc} */

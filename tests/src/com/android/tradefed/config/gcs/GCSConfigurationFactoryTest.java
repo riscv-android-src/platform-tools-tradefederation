@@ -194,6 +194,12 @@ public class GCSConfigurationFactoryTest {
     }
 
     @Test
+    public void getPath_parentSameLevel() throws Exception {
+        String path = mGCSConfigLoader.getPath("file1.xml", "file2.xml");
+        Assert.assertEquals("file2.xml", path);
+    }
+
+    @Test
     public void testCreateGlobalConfigurationFromArgs() throws Exception {
         List<String> remainingArgs = new ArrayList<String>();
         IGlobalConfiguration config =
