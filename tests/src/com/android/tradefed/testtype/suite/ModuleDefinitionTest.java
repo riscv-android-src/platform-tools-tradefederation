@@ -28,6 +28,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInvocation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -172,6 +173,13 @@ public class ModuleDefinitionTest {
                 }
                 listener.testRunEnded(0, new HashMap<String, Metric>());
             }
+        }
+    }
+
+    private class DirectFailureTestObject implements IRemoteTest {
+        @Override
+        public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+            throw new RuntimeException("early failure!");
         }
     }
 
@@ -987,6 +995,43 @@ public class ModuleDefinitionTest {
         }
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        replayMocks();
+        mModule.run(mMockListener);
+        verifyMocks();
+    }
+
+    @Test
+    public void testRun_earlyFailure() throws Exception {
+        List<IRemoteTest> testList = new ArrayList<>();
+        testList.add(new DirectFailureTestObject());
+        mModule =
+                new ModuleDefinition(
+                        MODULE_NAME,
+                        testList,
+                        mMapDeviceTargetPreparer,
+                        mMultiTargetPrepList,
+                        new Configuration("", ""));
+        mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
+        mModule.getModuleInvocationContext()
+                .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
+        mModule.setBuild(mMockBuildInfo);
+        mModule.setDevice(mMockDevice);
+
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("fake"));
+        EasyMock.expect(mMockPrep.isDisabled()).andReturn(false);
+        // no isTearDownDisabled() expected for setup
+        mMockPrep.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        EasyMock.expect(mMockCleaner.isDisabled()).andStubReturn(false);
+        mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
+        mMockCleaner.tearDown(
+                EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
+
+        mMockListener.testRunStarted("fakeName", 0);
+        mMockListener.testRunFailed("early failure!");
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
         replayMocks();
         mModule.run(mMockListener);
         verifyMocks();
