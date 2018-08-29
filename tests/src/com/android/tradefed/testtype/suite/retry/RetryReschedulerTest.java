@@ -60,7 +60,6 @@ public class RetryReschedulerTest {
 
     private ITestSuiteResultLoader mMockLoader;
     private IRescheduler mMockRescheduler;
-    private IInvocationContext mMockContext;
     private IConfigurationFactory mMockFactory;
     private BaseTestSuite mSuite;
 
@@ -79,17 +78,18 @@ public class RetryReschedulerTest {
                 .andStubReturn(mMockRequirements);
         mMockLoader = EasyMock.createMock(ITestSuiteResultLoader.class);
         mMockRescheduler = EasyMock.createMock(IRescheduler.class);
-        mMockContext = new InvocationContext();
         mMockFactory = EasyMock.createMock(IConfigurationFactory.class);
         mTopConfiguration.setConfigurationObject(
                 RetryRescheduler.PREVIOUS_LOADER_NAME, mMockLoader);
         mTest.setConfiguration(mTopConfiguration);
         mTest.setRescheduler(mMockRescheduler);
-        mTest.setInvocationContext(mMockContext);
         mTest.setConfigurationFactory(mMockFactory);
 
         mSuite = Mockito.mock(BaseTestSuite.class);
         EasyMock.expect(mRescheduledConfiguration.getTests()).andStubReturn(Arrays.asList(mSuite));
+
+        mMockLoader.customizeConfiguration(EasyMock.anyObject());
+        EasyMock.expectLastCall();
 
         mMockCommandOptions.setShardCount(null);
         mMockCommandOptions.setShardIndex(null);
@@ -99,7 +99,7 @@ public class RetryReschedulerTest {
     @Test
     public void testReschedule_onlyPassTests() throws Exception {
         populateFakeResults(2, 2, 0, 0, 0);
-        mMockLoader.init(mMockContext.getDevices());
+        mMockLoader.init();
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
@@ -135,7 +135,7 @@ public class RetryReschedulerTest {
     @Test
     public void testReschedule_someFailedTests() throws Exception {
         populateFakeResults(2, 2, 1, 0, 0);
-        mMockLoader.init(mMockContext.getDevices());
+        mMockLoader.init();
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
@@ -174,7 +174,7 @@ public class RetryReschedulerTest {
     @Test
     public void testReschedule_someAssumptionFailures() throws Exception {
         populateFakeResults(2, 2, 0, 1, 0);
-        mMockLoader.init(mMockContext.getDevices());
+        mMockLoader.init();
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
@@ -213,7 +213,7 @@ public class RetryReschedulerTest {
     @Test
     public void testReschedule_mixedFailedAssumptionFailures() throws Exception {
         populateFakeResults(2, 3, 1, 1, 0);
-        mMockLoader.init(mMockContext.getDevices());
+        mMockLoader.init();
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
@@ -258,7 +258,7 @@ public class RetryReschedulerTest {
         OptionSetter setter = new OptionSetter(mTest);
         setter.setOptionValue(BaseTestSuite.EXCLUDE_FILTER_OPTION, "run1");
         populateFakeResults(2, 2, 1, 0, 0);
-        mMockLoader.init(mMockContext.getDevices());
+        mMockLoader.init();
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
@@ -295,7 +295,7 @@ public class RetryReschedulerTest {
     @Test
     public void testReschedule_parameterized() throws Exception {
         populateFakeResults(2, 2, 0, 0, 2);
-        mMockLoader.init(mMockContext.getDevices());
+        mMockLoader.init();
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
