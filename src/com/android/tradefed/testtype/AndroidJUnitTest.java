@@ -47,9 +47,12 @@ import java.util.Set;
  * A Test that runs an instrumentation test package on given device using the
  * android.support.test.runner.AndroidJUnitRunner.
  */
-public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHintProvider,
-        ITestFileFilterReceiver, ITestFilterReceiver, ITestAnnotationFilterReceiver,
-        IShardableTest, IStrictShardableTest {
+public class AndroidJUnitTest extends InstrumentationTest
+        implements IRuntimeHintProvider,
+                ITestFileFilterReceiver,
+                ITestFilterReceiver,
+                ITestAnnotationFilterReceiver,
+                IShardableTest {
 
     /** instrumentation test runner argument key used for including a class/test */
     private static final String INCLUDE_CLASS_INST_ARGS_KEY = "class";
@@ -520,11 +523,7 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
         return null;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public IRemoteTest getTestShard(int shardCount, int shardIndex) {
+    private IRemoteTest getTestShard(int shardCount, int shardIndex) {
         AndroidJUnitTest shard;
         // ensure we handle runners that extend AndroidJUnitRunner
         try {

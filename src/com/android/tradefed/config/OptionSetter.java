@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /**
  * Populates {@link Option} fields.
@@ -91,6 +92,7 @@ public class OptionSetter {
         handlers.put(String.class, new StringHandler());
         handlers.put(File.class, new FileHandler());
         handlers.put(TimeVal.class, new TimeValHandler());
+        handlers.put(Pattern.class, new PatternHandler());
     }
 
 
@@ -1065,6 +1067,20 @@ public class OptionSetter {
                 return new TimeVal(valueText);
 
             } catch (NumberFormatException ex) {
+                return null;
+            }
+        }
+    }
+
+    private static class PatternHandler extends Handler {
+        /**
+         * We parse the string as a regex pattern, and return a {@code Pattern}
+         */
+        @Override
+        Object translate(String valueText) {
+            try {
+                return Pattern.compile(valueText);
+            } catch (PatternSyntaxException ex) {
                 return null;
             }
         }

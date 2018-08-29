@@ -903,7 +903,7 @@ public class ModuleDefinitionTest {
 
         mMockLogSaverListener.setLogSaver(mMockLogSaver);
 
-        mMockListener.testRunStarted("run1", testCount);
+        mMockListener.testRunStarted("run1", testCount, 0);
         for (int i = 0; i < testCount; i++) {
             mMockListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
             mMockListener.testEnded(
