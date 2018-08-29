@@ -49,6 +49,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -393,6 +394,17 @@ public class AndroidJUnitTestTest {
     public void testSplit_noShardRequested() {
         assertEquals(AJUR, mAndroidJUnitTest.getRunnerName());
         assertNull(mAndroidJUnitTest.split());
+    }
+
+    /** Test that {@link AndroidJUnitTest#split()} returns the split if no runner specified. */
+    @Test
+    public void testSplit_noRunner() {
+        AndroidJUnitTest test = new AndroidJUnitTest();
+        test.setRunnerName(null);
+        assertNull(test.getRunnerName());
+        Collection<IRemoteTest> listTests = test.split(4);
+        assertNotNull(listTests);
+        assertEquals(4, listTests.size());
     }
 
     /** Test that {@link AndroidJUnitTest#split(int)} returns 3 shards when requested to do so. */
