@@ -143,6 +143,13 @@ class ConfigurationXmlParser {
                             "Attempted to specify local object '%s' for global config!",
                             localName));
                 }
+                // Prevent a TF object from being inside another one
+                if (mCurrentConfigObject != null) {
+                    throwException(
+                            String.format(
+                                    "Declared '%s' object inside %s is not valid.",
+                                    localName, mCurrentConfigObject));
+                }
 
                 if (mCurrentDeviceObject == null &&
                         Configuration.doesBuiltInObjSupportMultiDevice(localName)) {
