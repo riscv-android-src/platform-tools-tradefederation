@@ -87,6 +87,7 @@ class CLITranslator(object):
                     if tm_test_detail:
                         test_info.data[constants.TI_MODULE_ARG] = (
                             tm_test_detail.options)
+                        test_info.from_test_mapping = True
                     test_infos.add(test_info)
                     test_found = True
                     finder_info = finder.finder_info

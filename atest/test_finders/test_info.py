@@ -52,6 +52,8 @@ class TestInfo(object):
         self.module_class = module_class if module_class else []
         self.install_locations = (install_locations if install_locations
                                   else set())
+        # True if the TestInfo is built from a test configured in TEST_MAPPING.
+        self.from_test_mapping = False
 
     def __str__(self):
         return ('test_name: %s - test_runner:%s - build_targets:%s - data:%s - '
