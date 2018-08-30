@@ -226,7 +226,7 @@ public class GTest extends GTestBase implements IDeviceTest {
                 testDevice.executeShellCommand(cmd);
             }
 
-            if (mRebootBeforeTest) {
+            if (mRebootBeforeTest && !isCollectTestsOnly()) {
                 CLog.d("Rebooting device before test starts as requested.");
                 testDevice.reboot();
             }
