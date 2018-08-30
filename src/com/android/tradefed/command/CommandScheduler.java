@@ -36,6 +36,7 @@ import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.RetryConfigurationFactory;
 import com.android.tradefed.config.SandboxConfigurationFactory;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceManager;
@@ -1114,6 +1115,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return false;
     }
 
+    /** Returns true if the configuration used is the retry one. */
+    private boolean isRetryCommand(String configName) {
+        return RetryConfigurationFactory.RETRY_CONFIG_NAME.equals(configName);
+    }
+
     /** Create a {@link ISandbox} that the invocation will use to run. */
     public ISandbox createSandbox() {
         return new TradefedSandbox();
@@ -1126,6 +1132,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             ISandbox sandbox = createSandbox();
             return SandboxConfigurationFactory.getInstance()
                     .createConfigurationFromArgs(args, getKeyStoreClient(), sandbox, new RunUtil());
+        }
+        if (isRetryCommand(args[0])) {
+            return RetryConfigurationFactory.getInstance()
+                    .createConfigurationFromArgs(args, null, getKeyStoreClient());
         }
         return getConfigFactory().createConfigurationFromArgs(args, null, getKeyStoreClient());
     }

@@ -33,6 +33,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RegexTrie;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.VersionParser;
 import com.android.tradefed.util.ZipUtil;
@@ -675,29 +676,33 @@ public class Console extends Thread {
         }, DUMP_PATTERN, "e(?:nv)?");
 
         // Run commands
-        ArgRunnable<CaptureList> runRunCommand = new ArgRunnable<CaptureList>() {
-            @Override
-            public void run(CaptureList args) {
-                // The second argument "command" may also be missing, if the
-                // caller used the shortcut.
-                int startIdx = 1;
-                if (args.get(1).isEmpty()) {
-                    // Empty array (that is, not even containing an empty string) means that
-                    // we matched and skipped /(?:singleC|c)ommand/
-                    startIdx = 2;
-                }
+        ArgRunnable<CaptureList> runRunCommand =
+                new ArgRunnable<CaptureList>() {
+                    @Override
+                    public void run(CaptureList args) {
+                        // The second argument "command" may also be missing, if the
+                        // caller used the shortcut.
+                        int startIdx = 1;
+                        if (args.get(1).isEmpty()) {
+                            // Empty array (that is, not even containing an empty string) means that
+                            // we matched and skipped /(?:singleC|c)ommand/
+                            startIdx = 2;
+                        }
 
-                String[] flatArgs = new String[args.size() - startIdx];
-                for (int i = startIdx; i < args.size(); i++) {
-                    flatArgs[i - startIdx] = args.get(i).get(0);
-                }
-                try {
-                    mScheduler.addCommand(flatArgs);
-                } catch (ConfigurationException e) {
-                    printLine("Failed to run command: " + e.toString());
-                }
-            }
-        };
+                        String[] flatArgs = new String[args.size() - startIdx];
+                        for (int i = startIdx; i < args.size(); i++) {
+                            flatArgs[i - startIdx] = args.get(i).get(0);
+                        }
+                        try {
+                            mScheduler.addCommand(flatArgs);
+                        } catch (ConfigurationException e) {
+                            printLine(
+                                    String.format(
+                                            "Failed to run command: %s\n%s",
+                                            e.toString(), StreamUtil.getStackTrace(e)));
+                        }
+                    }
+                };
         trie.put(runRunCommand, RUN_PATTERN, "c(?:ommand)?", null);
         trie.put(runRunCommand, RUN_PATTERN, null);
         trie.put(new Runnable() {
