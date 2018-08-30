@@ -390,7 +390,7 @@ class ConfigurationXmlParser {
                         .stream()
                         .filter(value -> (value == true))
                         .collect(Collectors.counting());
-        if (numNonDut > 0 && numDut == 1) {
+        if (numNonDut > 0 && numDut <= 1) {
             // If we only have one DUT device and the rest are non-DUT devices. We need to consider
             // this has an hybrid use case since there is technically only one device. So we cannot
             // validate yet if objects are allowed to be outside <device> tags, it will be validated
