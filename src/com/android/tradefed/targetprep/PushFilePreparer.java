@@ -84,7 +84,7 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
             + "so that files could be pushed there too")
     private boolean mRemount = false;
 
-    private Collection<String> mFilesPushed = null;
+    private Set<String> mFilesPushed = null;
 
     /**
      * Helper method to only throw if mAbortOnFailure is enabled.  Callers should behave as if this
@@ -155,7 +155,7 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError, BuildError,
             DeviceNotAvailableException {
-        mFilesPushed = new ArrayList<>();
+        mFilesPushed = new HashSet<>();
         if (mRemount) {
             device.remountSystemWritable();
         }
@@ -169,6 +169,11 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
                     pair[1]));
 
             File src = new File(pair[0]);
+            String remotePath = pair[1];
+            // If we attempt to push to an existing directory
+            if (device.isDirectory(remotePath)) {
+                remotePath = remotePath + "/" + src.getName();
+            }
             if (!src.isAbsolute()) {
                 src = resolveRelativeFilePath(buildInfo, pair[0]);
             }
@@ -183,20 +188,26 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
                     filter.addAll(AbiUtils.getArchSupported());
                     filter.remove(currentArch);
                 }
-                if (!device.pushDir(src, pair[1], filter)) {
-                    fail(String.format("Failed to push local '%s' to remote '%s'", pair[0],
-                            pair[1]), device);
+                if (!device.pushDir(src, remotePath, filter)) {
+                    fail(
+                            String.format(
+                                    "Failed to push local '%s' to remote '%s'",
+                                    pair[0], remotePath),
+                            device);
                     continue;
                 } else {
-                    mFilesPushed.add(pair[1]);
+                    addPushedFile(device, remotePath);
                 }
             } else {
-                if (!device.pushFile(src, pair[1])) {
-                    fail(String.format("Failed to push local '%s' to remote '%s'", pair[0],
-                            pair[1]), device);
+                if (!device.pushFile(src, remotePath)) {
+                    fail(
+                            String.format(
+                                    "Failed to push local '%s' to remote '%s'",
+                                    pair[0], remotePath),
+                            device);
                     continue;
                 } else {
-                    mFilesPushed.add(pair[1]);
+                    addPushedFile(device, remotePath);
                 }
             }
         }
@@ -225,5 +236,17 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
                 device.executeShellCommand("rm -r " + devicePath);
             }
         }
+    }
+
+    private void addPushedFile(ITestDevice device, String remotePath) throws TargetSetupError {
+        if (mFilesPushed.contains(remotePath)) {
+            throw new TargetSetupError(
+                    String.format(
+                            "We pushed two files to the %s location. Check "
+                                    + "your configuration of this target_preparer",
+                            remotePath),
+                    device.getDeviceDescriptor());
+        }
+        mFilesPushed.add(remotePath);
     }
 }
