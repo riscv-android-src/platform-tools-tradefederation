@@ -19,9 +19,11 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
 import com.google.common.annotations.VisibleForTesting;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -340,12 +342,18 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
             return;
         }
 
-        // Merge results
         mMergedTestRunResults = new ArrayList<>(mTestRunResultMap.size());
-        for (List<TestRunResult> results : mTestRunResultMap.values()) {
-            mMergedTestRunResults.add(TestRunResult.merge(results));
+        // Merge results
+        if (mTestRunResultMap.isEmpty() && mCurrentTestRunResult.isRunFailure()) {
+            // In case of early failure that is a bit untracked, still add it to the list to not
+            // loose it.
+            CLog.e("Early failure resulting in no testRunStart. Results might be inconsistent.");
+            mMergedTestRunResults.add(mCurrentTestRunResult);
+        } else {
+            for (List<TestRunResult> results : mTestRunResultMap.values()) {
+                mMergedTestRunResults.add(TestRunResult.merge(results));
+            }
         }
-
         // Reset counts
         for (TestStatus s : TestStatus.values()) {
             mStatusCounts[s.ordinal()] = 0;
