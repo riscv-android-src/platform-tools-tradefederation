@@ -286,6 +286,19 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
         return total;
     }
 
+    /**
+     * Returns the number of expected tests count. Could differ from {@link #getNumTotalTests()} if
+     * some tests did not run.
+     */
+    public int getExpectedTests() {
+        computeMergedResults();
+        int expected = 0;
+        for (TestRunResult result : getMergedTestRunResults()) {
+            expected += result.getExpectedTestCount();
+        }
+        return expected;
+    }
+
     /** Returns the number of tests in given state for this run. */
     public int getNumTestsInState(TestStatus status) {
         computeMergedResults();
