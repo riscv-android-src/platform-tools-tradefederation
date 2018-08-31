@@ -43,6 +43,7 @@ public class GCSTestResourceProvider implements IBuildProvider {
     @Override
     public IBuildInfo getBuild() throws BuildRetrievalError {
         mBuildInfo = new BuildInfo();
+        mBuildInfo.setTestResourceBuild(true);
         fetchTestResources();
         return mBuildInfo;
     }
