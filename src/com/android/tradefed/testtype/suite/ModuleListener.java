@@ -52,20 +52,6 @@ public class ModuleListener extends CollectingTestListener {
 
     /** {@inheritDoc} */
     @Override
-    public void testRunStarted(String name, int numTests, int attemptNumber) {
-        // Only increment the number of expected tests on the first attempt.
-        if (attemptNumber == 0) {
-            if (!hasTestRunResultsForName(name) || !getCurrentRunResults().isRunComplete()) {
-                // Only record when it's a brand new set of tests (expect them all) or the previous
-                // result was incomplete.
-                mExpectedTestCount += numTests;
-            }
-        }
-        super.testRunStarted(name, numTests, attemptNumber);
-    }
-
-    /** {@inheritDoc} */
-    @Override
     public void testRunFailed(String errorMessage) {
         mHasFailed = true;
         CLog.d("ModuleListener.testRunFailed(%s)", errorMessage);
@@ -125,12 +111,6 @@ public class ModuleListener extends CollectingTestListener {
                 trace);
         mTestFailed = true;
         super.testFailed(test, trace);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public int getNumTotalTests() {
-        return mExpectedTestCount;
     }
 
     /** Whether or not to mark all the test cases skipped. */
