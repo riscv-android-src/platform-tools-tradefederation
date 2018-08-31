@@ -115,13 +115,6 @@ public class SandboxConfigUtil {
 
     /** Create a global config with only the keystore to make it available in subprocess. */
     public static File dumpFilteredGlobalConfig() throws IOException {
-        String[] configs =
-                new String[] {
-                    GlobalConfiguration.DEVICE_MANAGER_TYPE_NAME,
-                    GlobalConfiguration.KEY_STORE_TYPE_NAME
-                };
-        File filteredGlobalConfig = FileUtil.createTempFile("filtered_global_config", ".config");
-        GlobalConfiguration.getInstance().cloneConfigWithFilter(filteredGlobalConfig, configs);
-        return filteredGlobalConfig;
+        return GlobalConfiguration.getInstance().cloneConfigWithFilter();
     }
 }
