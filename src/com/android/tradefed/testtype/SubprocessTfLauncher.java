@@ -179,15 +179,8 @@ public abstract class SubprocessTfLauncher
             // If the global configuration is not set in option, create a filtered global
             // configuration for subprocess to use.
             try {
-                String[] configs =
-                        new String[] {
-                            GlobalConfiguration.DEVICE_MANAGER_TYPE_NAME,
-                            GlobalConfiguration.KEY_STORE_TYPE_NAME
-                        };
                 File filteredGlobalConfig =
-                        FileUtil.createTempFile("filtered_global_config", ".config");
-                GlobalConfiguration.getInstance()
-                        .cloneConfigWithFilter(filteredGlobalConfig, configs);
+                        GlobalConfiguration.getInstance().cloneConfigWithFilter();
                 mFilteredGlobalConfig = filteredGlobalConfig.getAbsolutePath();
                 mGlobalConfig = mFilteredGlobalConfig;
             } catch (IOException e) {
