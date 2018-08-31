@@ -16,13 +16,22 @@
 
 package com.android.tradefed.config;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import com.android.tradefed.command.CommandScheduler;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.keystore.StubKeyStoreFactory;
 
-import junit.framework.TestCase;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -32,11 +41,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Unit Tests for {@link GlobalConfiguration}
- * It is difficult to test since GlobalConfiguration is a singleton and we cannot use reflection to
- * unset the instance since it might be in use in the currently running Trade Federation instance.
+ * Unit Tests for {@link GlobalConfiguration} It is difficult to test since GlobalConfiguration is a
+ * singleton and we cannot use reflection to unset the instance since it might be in use in the
+ * currently running Trade Federation instance.
  */
-public class GlobalConfigurationTest extends TestCase {
+@RunWith(JUnit4.class)
+public class GlobalConfigurationTest {
 
     GlobalConfiguration mGlobalConfig;
     private final static String OPTION_DESCRIPTION = "mandatory option should be set";
@@ -44,11 +54,11 @@ public class GlobalConfigurationTest extends TestCase {
     private final static String ALIAS_NAME = "aliasssss";
     private final static String EMPTY_CONFIG = "empty";
     private static final String GLOBAL_TEST_CONFIG = "global-config";
+    private static final String GLOBAL_TEST_CONFIG_INVALID = "global-config-invalid-option";
     private static final String GLOBAL_CONFIG_SERVER_TEST_CONFIG = "global-config-server-config";
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    @Before
+    public void setUp() throws Exception {
         mGlobalConfig = new GlobalConfiguration(EMPTY_CONFIG, "description");
         assertNotNull(mGlobalConfig);
     }
@@ -60,9 +70,8 @@ public class GlobalConfigurationTest extends TestCase {
         private String mandatoryTest = null;
     }
 
-    /**
-     * Test for {@link GlobalConfiguration#validateOptions()}
-     */
+    /** Test for {@link GlobalConfiguration#validateOptions()} */
+    @Test
     public void testValidateOptions() throws Exception {
         mGlobalConfig.validateOptions();
         mGlobalConfig.setCommandScheduler(new FakeCommandScheduler());
@@ -74,9 +83,8 @@ public class GlobalConfigurationTest extends TestCase {
         }
     }
 
-    /**
-     * Test that the creation of Global configuration with basic default parameter is working
-     */
+    /** Test that the creation of Global configuration with basic default parameter is working */
+    @Test
     public void testCreateGlobalConfiguration_empty() throws Exception {
         String[] args = {};
         List<String> nonGlobalArgs = new ArrayList<String>(args.length);
@@ -90,9 +98,8 @@ public class GlobalConfigurationTest extends TestCase {
         mGlobalConfig.validateOptions();
     }
 
-    /**
-     * Printing is properly reading the properties
-     */
+    /** Printing is properly reading the properties */
+    @Test
     public void testPrintCommandUsage() throws Exception {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PrintStream ps = new PrintStream(baos, true);
@@ -115,6 +122,7 @@ public class GlobalConfigurationTest extends TestCase {
      * Test that the creation of Global configuration with basic global configuration that is not
      * empty.
      */
+    @Test
     public void testCreateGlobalConfiguration_nonEmpty() throws Exception {
         // one global arg, one non-global arg
         String[] args = {"test-tag", "test"};
@@ -145,6 +153,7 @@ public class GlobalConfigurationTest extends TestCase {
      * Test that a subset of Global configuration can be created based on the default white list
      * filtering defined in GlobalConfiguration.
      */
+    @Test
     public void testCreateGlobalConfiguration_cloneConfigWithFilterByDefault() throws Exception {
         String[] args = {};
         List<String> nonGlobalArgs = new ArrayList<String>();
@@ -162,9 +171,9 @@ public class GlobalConfigurationTest extends TestCase {
                 configFactory.createGlobalConfigurationFromArgs(
                         ArrayUtil.buildArray(new String[] {globalConfigPath}, args), nonGlobalArgs);
 
-        File tmpXml = FileUtil.createTempFile("filtered_global_config", ".xml");
+        File tmpXml = null;
         try {
-            globalConfig.cloneConfigWithFilter(tmpXml, null);
+            tmpXml = globalConfig.cloneConfigWithFilter();
 
             // Load the filtered XML and confirm it has desired content.
             IGlobalConfiguration filteredGlobalConfig =
@@ -173,6 +182,7 @@ public class GlobalConfigurationTest extends TestCase {
                             nonGlobalArgs);
             assertNotNull(filteredGlobalConfig);
             assertNotNull(filteredGlobalConfig.getKeyStoreFactory());
+            assertNotNull(filteredGlobalConfig.getHostOptions());
             filteredGlobalConfig.validateOptions();
             // Fail if any configuration not in the white list presents.
             assertNull(filteredGlobalConfig.getDeviceMonitors());
@@ -183,6 +193,7 @@ public class GlobalConfigurationTest extends TestCase {
     }
 
     /** Test that a subset of Global configuration can be created based on a given white list. */
+    @Test
     public void testCreateGlobalConfiguration_cloneConfigWithFilter() throws Exception {
         String[] args = {};
         List<String> nonGlobalArgs = new ArrayList<String>();
@@ -200,9 +211,9 @@ public class GlobalConfigurationTest extends TestCase {
                 configFactory.createGlobalConfigurationFromArgs(
                         ArrayUtil.buildArray(new String[] {globalConfigPath}, args), nonGlobalArgs);
 
-        File tmpXml = FileUtil.createTempFile("filtered_global_config", ".xml");
+        File tmpXml = null;
         try {
-            globalConfig.cloneConfigWithFilter(tmpXml, new String[] {"wtf_handler"});
+            tmpXml = globalConfig.cloneConfigWithFilter(new String[] {"wtf_handler"});
 
             // Load the filtered XML and confirm it has desired content.
             IGlobalConfiguration filteredGlobalConfig =
@@ -241,6 +252,7 @@ public class GlobalConfigurationTest extends TestCase {
     }
 
     /** Test global configuration load from config server. */
+    @Test
     public void testCreateGlobalConfiguration_configServer() throws Exception {
         IConfigurationFactory configFactory =
                 new ConfigurationFactory() {
@@ -262,5 +274,35 @@ public class GlobalConfigurationTest extends TestCase {
         assertEquals("stub", globalConfigServer.getServerName());
         assertEquals("current-host-config.xml", globalConfigServer.getCurrentHostConfig());
         assertTrue(nonConfigServerArgs.size() == 2);
+    }
+
+    /**
+     * Test that when creating the global configuration we ensure the host_options options are
+     * valid.
+     */
+    @Test
+    public void testCreateHostOptions() throws Exception {
+        String[] args = {};
+        List<String> nonGlobalArgs = new ArrayList<String>();
+        // In order to find our test config, we provide our testconfigs/ folder. Otherwise only
+        // the config/ folder is searched for configuration by default.
+        IConfigurationFactory configFactory =
+                new ConfigurationFactory() {
+                    @Override
+                    protected String getConfigPrefix() {
+                        return "testconfigs/";
+                    }
+                };
+        String globalConfigPath = GLOBAL_TEST_CONFIG_INVALID;
+        IGlobalConfiguration globalConfig =
+                configFactory.createGlobalConfigurationFromArgs(
+                        ArrayUtil.buildArray(new String[] {globalConfigPath}, args), nonGlobalArgs);
+        try {
+            globalConfig.validateOptions();
+            fail("Should have thrown an exception.");
+        } catch (ConfigurationException expected) {
+            // Expected
+            assertEquals("Failed to validate http helper class", expected.getMessage());
+        }
     }
 }

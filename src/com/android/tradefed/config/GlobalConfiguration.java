@@ -33,6 +33,7 @@ import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.hostmetric.IHostMonitor;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
@@ -83,9 +84,10 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     // Empty embedded configuration available by default
     private static final String DEFAULT_EMPTY_CONFIG_NAME = "empty";
 
-    // Configurations to be passed to subprocess
+    // Configurations to be passed to subprocess: Typical object that are representing the host
+    // level and the subprocess should follow too.
     private static final String[] CONFIGS_FOR_SUBPROCESS_WHITE_LIST =
-            new String[] {KEY_STORE_TYPE_NAME};
+            new String[] {DEVICE_MANAGER_TYPE_NAME, KEY_STORE_TYPE_NAME, HOST_OPTIONS_TYPE_NAME};
 
     /** Mapping of config object type name to config objects. */
     private Map<String, List<Object>> mConfigMap;
@@ -723,15 +725,17 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @Override
     public void validateOptions() throws ConfigurationException {
         new ArgsOptionParser(getAllConfigurationObjects()).validateMandatoryOptions();
+
+        getHostOptions().validateOptions();
     }
 
     /** {@inheritDoc} */
     @Override
-    public void cloneConfigWithFilter(File outputXml, String[] whitelistConfigs)
-            throws IOException {
-        KXmlSerializer serializer = ConfigurationUtil.createSerializer(outputXml);
+    public File cloneConfigWithFilter(String... whitelistConfigs) throws IOException {
+        File filteredGlobalConfig = FileUtil.createTempFile("filtered_global_config", ".config");
+        KXmlSerializer serializer = ConfigurationUtil.createSerializer(filteredGlobalConfig);
         serializer.startTag(null, ConfigurationUtil.CONFIGURATION_NAME);
-        if (whitelistConfigs == null) {
+        if (whitelistConfigs == null || whitelistConfigs.length == 0) {
             whitelistConfigs = CONFIGS_FOR_SUBPROCESS_WHITE_LIST;
         }
         for (String config : whitelistConfigs) {
@@ -740,5 +744,6 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         }
         serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
         serializer.endDocument();
+        return filteredGlobalConfig;
     }
 }
