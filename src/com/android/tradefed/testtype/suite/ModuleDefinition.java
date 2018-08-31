@@ -116,6 +116,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private boolean mCollectTestsOnly = false;
 
     private List<TestRunResult> mTestsResults = new ArrayList<>();
+    private List<ModuleListener> mRunListenersResults = new ArrayList<>();
     private int mExpectedTests = 0;
     private boolean mIsFailedModule = false;
 
@@ -133,6 +134,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private long mFailedRetried = 0L;
 
     private RetryStrategy mRetryStrategy = RetryStrategy.RETRY_TEST_CASE_FAILURE;
+    private boolean mMergeAttempts = true;
 
     /**
      * Constructor
@@ -435,8 +437,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                             getId());
                     throw dnae;
                 } finally {
-                    // A single module can generate several test runs
-                    mTestsResults.addAll(retriableTest.getFinalTestRunResults());
+                    if (mMergeAttempts) {
+                        // A single module can generate several test runs
+                        mTestsResults.addAll(retriableTest.getFinalTestRunResults());
+                    } else {
+                        // Keep track of each listener for attempts
+                        mRunListenersResults.add(retriableTest.getResultListener());
+                    }
+
                     mExpectedTests += retriableTest.getExpectedTestsCount();
                     // Get information about retry
                     mRetryTime += retriableTest.getRetryTime();
@@ -466,7 +474,32 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 mElapsedTearDown = getCurrentTime() - cleanStartTime;
                 // finalize results
                 if (preparationException == null) {
-                    reportFinalResults(listener, mExpectedTests, mTestsResults);
+                    if (mMergeAttempts) {
+                        reportFinalResults(listener, mExpectedTests, mTestsResults, null);
+                    } else {
+                        // Push the attempts one by one
+                        for (int i = 0; i < maxRunLimit; i++) {
+                            // Get all the results for the attempt
+                            List<TestRunResult> runResultList = new ArrayList<TestRunResult>();
+                            int expectedCount = 0;
+                            for (ModuleListener attemptListener : mRunListenersResults) {
+                                for (String runName : attemptListener.getTestRunNames()) {
+                                    TestRunResult run =
+                                            attemptListener.getTestRunAtAttempt(runName, i);
+                                    if (run != null) {
+                                        runResultList.add(run);
+                                        expectedCount += run.getExpectedTestCount();
+                                    }
+                                }
+                            }
+
+                            if (!runResultList.isEmpty()) {
+                                reportFinalResults(listener, expectedCount, runResultList, i);
+                            } else {
+                                CLog.d("No results to be forwarded for attempt %s.", i);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -528,10 +561,15 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private void reportFinalResults(
             ITestInvocationListener listener,
             int totalExpectedTests,
-            List<TestRunResult> listResults) {
+            List<TestRunResult> listResults,
+            Integer attempt) {
         long elapsedTime = 0l;
         HashMap<String, Metric> metricsProto = new HashMap<>();
-        listener.testRunStarted(getId(), totalExpectedTests);
+        if (attempt != null) {
+            listener.testRunStarted(getId(), totalExpectedTests, attempt);
+        } else {
+            listener.testRunStarted(getId(), totalExpectedTests);
+        }
         int numResults = 0;
         Map<String, LogFile> aggLogFiles = new LinkedHashMap<>();
         for (TestRunResult runResult : listResults) {
@@ -726,8 +764,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     /** Sets the {@link RetryStrategy} to be used when retrying. */
-    public final void setRetryStrategy(RetryStrategy retryStrategy) {
+    public final void setRetryStrategy(RetryStrategy retryStrategy, boolean mergeAttempts) {
         mRetryStrategy = retryStrategy;
+        mMergeAttempts = mergeAttempts;
     }
 
     /** Returns a list of tests that ran in this module. */

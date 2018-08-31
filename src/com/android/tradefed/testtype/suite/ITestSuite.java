@@ -249,6 +249,7 @@ public abstract class ITestSuite
     )
     private boolean mRebootBeforeTest = false;
 
+    // [Options relate to module retry and intra-module retry][
     @Option(
         name = "max-testcase-run-count",
         description =
@@ -264,6 +265,13 @@ public abstract class ITestSuite
                         + "--max-testcase-run-count"
     )
     private RetryStrategy mRetryStrategy = RetryStrategy.RETRY_TEST_CASE_FAILURE;
+
+    @Option(
+        name = "merge-attempts",
+        description = "Whether or not to use the merge the results of the different attempts."
+    )
+    private boolean mMergeAttempts = true;
+    // end [Options relate to module retry and intra-module retry]
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
@@ -580,7 +588,7 @@ public abstract class ITestSuite
         // Pass the main invocation logSaver
         module.setLogSaver(mMainConfiguration.getLogSaver());
         // Pass the retry strategy to the module
-        module.setRetryStrategy(mRetryStrategy);
+        module.setRetryStrategy(mRetryStrategy, mMergeAttempts);
 
         // Actually run the module
         module.run(listener, moduleListeners, failureListener, mMaxRunLimit);
