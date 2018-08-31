@@ -259,4 +259,12 @@ public interface IBuildInfo extends Serializable {
         // Default implementation for project that don't extends BuildInfo class.
         return null;
     }
+
+    /** Check if this build is a test resource build or not. */
+    public default boolean isTestResourceBuild() {
+        return false;
+    }
+
+    /** Set the build as test resource build. */
+    public default void setTestResourceBuild(boolean testResourceBuild) {}
 }
