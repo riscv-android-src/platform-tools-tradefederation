@@ -25,6 +25,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogSaverResultForwarder;
+import com.android.tradefed.result.MergeStrategy;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -85,7 +86,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
     /** The number of test cases that remained failed after all retry attempts */
     private long mFailedRetried = 0L;
 
-    private RetryStrategy mRetryStrategy;
+    private RetryStrategy mRetryStrategy = RetryStrategy.RETRY_TEST_CASE_FAILURE;
 
     public GranularRetriableTestWrapper(
             IRemoteTest test,
@@ -400,7 +401,28 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
     }
 
     /** Get the merged TestRunResults from each {@link IRemoteTest} run. */
-    public List<TestRunResult> getFinalTestRunResults() {
+    public final List<TestRunResult> getFinalTestRunResults() {
+        // TODO: Once we are ready to report break-down of results and option will override this.
+        MergeStrategy strategy = MergeStrategy.ONE_TESTCASE_PASS_IS_PASS;
+        switch (mRetryStrategy) {
+            case ITERATIONS:
+                strategy = MergeStrategy.NO_MERGE;
+                break;
+            case RERUN_UNTIL_FAILURE:
+                strategy = MergeStrategy.ANY_FAIL_IS_FAIL;
+                break;
+            case RETRY_ANY_FAILURE:
+                strategy = MergeStrategy.ANY_PASS_IS_PASS;
+                break;
+            case RETRY_TEST_CASE_FAILURE:
+                strategy = MergeStrategy.ONE_TESTCASE_PASS_IS_PASS;
+                break;
+            case RETRY_TEST_RUN_FAILURE:
+                strategy = MergeStrategy.ONE_TESTRUN_PASS_IS_PASS;
+                break;
+        }
+
+        mMainGranularRunListener.setMergeStrategy(strategy);
         return mMainGranularRunListener.getMergedTestRunResults();
     }
 

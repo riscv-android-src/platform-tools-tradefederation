@@ -68,6 +68,13 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     // by TestStatus.ordinal()
     private int[] mStatusCounts = new int[TestStatus.values().length];
 
+    private MergeStrategy mStrategy = MergeStrategy.ONE_TESTCASE_PASS_IS_PASS;
+
+    /** Sets the {@link MergeStrategy} to use when merging results. */
+    public void setMergeStrategy(MergeStrategy strategy) {
+        mStrategy = strategy;
+    }
+
     /**
      * Return the primary build info that was reported via {@link
      * #invocationStarted(IInvocationContext)}. Primary build is the build returned by the first
@@ -351,7 +358,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
             mMergedTestRunResults.add(mCurrentTestRunResult);
         } else {
             for (List<TestRunResult> results : mTestRunResultMap.values()) {
-                mMergedTestRunResults.add(TestRunResult.merge(results));
+                mMergedTestRunResults.add(TestRunResult.merge(results, mStrategy));
             }
         }
         // Reset counts
