@@ -271,7 +271,7 @@ public class SandboxedInvocationExecutionTest {
         mContext.addInvocationAttribute("test", "test");
         // Device early preInvocationSetup was called and even if no tests run we still call tear
         // down
-        Mockito.verify(mMockDevice).preInvocationSetup(any());
+        Mockito.verify(mMockDevice).preInvocationSetup(any(), any());
         Mockito.verify(mMockDevice).postInvocationTearDown();
     }
 }
