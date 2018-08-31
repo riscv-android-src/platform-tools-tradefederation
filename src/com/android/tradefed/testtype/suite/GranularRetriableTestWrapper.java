@@ -444,8 +444,8 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
      * Calculate the number of testcases in the {@link IRemoteTest}. This value distincts the same
      * testcases that are rescheduled multiple times.
      */
-    public int getNumIndividualTests() {
-        return mMainGranularRunListener.getNumTotalTests();
+    public int getExpectedTestsCount() {
+        return mMainGranularRunListener.getExpectedTests();
     }
 
     /** Returns the elapsed time in retry attempts. */
