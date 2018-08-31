@@ -60,6 +60,7 @@ public class BuildInfo implements IBuildInfo {
     private String mBuildFlavor = null;
     private String mBuildBranch = null;
     private String mDeviceSerial = null;
+    private boolean mTestResourceBuild = false;
 
     /** File handling properties: Some files of the BuildInfo might requires special handling */
     private final Set<BuildInfoProperties> mProperties = new HashSet<>();
@@ -120,6 +121,18 @@ public class BuildInfo implements IBuildInfo {
     @Override
     public void setBuildId(String buildId) {
         mBuildId = buildId;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean isTestResourceBuild() {
+        return mTestResourceBuild;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setTestResourceBuild(boolean testResourceBuild) {
+        mTestResourceBuild = testResourceBuild;
     }
 
     /**
@@ -191,6 +204,7 @@ public class BuildInfo implements IBuildInfo {
         setBuildFlavor(build.getBuildFlavor());
         setBuildBranch(build.getBuildBranch());
         setTestTag(build.getTestTag());
+        setTestResourceBuild(build.isTestResourceBuild());
     }
 
     protected MultiMap<String, String> getAttributesMultiMap() {
@@ -621,5 +635,26 @@ public class BuildInfo implements IBuildInfo {
             }
         }
         return buildInfo;
+    }
+
+    /**
+     * Get test resource from a list of builds.
+     *
+     * @param testResourceBuildInfos An list of {@link IBuildInfo}.
+     * @param testResourceName the test resource name
+     * @return the test resource file.
+     */
+    public static File getTestResouce(
+            List<IBuildInfo> testResourceBuildInfos, String testResourceName) {
+        if (testResourceBuildInfos == null) {
+            return null;
+        }
+        for (IBuildInfo buildInfo : testResourceBuildInfos) {
+            File testResourceFile = buildInfo.getFile(testResourceName);
+            if (testResourceFile != null) {
+                return testResourceFile;
+            }
+        }
+        return null;
     }
 }

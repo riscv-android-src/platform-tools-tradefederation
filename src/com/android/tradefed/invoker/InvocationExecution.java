@@ -65,6 +65,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.stream.Collectors;
 
 /**
  * Class that describes all the invocation steps: build download, target_prep, run tests, clean up.
@@ -235,7 +236,12 @@ public class InvocationExecution implements IInvocationExecution {
                 ((ITestLoggerReceiver) context.getDevice(deviceName)).setTestLogger(logger);
             }
             if (!config.getCommandOptions().shouldSkipPreDeviceSetup()) {
-                device.preInvocationSetup(context.getBuildInfo(deviceName));
+                device.preInvocationSetup(
+                        context.getBuildInfo(deviceName),
+                        context.getBuildInfos()
+                                .stream()
+                                .filter(buildInfo -> buildInfo.isTestResourceBuild())
+                                .collect(Collectors.toList()));
             }
         }
     }
