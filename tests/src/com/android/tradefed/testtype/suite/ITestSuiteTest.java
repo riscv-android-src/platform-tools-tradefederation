@@ -1344,7 +1344,8 @@ public class ITestSuiteTest {
         expectTestRun(
                 mMockListener,
                 String.format(
-                        "%s\n%s\n%s", mTestFailedMessage, mTestFailedMessage, mTestFailedMessage),
+                        "%s\n\n%s\n\n%s",
+                        mTestFailedMessage, mTestFailedMessage, mTestFailedMessage),
                 true);
         // Verify that when the suite is intra-module retried, the moduleListener receives every
         // run attempt's result.
