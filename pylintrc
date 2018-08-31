@@ -1,6 +1,11 @@
 [MESSAGES CONTROL]
 
-disable=relative-import,too-few-public-methods,fixme,no-self-use,duplicate-code
+disable=
+    relative-import,
+    too-few-public-methods,
+    too-many-instance-attributes,
+    fixme,no-self-use,
+    duplicate-code
 
 [BASIC]
 
