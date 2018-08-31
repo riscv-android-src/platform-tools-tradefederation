@@ -307,12 +307,12 @@ public interface IGlobalConfiguration {
      * </xml>
      * }
      *
-     * @param outputXml the XML file to write to
      * @param whitelistConfigs a {@link String} array of configs to be included in the new XML file.
      *     If it's set to <code>null<code/>, a default list should be used.
+     * @return the File containing the new filtered global config.
      * @throws IOException
      */
-    public void cloneConfigWithFilter(File outputXml, String[] whitelistConfigs) throws IOException;
+    public File cloneConfigWithFilter(String... whitelistConfigs) throws IOException;
 
     /**
      * Proper setup at the start of tradefed.
