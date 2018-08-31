@@ -437,7 +437,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 } finally {
                     // A single module can generate several test runs
                     mTestsResults.addAll(retriableTest.getFinalTestRunResults());
-                    mExpectedTests += retriableTest.getNumIndividualTests();
+                    mExpectedTests += retriableTest.getExpectedTestsCount();
                     // Get information about retry
                     mRetryTime += retriableTest.getRetryTime();
                     mSuccessRetried += retriableTest.getRetrySuccess();
