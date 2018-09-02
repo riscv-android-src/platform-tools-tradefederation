@@ -147,6 +147,10 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             iterations = extra_args.pop(constants.POST_PATCH_ITERATIONS)
             metrics_folder = os.path.join(self.results_dir, 'new-metrics')
         args = self._create_test_args(test_infos)
+        # Only need to check one TestInfo to determine if the tests are
+        # configured in TEST_MAPPING.
+        if test_infos[0].from_test_mapping:
+            args.extend(constants.TEST_MAPPING_RESULT_SERVER_ARGS)
 
         for _ in range(iterations):
             server = self._start_socket_server()

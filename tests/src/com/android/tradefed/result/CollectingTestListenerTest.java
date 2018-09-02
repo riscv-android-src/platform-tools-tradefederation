@@ -16,6 +16,7 @@
 package com.android.tradefed.result;
 
 import static com.google.common.truth.Truth.assertThat;
+
 import static org.junit.Assert.fail;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
@@ -29,8 +30,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 /** Unit tests for {@link CollectingTestListener}. */
@@ -269,6 +272,18 @@ public final class CollectingTestListenerTest {
         injectTestRun("run", "testFoo3", "1", 0, true);
         total = mCollectingTestListener.getNumTotalTests();
         assertThat(total).isEqualTo(3);
+    }
+
+    @Test
+    public void testEarlyFailure() {
+        CollectingTestListener listener = new CollectingTestListener();
+        listener.testRunFailed("early failure!");
+        List<TestRunResult> results = listener.getMergedTestRunResults();
+        assertThat(results.size()).isEqualTo(1);
+        TestRunResult res = results.get(0);
+        // We are in an odd state, but we should not loose the failure.
+        assertThat(res.isRunFailure()).isTrue();
+        assertThat(res.getName()).isEqualTo("not started");
     }
 
     /**

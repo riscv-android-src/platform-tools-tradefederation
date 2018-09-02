@@ -52,6 +52,8 @@ class TestInfo(object):
         self.module_class = module_class if module_class else []
         self.install_locations = (install_locations if install_locations
                                   else set())
+        # True if the TestInfo is built from a test configured in TEST_MAPPING.
+        self.from_test_mapping = False
 
     def __str__(self):
         return ('test_name: %s - test_runner:%s - build_targets:%s - data:%s - '
@@ -64,9 +66,7 @@ class TestInfo(object):
         """Get the supported execution mode of the test.
 
         Determine the test supports which execution mode by strategy:
-        Robolectric test --> 'both'
-        JAVA_LIBRARIES test installed in both target and host --> 'both',
-            otherwise --> 'device'.
+        Robolectric/JAVA_LIBRARIES --> 'both'
         Not native tests or installed only in out/target --> 'device'
         Installed only in out/host --> 'host'
         Installed under host and target --> 'both'
@@ -79,12 +79,9 @@ class TestInfo(object):
         # Let Robolectric test support both.
         if constants.MODULE_CLASS_ROBOLECTRIC in self.module_class:
             return constants.BOTH_TEST
-        # JAVA_LIBRARIES : if build for both side, support both. Otherwise,
-        # device-only.
+        # Let JAVA_LIBRARIES support both.
         if constants.MODULE_CLASS_JAVA_LIBRARIES in self.module_class:
-            if len(self.install_locations) == 2:
-                return constants.BOTH_TEST
-            return constants.DEVICE_TEST
+            return constants.BOTH_TEST
         if not self.install_locations:
             return constants.DEVICE_TEST
         # Non-Native test runs on device-only.

@@ -68,7 +68,9 @@ public class ModuleListenerTest {
         mListener.testEnded(tid, new HashMap<String, Metric>());
         mListener.testRunEnded(0, new HashMap<String, Metric>());
 
-        assertEquals(numTests, mListener.getNumTotalTests());
+        // Expected and total tests differ because some tests did not execute
+        assertEquals(numTests, mListener.getExpectedTests());
+        assertEquals(1, mListener.getNumTotalTests());
         assertEquals(1, mListener.getNumTestsInState(TestStatus.PASSED));
     }
 

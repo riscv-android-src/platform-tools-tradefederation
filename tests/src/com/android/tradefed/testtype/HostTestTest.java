@@ -163,6 +163,9 @@ public class HostTestTest extends TestCase {
         @Option(name = "junit4-option")
         public boolean mOption = false;
 
+        @Option(name = "map-option")
+        public Map<String, String> mapOption = new HashMap<>();
+
         @Rule public TestMetrics metrics = new TestMetrics();
 
         @MyAnnotation
@@ -179,6 +182,9 @@ public class HostTestTest extends TestCase {
             metrics.addTestMetric("key2", "value2");
             if (mOption) {
                 metrics.addTestMetric("junit4-option", "true");
+            }
+            if (!mapOption.isEmpty()) {
+                metrics.addTestMetric("map-option", mapOption.values().toString());
             }
         }
     }
@@ -1219,6 +1225,79 @@ public class HostTestTest extends TestCase {
     }
 
     /**
+     * Test success case for {@link HostTest#run(ITestInvocationListener)} when passing a dedicated
+     * option to it.
+     */
+    public void testRun_testcase_TargetedOptionPassing() throws Exception {
+        mHostTest.setClassName(Junit4TestClass.class.getName());
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue(
+                "set-option", Junit4TestClass.class.getName() + ":junit4-option:true");
+        setter.setOptionValue(
+                "set-option", Junit4TestClass.class.getName() + ":map-option:key=test");
+        TestDescription test1 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
+        // Only test1 will run, test2 should be filtered out.
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test1));
+        Map<String, String> metrics = new HashMap<>();
+        metrics.put("key2", "value2");
+        // If the option was correctly set, this metric should be true.
+        metrics.put("junit4-option", "true");
+        metrics.put("map-option", "[test]");
+        mListener.testEnded(
+                EasyMock.eq(test1), EasyMock.eq(TfMetricProtoUtil.upgradeConvert(metrics)));
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test success case for {@link HostTest#run(ITestInvocationListener)} when passing a dedicated
+     * option to it. The class without the option doesn't throw an exception since it's not
+     * targeted.
+     */
+    public void testRun_testcase_multiTargetedOptionPassing() throws Exception {
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", Junit4TestClass.class.getName());
+        setter.setOptionValue("class", Junit4TestLogClass.class.getName());
+        setter.setOptionValue(
+                "set-option", Junit4TestClass.class.getName() + ":junit4-option:true");
+
+        TestDescription test1 =
+                new TestDescription(Junit4TestLogClass.class.getName(), "testPass1");
+        TestDescription test2 =
+                new TestDescription(Junit4TestLogClass.class.getName(), "testPass2");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testLog(EasyMock.eq("TEST"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+        mListener.testEnded(test1, new HashMap<String, Metric>());
+        mListener.testStarted(EasyMock.eq(test2));
+        // test cases do not share logs, only the second test logs are seen.
+        mListener.testLog(
+                EasyMock.eq("TEST2"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+        mListener.testEnded(test2, new HashMap<String, Metric>());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        TestDescription test6 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
+        // Only test1 will run, test2 should be filtered out.
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test6));
+        Map<String, String> metrics = new HashMap<>();
+        metrics.put("key2", "value2");
+        // If the option was correctly set, this metric should be true.
+        metrics.put("junit4-option", "true");
+        mListener.testEnded(
+                EasyMock.eq(test6), EasyMock.eq(TfMetricProtoUtil.upgradeConvert(metrics)));
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
      * Test success case for {@link HostTest#run(ITestInvocationListener)}, where filtering is
      * applied and results in 0 tests to run.
      */
@@ -1428,15 +1507,6 @@ public class HostTestTest extends TestCase {
 
     /** Test {@link IShardableTest} interface and check the sharding is correct. */
     public void testGetTestShardable_wrapping_shardUnit_method() throws Exception {
-        getTestShardable_wrapping_shardUnit_method_helper();
-    }
-
-    /**
-     * Shard by method and verify that each shard contains the expected classes
-     *
-     * @throws Exception
-     */
-    private void getTestShardable_wrapping_shardUnit_method_helper() throws Exception {
         final ITestDevice device = EasyMock.createMock(ITestDevice.class);
         mHostTest.setDevice(device);
         OptionSetter setter = new OptionSetter(mHostTest);

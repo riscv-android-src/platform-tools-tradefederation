@@ -168,12 +168,12 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
 
         # Test no early TF exit
         mock_exec_w_poll.return_value = ('some_conn', 'some_addr')
-        self.tr.run_tests_pretty(['test_infos'], {}, mock_reporter)
+        self.tr.run_tests_pretty([MODULE2_INFO], {}, mock_reporter)
 
         # Test early TF exit
         mock_exec_w_poll.side_effect = atf_tr.TradeFedExitError()
         self.assertRaises(atf_tr.TradeFedExitError, self.tr.run_tests_pretty,
-                          ['test_infos'], {}, mock_reporter)
+                          [MODULE2_INFO], {}, mock_reporter)
 
     def test_exec_with_tf_polling(self):
         """Test _exec_with_tf_polling method."""

@@ -131,7 +131,7 @@ public class JarHostTestTest {
 
     /** Test that {@link HostTest#split(int)} can split classes coming from a jar. */
     @Test
-    public void testGetTestShard_withJar() throws Exception {
+    public void testSplit_withJar() throws Exception {
         File testJar = getJarResource(TEST_JAR1, mTestDir);
         mTest = new HostTestLoader(mTestDir, testJar);
         mTest.setBuild(mStubBuildInfo);

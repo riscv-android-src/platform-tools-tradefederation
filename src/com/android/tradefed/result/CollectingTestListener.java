@@ -19,9 +19,11 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
 import com.google.common.annotations.VisibleForTesting;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -65,6 +67,13 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     // Represents the number of tests in each TestStatus state of the merged test results. Indexed
     // by TestStatus.ordinal()
     private int[] mStatusCounts = new int[TestStatus.values().length];
+
+    private MergeStrategy mStrategy = MergeStrategy.ONE_TESTCASE_PASS_IS_PASS;
+
+    /** Sets the {@link MergeStrategy} to use when merging results. */
+    public void setMergeStrategy(MergeStrategy strategy) {
+        mStrategy = strategy;
+    }
 
     /**
      * Return the primary build info that was reported via {@link
@@ -277,6 +286,19 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
         return total;
     }
 
+    /**
+     * Returns the number of expected tests count. Could differ from {@link #getNumTotalTests()} if
+     * some tests did not run.
+     */
+    public int getExpectedTests() {
+        computeMergedResults();
+        int expected = 0;
+        for (TestRunResult result : getMergedTestRunResults()) {
+            expected += result.getExpectedTestCount();
+        }
+        return expected;
+    }
+
     /** Returns the number of tests in given state for this run. */
     public int getNumTestsInState(TestStatus status) {
         computeMergedResults();
@@ -340,12 +362,18 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
             return;
         }
 
-        // Merge results
         mMergedTestRunResults = new ArrayList<>(mTestRunResultMap.size());
-        for (List<TestRunResult> results : mTestRunResultMap.values()) {
-            mMergedTestRunResults.add(TestRunResult.merge(results));
+        // Merge results
+        if (mTestRunResultMap.isEmpty() && mCurrentTestRunResult.isRunFailure()) {
+            // In case of early failure that is a bit untracked, still add it to the list to not
+            // loose it.
+            CLog.e("Early failure resulting in no testRunStart. Results might be inconsistent.");
+            mMergedTestRunResults.add(mCurrentTestRunResult);
+        } else {
+            for (List<TestRunResult> results : mTestRunResultMap.values()) {
+                mMergedTestRunResults.add(TestRunResult.merge(results, mStrategy));
+            }
         }
-
         // Reset counts
         for (TestStatus s : TestStatus.values()) {
             mStatusCounts[s.ordinal()] = 0;

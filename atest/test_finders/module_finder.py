@@ -241,10 +241,13 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             test: TestInfo that has been filled out by a find method.
 
         Return:
-            TestInfo that has been modified as needed.
+            TestInfo that has been modified as needed and retrurn None if
+            this module can't be found in the module_info.
         """
         module_name = test.test_name
         mod_info = self.module_info.get_module_info(module_name)
+        if not mod_info:
+            return None
         test.module_class = mod_info['class']
         test.install_locations = test_finder_utils.get_install_locations(
             mod_info['installed'])
@@ -307,12 +310,13 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             A string of test_config path if found, else return rel_config.
         """
         mod_info = self.module_info.get_module_info(module_name)
-        test_config = ''
-        test_config_list = mod_info.get(constants.MODULE_TEST_CONFIG, [])
-        if test_config_list:
-            test_config = test_config_list[0]
-        if not self._is_auto_gen_test_config(module_name) and test_config != '':
-            return test_config
+        if mod_info:
+            test_config = ''
+            test_config_list = mod_info.get(constants.MODULE_TEST_CONFIG, [])
+            if test_config_list:
+                test_config = test_config_list[0]
+            if not self._is_auto_gen_test_config(module_name) and test_config != '':
+                return test_config
         return rel_config
 
     def find_test_by_module_name(self, module_name):

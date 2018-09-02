@@ -132,7 +132,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     /** The number of test cases that remained failed after all retry attempts */
     private long mFailedRetried = 0L;
 
-    private RetryStrategy mRetryStrategy;
+    private RetryStrategy mRetryStrategy = RetryStrategy.RETRY_TEST_CASE_FAILURE;
 
     /**
      * Constructor
@@ -437,7 +437,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 } finally {
                     // A single module can generate several test runs
                     mTestsResults.addAll(retriableTest.getFinalTestRunResults());
-                    mExpectedTests += retriableTest.getNumIndividualTests();
+                    mExpectedTests += retriableTest.getExpectedTestsCount();
                     // Get information about retry
                     mRetryTime += retriableTest.getRetryTime();
                     mSuccessRetried += retriableTest.getRetrySuccess();
