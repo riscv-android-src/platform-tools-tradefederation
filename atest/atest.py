@@ -391,15 +391,18 @@ def main(argv):
         logging.warn('Install step without test step currently not '
                      'supported, installing AND testing instead.')
         steps.append(constants.TEST_STEP)
+    tests_exit_code = constants.EXIT_CODE_SUCCESS
     if constants.TEST_STEP in steps:
-        test_runner_handler.run_all_tests(results_dir, test_infos, extra_args)
+        tests_exit_code = test_runner_handler.run_all_tests(results_dir, test_infos, extra_args)
     if args.detect_regression:
         regression_args = _get_regression_detection_args(args, results_dir)
         # TODO(b/110485713): Should not call run_tests here.
         reporter = result_reporter.ResultReporter()
-        regression_test_runner.RegressionTestRunner('').run_tests(
+        tests_exit_code |= regression_test_runner.RegressionTestRunner('').run_tests(
             None, regression_args, reporter)
-    return constants.EXIT_CODE_SUCCESS
+    if tests_exit_code != constants.EXIT_CODE_SUCCESS:
+        tests_exit_code = constants.EXIT_CODE_TEST_FAILURE
+    return tests_exit_code
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
