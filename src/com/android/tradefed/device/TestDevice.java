@@ -644,22 +644,13 @@ public class TestDevice extends NativeDevice {
             }
             boolean notAvailable = waitForDeviceNotAvailable(30 * 1000);
             if (notAvailable) {
-                postAdbFrameworkReboot();
+                postAdbReboot();
             }
             return notAvailable;
         } else {
             CLog.v("framework reboot: not supported");
             return false;
         }
-    }
-
-    /**
-     * Possible extra actions that can be taken after a framework reboot.
-     *
-     * @throws DeviceNotAvailableException
-     */
-    protected void postAdbFrameworkReboot() throws DeviceNotAvailableException {
-        // Default implementation empty on purpose.
     }
 
     /**
@@ -672,15 +663,7 @@ public class TestDevice extends NativeDevice {
     @Override
     protected void doAdbReboot(final String into) throws DeviceNotAvailableException {
         if (!doAdbFrameworkReboot(into)) {
-            DeviceAction rebootAction = new DeviceAction() {
-                @Override
-                public boolean run() throws TimeoutException, IOException,
-                        AdbCommandRejectedException {
-                    getIDevice().reboot(into);
-                    return true;
-                }
-            };
-            performDeviceAction("reboot", rebootAction, MAX_RETRY_ATTEMPTS);
+            super.doAdbReboot(into);
         }
     }
 

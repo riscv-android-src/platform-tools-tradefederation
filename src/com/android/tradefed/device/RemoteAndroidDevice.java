@@ -73,8 +73,8 @@ public class RemoteAndroidDevice extends TestDevice {
 
     /** {@inheritDoc} */
     @Override
-    protected void postAdbFrameworkReboot() throws DeviceNotAvailableException {
-        super.postAdbFrameworkReboot();
+    protected void postAdbReboot() throws DeviceNotAvailableException {
+        super.postAdbReboot();
         // A remote nested device does not loose the ssh bridge when rebooted only adb connect is
         // required.
         InstanceType type = mOptions.getInstanceType();
