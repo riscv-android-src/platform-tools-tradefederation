@@ -103,7 +103,7 @@ METHOD2_INFO = test_info.TestInfo(
 
 EVENTS_NORMAL = [
     ('TEST_MODULE_STARTED', {
-        'moduleContextFileName':'serial-util11462169742772610436.ser',
+        'moduleContextFileName':'serial-util1146216{974}2772610436.ser',
         'moduleName':'someTestModule'}),
     ('TEST_RUN_STARTED', {'testCount': 2}),
     ('TEST_STARTED', {'className':'someClassName', 'testName':'someTestName'}),
@@ -114,7 +114,7 @@ EVENTS_NORMAL = [
                      'trace': 'someTrace'}),
     ('TEST_ENDED', {'className':'someClassName2', 'testName':'someTestName2'}),
     ('TEST_RUN_ENDED', {}),
-    ('TEST_MODULE_ENDED', {}),
+    ('TEST_MODULE_ENDED', {'foo': 'bar'}),
 ]
 
 EVENTS_RUN_FAILURE = [
@@ -213,6 +213,37 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         self.tr._process_connection(mock_socket, 'fake reporter')
         calls = [mock.call(name, data, 'fake reporter', mock.ANY)
                  for name, data in EVENTS_NORMAL]
+        mock_pe.assert_has_calls(calls)
+
+    @mock.patch.object(atf_tr.AtestTradefedTestRunner, '_process_event')
+    def test_process_connection_multiple_lines_in_single_recv(self, mock_pe):
+        """Test _process_connection when recv reads multiple lines in one go."""
+        mock_socket = mock.Mock()
+        squashed_events = '\n'.join(['%s %s' % (name, json.dumps(data))
+                                     for name, data in EVENTS_NORMAL])
+        socket_data = [squashed_events, '']
+        mock_socket.recv.side_effect = socket_data
+        self.tr._process_connection(mock_socket, 'fake reporter')
+        calls = [mock.call(name, data, 'fake reporter', mock.ANY)
+                 for name, data in EVENTS_NORMAL]
+        mock_pe.assert_has_calls(calls)
+
+    @mock.patch.object(atf_tr.AtestTradefedTestRunner, '_process_event')
+    def test_process_connection_with_buffering(self, mock_pe):
+        """Test _process_connection when events overflow socket buffer size"""
+        mock_socket = mock.Mock()
+        module_events = [EVENTS_NORMAL[0], EVENTS_NORMAL[-1]]
+        socket_events = ['%s %s' % (name, json.dumps(data))
+                         for name, data in module_events]
+        # test try-block code by breaking apart first event after first }
+        index = socket_events[0].index('}') + 1
+        socket_data = [socket_events[0][:index], socket_events[0][index:]]
+        # test non-try block buffering with second event
+        socket_data.extend([socket_events[1][:-4], socket_events[1][-4:], ''])
+        mock_socket.recv.side_effect = socket_data
+        self.tr._process_connection(mock_socket, 'fake reporter')
+        calls = [mock.call(name, data, 'fake reporter', mock.ANY)
+                 for name, data in module_events]
         mock_pe.assert_has_calls(calls)
 
     def test_process_event_normal_results(self):

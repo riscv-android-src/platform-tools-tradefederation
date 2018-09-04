@@ -38,7 +38,9 @@ POLL_FREQ_SECS = 10
 SOCKET_HOST = '127.0.0.1'
 SOCKET_QUEUE_MAX = 1
 SOCKET_BUFFER = 4096
-EVENT_RE = re.compile(r'^(?P<event_name>[A-Z_]+) (?P<json_data>{.+)$')
+# Socket Events of form FIRST_EVENT {JSON_DATA}\nSECOND_EVENT {JSON_DATA}
+# EVENT_RE has groups for the name and the data. "." does not match \n.
+EVENT_RE = re.compile(r'^(?P<event_name>[A-Z_]+) (?P<json_data>{.*})(?:\n|$)')
 EVENT_NAMES = {'module_started': 'TEST_MODULE_STARTED',
                'run_started': 'TEST_RUN_STARTED',
                # Next three are test-level events
@@ -239,53 +241,37 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
     def _process_connection(self, conn, reporter):
         """Process a socket connection from TradeFed.
 
-        This involves chunking the data until we have a full EVENT msg. Then
-        parsing the event message to see if a test has finished. If a test
-        has finished then use the reporter to process that test result.
+        Expect data of form EVENT_NAME {JSON_DATA}.  Multiple events will be
+        \n deliminated.  Need to buffer data in case data exceeds socket
+        buffer.
 
         Args:
             conn: A socket connection.
             reporter: A result_report.ResultReporter
         """
-        event_name_for_chunk = None
-        json_data_chunk = ''
         connection_state = CONNECTION_STATE.copy()
-        # recv() fails immediately in osx if any timeout set.
         conn.settimeout(None)
+        buf = ''
         while True:
             logging.debug('Waiting to receive data')
             data = conn.recv(SOCKET_BUFFER)
             logging.debug('received: %s', data)
             if data:
-                # Client Socket Reporter sends data in discrete "event" blocks
-                # of the form "EVENT_NAME {JSON DATA}". So we don't need
-                # to worry about getting more than EVENT_NAME {JSON DATA}, but
-                # we need to chunk in case EVENT_NAME {JSON DATA} exceeds our
-                # recv buffer and we only get part of it.
-                match = EVENT_RE.match(data)
-                if match:
-                    event_name = match.group('event_name')
-                    try:
-                        event_data = json.loads(match.group('json_data'))
-                    except ValueError:
-                        # exceeded buffer, start chunking
-                        event_name_for_chunk = match.group('event_name')
-                        json_data_chunk = match.group('json_data')
+                buf += data
+                while True:
+                    match = EVENT_RE.match(buf)
+                    if match:
+                        try:
+                            event_data = json.loads(match.group('json_data'))
+                        except ValueError:
+                            # Json incomplete, wait for more data.
+                            break
+                        event_name = match.group('event_name')
+                        buf = buf[match.end():]
+                        self._process_event(event_name, event_data, reporter,
+                                            connection_state)
                         continue
-                else:
-                    assert event_name_for_chunk
-                    json_data_chunk += data
-                    try:
-                        event_data = json.loads(json_data_chunk)
-                        json_data_chunk = ''
-                        event_name = event_name_for_chunk
-                        event_name_for_chunk = None
-                    except ValueError:
-                        # json data not complete, keep chunking
-                        continue
-                # Only reach here if have event_name and full event_data.
-                self._process_event(event_name, event_data, reporter,
-                                    connection_state)
+                    break
             else:
                 # client sent empty string, so no more data.
                 conn.close()
@@ -300,6 +286,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             reporter: A ResultReporter instance.
             state: A dict of the state of the test run.
         """
+        logging.debug('Processing %s %s', event_name, event_data)
         if event_name == EVENT_NAMES['module_started']:
             state['current_group'] = event_data['moduleName']
             state['last_failed'] = None
