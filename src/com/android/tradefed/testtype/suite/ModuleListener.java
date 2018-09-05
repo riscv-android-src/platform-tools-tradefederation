@@ -50,6 +50,14 @@ public class ModuleListener extends CollectingTestListener {
         setIsAggregrateMetrics(true);
     }
 
+    @Override
+    public void testRunStarted(String name, int numTests, int attemptNumber) {
+        super.testRunStarted(name, numTests, attemptNumber);
+        if (attemptNumber != 0) {
+            mTestsRan = 1;
+        }
+    }
+
     /** {@inheritDoc} */
     @Override
     public void testRunFailed(String errorMessage) {
