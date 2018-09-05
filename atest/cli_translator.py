@@ -327,7 +327,7 @@ class CLITranslator(object):
         test_details_list = None
         if atest_utils.is_test_mapping(args):
             tests, test_details_list = self._get_test_mapping_tests(args)
-        atest_utils.colorful_print("Finding Tests...", constants.CYAN)
+        atest_utils.colorful_print("\nFinding Tests...", constants.CYAN)
         logging.debug('Finding Tests: %s', tests)
         start = time.time()
         test_infos = self._get_test_infos(tests, test_details_list)
