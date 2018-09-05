@@ -282,6 +282,22 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
+    /** {@link DeviceAction} for rebooting a device. */
+    protected class RebootDeviceAction implements DeviceAction {
+
+        private final String mInto;
+
+        RebootDeviceAction(String into) {
+            mInto = into;
+        }
+
+        @Override
+        public boolean run() throws TimeoutException, IOException, AdbCommandRejectedException {
+            getIDevice().reboot(mInto);
+            return true;
+        }
+    }
+
     /**
      * Creates a {@link TestDevice}.
      *
@@ -2781,6 +2797,12 @@ public class NativeDevice implements IManagedTestDevice {
         doReboot();
     }
 
+    /**
+     * Trigger a reboot of the device, offers no guarantee of the device state after the call.
+     *
+     * @throws DeviceNotAvailableException
+     * @throws UnsupportedOperationException
+     */
     @VisibleForTesting
     void doReboot() throws DeviceNotAvailableException, UnsupportedOperationException {
         if (TestDeviceState.FASTBOOT == getDeviceState()) {
@@ -2793,8 +2815,25 @@ public class NativeDevice implements IManagedTestDevice {
             }
             CLog.i("Rebooting device %s", getSerialNumber());
             doAdbReboot(null);
-            waitForDeviceNotAvailable("reboot", DEFAULT_UNAVAILABLE_TIMEOUT);
+            // Check if device shows as unavailable (as expected after reboot).
+            boolean notAvailable = waitForDeviceNotAvailable(DEFAULT_UNAVAILABLE_TIMEOUT);
+            if (notAvailable) {
+                postAdbReboot();
+            } else {
+                CLog.w(
+                        "Did not detect device %s becoming unavailable after reboot",
+                        getSerialNumber());
+            }
         }
+    }
+
+    /**
+     * Possible extra actions that can be taken after a reboot.
+     *
+     * @throws DeviceNotAvailableException
+     */
+    protected void postAdbReboot() throws DeviceNotAvailableException {
+        // Default implementation empty on purpose.
     }
 
     /**
@@ -2805,16 +2844,19 @@ public class NativeDevice implements IManagedTestDevice {
      * @throws DeviceNotAvailableException
      */
     protected void doAdbReboot(final String into) throws DeviceNotAvailableException {
-        DeviceAction rebootAction = new DeviceAction() {
-            @Override
-            public boolean run() throws TimeoutException, IOException,
-                    AdbCommandRejectedException {
-                getIDevice().reboot(into);
-                return true;
-            }
-        };
+        DeviceAction rebootAction = createRebootDeviceAction(into);
         performDeviceAction("reboot", rebootAction, MAX_RETRY_ATTEMPTS);
+    }
 
+    /**
+     * Create a {@link RebootDeviceAction} to be used when performing a reboot action.
+     *
+     * @param into the bootloader name to reboot into, or <code>null</code> to just reboot the
+     *     device.
+     * @return the created {@link RebootDeviceAction}.
+     */
+    protected RebootDeviceAction createRebootDeviceAction(final String into) {
+        return new RebootDeviceAction(into);
     }
 
     protected void waitForDeviceNotAvailable(String operationDesc, long time) {

@@ -642,7 +642,11 @@ public class TestDevice extends NativeDevice {
                 CLog.v("framework reboot: device unresponsive to shell command, using fallback");
                 return false;
             }
-            return waitForDeviceNotAvailable(30 * 1000);
+            boolean notAvailable = waitForDeviceNotAvailable(30 * 1000);
+            if (notAvailable) {
+                postAdbReboot();
+            }
+            return notAvailable;
         } else {
             CLog.v("framework reboot: not supported");
             return false;
@@ -659,15 +663,7 @@ public class TestDevice extends NativeDevice {
     @Override
     protected void doAdbReboot(final String into) throws DeviceNotAvailableException {
         if (!doAdbFrameworkReboot(into)) {
-            DeviceAction rebootAction = new DeviceAction() {
-                @Override
-                public boolean run() throws TimeoutException, IOException,
-                        AdbCommandRejectedException {
-                    getIDevice().reboot(into);
-                    return true;
-                }
-            };
-            performDeviceAction("reboot", rebootAction, MAX_RETRY_ATTEMPTS);
+            super.doAdbReboot(into);
         }
     }
 
