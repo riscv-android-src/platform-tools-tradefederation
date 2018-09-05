@@ -67,6 +67,30 @@ public class ConfigurationXmlParserTest {
         assertEquals("val", configDef.getOptionList().get(0).value);
     }
 
+    /** Test parsing xml when two Tradefed objects are interleaved. */
+    @Test
+    public void testParse_interleaved() {
+        final String normalConfig =
+                "<configuration description=\"desc\" >\n"
+                        + "  <test class=\"junit.framework.TestCase\">\n"
+                        + "    <option name=\"opName\" value=\"val\" />\n"
+                        + "    <target_preparer class=\"com.targetprep.class\" />\n"
+                        + "  </test>\n"
+                        + "</configuration>";
+        final String configName = "config";
+        ConfigurationDef configDef = new ConfigurationDef(configName);
+        try {
+            xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
+            fail("Should have thrown an exception.");
+        } catch (ConfigurationException expected) {
+            // Expected
+            assertEquals(
+                    "Failed to parse config xml 'config'. Reason: Declared 'target_preparer'"
+                            + " object inside junit.framework.TestCase:1 is not valid.",
+                    expected.getMessage());
+        }
+    }
+
     /** Test parsing xml with a global option */
     @Test
     public void testParse_globalOption() throws ConfigurationException {
