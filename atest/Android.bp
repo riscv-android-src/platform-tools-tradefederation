@@ -12,6 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+python_defaults {
+    name: "atest_lib_default",
+    pkg_path: "atest",
+    version: {
+        py2: {
+            enabled: false,
+            embedded_launcher: false,
+        },
+        py3: {
+            enabled: true,
+            embedded_launcher: false,
+        },
+    },
+}
+
 python_binary_host {
     name: "atest",
     main: "atest.py",
@@ -23,4 +38,15 @@ python_binary_host {
         "*/*_unittest.py",
     ],
     defaults: ["py2_only"],
+}
+
+python_library_host {
+    name: "atest_module_info",
+    defaults: ["atest_lib_default"],
+    srcs: [
+        "module_info.py",
+        "atest_utils.py",
+        "constants.py",
+        "constants_default.py"
+    ],
 }
