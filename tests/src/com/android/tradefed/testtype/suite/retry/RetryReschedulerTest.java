@@ -131,6 +131,47 @@ public class RetryReschedulerTest {
         verify(mSuite).setExcludeFilter(excludeRun1);
     }
 
+    /** Test rescheduling a tests where we request a new shard-count */
+    @Test
+    public void testReschedule_carryShardCount() throws Exception {
+        mTopConfiguration.getCommandOptions().setShardCount(2);
+        populateFakeResults(2, 2, 0, 0, 0);
+        mMockLoader.init();
+        EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
+        EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
+                .andReturn(mRescheduledConfiguration);
+        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+        // Shard count is carried from retry attempt
+        EasyMock.reset(mMockCommandOptions);
+        mMockCommandOptions.setShardCount(2);
+        mMockCommandOptions.setShardIndex(null);
+
+        mRescheduledConfiguration.setTests(EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
+
+        EasyMock.expect(mMockRescheduler.scheduleConfig(mRescheduledConfiguration)).andReturn(true);
+        EasyMock.replay(
+                mMockRescheduler,
+                mMockLoader,
+                mMockFactory,
+                mRescheduledConfiguration,
+                mMockCommandOptions);
+        mTest.run(null);
+        EasyMock.verify(
+                mMockRescheduler,
+                mMockLoader,
+                mMockFactory,
+                mRescheduledConfiguration,
+                mMockCommandOptions);
+
+        Set<String> excludeRun0 = new HashSet<>();
+        excludeRun0.add("run0");
+        verify(mSuite).setExcludeFilter(excludeRun0);
+        Set<String> excludeRun1 = new HashSet<>();
+        excludeRun1.add("run1");
+        verify(mSuite).setExcludeFilter(excludeRun1);
+    }
+
     /** Test rescheduling a configuration when some tests previously failed. */
     @Test
     public void testReschedule_someFailedTests() throws Exception {
