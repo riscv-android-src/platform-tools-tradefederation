@@ -118,9 +118,13 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
                     getFactory()
                             .createConfigurationFromArgs(
                                     QuotationAwareTokenizer.tokenizeLine(commandLine));
-            // Unset the sharding options for the original command.
-            originalConfig.getCommandOptions().setShardCount(null);
-            originalConfig.getCommandOptions().setShardIndex(null);
+            // Transfer the sharding options from the original command.
+            originalConfig
+                    .getCommandOptions()
+                    .setShardCount(mConfiguration.getCommandOptions().getShardCount());
+            originalConfig
+                    .getCommandOptions()
+                    .setShardIndex(mConfiguration.getCommandOptions().getShardIndex());
         } catch (ConfigurationException e) {
             throw new RuntimeException(e);
         }
