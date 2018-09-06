@@ -37,7 +37,6 @@ import java.util.HashMap;
  */
 public class ModuleListener extends CollectingTestListener {
 
-    private int mExpectedTestCount = 0;
     private boolean mSkip = false;
     private boolean mTestFailed = false;
     private int mTestsRan = 1;
@@ -86,7 +85,7 @@ public class ModuleListener extends CollectingTestListener {
     private void logTestPassed(String testName) {
         if (!mTestFailed) {
             CLog.logAndDisplay(
-                    LogLevel.INFO, "[%d/%d] %s pass", mTestsRan, mExpectedTestCount, testName);
+                    LogLevel.INFO, "[%d/%d] %s pass", mTestsRan, getExpectedTests(), testName);
         }
         mTestsRan++;
     }
@@ -114,7 +113,7 @@ public class ModuleListener extends CollectingTestListener {
                 LogLevel.INFO,
                 "[%d/%d] %s fail:\n%s",
                 mTestsRan,
-                mExpectedTestCount,
+                getExpectedTests(),
                 test.toString(),
                 trace);
         mTestFailed = true;
