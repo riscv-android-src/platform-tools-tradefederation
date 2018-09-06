@@ -114,7 +114,7 @@ class ModuleInfo(object):
             Dict of module path to module info dict.
         """
         path_to_module_info = {}
-        for mod_name, mod_info in name_to_module_info.iteritems():
+        for mod_name, mod_info in name_to_module_info.items():
             # Cross-compiled and multi-arch modules actually all belong to
             # a single target so filter out these extra modules.
             if mod_name != mod_info.get(constants.MODULE_NAME, [''])[0]:
