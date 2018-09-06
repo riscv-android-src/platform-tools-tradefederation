@@ -253,6 +253,10 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
         if (mTest instanceof ITestFilterReceiver) {
             ITestFilterReceiver test = (ITestFilterReceiver) mTest;
             originalFilters = new LinkedHashSet<>(test.getIncludeFilters());
+        } else if (!shouldHandleFailure(mRetryStrategy)) {
+            // TODO: improve this for test run failures, since they rerun the full run we should
+            // be able to rerun even non-ITestFilterReceiver
+            CLog.d("RetryStrategy does not involved moving filters proceeding with retry.");
         } else {
             CLog.d(
                     "%s does not implement ITestFilterReceiver, thus cannot work with "
@@ -444,7 +448,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
      * Calculate the number of testcases in the {@link IRemoteTest}. This value distincts the same
      * testcases that are rescheduled multiple times.
      */
-    public int getExpectedTestsCount() {
+    public final int getExpectedTestsCount() {
         return mMainGranularRunListener.getExpectedTests();
     }
 
@@ -461,5 +465,10 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
     /** Returns the number of tests we couldn't change status from failed to pass. */
     public final long getRetryFailed() {
         return mFailedRetried;
+    }
+
+    /** Returns the listener containing all the results. */
+    public ModuleListener getResultListener() {
+        return mMainGranularRunListener;
     }
 }
