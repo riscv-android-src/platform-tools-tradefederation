@@ -24,7 +24,11 @@ import os
 import re
 import subprocess
 import sys
-import urllib2
+try:
+    # If PYTHON2
+    from urllib2 import urlopen
+except ImportError:
+    from urllib.request import urlopen
 
 import constants
 
@@ -157,12 +161,12 @@ def build(build_targets, verbose=False, env_vars=None):
 
 
 def _can_upload_to_result_server():
-    """Return Boolean if we can talk to result server."""
+    """Return True if we can talk to result server."""
     # TODO: Also check if we have a slow connection to result server.
     if constants.RESULT_SERVER:
         try:
-            urllib2.urlopen(constants.RESULT_SERVER,
-                            timeout=constants.RESULT_SERVER_TIMEOUT).close()
+            urlopen(constants.RESULT_SERVER,
+                    timeout=constants.RESULT_SERVER_TIMEOUT).close()
             return True
         # pylint: disable=broad-except
         except Exception as err:
