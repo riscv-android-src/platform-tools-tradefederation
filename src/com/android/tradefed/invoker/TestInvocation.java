@@ -703,6 +703,11 @@ public class TestInvocation implements ITestInvocation {
                             invocationPath.runDevicePostInvocationTearDown(context, config);
                         } finally {
                             listener.invocationFailed(e);
+                            // Reports the logs
+                            for (ITestDevice device : context.getDevices()) {
+                                reportLogs(device, listener, Stage.ERROR);
+                            }
+                            reportHostLog(listener, config.getLogOutput());
                             listener.invocationEnded(0L);
                         }
                         return;
