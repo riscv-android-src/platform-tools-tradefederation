@@ -84,6 +84,16 @@ public class RemoteAndroidDevice extends TestDevice {
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void recoverDevice() throws DeviceNotAvailableException {
+        // Before attempting standard recovery, reconnect the device.
+        adbTcpConnect(getHostName(), getPortNum());
+        waitForAdbConnect(WAIT_FOR_ADB_CONNECT);
+        // Standard recovery
+        super.recoverDevice();
+    }
+
     /**
      * Return the hostname associated with the device. Extracted from the serial.
      */
