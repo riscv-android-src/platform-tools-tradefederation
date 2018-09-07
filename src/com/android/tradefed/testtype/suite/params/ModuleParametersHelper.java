@@ -27,8 +27,8 @@ public class ModuleParametersHelper {
         sHandlerMap.put(ModuleParameters.INSTANT_APP, new InstantAppHandler());
         sHandlerMap.put(ModuleParameters.NOT_INSTANT_APP, new NegativeHandler());
 
-        sHandlerMap.put(ModuleParameters.MULTI_ABI, new MultiAbiHandler());
-        sHandlerMap.put(ModuleParameters.NOT_MULTI_ABI, new NegativeHandler());
+        sHandlerMap.put(ModuleParameters.MULTI_ABI, new NegativeHandler());
+        sHandlerMap.put(ModuleParameters.NOT_MULTI_ABI, new NotMultiAbiHandler());
     }
 
     /** Returns the {@link IModuleParameter} associated with the requested parameter. */
