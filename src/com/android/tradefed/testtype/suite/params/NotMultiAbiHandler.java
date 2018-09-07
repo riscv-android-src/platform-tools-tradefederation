@@ -18,7 +18,7 @@ package com.android.tradefed.testtype.suite.params;
 import com.android.tradefed.testtype.suite.SuiteModuleLoader;
 
 /**
- * Special handler that notify the {@link SuiteModuleLoader} that the secondary abis should create
- * module too.
+ * Special handler that notify the {@link SuiteModuleLoader} that the secondary abi should not
+ * create a module.
  */
-public final class MultiAbiHandler extends NegativeHandler {}
+public final class NotMultiAbiHandler extends NegativeHandler {}
