@@ -270,7 +270,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
      * the IRemoteTest should already has the subset of testcases identified.
      */
     @VisibleForTesting
-    final void intraModuleRun() throws DeviceNotAvailableException {
+    final void intraModuleRun() throws DeviceNotAvailableException, DeviceUnresponsiveException {
         ITestInvocationListener runListener = prepareRunListener();
         try {
             mTest.run(runListener);
@@ -288,6 +288,8 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
             CLog.w(due);
             CLog.w("Proceeding to the next test.");
             runListener.testRunFailed(due.getMessage());
+        } catch (DeviceNotAvailableException dnae) {
+            throw dnae;
         } finally {
             ModuleListener currentModuleListener =
                     mModuleListenerCollector.get(mModuleListenerCollector.size() - 1);
