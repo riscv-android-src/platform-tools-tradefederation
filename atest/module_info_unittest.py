@@ -90,19 +90,15 @@ class ModuleInfoUnittests(unittest.TestCase):
         mod_path_one = '/path/to/mod1'
         mod_path_two = '/path/to/mod2'
         mod_info_dict = {mod_one: {constants.MODULE_PATH: [mod_path_one],
-                                   constants.MODULE_NAME: [mod_one]},
+                                   constants.MODULE_NAME: mod_one},
                          mod_two: {constants.MODULE_PATH: [mod_path_two],
-                                   constants.MODULE_NAME: [mod_two]}}
+                                   constants.MODULE_NAME: mod_two}}
         mock_load_module.return_value = ('mod_target', mod_info_dict)
         path_to_mod_info = {mod_path_one: [{constants.MODULE_NAME: mod_one,
                                             constants.MODULE_PATH: [mod_path_one]}],
                             mod_path_two: [{constants.MODULE_NAME: mod_two,
                                             constants.MODULE_PATH: [mod_path_two]}]}
         mod_info = module_info.ModuleInfo()
-        mod_info_dict = {mod_one: {constants.MODULE_PATH: [mod_path_one],
-                                   constants.MODULE_NAME: [mod_one]},
-                         mod_two: {constants.MODULE_PATH: [mod_path_two],
-                                   constants.MODULE_NAME: [mod_two]}}
         self.assertDictEqual(path_to_mod_info,
                              mod_info._get_path_to_module_info(mod_info_dict))
 
