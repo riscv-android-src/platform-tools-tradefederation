@@ -31,7 +31,8 @@ import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.suite.params.IModuleParameter;
 import com.android.tradefed.testtype.suite.params.ModuleParameters;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelper;
-import com.android.tradefed.testtype.suite.params.MultiAbiHandler;
+import com.android.tradefed.testtype.suite.params.NotMultiAbiHandler;
+import com.android.tradefed.testtype.suite.params.NegativeHandler;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -182,7 +183,7 @@ public class SuiteModuleLoader {
         final String[] pathArg = new String[] {configFullName};
         try {
             boolean primaryAbi = true;
-            boolean shouldCreateMultiAbi = false;
+            boolean shouldCreateMultiAbi = true;
             // Invokes parser to process the test module config file
             // Need to generate a different config for each ABI as we cannot guarantee the
             // configs are idempotent. This however means we parse the same file multiple times
@@ -215,8 +216,11 @@ public class SuiteModuleLoader {
                     List<IModuleParameter> params = getModuleParameters(name, config);
                     // If we find any parameterized combination.
                     for (IModuleParameter param : params) {
-                        if (param instanceof MultiAbiHandler) {
-                            shouldCreateMultiAbi = true;
+                        if (param instanceof NotMultiAbiHandler) {
+                            shouldCreateMultiAbi = false;
+                            continue;
+                        }
+                        if (param instanceof NegativeHandler) {
                             continue;
                         }
                         String fullId =

@@ -50,6 +50,7 @@ import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.suite.ITestSuite.RetryStrategy;
 import com.android.tradefed.testtype.suite.module.BaseModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController;
 import com.android.tradefed.testtype.suite.module.TestFailureModuleController;
@@ -1034,6 +1035,64 @@ public class ModuleDefinitionTest {
 
         replayMocks();
         mModule.run(mMockListener);
+        verifyMocks();
+    }
+
+    /** Test retry and reporting all the different attempts. */
+    @Test
+    public void testMultiRun_multiAttempts() throws Exception {
+        final String runName = "baseRun";
+        List<IRemoteTest> testList = new ArrayList<>();
+        // The runner will generates 2 test runs with 2 test cases each.
+        testList.add(new MultiRunTestObject(runName, 2, 2));
+        mModule =
+                new ModuleDefinition(
+                        MODULE_NAME,
+                        testList,
+                        mMapDeviceTargetPreparer,
+                        mMultiTargetPrepList,
+                        new Configuration("", ""));
+        mModule.setRetryStrategy(RetryStrategy.ITERATIONS, false);
+
+        mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
+        mModule.getModuleInvocationContext()
+                .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
+
+        mModule.setBuild(mMockBuildInfo);
+        mModule.setDevice(mMockDevice);
+        EasyMock.expect(mMockPrep.isDisabled()).andReturn(false);
+        mMockPrep.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        EasyMock.expect(mMockCleaner.isDisabled()).andStubReturn(false);
+        mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
+        mMockCleaner.tearDown(
+                EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
+        // We expect a total count on the run start so 4, all aggregated under the same run
+        for (int attempt = 0; attempt < 3; attempt++) {
+            mMockListener.testRunStarted(MODULE_NAME, 4, attempt);
+            // The first set of test cases from the first test run.
+            for (int i = 0; i < 2; i++) {
+                TestDescription testId = new TestDescription(runName + "0class", "test" + i);
+                mMockListener.testStarted(EasyMock.eq(testId), EasyMock.anyLong());
+                mMockListener.testEnded(
+                        EasyMock.eq(testId),
+                        EasyMock.anyLong(),
+                        (HashMap<String, Metric>) EasyMock.anyObject());
+            }
+            // The second set of test cases from the second test run
+            for (int i = 0; i < 2; i++) {
+                TestDescription testId = new TestDescription(runName + "1class", "test" + i);
+                mMockListener.testStarted(EasyMock.eq(testId), EasyMock.anyLong());
+                mMockListener.testEnded(
+                        EasyMock.eq(testId),
+                        EasyMock.anyLong(),
+                        (HashMap<String, Metric>) EasyMock.anyObject());
+            }
+            mMockListener.testRunEnded(
+                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        }
+        replayMocks();
+        mModule.run(mMockListener, null, null, 3);
         verifyMocks();
     }
 }
