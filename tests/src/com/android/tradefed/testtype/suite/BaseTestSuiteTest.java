@@ -102,6 +102,28 @@ public class BaseTestSuiteTest {
         }
     }
 
+    /** Test that a partial name anywhere in the module name can be matched. */
+    @Test
+    public void testSetupFilters_match() throws Exception {
+        File tmpDir = FileUtil.createTempDir(TEST_MODULE);
+        File moduleConfig = new File(tmpDir, "CtsGestureTestCases.config");
+        moduleConfig.createNewFile();
+        try {
+            OptionSetter setter = new OptionSetter(mRunner);
+            setter.setOptionValue("module", "Gesture");
+            mRunner.setupFilters(tmpDir);
+            assertEquals(1, mRunner.getIncludeFilter().size());
+            assertThat(
+                    mRunner.getIncludeFilter(),
+                    hasItem(
+                            new SuiteTestFilter(
+                                            mRunner.getRequestedAbi(), "CtsGestureTestCases", null)
+                                    .toString()));
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
     /**
      * Test for {@link BaseTestSuite#setupFilters(File)} implementation, only one module matches.
      */
