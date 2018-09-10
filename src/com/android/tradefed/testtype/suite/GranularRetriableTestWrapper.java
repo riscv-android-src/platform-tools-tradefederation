@@ -410,7 +410,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
         MergeStrategy strategy = MergeStrategy.ONE_TESTCASE_PASS_IS_PASS;
         switch (mRetryStrategy) {
             case ITERATIONS:
-                strategy = MergeStrategy.NO_MERGE;
+                strategy = MergeStrategy.ANY_FAIL_IS_FAIL;
                 break;
             case RERUN_UNTIL_FAILURE:
                 strategy = MergeStrategy.ANY_FAIL_IS_FAIL;
