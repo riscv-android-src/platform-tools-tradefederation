@@ -295,7 +295,7 @@ public class BaseTestSuite extends ITestSuite {
             // If this option (-m / --module) is set only the matching unique module should run.
             Set<File> modules =
                     SuiteModuleLoader.getModuleNamesMatching(
-                            testsDir, mSuitePrefix, String.format("%s.*.config", mModuleName));
+                            testsDir, mSuitePrefix, String.format(".*%s.*.config", mModuleName));
             // If multiple modules match, do exact match.
             if (modules.size() > 1) {
                 Set<File> newModules = new HashSet<>();
