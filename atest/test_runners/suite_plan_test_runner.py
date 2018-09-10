@@ -20,7 +20,7 @@ import copy
 import logging
 
 # pylint: disable=import-error
-import atest_tf_test_runner
+from test_runners import atest_tf_test_runner
 import atest_utils
 import constants
 
