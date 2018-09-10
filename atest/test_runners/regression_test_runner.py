@@ -18,7 +18,7 @@ Regression Detection test runner class.
 
 # pylint: disable=import-error
 import constants
-import test_runner_base
+from test_runners import test_runner_base
 
 
 class RegressionTestRunner(test_runner_base.TestRunnerBase):
@@ -34,6 +34,7 @@ class RegressionTestRunner(test_runner_base.TestRunnerBase):
         self.run_cmd_dict = {'exe': self.EXECUTABLE,
                              'args': ''}
 
+    # pylint: disable=unused-argument
     def run_tests(self, test_infos, extra_args, reporter):
         """Run the list of test_infos.
 

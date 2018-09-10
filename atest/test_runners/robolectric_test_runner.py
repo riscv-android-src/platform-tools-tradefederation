@@ -24,7 +24,7 @@ import logging
 # pylint: disable=import-error
 import atest_utils
 import constants
-import test_runner_base
+from test_runners import test_runner_base
 
 
 class RobolectricTestRunner(test_runner_base.TestRunnerBase):
@@ -35,9 +35,10 @@ class RobolectricTestRunner(test_runner_base.TestRunnerBase):
     # class will raise an exception.
     EXECUTABLE = 'make'
 
+    # pylint: disable=useless-super-delegation
     def __init__(self, results_dir, **kwargs):
         """Init stuff for robolectric runner class."""
-        super(RobolectricTestRunner, self).__init__(results_dir)
+        super(RobolectricTestRunner, self).__init__(results_dir, **kwargs)
 
     def run_tests(self, test_infos, extra_args, reporter):
         """Run the list of test_infos.
