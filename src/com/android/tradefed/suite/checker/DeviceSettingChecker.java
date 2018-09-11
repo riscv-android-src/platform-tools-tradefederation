@@ -165,7 +165,7 @@ public class DeviceSettingChecker implements ISystemStatusChecker {
      *
      * @param device The {@link ITestDevice}
      * @param namespace namespace of the setting.
-     * @return
+     * @return a Map of the settings for a namespace
      * @throws DeviceNotAvailableException
      */
     private Map<String, String> getSettingsHelper(ITestDevice device, String namespace)
