@@ -17,6 +17,9 @@ method-rgx=(([a-z][a-z0-9_]{2,50})|(_[a-z0-9_]*))$
 
 [DESIGN]
 
+# Maximum number of arguments for function / method
+max-args=6
+
 # Maximum number of return / yield for function / method body
 max-returns=10
 
