@@ -994,7 +994,11 @@ public abstract class ITestSuite
     @VisibleForTesting
     protected Set<String> getAbisForBuildTargetArch() {
         // If TestSuiteInfo does not exists, the stub arch will be replaced by all possible abis.
-        return AbiUtils.getAbisForArch(TestSuiteInfo.getInstance().getTargetArch());
+        Set<String> abis = new LinkedHashSet<>();
+        for (String arch : TestSuiteInfo.getInstance().getTargetArchs()) {
+            abis.addAll(AbiUtils.getAbisForArch(arch));
+        }
+        return abis;
     }
 
     /** Returns the host machine abis. */
