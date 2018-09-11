@@ -31,7 +31,7 @@ import sys
 import atest_utils
 import constants
 from test_finders import test_info
-import test_runner_base
+from test_runners import test_runner_base
 
 OLD_OUTPUT_ENV_VAR = 'ATEST_OLD_OUTPUT'
 POLL_FREQ_SECS = 10
@@ -79,7 +79,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
 
     def __init__(self, results_dir, module_info=None, **kwargs):
         """Init stuff for base class."""
-        super(AtestTradefedTestRunner, self).__init__(results_dir)
+        super(AtestTradefedTestRunner, self).__init__(results_dir, **kwargs)
         self.module_info = module_info
         self.run_cmd_dict = {'exe': self.EXECUTABLE,
                              'template': self._TF_TEMPLATE,
