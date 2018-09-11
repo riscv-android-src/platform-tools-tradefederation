@@ -27,7 +27,6 @@ import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
-import com.android.tradefed.testtype.IStrictShardableTest;
 import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.testtype.suite.ModuleMerger;
 import com.android.tradefed.util.TimeUtil;
@@ -55,44 +54,19 @@ public class StrictShardHelper extends ShardHelper {
         }
 
         // Split tests in place, without actually sharding.
-        if (!config.getCommandOptions().shouldUseTfSharding()) {
-            // TODO: remove when IStrictShardableTest is removed.
-            updateConfigIfSharded(config, shardCount, shardIndex);
+        List<IRemoteTest> listAllTests = getAllTests(config, shardCount, context);
+        // We cannot shuffle to get better average results
+        normalizeDistribution(listAllTests, shardCount);
+        List<IRemoteTest> splitList;
+        if (shardCount == 1) {
+            // not sharded
+            splitList = listAllTests;
         } else {
-            List<IRemoteTest> listAllTests = getAllTests(config, shardCount, context);
-            // We cannot shuffle to get better average results
-            normalizeDistribution(listAllTests, shardCount);
-            List<IRemoteTest> splitList;
-            if (shardCount == 1) {
-                // not sharded
-                splitList = listAllTests;
-            } else {
-                splitList = splitTests(listAllTests, shardCount).get(shardIndex);
-            }
-            aggregateSuiteModules(splitList);
-            config.setTests(splitList);
+            splitList = splitTests(listAllTests, shardCount).get(shardIndex);
         }
+        aggregateSuiteModules(splitList);
+        config.setTests(splitList);
         return false;
-    }
-
-    // TODO: Retire IStrictShardableTest for IShardableTest and have TF balance the list of tests.
-    private void updateConfigIfSharded(IConfiguration config, int shardCount, int shardIndex) {
-        List<IRemoteTest> testShards = new ArrayList<>();
-        for (IRemoteTest test : config.getTests()) {
-            if (!(test instanceof IStrictShardableTest)) {
-                CLog.w(
-                        "%s is not shardable; the whole test will run in shard 0",
-                        test.getClass().getName());
-                if (shardIndex == 0) {
-                    testShards.add(test);
-                }
-                continue;
-            }
-            IRemoteTest testShard =
-                    ((IStrictShardableTest) test).getTestShard(shardCount, shardIndex);
-            testShards.add(testShard);
-        }
-        config.setTests(testShards);
     }
 
     /**
