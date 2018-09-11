@@ -35,6 +35,22 @@ import java.util.concurrent.TimeUnit;
  */
 public class DeviceSelectionOptions implements IDeviceSelection {
 
+    /** The different possible types of devices supported. */
+    public enum DeviceRequestedType {
+        /** An Android device without framework running. For example: Iot. */
+        NATIVE_ANDROID,
+        /** A standard Android device. */
+        ANDROID,
+        /** A placeholder where no device is required to be allocated. */
+        NULL_DEVICE,
+        /** Allocate an emulator running locally for the test. */
+        LOCAL_EMULATOR_DEVICE,
+        /** Use a placeholder for a remote device that will be connected later. */
+        TCP_DEVICE,
+        /** Use a placeholder for a remote device nested in a virtualized environment. */
+        GCE_DEVICE
+    }
+
     @Option(name = "serial", shortName = 's', description =
         "run this test on a specific device with given serial number(s).")
     private Collection<String> mSerials = new ArrayList<String>();
@@ -53,8 +69,8 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         "Expected format --property <propertyname> <propertyvalue>.")
     private Map<String, String> mPropertyMap = new HashMap<>();
 
-    @Option(name = "emulator", shortName = 'e', description =
-        "force this test to run on emulator.")
+    // ============================ DEVICE TYPE Related Options ===============================
+    @Option(name = "emulator", shortName = 'e', description = "force this test to run on emulator.")
     private boolean mEmulatorRequested = false;
 
     @Option(name = "device", shortName = 'd', description =
@@ -78,9 +94,16 @@ public class DeviceSelectionOptions implements IDeviceSelection {
             description = "start a placeholder for a gce device that will be connected later.")
     private boolean mGceDeviceRequested = false;
 
-    @Option(name = "min-battery", description =
-        "only run this test on a device whose battery level is at least the given amount. " +
-        "Scale: 0-100")
+    @Option(name = "device-type", description = "The type of the device requested to be allocated.")
+    private DeviceRequestedType mRequestedType = null;
+    // ============================ END DEVICE TYPE Related Options ============================
+
+    @Option(
+        name = "min-battery",
+        description =
+                "only run this test on a device whose battery level is at least the given amount. "
+                        + "Scale: 0-100"
+    )
     private Integer mMinBattery = null;
 
     @Option(name = "max-battery", description =
@@ -204,6 +227,9 @@ public class DeviceSelectionOptions implements IDeviceSelection {
      */
     @Override
     public boolean deviceRequested() {
+        if (mRequestedType != null) {
+            return mRequestedType.equals(DeviceRequestedType.ANDROID);
+        }
         return mDeviceRequested;
     }
 
@@ -212,6 +238,9 @@ public class DeviceSelectionOptions implements IDeviceSelection {
      */
     @Override
     public boolean emulatorRequested() {
+        if (mRequestedType != null) {
+            return mRequestedType.equals(DeviceRequestedType.LOCAL_EMULATOR_DEVICE);
+        }
         return mEmulatorRequested;
     }
 
@@ -220,6 +249,9 @@ public class DeviceSelectionOptions implements IDeviceSelection {
      */
     @Override
     public boolean stubEmulatorRequested() {
+        if (mRequestedType != null) {
+            return mRequestedType.equals(DeviceRequestedType.LOCAL_EMULATOR_DEVICE);
+        }
         return mStubEmulatorRequested;
     }
 
@@ -228,18 +260,27 @@ public class DeviceSelectionOptions implements IDeviceSelection {
      */
     @Override
     public boolean nullDeviceRequested() {
+        if (mRequestedType != null) {
+            return mRequestedType.equals(DeviceRequestedType.NULL_DEVICE);
+        }
         return mNullDeviceRequested;
     }
 
     /** {@inheritDoc} */
     @Override
     public boolean tcpDeviceRequested() {
+        if (mRequestedType != null) {
+            return mRequestedType.equals(DeviceRequestedType.TCP_DEVICE);
+        }
         return mTcpDeviceRequested;
     }
 
     /** {@inheritDoc} */
     @Override
     public boolean gceDeviceRequested() {
+        if (mRequestedType != null) {
+            return mRequestedType.equals(DeviceRequestedType.GCE_DEVICE);
+        }
         return mGceDeviceRequested;
     }
 
@@ -403,25 +444,8 @@ public class DeviceSelectionOptions implements IDeviceSelection {
                 return false;
             }
         }
-        if ((emulatorRequested() || stubEmulatorRequested()) && !device.isEmulator()) {
-            return false;
-        }
-        if (deviceRequested() && device.isEmulator()) {
-            return false;
-        }
-        if (device.isEmulator() && (device instanceof StubDevice) && !stubEmulatorRequested()) {
-            // only allocate the stub emulator if requested
-            return false;
-        }
-        if (nullDeviceRequested() != (device instanceof NullDevice)) {
-            return false;
-        }
-        if (tcpDeviceRequested() != (TcpDevice.class.equals(device.getClass()))) {
-            // We only match an exact TcpDevice here, no child class.
-            return false;
-        }
-        if (gceDeviceRequested() != (RemoteAvdIDevice.class.equals(device.getClass()))) {
-            // We only match an exact RemoteAvdIDevice here, no child class.
+        // Check if the device match the requested type
+        if (!checkDeviceTypeRequested(device)) {
             return false;
         }
 
@@ -488,6 +512,33 @@ public class DeviceSelectionOptions implements IDeviceSelection {
                     return false;
                 }
             }
+        }
+
+        return true;
+    }
+
+    /** Determine whether a device match the requested type or not. */
+    private boolean checkDeviceTypeRequested(IDevice device) {
+        if ((emulatorRequested() || stubEmulatorRequested()) && !device.isEmulator()) {
+            return false;
+        }
+        if (deviceRequested() && device.isEmulator()) {
+            return false;
+        }
+        if (device.isEmulator() && (device instanceof StubDevice) && !stubEmulatorRequested()) {
+            // only allocate the stub emulator if requested
+            return false;
+        }
+        if (nullDeviceRequested() != (device instanceof NullDevice)) {
+            return false;
+        }
+        if (tcpDeviceRequested() != (TcpDevice.class.equals(device.getClass()))) {
+            // We only match an exact TcpDevice here, no child class.
+            return false;
+        }
+        if (gceDeviceRequested() != (RemoteAvdIDevice.class.equals(device.getClass()))) {
+            // We only match an exact RemoteAvdIDevice here, no child class.
+            return false;
         }
 
         return true;

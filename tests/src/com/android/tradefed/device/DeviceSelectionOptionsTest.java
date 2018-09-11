@@ -24,6 +24,7 @@ import com.android.tradefed.config.ArgsOptionParser;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceManager.FastbootDevice;
+import com.android.tradefed.device.DeviceSelectionOptions.DeviceRequestedType;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -556,6 +557,17 @@ public class DeviceSelectionOptionsTest {
         OptionSetter setter = new OptionSetter(mDeviceSelection);
         setter.setOptionValue("tcp-device", "true");
         assertTrue(mDeviceSelection.matches(gceDevice));
+    }
+
+    /** When a tcp-device is requested, and device-type is also requested, it has precedence */
+    @Test
+    public void testAllocateTcpDevice_whenDeviceRequestIsSet() throws ConfigurationException {
+        IDevice gceDevice = new TcpDevice("tcp-device:0");
+        OptionSetter setter = new OptionSetter(mDeviceSelection);
+        setter.setOptionValue("tcp-device", "true");
+        // Device type takes precedence.
+        setter.setOptionValue("device-type", DeviceRequestedType.GCE_DEVICE.toString());
+        assertFalse(mDeviceSelection.matches(gceDevice));
     }
 
     /** When a gce-device is requested, a serial is provided that match a non gce-device. */
