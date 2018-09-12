@@ -28,6 +28,8 @@ import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.target.DeviceSideCollectorSpecification;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.StdoutLogger;
+import com.android.tradefed.postprocessor.BasePostProcessor;
+import com.android.tradefed.postprocessor.IPostProcessor;
 import com.android.tradefed.result.FileSystemLogSaver;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -90,6 +92,7 @@ public class Configuration implements IConfiguration {
     public static final String DEVICE_NAME = "device";
     public static final String DEVICE_METRICS_COLLECTOR_TYPE_NAME = "metrics_collector";
     public static final String DEVICE_SIDE_SPEC_TYPE_NAME = "device_side_collector_spec";
+    public static final String METRIC_POST_PROCESSOR_TYPE_NAME = "metric_post_processor";
     public static final String SANDBOX_TYPE_NAME = "sandbox";
     public static final String SANBOX_OPTIONS_TYPE_NAME = "sandbox_options";
 
@@ -173,6 +176,9 @@ public class Configuration implements IConfiguration {
             sObjTypeMap.put(
                     DEVICE_SIDE_SPEC_TYPE_NAME,
                     new ObjTypeInfo(DeviceSideCollectorSpecification.class, false));
+            sObjTypeMap.put(
+                    METRIC_POST_PROCESSOR_TYPE_NAME,
+                    new ObjTypeInfo(BasePostProcessor.class, true));
             sObjTypeMap.put(SANBOX_OPTIONS_TYPE_NAME, new ObjTypeInfo(SandboxOptions.class, false));
         }
         return sObjTypeMap;
@@ -227,6 +233,7 @@ public class Configuration implements IConfiguration {
         setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
         setConfigurationDescriptor(new ConfigurationDescriptor());
         setDeviceMetricCollectors(new ArrayList<>());
+        setPostProcessors(new ArrayList<>());
         setConfigurationObjectNoThrow(SANBOX_OPTIONS_TYPE_NAME, new SandboxOptions());
     }
 
@@ -239,7 +246,7 @@ public class Configuration implements IConfiguration {
             throw new UnsupportedOperationException(String.format("Calling %s is not allowed "
                     + "in multi device mode", function));
         }
-        if (getConfigurationObjectList(DEVICE_NAME).size() == 0) {
+        if (getConfigurationObjectList(DEVICE_NAME).isEmpty()) {
             throw new UnsupportedOperationException(
                     "We should always have at least 1 Device config");
         }
@@ -380,6 +387,12 @@ public class Configuration implements IConfiguration {
     public List<IMetricCollector> getMetricCollectors() {
         return (List<IMetricCollector>)
                 getConfigurationObjectList(DEVICE_METRICS_COLLECTOR_TYPE_NAME);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<IPostProcessor> getPostProcessors() {
+        return (List<IPostProcessor>) getConfigurationObjectList(METRIC_POST_PROCESSOR_TYPE_NAME);
     }
 
     /** {@inheritDoc} */
@@ -712,6 +725,12 @@ public class Configuration implements IConfiguration {
     @Override
     public void setDeviceSideCollectorSpec(DeviceSideCollectorSpecification deviceCollectorSpec) {
         setConfigurationObjectNoThrow(DEVICE_SIDE_SPEC_TYPE_NAME, deviceCollectorSpec);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setPostProcessors(List<IPostProcessor> processors) {
+        setConfigurationObjectListNoThrow(METRIC_POST_PROCESSOR_TYPE_NAME, processors);
     }
 
     /**
