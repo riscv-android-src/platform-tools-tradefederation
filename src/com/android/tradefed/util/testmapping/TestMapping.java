@@ -13,10 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.util;
+package com.android.tradefed.util.testmapping;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.ZipUtil2;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -37,53 +39,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /** A class for loading a TEST_MAPPING file. */
 public class TestMapping {
-
-    /** Stores the test option details set in a TEST_MAPPING file. */
-    public class TestOption {
-        // Name of the option
-        private String mName = null;
-        // Value of the option, can be empty.
-        private String mValue = null;
-
-        public TestOption(String name, String value) {
-            mName = name;
-            mValue = value;
-        }
-
-        public String getName() {
-            return mName;
-        }
-
-        public String getValue() {
-            return mValue;
-        }
-    }
-
-    /** Stores the test information set in a TEST_MAPPING file. */
-    public class TestInfo {
-        private String mName = null;
-        private List<TestOption> mOptions = new ArrayList<TestOption>();
-
-        public TestInfo(String name) {
-            mName = name;
-        }
-
-        public String getName() {
-            return mName;
-        }
-
-        public void addOption(TestOption option) {
-            mOptions.add(option);
-        }
-
-        public List<TestOption> getOptions() {
-            return mOptions;
-        }
-    }
 
     private static final String PRESUBMIT = "presubmit";
     private static final String POSTSUBMIT = "postsubmit";
@@ -168,13 +128,40 @@ public class TestMapping {
             }
         }
         // All presubmit tests should be part of postsubmit too.
-        if (testGroup.equals(POSTSUBMIT) && mTestCollection.containsKey(PRESUBMIT)) {
-            for (TestInfo test : mTestCollection.get(PRESUBMIT)) {
+        if (testGroup.equals(POSTSUBMIT)) {
+            for (TestInfo test :
+                    mTestCollection.getOrDefault(PRESUBMIT, new ArrayList<TestInfo>())) {
                 tests.add(test);
             }
         }
 
         return tests;
+    }
+
+    /**
+     * Merge multiple tests if there are any for the same test module, but with different test
+     * options.
+     *
+     * @param tests A {@code Set<TestInfo>} of the test infos to be processed.
+     * @return A {@code Set<TestInfo>} of tests that each is for a unique test module.
+     */
+    private static Set<TestInfo> mergeTests(Set<TestInfo> tests) {
+        Map<String, List<TestInfo>> testsGroupedbyName =
+                tests.stream()
+                        .collect(Collectors.groupingBy(TestInfo::getName, Collectors.toList()));
+
+        Set<TestInfo> mergedTests = new HashSet<>();
+        for (List<TestInfo> multiTests : testsGroupedbyName.values()) {
+            TestInfo mergedTest = multiTests.get(0);
+            if (multiTests.size() > 1) {
+                for (TestInfo test : multiTests.subList(1, multiTests.size())) {
+                    mergedTest.merge(test);
+                }
+            }
+            mergedTests.add(mergedTest);
+        }
+
+        return mergedTests;
     }
 
     /**
@@ -213,6 +200,6 @@ public class TestMapping {
             FileUtil.recursiveDelete(testMappingsDir);
         }
 
-        return tests;
+        return TestMapping.mergeTests(tests);
     }
 }

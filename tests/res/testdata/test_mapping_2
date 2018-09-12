@@ -1,6 +1,14 @@
 {
   "presubmit": [
     {
+      "name": "test1",
+      "options": [
+        {
+          "include-filter": "some-filter"
+        }
+      ]
+    },
+    {
       "name": "suite/stub1"
     }
   ],
