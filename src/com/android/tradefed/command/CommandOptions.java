@@ -136,6 +136,8 @@ public class CommandOptions implements ICommandOptions {
                             + "invocation context.")
     private UniqueMultiMap<String, String> mInvocationData = new UniqueMultiMap<>();
 
+    /** @deprecated Remove this when all instances have been removed. */
+    @Deprecated
     @Option(
         name = "disable-strict-sharding",
         description =
@@ -416,18 +418,6 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public UniqueMultiMap<String, String> getInvocationData() {
         return mInvocationData;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public boolean shouldUseTfSharding() {
-        return mUseTfSharding;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void setUseTfSharding(boolean useTfSharding) {
-        mUseTfSharding = useTfSharding;
     }
 
     /** {@inheritDoc} */
