@@ -220,10 +220,13 @@ public class ConfigurationDef {
                             .stream()
                             .filter(value -> (value == true))
                             .collect(Collectors.counting());
-            if (numDut == 0) {
-                throw new ConfigurationException(
-                        "All the <device> where marked with isFake=true. You need at least one "
-                                + "device under test.");
+            if (numDut == 0 && numNonDut == 0) {
+                throw new ConfigurationException("No device detected. Should not happen.");
+            }
+            if (numNonDut > 0 && numDut == 0) {
+                // if we only have fake devices, use the default device as real device.
+                mExpectedDevices.put(DEFAULT_DEVICE_NAME, false);
+                numDut++;
             }
             if (numNonDut > 0 && numDut == 1) {
                 // If we have fake device but only a single real device, is the only use case to

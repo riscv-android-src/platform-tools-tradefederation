@@ -1617,6 +1617,43 @@ public class ConfigurationFactoryTest extends TestCase {
         assertTrue(config.isDeviceConfiguredFake("device2"));
     }
 
+    /**
+     * Test when a single device configuration (standard flat) add a fake device. Configuration
+     * objects should be added to the default device.
+     */
+    public void testCreateConfiguration_singleDeviceConfig_withFake() throws Exception {
+        IConfiguration config =
+                mFactory.createConfigurationFromArgs(
+                        new String[] {
+                            "single-config-and-fake",
+                            "--no-test-boolean-option",
+                            "--test-boolean-option-false",
+                            // testing with namespace too
+                            "--stub-preparer:no-test-boolean-option",
+                            "--stub-preparer:test-boolean-option-false"
+                        });
+        assertEquals(2, config.getDeviceConfig().size());
+        IDeviceConfiguration device1 =
+                config.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME);
+        // One target preparer from inside the device tag, one from outside.
+        assertEquals(2, device1.getTargetPreparers().size());
+        StubTargetPreparer deviceSetup1 = (StubTargetPreparer) device1.getTargetPreparers().get(0);
+        // default value of test-boolean-option is true, we set it to false
+        assertFalse(deviceSetup1.getTestBooleanOption());
+        // default value of test-boolean-option-false is false, we set it to true.
+        assertTrue(deviceSetup1.getTestBooleanOptionFalse());
+
+        // Check that the second preparer, outside device1 can still receive option as {device1}.
+        StubTargetPreparer deviceSetup2 = (StubTargetPreparer) device1.getTargetPreparers().get(1);
+        // default value of test-boolean-option is true, we set it to false
+        assertFalse(deviceSetup2.getTestBooleanOption());
+        // default value of test-boolean-option-false is false, we set it to true.
+        assertTrue(deviceSetup2.getTestBooleanOptionFalse());
+
+        assertFalse(config.isDeviceConfiguredFake(ConfigurationDef.DEFAULT_DEVICE_NAME));
+        assertTrue(config.isDeviceConfiguredFake("device2"));
+    }
+
     /** Test that a configuration with all the device marked as isReal=false will be rejected. */
     public void testCreateConfiguration_multiDevice_real_notReal() throws Exception {
         try {
