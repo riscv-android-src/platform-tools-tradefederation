@@ -53,7 +53,6 @@ import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.ShardHelper;
-import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
@@ -78,7 +77,6 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
 import com.android.tradefed.testtype.IShardableTest;
-import com.android.tradefed.testtype.IStrictShardableTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SystemUtil.EnvVariable;
@@ -874,160 +872,6 @@ public class TestInvocationTest extends TestCase {
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(test, logSaverListener, mockRescheduler);
         assertEquals(2, mUriCapture.getValue().size());
-    }
-
-    /**
-     * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
-     * ITestInvocationListener[])} scenario with {@link IStrictShardableTest} when a shard index is
-     * given (strict sharding scenario: both shard-count and shard-index are given)
-     */
-    public void testInvoke_strictShardableTest_withShardIndex() throws Throwable {
-        mTestInvocation =
-                new TestInvocation() {
-                    @Override
-                    ILogRegistry getLogRegistry() {
-                        return mMockLogRegistry;
-                    }
-
-                    @Override
-                    public IInvocationExecution createInvocationExec(boolean isSandboxed) {
-                        return new InvocationExecution() {
-                            @Override
-                            protected IShardHelper createShardHelper() {
-                                return new StrictShardHelper();
-                            }
-                        };
-                    }
-
-                    @Override
-                    protected void setExitCode(ExitCode code, Throwable stack) {
-                        // empty on purpose
-                    }
-
-                    @Override
-                    InvocationScope getInvocationScope() {
-                        // Avoid re-entry in the current TF invocation scope for unit tests.
-                        return new InvocationScope();
-                    }
-                };
-        String[] commandLine = {"config", "arg"};
-        int shardCount = 10;
-        int shardIndex = 5;
-        IStrictShardableTest test = EasyMock.createMock(IStrictShardableTest.class);
-        IRemoteTest testShard = EasyMock.createMock(IRemoteTest.class);
-        mStubConfiguration.setTest(test);
-        mStubConfiguration.setCommandLine(commandLine);
-        mStubConfiguration.getCommandOptions().setShardCount(shardCount);
-        mStubConfiguration.getCommandOptions().setShardIndex(shardIndex);
-        mStubConfiguration.getCommandOptions().setUseTfSharding(false);
-
-        setupInvokeWithBuild();
-        setupMockSuccessListeners();
-        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
-        mMockBuildInfo.addBuildAttribute("command_line_args", "config arg");
-        mMockBuildInfo.addBuildAttribute("shard_count", "10");
-        mMockBuildInfo.addBuildAttribute("shard_index", "5");
-        EasyMock.expect(test.getTestShard(shardCount, shardIndex)).andReturn(testShard);
-        testShard.run((ITestInvocationListener)EasyMock.anyObject());
-        mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
-        replayMocks(test, testShard);
-
-        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
-
-        verifyMocks(test, testShard);
-    }
-
-    /**
-     * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
-     * ITestInvocationListener[])} scenario with non-{@link IStrictShardableTest} when shard index 0
-     * is given (strict sharding scenario: both shard-count and shard-index are given)
-     */
-    public void testInvoke_nonStrictShardableTest_withShardIndexZero() throws Throwable {
-        String[] commandLine = {"config", "arg"};
-        int shardCount = 10;
-        int shardIndex = 0;
-        IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
-        mStubConfiguration.setTest(test);
-        mStubConfiguration.setCommandLine(commandLine);
-        mStubConfiguration.getCommandOptions().setShardCount(shardCount);
-        mStubConfiguration.getCommandOptions().setShardIndex(shardIndex);
-        mStubConfiguration.getCommandOptions().setUseTfSharding(false);
-
-        setupInvokeWithBuild();
-        setupMockSuccessListeners();
-        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
-        mMockBuildInfo.addBuildAttribute("command_line_args", "config arg");
-        mMockBuildInfo.addBuildAttribute("shard_count", "10");
-        mMockBuildInfo.addBuildAttribute("shard_index", "0");
-        test.run((ITestInvocationListener)EasyMock.anyObject());
-        mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
-        replayMocks(test);
-
-        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
-
-        verifyMocks(test);
-    }
-
-    /**
-     * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
-     * ITestInvocationListener[])} scenario with non-{@link IStrictShardableTest} when a shard index
-     * non-0 is given (strict sharding scenario: both shard-count and shard-index are given)
-     */
-    public void testInvoke_nonStrictShardableTest_withShardIndexNonZero() throws Throwable {
-        mTestInvocation =
-                new TestInvocation() {
-                    @Override
-                    ILogRegistry getLogRegistry() {
-                        return mMockLogRegistry;
-                    }
-
-                    @Override
-                    public IInvocationExecution createInvocationExec(boolean isSandboxed) {
-                        return new InvocationExecution() {
-                            @Override
-                            protected IShardHelper createShardHelper() {
-                                return new StrictShardHelper();
-                            }
-                        };
-                    }
-
-                    @Override
-                    protected void setExitCode(ExitCode code, Throwable stack) {
-                        // empty on purpose
-                    }
-
-                    @Override
-                    InvocationScope getInvocationScope() {
-                        // Avoid re-entry in the current TF invocation scope for unit tests.
-                        return new InvocationScope();
-                    }
-                };
-        String[] commandLine = {"config", "arg"};
-        int shardCount = 10;
-        int shardIndex = 1;
-        IStrictShardableTest shardableTest = EasyMock.createMock(IStrictShardableTest.class);
-        IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
-        EasyMock.expect(shardableTest.getTestShard(10, 1)).andReturn(test);
-        test.run((ITestInvocationListener)EasyMock.anyObject());
-        EasyMock.expectLastCall();
-        mStubConfiguration.setTest(shardableTest);
-        mStubConfiguration.setCommandLine(commandLine);
-        mStubConfiguration.getCommandOptions().setShardCount(shardCount);
-        mStubConfiguration.getCommandOptions().setShardIndex(shardIndex);
-        mStubConfiguration.getCommandOptions().setUseTfSharding(false);
-
-        setupInvokeWithBuild();
-        setupMockSuccessListeners();
-        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
-        mMockBuildInfo.addBuildAttribute("command_line_args", "config arg");
-        mMockBuildInfo.addBuildAttribute("shard_count", "10");
-        mMockBuildInfo.addBuildAttribute("shard_index", "1");
-        mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
-        replayMocks(shardableTest, test);
-
-        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
-
-        verifyMocks(shardableTest, test);
     }
 
     /**

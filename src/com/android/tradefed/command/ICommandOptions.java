@@ -158,12 +158,6 @@ public interface ICommandOptions {
     /** Returns the data passed to the invocation to describe it */
     public UniqueMultiMap<String, String> getInvocationData();
 
-    /** Returns true if we should use Tf new sharding logic */
-    public boolean shouldUseTfSharding();
-
-    /** Whether or not to use the TF sharding vs IStrictSharding */
-    public void setUseTfSharding(boolean useTfSharding);
-
     /** Returns true if we should use Tf containers to run the invocation */
     public boolean shouldUseSandboxing();
 
