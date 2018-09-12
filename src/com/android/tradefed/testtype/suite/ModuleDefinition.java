@@ -674,7 +674,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             }
             preparer.setUp(device, build);
             return null;
-        } catch (BuildError | TargetSetupError | DeviceNotAvailableException e) {
+        } catch (BuildError | TargetSetupError | DeviceNotAvailableException | RuntimeException e) {
             CLog.e("Unexpected Exception from preparer: %s", preparer.getClass().getName());
             CLog.e(e);
             return e;
@@ -695,7 +695,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             }
             preparer.setUp(mModuleInvocationContext);
             return null;
-        } catch (BuildError | TargetSetupError | DeviceNotAvailableException e) {
+        } catch (BuildError | TargetSetupError | DeviceNotAvailableException | RuntimeException e) {
             CLog.e("Unexpected Exception from preparer: %s", preparer.getClass().getName());
             CLog.e(e);
             return e;
