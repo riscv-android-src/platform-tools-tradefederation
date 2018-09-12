@@ -490,14 +490,8 @@ public class ConfigurationXmlParserTest {
                         + "</configuration>";
         final String configName = "config";
         ConfigurationDef configDef = new ConfigurationDef(configName);
-        try {
-            xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
-            fail("An exception should have been thrown.");
-        } catch (ConfigurationException expected) {
-            assertEquals(
-                    "You seem to want a multi-devices configuration but you have [target_preparer] "
-                            + "tags outside the <device> tags",
-                    expected.getMessage());
-        }
+        xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
+        // Two fakes devices, the root device will be added during creation of configuration
+        assertEquals(2, configDef.getObjectClassMap().get(Configuration.DEVICE_NAME).size());
     }
 }
