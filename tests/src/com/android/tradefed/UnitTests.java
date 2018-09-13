@@ -280,7 +280,6 @@ import com.android.tradefed.util.TableBuilderTest;
 import com.android.tradefed.util.TableFormatterTest;
 import com.android.tradefed.util.TarUtilTest;
 import com.android.tradefed.util.TestLoaderTest;
-import com.android.tradefed.util.TestMappingTest;
 import com.android.tradefed.util.TimeUtilTest;
 import com.android.tradefed.util.TimeValTest;
 import com.android.tradefed.util.VersionParserTest;
@@ -296,6 +295,7 @@ import com.android.tradefed.util.net.XmlRpcHelperTest;
 import com.android.tradefed.util.proto.TfMetricProtoUtilTest;
 import com.android.tradefed.util.sl4a.Sl4aClientTest;
 import com.android.tradefed.util.sl4a.Sl4aEventDispatcherTest;
+import com.android.tradefed.util.testmapping.TestMappingTest;
 import com.android.tradefed.util.xml.AndroidManifestWriterTest;
 
 import org.junit.runner.RunWith;
@@ -640,7 +640,6 @@ import org.junit.runners.Suite.SuiteClasses;
     TableFormatterTest.class,
     TarUtilTest.class,
     TestLoaderTest.class,
-    TestMappingTest.class,
     TimeUtilTest.class,
     TimeValTest.class,
     VersionParserTest.class,
@@ -666,6 +665,9 @@ import org.junit.runners.Suite.SuiteClasses;
     // util/sl4a
     Sl4aClientTest.class,
     Sl4aEventDispatcherTest.class,
+
+    // util/testmapping
+    TestMappingTest.class,
 
     // util/xml
     AndroidManifestWriterTest.class,
