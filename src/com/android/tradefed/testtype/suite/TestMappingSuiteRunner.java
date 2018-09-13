@@ -17,7 +17,9 @@ package com.android.tradefed.testtype.suite;
 
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
-import com.android.tradefed.util.TestMapping;
+import com.android.tradefed.util.testmapping.TestInfo;
+import com.android.tradefed.util.testmapping.TestMapping;
+import com.android.tradefed.util.testmapping.TestOption;
 
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -67,7 +69,7 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
         }
 
         if (mTestGroup != null) {
-            Set<TestMapping.TestInfo> testsToRun = TestMapping.getTests(getBuildInfo(), mTestGroup);
+            Set<TestInfo> testsToRun = TestMapping.getTests(getBuildInfo(), mTestGroup);
             if (testsToRun.isEmpty()) {
                 throw new RuntimeException(
                         String.format("No test found for the given group: %s.", mTestGroup));
@@ -77,9 +79,9 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
             Set<String> testNames = new HashSet<String>();
             // module-arg options compiled from test options for each test.
             Set<String> moduleArgs = new HashSet<String>();
-            for (TestMapping.TestInfo test : testsToRun) {
+            for (TestInfo test : testsToRun) {
                 testNames.add(test.getName());
-                for (TestMapping.TestOption option : test.getOptions()) {
+                for (TestOption option : test.getOptions()) {
                     String moduleArg = String.format("%s:%s", test.getName(), option.getName());
                     if (option.getValue() != null && !option.getValue().isEmpty()) {
                         moduleArg = String.format("%s:%s", moduleArg, option.getValue());
