@@ -46,7 +46,7 @@ public final class SandboxOptions {
         name = USE_PROTO_REPORTER,
         description = "Whether or not to use protobuf format reporting between processes."
     )
-    private boolean mUseProtoReporter = false;
+    private boolean mUseProtoReporter = true;
 
     /**
      * Returns the provided directories containing the Trade Federation version to use for
