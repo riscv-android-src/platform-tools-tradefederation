@@ -72,10 +72,10 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
     private IInvocationContext mModuleInvocationContext;
     private IConfiguration mModuleConfiguration;
     private ModuleListener mMainGranularRunListener;
+    private RetryLogSaverResultForwarder mRetryAttemptForwarder;
     private List<ITestInvocationListener> mModuleLevelListeners;
     private ILogSaver mLogSaver;
     private String mModuleId;
-    private boolean mIsMetricCollectorInitialized;
     private int mMaxRunLimit;
 
     // Tracking of the metrics
@@ -97,7 +97,6 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
         mTest = test;
         mMainGranularRunListener = new ModuleListener(mainListener);
         mFailureListener = failureListener;
-        mIsMetricCollectorInitialized = false;
         mModuleLevelListeners = moduleLevelListeners;
         mMaxRunLimit = maxRunLimit;
     }
@@ -173,7 +172,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
      *     TestFailureListener}, and wrapped by RunMetricsCollector and Module MetricCollector (if
      *     not initialized).
      */
-    private ITestInvocationListener prepareRunListener(int attemptNumber) {
+    private ITestInvocationListener initializeListeners() {
         List<ITestInvocationListener> currentTestListener = new ArrayList<>();
         // Add all the module level listeners, including TestFailureListener
         if (mModuleLevelListeners != null) {
@@ -181,52 +180,40 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
         }
         currentTestListener.add(mMainGranularRunListener);
 
-        ITestInvocationListener runListener =
-                new LogSaverResultForwarder(mLogSaver, currentTestListener) {
-                    // Propagate the attempt number to TestRunStarted.
-                    @Override
-                    public void testRunStarted(String runName, int testCount) {
-                        testRunStarted(runName, testCount, attemptNumber);
-                    }
-                };
+        mRetryAttemptForwarder = new RetryLogSaverResultForwarder(mLogSaver, currentTestListener);
+        ITestInvocationListener runListener = mRetryAttemptForwarder;
         if (mFailureListener != null) {
-            mFailureListener.setLogger(runListener);
+            mFailureListener.setLogger(mRetryAttemptForwarder);
             currentTestListener.add(mFailureListener);
         }
 
-        // TODO: For RunMetricCollector and moduleMetricCollector, we only gather the
-        // metrics in the first run. This part can be improved if we want to gather metrics for
-        // every run.
-        if (!mIsMetricCollectorInitialized) {
-            if (mRunMetricCollectors != null) {
-                // Module only init the collectors here to avoid triggering the collectors when
-                // replaying the cached events at the end. This ensure metrics are capture at
-                // the proper time in the invocation.
-                for (IMetricCollector collector : mRunMetricCollectors) {
-                    runListener = collector.init(mModuleInvocationContext, runListener);
-                }
-            }
-            // The module collectors itself are added: this list will be very limited.
-            for (IMetricCollector collector : mModuleConfiguration.getMetricCollectors()) {
+        if (mRunMetricCollectors != null) {
+            // Module only init the collectors here to avoid triggering the collectors when
+            // replaying the cached events at the end. This ensure metrics are capture at
+            // the proper time in the invocation.
+            for (IMetricCollector collector : mRunMetricCollectors) {
                 runListener = collector.init(mModuleInvocationContext, runListener);
             }
-            mIsMetricCollectorInitialized = true;
         }
+        // The module collectors itself are added: this list will be very limited.
+        for (IMetricCollector collector : mModuleConfiguration.getMetricCollectors()) {
+            runListener = collector.init(mModuleInvocationContext, runListener);
+        }
+
         return runListener;
     }
 
     /**
-     * Schedule a series of {@link IRemoteTest} "run". TODO: Customize the retry strategy; Each run
-     * is granularized to a subset of the whole testcases.
+     * Schedule a series of {@link IRemoteTest#run(ITestInvocationListener)}.
      *
      * @param listener The ResultForwarder listener which contains a new moduleListener for each
      *     run.
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        ITestInvocationListener allListeners = initializeListeners();
         // First do the regular run, not retried.
-        int initAttempt = 0;
-        intraModuleRun(initAttempt);
+        intraModuleRun(allListeners);
 
         if (mMaxRunLimit <= 1) {
             return;
@@ -234,10 +221,9 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
 
         // If the very first attempt failed, then don't proceed.
         if (RetryStrategy.RERUN_UNTIL_FAILURE.equals(mRetryStrategy)) {
-            Set<TestDescription> lastRun = getFailedTestCases(initAttempt);
+            Set<TestDescription> lastRun = getFailedTestCases(0);
             // If we encountered a failure
-            if (!lastRun.isEmpty()
-                    || mMainGranularRunListener.hasRunCrashedAtAttempt(initAttempt)) {
+            if (!lastRun.isEmpty() || mMainGranularRunListener.hasRunCrashedAtAttempt(0)) {
                 CLog.w("%s failed after the first run. Stopping.", lastRun);
                 return;
             }
@@ -303,7 +289,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
                 }
 
                 // Run the tests again
-                intraModuleRun(attemptNumber);
+                intraModuleRun(allListeners);
 
                 Set<TestDescription> lastRun = getFailedTestCases(attemptNumber);
                 if (shouldHandleFailure(mRetryStrategy)) {
@@ -378,13 +364,9 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
         }
     }
 
-    /**
-     * The workflow for each individual {@link IRemoteTest} run. TODO: When this function is called,
-     * the IRemoteTest should already has the subset of testcases identified.
-     */
-    @VisibleForTesting
-    final void intraModuleRun(int attemptNumber) throws DeviceNotAvailableException {
-        ITestInvocationListener runListener = prepareRunListener(attemptNumber);
+    /** The workflow for each individual {@link IRemoteTest} run. */
+    private final void intraModuleRun(ITestInvocationListener runListener)
+            throws DeviceNotAvailableException {
         try {
             mTest.run(runListener);
         } catch (RuntimeException re) {
@@ -401,6 +383,8 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
             CLog.w(due);
             CLog.w("Proceeding to the next test.");
             runListener.testRunFailed(due.getMessage());
+        } finally {
+            mRetryAttemptForwarder.incrementAttempt();
         }
     }
 
@@ -470,5 +454,26 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
     /** Returns the listener containing all the results. */
     public ModuleListener getResultListener() {
         return mMainGranularRunListener;
+    }
+
+    /** Forwarder that also handles passing the current attempt we are at. */
+    private class RetryLogSaverResultForwarder extends LogSaverResultForwarder {
+
+        private int mAttemptNumber = 0;
+
+        public RetryLogSaverResultForwarder(
+                ILogSaver logSaver, List<ITestInvocationListener> listeners) {
+            super(logSaver, listeners);
+        }
+
+        @Override
+        public void testRunStarted(String runName, int testCount) {
+            testRunStarted(runName, testCount, mAttemptNumber);
+        }
+
+        /** Increment the attempt number. */
+        public void incrementAttempt() {
+            mAttemptNumber++;
+        }
     }
 }

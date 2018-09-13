@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.suite;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.config.IConfiguration;
@@ -248,43 +249,25 @@ public class GranularRetriableTestWrapperTest {
     }
 
     /**
-     * Test the intra module "run" triggers IRemoteTest run method with a dedicated ModuleListener.
+     * Test that the intra module retry does not inhibit DeviceNotAvailableException. They are
+     * bubbled up to the top.
      */
     @Test
-    public void testIntraModuleRun_pass() throws Exception {
-        TestDescription fakeTestCase = new TestDescription("ClassFoo", "TestFoo");
-
-        GranularRetriableTestWrapper granularTestWrapper =
-                createGranularTestWrapper(new FakeTest(), 99);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_CASE_FAILURE);
-        assertEquals(0, granularTestWrapper.getTestRunResultCollected().size());
-        granularTestWrapper.intraModuleRun(0);
-        assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
-        assertEquals(1, granularTestWrapper.getFinalTestRunResults().size());
-        Set<TestDescription> completedTests =
-                granularTestWrapper.getFinalTestRunResults().get(0).getCompletedTests();
-        assertEquals(1, completedTests.size());
-        assertTrue(completedTests.contains(fakeTestCase));
-
-        // No retried run because all tests passed
-        assertEquals(0, granularTestWrapper.getRetrySuccess());
-        assertEquals(0, granularTestWrapper.getRetryFailed());
-        assertEquals(0, granularTestWrapper.getRetryTime());
-    }
-
-    /**
-     * Test that the intra module "run" method catches DeviceNotAvailableException and raises it
-     * after record the tests.
-     */
-    @Test(expected = DeviceNotAvailableException.class)
     public void testIntraModuleRun_catchDeviceNotAvailableException() throws Exception {
         IRemoteTest mockTest = Mockito.mock(IRemoteTest.class);
         Mockito.doThrow(new DeviceNotAvailableException("fake message", "serial"))
                 .when(mockTest)
                 .run(Mockito.any(ITestInvocationListener.class));
+
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(mockTest, 1);
-        // Verify.
-        granularTestWrapper.intraModuleRun(0);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_CASE_FAILURE);
+        try {
+            granularTestWrapper.run(new CollectingTestListener());
+            fail("Should have thrown an exception.");
+        } catch (DeviceNotAvailableException expected) {
+            // Expected
+            assertEquals("fake message", expected.getMessage());
+        }
     }
 
     /**
@@ -303,7 +286,7 @@ public class GranularRetriableTestWrapperTest {
                     }
                 };
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 1);
-        granularTestWrapper.intraModuleRun(0);
+        granularTestWrapper.run(new CollectingTestListener());
         TestRunResult attempResults =
                 granularTestWrapper.getTestRunResultCollected().get(RUN_NAME).get(0);
         assertTrue(attempResults.isRunFailure());
