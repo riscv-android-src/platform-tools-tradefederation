@@ -23,6 +23,8 @@ code base and executing the tests via the TradeFederation test harness.
 atest is designed to support any test types that can be ran by TradeFederation.
 """
 
+from __future__ import print_function
+
 import logging
 import os
 import sys
@@ -310,12 +312,12 @@ def _print_module_info_from_module_name(mod_info, module_name):
     target_module_info = mod_info.get_module_info(module_name)
     is_module_found = False
     if target_module_info:
-        atest_utils.colorful_print(module_name, constants.GREEN, True)
+        atest_utils.colorful_print(module_name, constants.GREEN)
         for title_key in title_mapping.iterkeys():
             atest_utils.colorful_print("\t%s" % title_mapping[title_key],
-                                       constants.BLUE, True)
+                                       constants.CYAN)
             for info_value in target_module_info[title_key]:
-                atest_utils.colorful_print("\t\t%s" % info_value, constants.BLUE)
+                print("\t\t{}".format(info_value))
         is_module_found = True
     return is_module_found
 
@@ -332,10 +334,8 @@ def _print_test_info(mod_info, test_infos):
     """
     for test_info in test_infos:
         _print_module_info_from_module_name(mod_info, test_info.test_name)
-        atest_utils.colorful_print("\tRelated build targets", constants.MAGENTA,
-                                   True)
-        atest_utils.colorful_print("\t\t%s" % str(test_info.build_targets),
-                                   constants.YELLOW, False)
+        atest_utils.colorful_print("\tRelated build targets", constants.MAGENTA)
+        print("\t\t{}".format(", ".join(test_info.build_targets)))
         for build_target in test_info.build_targets:
             if build_target != test_info.test_name:
                 _print_module_info_from_module_name(mod_info, build_target)
