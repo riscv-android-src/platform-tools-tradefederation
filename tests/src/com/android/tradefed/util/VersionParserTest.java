@@ -15,11 +15,16 @@
  */
 package com.android.tradefed.util;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+
+import java.io.File;
 
 /** Unit tests for {@link VersionParser}. */
 @RunWith(JUnit4.class)
@@ -30,7 +35,19 @@ public class VersionParserTest {
      * running inside an IDE directly (like Eclipse).
      */
     @Test
-    public void testVersionIsAvailable() {
+    public void testVersionIsAvailable() throws Exception {
+        // If not running from packaged Tradefed, this should be skipped.
+        File f =
+                new File(
+                        VersionParserTest.class
+                                .getProtectionDomain()
+                                .getCodeSource()
+                                .getLocation()
+                                .toURI());
+        Assume.assumeFalse(
+                "If you are executing the unit tests locally, ignore this.",
+                f.getAbsolutePath().contains("/out/host/linux-x86"));
+
         String version = VersionParser.fetchVersion();
         assertNotNull(version);
         assertFalse(version.isEmpty());
