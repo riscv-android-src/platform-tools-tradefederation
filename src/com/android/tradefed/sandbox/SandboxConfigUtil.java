@@ -114,7 +114,7 @@ public class SandboxConfigUtil {
     }
 
     /** Create a global config with only the keystore to make it available in subprocess. */
-    public static File dumpFilteredGlobalConfig() throws IOException {
-        return GlobalConfiguration.getInstance().cloneConfigWithFilter();
+    public static File dumpFilteredGlobalConfig(Set<String> exclusionPatterns) throws IOException {
+        return GlobalConfiguration.getInstance().cloneConfigWithFilter(exclusionPatterns);
     }
 }
