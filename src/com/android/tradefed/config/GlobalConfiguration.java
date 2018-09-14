@@ -26,9 +26,9 @@ import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.IMultiDeviceRecovery;
 import com.android.tradefed.host.HostOptions;
-import com.android.tradefed.host.LocalHostResourceManager;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.host.IHostResourceManager;
+import com.android.tradefed.host.LocalHostResourceManager;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.ITerribleFailureHandler;
@@ -50,9 +50,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * An {@link IGlobalConfiguration} implementation that stores the loaded config objects in a map
@@ -732,6 +735,13 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     /** {@inheritDoc} */
     @Override
     public File cloneConfigWithFilter(String... whitelistConfigs) throws IOException {
+        return cloneConfigWithFilter(new HashSet<>(), whitelistConfigs);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public File cloneConfigWithFilter(Set<String> exclusionPatterns, String... whitelistConfigs)
+            throws IOException {
         File filteredGlobalConfig = FileUtil.createTempFile("filtered_global_config", ".config");
         KXmlSerializer serializer = ConfigurationUtil.createSerializer(filteredGlobalConfig);
         serializer.startTag(null, ConfigurationUtil.CONFIGURATION_NAME);
@@ -739,11 +749,24 @@ public class GlobalConfiguration implements IGlobalConfiguration {
             whitelistConfigs = CONFIGS_FOR_SUBPROCESS_WHITE_LIST;
         }
         for (String config : whitelistConfigs) {
-            ConfigurationUtil.dumpClassToXml(
-                    serializer, config, getConfigurationObject(config), new ArrayList<>());
+            Object configObj = getConfigurationObject(config);
+            String name = configObj.getClass().getCanonicalName();
+            if (!shouldDump(name, exclusionPatterns)) {
+                continue;
+            }
+            ConfigurationUtil.dumpClassToXml(serializer, config, configObj, new ArrayList<>());
         }
         serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
         serializer.endDocument();
         return filteredGlobalConfig;
+    }
+
+    private boolean shouldDump(String name, Set<String> patterns) {
+        for (String pattern : patterns) {
+            if (Pattern.matches(pattern, name)) {
+                return false;
+            }
+        }
+        return true;
     }
 }
