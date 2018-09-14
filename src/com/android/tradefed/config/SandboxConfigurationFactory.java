@@ -26,6 +26,7 @@ import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Map;
 
 /** Special Configuration factory to handle creation of configurations for Sandboxing purpose. */
@@ -73,7 +74,7 @@ public class SandboxConfigurationFactory extends ConfigurationFactory {
             runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
             // Dump the NON_VERSIONED part of the configuration against the current TF and not the
             // sandboxed environment.
-            globalConfig = SandboxConfigUtil.dumpFilteredGlobalConfig();
+            globalConfig = SandboxConfigUtil.dumpFilteredGlobalConfig(new HashSet<>());
             xmlConfig =
                     SandboxConfigUtil.dumpConfigForVersion(
                             createClasspath(),
