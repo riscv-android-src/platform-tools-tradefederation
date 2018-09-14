@@ -47,6 +47,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 /**
@@ -268,7 +269,7 @@ public class TradefedSandbox implements ISandbox {
                 commandLine = commandLine + " --no-" + SandboxOptions.USE_PROTO_REPORTER;
             }
             String[] args = QuotationAwareTokenizer.tokenizeLine(commandLine);
-            mGlobalConfig = SandboxConfigUtil.dumpFilteredGlobalConfig();
+            mGlobalConfig = dumpGlobalConfig();
             DumpCmd mode = DumpCmd.RUN_CONFIG;
             if (config.getCommandOptions().shouldUseSandboxTestMode()) {
                 mode = DumpCmd.TEST_MODE;
@@ -320,6 +321,11 @@ public class TradefedSandbox implements ISandbox {
         Context contextProto = context.toProto();
         contextProto.writeDelimitedTo(new FileOutputStream(protoFile));
         return protoFile;
+    }
+
+    /** Dump the global configuration filtered from some objects. */
+    protected File dumpGlobalConfig() throws IOException {
+        return SandboxConfigUtil.dumpFilteredGlobalConfig(new HashSet<>());
     }
 
     /** {@inheritDoc} */
