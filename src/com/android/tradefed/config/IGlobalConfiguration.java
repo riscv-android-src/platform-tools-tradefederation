@@ -33,6 +33,7 @@ import com.android.tradefed.util.keystore.IKeyStoreFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A class to encompass global configuration information for a single Trade Federation instance
@@ -313,6 +314,19 @@ public interface IGlobalConfiguration {
      * @throws IOException
      */
     public File cloneConfigWithFilter(String... whitelistConfigs) throws IOException;
+
+    /**
+     * Filter the GlobalConfiguration based on a white list and output to an XML file.
+     * @see #cloneConfigWithFilter(String...)
+     *
+     * @param exclusionPatterns The pattern of class name to exclude from the dump.
+     * @param whitelistConfigs a {@link String} array of configs to be included in the new XML file.
+     *     If it's set to <code>null<code/>, a default list should be used.
+     * @return the File containing the new filtered global config.
+     * @throws IOException
+     */
+    public File cloneConfigWithFilter(Set<String> exclusionPatterns, String... whitelistConfigs)
+            throws IOException;
 
     /**
      * Proper setup at the start of tradefed.
