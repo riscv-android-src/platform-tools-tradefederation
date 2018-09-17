@@ -44,11 +44,12 @@ public class VersionParserTest {
                                 .getCodeSource()
                                 .getLocation()
                                 .toURI());
-        Assume.assumeFalse(
-                "If you are executing the unit tests locally, ignore this.",
-                f.getAbsolutePath().contains("/out/host/linux-x86"));
-
         String version = VersionParser.fetchVersion();
+        if (version == null) {
+            Assume.assumeFalse(
+                    "If you are executing the unit tests locally, ignore this.",
+                    f.getAbsolutePath().contains("/out/host/linux-x86"));
+        }
         assertNotNull(version);
         assertFalse(version.isEmpty());
         assertNotEquals(VersionParser.DEFAULT_IMPLEMENTATION_VERSION, version);
