@@ -156,7 +156,7 @@ public class SandboxedInvocationExecutionTest {
                     }
 
                     @Override
-                    public IInvocationExecution createInvocationExec(boolean isSandboxed) {
+                    public IInvocationExecution createInvocationExec(RunMode mode) {
                         return new InvocationExecution() {
                             @Override
                             public boolean shardConfig(
