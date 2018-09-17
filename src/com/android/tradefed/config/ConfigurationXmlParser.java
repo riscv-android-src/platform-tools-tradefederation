@@ -70,6 +70,7 @@ class ConfigurationXmlParser {
 
         // State-holding members
         private String mCurrentConfigObject;
+        private String mCurrentObjectType;
         private String mCurrentDeviceObject;
         private List<String> mListDevice = new ArrayList<String>();
         private List<String> mOutsideTag = new ArrayList<String>();
@@ -135,6 +136,7 @@ class ConfigurationXmlParser {
                 mCurrentDeviceObject = deviceName;
                 addObject(localName, attributes);
             } else if (Configuration.isBuiltInObjType(localName)) {
+                mCurrentObjectType = localName;
                 // tag is a built in local config object
                 if (isLocalConfig == null) {
                     isLocalConfig = true;
@@ -202,7 +204,8 @@ class ConfigurationXmlParser {
                     // preprend the device name in extra if inside a device config object.
                     optionName = String.format("{%s}%s", mCurrentDeviceObject, optionName);
                 }
-                mConfigDef.addOptionDef(optionName, optionKey, optionValue, mName);
+                mConfigDef.addOptionDef(
+                        optionName, optionKey, optionValue, mName, mCurrentObjectType);
             } else if (CONFIG_TAG.equals(localName)) {
                 String description = attributes.getValue("description");
                 if (description != null) {
@@ -275,6 +278,9 @@ class ConfigurationXmlParser {
             if (DEVICE_TAG.equals(localName) && !mInsideParentDeviceTag) {
                 // Only unset if it was not the parent device tag.
                 mCurrentDeviceObject = null;
+            }
+            if (mCurrentObjectType != null && mCurrentObjectType.equals(localName)) {
+                mCurrentObjectType = null;
             }
         }
 
