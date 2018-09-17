@@ -19,11 +19,13 @@ import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
 import com.android.tradefed.log.ITestLogger;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
@@ -44,6 +46,7 @@ import com.android.tradefed.util.keystore.IKeyStoreClient;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -274,10 +277,37 @@ public class TradefedSandbox implements ISandbox {
             if (config.getCommandOptions().shouldUseSandboxTestMode()) {
                 mode = DumpCmd.TEST_MODE;
             }
-            mSerializedConfiguration =
-                    SandboxConfigUtil.dumpConfigForVersion(
-                            createClasspath(mRootFolder), mRunUtil, args, mode, mGlobalConfig);
-        } catch (Exception e) {
+
+            try {
+                mSerializedConfiguration =
+                        SandboxConfigUtil.dumpConfigForVersion(
+                                createClasspath(mRootFolder), mRunUtil, args, mode, mGlobalConfig);
+            } catch (SandboxConfigurationException e) {
+                // TODO: Improve our detection of that scenario
+                if (e.getMessage().contains(String.format("Can not find local config %s", args[0]))
+                        || e.getMessage()
+                                .contains(
+                                        String.format(
+                                                "Could not find configuration '%s'", args[0]))) {
+                    File parentConfig = handleChildMissingConfig(args);
+                    if (parentConfig != null) {
+                        try {
+                            mSerializedConfiguration =
+                                    SandboxConfigUtil.dumpConfigForVersion(
+                                            createClasspath(mRootFolder),
+                                            mRunUtil,
+                                            new String[] {parentConfig.getAbsolutePath()},
+                                            mode,
+                                            mGlobalConfig);
+                        } finally {
+                            FileUtil.deleteFile(parentConfig);
+                        }
+                        return null;
+                    }
+                }
+                throw e;
+            }
+        } catch (IOException | ConfigurationException e) {
             StreamUtil.close(mEventParser);
             StreamUtil.close(mProtoReceiver);
             return e;
@@ -340,5 +370,21 @@ public class TradefedSandbox implements ISandbox {
     private SandboxOptions getSandboxOptions(IConfiguration config) {
         return (SandboxOptions)
                 config.getConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME);
+    }
+
+    private File handleChildMissingConfig(String[] args) {
+        IConfiguration parentConfig = null;
+        try {
+            parentConfig = ConfigurationFactory.getInstance().createConfigurationFromArgs(args);
+            File tmpParentConfig =
+                    FileUtil.createTempFile("parent-config", ".xml", mSandboxTmpFolder);
+            PrintWriter pw = new PrintWriter(tmpParentConfig);
+            parentConfig.dumpXml(pw);
+            return tmpParentConfig;
+        } catch (ConfigurationException | IOException e) {
+            CLog.e("Parent doesn't understand the command either:");
+            CLog.e(e);
+            return null;
+        }
     }
 }

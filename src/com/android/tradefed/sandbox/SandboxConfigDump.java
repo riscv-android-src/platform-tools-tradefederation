@@ -18,10 +18,9 @@ package com.android.tradefed.sandbox;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
-import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.config.SandboxConfigurationFactory;
 import com.android.tradefed.log.FileLogger;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -34,7 +33,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Runner class that creates a {@link IConfiguration} based on a command line and dump it to a file.
@@ -57,7 +58,7 @@ public class SandboxConfigDump {
      * We do not output the versioned elements to avoid causing the parent process to have issues
      * with them when trying to resolve them
      */
-    private static final List<String> VERSIONED_ELEMENTS = new ArrayList<>();
+    public static final Set<String> VERSIONED_ELEMENTS = new HashSet<>();
 
     static {
         VERSIONED_ELEMENTS.add(Configuration.SYSTEM_STATUS_CHECKER_TYPE_NAME);
@@ -75,12 +76,13 @@ public class SandboxConfigDump {
         List<String> argList = new ArrayList<>(Arrays.asList(args));
         DumpCmd cmd = DumpCmd.valueOf(argList.remove(0));
         File resFile = new File(argList.remove(0));
-        IConfigurationFactory factory = ConfigurationFactory.getInstance();
+        SandboxConfigurationFactory factory = SandboxConfigurationFactory.getInstance();
         PrintWriter pw = null;
         try {
             // TODO: Handle keystore
             IConfiguration config =
                     factory.createConfigurationFromArgs(argList.toArray(new String[0]));
+            //factory.createConfigurationFromArgs(argList.toArray(new String[0]), cmd);
             if (DumpCmd.RUN_CONFIG.equals(cmd) || DumpCmd.TEST_MODE.equals(cmd)) {
                 config.getCommandOptions().setShouldUseSandboxing(false);
                 config.getConfigurationDescription().setSandboxed(true);
@@ -115,7 +117,7 @@ public class SandboxConfigDump {
             pw = new PrintWriter(resFile);
             if (DumpCmd.NON_VERSIONED_CONFIG.equals(cmd)) {
                 // Remove elements that are versioned.
-                config.dumpXml(pw, VERSIONED_ELEMENTS);
+                config.dumpXml(pw, new ArrayList<>(VERSIONED_ELEMENTS));
             } else {
                 // FULL_XML in that case.
                 config.dumpXml(pw);
