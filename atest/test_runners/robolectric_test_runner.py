@@ -47,12 +47,19 @@ class RobolectricTestRunner(test_runner_base.TestRunnerBase):
             test_infos: List of TestInfo.
             extra_args: Dict of extra args to add to test run.
             reporter: A ResultReporter Instance.
+
+        Returns:
+            0 if tests succeed, non-zero otherwise.
         """
         reporter.register_unsupported_runner(self.NAME)
+        rob_build_ret = True
         for test_info in test_infos:
             env_vars = self.generate_env_vars(test_info, extra_args)
-            atest_utils.build(set([test_info.test_name]), verbose=True,
-                              env_vars=env_vars)
+            rob_build_ret &= atest_utils.build(
+                set([test_info.test_name]), verbose=True, env_vars=env_vars)
+        if rob_build_ret:
+            return constants.EXIT_CODE_SUCCESS
+        return constants.EXIT_CODE_TEST_FAILURE
 
     @staticmethod
     def generate_env_vars(test_info, extra_args):

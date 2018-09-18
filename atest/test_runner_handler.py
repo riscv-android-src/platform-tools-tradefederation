@@ -20,6 +20,7 @@ import itertools
 import traceback
 
 import atest_error
+import constants
 import result_reporter
 
 from test_runners import atest_tf_test_runner
@@ -105,14 +106,19 @@ def run_all_tests(results_dir, test_infos, extra_args):
     Args:
         test_infos: List of TestInfo.
         extra_args: Dict of extra args for test runners to use.
+
+    Returns:
+        0 if tests succeed, non-zero otherwise.
     """
     reporter = result_reporter.ResultReporter()
     reporter.print_starting_text()
+    tests_ret_code = constants.EXIT_CODE_SUCCESS
     for test_runner, tests in _group_tests_by_test_runners(test_infos):
         try:
             test_runner = test_runner(results_dir)
-            test_runner.run_tests(tests, extra_args, reporter)
+            tests_ret_code |= test_runner.run_tests(tests, extra_args, reporter)
         # pylint: disable=broad-except
         except Exception:
             reporter.runner_failure(test_runner.NAME, traceback.format_exc())
-    reporter.print_summary()
+            tests_ret_code = constants.EXIT_CODE_TEST_FAILURE
+    return reporter.print_summary() or tests_ret_code

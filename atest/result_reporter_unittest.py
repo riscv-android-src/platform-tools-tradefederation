@@ -179,5 +179,29 @@ class ResultReporterUnittests(unittest.TestCase):
         self.assertEquals(group.failed, 1)
         self.assertEquals(group.run_errors, True)
 
+    def test_print_summary_ret_val(self):
+        """Test print_summary method's return value."""
+        # PASS Case
+        self.rr.process_test_result(RESULT_PASSED_TEST)
+        self.assertEquals(0, self.rr.print_summary())
+        # PASS Case + Fail Case
+        self.rr.process_test_result(RESULT_FAILED_TEST)
+        self.assertNotEqual(0, self.rr.print_summary())
+        # PASS Case + Fail Case + PASS Case
+        self.rr.process_test_result(RESULT_PASSED_TEST_MODULE_2)
+        self.assertNotEqual(0, self.rr.print_summary())
+
+    def test_print_summary_ret_val_err_stat(self):
+        """Test print_summary method's return value."""
+        # PASS Case
+        self.rr.process_test_result(RESULT_PASSED_TEST)
+        self.assertEquals(0, self.rr.print_summary())
+        # PASS Case + Fail Case
+        self.rr.process_test_result(RESULT_RUN_FAILURE)
+        self.assertNotEqual(0, self.rr.print_summary())
+        # PASS Case + Fail Case + PASS Case
+        self.rr.process_test_result(RESULT_PASSED_TEST_MODULE_2)
+        self.assertNotEqual(0, self.rr.print_summary())
+
 if __name__ == '__main__':
     unittest.main()

@@ -161,6 +161,7 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         """Test _run_tests_pretty method."""
         mock_subproc = mock.Mock()
         mock_run.return_value = mock_subproc
+        mock_subproc.returncode = 0
         mock_server = mock.Mock()
         mock_server.getsockname.return_value = ('', '')
         mock_start_socket_server.return_value = mock_server
