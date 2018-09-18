@@ -171,6 +171,13 @@ public class DeviceConfigurationHolder implements IDeviceConfiguration {
      */
     @Override
     public IDeviceSelection getDeviceRequirements() {
+        // We should never question what to allocate for fake placeholder. Only null device would
+        // do.
+        if (isFake()) {
+            DeviceSelectionOptions select = new DeviceSelectionOptions();
+            select.setNullDeviceRequested(true);
+            return select;
+        }
         return mDeviceSelection;
     }
 
