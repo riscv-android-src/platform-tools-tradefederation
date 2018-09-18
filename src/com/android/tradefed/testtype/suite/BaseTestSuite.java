@@ -26,6 +26,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.suite.params.ModuleParameters;
 import com.android.tradefed.util.ArrayUtil;
 
 import java.io.File;
@@ -143,6 +144,15 @@ public class BaseTestSuite extends ITestSuite {
     )
     private boolean mEnableParameter = false;
 
+    @Option(
+        name = "module-parameter",
+        description =
+                "Allows to run only one module parameter type instead of all the combinations. "
+                        + "For example: 'instant_app' would only run the instant_app version of "
+                        + "modules"
+    )
+    private ModuleParameters mForceParameter = null;
+
     private SuiteModuleLoader mModuleRepo;
     private Map<String, List<SuiteTestFilter>> mIncludeFiltersParsed = new HashMap<>();
     private Map<String, List<SuiteTestFilter>> mExcludeFiltersParsed = new HashMap<>();
@@ -167,6 +177,7 @@ public class BaseTestSuite extends ITestSuite {
                     createModuleLoader(
                             mIncludeFiltersParsed, mExcludeFiltersParsed, mTestArgs, mModuleArgs);
             mModuleRepo.setParameterizedModules(mEnableParameter);
+            mModuleRepo.setModuleParameter(mForceParameter);
 
             List<File> testsDirectories = new ArrayList<>();
 
