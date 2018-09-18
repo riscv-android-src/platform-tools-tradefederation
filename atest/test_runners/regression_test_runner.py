@@ -42,6 +42,9 @@ class RegressionTestRunner(test_runner_base.TestRunnerBase):
             test_infos: List of TestInfo.
             extra_args: Dict of args to add to regression detection test run.
             reporter: A ResultReporter instance.
+
+        Returns:
+            Return code of the process for running tests.
         """
         reporter.register_unsupported_runner(self.NAME)
         pre = extra_args.pop(constants.PRE_PATCH_FOLDER)
@@ -52,6 +55,7 @@ class RegressionTestRunner(test_runner_base.TestRunnerBase):
         proc = super(RegressionTestRunner, self).run(run_cmd,
                                                      output_to_stdout=True)
         proc.wait()
+        return proc.returncode
 
     def host_env_check(self):
         """Check that host env has everything we need.

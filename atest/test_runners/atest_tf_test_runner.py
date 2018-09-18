@@ -93,11 +93,13 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             test_infos: A list of TestInfos.
             extra_args: Dict of extra args to add to test run.
             reporter: An instance of result_report.ResultReporter.
+
+        Returns:
+            0 if tests succeed, non-zero otherwise.
         """
         if os.getenv(OLD_OUTPUT_ENV_VAR):
-            self.run_tests_raw(test_infos, extra_args, reporter)
-        else:
-            self.run_tests_pretty(test_infos, extra_args, reporter)
+            return self.run_tests_raw(test_infos, extra_args, reporter)
+        return self.run_tests_pretty(test_infos, extra_args, reporter)
 
     def run_tests_raw(self, test_infos, extra_args, reporter):
         """Run the list of test_infos. See base class for more.
@@ -106,6 +108,9 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             test_infos: A list of TestInfos.
             extra_args: Dict of extra args to add to test run.
             reporter: An instance of result_report.ResultReporter.
+
+        Returns:
+            0 if tests succeed, non-zero otherwise.
         """
         iterations = 1
         metrics_folder = ''
@@ -118,6 +123,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         args = self._create_test_args(test_infos)
         reporter.register_unsupported_runner(self.NAME)
 
+        ret_code = constants.EXIT_CODE_SUCCESS
         for _ in range(iterations):
             run_cmd = self._generate_run_command(args, extra_args,
                                                  metrics_folder)
@@ -125,10 +131,12 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             try:
                 signal.signal(signal.SIGINT, self._signal_passer(subproc))
                 subproc.wait()
+                ret_code |= subproc.returncode
             except:
                 # If atest crashes, kill TF subproc group as well.
                 os.killpg(os.getpgid(subproc.pid), signal.SIGINT)
                 raise
+        return ret_code
 
     # pylint: disable=broad-except
     # pylint: disable=too-many-locals
@@ -139,6 +147,9 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             test_infos: A list of TestInfos.
             extra_args: Dict of extra args to add to test run.
             reporter: An instance of result_report.ResultReporter.
+
+        Returns:
+            0 if tests succeed, non-zero otherwise.
         """
         iterations = 1
         metrics_folder = ''
@@ -154,6 +165,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         if test_infos[0].from_test_mapping:
             args.extend(constants.TEST_MAPPING_RESULT_SERVER_ARGS)
 
+        ret_code = constants.EXIT_CODE_SUCCESS
         for _ in range(iterations):
             server = self._start_socket_server()
             run_cmd = self._generate_run_command(args, extra_args,
@@ -185,12 +197,14 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                     # we have to save it above.
                     logging.debug('Subproc already terminated, skipping')
                 finally:
-	            # Ignore socket.recv() raising due to ctrl-c
+                    # Ignore socket.recv() raising due to ctrl-c
                     if not error.args or error.args[0] != errno.EINTR:
                         raise exc_type, exc_msg, traceback_obj
             finally:
                 server.close()
                 subproc.wait()
+                ret_code |= subproc.returncode
+        return ret_code
 
     def _signal_passer(self, proc):
         """Return the signal_handler func bound to proc.

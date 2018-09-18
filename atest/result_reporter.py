@@ -193,9 +193,15 @@ class ResultReporter(object):
         print(au.colorize('\nRunning Tests...', constants.CYAN))
 
     def print_summary(self):
-        """Print summary of all test runs."""
+        """Print summary of all test runs.
+
+        Returns:
+            0 if all tests pass, non-zero otherwise.
+
+        """
+        tests_ret = constants.EXIT_CODE_SUCCESS
         if not self.runners:
-            return
+            return tests_ret
         print('\n%s' % au.colorize('Summary', constants.CYAN))
         print('-------')
         for runner_name, groups in self.runners.items():
@@ -203,6 +209,7 @@ class ResultReporter(object):
                 print(runner_name, 'Unsupported. See raw output above.')
                 continue
             if groups == FAILURE_FLAG:
+                tests_ret = constants.EXIT_CODE_TEST_FAILURE
                 print(runner_name, 'Crashed. No results to report.')
                 continue
             for group_name, stats in groups.items():
@@ -212,10 +219,14 @@ class ResultReporter(object):
                                                   stats.passed,
                                                   au.colorize('Failed', constants.RED),
                                                   stats.failed)
+                if stats.failed > 0:
+                    tests_ret = constants.EXIT_CODE_TEST_FAILURE
                 if stats.run_errors:
                     summary += ' (Completed With ERRORS)'
+                    tests_ret = constants.EXIT_CODE_TEST_FAILURE
                 print(summary)
         print()
+        return tests_ret
 
     def _update_stats(self, test, group):
         """Given the results of a single test, update test run stats.
