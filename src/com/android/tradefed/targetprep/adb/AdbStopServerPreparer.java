@@ -18,6 +18,7 @@ package com.android.tradefed.targetprep.adb;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
@@ -45,6 +46,12 @@ import java.io.IOException;
  */
 public class AdbStopServerPreparer extends BaseTargetPreparer implements ITargetCleaner {
 
+    @Option(
+        name = "restart-new-adb-version",
+        description = "Whether or not to restart adb with the new version after stopping it."
+    )
+    private boolean mRestartNewVersion = true;
+
     private static final String PATH = "PATH";
     private static final long CMD_TIMEOUT = 60000L;
     private static final String ANDROID_HOST_OUT = "ANDROID_HOST_OUT";
@@ -61,6 +68,11 @@ public class AdbStopServerPreparer extends BaseTargetPreparer implements ITarget
 
         // Kill the default adb server
         getRunUtil().runTimedCmd(CMD_TIMEOUT, "adb", "kill-server");
+
+        if (!mRestartNewVersion) {
+            CLog.d("Skipping restarting of new adb version.");
+            return;
+        }
 
         File adb = null;
         if (getEnvironment(ANDROID_HOST_OUT) != null) {
