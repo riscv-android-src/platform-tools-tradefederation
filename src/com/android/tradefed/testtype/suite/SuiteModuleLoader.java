@@ -31,8 +31,8 @@ import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.suite.params.IModuleParameter;
 import com.android.tradefed.testtype.suite.params.ModuleParameters;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelper;
-import com.android.tradefed.testtype.suite.params.NotMultiAbiHandler;
 import com.android.tradefed.testtype.suite.params.NegativeHandler;
+import com.android.tradefed.testtype.suite.params.NotMultiAbiHandler;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -68,6 +68,7 @@ public class SuiteModuleLoader {
     private IConfigurationFactory mConfigFactory = ConfigurationFactory.getInstance();
 
     private boolean mAllowParameterizedModules = false;
+    private ModuleParameters mForcedModuleParameter = null;
 
     /**
      * Ctor for the SuiteModuleLoader.
@@ -93,6 +94,11 @@ public class SuiteModuleLoader {
     /** Sets whether or not to allow parameterized modules. */
     public final void setParameterizedModules(boolean allowed) {
         mAllowParameterizedModules = allowed;
+    }
+
+    /** Sets the only {@link ModuleParameters} type that should be run. */
+    public final void setModuleParameter(ModuleParameters param) {
+        mForcedModuleParameter = param;
     }
 
     /** Main loading of configurations, looking into a folder */
@@ -184,6 +190,13 @@ public class SuiteModuleLoader {
         try {
             boolean primaryAbi = true;
             boolean shouldCreateMultiAbi = true;
+            // If a particular parameter was requested to be run, find it.
+            IModuleParameter mForcedParameter = null;
+            if (mForcedModuleParameter != null) {
+                mForcedParameter =
+                        ModuleParametersHelper.getParameterHandler(mForcedModuleParameter);
+            }
+
             // Invokes parser to process the test module config file
             // Need to generate a different config for each ABI as we cannot guarantee the
             // configs are idempotent. This however means we parse the same file multiple times
@@ -192,7 +205,6 @@ public class SuiteModuleLoader {
                 if (mAllowParameterizedModules && !primaryAbi && !shouldCreateMultiAbi) {
                     continue;
                 }
-
                 String baseId = AbiUtils.createId(abi.getName(), name);
                 if (!shouldRunModule(baseId)) {
                     // If the module should not run tests based on the state of filters,
@@ -211,16 +223,39 @@ public class SuiteModuleLoader {
                             configFullName, suiteTag);
                     continue;
                 }
+
+                boolean skipCreatingBaseConfig = false;
+                List<IModuleParameter> params = getModuleParameters(name, config);
+
                 // Handle parameterized modules if enabled.
                 if (mAllowParameterizedModules) {
-                    List<IModuleParameter> params = getModuleParameters(name, config);
+
+                    if (params.isEmpty()
+                            && mForcedParameter != null
+                            && !(mForcedParameter instanceof NegativeHandler)) {
+                        // If the AndroidTest.xml doesn't specify any parameter but we forced a
+                        // parameter like 'instant' to execute. In this case we don't create the
+                        // standard module.
+                        continue;
+                    }
+
+                    shouldCreateMultiAbi = shouldCreateMultiAbiForBase(params);
+
                     // If we find any parameterized combination.
                     for (IModuleParameter param : params) {
-                        if (param instanceof NotMultiAbiHandler) {
-                            shouldCreateMultiAbi = false;
+                        if (param instanceof NegativeHandler) {
                             continue;
                         }
-                        if (param instanceof NegativeHandler) {
+                        if (mForcedParameter != null) {
+                            // When a particular parameter is forced, only create it not the others
+                            if (param.getClass().equals(mForcedParameter.getClass())) {
+                                skipCreatingBaseConfig = true;
+                            } else {
+                                continue;
+                            }
+                        }
+                        // Only create primary abi of parameterized modules
+                        if (!primaryAbi) {
                             continue;
                         }
                         String fullId =
@@ -232,10 +267,15 @@ public class SuiteModuleLoader {
                         toRun.put(fullId, paramConfig);
                     }
                 }
+                primaryAbi = false;
+                // If a parameterized form of the module was forced, we don't create the standard
+                // version of it.
+                if (skipCreatingBaseConfig) {
+                    continue;
+                }
                 // Always add the base regular configuration to the execution.
                 setUpConfig(name, baseId, baseId, config, abi);
                 toRun.put(baseId, config);
-                primaryAbi = false;
             }
         } catch (ConfigurationException e) {
             throw new RuntimeException(
@@ -493,5 +533,15 @@ public class SuiteModuleLoader {
         // add the abi and module name to the description
         config.getConfigurationDescription().setAbi(abi);
         config.getConfigurationDescription().setModuleName(name);
+    }
+
+    /** Whether or not the base configuration should be created for all abis or not. */
+    private boolean shouldCreateMultiAbiForBase(List<IModuleParameter> params) {
+        for (IModuleParameter param : params) {
+            if (param instanceof NotMultiAbiHandler) {
+                return false;
+            }
+        }
+        return true;
     }
 }
