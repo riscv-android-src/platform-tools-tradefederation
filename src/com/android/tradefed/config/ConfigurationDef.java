@@ -56,16 +56,27 @@ public class ConfigurationDef {
         public final String key;
         public final String value;
         public final String source;
+        public final String applicableObjectType;
 
         public OptionDef(String optionName, String optionValue, String source) {
-            this(optionName, null, optionValue, source);
+            this(optionName, null, optionValue, source, null);
         }
 
         public OptionDef(String optionName, String optionKey, String optionValue, String source) {
+            this(optionName, optionKey, optionValue, source, null);
+        }
+
+        public OptionDef(
+                String optionName,
+                String optionKey,
+                String optionValue,
+                String source,
+                String type) {
             this.name = optionName;
             this.key = optionKey;
             this.value = optionValue;
             this.source = source;
+            this.applicableObjectType = type;
         }
     }
 
@@ -144,9 +155,18 @@ public class ConfigurationDef {
      * @param optionName the name of the option
      * @param optionValue the option value
      */
+    void addOptionDef(
+            String optionName,
+            String optionKey,
+            String optionValue,
+            String optionSource,
+            String type) {
+        mOptionList.add(new OptionDef(optionName, optionKey, optionValue, optionSource, type));
+    }
+
     void addOptionDef(String optionName, String optionKey, String optionValue,
             String optionSource) {
-        mOptionList.add(new OptionDef(optionName, optionKey, optionValue, optionSource));
+        mOptionList.add(new OptionDef(optionName, optionKey, optionValue, optionSource, null));
     }
 
     /**
@@ -259,6 +279,8 @@ public class ConfigurationDef {
                     cause = e.getCause();
                     rejectedObjects.putAll(e.getRejectedObjects());
                     CLog.e(e);
+                    // Don't add in case of issue
+                    shouldAddToFlatConfig = false;
                     continue;
                 }
                 Matcher matcher = null;
@@ -321,6 +343,18 @@ public class ConfigurationDef {
             }
         }
 
+        checkRejectedObjects(rejectedObjects, cause);
+
+        // We always add the device configuration list so we can rely on it everywhere
+        config.setConfigurationObjectList(Configuration.DEVICE_NAME, deviceObjectList);
+        injectOptions(config, mOptionList);
+
+        return config;
+    }
+
+    /** Evaluate rejected objects map, if any throw an exception. */
+    protected void checkRejectedObjects(Map<String, String> rejectedObjects, Throwable cause)
+            throws ClassNotFoundConfigurationException {
         // Send all the objects that failed the loading.
         if (!rejectedObjects.isEmpty()) {
             throw new ClassNotFoundConfigurationException(
@@ -330,12 +364,11 @@ public class ConfigurationDef {
                     cause,
                     rejectedObjects);
         }
+    }
 
-        // We always add the device configuration list so we can rely on it everywhere
-        config.setConfigurationObjectList(Configuration.DEVICE_NAME, deviceObjectList);
-        config.injectOptionValues(mOptionList);
-
-        return config;
+    protected void injectOptions(IConfiguration config, List<OptionDef> optionList)
+            throws ConfigurationException {
+        config.injectOptionValues(optionList);
     }
 
     /**

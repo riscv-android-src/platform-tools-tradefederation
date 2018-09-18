@@ -585,7 +585,7 @@ public class Configuration implements IConfiguration {
         }
 
         if (requiredForRerun) {
-            OptionDef optionDef = new OptionDef(optionName, optionKey, optionValue, source);
+            OptionDef optionDef = new OptionDef(optionName, optionKey, optionValue, source, null);
             getConfigurationDescription().addRerunOption(optionDef);
         }
     }
