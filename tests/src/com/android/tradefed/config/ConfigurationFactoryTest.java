@@ -1633,6 +1633,11 @@ public class ConfigurationFactoryTest extends TestCase {
                             "--stub-preparer:test-boolean-option-false"
                         });
         assertEquals(2, config.getDeviceConfig().size());
+        // Ensure the first device is the default one.
+        assertEquals(
+                ConfigurationDef.DEFAULT_DEVICE_NAME,
+                config.getDeviceConfig().get(0).getDeviceName());
+
         IDeviceConfiguration device1 =
                 config.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME);
         // One target preparer from inside the device tag, one from outside.
@@ -1642,6 +1647,8 @@ public class ConfigurationFactoryTest extends TestCase {
         assertFalse(deviceSetup1.getTestBooleanOption());
         // default value of test-boolean-option-false is false, we set it to true.
         assertTrue(deviceSetup1.getTestBooleanOptionFalse());
+        assertTrue(device1.getDeviceRequirements().tcpDeviceRequested());
+        assertFalse(device1.getDeviceRequirements().nullDeviceRequested());
 
         // Check that the second preparer, outside device1 can still receive option as {device1}.
         StubTargetPreparer deviceSetup2 = (StubTargetPreparer) device1.getTargetPreparers().get(1);
@@ -1652,6 +1659,9 @@ public class ConfigurationFactoryTest extends TestCase {
 
         assertFalse(config.isDeviceConfiguredFake(ConfigurationDef.DEFAULT_DEVICE_NAME));
         assertTrue(config.isDeviceConfiguredFake("device2"));
+        IDeviceConfiguration device2 = config.getDeviceConfigByName("device2");
+        assertFalse(device2.getDeviceRequirements().tcpDeviceRequested());
+        assertTrue(device2.getDeviceRequirements().nullDeviceRequested());
     }
 
     /** Test that a configuration with all the device marked as isReal=false will be rejected. */

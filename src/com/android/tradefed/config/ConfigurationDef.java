@@ -244,8 +244,12 @@ public class ConfigurationDef {
                 throw new ConfigurationException("No device detected. Should not happen.");
             }
             if (numNonDut > 0 && numDut == 0) {
-                // if we only have fake devices, use the default device as real device.
-                mExpectedDevices.put(DEFAULT_DEVICE_NAME, false);
+                // if we only have fake devices, use the default device as real device, and add it
+                // first.
+                Map<String, Boolean> copy = new LinkedHashMap<>();
+                copy.put(DEFAULT_DEVICE_NAME, false);
+                copy.putAll(mExpectedDevices);
+                mExpectedDevices = copy;
                 numDut++;
             }
             if (numNonDut > 0 && numDut == 1) {

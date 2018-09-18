@@ -15,10 +15,12 @@
 -->
 <configuration
     description="test for multi build: one real device, one fake only providing an extra buildInfo">
+    <option name="tcp-device" value="true" />
     <build_provider class="com.android.tradefed.build.StubBuildProvider" />
     <device_recovery class="com.android.tradefed.device.WaitDeviceRecovery" />
     <target_preparer class="com.android.tradefed.targetprep.StubTargetPreparer" />
     <device name="device2" isFake="true">
+        <option name="null-device" value="true" />
         <build_provider class="com.android.tradefed.build.StubBuildProvider" />
     </device>
 
