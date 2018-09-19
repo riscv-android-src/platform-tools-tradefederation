@@ -39,6 +39,8 @@ public class TestDeviceOptions {
         EMULATOR,
     }
 
+    public static final String INSTANCE_TYPE_OPTION = "instance-type";
+
     /** Do not provide a setter method for that Option as it might be misused. */
     @Option(name = "enable-root", description = "enable adb root on boot.")
     private boolean mEnableAdbRoot = true;
@@ -129,7 +131,10 @@ public class TestDeviceOptions {
             "the minimum battery level required to continue the invocation. Scale: 0-100")
     private Integer mCutoffBattery = null;
 
-    @Option(name = "instance-type", description = "The type of virtual device instance to create")
+    @Option(
+        name = INSTANCE_TYPE_OPTION,
+        description = "The type of virtual device instance to create"
+    )
     private InstanceType mInstanceType = InstanceType.GCE;
 
     /**
