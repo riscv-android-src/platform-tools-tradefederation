@@ -60,15 +60,19 @@ class VtsTradefedTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
             test_infos: List of TestInfo.
             extra_args: Dict of extra args to add to test run.
             reporter: An instance of result_report.ResultReporter.
+
+        Returns:
+            Return code of the process for running tests.
         """
+        ret_code = constants.EXIT_CODE_SUCCESS
         reporter.register_unsupported_runner(self.NAME)
         run_cmds = self._generate_run_commands(test_infos, extra_args)
         for run_cmd in run_cmds:
             proc = super(VtsTradefedTestRunner, self).run(run_cmd,
                                                           output_to_stdout=True)
             proc.wait()
-
-
+            ret_code |= proc.returncode
+        return ret_code
 
     def _parse_extra_args(self, extra_args):
         """Convert the extra args into something vts-tf can understand.

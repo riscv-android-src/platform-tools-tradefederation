@@ -50,7 +50,7 @@ class FakeTestRunnerA(tr_base.TestRunnerBase):
     EXECUTABLE = 'echo'
 
     def run_tests(self, test_infos, extra_args, reporter):
-        pass
+        return 0
 
     def host_env_check(self):
         pass
@@ -63,6 +63,9 @@ class FakeTestRunnerB(FakeTestRunnerA):
     """Fake test runner B."""
 
     NAME = FAKE_TR_NAME_B
+
+    def run_tests(self, test_infos, extra_args, reporter):
+        return 1
 
     def get_test_runner_build_reqs(self):
         return FAKE_TR_B_REQS
@@ -109,6 +112,31 @@ class TestRunnerHandlerUnittests(unittest.TestCase):
             test_runner_handler.get_test_runner_reqs(empty_module_info,
                                                      test_infos))
 
+    def test_run_all_tests(self):
+        """Test that the return value as we expected."""
+        results_dir = ""
+        extra_args = []
+        # Tests both run_tests return 0
+        test_infos = [MODULE_INFO_A, MODULE_INFO_A_AGAIN]
+        self.assertEqual(
+            0,
+            test_runner_handler.run_all_tests(results_dir,
+                                              test_infos,
+                                              extra_args))
+        # Tests both run_tests return 1
+        test_infos = [MODULE_INFO_B, MODULE_INFO_B_AGAIN]
+        self.assertEqual(
+            1,
+            test_runner_handler.run_all_tests(results_dir,
+                                              test_infos,
+                                              extra_args))
+        # Tests with on run_tests return 0, the other return 1
+        test_infos = [MODULE_INFO_A, MODULE_INFO_B]
+        self.assertEqual(
+            1,
+            test_runner_handler.run_all_tests(results_dir,
+                                              test_infos,
+                                              extra_args))
 
 if __name__ == '__main__':
     unittest.main()
