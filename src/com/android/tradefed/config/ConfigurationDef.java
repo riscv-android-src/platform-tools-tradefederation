@@ -16,6 +16,7 @@
 
 package com.android.tradefed.config;
 
+import com.android.tradefed.build.BuildSerializedVersion;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.log.LogUtil.CLog;
 
@@ -52,6 +53,8 @@ public class ConfigurationDef {
 
     /** Holds the details of an option. */
     public static final class OptionDef implements Serializable {
+        private static final long serialVersionUID = BuildSerializedVersion.VERSION;
+
         public final String name;
         public final String key;
         public final String value;
