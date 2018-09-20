@@ -106,13 +106,16 @@ EVENTS_NORMAL = [
         'moduleContextFileName':'serial-util1146216{974}2772610436.ser',
         'moduleName':'someTestModule'}),
     ('TEST_RUN_STARTED', {'testCount': 2}),
-    ('TEST_STARTED', {'className':'someClassName', 'testName':'someTestName'}),
-    ('TEST_ENDED', {'className':'someClassName', 'testName':'someTestName'}),
-    ('TEST_STARTED', {'className':'someClassName2',
+    ('TEST_STARTED', {'start_time':10, 'className':'someClassName',
+                      'testName':'someTestName'}),
+    ('TEST_ENDED', {'end_time':12, 'className':'someClassName',
+                    'testName':'someTestName'}),
+    ('TEST_STARTED', {'start_time':13, 'className':'someClassName2',
                       'testName':'someTestName2'}),
     ('TEST_FAILED', {'className':'someClassName2', 'testName':'someTestName2',
                      'trace': 'someTrace'}),
-    ('TEST_ENDED', {'className':'someClassName2', 'testName':'someTestName2'}),
+    ('TEST_ENDED', {'end_time':18, 'className':'someClassName2',
+                    'testName':'someTestName2'}),
     ('TEST_RUN_ENDED', {}),
     ('TEST_MODULE_ENDED', {'foo': 'bar'}),
 ]
@@ -122,7 +125,8 @@ EVENTS_RUN_FAILURE = [
         'moduleContextFileName': 'serial-util11462169742772610436.ser',
         'moduleName': 'someTestModule'}),
     ('TEST_RUN_STARTED', {'testCount': 2}),
-    ('TEST_STARTED', {'className': 'someClassName', 'testName':'someTestName'}),
+    ('TEST_STARTED', {'start_time':10, 'className': 'someClassName',
+                      'testName':'someTestName'}),
     ('TEST_RUN_FAILED', {'reason': 'someRunFailureReason'})
 ]
 
@@ -135,9 +139,12 @@ EVENTS_NOT_BALANCED_BEFORE_RAISE = [
         'moduleContextFileName':'serial-util1146216{974}2772610436.ser',
         'moduleName':'someTestModule'}),
     ('TEST_RUN_STARTED', {'testCount': 2}),
-    ('TEST_STARTED', {'className':'someClassName', 'testName':'someTestName'}),
-    ('TEST_ENDED', {'className':'someClassName', 'testName':'someTestName'}),
-    ('TEST_STARTED', {'className':'someClassName', 'testName':'someTestName'}),
+    ('TEST_STARTED', {'start_time':10, 'className':'someClassName',
+                      'testName':'someTestName'}),
+    ('TEST_ENDED', {'end_time':18, 'className':'someClassName',
+                    'testName':'someTestName'}),
+    ('TEST_STARTED', {'start_time':19, 'className':'someClassName',
+                      'testName':'someTestName'}),
     ('TEST_FAILED', {'className':'someClassName2', 'testName':'someTestName2',
                      'trace': 'someTrace'}),
 ]
@@ -271,6 +278,8 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
             test_name='someClassName#someTestName',
             status=test_runner_base.PASSED_STATUS,
             details=None,
+            test_count=1,
+            test_time='(2ms)',
             runner_total=None,
             group_total=2
         ))
@@ -280,6 +289,8 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
             test_name='someClassName2#someTestName2',
             status=test_runner_base.FAILED_STATUS,
             details='someTrace',
+            test_count=2,
+            test_time='(5ms)',
             runner_total=None,
             group_total=2
         ))
@@ -298,6 +309,8 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
             test_name='someClassName#someTestName',
             status=test_runner_base.ERROR_STATUS,
             details='someRunFailureReason',
+            test_count=1,
+            test_time='',
             runner_total=None,
             group_total=2
         ))
@@ -316,6 +329,8 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
             test_name=None,
             status=test_runner_base.ERROR_STATUS,
             details='someInvocationFailureReason',
+            test_count=0,
+            test_time='',
             runner_total=None,
             group_total=None
         ))
@@ -334,6 +349,8 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
             test_name='someClassName#someTestName',
             status=test_runner_base.PASSED_STATUS,
             details=None,
+            test_count=1,
+            test_time='(8ms)',
             runner_total=None,
             group_total=2
         ))

@@ -280,10 +280,19 @@ class ResultReporter(object):
             return
         if test.test_name:
             if test.status == test_runner_base.PASSED_STATUS:
-                print('%s: %s' % (test.test_name,
-                                  au.colorize(test.status, constants.GREEN)))
+                # Example of output:
+                # [78/92] test_name: PASSED (92ms)
+                # TODO(117399100): Adjust the test time to output in
+                # minutes/second/millisecond.
+                print('[%s/%s] %s: %s %s' % (test.test_count, test.group_total,
+                                             test.test_name, au.colorize(
+                                                 test.status, constants.GREEN),
+                                             test.test_time))
             else:
-                print('%s: %s' % (test.test_name,
-                                  au.colorize(test.status, constants.RED)))
+                # [26/92] test_name: FAILED (32ms)
+                print('[%s/%s] %s: %s %s' % (test.test_count, test.group_total,
+                                             test.test_name, au.colorize(
+                                                 test.status, constants.RED),
+                                             test.test_time))
         if test.status == test_runner_base.FAILED_STATUS:
             print('\nSTACKTRACE:\n%s' % test.details)

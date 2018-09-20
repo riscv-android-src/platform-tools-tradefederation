@@ -29,6 +29,7 @@ import atest_error
 # TestResult contains information of individual tests during a test run.
 TestResult = namedtuple('TestResult', ['runner_name', 'group_name',
                                        'test_name', 'status', 'details',
+                                       'test_count', 'test_time',
                                        'runner_total', 'group_total'])
 FAILED_STATUS = 'FAILED'
 PASSED_STATUS = 'PASSED'
