@@ -39,12 +39,37 @@ public class BasePostProcessorTest {
 
     private class TestablePostProcessor extends BasePostProcessor {
         @Override
+        public Map<String, Metric.Builder> processTestMetrics(HashMap<String, Metric> rawMetrics) {
+            HashMap<String, Metric.Builder> newMap = new HashMap<>();
+            for (String key : rawMetrics.keySet()) {
+                // Change, e.g. "value" to "value2".
+                Metric.Builder newBuilder = Metric.newBuilder();
+                newBuilder
+                        .getMeasurementsBuilder()
+                        .setSingleString(
+                                rawMetrics.get(key).getMeasurements().getSingleString() + "2");
+                // Attempt to overwrite the original metric; should not appear in final result.
+                newMap.put(key, newBuilder);
+                // Write a new metric.
+                newMap.put(key + "2", newBuilder);
+            }
+            return newMap;
+        }
+
+        @Override
         public Map<String, Metric.Builder> processRunMetrics(HashMap<String, Metric> rawMetrics) {
             HashMap<String, Metric.Builder> newMap = new HashMap<>();
             for (String key : rawMetrics.keySet()) {
-                newMap.put(
-                        key + "2",
-                        Metric.newBuilder().setMeasurements(rawMetrics.get(key).getMeasurements()));
+                // Change, e.g. "value" to "value2".
+                Metric.Builder newBuilder = Metric.newBuilder();
+                newBuilder
+                        .getMeasurementsBuilder()
+                        .setSingleString(
+                                rawMetrics.get(key).getMeasurements().getSingleString() + "2");
+                // Attempt to overwrite the original metric; should not appear in final result.
+                newMap.put(key, newBuilder);
+                // Write a new metric.
+                newMap.put(key + "2", newBuilder);
             }
             return newMap;
         }
@@ -76,8 +101,39 @@ public class BasePostProcessorTest {
         HashMap<String, Metric> finalMetrics = capture.getValue();
         // Check that original key is still here
         assertTrue(finalMetrics.containsKey("test"));
+        // Check that original key still has the original value
+        assertTrue(finalMetrics.get("test").getMeasurements().getSingleString().equals("value"));
         // Check that our new metric was added
         assertTrue(finalMetrics.containsKey("test2"));
         assertEquals(DataType.PROCESSED, finalMetrics.get("test2").getType());
+        assertTrue(finalMetrics.get("test2").getMeasurements().getSingleString().equals("value2"));
+    }
+
+    /** Test that the test metrics are found in the after-test callback. */
+    @Test
+    public void testPerTestPostProcessing() {
+        ITestInvocationListener listener = mProcessor.init(mMockListener);
+        HashMap<String, Metric> initialMetrics = new HashMap<>();
+        initialMetrics.put("test", TfMetricProtoUtil.stringToMetric("value"));
+
+        Capture<HashMap<String, Metric>> capture = new Capture<>();
+        mMockListener.testEnded(
+                EasyMock.anyObject(), EasyMock.anyLong(), EasyMock.capture(capture));
+
+        EasyMock.replay(mMockListener);
+        listener.testEnded(null, 0L, initialMetrics);
+        EasyMock.verify(mMockListener);
+
+        HashMap<String, Metric> processedMetrics = capture.getValue();
+        // Check that original key is still here
+        assertTrue(processedMetrics.containsKey("test"));
+        // Check that original key still has the original value
+        assertTrue(
+                processedMetrics.get("test").getMeasurements().getSingleString().equals("value"));
+        // Check that our new metric was added
+        assertTrue(processedMetrics.containsKey("test2"));
+        assertEquals(DataType.PROCESSED, processedMetrics.get("test2").getType());
+        assertTrue(
+                processedMetrics.get("test2").getMeasurements().getSingleString().equals("value2"));
     }
 }
