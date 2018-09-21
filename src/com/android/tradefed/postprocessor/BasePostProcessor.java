@@ -51,6 +51,12 @@ public abstract class BasePostProcessor implements IPostProcessor {
     public abstract Map<String, Metric.Builder> processRunMetrics(
             HashMap<String, Metric> rawMetrics);
 
+    /** {@inhericDoc} */
+    @Override
+    public Map<String, Metric.Builder> processTestMetrics(HashMap<String, Metric> testMetrics) {
+        return new HashMap<String, Metric.Builder>();
+    }
+
     /** =================================== */
     /** {@inheritDoc} */
     @Override
@@ -164,7 +170,26 @@ public abstract class BasePostProcessor implements IPostProcessor {
     @Override
     public final void testEnded(
             TestDescription test, long endTime, HashMap<String, Metric> testMetrics) {
-        // TODO: Add test method metric post processing
+        try {
+            HashMap<String, Metric> rawValues = getRawMetricsOnly(testMetrics);
+            Map<String, Metric.Builder> results = processTestMetrics(rawValues);
+            for (Entry<String, Metric.Builder> newEntry : results.entrySet()) {
+                String newKey = newEntry.getKey();
+                if (testMetrics.containsKey(newKey)) {
+                    CLog.e(
+                            "Key '%s' is already asssociated with a metric and will not be "
+                                    + "replaced.",
+                            newKey);
+                    continue;
+                }
+                // Force the metric to 'processed' since generated in a post-processor.
+                Metric newMetric = newEntry.getValue().setType(DataType.PROCESSED).build();
+                testMetrics.put(newKey, newMetric);
+            }
+        } catch (RuntimeException e) {
+            // Prevent exception from messing up the status reporting.
+            CLog.e(e);
+        }
         mForwarder.testEnded(test, endTime, testMetrics);
     }
 
