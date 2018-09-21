@@ -46,4 +46,11 @@ public interface IPostProcessor extends ITestInvocationListener, ILogSaverListen
      * @return The set of newly generated metrics.
      */
     public Map<String, Metric.Builder> processRunMetrics(HashMap<String, Metric> rawMetrics);
+
+    /**
+     * Implement this method to process metrics from each test.
+     *
+     * @param testMetrics The set of metrics from the test.
+     */
+    public Map<String, Metric.Builder> processTestMetrics(HashMap<String, Metric> testMetrics);
 }
