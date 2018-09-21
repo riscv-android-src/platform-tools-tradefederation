@@ -105,8 +105,8 @@ java_library_host {
     manifest: "MANIFEST.mf",
 }
 
-droiddoc_host {
-    name: "tradefed-docs",
+droidstubs_host {
+    name: "tradefed-doc-stubs",
     srcs: [
         "src/**/*.java",
     ],
@@ -114,6 +114,15 @@ droiddoc_host {
         "loganalysis",
         "tradefed",
         "tools-common-prebuilt",
+    ],
+    args: "--package",
+    create_doc_stubs: true,
+}
+
+droiddoc_host {
+    name: "tradefed-docs",
+    srcs: [
+        ":tradefed-doc-stubs",
     ],
     custom_template: "droiddoc-templates-sdk",
     hdf: [
