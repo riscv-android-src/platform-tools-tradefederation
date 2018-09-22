@@ -15,8 +15,6 @@
 -->
 <!-- A template for running non-custom, Android JUnit-style tests. -->
 <configuration description="Android JUnit Google Tradefed XML">
-    <!-- Required: specify the test .APK name. -->
-    <target_preparer class="com.android.tradefed.targetprep.TestAppInstallSetup" />
     <!-- Required: specify the package to run. -->
     <test class="com.android.tradefed.testtype.AndroidJUnitTest" >
         <option name="runner" value="androidx.test.runner.AndroidJUnitRunner" />
