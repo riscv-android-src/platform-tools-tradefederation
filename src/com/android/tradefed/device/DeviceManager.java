@@ -929,7 +929,6 @@ public class DeviceManager implements IDeviceManager {
         }
     }
 
-
     /**
      * {@inheritDoc}
      */
@@ -937,7 +936,10 @@ public class DeviceManager implements IDeviceManager {
     public List<DeviceDescriptor> listAllDevices() {
         final List<DeviceDescriptor> serialStates = new ArrayList<DeviceDescriptor>();
         for (IManagedTestDevice d : mManagedDeviceList) {
-            serialStates.add(buildDeviceDescriptor(d));
+            DeviceDescriptor desc = buildDeviceDescriptor(d);
+            if (desc != null) {
+                serialStates.add(desc);
+            }
         }
         return serialStates;
     }
@@ -955,21 +957,33 @@ public class DeviceManager implements IDeviceManager {
         }
         IDeviceSelection selector = getDeviceSelectionOptions();
         IDevice idevice = d.getIDevice();
-        return new DeviceDescriptor(
-                idevice.getSerialNumber(),
-                idevice instanceof StubDevice,
-                idevice.getState(),
-                d.getAllocationState(),
-                getDisplay(selector.getDeviceProductType(idevice)),
-                getDisplay(selector.getDeviceProductVariant(idevice)),
-                getDisplay(idevice.getProperty("ro.build.version.sdk")),
-                getDisplay(idevice.getProperty("ro.build.id")),
-                getDisplay(selector.getBatteryLevel(idevice)),
-                d.getDeviceClass(),
-                getDisplay(d.getMacAddress()),
-                getDisplay(d.getSimState()),
-                getDisplay(d.getSimOperator()),
-                idevice);
+        DeviceDescriptor descriptor = null;
+        try {
+            descriptor =
+                    new DeviceDescriptor(
+                            idevice.getSerialNumber(),
+                            idevice instanceof StubDevice,
+                            idevice.getState(),
+                            d.getAllocationState(),
+                            getDisplay(selector.getDeviceProductType(idevice)),
+                            getDisplay(selector.getDeviceProductVariant(idevice)),
+                            getDisplay(idevice.getProperty("ro.build.version.sdk")),
+                            getDisplay(idevice.getProperty("ro.build.id")),
+                            getDisplay(selector.getBatteryLevel(idevice)),
+                            d.getDeviceClass(),
+                            getDisplay(d.getMacAddress()),
+                            getDisplay(d.getSimState()),
+                            getDisplay(d.getSimOperator()),
+                            idevice);
+        } catch (RuntimeException e) {
+            CLog.e(e);
+            Map<String, String> information = new HashMap<>();
+            information.put("idevice_type", idevice.getClass().getName());
+            information.put("device_type", d.getClass().getName());
+            information.put("allocation_state", d.getAllocationState().toString());
+            logDeviceEvent(EventType.UNEXPECTED_EXCEPTION, d.getSerialNumber(), information);
+        }
+        return descriptor;
     }
 
     @Override
@@ -1152,11 +1166,19 @@ public class DeviceManager implements IDeviceManager {
         }
     }
 
-    /** Helper to log the device events. */
     @VisibleForTesting
     void logDeviceEvent(EventType event, String serial) {
+        logDeviceEvent(event, serial, null);
+    }
+
+    /** Helper to log the device events. */
+    @VisibleForTesting
+    void logDeviceEvent(EventType event, String serial, Map<String, String> extraArgs) {
         Map<String, String> args = new HashMap<>();
         args.put("serial", serial);
+        if (extraArgs != null) {
+            args.putAll(extraArgs);
+        }
         LogRegistry.getLogRegistry().logEvent(LogLevel.DEBUG, event, args);
     }
 
