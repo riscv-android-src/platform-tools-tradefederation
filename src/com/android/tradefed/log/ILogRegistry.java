@@ -37,6 +37,7 @@ public interface ILogRegistry extends ILogOutput {
         HEAP_MEMORY,
         SHARD_POLLER_EARLY_TERMINATION,
         MODULE_DEVICE_NOT_AVAILABLE,
+        UNEXPECTED_EXCEPTION,
     }
 
     /**

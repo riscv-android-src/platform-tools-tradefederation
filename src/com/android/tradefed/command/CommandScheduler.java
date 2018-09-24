@@ -67,6 +67,7 @@ import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TableFormatter;
 import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.hostmetric.IHostMonitor;
@@ -946,8 +947,16 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 // wait until processing is required again
                 mCommandProcessWait.waitAndReset(mPollTime);
                 checkInvocations();
-                processReadyCommands(manager);
-                postProcessReadyCommands();
+                try {
+                    processReadyCommands(manager);
+                    postProcessReadyCommands();
+                } catch (RuntimeException e) {
+                    CLog.e(e);
+                    Map<String, String> information = new HashMap<>();
+                    information.put("Exception", "CommandScheduler");
+                    information.put("stack", StreamUtil.getStackTrace(e));
+                    logEvent(EventType.UNEXPECTED_EXCEPTION, information);
+                }
             }
             mCommandTimer.shutdown();
             // We signal the device manager to stop device recovery threads because it could
