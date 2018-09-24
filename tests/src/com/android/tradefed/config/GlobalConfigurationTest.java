@@ -54,7 +54,6 @@ public class GlobalConfigurationTest {
     private final static String ALIAS_NAME = "aliasssss";
     private final static String EMPTY_CONFIG = "empty";
     private static final String GLOBAL_TEST_CONFIG = "global-config";
-    private static final String GLOBAL_TEST_CONFIG_INVALID = "global-config-invalid-option";
     private static final String GLOBAL_CONFIG_SERVER_TEST_CONFIG = "global-config-server-config";
 
     @Before
@@ -274,35 +273,5 @@ public class GlobalConfigurationTest {
         assertEquals("stub", globalConfigServer.getServerName());
         assertEquals("current-host-config.xml", globalConfigServer.getCurrentHostConfig());
         assertTrue(nonConfigServerArgs.size() == 2);
-    }
-
-    /**
-     * Test that when creating the global configuration we ensure the host_options options are
-     * valid.
-     */
-    @Test
-    public void testCreateHostOptions() throws Exception {
-        String[] args = {};
-        List<String> nonGlobalArgs = new ArrayList<String>();
-        // In order to find our test config, we provide our testconfigs/ folder. Otherwise only
-        // the config/ folder is searched for configuration by default.
-        IConfigurationFactory configFactory =
-                new ConfigurationFactory() {
-                    @Override
-                    protected String getConfigPrefix() {
-                        return "testconfigs/";
-                    }
-                };
-        String globalConfigPath = GLOBAL_TEST_CONFIG_INVALID;
-        IGlobalConfiguration globalConfig =
-                configFactory.createGlobalConfigurationFromArgs(
-                        ArrayUtil.buildArray(new String[] {globalConfigPath}, args), nonGlobalArgs);
-        try {
-            globalConfig.validateOptions();
-            fail("Should have thrown an exception.");
-        } catch (ConfigurationException expected) {
-            // Expected
-            assertEquals("Failed to validate http helper class", expected.getMessage());
-        }
     }
 }
