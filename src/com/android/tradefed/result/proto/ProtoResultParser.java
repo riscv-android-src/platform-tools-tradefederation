@@ -154,6 +154,8 @@ public class ProtoResultParser {
     }
 
     private void handleInvocationEnded(TestRecord endInvocationProto) {
+        // Still report the logs even if not reporting the invocation level.
+        handleLogs(endInvocationProto);
         if (!mReportInvocation) {
             CLog.d("Skipping invocation ended reporting.");
             return;
@@ -167,6 +169,7 @@ public class ProtoResultParser {
     /** Handles module level of the invocation: They have a Description for the module context. */
     private void handleModuleProto(TestRecord moduleProto) {
         if (moduleProto.hasEndTime()) {
+            handleLogs(moduleProto);
             mListener.testModuleEnded();
         } else {
             handleModuleStart(moduleProto);
@@ -279,7 +282,8 @@ public class ProtoResultParser {
                                 info.getIsCompressed(),
                                 LogDataType.valueOf(info.getLogType()),
                                 info.getSize());
-                logger.logAssociation(entry.getKey(), file);
+                CLog.e("Logging %s from subprocess", entry.getKey());
+                logger.logAssociation("subprocess-" + entry.getKey(), file);
             } catch (InvalidProtocolBufferException e) {
                 CLog.e("Couldn't unpack %s as a LogFileInfo", entry.getKey());
                 CLog.e(e);

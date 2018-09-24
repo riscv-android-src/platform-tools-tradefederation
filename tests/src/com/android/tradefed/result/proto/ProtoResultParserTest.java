@@ -128,13 +128,15 @@ public class ProtoResultParserTest {
 
         mMockListener.testStarted(test2, 11L);
         mMockListener.testFailed(test2, "I failed");
-        mMockListener.logAssociation(EasyMock.eq("log1"), EasyMock.capture(capture));
+        mMockListener.logAssociation(EasyMock.eq("subprocess-log1"), EasyMock.capture(capture));
         mMockListener.testEnded(test2, 60L, metrics);
-        mMockListener.logAssociation(EasyMock.eq("run_log1"), EasyMock.anyObject());
+        mMockListener.logAssociation(EasyMock.eq("subprocess-run_log1"), EasyMock.anyObject());
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        mMockListener.logAssociation(EasyMock.eq("subprocess-module_log1"), EasyMock.anyObject());
         mMockListener.testModuleEnded();
-
+        mMockListener.logAssociation(
+                EasyMock.eq("subprocess-invocation_log1"), EasyMock.anyObject());
         mMockListener.invocationEnded(500L);
 
         EasyMock.replay(mMockListener);
@@ -158,8 +160,12 @@ public class ProtoResultParserTest {
                 "run_log1", new LogFile("path", "url", false, LogDataType.LOGCAT, 5));
         mTestParser.testRunEnded(50L, new HashMap<String, Metric>());
 
+        mTestParser.logAssociation(
+                "module_log1", new LogFile("path", "url", false, LogDataType.LOGCAT, 5));
         mTestParser.testModuleEnded();
 
+        mTestParser.logAssociation(
+                "invocation_log1", new LogFile("path", "url", false, LogDataType.LOGCAT, 5));
         // Invocation ends
         mTestParser.invocationEnded(500L);
         EasyMock.verify(mMockListener);
@@ -225,9 +231,9 @@ public class ProtoResultParserTest {
 
         mMockListener.testStarted(test2, 11L);
         mMockListener.testFailed(test2, "I failed");
-        mMockListener.logAssociation(EasyMock.eq("log1"), EasyMock.anyObject());
+        mMockListener.logAssociation(EasyMock.eq("subprocess-log1"), EasyMock.anyObject());
         mMockListener.testEnded(test2, 60L, metrics);
-        mMockListener.logAssociation(EasyMock.eq("run_log1"), EasyMock.anyObject());
+        mMockListener.logAssociation(EasyMock.eq("subprocess-run_log1"), EasyMock.anyObject());
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         mMockListener.testModuleEnded();
