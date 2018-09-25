@@ -97,9 +97,13 @@ public class RemoteAndroidDevice extends TestDevice {
     /** {@inheritDoc} */
     @Override
     public void recoverDevice() throws DeviceNotAvailableException {
-        // Before attempting standard recovery, reconnect the device.
-        adbTcpConnect(getHostName(), getPortNum());
-        waitForAdbConnect(WAIT_FOR_ADB_CONNECT);
+        // If device is not in use (TcpDevice) do not attempt reconnection, it will fail
+        // device in use will not be of the TcpDevice type.
+        if (!(getIDevice() instanceof TcpDevice)) {
+            // Before attempting standard recovery, reconnect the device.
+            adbTcpConnect(getHostName(), getPortNum());
+            waitForAdbConnect(WAIT_FOR_ADB_CONNECT);
+        }
         // Standard recovery
         super.recoverDevice();
     }
