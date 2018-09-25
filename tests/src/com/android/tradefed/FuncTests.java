@@ -23,6 +23,7 @@ import com.android.tradefed.device.metric.DeviceMetricDataFuncTest;
 import com.android.tradefed.proto.PlatformProtosFuncTest;
 import com.android.tradefed.targetprep.AppSetupFuncTest;
 import com.android.tradefed.targetprep.DeviceSetupFuncTest;
+import com.android.tradefed.targetprep.UserCleanerFuncTest;
 import com.android.tradefed.testtype.DeviceSuite;
 import com.android.tradefed.testtype.InstrumentationTestFuncTest;
 import com.android.tradefed.util.FileUtilFuncTest;
@@ -56,6 +57,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // targetprep
     AppSetupFuncTest.class,
     DeviceSetupFuncTest.class,
+    UserCleanerFuncTest.class,
     // testtype
     InstrumentationTestFuncTest.class,
     // util
