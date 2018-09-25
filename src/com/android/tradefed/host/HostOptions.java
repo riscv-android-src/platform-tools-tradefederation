@@ -19,7 +19,6 @@ package com.android.tradefed.host;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
-import com.android.tradefed.util.net.IHttpHelper;
 
 import java.io.File;
 
@@ -54,13 +53,8 @@ public class HostOptions implements IHostOptions {
             + "filesystem.")
     private File mDownloadCacheDir = new File(System.getProperty("java.io.tmpdir"), "lc_cache");
 
-    @Option(
-        name = "http-helper-class",
-        description =
-                "The class implementing IHttpHelper that should be used accross the instance for "
-                        + "http requests."
-    )
-    private String mIHttpHelperType = null;
+    @Option(name = "use-sso-client", description = "Use a SingleSignOn client for HTTP requests.")
+    private Boolean mUseSsoClient = true;
 
     /**
      * {@inheritDoc}
@@ -90,33 +84,13 @@ public class HostOptions implements IHostOptions {
 
     /** {@inheritDoc} */
     @Override
-    public IHttpHelper getHttpHelper() {
-        if (mIHttpHelperType == null) {
-            return null;
-        }
-        try {
-            Class<?> classObj = Class.forName(mIHttpHelperType);
-            Object helperObj = classObj.newInstance();
-            if (helperObj instanceof IHttpHelper) {
-                return (IHttpHelper) helperObj;
-            }
-        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
-            throw new IllegalArgumentException(
-                    String.format("Could not load http helper class %s", mIHttpHelperType), e);
-        }
-        throw new IllegalArgumentException(
-                String.format("Class %s is not instance of IHttpHelper.", mIHttpHelperType));
+    public Boolean shouldUseSsoClient() {
+        return mUseSsoClient;
     }
 
     /** {@inheritDoc} */
     @Override
     public void validateOptions() throws ConfigurationException {
-        if (mIHttpHelperType != null) {
-            try {
-                getHttpHelper();
-            } catch (IllegalArgumentException e) {
-                throw new ConfigurationException("Failed to validate http helper class", e);
-            }
-        }
+        // Validation of host options
     }
 }

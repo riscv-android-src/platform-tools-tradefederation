@@ -19,7 +19,6 @@ package com.android.tradefed.host;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.targetprep.DeviceFlashPreparer;
-import com.android.tradefed.util.net.IHttpHelper;
 
 import java.io.File;
 
@@ -48,8 +47,8 @@ public interface IHostOptions {
     /** Returns the path used for storing downloaded artifacts. */
     File getDownloadCacheDir();
 
-    /** Get the recommended helper type defined for the host. */
-    IHttpHelper getHttpHelper();
+    /** Check if it should use the SingleSignOn client or not. */
+    Boolean shouldUseSsoClient();
 
     /** Validate that the options set on {@link IHostOptions} are valid. */
     void validateOptions() throws ConfigurationException;
