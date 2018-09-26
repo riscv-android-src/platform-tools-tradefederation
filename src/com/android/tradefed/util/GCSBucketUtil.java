@@ -16,7 +16,6 @@
 
 package com.android.tradefed.util;
 
-import com.android.ddmlib.Log;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.File;
@@ -27,6 +26,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * File manager to download and upload files from Google Cloud Storage (GCS).
@@ -40,6 +41,8 @@ public class GCSBucketUtil {
     private static final String CMD_COPY = "cp";
     private static final String CMD_MAKE_BUCKET = "mb";
     private static final String CMD_LS = "ls";
+    private static final String CMD_STAT = "stat";
+    private static final String CMD_HASH = "hash";
     private static final String CMD_REMOVE = "rm";
     private static final String CMD_REMOVE_BUCKET = "rb";
     private static final String CMD_VERSION = "-v";
@@ -355,6 +358,134 @@ public class GCSBucketUtil {
         return false;
     }
 
+    /** Simple wrapper for file info in GCS. */
+    public static class GCSFileMetadata {
+        public String mName;
+        public String mMd5Hash = null;
+
+        private GCSFileMetadata() {}
+
+        /**
+         * Parse a string to a {@link GCSFileMetadata} object.
+         *
+         * @param statOutput
+         * @return {@link GCSFileMetadata}
+         */
+        public static GCSFileMetadata parseStat(String statOutput) {
+            GCSFileMetadata info = new GCSFileMetadata();
+            String[] infoLines = statOutput.split("\n");
+            // Remove the trail ':'
+            info.mName = infoLines[0].substring(0, infoLines[0].length() - 1);
+            for (String line : infoLines) {
+                String[] keyValue = line.split(":", 2);
+                String key = keyValue[0].trim();
+                String value = keyValue[1].trim();
+
+                if ("Hash (md5)".equals(key)) {
+                    info.mMd5Hash = value;
+                }
+            }
+            return info;
+        }
+    }
+
+    /**
+     * Get the state of the file for the GCS path.
+     *
+     * @param bucketPath the GCS path
+     * @return {@link GCSFileMetadata} for the GCS path
+     * @throws IOException
+     */
+    public GCSFileMetadata stat(Path bucketPath) throws IOException {
+        checkGSUtil();
+        CLog.d("Check stat of %s %s", mBucketName, bucketPath);
+
+        List<String> command = new ArrayList<>();
+        command.add(GSUTIL);
+        command.add(CMD_STAT);
+
+        command.add(getUriForGcsPath(bucketPath));
+
+        // The stat output will be something like:
+        // gs://bucketName/file.txt:
+        //    Creation time:          Tue, 14 Aug 2018 00:20:48 GMT
+        //    Update time:            Tue, 14 Aug 2018 16:58:39 GMT
+        //    Storage class:          STANDARD
+        //    Content-Length:         1097
+        //    Content-Type:           text/x-sh
+        //    Hash (crc32c):          WutM7Q==
+        //    Hash (md5):             GZX0xHUXtGnoKIGTDk6Pbg==
+        //    ETag:                   CKKNu/Si69wCEAU=
+        //    Generation:             1534206048913058
+        //    Metageneration:         5
+        CommandResult res =
+                getRunUtil()
+                        .runTimedCmdRetry(
+                                mTimeoutMs,
+                                mRetryInterval,
+                                mAttempts,
+                                command.toArray(new String[0]));
+
+        if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
+            throw new IOException(
+                    String.format(
+                            "Failed to stat path '%s %s' with %s\nstdout: %s\nstderr: %s",
+                            mBucketName,
+                            bucketPath,
+                            res.getStatus(),
+                            res.getStdout(),
+                            res.getStderr()));
+        }
+        return GCSFileMetadata.parseStat(res.getStdout());
+    }
+
+    /**
+     * Calculate the md5 hash for the local file.
+     *
+     * @param localFile a local file
+     * @return the md5 hash for the local file.
+     * @throws IOException
+     */
+    public String md5Hash(File localFile) throws IOException {
+        checkGSUtil();
+        List<String> command = new ArrayList<>();
+        command.add(GSUTIL);
+        command.add(CMD_HASH);
+        command.add("-m");
+        command.add(localFile.getAbsolutePath());
+
+        CommandResult res =
+                getRunUtil()
+                        .runTimedCmdRetry(
+                                mTimeoutMs,
+                                mRetryInterval,
+                                mAttempts,
+                                command.toArray(new String[0]));
+
+        if (CommandStatus.SUCCESS.equals(res.getStatus())) {
+            // An example output of "gustil hash -m file":
+            // Hashes [base64] for error_prone_rules.mk:
+            //    Hash (md5):             eHfvTtNyH/x3GcyfApEIDQ==
+            //
+            // Operation completed over 1 objects/2.0 KiB.
+            Pattern md5Pattern =
+                    Pattern.compile(
+                            ".*Hash\\s*\\(md5\\)\\:\\s*(.*?)\n.*",
+                            Pattern.MULTILINE | Pattern.DOTALL);
+            Matcher matcher = md5Pattern.matcher(res.getStdout());
+            if (matcher.find()) {
+                return matcher.group(1);
+            }
+        }
+        throw new IOException(
+                String.format(
+                        "Failed to calculate md5 hash for '%s' with %s\nstdout: %s\nstderr: %s",
+                        localFile.getAbsoluteFile(),
+                        res.getStatus(),
+                        res.getStdout(),
+                        res.getStderr()));
+    }
+
     /**
      * Download a file or directory from a GCS bucket to the current directory.
      *
@@ -435,7 +566,7 @@ public class GCSBucketUtil {
     public CommandResult remove(String pattern, boolean force) throws IOException {
         checkGSUtil();
         String path = getUriForGcsPath(Paths.get(pattern));
-        Log.d("Removing file(s) %s", path);
+        CLog.d("Removing file(s) %s", path);
 
         List<String> command = new ArrayList<>();
         command.add(GSUTIL);
@@ -503,7 +634,7 @@ public class GCSBucketUtil {
      */
     public CommandResult removeBucket() throws IOException {
         checkGSUtil();
-        Log.d("Removing bucket %s", mBucketName);
+        CLog.d("Removing bucket %s", mBucketName);
 
         String[] command = {
                 GSUTIL,
@@ -566,5 +697,4 @@ public class GCSBucketUtil {
     public void setTimeout(long timeout, TimeUnit unit) {
         setTimeoutMs(unit.toMillis(timeout));
     }
-
 }

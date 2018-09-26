@@ -16,6 +16,8 @@
 
 package com.android.tradefed.util;
 
+import com.android.tradefed.util.GCSBucketUtil.GCSFileMetadata;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -186,5 +188,25 @@ public class GCSBucketUtilFuncTest {
     @Test
     public void testIsFile_endWithPathSep() throws Exception {
         Assert.assertFalse(mBucket.isFile(mRemoteRoot + "/" + FOLDER_NAME + "/"));
+    }
+
+    @Test
+    public void testStat() throws Exception {
+        Path path = Paths.get(mRemoteRoot, FILE_NAME);
+        mBucket.pushString(FILE_CONTENT, path);
+        GCSFileMetadata info = mBucket.stat(path);
+        Assert.assertNotNull(info.mMd5Hash);
+        Assert.assertEquals(mBucket.getUriForGcsPath(path), info.mName);
+    }
+
+    @Test
+    public void testmd5Hash() throws Exception {
+        Path path = Paths.get(mRemoteRoot, FILE_NAME);
+        mBucket.pushString(FILE_CONTENT, path);
+        GCSFileMetadata info = mBucket.stat(path);
+
+        File localFile = FileUtil.createTempFile(FILE_NAME, "", mLocalRoot);
+        FileUtil.writeToFile(FILE_CONTENT, localFile);
+        Assert.assertEquals(info.mMd5Hash, mBucket.md5Hash(localFile));
     }
 }
