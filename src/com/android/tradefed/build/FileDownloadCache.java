@@ -259,8 +259,18 @@ public class FileDownloadCache {
             } finally {
                 mCacheMapLock.unlock();
             }
-
             try {
+                if (!download
+                        && cachedFile.exists()
+                        && !downloader.isFresh(cachedFile, remotePath)) {
+                    Log.d(
+                            LOG_TAG,
+                            String.format(
+                                    "Cached file %s for %s is out of date, re-download.",
+                                    cachedFile, remotePath));
+                    FileUtil.recursiveDelete(cachedFile);
+                    download = true;
+                }
                 if (download || !cachedFile.exists()) {
                     cachedFile.getParentFile().mkdirs();
                     downloadFile(downloader, remotePath, cachedFile);
@@ -302,9 +312,14 @@ public class FileDownloadCache {
         try {
             hardlinkFile = FileUtil.createTempFileForRemote(remotePath, null);
             hardlinkFile.delete();
-            CLog.d("Creating hardlink '%s' to '%s'", hardlinkFile.getAbsolutePath(),
-                    cachedFile.getAbsolutePath());
-            FileUtil.hardlinkFile(cachedFile, hardlinkFile);
+            CLog.d(
+                    "Creating hardlink '%s' to '%s'",
+                    hardlinkFile.getAbsolutePath(), cachedFile.getAbsolutePath());
+            if (cachedFile.isDirectory()) {
+                FileUtil.recursiveHardlink(cachedFile, hardlinkFile);
+            } else {
+                FileUtil.hardlinkFile(cachedFile, hardlinkFile);
+            }
             return hardlinkFile;
         } catch (IOException e) {
             FileUtil.deleteFile(hardlinkFile);

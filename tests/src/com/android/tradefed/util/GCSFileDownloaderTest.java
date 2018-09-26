@@ -56,7 +56,7 @@ public class GCSFileDownloaderTest {
     }
 
     @Test
-    public void downloadFile() throws Exception {
+    public void testDownloadFile() throws Exception {
         File localFile = null;
         try {
             localFile = mGCSFileDownloader.downloadFile("gs://bucket/this/is/a/file.txt");
@@ -68,12 +68,39 @@ public class GCSFileDownloaderTest {
     }
 
     @Test
-    public void downloadFile_nonGCSFile() {
+    public void testDownloadFile_nonGCSFile() {
         try {
             mGCSFileDownloader.downloadFile("/this/is/a/file.txt");
             Assert.assertTrue("Expect to throw BuildRetrievalError", false);
         } catch (BuildRetrievalError e) {
             Assert.assertTrue(e.getMessage().startsWith("Only GCS path is supported"));
+        }
+    }
+
+    @Test
+    public void testSanitizeDirectoryName() {
+        Assert.assertEquals(
+                "/this/is/a/folder/",
+                mGCSFileDownloader.sanitizeDirectoryName("/this/is/a/folder"));
+        Assert.assertEquals(
+                "/this/is/a/folder/",
+                mGCSFileDownloader.sanitizeDirectoryName("/this/is/a/folder/"));
+    }
+
+    @Test
+    public void testParseGcsPath() throws Exception {
+        String[] parts = mGCSFileDownloader.parseGcsPath("gs://bucketname/path/to/file");
+        Assert.assertEquals("bucketname", parts[0]);
+        Assert.assertEquals("/path/to/file", parts[1]);
+    }
+
+    @Test
+    public void testParseGcsPath_noGCSPath() {
+        try {
+            mGCSFileDownloader.parseGcsPath("/bucketname/path/to/file");
+            Assert.assertTrue("Should throw exception.", false);
+        } catch (BuildRetrievalError e) {
+            // Expected
         }
     }
 }
