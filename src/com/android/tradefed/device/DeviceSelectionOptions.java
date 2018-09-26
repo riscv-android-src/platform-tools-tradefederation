@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -165,6 +166,12 @@ public class DeviceSelectionOptions implements IDeviceSelection {
     public void setSerial(String... serialNumber) {
         mSerials.clear();
         mSerials.addAll(Arrays.asList(serialNumber));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<String> getSerials() {
+        return new ArrayList<>(mSerials);
     }
 
     /**
