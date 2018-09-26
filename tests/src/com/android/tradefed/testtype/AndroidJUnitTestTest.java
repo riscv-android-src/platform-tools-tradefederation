@@ -227,6 +227,7 @@ public class AndroidJUnitTestTest {
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFile = FileUtil.createTempFile("testFile", ".txt");
+        FileUtil.writeToFile(TEST1.toString(), tmpFile);
         try {
             mAndroidJUnitTest.setIncludeTestFile(tmpFile);
             mAndroidJUnitTest.run(mMockListener);
@@ -251,6 +252,7 @@ public class AndroidJUnitTestTest {
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFile = FileUtil.createTempFile("notTestFile", ".txt");
+        FileUtil.writeToFile(TEST1.toString(), tmpFile);
         try {
             mAndroidJUnitTest.setExcludeTestFile(tmpFile);
             mAndroidJUnitTest.run(mMockListener);
@@ -281,7 +283,9 @@ public class AndroidJUnitTestTest {
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
+        FileUtil.writeToFile(TEST1.toString(), tmpFileInclude);
         File tmpFileExclude = FileUtil.createTempFile("excludeFile", ".txt");
+        FileUtil.writeToFile(TEST2.toString(), tmpFileExclude);
         try {
             mAndroidJUnitTest.addIncludeFilter(TEST1.getClassName());
             mAndroidJUnitTest.addExcludeFilter(TEST2.toString());
@@ -313,7 +317,9 @@ public class AndroidJUnitTestTest {
 
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice, mMockListener);
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
+        FileUtil.writeToFile(TEST1.toString(), tmpFileInclude);
         File tmpFileExclude = FileUtil.createTempFile("excludeFile", ".txt");
+        FileUtil.writeToFile(TEST2.toString(), tmpFileExclude);
         try {
             mAndroidJUnitTest.addIncludeFilter(TEST1.getClassName());
             mAndroidJUnitTest.addExcludeFilter(TEST2.toString());
@@ -349,7 +355,9 @@ public class AndroidJUnitTestTest {
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
+        FileUtil.writeToFile(TEST1.toString(), tmpFileInclude);
         File tmpFileExclude = FileUtil.createTempFile("excludeFile", ".txt");
+        FileUtil.writeToFile(TEST2.toString(), tmpFileExclude);
         try {
             OptionSetter setter = new OptionSetter(mAndroidJUnitTest);
             setter.setOptionValue("test-file-include-filter", tmpFileInclude.getAbsolutePath());

@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.suite.retry;
 
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.build.BuildInfo;
@@ -100,7 +101,7 @@ public class RetryReschedulerTest {
     /** Test rescheduling a tests that only had pass tests in the first run. */
     @Test
     public void testReschedule_onlyPassTests() throws Exception {
-        populateFakeResults(2, 2, 0, 0, 0);
+        populateFakeResults(2, 2, 0, 0, 0, false);
         mMockLoader.init();
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
@@ -141,7 +142,7 @@ public class RetryReschedulerTest {
     public void testReschedule_carryShardCount() throws Exception {
         mTopConfiguration.getCommandOptions().setShardCount(2);
         mTopConfiguration.getDeviceRequirements().setSerial("serial1", "serial2");
-        populateFakeResults(2, 2, 0, 0, 0);
+        populateFakeResults(2, 2, 0, 0, 0, false);
         mMockLoader.init();
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
@@ -184,7 +185,7 @@ public class RetryReschedulerTest {
     /** Test rescheduling a configuration when some tests previously failed. */
     @Test
     public void testReschedule_someFailedTests() throws Exception {
-        populateFakeResults(2, 2, 1, 0, 0);
+        populateFakeResults(2, 2, 1, 0, 0, false);
         mMockLoader.init();
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
@@ -223,7 +224,7 @@ public class RetryReschedulerTest {
      */
     @Test
     public void testReschedule_someAssumptionFailures() throws Exception {
-        populateFakeResults(2, 2, 0, 1, 0);
+        populateFakeResults(2, 2, 0, 1, 0, false);
         mMockLoader.init();
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
@@ -262,7 +263,7 @@ public class RetryReschedulerTest {
      */
     @Test
     public void testReschedule_mixedFailedAssumptionFailures() throws Exception {
-        populateFakeResults(2, 3, 1, 1, 0);
+        populateFakeResults(2, 3, 1, 1, 0, false);
         mMockLoader.init();
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
@@ -307,7 +308,7 @@ public class RetryReschedulerTest {
     public void testReschedule_excludeFilters() throws Exception {
         OptionSetter setter = new OptionSetter(mTest);
         setter.setOptionValue(BaseTestSuite.EXCLUDE_FILTER_OPTION, "run1");
-        populateFakeResults(2, 2, 1, 0, 0);
+        populateFakeResults(2, 2, 1, 0, 0, false);
         mMockLoader.init();
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
@@ -341,10 +342,10 @@ public class RetryReschedulerTest {
         verify(mSuite).setExcludeFilter(excludeRun1);
     }
 
-    /** Test rescheduling a configuration when some parameterized tests previously failed. */
+    /** Test rescheduling a configuration when no parameterized tests previously failed. */
     @Test
-    public void testReschedule_parameterized() throws Exception {
-        populateFakeResults(2, 2, 0, 0, 2);
+    public void testReschedule_parameterized_nofail() throws Exception {
+        populateFakeResults(2, 4, 1, 0, 2, false);
         mMockLoader.init();
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
@@ -369,23 +370,85 @@ public class RetryReschedulerTest {
                 mRescheduledConfiguration,
                 mMockCommandOptions);
         // Only the passing tests are excluded since we don't want to re-run them
+        Set<String> excludeRun0_pass = new LinkedHashSet<>();
+        excludeRun0_pass.add("run0 test.class#testPass0");
+        verify(mSuite).setExcludeFilter(excludeRun0_pass);
         Set<String> excludeRun0_0 = new LinkedHashSet<>();
+        excludeRun0_0.add("run0 test.class#parameterized0");
+        verify(mSuite, times(1)).setExcludeFilter(excludeRun0_0);
+        Set<String> excludeRun0_1 = new LinkedHashSet<>();
+        excludeRun0_1.add("run0 test.class#parameterized1");
+        verify(mSuite, times(1)).setExcludeFilter(excludeRun0_1);
+
+        Set<String> excludeRun1_pass = new LinkedHashSet<>();
+        excludeRun1_pass.add("run1 test.class#testPass0");
+        verify(mSuite).setExcludeFilter(excludeRun1_pass);
+        Set<String> excludeRun1_0 = new LinkedHashSet<>();
+        excludeRun1_0.add("run1 test.class#parameterized0");
+        verify(mSuite, times(1)).setExcludeFilter(excludeRun1_0);
+        Set<String> excludeRun1_1 = new LinkedHashSet<>();
+        excludeRun1_1.add("run1 test.class#parameterized1");
+        verify(mSuite, times(1)).setExcludeFilter(excludeRun1_1);
+    }
+
+    /** Test rescheduling a configuration when some parameterized tests previously failed. */
+    @Test
+    public void testReschedule_parameterized_failed() throws Exception {
+        populateFakeResults(2, 4, 1, 0, 2, true);
+        mMockLoader.init();
+        EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
+        EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
+                .andReturn(mRescheduledConfiguration);
+        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+
+        mRescheduledConfiguration.setTests(EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
+
+        EasyMock.expect(mMockRescheduler.scheduleConfig(mRescheduledConfiguration)).andReturn(true);
+        EasyMock.replay(
+                mMockRescheduler,
+                mMockLoader,
+                mMockFactory,
+                mRescheduledConfiguration,
+                mMockCommandOptions);
+        mTest.run(null);
+        EasyMock.verify(
+                mMockRescheduler,
+                mMockLoader,
+                mMockFactory,
+                mRescheduledConfiguration,
+                mMockCommandOptions);
+        // Only the passing tests are excluded since we don't want to re-run them
+        Set<String> excludeRun0_pass = new LinkedHashSet<>();
+        excludeRun0_pass.add("run0 test.class#testPass0");
+        verify(mSuite).setExcludeFilter(excludeRun0_pass);
+        Set<String> excludeRun0_0 = new LinkedHashSet<>();
+
         excludeRun0_0.add("run0 test.class#parameterized0[1]");
-        verify(mSuite).setExcludeFilter(excludeRun0_0);
+        verify(mSuite, times(0)).setExcludeFilter(excludeRun0_0);
         Set<String> excludeRun0_1 = new LinkedHashSet<>();
         excludeRun0_1.add("run0 test.class#parameterized1[1]");
-        verify(mSuite).setExcludeFilter(excludeRun0_1);
+        verify(mSuite, times(0)).setExcludeFilter(excludeRun0_1);
+
+        Set<String> excludeRun1_pass = new LinkedHashSet<>();
+        excludeRun1_pass.add("run1 test.class#testPass0");
+        verify(mSuite).setExcludeFilter(excludeRun1_pass);
 
         Set<String> excludeRun1_0 = new LinkedHashSet<>();
         excludeRun1_0.add("run1 test.class#parameterized0[1]");
-        verify(mSuite).setExcludeFilter(excludeRun1_0);
+        verify(mSuite, times(0)).setExcludeFilter(excludeRun1_0);
         Set<String> excludeRun1_1 = new LinkedHashSet<>();
         excludeRun1_1.add("run1 test.class#parameterized1[1]");
-        verify(mSuite).setExcludeFilter(excludeRun1_1);
+        verify(mSuite, times(0)).setExcludeFilter(excludeRun1_1);
     }
 
     private void populateFakeResults(
-            int numModule, int numTests, int failedTests, int assumpFailure, int parameterized) {
+            int numModule,
+            int numTests,
+            int failedTests,
+            int assumpFailure,
+            int parameterized,
+            boolean failedParam) {
         ProtoResultReporter reporter =
                 new ProtoResultReporter() {
                     @Override
@@ -415,7 +478,9 @@ public class RetryReschedulerTest {
                 TestDescription test =
                         new TestDescription("test.class", "parameterized" + f + "[0]");
                 reporter.testStarted(test);
-                reporter.testFailed(test, "parameterized" + f);
+                if (failedParam) {
+                    reporter.testFailed(test, "parameterized" + f);
+                }
                 reporter.testEnded(test, new HashMap<String, Metric>());
                 // Second parameter pass
                 TestDescription test1 =
