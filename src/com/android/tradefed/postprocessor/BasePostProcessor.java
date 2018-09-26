@@ -29,6 +29,9 @@ import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ListMultimap;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -45,6 +48,7 @@ public abstract class BasePostProcessor implements IPostProcessor {
     private boolean mDisable = false;
 
     private ITestInvocationListener mForwarder;
+    private ArrayListMultimap<String, Metric> storedTestMetrics = ArrayListMultimap.create();
 
     /** {@inheritDoc} */
     @Override
@@ -54,6 +58,13 @@ public abstract class BasePostProcessor implements IPostProcessor {
     /** {@inhericDoc} */
     @Override
     public Map<String, Metric.Builder> processTestMetrics(HashMap<String, Metric> testMetrics) {
+        return new HashMap<String, Metric.Builder>();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Map<String, Metric.Builder> processAllTestMetrics(
+            ListMultimap<String, Metric> allTestMetrics) {
         return new HashMap<String, Metric.Builder>();
     }
 
@@ -119,23 +130,18 @@ public abstract class BasePostProcessor implements IPostProcessor {
     public final void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         try {
             HashMap<String, Metric> rawValues = getRawMetricsOnly(runMetrics);
-            Map<String, Metric.Builder> results = processRunMetrics(rawValues);
-            for (Entry<String, Metric.Builder> newEntry : results.entrySet()) {
-                String newKey = newEntry.getKey();
-                if (runMetrics.containsKey(newKey)) {
-                    CLog.e(
-                            "Key '%s' is already asssociated with a metric and will not be "
-                                    + "replaced.",
-                            newKey);
-                    continue;
-                }
-                // Force the metric to 'processed' since generated in a post-processor.
-                Metric newMetric = newEntry.getValue().setType(DataType.PROCESSED).build();
-                runMetrics.put(newKey, newMetric);
-            }
+            // Add post-processed run metrics.
+            Map<String, Metric.Builder> postprocessedResults = processRunMetrics(rawValues);
+            addProcessedMetricsToExistingMetrics(postprocessedResults, runMetrics);
+            // Add aggregated test metrics (results from post-processing all test metrics).
+            Map<String, Metric.Builder> aggregateResults = processAllTestMetrics(storedTestMetrics);
+            addProcessedMetricsToExistingMetrics(aggregateResults, runMetrics);
         } catch (RuntimeException e) {
             // Prevent exception from messing up the status reporting.
             CLog.e(e);
+        } finally {
+            // Clear out the stored test metrics.
+            storedTestMetrics.clear();
         }
         mForwarder.testRunEnded(elapsedTime, runMetrics);
     }
@@ -172,6 +178,10 @@ public abstract class BasePostProcessor implements IPostProcessor {
             TestDescription test, long endTime, HashMap<String, Metric> testMetrics) {
         try {
             HashMap<String, Metric> rawValues = getRawMetricsOnly(testMetrics);
+            // Store the raw metrics from the test in storedTestMetrics for potential aggregation.
+            for (Map.Entry<String, Metric> entry : rawValues.entrySet()) {
+                storedTestMetrics.put(entry.getKey(), entry.getValue());
+            }
             Map<String, Metric.Builder> results = processTestMetrics(rawValues);
             for (Entry<String, Metric.Builder> newEntry : results.entrySet()) {
                 String newKey = newEntry.getKey();
@@ -236,5 +246,23 @@ public abstract class BasePostProcessor implements IPostProcessor {
             }
         }
         return rawMetrics;
+    }
+
+    /** Add processed metrics to the metrics to be reported. */
+    private void addProcessedMetricsToExistingMetrics(
+            Map<String, Metric.Builder> processed, Map<String, Metric> existing) {
+        for (Entry<String, Metric.Builder> newEntry : processed.entrySet()) {
+            String newKey = newEntry.getKey();
+            if (existing.containsKey(newKey)) {
+                CLog.e(
+                        "Key '%s' is already asssociated with a metric and will not be "
+                                + "replaced.",
+                        newKey);
+                continue;
+            }
+            // Force the metric to 'processed' since generated in a post-processor.
+            Metric newMetric = newEntry.getValue().setType(DataType.PROCESSED).build();
+            existing.put(newKey, newMetric);
+        }
     }
 }
