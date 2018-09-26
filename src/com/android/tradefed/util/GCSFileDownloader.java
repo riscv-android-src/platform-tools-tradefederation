@@ -19,6 +19,7 @@ package com.android.tradefed.util;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IFileDownloader;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.GCSBucketUtil.GCSFileMetadata;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -28,6 +29,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -76,14 +79,93 @@ public class GCSFileDownloader implements IFileDownloader {
 
     @Override
     public void downloadFile(String remotePath, File destFile) throws BuildRetrievalError {
+        String[] pathParts = parseGcsPath(remotePath);
+        downloadFile(pathParts[0], pathParts[1], destFile);
+    }
+
+    @Override
+    public boolean isFresh(File localFile, String remotePath) throws BuildRetrievalError {
+        String[] pathParts = parseGcsPath(remotePath);
+        try {
+            return recursiveCheckFreshness(localFile, pathParts[0], Paths.get(pathParts[1]));
+        } catch (IOException e) {
+            throw new BuildRetrievalError(e.getMessage(), e);
+        }
+    }
+
+    String[] parseGcsPath(String remotePath) throws BuildRetrievalError {
         Matcher m = GCS_PATH_PATTERN.matcher(remotePath);
         if (!m.find()) {
             throw new BuildRetrievalError(
                     String.format("Only GCS path is supported, %s is not supported", remotePath));
         }
-        String bucket = m.group(1);
-        String path = m.group(2);
-        downloadFile(bucket, path, destFile);
+        return new String[] {m.group(1), m.group(2)};
+    }
+
+    /**
+     * For GCS, if it's a file, we use file content's md5 hash to check if the local file is the
+     * same as the remote file. If it's a folder, we will check all the files in the folder are the
+     * same and all the sub-folders also have the same files.
+     *
+     * @param localFile is the local file
+     * @param bucketName is the remote file's GCS bucket name
+     * @param remotePath is the relative path to the bucket.
+     * @return true if local file is the same as remote file, otherwise false.
+     * @throws IOException
+     */
+    private boolean recursiveCheckFreshness(File localFile, String bucketName, Path remotePath)
+            throws IOException {
+        GCSBucketUtil bucketUtil = getGCSBucketUtil(bucketName);
+        if (localFile.isFile()) {
+            GCSFileMetadata fileInfo = bucketUtil.stat(remotePath);
+            boolean isFileFresh = fileInfo.mMd5Hash.equals(bucketUtil.md5Hash(localFile));
+            if (!isFileFresh) {
+                CLog.d("Local file for %s is not fresh.", remotePath);
+            }
+            return isFileFresh;
+        } else if (localFile.isDirectory()) {
+            Set<String> remoteUriSets = new HashSet<String>(bucketUtil.ls(remotePath));
+            String remoteUri = sanitizeDirectoryName(bucketUtil.getUriForGcsPath(remotePath));
+            // If the folder has files inside it, "ls" will include the folder itself.
+            // If the folder only has folders or has nothing inside it, "ls" will not include the
+            // folder itself. That said depends on folder's content, "ls" may or may not list the
+            // current folder. Since the current folder should always exists (otherwise the "ls"
+            // already throws exception), we don't bother to check it is in the "ls" result or not.
+            remoteUriSets.remove(remoteUri);
+
+            for (File subFile : localFile.listFiles()) {
+                Path remoteSubPath = remotePath.resolve(subFile.getName());
+                String remoteSubUri = bucketUtil.getUriForGcsPath(remoteSubPath);
+                if (subFile.isDirectory()) {
+                    remoteSubUri = sanitizeDirectoryName(remoteSubUri);
+                }
+                if (!remoteUriSets.contains(remoteSubUri)) {
+                    CLog.d("GCS doesn't have %s.", remoteSubUri);
+                    return false;
+                }
+                remoteUriSets.remove(remoteSubUri);
+            }
+            if (!remoteUriSets.isEmpty()) {
+                CLog.d("GCS has these files but local doesn't: %s", remoteUriSets);
+                return false;
+            }
+            for (File subFile : localFile.listFiles()) {
+                if (!recursiveCheckFreshness(
+                        subFile, bucketName, remotePath.resolve(subFile.getName()))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /** Folder name should end with "/" */
+    String sanitizeDirectoryName(String name) {
+        if (!name.endsWith(PATH_SEP)) {
+            name += PATH_SEP;
+        }
+        return name;
     }
 
     @VisibleForTesting
@@ -94,9 +176,7 @@ public class GCSFileDownloader implements IFileDownloader {
         GCSBucketUtil bucketUtil = getGCSBucketUtil(bucketName);
         try {
             if (!bucketUtil.isFile(filename)) {
-                if (!filename.endsWith(PATH_SEP)) {
-                    filename += PATH_SEP;
-                }
+                filename = sanitizeDirectoryName(filename);
                 filename += "*";
                 localFile.mkdirs();
                 bucketUtil.setRecursive(true);
