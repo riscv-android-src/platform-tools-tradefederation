@@ -28,7 +28,7 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -69,14 +69,16 @@ public abstract class GTestBase
     private String mTestNameNegativeFilter = null;
 
     @Option(
-            name = "include-filter",
-            description = "The GTest-based positive filter of the test names to run.")
-    private Set<String> mIncludeFilters = new HashSet<>();
+        name = "include-filter",
+        description = "The GTest-based positive filter of the test names to run."
+    )
+    private Set<String> mIncludeFilters = new LinkedHashSet<>();
 
     @Option(
-            name = "exclude-filter",
-            description = "The GTest-based negative filter of the test names to run.")
-    private Set<String> mExcludeFilters = new HashSet<>();
+        name = "exclude-filter",
+        description = "The GTest-based negative filter of the test names to run."
+    )
+    private Set<String> mExcludeFilters = new LinkedHashSet<>();
 
     @Option(
             name = "native-test-timeout",
@@ -224,6 +226,11 @@ public abstract class GTestBase
         mShardCount = shardCount;
     }
 
+    /** Returns the current shard-count. */
+    public int getShardCount() {
+        return mShardCount;
+    }
+
     /** {@inheritDoc} */
     @Override
     public long getRuntimeHint() {
@@ -233,6 +240,12 @@ public abstract class GTestBase
     /** {@inheritDoc} */
     @Override
     public void addIncludeFilter(String filter) {
+        if (mShardCount > 0) {
+            // If we explicitly start giving filters to GTest, reset the shard-count. GTest first
+            // applies filters then GTEST_TOTAL_SHARDS so it will probably end up not running
+            // anything
+            mShardCount = 0;
+        }
         mIncludeFilters.add(cleanFilter(filter));
     }
 
