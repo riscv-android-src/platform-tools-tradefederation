@@ -20,7 +20,9 @@ import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.SandboxConfigurationFactory;
+import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.log.FileLogger;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -81,7 +83,7 @@ public class SandboxConfigDump {
         try {
             // TODO: Handle keystore
             IConfiguration config =
-                    factory.createConfigurationFromArgs(argList.toArray(new String[0]));
+                    factory.createConfigurationFromArgs(argList.toArray(new String[0]), cmd);
             //factory.createConfigurationFromArgs(argList.toArray(new String[0]), cmd);
             if (DumpCmd.RUN_CONFIG.equals(cmd) || DumpCmd.TEST_MODE.equals(cmd)) {
                 config.getCommandOptions().setShouldUseSandboxing(false);
@@ -106,6 +108,9 @@ public class SandboxConfigDump {
                 // parent.
                 config.getCommandOptions().setBugreportOnInvocationEnded(false);
                 config.getCommandOptions().setBugreportzOnInvocationEnded(false);
+
+                // Ensure in special conditions (placeholder devices) we can still allocate.
+                secureDeviceAllocation(config);
             }
             if (DumpCmd.TEST_MODE.equals(cmd)) {
                 // We allow one more layer of sandbox to be generated
@@ -146,5 +151,17 @@ public class SandboxConfigDump {
     private SandboxOptions getSandboxOptions(IConfiguration config) {
         return (SandboxOptions)
                 config.getConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME);
+    }
+
+    private void secureDeviceAllocation(IConfiguration config) {
+        for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
+            IDeviceSelection requirements = deviceConfig.getDeviceRequirements();
+            if (requirements.nullDeviceRequested()
+                    || requirements.tcpDeviceRequested()
+                    || requirements.gceDeviceRequested()) {
+                // Reset serials, ensure any null/tcp/gce-device can be selected.
+                requirements.setSerial();
+            }
+        }
     }
 }
