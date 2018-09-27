@@ -172,7 +172,7 @@ public class InvocationExecutionTest {
      * (re)initialized.
      */
     @Test
-    public void testRun_metricCollectors() throws Exception {
+    public void testRun_metricCollectors() throws Throwable {
         List<IRemoteTest> tests = new ArrayList<>();
         // First add an IMetricCollectorReceiver
         tests.add(new RemoteTestCollector());
