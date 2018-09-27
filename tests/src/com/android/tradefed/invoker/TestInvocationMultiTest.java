@@ -15,7 +15,7 @@
  */
 package com.android.tradefed.invoker;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
@@ -85,7 +85,7 @@ public class TestInvocationMultiTest {
                     }
 
                     @Override
-                    public IInvocationExecution createInvocationExec(boolean isSandboxed) {
+                    public IInvocationExecution createInvocationExec(RunMode mode) {
                         return new InvocationExecution() {
                             @Override
                             protected IShardHelper createShardHelper() {

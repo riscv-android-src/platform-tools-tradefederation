@@ -407,7 +407,7 @@ public class InvocationExecution implements IInvocationExecution {
     @Override
     public void runTests(
             IInvocationContext context, IConfiguration config, ITestInvocationListener listener)
-            throws DeviceNotAvailableException {
+            throws Throwable {
         // Post-processors are the first layer around the final reporters.
         for (IPostProcessor postProcessor : config.getPostProcessors()) {
             if (postProcessor.isDisabled()) {

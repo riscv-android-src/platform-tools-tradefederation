@@ -150,11 +150,11 @@ public interface IInvocationExecution {
      * @param context the {@link IInvocationContext} to run tests on
      * @param config the {@link IConfiguration} to run
      * @param listener the {@link ITestInvocationListener} of test results
-     * @throws DeviceNotAvailableException
+     * @throws Throwable
      */
     public default void runTests(
             IInvocationContext context, IConfiguration config, ITestInvocationListener listener)
-            throws DeviceNotAvailableException {}
+            throws Throwable {}
 
     /**
      * Report a failure for the invocation.

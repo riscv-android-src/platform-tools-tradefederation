@@ -234,7 +234,7 @@ public class TestInvocationTest extends TestCase {
                     }
 
                     @Override
-                    public IInvocationExecution createInvocationExec(boolean isSandboxed) {
+                    public IInvocationExecution createInvocationExec(RunMode mode) {
                         return new InvocationExecution() {
                             @Override
                             protected IShardHelper createShardHelper() {
@@ -1500,7 +1500,7 @@ public class TestInvocationTest extends TestCase {
                     }
 
                     @Override
-                    public IInvocationExecution createInvocationExec(boolean isSandboxed) {
+                    public IInvocationExecution createInvocationExec(RunMode mode) {
                         return new InvocationExecution() {
                             @Override
                             protected IShardHelper createShardHelper() {
@@ -1569,7 +1569,7 @@ public class TestInvocationTest extends TestCase {
                         }
 
                         @Override
-                        public IInvocationExecution createInvocationExec(boolean isSandboxed) {
+                        public IInvocationExecution createInvocationExec(RunMode mode) {
                             return new InvocationExecution() {
                                 @Override
                                 protected IShardHelper createShardHelper() {
@@ -1656,7 +1656,7 @@ public class TestInvocationTest extends TestCase {
                         }
 
                         @Override
-                        public IInvocationExecution createInvocationExec(boolean isSandboxed) {
+                        public IInvocationExecution createInvocationExec(RunMode mode) {
                             return new InvocationExecution() {
                                 @Override
                                 protected IShardHelper createShardHelper() {
@@ -1735,7 +1735,7 @@ public class TestInvocationTest extends TestCase {
      * Test that when {@link IMetricCollector} are used, they wrap and call in sequence the listener
      * so all metrics end up on the final receiver.
      */
-    public void testMetricCollectionChain() throws Exception {
+    public void testMetricCollectionChain() throws Throwable {
         IConfiguration configuration = new Configuration("test", "description");
         StubTest test = new StubTest();
         OptionSetter setter = new OptionSetter(test);
