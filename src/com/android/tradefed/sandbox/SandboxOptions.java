@@ -27,6 +27,7 @@ public final class SandboxOptions {
     public static final String TF_LOCATION = "tf-location";
     public static final String SANDBOX_BUILD_ID = "sandbox-build-id";
     public static final String USE_PROTO_REPORTER = "use-proto-reporter";
+    public static final String CHILD_GLOBAL_CONFIG = "sub-global-config";
 
     @Option(
         name = TF_LOCATION,
@@ -48,6 +49,13 @@ public final class SandboxOptions {
     )
     private boolean mUseProtoReporter = true;
 
+    @Option(
+            name = CHILD_GLOBAL_CONFIG,
+            description =
+                    "Force a particular configuration to be used as global configuration for the"
+                            + " sandbox.")
+    private String mChildGlobalConfig = null;
+
     /**
      * Returns the provided directories containing the Trade Federation version to use for
      * sandboxing the run.
@@ -64,5 +72,13 @@ public final class SandboxOptions {
     /** Returns whether or not protobuf reporting should be used. */
     public boolean shouldUseProtoReporter() {
         return mUseProtoReporter;
+    }
+
+    /**
+     * Returns the configuration to be used for the child sandbox. Or null if the parent one should
+     * be used.
+     */
+    public String getChildGlobalConfig() {
+        return mChildGlobalConfig;
     }
 }
