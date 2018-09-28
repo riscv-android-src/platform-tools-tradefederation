@@ -29,6 +29,7 @@ import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.log.FileLogger;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.proto.ProtoResultReporter;
@@ -76,6 +77,7 @@ public class RetryReschedulerTest {
                 .andStubReturn(mMockCommandOptions);
         EasyMock.expect(mRescheduledConfiguration.getDeviceRequirements())
                 .andStubReturn(mMockRequirements);
+        EasyMock.expect(mRescheduledConfiguration.getLogOutput()).andStubReturn(new FileLogger());
         mMockLoader = EasyMock.createMock(ITestSuiteResultLoader.class);
         mMockRescheduler = EasyMock.createMock(IRescheduler.class);
         mMockFactory = EasyMock.createMock(IConfigurationFactory.class);
@@ -104,6 +106,7 @@ public class RetryReschedulerTest {
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
         EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+        mMockRequirements.setSerial();
 
         mRescheduledConfiguration.setTests(EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
@@ -114,14 +117,16 @@ public class RetryReschedulerTest {
                 mMockLoader,
                 mMockFactory,
                 mRescheduledConfiguration,
-                mMockCommandOptions);
+                mMockCommandOptions,
+                mMockRequirements);
         mTest.run(null);
         EasyMock.verify(
                 mMockRescheduler,
                 mMockLoader,
                 mMockFactory,
                 mRescheduledConfiguration,
-                mMockCommandOptions);
+                mMockCommandOptions,
+                mMockRequirements);
 
         Set<String> excludeRun0 = new HashSet<>();
         excludeRun0.add("run0");
@@ -135,6 +140,7 @@ public class RetryReschedulerTest {
     @Test
     public void testReschedule_carryShardCount() throws Exception {
         mTopConfiguration.getCommandOptions().setShardCount(2);
+        mTopConfiguration.getDeviceRequirements().setSerial("serial1", "serial2");
         populateFakeResults(2, 2, 0, 0, 0);
         mMockLoader.init();
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
@@ -145,6 +151,7 @@ public class RetryReschedulerTest {
         EasyMock.reset(mMockCommandOptions);
         mMockCommandOptions.setShardCount(2);
         mMockCommandOptions.setShardIndex(null);
+        mMockRequirements.setSerial("serial1", "serial2");
 
         mRescheduledConfiguration.setTests(EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
@@ -155,14 +162,16 @@ public class RetryReschedulerTest {
                 mMockLoader,
                 mMockFactory,
                 mRescheduledConfiguration,
-                mMockCommandOptions);
+                mMockCommandOptions,
+                mMockRequirements);
         mTest.run(null);
         EasyMock.verify(
                 mMockRescheduler,
                 mMockLoader,
                 mMockFactory,
                 mRescheduledConfiguration,
-                mMockCommandOptions);
+                mMockCommandOptions,
+                mMockRequirements);
 
         Set<String> excludeRun0 = new HashSet<>();
         excludeRun0.add("run0");

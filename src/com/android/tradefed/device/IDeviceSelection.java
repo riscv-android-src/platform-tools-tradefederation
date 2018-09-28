@@ -20,6 +20,7 @@ import com.android.ddmlib.IDevice;
 import com.android.tradefed.util.ConditionPriorityBlockingQueue.IMatcher;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -34,6 +35,9 @@ public interface IDeviceSelection extends IMatcher<IDevice> {
      * @return a {@link Collection} of serial numbers
      */
     public Collection<String> getSerials(IDevice device);
+
+    /** Returns the list of requested serials. */
+    public List<String> getSerials();
 
     /**
      * Gets a copy of the serial numbers exclusion list
