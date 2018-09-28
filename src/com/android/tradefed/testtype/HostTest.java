@@ -257,6 +257,8 @@ public class HostTest
      */
     @Override
     public void addIncludeFilter(String filter) {
+        // If filters change, reset test count so we recompute it next time it's requested.
+        mNumTestCases = -1;
         mFilterHelper.addIncludeFilter(filter);
     }
 
@@ -265,12 +267,14 @@ public class HostTest
      */
     @Override
     public void addAllIncludeFilters(Set<String> filters) {
+        mNumTestCases = -1;
         mFilterHelper.addAllIncludeFilters(filters);
     }
 
     /** {@inheritDoc} */
     @Override
     public void clearIncludeFilters() {
+        mNumTestCases = -1;
         mFilterHelper.clearIncludeFilters();
     }
 
@@ -279,6 +283,7 @@ public class HostTest
      */
     @Override
     public void addExcludeFilter(String filter) {
+        mNumTestCases = -1;
         mFilterHelper.addExcludeFilter(filter);
     }
 
@@ -299,12 +304,14 @@ public class HostTest
      */
     @Override
     public void addAllExcludeFilters(Set<String> filters) {
+        mNumTestCases = -1;
         mFilterHelper.addAllExcludeFilters(filters);
     }
 
     /** {@inheritDoc} */
     @Override
     public void clearExcludeFilters() {
+        mNumTestCases = -1;
         mFilterHelper.clearExcludeFilters();
     }
 
