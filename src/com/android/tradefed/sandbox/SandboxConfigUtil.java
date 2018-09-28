@@ -18,6 +18,7 @@ package com.android.tradefed.sandbox;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.sandbox.SandboxConfigDump.DumpCmd;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -83,6 +84,8 @@ public class SandboxConfigUtil {
             mCmdArgs.add(arg);
         }
         CommandResult result = runUtil.runTimedCmd(DUMP_TIMEOUT, mCmdArgs.toArray(new String[0]));
+        CLog.d("stdout: %s", result.getStdout());
+        CLog.d("stderr: %s", result.getStderr());
         if (CommandStatus.SUCCESS.equals(result.getStatus())) {
             return destination;
         }
