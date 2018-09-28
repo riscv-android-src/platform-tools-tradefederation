@@ -777,6 +777,15 @@ public class HostTestTest extends TestCase {
         assertEquals("Incorrect test case count", 2, mHostTest.countTestCases());
     }
 
+    /** Test for {@link HostTest#countTestCases()} */
+    public void testCountTestCases_dirtyCount() throws Exception {
+        mHostTest.setClassName(SuccessTestCase.class.getName());
+        assertEquals("Incorrect test case count", 2, mHostTest.countTestCases());
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        mHostTest.addIncludeFilter(test1.toString());
+        assertEquals("Incorrect test case count", 1, mHostTest.countTestCases());
+    }
+
     /**
      * Test for {@link HostTest#countTestCases()} with filtering on JUnit4 tests
      */
