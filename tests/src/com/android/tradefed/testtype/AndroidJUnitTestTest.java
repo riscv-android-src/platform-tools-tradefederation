@@ -277,7 +277,7 @@ public class AndroidJUnitTestTest {
                 EasyMock.<String>anyObject())).andReturn(Boolean.TRUE).times(2);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
                 .andReturn("")
-                .times(4);
+                .times(3);
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
@@ -345,7 +345,7 @@ public class AndroidJUnitTestTest {
                 .times(2);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
                 .andReturn("")
-                .times(4);
+                .times(3);
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
