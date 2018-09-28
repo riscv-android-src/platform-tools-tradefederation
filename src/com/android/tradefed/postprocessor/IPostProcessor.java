@@ -20,6 +20,8 @@ import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.IDisableable;
 
+import com.google.common.collect.ListMultimap;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -43,7 +45,7 @@ public interface IPostProcessor extends ITestInvocationListener, ILogSaverListen
      * existing keys are allowed).
      *
      * @param rawMetrics The set of raw metrics available for the run.
-     * @return The set of newly generated metrics.
+     * @return The set of newly generated metrics from the run metrics.
      */
     public Map<String, Metric.Builder> processRunMetrics(HashMap<String, Metric> rawMetrics);
 
@@ -51,6 +53,17 @@ public interface IPostProcessor extends ITestInvocationListener, ILogSaverListen
      * Implement this method to process metrics from each test.
      *
      * @param testMetrics The set of metrics from the test.
+     * @return The set of newly generated metrics from the test metrics.
      */
     public Map<String, Metric.Builder> processTestMetrics(HashMap<String, Metric> testMetrics);
+
+    /**
+     * Implement this method to aggregate test metrics.
+     *
+     * @param allTestMetrics A HashMultimap storing the metrics from each test grouped by metric
+     *     names.
+     * @return The set of newly generated metrics from all test metrics.
+     */
+    public Map<String, Metric.Builder> processAllTestMetrics(
+            ListMultimap<String, Metric> allTestMetrics);
 }
