@@ -194,7 +194,10 @@ public class SandboxConfigurationFactory extends ConfigurationFactory {
                         throws ConfigurationException {
                     if (mCommand.equals(DumpCmd.RUN_CONFIG) || mCommand.equals(DumpCmd.TEST_MODE)) {
                         optionList.removeIf(
-                                o -> (!OPTION_IGNORED_ELEMENTS.contains(o.applicableObjectType)));
+                                o ->
+                                        (o.applicableObjectType != null
+                                                && !OPTION_IGNORED_ELEMENTS.contains(
+                                                        o.applicableObjectType)));
                     }
                     super.injectOptions(config, optionList);
                 }

@@ -62,7 +62,7 @@ public class GTestBaseTest {
 
     /** Test get postive gtest filters. */
     @Test
-    public void testGTestFilters_postive()
+    public void testGTestFilters_positive()
             throws ConfigurationException, DeviceNotAvailableException {
         String moduleName = "test1";
         GTestBase gTestBase = new GTestBaseImpl();
@@ -118,5 +118,30 @@ public class GTestBaseTest {
         assertTrue(receiver instanceof GTestListTestParser);
 
         EasyMock.verify(listener);
+    }
+
+    /**
+     * Test that when the GTest is a shard and we add after this additional filters we remove the
+     * sharding. GTest sharding is applied after the filtering so we would run nothing in most
+     * cases.
+     */
+    @Test
+    public void testGTestFilters_positiveAndSharding()
+            throws ConfigurationException, DeviceNotAvailableException {
+        String moduleName = "test1";
+        GTestBase gTestBase = new GTestBaseImpl();
+        gTestBase.setShardCount(2);
+        gTestBase.setShardIndex(1);
+        mSetter = new OptionSetter(gTestBase);
+        mSetter.setOptionValue("positive-testname-filter", "filter1:filter2");
+
+        String filters = gTestBase.getGTestFilters(moduleName);
+        assertEquals(String.format("--gtest_filter=%s", "filter1:filter2"), filters);
+        assertEquals(2, gTestBase.getShardCount());
+
+        gTestBase.addIncludeFilter("filter3");
+        filters = gTestBase.getGTestFilters(moduleName);
+        assertEquals(String.format("--gtest_filter=%s", "filter1:filter2:filter3"), filters);
+        assertEquals(0, gTestBase.getShardCount());
     }
 }

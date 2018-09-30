@@ -48,14 +48,25 @@ public class AppInstallTest implements IDeviceTest, IRemoteTest {
             description = "Delay in ms to wait for before starting the install test.")
     private long mTestStartDelay = 60000;
 
-    @Option(name = "test-use-dex-metedata",
-            description = "If the test should install the dex metadata files.")
+    // TODO: remove this once prod is updated.
+    @Option(name = "test-use-dex-metedata")
+    private boolean mUseDexMetadataMisspelled = false;
+    @Option(name = "test-dex-metedata-variant")
+    private String mDexMetadataVariantMisspelled = "";
+
+    @Option(
+        name = "test-use-dex-metadata",
+        description = "If the test should install the dex metadata files."
+    )
     private boolean mUseDexMetadata = false;
 
-    @Option(name = "test-dex-metedata-variant",
-            description = "The dex metadata variant that should be used." +
-                    "When specified, the DM file name for foo.apk will be " +
-                    "constructed as fooVARIANT.dm")
+    @Option(
+        name = "test-dex-metadata-variant",
+        description =
+                "The dex metadata variant that should be used."
+                        + "When specified, the DM file name for foo.apk will be "
+                        + "constructed as fooVARIANT.dm"
+    )
     private String mDexMetadataVariant = "";
 
     @Option(name = "test-uninstall-after",
@@ -85,6 +96,14 @@ public class AppInstallTest implements IDeviceTest, IRemoteTest {
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        // Check if we need to use the obsolete, misspelled flags.
+        if (!mUseDexMetadata) {
+            mUseDexMetadata = mUseDexMetadataMisspelled;
+        }
+        if (mDexMetadataVariant.isEmpty()) {
+            mDexMetadataVariant = mDexMetadataVariantMisspelled;
+        }
+
         // Delay test start time to give the background processes to finish.
         if (mTestStartDelay > 0) {
             try {
@@ -142,7 +161,7 @@ public class AppInstallTest implements IDeviceTest, IRemoteTest {
         long start = System.currentTimeMillis();
 
         // Create install session.
-        String output = mDevice.executeShellCommand("pm install-create -r -d");
+        String output = mDevice.executeShellCommand("pm install-create -r -d -g");
         if (!checkSuccess(output, packageFile, "install-create")) {
             return -1;
         }

@@ -25,6 +25,8 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.IRescheduler;
+import com.android.tradefed.log.FileLogger;
+import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -125,6 +127,17 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
             originalConfig
                     .getCommandOptions()
                     .setShardIndex(mConfiguration.getCommandOptions().getShardIndex());
+            // TODO: Use serial from parent config
+            List<String> serials = mConfiguration.getDeviceRequirements().getSerials();
+            originalConfig.getDeviceRequirements().setSerial(serials.toArray(new String[0]));
+
+            // Transfer log level from retry to subconfig
+            ILeveledLogOutput originalLogger = originalConfig.getLogOutput();
+            originalLogger.setLogLevel(mConfiguration.getLogOutput().getLogLevel());
+            if (originalLogger instanceof FileLogger) {
+                ((FileLogger) originalLogger)
+                        .setLogLevelDisplay(mConfiguration.getLogOutput().getLogLevel());
+            }
         } catch (ConfigurationException e) {
             throw new RuntimeException(e);
         }
