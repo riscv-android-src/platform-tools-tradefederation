@@ -44,8 +44,10 @@ import com.google.inject.Inject;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -218,18 +220,53 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
             // If the module is explicitly excluded from retries, preserve the original results.
             if (!mExcludeFilters.contains(moduleResult.getName())
                     && RetryResultHelper.shouldRunModule(moduleResult, types)) {
+                if (types.contains(RetryType.NOT_EXECUTED)) {
+                    // Clear the run failure since we are attempting to rerun all non-executed
+                    moduleResult.testRunFailed(null);
+                }
+
+                Map<TestDescription, TestResult> parameterizedMethods = new LinkedHashMap<>();
+
                 for (Entry<TestDescription, TestResult> result :
                         moduleResult.getTestResults().entrySet()) {
-                    if (types.contains(RetryType.NOT_EXECUTED)) {
-                        // Clear the run failure since we are attempting to rerun all non-executed
-                        moduleResult.testRunFailed(null);
+                    // Put aside all parameterized methods
+                    if (isParameterized(result.getKey())) {
+                        parameterizedMethods.put(result.getKey(), result.getValue());
+                        continue;
                     }
                     if (!RetryResultHelper.shouldRunTest(result.getValue(), types)) {
-                        addExcludeToConfig(suite, moduleResult, result.getKey());
+                        addExcludeToConfig(suite, moduleResult, result.getKey().toString());
                         replayer.addToReplay(
                                 results.getModuleContextForRunResult(moduleResult.getName()),
                                 moduleResult,
                                 result);
+                    }
+                }
+
+                // Handle parameterized methods
+                for (Entry<String, Map<TestDescription, TestResult>> subMap :
+                        sortMethodToClass(parameterizedMethods).entrySet()) {
+                    boolean shouldNotrerunAnything =
+                            subMap.getValue()
+                                    .entrySet()
+                                    .stream()
+                                    .noneMatch(
+                                            (v) ->
+                                                    RetryResultHelper.shouldRunTest(
+                                                                    v.getValue(), types)
+                                                            == true);
+                    // If None of the base method need to be rerun exclude it
+                    if (shouldNotrerunAnything) {
+                        // Exclude the base method
+                        addExcludeToConfig(suite, moduleResult, subMap.getKey());
+                        // Replay all test cases
+                        for (Entry<TestDescription, TestResult> result :
+                                subMap.getValue().entrySet()) {
+                            replayer.addToReplay(
+                                    results.getModuleContextForRunResult(moduleResult.getName()),
+                                    moduleResult,
+                                    result);
+                        }
                     }
                 }
             } else {
@@ -260,14 +297,38 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
 
     /** Add the filter to the suite. */
     private void addExcludeToConfig(
-            BaseTestSuite suite, TestRunResult moduleResult, TestDescription testDescription) {
+            BaseTestSuite suite, TestRunResult moduleResult, String testDescription) {
         String filter = moduleResult.getName();
         if (testDescription != null) {
-            filter = String.format("%s %s", filter, testDescription.toString());
+            filter = String.format("%s %s", filter, testDescription);
         }
         SuiteTestFilter testFilter = SuiteTestFilter.createFrom(filter);
         Set<String> excludeFilter = new LinkedHashSet<>();
         excludeFilter.add(testFilter.toString());
         suite.setExcludeFilter(excludeFilter);
+    }
+
+    /** Returns True if a test case is a parameterized one. */
+    private boolean isParameterized(TestDescription description) {
+        return !description.getTestName().equals(description.getTestNameWithoutParams());
+    }
+
+    private Map<String, Map<TestDescription, TestResult>> sortMethodToClass(
+            Map<TestDescription, TestResult> paramMethods) {
+        Map<String, Map<TestDescription, TestResult>> returnMap = new LinkedHashMap<>();
+        for (Entry<TestDescription, TestResult> entry : paramMethods.entrySet()) {
+            String noParamName =
+                    String.format(
+                            "%s#%s",
+                            entry.getKey().getClassName(),
+                            entry.getKey().getTestNameWithoutParams());
+            Map<TestDescription, TestResult> forClass = returnMap.get(noParamName);
+            if (forClass == null) {
+                forClass = new LinkedHashMap<>();
+                returnMap.put(noParamName, forClass);
+            }
+            forClass.put(entry.getKey(), entry.getValue());
+        }
+        return returnMap;
     }
 }
