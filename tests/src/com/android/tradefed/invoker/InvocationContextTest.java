@@ -52,6 +52,17 @@ public class InvocationContextTest {
         mContext = new InvocationContext();
     }
 
+    /** Test setting and getting invocation ID. */
+    @Test
+    public void testGetInvocationID() {
+        // initially null
+        assertNull(mContext.getInvocationId());
+
+        // non-null after adding the ID as an attribute
+        mContext.addInvocationAttribute(IInvocationContext.INVOCATION_ID, "TEST_ID");
+        assertEquals("TEST_ID", mContext.getInvocationId());
+    }
+
     /** Test the reverse look up of the device name in the configuration for an ITestDevice */
     @Test
     public void testGetDeviceName() {
