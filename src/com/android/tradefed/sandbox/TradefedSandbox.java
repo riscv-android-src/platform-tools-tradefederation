@@ -21,6 +21,8 @@ import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
@@ -52,6 +54,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Sandbox container that can run a Trade Federation invocation. TODO: Allow Options to be passed to
@@ -272,7 +275,7 @@ public class TradefedSandbox implements ISandbox {
                 commandLine = commandLine + " --no-" + SandboxOptions.USE_PROTO_REPORTER;
             }
             String[] args = QuotationAwareTokenizer.tokenizeLine(commandLine);
-            mGlobalConfig = dumpGlobalConfig();
+            mGlobalConfig = dumpGlobalConfig(config, new HashSet<>());
             DumpCmd mode = DumpCmd.RUN_CONFIG;
             if (config.getCommandOptions().shouldUseSandboxTestMode()) {
                 mode = DumpCmd.TEST_MODE;
@@ -354,8 +357,20 @@ public class TradefedSandbox implements ISandbox {
     }
 
     /** Dump the global configuration filtered from some objects. */
-    protected File dumpGlobalConfig() throws IOException {
-        return SandboxConfigUtil.dumpFilteredGlobalConfig(new HashSet<>());
+    protected File dumpGlobalConfig(IConfiguration config, Set<String> exclusionPatterns)
+            throws IOException, ConfigurationException {
+        SandboxOptions options = getSandboxOptions(config);
+        if (options.getChildGlobalConfig() != null) {
+            IConfigurationFactory factory = ConfigurationFactory.getInstance();
+            IGlobalConfiguration globalConfig =
+                    factory.createGlobalConfigurationFromArgs(
+                            new String[] {options.getChildGlobalConfig()}, new ArrayList<>());
+            CLog.d(
+                    "Using %s directly as global config without filtering",
+                    options.getChildGlobalConfig());
+            return globalConfig.cloneConfigWithFilter();
+        }
+        return SandboxConfigUtil.dumpFilteredGlobalConfig(exclusionPatterns);
     }
 
     /** {@inheritDoc} */
