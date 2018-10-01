@@ -1143,6 +1143,9 @@ public class CommandSchedulerTest extends TestCase {
         mScheduler.shutdownOnEmpty();
         mScheduler.join(2 * 1000);
         verifyMocks(mockListener);
-        assertTrue(mContext.getAttributes().isEmpty());
+
+        // only attribute is invocation ID
+        assertEquals(1, mContext.getAttributes().size());
+        assertNotNull(mContext.getInvocationId());
     }
 }

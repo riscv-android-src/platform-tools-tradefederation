@@ -77,6 +77,12 @@ public class InvocationContext implements IInvocationContext {
         mShardSerials = new LinkedHashMap<Integer, List<String>>();
     }
 
+    @Override
+    public String getInvocationId() {
+        List<String> values = mInvocationAttributes.get(INVOCATION_ID);
+        return values == null || values.isEmpty() ? null : values.get(0);
+    }
+
     /**
      * {@inheritDoc}
      */
