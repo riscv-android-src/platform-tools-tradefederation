@@ -76,13 +76,17 @@ class CLITranslator(object):
             test_mapping_test_details = [None] * len(tests)
         for test, tm_test_detail in zip(tests, test_mapping_test_details):
             test_found = False
+            find_test_err_msg = None
             for finder in test_finder_handler.get_find_methods_for_test(
                     self.mod_info, test):
                 # For tests in TEST_MAPPING, find method is only related to
                 # test name, so the details can be set after test_info object
                 # is created.
-                test_info = finder.find_method(finder.test_finder_instance,
-                                               test)
+                try:
+                    test_info = finder.find_method(finder.test_finder_instance,
+                                                   test)
+                except atest_error.TestDiscoveryException as e:
+                    find_test_err_msg = e
                 if test_info:
                     if tm_test_detail:
                         test_info.data[constants.TI_MODULE_ARG] = (
@@ -91,12 +95,22 @@ class CLITranslator(object):
                     test_infos.add(test_info)
                     test_found = True
                     finder_info = finder.finder_info
-                    clr_test_name = atest_utils.colorize(test, constants.GREEN)
-                    print("Found '%s' as %s" % (clr_test_name, finder_info))
+                    print("Found '%s' as %s" % (
+                        atest_utils.colorize(test, constants.GREEN),
+                        finder_info))
                     break
             if not test_found:
-                raise atest_error.NoTestFoundError('No test found for: %s' %
-                                                   test)
+                print('No test found for: %s' %
+                      atest_utils.colorize(test, constants.RED))
+                if find_test_err_msg:
+                    print('%s\n' % (atest_utils.colorize(
+                        find_test_err_msg, constants.MAGENTA)))
+                else:
+                    print('(This can happen after a repo sync or if the test'
+                          ' is new. Running: with "%s" may resolve the issue.)'
+                          '\n' % (atest_utils.colorize(
+                              constants.REBUILD_MODULE_INFO_FLAG,
+                              constants.RED)))
         return test_infos
 
     def _read_tests_in_test_mapping(self, test_mapping_file):

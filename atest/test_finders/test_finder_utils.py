@@ -160,7 +160,9 @@ def get_fully_qualified_class_name(test_path):
                 package = match.group('package')
                 cls = os.path.splitext(os.path.split(test_path)[1])[0]
                 return '%s.%s' % (package, cls)
-    raise atest_error.MissingPackageNameError(test_path)
+    raise atest_error.MissingPackageNameError('%s: Test class java file'
+                                              'does not contain a package'
+                                              'name.'% test_path)
 
 
 def has_cc_class(test_path):
@@ -629,7 +631,8 @@ def get_plans_from_vts_xml(xml_file):
         A set of plan config paths which are depended by xml_file.
     """
     if not os.path.exists(xml_file):
-        raise atest_error.XmlNotExistError(xml_file)
+        raise atest_error.XmlNotExistError('%s: The xml file does'
+                                           'not exist' % xml_file)
     plans = set()
     xml_root = ET.parse(xml_file).getroot()
     plans.add(xml_file)

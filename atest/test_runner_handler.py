@@ -104,6 +104,7 @@ def run_all_tests(results_dir, test_infos, extra_args):
     """Run the given tests.
 
     Args:
+        results_dir: String directory to store atest results.
         test_infos: List of TestInfo.
         extra_args: Dict of extra args for test runners to use.
 
