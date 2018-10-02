@@ -23,11 +23,13 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
-import java.util.HashMap;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+
+import java.util.HashMap;
 
 /** Unit tests for {@link ModuleListener} * */
 @RunWith(JUnit4.class)
@@ -99,6 +101,8 @@ public class ModuleListenerTest {
 
         assertEquals(numTests, mListener.getNumTotalTests());
         assertEquals(numTests, mListener.getNumTestsInState(TestStatus.PASSED));
+        // Expected count stays as 5
+        assertEquals(numTests, mListener.getExpectedTests());
     }
 
     /** Some test runner calls testRunStart several times. We need to count all their tests. */
