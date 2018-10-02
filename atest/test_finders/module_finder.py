@@ -442,8 +442,9 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         """
         _, methods = test_finder_utils.split_methods(package)
         if methods:
-            raise atest_error.MethodWithoutClassError('Method filtering '
-                                                      'requires class')
+            raise atest_error.MethodWithoutClassError('%s: Method filtering '
+                                                      'requires class' % (
+                                                          methods))
         # Confirm that packages exists and get user input for multiples.
         if rel_config:
             search_dir = os.path.join(self.root_dir,
@@ -537,7 +538,8 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         # Path is to cc file.
         elif file_name and _CC_EXT_RE.match(file_name):
             if not test_finder_utils.has_cc_class(path):
-                raise atest_error.MissingCCTestCaseError(path)
+                raise atest_error.MissingCCTestCaseError(
+                    "Can't find CC class in %s" % path)
             if methods:
                 data[constants.TI_FILTER] = frozenset(
                     [test_info.TestFilter(test_finder_utils.get_cc_filter(
@@ -552,7 +554,9 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                     if package_name:
                         # methods should be empty frozenset for package.
                         if methods:
-                            raise atest_error.MethodWithoutClassError()
+                            raise atest_error.MethodWithoutClassError(
+                                '%s: Method filtering requires class'
+                                % str(methods))
                         data[constants.TI_FILTER] = frozenset(
                             [test_info.TestFilter(package_name, methods)])
                         break

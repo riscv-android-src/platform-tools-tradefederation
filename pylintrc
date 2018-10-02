@@ -15,6 +15,9 @@ method-name-hint=(([a-z][a-z0-9_]{2,50})|(_[a-z0-9_]*))$
 # Regular expression matching correct method names
 method-rgx=(([a-z][a-z0-9_]{2,50})|(_[a-z0-9_]*))$
 
+# Good variable names which should always be accepted, separated by a comma
+good-names=e, f, i, j
+
 [DESIGN]
 
 # Maximum number of return / yield for function / method body
