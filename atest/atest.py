@@ -32,7 +32,6 @@ import tempfile
 import time
 
 import atest_arg_parser
-import atest_error
 import atest_utils
 import cli_translator
 # pylint: disable=import-error
@@ -361,15 +360,10 @@ def main(argv):
     build_targets = set()
     test_infos = set()
     if _will_run_tests(args):
-        try:
-            build_targets, test_infos = translator.translate(args)
-            args = _validate_exec_mode(args, test_infos)
-        except atest_error.TestDiscoveryException:
-            logging.exception('Error occured in test discovery:')
-            logging.info('This can happen after a repo sync or if the test is '
-                         'new. Running: with "%s"  may resolve the issue.',
-                         constants.REBUILD_MODULE_INFO_FLAG)
+        build_targets, test_infos = translator.translate(args)
+        if not test_infos:
             return constants.EXIT_CODE_TEST_NOT_FOUND
+        args = _validate_exec_mode(args, test_infos)
     if args.info:
         return _print_test_info(mod_info, test_infos)
     build_targets |= test_runner_handler.get_test_runner_reqs(mod_info,
