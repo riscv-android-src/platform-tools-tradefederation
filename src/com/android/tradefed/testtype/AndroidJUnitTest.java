@@ -318,14 +318,14 @@ public class AndroidJUnitTest extends InstrumentationTest
         }
         boolean pushedFile = false;
         // if mIncludeTestFile is set, perform filtering with this file
-        if (mIncludeTestFile != null) {
+        if (mIncludeTestFile != null && mIncludeTestFile.length() > 0) {
             mDeviceIncludeFile = mTestFilterDir.replaceAll("/$", "") + "/" + INCLUDE_FILE;
             pushTestFile(mIncludeTestFile, mDeviceIncludeFile, listener);
             pushedFile = true;
         }
 
         // if mExcludeTestFile is set, perform filtering with this file
-        if (mExcludeTestFile != null) {
+        if (mExcludeTestFile != null && mExcludeTestFile.length() > 0) {
             mDeviceExcludeFile = mTestFilterDir.replaceAll("/$", "") + "/" + EXCLUDE_FILE;
             pushTestFile(mExcludeTestFile, mDeviceExcludeFile, listener);
             pushedFile = true;
