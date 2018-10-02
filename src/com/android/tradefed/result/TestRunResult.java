@@ -206,7 +206,11 @@ public class TestRunResult {
         if (mExpectedTestCount == 0) {
             mExpectedTestCount = testCount;
         } else {
-            CLog.w("%s calls testRunStarted more than once", runName);
+            CLog.w(
+                    "%s calls testRunStarted more than once. Previous expected count: %s. "
+                            + "New Expected count: %s",
+                    runName, mExpectedTestCount, mExpectedTestCount + testCount);
+            mExpectedTestCount += testCount;
         }
         mTestRunName = runName;
         mIsRunComplete = false;
