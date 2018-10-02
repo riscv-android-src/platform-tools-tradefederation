@@ -286,6 +286,54 @@ public final class CollectingTestListenerTest {
         assertThat(res.getName()).isEqualTo("not started");
     }
 
+    /** Test the listener under a single normal test run that gets sharded */
+    @Test
+    public void testSingleRun_multi() {
+        mCollectingTestListener.testRunStarted("run1", 1);
+        final TestDescription test = new TestDescription("FooTest", "testName1");
+        mCollectingTestListener.testStarted(test);
+        mCollectingTestListener.testEnded(test, new HashMap<String, Metric>());
+        mCollectingTestListener.testRunEnded(0, new HashMap<String, Metric>());
+
+        mCollectingTestListener.testRunStarted("run1", 3);
+        final TestDescription test2 = new TestDescription("FooTest", "testName2");
+        mCollectingTestListener.testStarted(test2);
+        mCollectingTestListener.testEnded(test2, new HashMap<String, Metric>());
+        mCollectingTestListener.testRunFailed("missing tests");
+        mCollectingTestListener.testRunEnded(0, new HashMap<String, Metric>());
+
+        TestRunResult runResult = mCollectingTestListener.getCurrentRunResults();
+
+        assertThat(runResult.isRunComplete()).isTrue();
+        assertThat(runResult.isRunFailure()).isTrue();
+        assertThat(mCollectingTestListener.getNumTotalTests()).isEqualTo(2);
+        assertThat(mCollectingTestListener.getExpectedTests()).isEqualTo(4);
+    }
+
+    /** Test the listener under a single normal test run that gets sharded */
+    @Test
+    public void testSingleRun_multi_failureRunFirst() {
+        mCollectingTestListener.testRunStarted("run1", 3);
+        final TestDescription test2 = new TestDescription("FooTest", "testName2");
+        mCollectingTestListener.testStarted(test2);
+        mCollectingTestListener.testEnded(test2, new HashMap<String, Metric>());
+        mCollectingTestListener.testRunFailed("missing tests");
+        mCollectingTestListener.testRunEnded(0, new HashMap<String, Metric>());
+
+        mCollectingTestListener.testRunStarted("run1", 1);
+        final TestDescription test = new TestDescription("FooTest", "testName1");
+        mCollectingTestListener.testStarted(test);
+        mCollectingTestListener.testEnded(test, new HashMap<String, Metric>());
+        mCollectingTestListener.testRunEnded(0, new HashMap<String, Metric>());
+
+        TestRunResult runResult = mCollectingTestListener.getCurrentRunResults();
+
+        assertThat(runResult.isRunComplete()).isTrue();
+        assertThat(runResult.isRunFailure()).isTrue();
+        assertThat(mCollectingTestListener.getNumTotalTests()).isEqualTo(2);
+        assertThat(mCollectingTestListener.getExpectedTests()).isEqualTo(4);
+    }
+
     /**
      * Injects a single test run with 1 passed test into the {@link CollectingTestListener} under
      * test
