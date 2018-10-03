@@ -149,7 +149,7 @@ public class TestRunResultTest {
         result.testEnded(test2, new HashMap<String, Metric>());
         result.testRunEnded(0, new HashMap<String, Metric>());
         // Verify rerun.
-        assertEquals(2, result.getExpectedTestCount());
+        assertEquals(3, result.getExpectedTestCount());
         assertTrue(result.isRunFailure());
         assertEquals("failure", result.getRunFailureMessage());
         assertTrue(result.isRunComplete());

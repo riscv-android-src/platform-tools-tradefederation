@@ -28,6 +28,7 @@ public final class SandboxOptions {
     public static final String SANDBOX_BUILD_ID = "sandbox-build-id";
     public static final String USE_PROTO_REPORTER = "use-proto-reporter";
     public static final String CHILD_GLOBAL_CONFIG = "sub-global-config";
+    public static final String PARENT_PREPARER_CONFIG = "parent-preparer-config";
 
     @Option(
         name = TF_LOCATION,
@@ -56,6 +57,13 @@ public final class SandboxOptions {
                             + " sandbox.")
     private String mChildGlobalConfig = null;
 
+    @Option(
+        name = PARENT_PREPARER_CONFIG,
+        description =
+                "A configuration which target_preparers will be run in the parent of the sandbox."
+    )
+    private String mParentPreparerConfig = null;
+
     /**
      * Returns the provided directories containing the Trade Federation version to use for
      * sandboxing the run.
@@ -80,5 +88,10 @@ public final class SandboxOptions {
      */
     public String getChildGlobalConfig() {
         return mChildGlobalConfig;
+    }
+
+    /** Returns the configuration which preparer should run in the parent process of the sandbox. */
+    public String getParentPreparerConfig() {
+        return mParentPreparerConfig;
     }
 }

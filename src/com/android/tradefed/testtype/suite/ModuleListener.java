@@ -51,6 +51,12 @@ public class ModuleListener extends CollectingTestListener {
 
     @Override
     public void testRunStarted(String name, int numTests, int attemptNumber) {
+        // In case of retry of the same run, do not add the expected count again. This allows
+        // situation where test runner has a built-in retry (like InstrumentationTest) and calls
+        // testRunStart several times to be counted properly.
+        if (getTestRunAtAttempt(name, attemptNumber) != null) {
+            numTests = 0;
+        }
         super.testRunStarted(name, numTests, attemptNumber);
         if (attemptNumber != 0) {
             mTestsRan = 1;

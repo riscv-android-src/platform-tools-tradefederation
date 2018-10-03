@@ -1481,12 +1481,16 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         // Check if device is not used in another invocation.
         throwIfDeviceInInvocationThread(context.getDevices());
 
-        CLog.d("starting invocation for command id %d", cmd.getCommandTracker().getId());
+        int invocationId = cmd.getCommandTracker().getId();
+        CLog.d("starting invocation for command id %d", invocationId);
         // Name invocation with first device serial
         final String invocationName = String.format("Invocation-%s",
                 context.getSerials().get(0));
         InvocationThread invocationThread = new InvocationThread(invocationName, context, cmd,
                 listeners);
+        // Link context and command
+        context.addInvocationAttribute(
+                IInvocationContext.INVOCATION_ID, Integer.toString(invocationId));
         logInvocationStartedEvent(cmd.getCommandTracker(), context);
         invocationThread.start();
         addInvocationThread(invocationThread);

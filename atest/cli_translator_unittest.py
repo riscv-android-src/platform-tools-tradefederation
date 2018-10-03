@@ -21,7 +21,6 @@ import os
 import re
 import mock
 
-import atest_error
 import cli_translator as cli_t
 import constants
 import test_finder_handler
@@ -103,11 +102,12 @@ class CLITranslatorUnittests(unittest.TestCase):
         unittest_utils.assert_strict_equal(
             self, ctr._get_test_infos(mult_test), expected_test_infos)
 
-        # Let's make sure we raise an error when we have no tests found.
+        # Check return null set when we have no tests found.
         mock_getfindmethods.return_value = [
             test_finder_base.Finder(None, find_method_return_nothing, None)]
-        self.assertRaises(atest_error.NoTestFoundError, ctr._get_test_infos,
-                          one_test)
+        null_test_info = set()
+        self.assertEqual(null_test_info, ctr._get_test_infos(one_test))
+        self.assertEqual(null_test_info, ctr._get_test_infos(mult_test))
 
         # Check the method works for test mapping.
         test_detail1 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST)
