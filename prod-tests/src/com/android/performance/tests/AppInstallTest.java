@@ -25,6 +25,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.AaptParser;
+import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 import java.io.File;
 import java.util.HashMap;
@@ -59,6 +60,10 @@ public class AppInstallTest implements IDeviceTest, IRemoteTest {
         description = "If the test should install the dex metadata files."
     )
     private boolean mUseDexMetadata = false;
+
+    @Option(name = "test-delay-between-installs",
+            description = "Delay in ms to wait for before starting the install test.")
+    private long mTestDelayBetweenInstalls = 5000;
 
     @Option(
         name = "test-dex-metadata-variant",
@@ -106,12 +111,9 @@ public class AppInstallTest implements IDeviceTest, IRemoteTest {
 
         // Delay test start time to give the background processes to finish.
         if (mTestStartDelay > 0) {
-            try {
-                Thread.sleep(mTestStartDelay);
-            } catch (InterruptedException e) {
-                CLog.e("Failed to delay test: %s", e.toString());
-            }
+            RunUtil.getDefault().sleep(mTestStartDelay);
         }
+
         Assert.assertFalse(mTestApkPath.isEmpty());
         File apkDir = new File(mTestApkPath);
         Assert.assertTrue(apkDir.isDirectory());
@@ -126,8 +128,11 @@ public class AppInstallTest implements IDeviceTest, IRemoteTest {
                 }
                 File file = new File(apkDir, fileName);
                 // Install app and measure time.
-                String installTime = Long.toString(installAndTime(file));
-                metrics.put(fileName, installTime);
+                long installTime = installAndTime(file);
+                if (installTime > 0) {
+                    metrics.put(fileName, Long.toString(installTime));
+                }
+                RunUtil.getDefault().sleep(mTestDelayBetweenInstalls);
             }
         } finally {
             reportMetrics(listener, mTestLabel, metrics);
@@ -142,11 +147,16 @@ public class AppInstallTest implements IDeviceTest, IRemoteTest {
      */
     long installAndTime(File packageFile) throws DeviceNotAvailableException {
         AaptParser parser = AaptParser.parse(packageFile);
+        if (parser == null) {
+            CLog.e("Failed to parse %s", packageFile);
+            return -1;
+        }
         String packageName = parser.getPackageName();
 
         String remotePath = "/data/local/tmp/" + packageFile.getName();
         if (!mDevice.pushFile(packageFile, remotePath)) {
-            throw new RuntimeException("Failed to push " + packageFile.getAbsolutePath());
+            CLog.e("Failed to push %s", packageFile);
+            return -1;
         }
 
         String dmRemotePath = null;
@@ -154,7 +164,8 @@ public class AppInstallTest implements IDeviceTest, IRemoteTest {
             File dexMetadataFile = getDexMetadataFile(packageFile);
             dmRemotePath = "/data/local/tmp/" + dexMetadataFile.getName();
             if (!mDevice.pushFile(dexMetadataFile, dmRemotePath)) {
-                throw new RuntimeException("Failed to push " + dexMetadataFile.getAbsolutePath());
+                CLog.e("Failed to push %s", dexMetadataFile);
+                return -1;
             }
         }
 
