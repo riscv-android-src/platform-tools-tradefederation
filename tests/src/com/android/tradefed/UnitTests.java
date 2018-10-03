@@ -45,6 +45,7 @@ import com.android.tradefed.config.GlobalConfigurationTest;
 import com.android.tradefed.config.OptionCopierTest;
 import com.android.tradefed.config.OptionSetterTest;
 import com.android.tradefed.config.OptionUpdateRuleTest;
+import com.android.tradefed.config.RetryConfigurationFactoryTest;
 import com.android.tradefed.config.SandboxConfigurationFactoryTest;
 import com.android.tradefed.config.gcs.GCSConfigurationFactoryTest;
 import com.android.tradefed.config.gcs.GCSConfigurationServerTest;
@@ -350,6 +351,7 @@ import org.junit.runners.Suite.SuiteClasses;
     OptionCopierTest.class,
     OptionSetterTest.class,
     OptionUpdateRuleTest.class,
+    RetryConfigurationFactoryTest.class,
     SandboxConfigurationFactoryTest.class,
 
     // config.gcs
