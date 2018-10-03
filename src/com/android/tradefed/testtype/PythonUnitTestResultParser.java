@@ -118,12 +118,16 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     static final Pattern PATTERN_TEST_SKIPPED = Pattern.compile("skipped '.*");
     static final Pattern PATTERN_TEST_UNEXPECTED_SUCCESS = Pattern.compile("unexpected success");
 
-    static final Pattern PATTERN_ONE_LINE_RESULT = Pattern.compile(
-            "(\\S*) \\((\\S*)\\) ... (ok|expected failure|FAIL|ERROR|skipped '.*'|unexpected success)");
+    static final Pattern PATTERN_ONE_LINE_RESULT =
+            Pattern.compile(
+                    "(\\S*) \\((\\S*)\\) \\.\\.\\. "
+                            + "(ok|expected failure|FAIL|ERROR|skipped '.*'|unexpected success)");
     static final Pattern PATTERN_TWO_LINE_RESULT_FIRST = Pattern.compile(
             "(\\S*) \\((\\S*)\\)");
-    static final Pattern PATTERN_TWO_LINE_RESULT_SECOND = Pattern.compile(
-            "(.*) ... (ok|expected failure|FAIL|ERROR|skipped '.*'|unexpected success)");
+    static final Pattern PATTERN_TWO_LINE_RESULT_SECOND =
+            Pattern.compile(
+                    "(.*) \\.\\.\\. "
+                            + "(ok|expected failure|FAIL|ERROR|skipped '.*'|unexpected success)");
     static final Pattern PATTERN_FAIL_MESSAGE = Pattern.compile(
             "(FAIL|ERROR): (\\S*) \\((\\S*)\\)");
     static final Pattern PATTERN_RUN_SUMMARY = Pattern.compile(
@@ -131,10 +135,10 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
 
     /** In case of error spanning over multiple lines. */
     static final Pattern MULTILINE_RESULT_WITH_WARNING =
-            Pattern.compile("(.*) ... (.*)", Pattern.DOTALL);
+            Pattern.compile("(.*) \\.\\.\\. (.*)", Pattern.DOTALL);
 
     static final Pattern MULTILINE_FINAL_RESULT_WITH_WARNING =
-            Pattern.compile("(.*) ... (.*)ok(.*)", Pattern.DOTALL);
+            Pattern.compile("(.*) \\.\\.\\. (.*)ok(.*)", Pattern.DOTALL);
 
     static final Pattern PATTERN_RUN_RESULT = Pattern.compile("(OK|FAILED).*");
 
