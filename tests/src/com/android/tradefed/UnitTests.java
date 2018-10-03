@@ -102,6 +102,7 @@ import com.android.tradefed.log.FileLoggerTest;
 import com.android.tradefed.log.HistoryLoggerTest;
 import com.android.tradefed.log.LogRegistryTest;
 import com.android.tradefed.log.TerribleFailureEmailHandlerTest;
+import com.android.tradefed.postprocessor.AggregatePostProcessorTest;
 import com.android.tradefed.postprocessor.AveragePostProcessorTest;
 import com.android.tradefed.postprocessor.BasePostProcessorTest;
 import com.android.tradefed.result.BugreportCollectorTest;
@@ -430,6 +431,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TerribleFailureEmailHandlerTest.class,
 
     // postprocessor
+    AggregatePostProcessorTest.class,
     AveragePostProcessorTest.class,
     BasePostProcessorTest.class,
 
