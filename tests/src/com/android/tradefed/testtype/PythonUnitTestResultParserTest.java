@@ -52,6 +52,7 @@ import java.util.Vector;
 public class PythonUnitTestResultParserTest {
 
     public static final String PYTHON_OUTPUT_FILE_1 = "python_output1.txt";
+    public static final String PYTHON_OUTPUT_FILE_2 = "python_output2.txt";
 
     private PythonUnitTestResultParser mParser;
     private ITestInvocationListener mMockListener;
@@ -516,6 +517,21 @@ public class PythonUnitTestResultParserTest {
         expectLastCall().times(1);
         mMockListener.testRunEnded(time, new HashMap<String, Metric>());
         expectLastCall().times(1);
+    }
+
+    /** Test another output starting by a warning */
+    @Test
+    public void testParseRealOutput2() {
+        String[] contents = readInFile(PYTHON_OUTPUT_FILE_2);
+        mMockListener.testRunStarted("test", 107);
+        for (int i = 0; i < 107; i++) {
+            mMockListener.testStarted(EasyMock.anyObject());
+            mMockListener.testEnded(EasyMock.anyObject(), (HashMap<String, Metric>) anyObject());
+        }
+        mMockListener.testRunEnded(295, new HashMap<String, Metric>());
+        replay(mMockListener);
+        mParser.processNewLines(contents);
+        verify(mMockListener);
     }
 
     private void setTestIdChecks(TestDescription[] ids, boolean[] didPass) {
