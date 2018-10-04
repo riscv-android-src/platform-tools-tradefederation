@@ -107,6 +107,7 @@ public class TradefedSandbox implements ISandbox {
         }
 
         long timeout = config.getCommandOptions().getInvocationTimeout();
+        mRunUtil.allowInterrupt(false);
         CommandResult result =
                 mRunUtil.runTimedCmd(timeout, mStdout, mStderr, mCmdArgs.toArray(new String[0]));
         // Log stdout and stderr
