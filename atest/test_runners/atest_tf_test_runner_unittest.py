@@ -130,6 +130,17 @@ EVENTS_INVOCATION_FAILURE = [
     ('INVOCATION_FAILED', {'cause': 'someInvocationFailureReason'})
 ]
 
+EVENTS_NOT_BALANCED_BEFORE_RAISE = [
+    ('TEST_MODULE_STARTED', {
+        'moduleContextFileName':'serial-util1146216{974}2772610436.ser',
+        'moduleName':'someTestModule'}),
+    ('TEST_RUN_STARTED', {'testCount': 2}),
+    ('TEST_STARTED', {'className':'someClassName', 'testName':'someTestName'}),
+    ('TEST_ENDED', {'className':'someClassName', 'testName':'someTestName'}),
+    ('TEST_STARTED', {'className':'someClassName', 'testName':'someTestName'}),
+    ('TEST_FAILED', {'className':'someClassName2', 'testName':'someTestName2',
+                     'trace': 'someTrace'}),
+]
 
 class AtestTradefedTestRunnerUnittests(unittest.TestCase):
     """Unit tests for atest_tf_test_runner.py"""
@@ -212,7 +223,7 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         socket_data.append('')
         mock_socket.recv.side_effect = socket_data
         self.tr._process_connection(mock_socket, 'fake reporter')
-        calls = [mock.call(name, data, 'fake reporter', mock.ANY)
+        calls = [mock.call(name, data, 'fake reporter', mock.ANY, mock.ANY)
                  for name, data in EVENTS_NORMAL]
         mock_pe.assert_has_calls(calls)
 
@@ -225,7 +236,7 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         socket_data = [squashed_events, '']
         mock_socket.recv.side_effect = socket_data
         self.tr._process_connection(mock_socket, 'fake reporter')
-        calls = [mock.call(name, data, 'fake reporter', mock.ANY)
+        calls = [mock.call(name, data, 'fake reporter', mock.ANY, mock.ANY)
                  for name, data in EVENTS_NORMAL]
         mock_pe.assert_has_calls(calls)
 
@@ -243,7 +254,7 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         socket_data.extend([socket_events[1][:-4], socket_events[1][-4:], ''])
         mock_socket.recv.side_effect = socket_data
         self.tr._process_connection(mock_socket, 'fake reporter')
-        calls = [mock.call(name, data, 'fake reporter', mock.ANY)
+        calls = [mock.call(name, data, 'fake reporter', mock.ANY, mock.ANY)
                  for name, data in module_events]
         mock_pe.assert_has_calls(calls)
 
@@ -251,8 +262,9 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         """Test _process_event method for normal test results."""
         mock_reporter = mock.Mock()
         state = atf_tr.CONNECTION_STATE.copy()
+        stack = []
         for name, data in EVENTS_NORMAL:
-            self.tr._process_event(name, data, mock_reporter, state)
+            self.tr._process_event(name, data, mock_reporter, state, stack)
         call1 = mock.call(test_runner_base.TestResult(
             runner_name=self.tr.NAME,
             group_name='someTestModule',
@@ -277,8 +289,9 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         """Test _process_event method run failure."""
         mock_reporter = mock.Mock()
         state = atf_tr.CONNECTION_STATE.copy()
+        stack = []
         for name, data in EVENTS_RUN_FAILURE:
-            self.tr._process_event(name, data, mock_reporter, state)
+            self.tr._process_event(name, data, mock_reporter, state, stack)
         call = mock.call(test_runner_base.TestResult(
             runner_name=self.tr.NAME,
             group_name='someTestModule',
@@ -294,8 +307,9 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         """Test _process_event method with invocation failure."""
         mock_reporter = mock.Mock()
         state = atf_tr.CONNECTION_STATE.copy()
+        stack = []
         for name, data in EVENTS_INVOCATION_FAILURE:
-            self.tr._process_event(name, data, mock_reporter, state)
+            self.tr._process_event(name, data, mock_reporter, state, stack)
         call = mock.call(test_runner_base.TestResult(
             runner_name=self.tr.NAME,
             group_name=None,
@@ -306,6 +320,38 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
             group_total=None
         ))
         mock_reporter.process_test_result.assert_has_calls([call])
+
+    def test_process_event_not_balanced(self):
+        """Test _process_event method with start/end event name not balanced."""
+        mock_reporter = mock.Mock()
+        state = atf_tr.CONNECTION_STATE.copy()
+        stack = []
+        for name, data in EVENTS_NOT_BALANCED_BEFORE_RAISE:
+            self.tr._process_event(name, data, mock_reporter, state, stack)
+        call = mock.call(test_runner_base.TestResult(
+            runner_name=self.tr.NAME,
+            group_name='someTestModule',
+            test_name='someClassName#someTestName',
+            status=test_runner_base.PASSED_STATUS,
+            details=None,
+            runner_total=None,
+            group_total=2
+        ))
+        mock_reporter.process_test_result.assert_has_calls([call])
+        # Event pair: TEST_STARTED -> TEST_RUN_ENDED
+        # It should raise TradeFedExitError in _check_events_are_balanced()
+        name = 'TEST_RUN_ENDED'
+        data = {}
+        self.assertRaises(atf_tr.TradeFedExitError,
+                          self.tr._check_events_are_balanced,
+                          name, mock_reporter, state, stack)
+        # Event pair: TEST_RUN_STARTED -> TEST_MODULE_ENDED
+        # It should raise TradeFedExitError in _check_events_are_balanced()
+        name = 'TEST_MODULE_ENDED'
+        data = {'foo': 'bar'}
+        self.assertRaises(atf_tr.TradeFedExitError,
+                          self.tr._check_events_are_balanced,
+                          name, mock_reporter, state, stack)
 
     @mock.patch('atest_utils.get_result_server_args')
     def test_generate_run_command(self, mock_resultargs):
