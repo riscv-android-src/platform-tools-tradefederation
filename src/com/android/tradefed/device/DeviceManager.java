@@ -934,6 +934,9 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public List<DeviceDescriptor> listAllDevices() {
         final List<DeviceDescriptor> serialStates = new ArrayList<DeviceDescriptor>();
+        if (mAdbBridgeNeedRestart) {
+            return serialStates;
+        }
         for (IManagedTestDevice d : mManagedDeviceList) {
             DeviceDescriptor desc = buildDeviceDescriptor(d);
             if (desc != null) {
