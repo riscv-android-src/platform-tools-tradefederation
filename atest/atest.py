@@ -32,6 +32,7 @@ import tempfile
 import time
 
 import atest_arg_parser
+import atest_metrics
 import atest_utils
 import cli_translator
 # pylint: disable=import-error
@@ -353,6 +354,7 @@ def main(argv):
     args = _parse_args(argv)
     _configure_logging(args.verbose)
     _validate_args(args)
+    atest_metrics.log_start_event()
 
     results_dir = make_test_run_dir()
     mod_info = module_info.ModuleInfo(force_build=args.rebuild_module_info)
