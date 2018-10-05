@@ -17,6 +17,7 @@ Atest Tradefed test runner class.
 """
 
 from __future__ import print_function
+from collections import deque
 import errno
 import json
 import logging
@@ -42,7 +43,9 @@ SOCKET_BUFFER = 4096
 # EVENT_RE has groups for the name and the data. "." does not match \n.
 EVENT_RE = re.compile(r'^(?P<event_name>[A-Z_]+) (?P<json_data>{.*})(?:\n|$)')
 EVENT_NAMES = {'module_started': 'TEST_MODULE_STARTED',
+               'module_ended': 'TEST_MODULE_ENDED',
                'run_started': 'TEST_RUN_STARTED',
+               'run_ended': 'TEST_RUN_ENDED',
                # Next three are test-level events
                'test_started': 'TEST_STARTED',
                'test_failed': 'TEST_FAILED',
@@ -51,6 +54,11 @@ EVENT_NAMES = {'module_started': 'TEST_MODULE_STARTED',
                # Invocation failure is broader than run failure.
                'run_failed': 'TEST_RUN_FAILED',
                'invocation_failed': 'INVOCATION_FAILED'}
+EVENT_PAIRS = {EVENT_NAMES['module_started']: EVENT_NAMES['module_ended'],
+               EVENT_NAMES['run_started']: EVENT_NAMES['run_ended'],
+               EVENT_NAMES['test_started']: EVENT_NAMES['test_ended']}
+START_EVENTS = list(EVENT_PAIRS.keys())
+END_EVENTS = list(EVENT_PAIRS.values())
 TEST_NAME_TEMPLATE = '%s#%s'
 EXEC_DEPENDENCIES = ('adb', 'aapt')
 
@@ -66,6 +74,9 @@ class TradeFedExitError(Exception):
 
 TRADEFED_EXIT_MSG = ('TradeFed subprocess exited early with exit code=%s. '
                      'Use --verbose to see underlying TradeFed output.')
+
+EVENTS_NOT_BALANCED = ('Error: Saw %s Start event and %s End event. These '
+                       'should be equal!')
 
 
 class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
@@ -270,6 +281,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         connection_state = CONNECTION_STATE.copy()
         conn.settimeout(None)
         buf = ''
+        event_stack = deque()
         while True:
             logging.debug('Waiting to receive data')
             data = conn.recv(SOCKET_BUFFER)
@@ -287,7 +299,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                         event_name = match.group('event_name')
                         buf = buf[match.end():]
                         self._process_event(event_name, event_data, reporter,
-                                            connection_state)
+                                            connection_state, event_stack)
                         continue
                     break
             else:
@@ -295,7 +307,41 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 conn.close()
                 break
 
-    def _process_event(self, event_name, event_data, reporter, state):
+    def _check_events_are_balanced(self, event_name, reporter, state,
+                                   event_stack):
+        """Check Start events and End events. They should be balanced.
+
+        If they are not balanced, print the error message in
+        state['last_failed'], then raise TradeFedExitError.
+
+        Args:
+            event_name: A string of the event name.
+            reporter: A ResultReporter instance.
+            state: A dict of the state of the test run.
+            event_stack: A collections.deque(stack) of the events for pairing
+                         START and END events.
+        Raises:
+            TradeFedExitError if we doesn't have a balance of START/END events.
+        """
+        start_event = event_stack.pop() if event_stack else None
+        if not start_event or EVENT_PAIRS[start_event] != event_name:
+            # Here bubble up the failed trace in the situation having
+            # TEST_FAILED but never receiving TEST_ENDED.
+            if state['last_failed'] and (start_event ==
+                                         EVENT_NAMES['test_started']):
+                reporter.process_test_result(test_runner_base.TestResult(
+                    runner_name=self.NAME,
+                    group_name=state['current_group'],
+                    test_name=state['last_failed']['name'],
+                    status=test_runner_base.FAILED_STATUS,
+                    details=state['last_failed']['trace'],
+                    runner_total=None,
+                    group_total=state['current_group_total']))
+            raise TradeFedExitError(EVENTS_NOT_BALANCED % (start_event,
+                                                           event_name))
+
+    def _process_event(self, event_name, event_data, reporter, state,
+                       event_stack):
         """Process the events of the test run and call reporter with results.
 
         Args:
@@ -303,8 +349,15 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             event_data: A dict of event data.
             reporter: A ResultReporter instance.
             state: A dict of the state of the test run.
+            event_stack: A collections.deque(stack) of the events for pairing
+                         START and END events.
         """
         logging.debug('Processing %s %s', event_name, event_data)
+        if event_name in START_EVENTS:
+            event_stack.append(event_name)
+        elif event_name in END_EVENTS:
+            self._check_events_are_balanced(event_name, reporter, state,
+                                            event_stack)
         if event_name == EVENT_NAMES['module_started']:
             state['current_group'] = event_data['moduleName']
             state['last_failed'] = None
@@ -349,6 +402,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             if state['last_failed'] and name == state['last_failed']['name']:
                 status = test_runner_base.FAILED_STATUS
                 trace = state['last_failed']['trace']
+                state['last_failed'] = None
             else:
                 status = test_runner_base.PASSED_STATUS
                 trace = None
