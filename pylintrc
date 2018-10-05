@@ -20,6 +20,9 @@ good-names=e, f, i, j
 
 [DESIGN]
 
+# Maximum number of arguments for function / method
+max-args=6
+
 # Maximum number of return / yield for function / method body
 max-returns=10
 
