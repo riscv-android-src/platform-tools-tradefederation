@@ -15,9 +15,12 @@
  */
 package com.android.tradefed.config;
 
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.retry.RetryRescheduler;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import java.util.List;
 
@@ -41,16 +44,15 @@ public class RetryConfigurationFactory extends ConfigurationFactory {
             String[] arrayArgs, List<String> unconsumedArgs, IKeyStoreClient keyStoreClient)
             throws ConfigurationException {
         // First create the retry configuration
-        IConfiguration retryConfig =
-                super.createConfigurationFromArgs(arrayArgs, unconsumedArgs, keyStoreClient);
+        IConfiguration retryConfig = createConfiguration(arrayArgs, unconsumedArgs, keyStoreClient);
         if (retryConfig.getTests().size() != 1) {
             throw new ConfigurationException(
                     String.format("%s should only have one runner inside it.", RETRY_CONFIG_NAME));
         }
         IRemoteTest rerunner = retryConfig.getTests().get(0);
         if (!(rerunner instanceof RetryRescheduler)) {
-            throw new ConfigurationException(
-                    "The runner inside the retry configuration is not a RetryRescheduler type.");
+            CLog.e("The runner inside the retry configuration is not a RetryRescheduler type.");
+            return retryConfig;
         }
         // Then use the retry runner to generate the configuration to actually run.
         RetryRescheduler retryRunner = (RetryRescheduler) rerunner;
@@ -61,5 +63,12 @@ public class RetryConfigurationFactory extends ConfigurationFactory {
         } catch (Exception e) {
             throw new ConfigurationException(e.getMessage(), e);
         }
+    }
+
+    @VisibleForTesting
+    IConfiguration createConfiguration(
+            String[] arrayArgs, List<String> unconsumedArgs, IKeyStoreClient keyStoreClient)
+            throws ConfigurationException {
+        return super.createConfigurationFromArgs(arrayArgs, unconsumedArgs, keyStoreClient);
     }
 }
