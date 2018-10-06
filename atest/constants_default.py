@@ -109,5 +109,11 @@ DEVICELESS_TEST = 'host'
 DEVICE_TEST = 'device'
 BOTH_TEST = 'both'
 
+# Metrics
+META_FILE = '.metadata'
+METRICS_URL = 'http://asuite-218222.appspot.com/atest/metrics'
+METRICS_TIMEOUT = 2 #seconds
+METRICS_RESPONSE = 'done'
+
 # VTS plans
 VTS_STAGING_PLAN = 'vts-staging-default'
