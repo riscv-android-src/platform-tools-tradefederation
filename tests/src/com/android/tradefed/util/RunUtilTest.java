@@ -18,6 +18,7 @@ package com.android.tradefed.util;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
+import com.android.tradefed.command.CommandInterrupter;
 import com.android.tradefed.util.IRunUtil.EnvPriority;
 import com.android.tradefed.util.IRunUtil.IRunnableResult;
 import com.android.tradefed.util.RunUtil.RunnableResult;
@@ -49,10 +50,15 @@ public class RunUtilTest extends TestCase {
     private static final long VERY_LONG_TIMEOUT_MS = 5000L;
 
     @Override
-    protected void setUp() throws Exception {
-        super.setUp();
-        mRunUtil = new RunUtil();
+    public void setUp() throws Exception {
+        mRunUtil = new RunUtil(new CommandInterrupter());
         mMockRunnableResult = null;
+    }
+
+    @Override
+    public void tearDown() {
+        // clear interrupted status
+        Thread.interrupted();
     }
 
     /** Test class on {@link RunUtil} in order to avoid creating a real process. */
