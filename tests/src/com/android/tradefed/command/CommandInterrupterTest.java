@@ -28,6 +28,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
 /** Unit tests for {@link CommandInterrupter} */
 @RunWith(JUnit4.class)
 public class CommandInterrupterTest {
@@ -46,11 +49,11 @@ public class CommandInterrupterTest {
         execute(
                 () -> {
                     // interrupts initially blocked
-                    assertFalse(mInterrupter.isInterruptAllowed());
+                    assertFalse(mInterrupter.isInterruptible());
 
                     // thread can be made interruptible
-                    mInterrupter.allowInterrupt(true);
-                    assertTrue(mInterrupter.isInterruptAllowed());
+                    mInterrupter.allowInterrupt();
+                    assertTrue(mInterrupter.isInterruptible());
                 });
     }
 
@@ -58,10 +61,14 @@ public class CommandInterrupterTest {
     public void testInterrupt() throws InterruptedException {
         execute(
                 () -> {
+                    // flag thread for interruption
+                    mInterrupter.allowInterrupt();
+                    mInterrupter.interrupt(Thread.currentThread(), MESSAGE);
+                    assertTrue(Thread.interrupted());
+
                     try {
-                        // can interrupt the thread
-                        mInterrupter.allowInterrupt(true);
-                        mInterrupter.interrupt(Thread.currentThread(), MESSAGE);
+                        // will be interrupted
+                        mInterrupter.checkInterrupted();
                         fail("RunInterruptedException was expected");
                     } catch (RunInterruptedException e) {
                         assertEquals(MESSAGE, e.getMessage());
@@ -73,60 +80,79 @@ public class CommandInterrupterTest {
     public void testInterrupt_blocked() throws InterruptedException {
         execute(
                 () -> {
-                    // track whether interrupts were successfully blocked
-                    boolean success = false;
+                    // block interrupts, but flag for interruption
+                    mInterrupter.blockInterrupt();
+                    mInterrupter.interrupt(Thread.currentThread(), MESSAGE);
+                    assertFalse(Thread.interrupted());
+
+                    // not interrupted
+                    mInterrupter.checkInterrupted();
 
                     try {
-                        // not interrupted if interrupts disallowed
-                        mInterrupter.allowInterrupt(false);
-                        mInterrupter.interrupt(Thread.currentThread(), MESSAGE);
-                        success = true;
-
-                        // interrupted once interrupts allowed
-                        mInterrupter.allowInterrupt(true);
+                        // will be interrupted once interrupts are allowed
+                        mInterrupter.allowInterrupt();
                         fail("RunInterruptedException was expected");
                     } catch (RunInterruptedException e) {
                         assertEquals(MESSAGE, e.getMessage());
-                        assertTrue(success);
                     }
                 });
     }
 
     @Test
-    public void testSetInterruptibleInFuture() throws InterruptedException {
+    public void testInterrupt_clearsFlag() throws InterruptedException {
         execute(
                 () -> {
+                    // flag thread for interruption
+                    mInterrupter.allowInterrupt();
+                    mInterrupter.interrupt(Thread.currentThread(), MESSAGE);
+                    assertTrue(Thread.interrupted());
+
                     try {
-                        // allow interruptions after a delay
-                        mInterrupter.setInterruptibleInFuture(Thread.currentThread(), 200L);
-
-                        // not yet marked as interruptible
-                        RunUtil.getDefault().sleep(50);
-                        assertFalse(mInterrupter.isInterruptAllowed());
-
-                        // marked as interruptible after enough time has passed
-                        RunUtil.getDefault().sleep(200L);
-                        assertTrue(mInterrupter.isInterruptAllowed());
-                    } finally {
-                        mInterrupter.terminateTimer();
+                        // interrupt the thread
+                        mInterrupter.checkInterrupted();
+                        fail("RunInterruptedException was expected");
+                    } catch (RunInterruptedException e) {
+                        // ignore
                     }
+
+                    // interrupt flag was cleared, exception no longer thrown
+                    mInterrupter.checkInterrupted();
                 });
     }
 
     @Test
-    public void testSetInterruptibleInFuture_alreadyAllowed() throws InterruptedException {
+    public void testAllowInterruptAsync() throws InterruptedException {
         execute(
                 () -> {
-                    try {
-                        // interrupts allowed
-                        mInterrupter.allowInterrupt(true);
+                    // allow interruptions after a delay
+                    Future<?> future =
+                            mInterrupter.allowInterruptAsync(
+                                    Thread.currentThread(), 200L, TimeUnit.MILLISECONDS);
+                    assertFalse(future.isDone());
 
-                        // unchanged after asynchronously allowing interrupts
-                        mInterrupter.setInterruptibleInFuture(Thread.currentThread(), 200L);
-                        assertTrue(mInterrupter.isInterruptAllowed());
-                    } finally {
-                        mInterrupter.terminateTimer();
-                    }
+                    // not yet marked as interruptible
+                    RunUtil.getDefault().sleep(50);
+                    assertFalse(mInterrupter.isInterruptible());
+
+                    // marked as interruptible after enough time has passed
+                    RunUtil.getDefault().sleep(200L);
+                    assertTrue(mInterrupter.isInterruptible());
+                });
+    }
+
+    @Test
+    public void testAllowInterruptsAsync_alreadyAllowed() throws InterruptedException {
+        execute(
+                () -> {
+                    // interrupts allowed
+                    mInterrupter.allowInterrupt();
+
+                    // unchanged after asynchronously allowing interrupt
+                    Future<?> future =
+                            mInterrupter.allowInterruptAsync(
+                                    Thread.currentThread(), 200L, TimeUnit.MILLISECONDS);
+                    assertTrue(future.isDone());
+                    assertTrue(mInterrupter.isInterruptible());
                 });
     }
 

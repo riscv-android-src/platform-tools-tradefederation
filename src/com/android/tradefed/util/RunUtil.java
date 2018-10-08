@@ -463,25 +463,30 @@ public class RunUtil implements IRunUtil {
     /** {@inheritDoc} */
     @Override
     public void allowInterrupt(boolean allow) {
-        mInterrupter.allowInterrupt(allow);
+        if (allow) {
+            mInterrupter.allowInterrupt();
+        } else {
+            mInterrupter.blockInterrupt();
+        }
     }
 
     /** {@inheritDoc} */
     @Override
     public boolean isInterruptAllowed() {
-        return mInterrupter.isInterruptAllowed();
+        return mInterrupter.isInterruptible();
     }
 
     /** {@inheritDoc} */
     @Override
     public void setInterruptibleInFuture(Thread thread, final long timeMs) {
-        mInterrupter.setInterruptibleInFuture(thread, timeMs);
+        mInterrupter.allowInterruptAsync(thread, timeMs, TimeUnit.MILLISECONDS);
     }
 
     /** {@inheritDoc} */
     @Override
     public synchronized void interrupt(Thread thread, String message) {
         mInterrupter.interrupt(thread, message);
+        mInterrupter.checkInterrupted();
     }
 
     /**
@@ -722,15 +727,7 @@ public class RunUtil implements IRunUtil {
         return t;
     }
 
-    /** Allow to stop the Timer Thread for the run util instance if started. */
-    @VisibleForTesting
-    void terminateTimer() {
-        mInterrupter.terminateTimer();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void setEnvVariablePriority(EnvPriority priority) {
         if (this.equals(sDefaultInstance)) {

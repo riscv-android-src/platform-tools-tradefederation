@@ -426,7 +426,6 @@ public class RunUtilTest extends TestCase {
                                     assertEquals("TEST", rie.getMessage());
                                 }
                                 success = mRunUtil.isInterruptAllowed();
-                                mRunUtil.terminateTimer();
                             }
                         });
         mRunUtil.interrupt(test, "TEST");
@@ -445,16 +444,13 @@ public class RunUtilTest extends TestCase {
     public void testSetInterruptibleInFuture_beforeTimeout() {
         mRunUtil.allowInterrupt(false);
         assertFalse(mRunUtil.isInterruptAllowed());
-        try {
-            mRunUtil.setInterruptibleInFuture(Thread.currentThread(), SHORT_TIMEOUT_MS);
-            mRunUtil.sleep(50);
-            // Should still be false
-            assertFalse(mRunUtil.isInterruptAllowed());
-            mRunUtil.sleep(SHORT_TIMEOUT_MS);
-            assertTrue(mRunUtil.isInterruptAllowed());
-        } finally {
-            mRunUtil.terminateTimer();
-        }
+
+        mRunUtil.setInterruptibleInFuture(Thread.currentThread(), SHORT_TIMEOUT_MS);
+        mRunUtil.sleep(50);
+        // Should still be false
+        assertFalse(mRunUtil.isInterruptAllowed());
+        mRunUtil.sleep(SHORT_TIMEOUT_MS);
+        assertTrue(mRunUtil.isInterruptAllowed());
     }
 
     /**
