@@ -20,6 +20,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
@@ -114,6 +115,7 @@ public class RunUtilTest {
         IRunUtil.IRunnableResult mockRunnable = EasyMock.createStrictMock(
                 IRunUtil.IRunnableResult.class);
         EasyMock.expect(mockRunnable.run()).andReturn(Boolean.TRUE);
+        mockRunnable.cancel(); // always ensure execution is cancelled
         EasyMock.replay(mockRunnable);
         assertEquals(CommandStatus.SUCCESS,
                 mRunUtil.runTimed(SHORT_TIMEOUT_MS, mockRunnable, true));
@@ -125,6 +127,7 @@ public class RunUtilTest {
         IRunUtil.IRunnableResult mockRunnable = EasyMock.createStrictMock(
                 IRunUtil.IRunnableResult.class);
         EasyMock.expect(mockRunnable.run()).andReturn(Boolean.FALSE);
+        mockRunnable.cancel(); // always ensure execution is cancelled
         EasyMock.replay(mockRunnable);
         assertEquals(CommandStatus.FAILED,
                 mRunUtil.runTimed(SHORT_TIMEOUT_MS, mockRunnable, true));
@@ -136,10 +139,30 @@ public class RunUtilTest {
         IRunUtil.IRunnableResult mockRunnable = EasyMock.createStrictMock(
                 IRunUtil.IRunnableResult.class);
         EasyMock.expect(mockRunnable.run()).andThrow(new RuntimeException());
-        mockRunnable.cancel();
+        mockRunnable.cancel(); // cancel due to exception
+        mockRunnable.cancel(); // always ensure execution is cancelled
         EasyMock.replay(mockRunnable);
         assertEquals(CommandStatus.EXCEPTION,
                 mRunUtil.runTimed(SHORT_TIMEOUT_MS, mockRunnable, true));
+    }
+
+    /** Test interrupted case for {@link RunUtil#runTimed(long, IRunnableResult, boolean)}. */
+    @Test
+    public void testRunTimed_interrupted() {
+        IRunnableResult runnable = Mockito.mock(IRunnableResult.class);
+        CommandInterrupter interrupter = Mockito.mock(CommandInterrupter.class);
+        RunUtil runUtil = new RunUtil(interrupter);
+
+        // interrupted during execution
+        doNothing().doThrow(RunInterruptedException.class).when(interrupter).checkInterrupted();
+
+        try {
+            runUtil.runTimed(VERY_SHORT_TIMEOUT_MS, runnable, true);
+            fail("RunInterruptedException was expected, but not thrown.");
+        } catch (RunInterruptedException e) {
+            // execution was cancelled due to interruption
+            Mockito.verify(runnable, Mockito.times(1)).cancel();
+        }
     }
 
     /** Test that {@link RunUtil#runTimedCmd(long, String[])} fails when given a garbage command. */
