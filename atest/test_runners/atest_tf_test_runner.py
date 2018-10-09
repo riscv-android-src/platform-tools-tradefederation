@@ -66,7 +66,9 @@ CONNECTION_STATE = {
     'current_test': None,
     'last_failed': None,
     'current_group': None,
-    'current_group_total': None
+    'current_group_total': None,
+    'test_count': 0,
+    'test_start_time': None
 }
 
 class TradeFedExitError(Exception):
@@ -335,11 +337,14 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                     test_name=state['last_failed']['name'],
                     status=test_runner_base.FAILED_STATUS,
                     details=state['last_failed']['trace'],
+                    test_count=state['test_count'],
+                    test_time='',
                     runner_total=None,
                     group_total=state['current_group_total']))
             raise TradeFedExitError(EVENTS_NOT_BALANCED % (start_event,
                                                            event_name))
 
+    # pylint: disable=too-many-branches
     def _process_event(self, event_name, event_data, reporter, state,
                        event_stack):
         """Process the events of the test run and call reporter with results.
@@ -367,10 +372,13 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             state['current_group_total'] = event_data['testCount']
             state['last_failed'] = None
             state['current_test'] = None
+            state['test_count'] = 0
         elif event_name == EVENT_NAMES['test_started']:
             name = TEST_NAME_TEMPLATE % (event_data['className'],
                                          event_data['testName'])
             state['current_test'] = name
+            state['test_count'] += 1
+            state['test_start_time'] = event_data['start_time']
         elif event_name == EVENT_NAMES['test_failed']:
             state['last_failed'] = {'name': TEST_NAME_TEMPLATE % (
                 event_data['className'],
@@ -384,6 +392,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 test_name=state['current_test'],
                 status=test_runner_base.ERROR_STATUS,
                 details=event_data['reason'],
+                test_count=state['test_count'],
+                test_time='',
                 runner_total=None,
                 group_total=state['current_group_total']))
         elif event_name == EVENT_NAMES['invocation_failed']:
@@ -394,11 +404,18 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 test_name=state['current_test'],
                 status=test_runner_base.ERROR_STATUS,
                 details=event_data['cause'],
+                test_count=state['test_count'],
+                test_time='',
                 runner_total=None,
                 group_total=state['current_group_total']))
         elif event_name == EVENT_NAMES['test_ended']:
             name = TEST_NAME_TEMPLATE % (event_data['className'],
                                          event_data['testName'])
+            if state['test_start_time']:
+                test_time = '(%dms)' % (event_data['end_time'] -
+                                        state['test_start_time'])
+            else:
+                test_time = ''
             if state['last_failed'] and name == state['last_failed']['name']:
                 status = test_runner_base.FAILED_STATUS
                 trace = state['last_failed']['trace']
@@ -412,6 +429,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 test_name=name,
                 status=status,
                 details=trace,
+                test_count=state['test_count'],
+                test_time=test_time,
                 runner_total=None,
                 group_total=state['current_group_total']))
 

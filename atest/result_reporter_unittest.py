@@ -28,6 +28,8 @@ RESULT_PASSED_TEST = test_runner_base.TestResult(
     test_name='someClassName#sostName',
     status=test_runner_base.PASSED_STATUS,
     details=None,
+    test_count=1,
+    test_time='(10ms)',
     runner_total=None,
     group_total=2
 )
@@ -38,6 +40,8 @@ RESULT_PASSED_TEST_MODULE_2 = test_runner_base.TestResult(
     test_name='someClassName#sostName',
     status=test_runner_base.PASSED_STATUS,
     details=None,
+    test_count=1,
+    test_time='(10ms)',
     runner_total=None,
     group_total=2
 )
@@ -48,6 +52,8 @@ RESULT_PASSED_TEST_RUNNER_2_NO_MODULE = test_runner_base.TestResult(
     test_name='someClassName#sostName',
     status=test_runner_base.PASSED_STATUS,
     details=None,
+    test_count=1,
+    test_time='(10ms)',
     runner_total=None,
     group_total=2
 )
@@ -58,6 +64,8 @@ RESULT_FAILED_TEST = test_runner_base.TestResult(
     test_name='someClassName2#sestName2',
     status=test_runner_base.FAILED_STATUS,
     details='someTrace',
+    test_count=1,
+    test_time='',
     runner_total=None,
     group_total=2
 )
@@ -68,6 +76,8 @@ RESULT_RUN_FAILURE = test_runner_base.TestResult(
     test_name='someClassName#sostName',
     status=test_runner_base.ERROR_STATUS,
     details='someRunFailureReason',
+    test_count=1,
+    test_time='',
     runner_total=None,
     group_total=2
 )
@@ -78,6 +88,8 @@ RESULT_INVOCATION_FAILURE = test_runner_base.TestResult(
     test_name=None,
     status=test_runner_base.ERROR_STATUS,
     details='someInvocationFailureReason',
+    test_count=1,
+    test_time='',
     runner_total=None,
     group_total=None
 )
