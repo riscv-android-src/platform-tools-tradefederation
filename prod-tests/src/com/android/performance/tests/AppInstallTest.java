@@ -28,7 +28,9 @@ import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.Assert;
 
@@ -78,6 +80,11 @@ public class AppInstallTest implements IDeviceTest, IRemoteTest {
             description = "If the apk should be uninstalled after.")
     private boolean mUninstallAfter = true;
 
+    @Option(name = "package-list",
+            description = "If given, filters the apk files in the test dir based on the list of "
+                    + "packages. It checks that the apk name is packageName-version.apk")
+    private List<String> mPackages = new ArrayList<String>();
+
     private ITestDevice mDevice;
 
     /*
@@ -124,6 +131,9 @@ public class AppInstallTest implements IDeviceTest, IRemoteTest {
             for (String fileName : files) {
                 if (!fileName.endsWith(".apk")) {
                     CLog.d("Skipping non-apk %s", fileName);
+                    continue;
+                } else if (!matchesPackagesForInstall(fileName)) {
+                    CLog.d("Skipping apk %s", fileName);
                     continue;
                 }
                 File file = new File(apkDir, fileName);
@@ -254,5 +264,20 @@ public class AppInstallTest implements IDeviceTest, IRemoteTest {
 
     private File getDexMetadataFile(File packageFile) {
         return new File(packageFile.getAbsolutePath().replace(".apk", mDexMetadataVariant + ".dm"));
+    }
+
+    private boolean matchesPackagesForInstall(String fileName) {
+        if (mPackages.isEmpty()) {
+            return true;
+        }
+
+        for (String pkg : mPackages) {
+            // "-" is the version delimiter and ensures we don't match for example
+            // com.google.android.apps.docs for com.google.android.apps.docs.slides.
+            if (fileName.contains(pkg + "-")) {
+                return true;
+            }
+        }
+        return false;
     }
 }
