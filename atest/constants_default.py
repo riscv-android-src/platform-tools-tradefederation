@@ -117,3 +117,6 @@ METRICS_RESPONSE = 'done'
 
 # VTS plans
 VTS_STAGING_PLAN = 'vts-staging-default'
+
+# TreeHugger TEST_MAPPING SUITE_PLANS
+TEST_MAPPING_SUITES = ['device-tests', 'general-tests']
