@@ -73,6 +73,8 @@ class CLITranslatorUnittests(unittest.TestCase):
         # Test mapping related args
         self.args.test_mapping = False
         self.args.include_subdirs = False
+        self.ctr.mod_info = mock.Mock
+        self.ctr.mod_info.name_to_module_info = {}
 
     @mock.patch.object(test_finder_handler, 'get_find_methods_for_test')
     def test_get_test_infos(self, mock_getfindmethods):
