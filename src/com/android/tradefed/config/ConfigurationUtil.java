@@ -175,8 +175,8 @@ public class ConfigurationUtil {
      */
     public static Set<File> getConfigNamesFileFromDirs(String subPath, List<File> dirs) {
         List<String> patterns = new ArrayList<>();
-        patterns.add(".*.config");
-        patterns.add(".*.xml");
+        patterns.add(".*\\.config$");
+        patterns.add(".*\\.xml$");
         return getConfigNamesFileFromDirs(subPath, dirs, patterns);
     }
 

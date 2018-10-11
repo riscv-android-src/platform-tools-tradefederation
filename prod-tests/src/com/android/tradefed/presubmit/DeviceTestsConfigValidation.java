@@ -67,7 +67,7 @@ public class DeviceTestsConfigValidation implements IBuildReceiver {
         // Only load the .config as .xml might be data in device-tests.zip case.
         configs.addAll(
                 ConfigurationUtil.getConfigNamesFileFromDirs(
-                        null, extraTestCasesDirs, Arrays.asList(".*.config")));
+                        null, extraTestCasesDirs, Arrays.asList(".*\\.config$")));
         for (File config : configs) {
             try {
                 IConfiguration c =
