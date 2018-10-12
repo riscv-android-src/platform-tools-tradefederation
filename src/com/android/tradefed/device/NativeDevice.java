@@ -19,7 +19,6 @@ import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.FileListingService.FileEntry;
 import com.android.ddmlib.IDevice;
-import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.InstallException;
 import com.android.ddmlib.Log.LogLevel;
@@ -428,7 +427,8 @@ public class NativeDevice implements IManagedTestDevice {
         if (getIDevice() instanceof StubDevice) {
             return null;
         }
-        if (!DeviceState.ONLINE.equals(getIDevice().getState())) {
+        if (!TestDeviceState.ONLINE.equals(getDeviceState())) {
+            // Only query property for online device
             CLog.d("Device %s is not online cannot get property %s.", getSerialNumber(), name);
             return null;
         }
@@ -4016,7 +4016,7 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public String getMacAddress() {
-        if (mIDevice instanceof StubDevice) {
+        if (getIDevice() instanceof StubDevice) {
             // Do not query MAC addresses from stub devices.
             return null;
         }

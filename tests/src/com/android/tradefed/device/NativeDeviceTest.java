@@ -27,7 +27,6 @@ import static org.mockito.Mockito.doThrow;
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.FileListingService.FileEntry;
 import com.android.ddmlib.IDevice;
-import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.SyncException;
@@ -2187,6 +2186,23 @@ public class NativeDeviceTest {
                 receiver.addOutput(address.getBytes(), 0, address.length());
             }
         };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public void recoverDevice() throws DeviceNotAvailableException {
+                        // ignore
+                    }
+
+                    @Override
+                    public IDevice getIDevice() {
+                        return device;
+                    }
+
+                    @Override
+                    IWifiHelper createWifiHelper() {
+                        return mMockWifi;
+                    }
+                };
         mTestDevice.setIDevice(device);
         assertNull(mTestDevice.getMacAddress());
     }
@@ -2195,9 +2211,10 @@ public class NativeDeviceTest {
     @Test
     public void testGetSimState_unavailableDevice() {
         mMockIDevice = EasyMock.createMock(IDevice.class);
-        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.UNAUTHORIZED);
-        EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn("serial");
+        mMockStateMonitor.setState(TestDeviceState.NOT_AVAILABLE);
+        EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn("serial").times(2);
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        mTestDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
         assertNull(mTestDevice.getSimState());
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
@@ -2206,9 +2223,10 @@ public class NativeDeviceTest {
     @Test
     public void testGetSimOperator_unavailableDevice() {
         mMockIDevice = EasyMock.createMock(IDevice.class);
-        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.UNAUTHORIZED);
-        EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn("serial");
+        mMockStateMonitor.setState(TestDeviceState.NOT_AVAILABLE);
+        EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn("serial").times(2);
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        mTestDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
         assertNull(mTestDevice.getSimOperator());
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
@@ -2280,7 +2298,6 @@ public class NativeDeviceTest {
     @Test
     public void testGetLogcatSince() throws Exception {
         long date = 1512990942000L; // 2017-12-11 03:15:42.015
-        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
         SettableFuture<String> value = SettableFuture.create();
         value.set("23");
         EasyMock.expect(mMockIDevice.getSystemProperty("ro.build.version.sdk")).andReturn(value);

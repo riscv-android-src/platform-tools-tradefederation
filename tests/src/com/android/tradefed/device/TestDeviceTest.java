@@ -699,7 +699,6 @@ public class TestDeviceTest extends TestCase {
         for (int i=0; i <= TestDevice.MAX_RETRY_ATTEMPTS; i++) {
             assertRecoverySuccess();
         }
-        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE).times(2);
         EasyMock.expect(mMockStateMonitor.waitForDeviceOnline()).andReturn(mMockIDevice).times(3);
         injectSystemProperty("ro.build.version.sdk", "23").times(3);
         replayMocks();
@@ -1698,7 +1697,6 @@ public class TestDeviceTest extends TestCase {
             final String property, final String value) {
         SettableFuture<String> valueResponse = SettableFuture.create();
         valueResponse.set(value);
-        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
         return EasyMock.expect(mMockIDevice.getSystemProperty(property)).andReturn(valueResponse);
     }
 
