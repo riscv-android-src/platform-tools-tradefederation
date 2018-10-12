@@ -138,8 +138,30 @@ class CLITranslator(object):
                         test_mapping.Import(test_mapping_file, import_detail))
             else:
                 grouped_tests = all_tests.setdefault(test_group_name, set())
-                grouped_tests.update(
-                    [test_mapping.TestDetail(test) for test in test_list])
+                tests = []
+                for test in test_list:
+                    test_mod_info = self.mod_info.name_to_module_info.get(
+                        test['name'])
+                    if not test_mod_info:
+                        print('WARNING: %s is not a valid build target and '
+                              'may not be discoverable by TreeHugger. If you '
+                              'want to specify a class or test-package, '
+                              'please set \'name\' to the test module and use '
+                              '\'options\' to specify the right tests via '
+                              '\'include-filter\'.\nNote: this can also occur '
+                              'if the test module is not built for your '
+                              'current lunch target.\n' %
+                              atest_utils.colorize(test['name'], constants.RED))
+                    elif not any(x in test_mod_info['compatibility_suites'] for
+                                 x in constants.TEST_MAPPING_SUITES):
+                        print('WARNING: Please add %s to either suite: %s for '
+                              'this TEST_MAPPING file to work with TreeHugger.' %
+                              (atest_utils.colorize(test['name'],
+                                                    constants.RED),
+                               atest_utils.colorize(constants.TEST_MAPPING_SUITES,
+                                                    constants.GREEN)))
+                    tests.append(test_mapping.TestDetail(test))
+                grouped_tests.update(tests)
         return all_tests, imports
 
     def _find_files(self, path, file_name=TEST_MAPPING):
