@@ -169,7 +169,7 @@ public class TradefedSandboxTest {
         EasyMock.verify(mMockConfig, mMockListener, mMockRunUtil);
         assertNotNull(res);
         assertTrue(res instanceof ConfigurationException);
-        assertEquals("Ouch I failed.", res.getMessage());
+        assertEquals("Error when dumping the config. stderr: Ouch I failed.", res.getMessage());
     }
 
     /**
