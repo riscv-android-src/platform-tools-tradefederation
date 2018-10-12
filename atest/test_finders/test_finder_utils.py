@@ -239,7 +239,7 @@ def extract_test_from_tests(tests):
     elif count > 1:
         numbered_list = ['%s: %s' % (i, t) for i, t in enumerate(tests)]
         print 'Multiple tests found:\n%s' % '\n'.join(numbered_list)
-        test_index = int(raw_input('Please enter number of test to use:'))
+        test_index = int(raw_input('Please enter number of test to use: '))
     return tests[test_index]
 
 
