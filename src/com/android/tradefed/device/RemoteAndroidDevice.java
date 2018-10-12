@@ -57,6 +57,12 @@ public class RemoteAndroidDevice extends TestDevice {
         super(device, stateMonitor, allocationMonitor);
     }
 
+    @Override
+    public void postInvocationTearDown() {
+        super.postInvocationTearDown();
+        FileUtil.deleteFile(mAdbConnectLogs);
+    }
+
     /**
      * {@inheritDoc}
      */
