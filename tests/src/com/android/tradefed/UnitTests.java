@@ -154,6 +154,7 @@ import com.android.tradefed.targetprep.DeviceFlashPreparerTest;
 import com.android.tradefed.targetprep.DeviceSetupTest;
 import com.android.tradefed.targetprep.DeviceStorageFillerTest;
 import com.android.tradefed.targetprep.DeviceStringPusherTest;
+import com.android.tradefed.targetprep.DisableSELinuxTargetPreparerTest;
 import com.android.tradefed.targetprep.FastbootDeviceFlasherTest;
 import com.android.tradefed.targetprep.FlashingResourcesParserTest;
 import com.android.tradefed.targetprep.InstallAllTestZipAppsSetupTest;
@@ -482,6 +483,7 @@ import org.junit.runners.Suite.SuiteClasses;
     DeviceSetupTest.class,
     DeviceStorageFillerTest.class,
     DeviceStringPusherTest.class,
+    DisableSELinuxTargetPreparerTest.class,
     FastbootDeviceFlasherTest.class,
     FlashingResourcesParserTest.class,
     InstallAllTestZipAppsSetupTest.class,
