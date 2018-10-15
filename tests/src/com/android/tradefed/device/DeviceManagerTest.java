@@ -17,7 +17,6 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.AndroidDebugBridge.IDeviceChangeListener;
-
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
 import com.android.tradefed.command.remote.DeviceDescriptor;
@@ -30,6 +29,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+
 import com.google.common.util.concurrent.SettableFuture;
 
 import junit.framework.TestCase;
@@ -37,6 +37,7 @@ import junit.framework.TestCase;
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
+
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -294,8 +295,7 @@ public class DeviceManagerTest extends TestCase {
     }
 
     /**
-     * Test {@link DeviceManager#allocateDevice(IDeviceSelection)} when device is
-     * returned.
+     * Test {@link DeviceManager#allocateDevice(IDeviceSelection, boolean)} when device is returned.
      */
     public void testAllocateDevice_match() {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
@@ -305,13 +305,51 @@ public class DeviceManagerTest extends TestCase {
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
         replayMocks();
         DeviceManager manager = createDeviceManager(null, mMockIDevice);
-        assertEquals(mMockTestDevice, manager.allocateDevice(options));
+        assertEquals(mMockTestDevice, manager.allocateDevice(options, false));
         EasyMock.verify(mMockStateMonitor);
     }
 
     /**
-     * Test {@link DeviceManager#allocateDevice(IDeviceSelection)} when stub emulator
-     * is requested
+     * Test that when allocating a fake device we create a placeholder then delete it at the end.
+     */
+    public void testAllocateDevice_match_temporary() {
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+        options.setNullDeviceRequested(true);
+        options.addSerial(DEVICE_SERIAL);
+        // Force create a device
+        EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FORCE_AVAILABLE))
+                .andReturn(new DeviceEventResponse(DeviceAllocationState.Available, true));
+        // Device get allocated
+        EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))
+                .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
+
+        mMockTestDevice.stopLogcat();
+
+        // De-allocate
+        EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FREE_UNKNOWN))
+                .andReturn(new DeviceEventResponse(DeviceAllocationState.Unknown, true));
+
+        replayMocks();
+        DeviceManager manager = createDeviceManager(null);
+        assertEquals(mMockTestDevice, manager.allocateDevice(options, true));
+        String serial = mMockTestDevice.getSerialNumber();
+        assertTrue(serial.startsWith("null-device-temp-"));
+
+        // Release device
+        manager.freeDevice(mMockTestDevice, FreeDeviceState.AVAILABLE);
+        // Check that temp device was deleted.
+        DeviceSelectionOptions validation = new DeviceSelectionOptions();
+        validation.setNullDeviceRequested(true);
+        validation.addSerial(serial);
+        // If we request the particular null-device again it doesn't exists.
+        assertNull(manager.allocateDevice(validation, false));
+
+        EasyMock.verify(mMockStateMonitor);
+    }
+
+    /**
+     * Test {@link DeviceManager#allocateDevice(IDeviceSelection, boolean)} when stub emulator is
+     * requested
      */
     public void testAllocateDevice_stubEmulator() {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
@@ -325,7 +363,7 @@ public class DeviceManagerTest extends TestCase {
         DeviceManager mgr = createDeviceManagerNoInit();
         mgr.setMaxEmulators(1);
         mgr.init(null, null, mMockDeviceFactory);
-        assertNotNull(mgr.allocateDevice(options));
+        assertNotNull(mgr.allocateDevice(options, false));
         verifyMocks();
     }
 
@@ -353,19 +391,19 @@ public class DeviceManagerTest extends TestCase {
         DeviceManager manager = createDeviceManagerNoInit();
         manager.setMaxEmulators(1);
         manager.init(null, null, mMockDeviceFactory);
-        IManagedTestDevice emulator = (IManagedTestDevice) manager.allocateDevice(options);
+        IManagedTestDevice emulator = (IManagedTestDevice) manager.allocateDevice(options, false);
         assertNotNull(emulator);
         // a freed 'unavailable' emulator should be returned to the available
         // queue.
         manager.freeDevice(emulator, FreeDeviceState.UNAVAILABLE);
         // ensure device can be allocated again
-        assertNotNull(manager.allocateDevice(options));
+        assertNotNull(manager.allocateDevice(options, false));
         verifyMocks();
     }
 
     /**
-     * Test {@link DeviceManager#allocateDevice(IDeviceSelection)} when a null device
-     * is requested.
+     * Test {@link DeviceManager#allocateDevice(IDeviceSelection, boolean} when a null device is
+     * requested.
      */
     public void testAllocateDevice_nullDevice() {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
@@ -379,7 +417,7 @@ public class DeviceManagerTest extends TestCase {
         DeviceManager mgr = createDeviceManagerNoInit();
         mgr.setMaxNullDevices(1);
         mgr.init(null, null, mMockDeviceFactory);
-        ITestDevice device = mgr.allocateDevice(options);
+        ITestDevice device = mgr.allocateDevice(options, false);
         assertNotNull(device);
         assertTrue(device.getIDevice() instanceof NullDevice);
         verifyMocks();
@@ -900,13 +938,13 @@ public class DeviceManagerTest extends TestCase {
         DeviceManager manager = createDeviceManagerNoInit();
         manager.setMaxTcpDevices(1);
         manager.init(null, null, mMockDeviceFactory);
-        IManagedTestDevice tcpDevice = (IManagedTestDevice) manager.allocateDevice(options);
+        IManagedTestDevice tcpDevice = (IManagedTestDevice) manager.allocateDevice(options, false);
         assertNotNull(tcpDevice);
         // a freed 'unavailable' emulator should be returned to the available
         // queue.
         manager.freeDevice(tcpDevice, FreeDeviceState.UNAVAILABLE);
         // ensure device can be allocated again
-        ITestDevice tcp = manager.allocateDevice(options);
+        ITestDevice tcp = manager.allocateDevice(options, false);
         assertNotNull(tcp);
         assertTrue(tcp.getDeviceState() == TestDeviceState.NOT_AVAILABLE);
         verifyMocks();
