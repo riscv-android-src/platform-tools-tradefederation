@@ -23,7 +23,22 @@ import com.android.ddmlib.IDevice;
  */
 public class NullDevice extends StubDevice {
 
+    private boolean mTemporaryDevice = false;
+
     public NullDevice(String serial) {
         super(serial, false);
+    }
+
+    public NullDevice(String serial, boolean isTemporary) {
+        this(serial);
+        mTemporaryDevice = isTemporary;
+    }
+
+    /**
+     * Returns true if the device was created temporarily for the invocation and should be deleted
+     * afterward.
+     */
+    public final boolean isTemporary() {
+        return mTemporaryDevice;
     }
 }
