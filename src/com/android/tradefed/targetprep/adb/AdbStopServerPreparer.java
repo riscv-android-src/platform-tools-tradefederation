@@ -46,13 +46,14 @@ import java.io.IOException;
  */
 public class AdbStopServerPreparer extends BaseTargetPreparer implements ITargetCleaner {
 
+    public static final String ADB_BINARY_KEY = "adb_path";
+
     @Option(
         name = "restart-new-adb-version",
         description = "Whether or not to restart adb with the new version after stopping it."
     )
     private boolean mRestartNewVersion = true;
 
-    private static final String PATH = "PATH";
     private static final long CMD_TIMEOUT = 60000L;
     private static final String ANDROID_HOST_OUT = "ANDROID_HOST_OUT";
 
@@ -88,12 +89,13 @@ public class AdbStopServerPreparer extends BaseTargetPreparer implements ITarget
         if (adb == null && buildInfo.getFile("adb") != null) {
             adb = buildInfo.getFile("adb");
             adb = renameAdbBinary(adb);
+            // Track the updated adb file.
+            buildInfo.setFile(ADB_BINARY_KEY, adb, "adb");
         }
 
         if (adb != null) {
             CLog.d("Restarting adb from %s", adb.getAbsolutePath());
             IRunUtil restartAdb = createRunUtil();
-            restartAdb.setEnvVariable(PATH, adb.getAbsolutePath());
             CommandResult result =
                     restartAdb.runTimedCmd(CMD_TIMEOUT, adb.getAbsolutePath(), "start-server");
             if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
