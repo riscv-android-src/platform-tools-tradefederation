@@ -1313,6 +1313,9 @@ public class Configuration implements IConfiguration {
             for (IDeviceConfiguration deviceConfig : getDeviceConfig()) {
                 serializer.startTag(null, Configuration.DEVICE_NAME);
                 serializer.attribute(null, "name", deviceConfig.getDeviceName());
+                if (deviceConfig.isFake()) {
+                    serializer.attribute(null, "isFake", "true");
+                }
                 ConfigurationUtil.dumpClassToXml(
                         serializer,
                         BUILD_PROVIDER_TYPE_NAME,
