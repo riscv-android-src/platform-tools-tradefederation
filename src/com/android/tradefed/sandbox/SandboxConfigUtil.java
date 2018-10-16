@@ -91,7 +91,12 @@ public class SandboxConfigUtil {
         }
         FileUtil.deleteFile(destination);
         // Do not delete the global configuration file here in this case, it might still be used.
-        throw new SandboxConfigurationException(result.getStderr());
+        String errorMessage = "Error when dumping the config.";
+        if (CommandStatus.TIMED_OUT.equals(result.getStatus())) {
+            errorMessage += " Timed out.";
+        }
+        errorMessage += String.format(" stderr: %s", result.getStderr());
+        throw new SandboxConfigurationException(errorMessage);
     }
 
     /**
