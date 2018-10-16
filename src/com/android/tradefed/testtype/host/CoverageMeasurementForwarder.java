@@ -50,12 +50,24 @@ public final class CoverageMeasurementForwarder implements IRemoteTest, IBuildRe
     )
     private List<String> mCoverageMeasurements = new ArrayList<>();
 
+    @Option(
+        name = "coverage-log-data-type",
+        description = "Log data type to save the build artifacts as."
+    )
+    private LogDataType mLogDataType = LogDataType.COVERAGE;
+
     private IBuildInfo mBuild;
 
     /** Sets the --coverage-measurement option for testing. */
     @VisibleForTesting
     void setCoverageMeasurements(List<String> coverageMeasurements) {
         mCoverageMeasurements = coverageMeasurements;
+    }
+
+    /** Sets the --coverage-log-data-type option for testing. */
+    @VisibleForTesting
+    void setCoverageLogDataType(LogDataType type) {
+        mLogDataType = type;
     }
 
     @Override
@@ -82,7 +94,7 @@ public final class CoverageMeasurementForwarder implements IRemoteTest, IBuildRe
                             "Failed to get artifact '%s' from the build.",
                             artifactName);
             try (InputStreamSource stream = new FileInputStreamSource(coverageMeasurement)) {
-                listener.testLog(artifactName, LogDataType.COVERAGE, stream);
+                listener.testLog(artifactName, mLogDataType, stream);
             } finally {
                 FileUtil.deleteFile(coverageMeasurement);
             }
