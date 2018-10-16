@@ -29,6 +29,7 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.targetprep.adb.AdbStopServerPreparer;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
@@ -55,6 +56,8 @@ public class PythonBinaryHostTest
 
     protected static final String PYTHON_OUTPUT = "python-output";
     protected static final String ANDROID_SERIAL_VAR = "ANDROID_SERIAL";
+    protected static final String PATH_VAR = "PATH";
+    protected static final long PATH_TIMEOUT_MS = 60000L;
 
     @Option(name = "par-file-name", description = "The binary names inside the build info to run.")
     private Set<String> mBinaryNames = new HashSet<>();
@@ -159,6 +162,27 @@ public class PythonBinaryHostTest
 
         if (mInjectAndroidSerialVar) {
             getRunUtil().setEnvVariable(ANDROID_SERIAL_VAR, getDevice().getSerialNumber());
+        }
+
+        File updatedAdb = mBuildInfo.getFile(AdbStopServerPreparer.ADB_BINARY_KEY);
+        if (updatedAdb != null) {
+            // If a special adb version is used, pass it to the PATH
+            CommandResult pathResult =
+                    getRunUtil()
+                            .runTimedCmd(PATH_TIMEOUT_MS, "/bin/bash", "-c", "echo $" + PATH_VAR);
+            if (!CommandStatus.SUCCESS.equals(pathResult.getStatus())) {
+                throw new RuntimeException(
+                        String.format(
+                                "Failed to get the $PATH. status: %s, stdout: %s, stderr: %s",
+                                pathResult.getStatus(),
+                                pathResult.getStdout(),
+                                pathResult.getStderr()));
+            }
+            String path =
+                    String.format(
+                            "%s:%s", updatedAdb.getAbsolutePath(), pathResult.getStdout().trim());
+            CLog.d("Using $PATH with updated adb: %s", path);
+            getRunUtil().setEnvVariable(PATH_VAR, path);
         }
 
         CommandResult result =
