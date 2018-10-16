@@ -50,6 +50,7 @@ import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.suite.ITestSuite.RetryStrategy;
 import com.android.tradefed.testtype.suite.module.BaseModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController;
@@ -65,8 +66,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 
 /** Unit tests for {@link ModuleDefinition} */
@@ -149,16 +152,21 @@ public class ModuleDefinitionTest {
     }
 
     /** Test implementation that allows us to exercise different use cases * */
-    private class MultiRunTestObject implements IRemoteTest {
+    private class MultiRunTestObject implements IRemoteTest, ITestFilterReceiver {
 
         private String mBaseRunName;
         private int mNumTest;
         private int mRepeatedRun;
+        private int mFailedTest;
+        private Set<String> mIncludeFilters;
 
-        public MultiRunTestObject(String baseRunName, int numTest, int repeatedRun) {
+        public MultiRunTestObject(
+                String baseRunName, int numTest, int repeatedRun, int failedTest) {
             mBaseRunName = baseRunName;
             mNumTest = numTest;
             mRepeatedRun = repeatedRun;
+            mFailedTest = failedTest;
+            mIncludeFilters = new LinkedHashSet<>();
         }
 
         @Override
@@ -166,15 +174,66 @@ public class ModuleDefinitionTest {
             // The runner generates several set of different runs.
             for (int j = 0; j < mRepeatedRun; j++) {
                 String runName = mBaseRunName + j;
-                listener.testRunStarted(runName, mNumTest);
-                for (int i = 0; i < mNumTest; i++) {
+                if (mIncludeFilters.isEmpty()) {
+                    listener.testRunStarted(runName, mNumTest);
+                } else {
+                    listener.testRunStarted(runName, mIncludeFilters.size() / mRepeatedRun);
+                }
+                for (int i = 0; i < mNumTest - mFailedTest; i++) {
+                    // TODO: Store the list of expected test cases to verify against it.
                     TestDescription test = new TestDescription(runName + "class", "test" + i);
+                    if (!mIncludeFilters.isEmpty() && !mIncludeFilters.contains(test.toString())) {
+                        continue;
+                    }
                     listener.testStarted(test);
+                    listener.testEnded(test, new HashMap<String, Metric>());
+                }
+                for (int i = 0; i < mFailedTest; i++) {
+                    TestDescription test = new TestDescription(runName + "class", "fail" + i);
+                    if (!mIncludeFilters.isEmpty() && !mIncludeFilters.contains(test.toString())) {
+                        continue;
+                    }
+                    listener.testStarted(test);
+                    listener.testFailed(test, "I failed.");
                     listener.testEnded(test, new HashMap<String, Metric>());
                 }
                 listener.testRunEnded(0, new HashMap<String, Metric>());
             }
         }
+
+        @Override
+        public void addIncludeFilter(String filter) {
+            mIncludeFilters.add(filter);
+        }
+
+        @Override
+        public void addAllIncludeFilters(Set<String> filters) {
+            mIncludeFilters.addAll(filters);
+        }
+
+        @Override
+        public void addExcludeFilter(String filter) {}
+
+        @Override
+        public void addAllExcludeFilters(Set<String> filters) {}
+
+        @Override
+        public Set<String> getIncludeFilters() {
+            return mIncludeFilters;
+        }
+
+        @Override
+        public Set<String> getExcludeFilters() {
+            return null;
+        }
+
+        @Override
+        public void clearIncludeFilters() {
+            mIncludeFilters.clear();
+        }
+
+        @Override
+        public void clearExcludeFilters() {}
     }
 
     private class DirectFailureTestObject implements IRemoteTest {
@@ -989,7 +1048,7 @@ public class ModuleDefinitionTest {
         final String runName = "baseRun";
         List<IRemoteTest> testList = new ArrayList<>();
         // The runner will generates 2 test runs with 2 test cases each.
-        testList.add(new MultiRunTestObject(runName, 2, 2));
+        testList.add(new MultiRunTestObject(runName, 2, 2, 0));
         mModule =
                 new ModuleDefinition(
                         MODULE_NAME,
@@ -1080,8 +1139,8 @@ public class ModuleDefinitionTest {
     public void testMultiRun_multiAttempts() throws Exception {
         final String runName = "baseRun";
         List<IRemoteTest> testList = new ArrayList<>();
-        // The runner will generates 2 test runs with 2 test cases each.
-        testList.add(new MultiRunTestObject(runName, 2, 2));
+        // The runner will generates 2 test runs with 3 test cases each.
+        testList.add(new MultiRunTestObject(runName, 3, 2, 1));
         mModule =
                 new ModuleDefinition(
                         MODULE_NAME,
@@ -1106,22 +1165,139 @@ public class ModuleDefinitionTest {
                 EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
         // We expect a total count on the run start so 4, all aggregated under the same run
         for (int attempt = 0; attempt < 3; attempt++) {
-            mMockListener.testRunStarted(MODULE_NAME, 4, attempt);
+            mMockListener.testRunStarted(MODULE_NAME, 6, attempt);
             // The first set of test cases from the first test run.
-            for (int i = 0; i < 2; i++) {
-                TestDescription testId = new TestDescription(runName + "0class", "test" + i);
-                mMockListener.testStarted(EasyMock.eq(testId), EasyMock.anyLong());
+            TestDescription testId0 = new TestDescription(runName + "0class", "test0");
+            mMockListener.testStarted(EasyMock.eq(testId0), EasyMock.anyLong());
+            mMockListener.testEnded(
+                    EasyMock.eq(testId0),
+                    EasyMock.anyLong(),
+                    (HashMap<String, Metric>) EasyMock.anyObject());
+            TestDescription testFail0 = new TestDescription(runName + "0class", "fail0");
+            mMockListener.testStarted(EasyMock.eq(testFail0), EasyMock.anyLong());
+            mMockListener.testFailed(EasyMock.eq(testFail0), EasyMock.anyObject());
+            mMockListener.testEnded(
+                    EasyMock.eq(testFail0),
+                    EasyMock.anyLong(),
+                    (HashMap<String, Metric>) EasyMock.anyObject());
+            TestDescription testId1 = new TestDescription(runName + "0class", "test1");
+            mMockListener.testStarted(EasyMock.eq(testId1), EasyMock.anyLong());
+            mMockListener.testEnded(
+                    EasyMock.eq(testId1),
+                    EasyMock.anyLong(),
+                    (HashMap<String, Metric>) EasyMock.anyObject());
+
+            // The second set of test cases from the second test run
+            TestDescription testId0_1 = new TestDescription(runName + "1class", "test0");
+            mMockListener.testStarted(EasyMock.eq(testId0_1), EasyMock.anyLong());
+            mMockListener.testEnded(
+                    EasyMock.eq(testId0_1),
+                    EasyMock.anyLong(),
+                    (HashMap<String, Metric>) EasyMock.anyObject());
+            TestDescription testFail0_1 = new TestDescription(runName + "1class", "fail0");
+            mMockListener.testStarted(EasyMock.eq(testFail0_1), EasyMock.anyLong());
+            mMockListener.testFailed(EasyMock.eq(testFail0_1), EasyMock.anyObject());
+            mMockListener.testEnded(
+                    EasyMock.eq(testFail0_1),
+                    EasyMock.anyLong(),
+                    (HashMap<String, Metric>) EasyMock.anyObject());
+            TestDescription testId1_1 = new TestDescription(runName + "1class", "test1");
+            mMockListener.testStarted(EasyMock.eq(testId1_1), EasyMock.anyLong());
+            mMockListener.testEnded(
+                    EasyMock.eq(testId1_1),
+                    EasyMock.anyLong(),
+                    (HashMap<String, Metric>) EasyMock.anyObject());
+
+            mMockListener.testRunEnded(
+                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        }
+        replayMocks();
+        mModule.run(mMockListener, null, null, 3);
+        verifyMocks();
+    }
+
+    /** Test retry and reporting all the different attempts when retrying failures. */
+    @Test
+    public void testMultiRun_multiAttempts_filter() throws Exception {
+        final String runName = "baseRun";
+        List<IRemoteTest> testList = new ArrayList<>();
+        // The runner will generates 2 test runs with 3 test cases each. (2 passes and 1 fail)
+        testList.add(new MultiRunTestObject(runName, 3, 2, 1));
+        mModule =
+                new ModuleDefinition(
+                        MODULE_NAME,
+                        testList,
+                        mMapDeviceTargetPreparer,
+                        mMultiTargetPrepList,
+                        new Configuration("", ""));
+        mModule.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE, false);
+
+        mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
+        mModule.getModuleInvocationContext()
+                .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
+
+        mModule.setBuild(mMockBuildInfo);
+        mModule.setDevice(mMockDevice);
+        EasyMock.expect(mMockPrep.isDisabled()).andReturn(false);
+        mMockPrep.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        EasyMock.expect(mMockCleaner.isDisabled()).andStubReturn(false);
+        mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
+        mMockCleaner.tearDown(
+                EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
+        // We expect a total count on the run start so 4, all aggregated under the same run
+        for (int attempt = 0; attempt < 3; attempt++) {
+            if (attempt == 0) {
+                mMockListener.testRunStarted(MODULE_NAME, 6, attempt);
+            } else {
+                mMockListener.testRunStarted(MODULE_NAME, 2, attempt);
+            }
+            // The first set of test cases from the first test run.
+            if (attempt < 1) {
+                TestDescription testId0 = new TestDescription(runName + "0class", "test0");
+                mMockListener.testStarted(EasyMock.eq(testId0), EasyMock.anyLong());
                 mMockListener.testEnded(
-                        EasyMock.eq(testId),
+                        EasyMock.eq(testId0),
                         EasyMock.anyLong(),
                         (HashMap<String, Metric>) EasyMock.anyObject());
             }
-            // The second set of test cases from the second test run
-            for (int i = 0; i < 2; i++) {
-                TestDescription testId = new TestDescription(runName + "1class", "test" + i);
-                mMockListener.testStarted(EasyMock.eq(testId), EasyMock.anyLong());
+            TestDescription testFail0 = new TestDescription(runName + "0class", "fail0");
+            mMockListener.testStarted(EasyMock.eq(testFail0), EasyMock.anyLong());
+            mMockListener.testFailed(EasyMock.eq(testFail0), EasyMock.anyObject());
+            mMockListener.testEnded(
+                    EasyMock.eq(testFail0),
+                    EasyMock.anyLong(),
+                    (HashMap<String, Metric>) EasyMock.anyObject());
+            if (attempt < 1) {
+                TestDescription testId1 = new TestDescription(runName + "0class", "test1");
+                mMockListener.testStarted(EasyMock.eq(testId1), EasyMock.anyLong());
                 mMockListener.testEnded(
-                        EasyMock.eq(testId),
+                        EasyMock.eq(testId1),
+                        EasyMock.anyLong(),
+                        (HashMap<String, Metric>) EasyMock.anyObject());
+            }
+
+            // The second set of test cases from the second test run
+            if (attempt < 1) {
+                TestDescription testId0_1 = new TestDescription(runName + "1class", "test0");
+                mMockListener.testStarted(EasyMock.eq(testId0_1), EasyMock.anyLong());
+                mMockListener.testEnded(
+                        EasyMock.eq(testId0_1),
+                        EasyMock.anyLong(),
+                        (HashMap<String, Metric>) EasyMock.anyObject());
+            }
+            TestDescription testFail0_1 = new TestDescription(runName + "1class", "fail0");
+            mMockListener.testStarted(EasyMock.eq(testFail0_1), EasyMock.anyLong());
+            mMockListener.testFailed(EasyMock.eq(testFail0_1), EasyMock.anyObject());
+            mMockListener.testEnded(
+                    EasyMock.eq(testFail0_1),
+                    EasyMock.anyLong(),
+                    (HashMap<String, Metric>) EasyMock.anyObject());
+            if (attempt < 1) {
+                TestDescription testId1_1 = new TestDescription(runName + "1class", "test1");
+                mMockListener.testStarted(EasyMock.eq(testId1_1), EasyMock.anyLong());
+                mMockListener.testEnded(
+                        EasyMock.eq(testId1_1),
                         EasyMock.anyLong(),
                         (HashMap<String, Metric>) EasyMock.anyObject());
             }
