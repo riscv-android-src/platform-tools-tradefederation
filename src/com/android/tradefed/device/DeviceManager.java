@@ -58,6 +58,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -506,7 +507,7 @@ public class DeviceManager implements IDeviceManager {
      */
     @Override
     public ITestDevice allocateDevice() {
-        return allocateDevice(ANY_DEVICE_OPTIONS);
+        return allocateDevice(ANY_DEVICE_OPTIONS, false);
     }
 
     /**
@@ -514,7 +515,19 @@ public class DeviceManager implements IDeviceManager {
      */
     @Override
     public ITestDevice allocateDevice(IDeviceSelection options) {
+        return allocateDevice(options, false);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public ITestDevice allocateDevice(IDeviceSelection options, boolean isTemporary) {
         checkInit();
+        if (isTemporary) {
+            String rand = UUID.randomUUID().toString();
+            String serial = String.format("%s-temp-%s", NULL_DEVICE_SERIAL_PREFIX, rand);
+            addAvailableDevice(new NullDevice(serial, true));
+            options.setSerial(serial);
+        }
         return mManagedDeviceList.allocate(options);
     }
 
@@ -554,6 +567,18 @@ public class DeviceManager implements IDeviceManager {
         // force stop capturing logcat just to be sure
         managedDevice.stopLogcat();
         IDevice ideviceToReturn = device.getIDevice();
+        if (ideviceToReturn instanceof NullDevice) {
+            NullDevice nullDevice = (NullDevice) ideviceToReturn;
+            if (nullDevice.isTemporary()) {
+                DeviceEventResponse r =
+                        mManagedDeviceList.handleDeviceEvent(
+                                managedDevice, DeviceEvent.FREE_UNKNOWN);
+                CLog.d(
+                        "Temporary device '%s' final allocation state: '%s'",
+                        device.getSerialNumber(), r.allocationState.toString());
+                return;
+            }
+        }
         // don't kill emulator if it wasn't launched by launchEmulator (ie emulatorProcess is null).
         if (ideviceToReturn.isEmulator() && managedDevice.getEmulatorProcess() != null) {
             try {

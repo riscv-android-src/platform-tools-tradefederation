@@ -68,6 +68,15 @@ public interface IDeviceManager {
     public ITestDevice allocateDevice(IDeviceSelection options);
 
     /**
+     * Request a device for testing that meets certain criteria.
+     *
+     * @param options the {@link IDeviceSelection} the device should meet.
+     * @param isTemporary whether or not a temporary NullDevice should be created.
+     * @return a {@link ITestDevice} for testing, or <code>null</code> if one is not available
+     */
+    public ITestDevice allocateDevice(IDeviceSelection options, boolean isTemporary);
+
+    /**
      * Rudely allocate a device, even if its not currently available.
      * <p/>
      * Will have no effect if device is already allocated.

@@ -246,6 +246,12 @@ public class MockDeviceManager implements IDeviceManager {
     /** {@inheritDoc} */
     @Override
     public ITestDevice allocateDevice(IDeviceSelection options) {
+        return allocateDevice(options, false);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public ITestDevice allocateDevice(IDeviceSelection options, boolean isTemporary) {
         if (mTcpDeviceRequested) {
             ((DeviceSelectionOptions)options).setTcpDeviceRequested(true);
         }

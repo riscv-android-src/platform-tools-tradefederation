@@ -1401,7 +1401,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         synchronized(this) {
             if (!config.getDeviceConfig().isEmpty()) {
                 for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
-                    device = manager.allocateDevice(deviceConfig.getDeviceRequirements());
+                    device =
+                            manager.allocateDevice(
+                                    deviceConfig.getDeviceRequirements(), deviceConfig.isFake());
                     if (device != null) {
                         devices.put(deviceConfig.getDeviceName(), device);
                     } else {
