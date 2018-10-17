@@ -123,7 +123,15 @@ public class PythonBinaryHostTestTest {
                                     "-c",
                                     "echo $PATH"))
                     .andReturn(pathRes);
-            mMockRunUtil.setEnvVariable("PATH", "/test/adb:bin/");
+            mMockRunUtil.setEnvVariable("PATH", "/test:bin/");
+
+            CommandResult versionRes = new CommandResult();
+            versionRes.setStatus(CommandStatus.SUCCESS);
+            versionRes.setStdout("bin/");
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmd(
+                                    PythonBinaryHostTest.PATH_TIMEOUT_MS, "adb", "version"))
+                    .andReturn(versionRes);
 
             CommandResult res = new CommandResult();
             res.setStatus(CommandStatus.SUCCESS);
