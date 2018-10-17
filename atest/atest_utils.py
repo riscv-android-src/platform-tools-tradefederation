@@ -94,7 +94,7 @@ def _run_limited_output(cmd, env_vars=None):
         # Readline will often return empty strings.
         if not line:
             continue
-        full_output.append(line)
+        full_output.append(line.decode('utf-8'))
         # Trim the line to the width of the terminal.
         # Note: Does not handle terminal resizing, which is probably not worth
         #       checking the width every loop.
