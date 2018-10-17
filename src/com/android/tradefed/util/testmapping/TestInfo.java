@@ -27,6 +27,9 @@ import java.util.stream.Collectors;
 
 /** Stores the test information set in a TEST_MAPPING file. */
 public class TestInfo {
+    private static final String OPTION_INCLUDE_ANNOTATION = "include-annotation";
+    private static final String OPTION_EXCLUDE_ANNOTATION = "exclude-annotation";
+
     private String mName = null;
     private List<TestOption> mOptions = new ArrayList<TestOption>();
 
@@ -49,7 +52,7 @@ public class TestInfo {
     /**
      * Merge with another test.
      *
-     * <p>Update test options so the test has the coverage of both tests.
+     * <p>Update test options so the test has the best possible coverage of both tests.
      *
      * <p>TODO(b/113616538): Implement a more robust option merging mechanism.
      *
@@ -88,47 +91,106 @@ public class TestInfo {
 
         // When neither test has no option or with only exclusive options, we try the best to
         // merge the test options so the merged test will cover both tests.
-        // 1. Keep all non-exclusive options
+        // 1. Keep all non-exclusive options, except include-annotation
         // 2. Keep common exclusive options
+        // 3. Keep common include-annotation options
+        // 4. Keep any exclude-annotation options
+        // Condition 3 and 4 are added to make sure we have the best test coverage if possible.
+        // In most cases, one add include-annotation to include only presubmit test, but some other
+        // test config that doesn't use presubmit annotation doesn't have such option. Therefore,
+        // uncommon include-annotation option has to be dropped to prevent losing test coverage.
+        // On the other hand, exclude-annotation is often used to exclude flaky tests. Therefore,
+        // it's better to keep any exclude-annotation option to prevent flaky tests from being
+        // included.
         // For example:
-        // this.mOptions: include-filter=value1, exclude-annotation=flaky
-        // test.mOptions: exclude-annotation=flaky, exclude-filter=value2, include-filter=value3
+        // this.mOptions: include-filter=value1, exclude-filter=ex-value1, exclude-filter=ex-value2,
+        //                exclude-annotation=flaky, include-annotation=presubmit
+        // test.mOptions: exclude-filter=ex-value1, include-filter=value3
         // merged options: exclude-annotation=flaky, include-filter=value1, include-filter=value3
         // Note that:
-        // * The exclude-annotation of flaky is common between the two tests, so it's kept.
+        // * The "exclude-filter=value3" option is kept as it's common in both tests.
+        // * The "exclude-annotation=flaky" option is kept even though it's only in one test.
+        // * The "include-annotation=presubmit" option is dropped as it only exists for `this`.
         // * The include-filter of value1 and value3 are both kept so the merged test will cover
         //   both tests.
-        // * The exclude-filter of value2 is dropped as it's only for `test`. To achieve maximum
-        //   test coverage for both `this` and `test`, we shall only keep the common exclusive
-        //   filters.
+        // * The "exclude-filter=ex-value1" option is kept as it's common in both tests.
+        // * The "exclude-filter=ex-value2" option is dropped as it's only for `this`. To achieve
+        //     maximum test coverage for both `this` and `test`, we shall only keep the common
+        //     exclusive filters.
 
         // Options from this test:
         Set<TestOption> nonExclusiveOptions =
                 mOptions.stream()
-                        .filter(option -> !option.isExclusive())
+                        .filter(
+                                option ->
+                                        !option.isExclusive()
+                                                && !OPTION_INCLUDE_ANNOTATION.equals(
+                                                        option.getName()))
+                        .collect(Collectors.toSet());
+        Set<TestOption> includeAnnotationOptions =
+                mOptions.stream()
+                        .filter(option -> OPTION_INCLUDE_ANNOTATION.equals(option.getName()))
                         .collect(Collectors.toSet());
         Set<TestOption> exclusiveOptions =
                 mOptions.stream()
-                        .filter(option -> option.isExclusive())
+                        .filter(
+                                option ->
+                                        option.isExclusive()
+                                                && !OPTION_EXCLUDE_ANNOTATION.equals(
+                                                        option.getName()))
+                        .collect(Collectors.toSet());
+        Set<TestOption> excludeAnnotationOptions =
+                mOptions.stream()
+                        .filter(option -> OPTION_EXCLUDE_ANNOTATION.equals(option.getName()))
                         .collect(Collectors.toSet());
         // Options from TestInfo to be merged:
         Set<TestOption> nonExclusiveOptionsToMerge =
                 test.getOptions()
                         .stream()
-                        .filter(option -> !option.isExclusive())
+                        .filter(
+                                option ->
+                                        !option.isExclusive()
+                                                && !OPTION_INCLUDE_ANNOTATION.equals(
+                                                        option.getName()))
+                        .collect(Collectors.toSet());
+        Set<TestOption> includeAnnotationOptionsToMerge =
+                test.getOptions()
+                        .stream()
+                        .filter(option -> OPTION_INCLUDE_ANNOTATION.equals(option.getName()))
                         .collect(Collectors.toSet());
         Set<TestOption> exclusiveOptionsToMerge =
                 test.getOptions()
                         .stream()
-                        .filter(option -> option.isExclusive())
+                        .filter(
+                                option ->
+                                        option.isExclusive()
+                                                && !OPTION_EXCLUDE_ANNOTATION.equals(
+                                                        option.getName()))
+                        .collect(Collectors.toSet());
+        Set<TestOption> excludeAnnotationOptionsToMerge =
+                test.getOptions()
+                        .stream()
+                        .filter(option -> OPTION_EXCLUDE_ANNOTATION.equals(option.getName()))
                         .collect(Collectors.toSet());
 
+        // 1. Keep all non-exclusive options, except include-annotation
         nonExclusiveOptions.addAll(nonExclusiveOptionsToMerge);
         for (TestOption option : nonExclusiveOptions) {
             mergedOptions.add(option);
         }
+        // 2. Keep common exclusive options, except exclude-annotation
         exclusiveOptions.retainAll(exclusiveOptionsToMerge);
         for (TestOption option : exclusiveOptions) {
+            mergedOptions.add(option);
+        }
+        // 3. Keep common include-annotation options
+        includeAnnotationOptions.retainAll(includeAnnotationOptionsToMerge);
+        for (TestOption option : includeAnnotationOptions) {
+            mergedOptions.add(option);
+        }
+        // 4. Keep any exclude-annotation options
+        excludeAnnotationOptions.addAll(excludeAnnotationOptionsToMerge);
+        for (TestOption option : excludeAnnotationOptions) {
             mergedOptions.add(option);
         }
         this.mOptions = mergedOptions;

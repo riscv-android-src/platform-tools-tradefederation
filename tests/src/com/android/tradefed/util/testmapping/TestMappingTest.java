@@ -197,7 +197,7 @@ public class TestMappingTest {
         test2.addOption(inclusiveOption2);
         // Same exclusive option as in test1.
         test2.addOption(exclusiveOption1);
-        TestOption exclusiveOption3 = new TestOption("exclude-filter", "exclude-value3");
+        TestOption exclusiveOption3 = new TestOption("exclude-filter", "exclude-value1");
         test2.addOption(exclusiveOption3);
         TestOption otherOption2 = new TestOption("somefilter2", "value2");
         test2.addOption(otherOption2);
@@ -213,5 +213,59 @@ public class TestMappingTest {
         // Options from test2.
         assertTrue(mergedOptions.contains(inclusiveOption2));
         assertTrue(mergedOptions.contains(otherOption2));
+    }
+
+    /**
+     * Test for {@link TestInfo#merge()} for merging two TestInfo objects, each has a different
+     * include-filter and include-annotation option.
+     */
+    @Test
+    public void testMergeSuccess_MultiFilters_dropIncludeAnnotation() throws Exception {
+        // Check that the test without all options except include-annotation option should be the
+        // merge result.
+        TestInfo test1 = new TestInfo("test1");
+        TestInfo test2 = new TestInfo("test1");
+        TestOption option1 = new TestOption("include-filter", "value1");
+        test1.addOption(option1);
+        TestOption optionIncludeAnnotation =
+                new TestOption("include-annotation", "androidx.test.filters.FlakyTest");
+        test1.addOption(optionIncludeAnnotation);
+        TestOption option2 = new TestOption("include-filter", "value2");
+        test2.addOption(option2);
+        test1.merge(test2);
+        assertEquals(2, test1.getOptions().size());
+        assertTrue(new HashSet<TestOption>(test1.getOptions()).contains(option1));
+        assertTrue(new HashSet<TestOption>(test1.getOptions()).contains(option2));
+    }
+
+    /**
+     * Test for {@link TestInfo#merge()} for merging two TestInfo objects, each has a different
+     * include-filter and exclude-annotation option.
+     */
+    @Test
+    public void testMergeSuccess_MultiFilters_keepExcludeAnnotation() throws Exception {
+        // Check that the test without all options including exclude-annotation option should be the
+        // merge result.
+        TestInfo test1 = new TestInfo("test1");
+        TestInfo test2 = new TestInfo("test1");
+        TestOption option1 = new TestOption("include-filter", "value1");
+        test1.addOption(option1);
+        TestOption optionExcludeAnnotation1 =
+                new TestOption("exclude-annotation", "androidx.test.filters.FlakyTest");
+        test1.addOption(optionExcludeAnnotation1);
+        TestOption optionExcludeAnnotation2 =
+                new TestOption("exclude-annotation", "another-annotation");
+        test1.addOption(optionExcludeAnnotation2);
+        TestOption option2 = new TestOption("include-filter", "value2");
+        test2.addOption(option2);
+        TestOption optionExcludeAnnotation3 =
+                new TestOption("exclude-annotation", "androidx.test.filters.FlakyTest");
+        test1.addOption(optionExcludeAnnotation3);
+        test1.merge(test2);
+        assertEquals(4, test1.getOptions().size());
+        assertTrue(new HashSet<TestOption>(test1.getOptions()).contains(option1));
+        assertTrue(new HashSet<TestOption>(test1.getOptions()).contains(optionExcludeAnnotation1));
+        assertTrue(new HashSet<TestOption>(test1.getOptions()).contains(optionExcludeAnnotation2));
+        assertTrue(new HashSet<TestOption>(test1.getOptions()).contains(option2));
     }
 }
