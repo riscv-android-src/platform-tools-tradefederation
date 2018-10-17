@@ -134,6 +134,31 @@ public class FormattedGeneratorReporterTest {
         mReporter.invocationEnded(500L);
     }
 
+    /**
+     * Test the value in the result holder when no module or tests actually ran and the invocation
+     * failed.
+     */
+    @Test
+    public void testFinalizedResults_skipped() {
+        mReporter =
+                new FormattedGeneratorReporter() {
+
+                    @Override
+                    public void finalizeResults(
+                            IFormatterGenerator generator, SuiteResultHolder resultHolder) {
+                        throw new RuntimeException("finalizeResults should not have been called.");
+                    }
+
+                    @Override
+                    public IFormatterGenerator createFormatter() {
+                        return null;
+                    }
+                };
+        mReporter.invocationStarted(mContext);
+        mReporter.invocationFailed(new RuntimeException("Invocation failed."));
+        mReporter.invocationEnded(500L);
+    }
+
     /** Validate the information inside the suite holder. */
     private void validateSuiteHolder(
             SuiteResultHolder holder,

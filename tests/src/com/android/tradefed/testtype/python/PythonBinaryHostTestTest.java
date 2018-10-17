@@ -24,6 +24,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.targetprep.adb.AdbStopServerPreparer;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -59,6 +60,8 @@ public class PythonBinaryHostTestTest {
                         return mMockRunUtil;
                     }
                 };
+        EasyMock.expect(mMockBuildInfo.getFile(AdbStopServerPreparer.ADB_BINARY_KEY))
+                .andReturn(null);
         mTest.setBuild(mMockBuildInfo);
         mTest.setDevice(mMockDevice);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
@@ -86,6 +89,56 @@ public class PythonBinaryHostTestTest {
                     EasyMock.anyObject());
             EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
             
+            EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
+            mTest.run(mMockListener);
+            EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
+        } finally {
+            FileUtil.deleteFile(binary);
+        }
+    }
+
+    /**
+     * Test running the python tests when an adb path has been set. In that case we ensure the
+     * python script will use the provided adb.
+     */
+    @Test
+    public void testRun_withAdbPath() throws Exception {
+        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        EasyMock.expect(mMockBuildInfo.getFile(AdbStopServerPreparer.ADB_BINARY_KEY))
+                .andReturn(new File("/test/adb"));
+        mTest.setBuild(mMockBuildInfo);
+
+        File binary = FileUtil.createTempFile("python-dir", "");
+        try {
+            OptionSetter setter = new OptionSetter(mTest);
+            setter.setOptionValue("python-binaries", binary.getAbsolutePath());
+
+            CommandResult pathRes = new CommandResult();
+            pathRes.setStatus(CommandStatus.SUCCESS);
+            pathRes.setStdout("bin/");
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmd(
+                                    PythonBinaryHostTest.PATH_TIMEOUT_MS,
+                                    "/bin/bash",
+                                    "-c",
+                                    "echo $PATH"))
+                    .andReturn(pathRes);
+            mMockRunUtil.setEnvVariable("PATH", "/test/adb:bin/");
+
+            CommandResult res = new CommandResult();
+            res.setStatus(CommandStatus.SUCCESS);
+            res.setStderr("TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}");
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmd(
+                                    EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
+                    .andReturn(res);
+            mMockListener.testRunStarted(binary.getName(), 5);
+            mMockListener.testLog(
+                    EasyMock.eq(PythonBinaryHostTest.PYTHON_OUTPUT),
+                    EasyMock.eq(LogDataType.TEXT),
+                    EasyMock.anyObject());
+            EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
+
             EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
             mTest.run(mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
