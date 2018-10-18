@@ -178,11 +178,18 @@ public class PythonBinaryHostTest
                                 pathResult.getStdout(),
                                 pathResult.getStderr()));
             }
+            // Include the directory of the adb on the PATH to be used.
             String path =
                     String.format(
-                            "%s:%s", updatedAdb.getAbsolutePath(), pathResult.getStdout().trim());
+                            "%s:%s",
+                            updatedAdb.getParentFile().getAbsolutePath(),
+                            pathResult.getStdout().trim());
             CLog.d("Using $PATH with updated adb: %s", path);
             getRunUtil().setEnvVariable(PATH_VAR, path);
+            // Log the version of adb seen
+            CommandResult versionRes = getRunUtil().runTimedCmd(PATH_TIMEOUT_MS, "adb", "version");
+            CLog.d("%s", versionRes.getStdout());
+            CLog.d("%s", versionRes.getStderr());
         }
 
         CommandResult result =
