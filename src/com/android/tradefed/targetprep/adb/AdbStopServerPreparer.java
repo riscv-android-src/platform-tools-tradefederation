@@ -69,6 +69,8 @@ public class AdbStopServerPreparer extends BaseTargetPreparer implements ITarget
 
         // Kill the default adb server
         getRunUtil().runTimedCmd(CMD_TIMEOUT, "adb", "kill-server");
+        // Let the adb process finish
+        getRunUtil().sleep(2000);
 
         if (!mRestartNewVersion) {
             CLog.d("Skipping restarting of new adb version.");
@@ -100,7 +102,10 @@ public class AdbStopServerPreparer extends BaseTargetPreparer implements ITarget
                     restartAdb.runTimedCmd(CMD_TIMEOUT, adb.getAbsolutePath(), "start-server");
             if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
                 throw new TargetSetupError(
-                        "Failed to restart adb with the build info one.",
+                        String.format(
+                                "Failed to restart adb with the build info one. stdout: %s.\n"
+                                        + "sterr: %s",
+                                result.getStdout(), result.getStderr()),
                         device.getDeviceDescriptor());
             }
         } else {
