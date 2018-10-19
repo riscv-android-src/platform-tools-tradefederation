@@ -77,6 +77,7 @@ public class AdbStopServerPreparerTest {
         mFakeAdbFile = FileUtil.createTempFile("adb", "");
         mMockBuild.setFile("adb", mFakeAdbFile, "v1");
 
+        mMockRunUtil.sleep(2000);
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
     }
 
