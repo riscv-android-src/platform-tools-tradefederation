@@ -16,6 +16,8 @@
 Various globals used by atest.
 """
 
+import os
+
 MODE = 'DEFAULT'
 
 # Result server constants for atest_utils.
@@ -110,10 +112,12 @@ DEVICE_TEST = 'device'
 BOTH_TEST = 'both'
 
 # Metrics
-META_FILE = '.metadata'
+META_FILE = os.path.join(os.path.expanduser('~'),
+                         '.config', 'asuite', '.metadata')
 METRICS_URL = 'http://asuite-218222.appspot.com/atest/metrics'
 METRICS_TIMEOUT = 2 #seconds
 METRICS_RESPONSE = 'done'
+DUMMY_UUID = '00000000-0000-4000-8000-000000000000'
 
 # VTS plans
 VTS_STAGING_PLAN = 'vts-staging-default'
