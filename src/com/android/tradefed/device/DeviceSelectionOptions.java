@@ -612,7 +612,10 @@ public class DeviceSelectionOptions implements IDeviceSelection {
     public String getDeviceProductVariant(IDevice device) {
         String prop = getProperty(device, DeviceProperties.VARIANT);
         if (prop == null) {
-            prop = getProperty(device, DeviceProperties.VARIANT_LEGACY);
+            prop = getProperty(device, DeviceProperties.VARIANT_LEGACY_O_MR1);
+        }
+        if (prop == null) {
+            prop = getProperty(device, DeviceProperties.VARIANT_LEGACY_LESS_EQUAL_O);
         }
         if (prop != null) {
             prop = prop.toLowerCase();
