@@ -2301,6 +2301,24 @@ public class NativeDeviceTest {
     }
 
     @Test
+    public void testGetProductVariant_legacyOmr1() throws Exception {
+        TestableAndroidNativeDevice testDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    protected String internalGetProperty(
+                            String propName, String fastbootVar, String description)
+                            throws DeviceNotAvailableException, UnsupportedOperationException {
+                        if (DeviceProperties.VARIANT_LEGACY_O_MR1.equals(propName)) {
+                            return "legacy_omr1";
+                        }
+                        return null;
+                    }
+                };
+
+        assertEquals("legacy_omr1", testDevice.getProductVariant());
+    }
+
+    @Test
     public void testGetProductVariant_legacy() throws Exception {
         TestableAndroidNativeDevice testDevice =
                 new TestableAndroidNativeDevice() {
@@ -2308,7 +2326,7 @@ public class NativeDeviceTest {
                     protected String internalGetProperty(
                             String propName, String fastbootVar, String description)
                             throws DeviceNotAvailableException, UnsupportedOperationException {
-                        if (DeviceProperties.VARIANT_LEGACY.equals(propName)) {
+                        if (DeviceProperties.VARIANT_LEGACY_LESS_EQUAL_O.equals(propName)) {
                             return "legacy";
                         }
                         return null;
