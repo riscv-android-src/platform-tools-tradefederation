@@ -557,7 +557,14 @@ public class NativeDevice implements IManagedTestDevice {
         if (prop == null) {
             prop =
                     internalGetProperty(
-                            DeviceProperties.VARIANT_LEGACY, "variant", "Product variant");
+                            DeviceProperties.VARIANT_LEGACY_O_MR1, "variant", "Product variant");
+        }
+        if (prop == null) {
+            prop =
+                    internalGetProperty(
+                            DeviceProperties.VARIANT_LEGACY_LESS_EQUAL_O,
+                            "variant",
+                            "Product variant");
         }
         if (prop != null) {
             prop = prop.toLowerCase();

@@ -36,6 +36,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -85,6 +86,8 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
     private long mSuccessRetried = 0L;
     /** The number of test cases that remained failed after all retry attempts */
     private long mFailedRetried = 0L;
+    /** Store the test that successfully re-run and at which attempt they passed */
+    private Map<String, Integer> mAttemptSuccess = new HashMap<>();
 
     private RetryStrategy mRetryStrategy = RetryStrategy.RETRY_TEST_CASE_FAILURE;
 
@@ -297,6 +300,9 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
                     if (previousFailedTests != null) {
                         Set<TestDescription> diff = Sets.difference(previousFailedTests, lastRun);
                         mSuccessRetried += diff.size();
+                        final int currentAttempt = attemptNumber;
+                        diff.forEach(
+                                (desc) -> mAttemptSuccess.put(desc.toString(), currentAttempt));
                         previousFailedTests = lastRun;
                     }
                 }
@@ -454,6 +460,11 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
     /** Returns the listener containing all the results. */
     public ModuleListener getResultListener() {
         return mMainGranularRunListener;
+    }
+
+    /** Returns the attempts that turned into success. */
+    public Map<String, Integer> getAttemptSuccessStats() {
+        return mAttemptSuccess;
     }
 
     /** Forwarder that also handles passing the current attempt we are at. */

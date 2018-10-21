@@ -153,7 +153,9 @@ public class DeviceSelectionOptionsTest {
     @Test
     public void testGetProductVariant_legacy() throws Exception {
         EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT)).andReturn(null);
-        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT_LEGACY))
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT_LEGACY_O_MR1))
+                .andReturn(null);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT_LEGACY_LESS_EQUAL_O))
                 .andReturn("legacy");
         EasyMock.replay(mMockDevice);
 
@@ -161,9 +163,23 @@ public class DeviceSelectionOptionsTest {
     }
 
     @Test
+    public void testGetProductVariant_legacyOmr1() throws Exception {
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT)).andReturn(null);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT_LEGACY_O_MR1))
+                .andReturn("legacy_omr1");
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT_LEGACY_LESS_EQUAL_O))
+                .andReturn("legacy");
+        EasyMock.replay(mMockDevice);
+
+        assertEquals("legacy_omr1", mDeviceSelection.getDeviceProductVariant(mMockDevice));
+    }
+
+    @Test
     public void testGetProductVariant_vendor() throws Exception {
         EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT)).andReturn("variant");
-        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT_LEGACY))
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT_LEGACY_O_MR1))
+                .andReturn("legacy_mr1");
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT_LEGACY_LESS_EQUAL_O))
                 .andReturn("legacy");
         EasyMock.replay(mMockDevice);
 
@@ -187,7 +203,10 @@ public class DeviceSelectionOptionsTest {
 
         EasyMock.expect(mMockDevice.getProperty(DeviceProperties.BOARD)).andReturn(DEVICE_TYPE);
         EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT)).andReturn(null);
-        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT_LEGACY)).andReturn(null);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT_LEGACY_O_MR1))
+                .andReturn(null);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT_LEGACY_LESS_EQUAL_O))
+                .andReturn(null);
         EasyMock.replay(mMockDevice);
         assertTrue(mDeviceSelection.matches(mMockDevice));
     }
@@ -202,7 +221,10 @@ public class DeviceSelectionOptionsTest {
 
         EasyMock.expect(mMockDevice.getProperty(DeviceProperties.BOARD)).andReturn(DEVICE_TYPE);
         EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT)).andReturn(null);
-        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT_LEGACY)).andReturn(null);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT_LEGACY_O_MR1))
+                .andReturn(null);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT_LEGACY_LESS_EQUAL_O))
+                .andReturn(null);
         EasyMock.replay(mMockDevice);
         assertTrue(mDeviceSelection.matches(mMockDevice));
     }
