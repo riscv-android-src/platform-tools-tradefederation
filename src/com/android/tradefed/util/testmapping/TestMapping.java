@@ -59,9 +59,11 @@ public class TestMapping {
      * Constructor to create a {@link TestMapping} object from a path to TEST_MAPPING file.
      *
      * @param path The {@link Path} to a TEST_MAPPING file.
+     * @param testMappingsDir The {@link Path} to the folder of all TEST_MAPPING files for a build.
      */
-    public TestMapping(Path path) {
+    public TestMapping(Path path, Path testMappingsDir) {
         mTestCollection = new LinkedHashMap<>();
+        String relativePath = testMappingsDir.relativize(path.getParent()).toString();
         String errorMessage = null;
         try {
             String content = String.join("", Files.readAllLines(path, StandardCharsets.UTF_8));
@@ -81,7 +83,7 @@ public class TestMapping {
                     JSONArray arr = root.getJSONArray(group);
                     for (int i = 0; i < arr.length(); i++) {
                         JSONObject testObject = arr.getJSONObject(i);
-                        TestInfo test = new TestInfo(testObject.getString(KEY_NAME));
+                        TestInfo test = new TestInfo(testObject.getString(KEY_NAME), relativePath);
                         if (testObject.has(KEY_OPTIONS)) {
                             JSONArray optionObjects = testObject.getJSONArray(KEY_OPTIONS);
                             for (int j = 0; j < optionObjects.length(); j++) {
@@ -179,12 +181,14 @@ public class TestMapping {
         Stream<Path> stream = null;
         try {
             testMappingsDir = ZipUtil2.extractZipToTemp(testMappingsZip, TEST_MAPPINGS_ZIP);
-            stream =
-                    Files.walk(
-                            Paths.get(testMappingsDir.getAbsolutePath()),
-                            FileVisitOption.FOLLOW_LINKS);
+            Path testMappingsRootPath = Paths.get(testMappingsDir.getAbsolutePath());
+            stream = Files.walk(testMappingsRootPath, FileVisitOption.FOLLOW_LINKS);
             stream.filter(path -> path.getFileName().toString().equals(TEST_MAPPING))
-                    .forEach(path -> tests.addAll((new TestMapping(path)).getTests(testGroup)));
+                    .forEach(
+                            path ->
+                                    tests.addAll(
+                                            (new TestMapping(path, testMappingsRootPath))
+                                                    .getTests(testGroup)));
         } catch (IOException e) {
             RuntimeException runtimeException =
                     new RuntimeException(
