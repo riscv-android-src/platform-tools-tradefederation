@@ -52,11 +52,18 @@ public class TestMappingTest {
             tempDir = FileUtil.createTempDir("test_mapping");
             String srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_1";
             InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
-            testMappingFile = FileUtil.saveResourceFile(resourceStream, tempDir, TEST_MAPPING);
-            List<TestInfo> tests = new TestMapping(testMappingFile.toPath()).getTests("presubmit");
+            File testMappingRootDir = FileUtil.createTempDir("subdir", tempDir);
+            String rootDirName = testMappingRootDir.getName();
+            testMappingFile =
+                    FileUtil.saveResourceFile(resourceStream, testMappingRootDir, TEST_MAPPING);
+            List<TestInfo> tests =
+                    new TestMapping(testMappingFile.toPath(), Paths.get(tempDir.getAbsolutePath()))
+                            .getTests("presubmit");
             assertEquals(1, tests.size());
             assertEquals("test1", tests.get(0).getName());
-            tests = new TestMapping(testMappingFile.toPath()).getTests("postsubmit");
+            tests =
+                    new TestMapping(testMappingFile.toPath(), Paths.get(tempDir.getAbsolutePath()))
+                            .getTests("postsubmit");
             assertEquals(3, tests.size());
             assertEquals("test2", tests.get(0).getName());
             TestOption option = tests.get(0).getOptions().get(0);
@@ -64,9 +71,13 @@ public class TestMappingTest {
             assertEquals(
                     "annotation=android.platform.test.annotations.Presubmit", option.getValue());
             assertEquals("instrument", tests.get(1).getName());
-            tests = new TestMapping(testMappingFile.toPath()).getTests("othertype");
+            tests =
+                    new TestMapping(testMappingFile.toPath(), Paths.get(tempDir.getAbsolutePath()))
+                            .getTests("othertype");
             assertEquals(1, tests.size());
             assertEquals("test3", tests.get(0).getName());
+            assertEquals(1, tests.get(0).getSources().size());
+            assertTrue(tests.get(0).getSources().contains(rootDirName));
         } finally {
             FileUtil.recursiveDelete(tempDir);
         }
@@ -81,7 +92,9 @@ public class TestMappingTest {
             tempDir = FileUtil.createTempDir("test_mapping");
             File testMappingFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPING).toFile();
             FileUtil.writeToFile("bad format json file", testMappingFile);
-            List<TestInfo> tests = new TestMapping(testMappingFile.toPath()).getTests("presubmit");
+            List<TestInfo> tests =
+                    new TestMapping(testMappingFile.toPath(), Paths.get(tempDir.getAbsolutePath()))
+                            .getTests("presubmit");
         } finally {
             FileUtil.recursiveDelete(tempDir);
         }
@@ -131,8 +144,8 @@ public class TestMappingTest {
      */
     @Test(expected = RuntimeException.class)
     public void testMergeFailByName() throws Exception {
-        TestInfo test1 = new TestInfo("test1");
-        TestInfo test2 = new TestInfo("test2");
+        TestInfo test1 = new TestInfo("test1", "folder1");
+        TestInfo test2 = new TestInfo("test2", "folder1");
         test1.merge(test2);
     }
 
@@ -143,14 +156,14 @@ public class TestMappingTest {
     @Test
     public void testMergeSuccess() throws Exception {
         // Check that the test without any option should be the merge result.
-        TestInfo test1 = new TestInfo("test1");
-        TestInfo test2 = new TestInfo("test1");
+        TestInfo test1 = new TestInfo("test1", "folder1");
+        TestInfo test2 = new TestInfo("test1", "folder1");
         test2.addOption(new TestOption("include-filter", "value"));
         test1.merge(test2);
         assertTrue(test1.getOptions().isEmpty());
 
-        test1 = new TestInfo("test1");
-        test2 = new TestInfo("test1");
+        test1 = new TestInfo("test1", "folder1");
+        test2 = new TestInfo("test1", "folder1");
         test1.addOption(new TestOption("include-filter", "value"));
         test1.merge(test2);
         assertTrue(test1.getOptions().isEmpty());
@@ -163,8 +176,8 @@ public class TestMappingTest {
     @Test
     public void testMergeSuccess_2Filters() throws Exception {
         // Check that the test without any option should be the merge result.
-        TestInfo test1 = new TestInfo("test1");
-        TestInfo test2 = new TestInfo("test1");
+        TestInfo test1 = new TestInfo("test1", "folder1");
+        TestInfo test2 = new TestInfo("test1", "folder2");
         TestOption option1 = new TestOption("include-filter", "value1");
         test1.addOption(option1);
         TestOption option2 = new TestOption("include-filter", "value2");
@@ -173,6 +186,9 @@ public class TestMappingTest {
         assertEquals(2, test1.getOptions().size());
         assertTrue(new HashSet<TestOption>(test1.getOptions()).contains(option1));
         assertTrue(new HashSet<TestOption>(test1.getOptions()).contains(option2));
+        assertEquals(2, test1.getSources().size());
+        assertTrue(test1.getSources().contains("folder1"));
+        assertTrue(test1.getSources().contains("folder2"));
     }
 
     /**
@@ -182,8 +198,8 @@ public class TestMappingTest {
     @Test
     public void testMergeSuccess_multiFilters() throws Exception {
         // Check that the test without any option should be the merge result.
-        TestInfo test1 = new TestInfo("test1");
-        TestInfo test2 = new TestInfo("test1");
+        TestInfo test1 = new TestInfo("test1", "folder1");
+        TestInfo test2 = new TestInfo("test1", "folder2");
         TestOption inclusiveOption1 = new TestOption("include-filter", "value1");
         test1.addOption(inclusiveOption1);
         TestOption exclusiveOption1 = new TestOption("exclude-filter", "exclude-value1");
@@ -213,6 +229,10 @@ public class TestMappingTest {
         // Options from test2.
         assertTrue(mergedOptions.contains(inclusiveOption2));
         assertTrue(mergedOptions.contains(otherOption2));
+        // Both folders are in sources
+        assertEquals(2, test1.getSources().size());
+        assertTrue(test1.getSources().contains("folder1"));
+        assertTrue(test1.getSources().contains("folder2"));
     }
 
     /**
@@ -223,8 +243,8 @@ public class TestMappingTest {
     public void testMergeSuccess_MultiFilters_dropIncludeAnnotation() throws Exception {
         // Check that the test without all options except include-annotation option should be the
         // merge result.
-        TestInfo test1 = new TestInfo("test1");
-        TestInfo test2 = new TestInfo("test1");
+        TestInfo test1 = new TestInfo("test1", "folder1");
+        TestInfo test2 = new TestInfo("test1", "folder1");
         TestOption option1 = new TestOption("include-filter", "value1");
         test1.addOption(option1);
         TestOption optionIncludeAnnotation =
@@ -246,8 +266,8 @@ public class TestMappingTest {
     public void testMergeSuccess_MultiFilters_keepExcludeAnnotation() throws Exception {
         // Check that the test without all options including exclude-annotation option should be the
         // merge result.
-        TestInfo test1 = new TestInfo("test1");
-        TestInfo test2 = new TestInfo("test1");
+        TestInfo test1 = new TestInfo("test1", "folder1");
+        TestInfo test2 = new TestInfo("test1", "folder1");
         TestOption option1 = new TestOption("include-filter", "value1");
         test1.addOption(option1);
         TestOption optionExcludeAnnotation1 =

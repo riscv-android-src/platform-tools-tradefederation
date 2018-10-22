@@ -32,9 +32,12 @@ public class TestInfo {
 
     private String mName = null;
     private List<TestOption> mOptions = new ArrayList<TestOption>();
+    // A list of locations with TEST_MAPPING files that containing the test.
+    private Set<String> mSources = new HashSet<String>();
 
-    public TestInfo(String name) {
+    public TestInfo(String name, String source) {
         mName = name;
+        mSources.add(source);
     }
 
     public String getName() {
@@ -47,6 +50,14 @@ public class TestInfo {
 
     public List<TestOption> getOptions() {
         return mOptions;
+    }
+
+    public void addSources(Set<String> sources) {
+        mSources.addAll(sources);
+    }
+
+    public Set<String> getSources() {
+        return mSources;
     }
 
     /**
@@ -194,6 +205,7 @@ public class TestInfo {
             mergedOptions.add(option);
         }
         this.mOptions = mergedOptions;
+        this.addSources(test.getSources());
         CLog.d("Options are merged, updated test: %s.", this);
     }
 
