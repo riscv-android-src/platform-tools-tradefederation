@@ -16,6 +16,7 @@
 
 package com.android.tradefed.util;
 
+import com.android.tradefed.command.CommandInterrupter;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -29,14 +30,13 @@ import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
+import javax.annotation.Nonnull;
 
 /**
  * A collection of helper methods for executing operations.
@@ -55,22 +55,19 @@ public class RunUtil implements IRunUtil {
     private Map<String, String> mEnvVariables = new HashMap<String, String>();
     private Set<String> mUnsetEnvVariables = new HashSet<String>();
     private EnvPriority mEnvVariablePriority = EnvPriority.UNSET;
-    // TODO: remove once confidence in new mechanism is better
-    private ThreadLocal<Boolean> mIsInterruptAllowed =
-            new ThreadLocal<Boolean>() {
-                @Override
-                protected Boolean initialValue() {
-                    return Boolean.FALSE;
-                }
-            };
-    private Map<Thread, Boolean> mMapIsInterruptAllowed = new HashMap<Thread, Boolean>();
-    private Map<Thread, String> mMapInterruptThreads = new HashMap<Thread, String>();
-    private Map<Thread, Timer> mWatchdogInterrupt = new HashMap<>();
+
+    private final CommandInterrupter mInterrupter;
 
     /**
      * Create a new {@link RunUtil} object to use.
      */
     public RunUtil() {
+        this(CommandInterrupter.INSTANCE);
+    }
+
+    @VisibleForTesting
+    RunUtil(@Nonnull CommandInterrupter interrupter) {
+        mInterrupter = interrupter;
     }
 
     /**
@@ -86,20 +83,6 @@ public class RunUtil implements IRunUtil {
             sDefaultInstance = new RunUtil();
         }
         return sDefaultInstance;
-    }
-
-    /** Remove the thread that are not alive anymore from our tracking to keep the list small. */
-    private void cleanInterruptStateThreadMap() {
-        synchronized (mMapIsInterruptAllowed) {
-            for (Iterator<Thread> iterator = mMapIsInterruptAllowed.keySet().iterator();
-                    iterator.hasNext();
-                    ) {
-                Thread t = iterator.next();
-                if (!t.isAlive()) {
-                    iterator.remove();
-                }
-            }
-        }
     }
 
     /**
@@ -334,7 +317,7 @@ public class RunUtil implements IRunUtil {
     @Override
     public CommandStatus runTimed(long timeout, IRunUtil.IRunnableResult runnable,
             boolean logErrors) {
-        checkInterrupted();
+        mInterrupter.checkInterrupted();
         RunnableNotifier runThread = new RunnableNotifier(runnable, logErrors);
         if (logErrors) {
             if (timeout > 0l) {
@@ -364,7 +347,7 @@ public class RunUtil implements IRunUtil {
                     CLog.i("runTimed: received an interrupt but uninterruptible mode, ignoring");
                 }
             }
-            checkInterrupted();
+            mInterrupter.checkInterrupted();
         } while ((timeout == 0l || (System.currentTimeMillis() - startTime) < timeout)
                 && runThread.isAlive());
         // Snapshot the status when out of the run loop because thread may terminate and return a
@@ -374,7 +357,7 @@ public class RunUtil implements IRunUtil {
             CLog.i("runTimed: Calling interrupt, status is %s", status);
             runThread.cancel();
         }
-        checkInterrupted();
+        mInterrupter.checkInterrupted();
         return status;
     }
 
@@ -458,7 +441,7 @@ public class RunUtil implements IRunUtil {
      */
     @Override
     public void sleep(long time) {
-        checkInterrupted();
+        mInterrupter.checkInterrupted();
         if (time <= 0) {
             return;
         }
@@ -468,87 +451,31 @@ public class RunUtil implements IRunUtil {
             // ignore
             CLog.d("sleep interrupted");
         }
-        checkInterrupted();
+        mInterrupter.checkInterrupted();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void allowInterrupt(boolean allow) {
-        CLog.d("run interrupt allowed: %s", allow);
-        mIsInterruptAllowed.set(allow);
-        synchronized (mMapIsInterruptAllowed) {
-            mMapIsInterruptAllowed.put(Thread.currentThread(), allow);
-        }
-        checkInterrupted();
+        mInterrupter.allowInterrupt(allow);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public boolean isInterruptAllowed() {
-        synchronized (mMapIsInterruptAllowed) {
-            if (mMapIsInterruptAllowed.get(Thread.currentThread()) == null) {
-                // We don't add in this case to keep the map relatively small.
-                return false;
-            }
-            return mMapIsInterruptAllowed.get(Thread.currentThread());
-        }
+        return mInterrupter.isInterruptAllowed();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void setInterruptibleInFuture(Thread thread, final long timeMs) {
-        CLog.w("Setting future interruption in %s ms", timeMs);
-        synchronized (mMapIsInterruptAllowed) {
-            if (Boolean.TRUE.equals(mMapIsInterruptAllowed.get(thread))) {
-                CLog.v("Thread is already interruptible. setInterruptibleInFuture is inop.");
-                return;
-            }
-        }
-        Timer timer = new Timer(true);
-        synchronized (mWatchdogInterrupt) {
-            mWatchdogInterrupt.put(thread, timer);
-        }
-        timer.schedule(new InterruptTask(thread), timeMs);
+        mInterrupter.setInterruptibleInFuture(thread, timeMs);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public synchronized void interrupt(Thread thread, String message) {
-        if (message == null) {
-            throw new IllegalArgumentException("message cannot be null.");
-        }
-        mMapInterruptThreads.put(thread, message);
-        checkInterrupted();
-    }
-
-    private synchronized void checkInterrupted() {
-        // Keep the map of thread's state clean of dead threads.
-        this.cleanInterruptStateThreadMap();
-
-        final Thread thread = Thread.currentThread();
-        // TODO: remove once confidence in new mechanism is better
-        // This should only turn on when a shutdownHard is called with a shutdown timeout, since
-        // the old way cannot change the thread interruptible state.
-        if (mIsInterruptAllowed.get() != isInterruptAllowed()) {
-            CLog.e(
-                    "Mismatched between old/new Interruptible allowed, old: %s vs new:%s",
-                    mIsInterruptAllowed.get(), mMapIsInterruptAllowed.get(Thread.currentThread()));
-        }
-        if (isInterruptAllowed()) {
-            final String message = mMapInterruptThreads.remove(thread);
-            if (message != null) {
-                thread.interrupt();
-                throw new RunInterruptedException(message);
-            }
-        }
+        mInterrupter.interrupt(thread, message);
     }
 
     /**
@@ -792,42 +719,7 @@ public class RunUtil implements IRunUtil {
     /** Allow to stop the Timer Thread for the run util instance if started. */
     @VisibleForTesting
     void terminateTimer() {
-        if (mWatchdogInterrupt != null && !mWatchdogInterrupt.isEmpty()) {
-            for (Timer t : mWatchdogInterrupt.values()) {
-                t.purge();
-                t.cancel();
-            }
-        }
-    }
-
-    /** Timer that will execute a interrupt on the Thread registered. */
-    private class InterruptTask extends TimerTask {
-
-        private Thread mToInterrupt = null;
-
-        public InterruptTask(Thread t) {
-            mToInterrupt = t;
-        }
-
-        @Override
-        public void run() {
-            if (mToInterrupt != null) {
-                synchronized (mWatchdogInterrupt) {
-                    // Ensure that the timer associated with the task is cancelled too.
-                    mWatchdogInterrupt.get(mToInterrupt).cancel();
-                }
-
-                CLog.e("Interrupting with TimerTask");
-                synchronized (mMapIsInterruptAllowed) {
-                    mMapIsInterruptAllowed.put(mToInterrupt, true);
-                }
-                mToInterrupt.interrupt();
-
-                synchronized (mWatchdogInterrupt) {
-                    mWatchdogInterrupt.remove(mToInterrupt);
-                }
-            }
-        }
+        mInterrupter.terminateTimer();
     }
 
     /**

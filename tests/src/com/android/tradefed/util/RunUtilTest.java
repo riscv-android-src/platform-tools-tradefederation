@@ -23,11 +23,13 @@ import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
+import com.android.tradefed.command.CommandInterrupter;
 import com.android.tradefed.util.IRunUtil.EnvPriority;
 import com.android.tradefed.util.IRunUtil.IRunnableResult;
 import com.android.tradefed.util.RunUtil.RunnableResult;
 
 import org.easymock.EasyMock;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -58,8 +60,14 @@ public class RunUtilTest {
 
     @Before
     public void setUp() throws Exception {
-        mRunUtil = new RunUtil();
+        mRunUtil = new RunUtil(new CommandInterrupter());
         mMockRunnableResult = null;
+    }
+
+    @After
+    public void tearDown() {
+        // clear interrupted status
+        Thread.interrupted();
     }
 
     /** Test class on {@link RunUtil} in order to avoid creating a real process. */
