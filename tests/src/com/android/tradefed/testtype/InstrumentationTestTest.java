@@ -331,7 +331,7 @@ public class InstrumentationTestTest {
         // Expect a bugreport since there was a failure.
         inOrder.verify(mMockTestDevice)
                 .logBugreport("bugreport-on-run-failure-com.foo", mMockListener);
-        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 1);
+        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 1, 1);
         inOrder.verify(mMockListener).testStarted(eq(TEST2), anyLong());
         inOrder.verify(mMockListener).testEnded(eq(TEST2), anyLong(), eq(EMPTY_STRING_MAP));
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
@@ -406,7 +406,7 @@ public class InstrumentationTestTest {
         inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
         inOrder.verify(mMockListener).testRunFailed(RUN_ERROR_MSG);
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
-        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 1);
+        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 1, 1);
         inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
         inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
@@ -469,7 +469,7 @@ public class InstrumentationTestTest {
         inOrder.verify(mMockListener).testRunFailed(RUN_ERROR_MSG);
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
         inOrder.verify(mMockTestDevice).reboot();
-        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 1);
+        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 1, 1);
         inOrder.verify(mMockListener).testStarted(eq(TEST2), anyLong());
         inOrder.verify(mMockListener).testEnded(eq(TEST2), anyLong(), eq(EMPTY_STRING_MAP));
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);

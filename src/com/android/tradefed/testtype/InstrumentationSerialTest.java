@@ -23,7 +23,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.RetryResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 
@@ -105,9 +105,16 @@ class InstrumentationSerialTest implements IRemoteTest {
             InstrumentationTest runner, ITestInvocationListener listener, TestDescription testToRun)
             throws DeviceNotAvailableException {
         // use a listener filter, to track if the test failed to run
-        CollectingTestListener trackingListener = new CollectingTestListener();
+        CollectingTestListener trackingListener =
+                new CollectingTestListener() {
+                    @Override
+                    public void testRunStarted(String name, int numTests, int attemptNumber) {
+                        // Make the tracker unaware of attempts to track the current retry attempt
+                        super.testRunStarted(name, numTests, 0);
+                    }
+                };
         for (int i=1; i <= FAILED_RUN_TEST_ATTEMPTS; i++) {
-            runner.run(new ResultForwarder(trackingListener, listener));
+            runner.run(new RetryResultForwarder(i, trackingListener, listener));
             if (trackingListener.getCurrentRunResults().getTestResults().containsKey(testToRun)) {
                 return;
             }
