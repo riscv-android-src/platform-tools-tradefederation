@@ -14,7 +14,7 @@
 
 LOCAL_PATH := $(call my-dir)
 COMPATIBILITY.tradefed_tests_dir := \
-  $(COMPATIBILITY.tradefed_tests_dir) $(LOCAL_PATH)/res/config $(LOCAL_PATH)/tests/res/config $(LOCAL_PATH)/prod-tests/res/config
+  $(COMPATIBILITY.tradefed_tests_dir) $(LOCAL_PATH)/res/config $(LOCAL_PATH)/tests/res/config
 
 include $(CLEAR_VARS)
 
@@ -36,7 +36,7 @@ include $(CLEAR_VARS)
 # Note that this is incompatible with `make dist`.  If you want to make
 # the distribution, you must run `tapas` with the individual target names.
 .PHONY: tradefed-core
-tradefed-core: tradefed atest_tradefed tf-prod-tests tf-prod-metatests tradefed-contrib script_help
+tradefed-core: tradefed atest_tradefed tradefed-contrib tf-contrib-tests script_help
 
 .PHONY: tradefed-all
 tradefed-all: tradefed-core tradefed-tests tradefed_win verify loganalysis-tests
@@ -56,7 +56,7 @@ include $(call all-makefiles-under,$(LOCAL_PATH))
 ########################################################
 # Zip up the built files and dist it as tradefed.zip
 
-tradefed_dist_host_jars := tradefed tradefed-tests tf-prod-tests tf-prod-metatests emmalib jack-jacoco-reporter loganalysis loganalysis-tests tf-remote-client tradefed-contrib tools-common-prebuilt
+tradefed_dist_host_jars := tradefed tradefed-tests emmalib jack-jacoco-reporter loganalysis loganalysis-tests tf-remote-client tradefed-contrib tf-contrib-tests tools-common-prebuilt
 tradefed_dist_host_jar_files := $(foreach m, $(tradefed_dist_host_jars), $(HOST_OUT_JAVA_LIBRARIES)/$(m).jar)
 
 tradefed_dist_host_exes := tradefed.sh tradefed_win.bat script_help.sh verify.sh run_tf_cmd.sh atest_tradefed.sh
