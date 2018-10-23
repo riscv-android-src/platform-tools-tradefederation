@@ -191,9 +191,8 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
         // get build info, and throw an exception if there are multiple (not supporting multi-device
         // result reporting
         List<IBuildInfo> buildInfos = mInvocationContext.getBuildInfos();
-        if (buildInfos.size() != 1) {
-            throw new IllegalArgumentException(String.format(
-                    "Only expected 1 build info, actual: [%d]", buildInfos.size()));
+        if (buildInfos.isEmpty()) {
+            throw new IllegalArgumentException("There is no build info");
         }
         IBuildInfo buildInfo = buildInfos.get(0);
         JSONObject result = new JSONObject();
