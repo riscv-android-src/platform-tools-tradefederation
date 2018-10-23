@@ -30,6 +30,12 @@ import java.io.InputStream;
 public class TestRecordProtoUtil {
 
     /**
+     * Pick a 4MB default size to allow the buffer to grow for big protobuf. The default value could
+     * fail in some cases.
+     */
+    private static final int DEFAULT_SIZE_BYTES = 4 * 1024 * 1024;
+
+    /**
      * Read {@link TestRecord} from a file and return it.
      *
      * @param protoFile The {@link File} containing the record
@@ -42,12 +48,14 @@ public class TestRecordProtoUtil {
         try (InputStream stream = new FileInputStream(protoFile)) {
             CodedInputStream is = CodedInputStream.newInstance(stream);
             is.setSizeLimit(Integer.MAX_VALUE);
-            ByteArrayList data = new ByteArrayList();
+            ByteArrayList data = new ByteArrayList(DEFAULT_SIZE_BYTES);
             while (!is.isAtEnd()) {
                 int size = is.readRawVarint32();
-                data.addAll(is.readRawBytes(size));
+                byte[] dataByte = is.readRawBytes(size);
+                data.addAll(dataByte);
             }
             record = TestRecord.parseFrom(data.getContents());
+            data.clear();
         }
         return record;
     }
