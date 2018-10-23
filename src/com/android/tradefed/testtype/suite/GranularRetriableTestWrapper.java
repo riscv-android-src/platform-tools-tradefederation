@@ -479,7 +479,18 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
 
         @Override
         public void testRunStarted(String runName, int testCount) {
-            testRunStarted(runName, testCount, mAttemptNumber);
+            super.testRunStarted(runName, testCount, mAttemptNumber);
+        }
+
+        @Override
+        public void testRunStarted(String runName, int testCount, int attemptNumber) {
+            if (attemptNumber != mAttemptNumber) {
+                CLog.w(
+                        "Test reported an attempt %s, while the suite is at attempt %s",
+                        attemptNumber, mAttemptNumber);
+            }
+            // We enforce our attempt number
+            super.testRunStarted(runName, testCount, mAttemptNumber);
         }
 
         /** Increment the attempt number. */
