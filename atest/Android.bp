@@ -50,3 +50,28 @@ python_library_host {
         "constants_default.py"
     ],
 }
+
+// Move asuite_default and asuite_metrics to //tools/asuite when atest is
+// running as a prebuilt.
+python_defaults {
+    name: "asuite_default",
+    pkg_path: "asuite",
+    version: {
+        py2: {
+            enabled: true,
+            embedded_launcher: false,
+        },
+        py3: {
+            enabled: true,
+            embedded_launcher: false,
+        },
+    },
+}
+
+python_library_host {
+    name: "asuite_metrics",
+    defaults: ["asuite_default"],
+    srcs: [
+        "asuite_metrics.py",
+    ],
+}
