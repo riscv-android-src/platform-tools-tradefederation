@@ -47,8 +47,6 @@
 $(call add-clean-step, rm -rf $(OUT_DIR)/target/common/obj/JAVA_LIBRARIES/GoogleTradeFed_intermediates)
 $(call add-clean-step, rm -rf $(OUT_DIR)/target/common/obj/JAVA_LIBRARIES/GoogleTradeFedTests_intermediates)
 
-$(call add-clean-step, rm -rf $(OUT_DIR)/host/linux-x86/framework/tf-prod-tests.jar)
-$(call add-clean-step, rm -rf $(OUT_DIR)/host/linux-x86/framework/tf-prod-metatests.jar)
 # ************************************************
 # NEWER CLEAN STEPS MUST BE AT THE END OF THE LIST
 # ************************************************
