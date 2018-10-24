@@ -27,6 +27,22 @@ python_defaults {
     },
 }
 
+// Remove this defaults after python3 migration is finished.
+python_defaults {
+    name: "atest_py2_default",
+    pkg_path: "atest",
+    version: {
+        py2: {
+            enabled: true,
+            embedded_launcher: false,
+        },
+        py3: {
+            enabled: false,
+            embedded_launcher: false,
+        },
+    },
+}
+
 python_binary_host {
     name: "atest",
     main: "atest.py",
@@ -37,7 +53,7 @@ python_binary_host {
         "*_unittest.py",
         "*/*_unittest.py",
     ],
-    defaults: ["py2_only"],
+    defaults: ["atest_py2_default"],
 }
 
 python_library_host {
