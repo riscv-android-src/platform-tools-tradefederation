@@ -19,12 +19,17 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.RunInterruptedException;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.MapMaker;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 /** Service allowing TradeFederation commands to be interrupted or marked as uninterruptible. */
 public class CommandInterrupter {
@@ -32,148 +37,93 @@ public class CommandInterrupter {
     /** Singleton. */
     public static final CommandInterrupter INSTANCE = new CommandInterrupter();
 
-    private Map<Thread, Boolean> mMapIsInterruptAllowed = new HashMap<>();
-    private Map<Thread, String> mMapInterruptThreads = new HashMap<>();
-    private Map<Thread, Timer> mWatchdogInterrupt = new HashMap<>();
+    private final ScheduledExecutorService mExecutor = Executors.newScheduledThreadPool(0);
+
+    // tracks whether a thread is currently interruptible
+    private ConcurrentMap<Thread, Boolean> mInterruptible = new MapMaker().weakKeys().makeMap();
+    // presence of an interrupt error message indicates that the thread should be interrupted
+    private ConcurrentMap<Thread, String> mInterruptMessage = new MapMaker().weakKeys().makeMap();
 
     @VisibleForTesting
     // FIXME: reduce visibility once RunUtil interrupt tests are removed
     public CommandInterrupter() {}
 
-    /** Remove the thread that are not alive anymore from our tracking to keep the list small. */
-    private void cleanInterruptStateThreadMap() {
-        synchronized (mMapIsInterruptAllowed) {
-            for (Iterator<Thread> iterator = mMapIsInterruptAllowed.keySet().iterator();
-                    iterator.hasNext();
-                    ) {
-                Thread t = iterator.next();
-                if (!t.isAlive()) {
-                    iterator.remove();
-                }
-            }
-        }
-    }
-
-    /**
-     * Allows/disallows run interrupts on the current thread. If it is allowed, run operations of
-     * the current thread can be interrupted from other threads via {@link #interrupt} method.
-     *
-     * @param allow whether to allow run interrupts on the current thread.
-     */
-    public void allowInterrupt(boolean allow) {
-        CLog.d("run interrupt allowed: %s", allow);
-        synchronized (mMapIsInterruptAllowed) {
-            mMapIsInterruptAllowed.put(Thread.currentThread(), allow);
-        }
+    /** Allow current thread to be interrupted. */
+    public void allowInterrupt() {
+        CLog.d("Interrupt allowed");
+        mInterruptible.put(Thread.currentThread(), true);
         checkInterrupted();
     }
 
-    /**
-     * Give the interrupt status of the RunUtil.
-     *
-     * @return true if the Run can be interrupted, false otherwise.
-     */
-    public boolean isInterruptAllowed() {
-        synchronized (mMapIsInterruptAllowed) {
-            if (mMapIsInterruptAllowed.get(Thread.currentThread()) == null) {
-                // We don't add in this case to keep the map relatively small.
-                return false;
-            }
-            return mMapIsInterruptAllowed.get(Thread.currentThread());
-        }
-    }
-
-    /**
-     * Set as interruptible after some waiting time. {@link CommandScheduler#shutdownHard()} to
-     * enforce we terminate eventually.
-     *
-     * @param thread the thread that will become interruptible.
-     * @param timeMs time to wait before setting interruptible.
-     */
-    // FIXME: reduce visibility once RunUtil interrupt methods are removed
-    public void setInterruptibleInFuture(Thread thread, final long timeMs) {
-        CLog.w("Setting future interruption in %s ms", timeMs);
-        synchronized (mMapIsInterruptAllowed) {
-            if (Boolean.TRUE.equals(mMapIsInterruptAllowed.get(thread))) {
-                CLog.v("Thread is already interruptible. setInterruptibleInFuture is inop.");
-                return;
-            }
-        }
-        Timer timer = new Timer(true);
-        synchronized (mWatchdogInterrupt) {
-            mWatchdogInterrupt.put(thread, timer);
-        }
-        timer.schedule(new InterruptTask(thread), timeMs);
-    }
-
-    /**
-     * Interrupts the ongoing/forthcoming run operations on the given thread. The run operations on
-     * the given thread will throw {@link RunInterruptedException}.
-     *
-     * @param thread
-     * @param message the message for {@link RunInterruptedException}.
-     */
-    // FIXME: reduce visibility once RunUtil interrupt methods are removed
-    public synchronized void interrupt(Thread thread, String message) {
-        if (message == null) {
-            throw new IllegalArgumentException("message cannot be null.");
-        }
-        mMapInterruptThreads.put(thread, message);
+    /** Prevent current thread from being interrupted. */
+    public void blockInterrupt() {
+        CLog.d("Interrupt blocked");
+        mInterruptible.put(Thread.currentThread(), false);
         checkInterrupted();
     }
 
-    public synchronized void checkInterrupted() {
-        // Keep the map of thread's state clean of dead threads.
-        this.cleanInterruptStateThreadMap();
+    /** @return true if current thread is interruptible */
+    public boolean isInterruptible() {
+        return isInterruptible(Thread.currentThread());
+    }
 
-        final Thread thread = Thread.currentThread();
-        if (isInterruptAllowed()) {
-            final String message = mMapInterruptThreads.remove(thread);
+    /** @return true if specified thread is interruptible */
+    public boolean isInterruptible(@Nonnull Thread thread) {
+        return Boolean.TRUE.equals(mInterruptible.get(thread));
+    }
+
+    /**
+     * Allow a specified thread to be interrupted after a delay.
+     *
+     * @param thread thread to mark as interruptible
+     * @param delay time from now to delay execution
+     * @param unit time unit of the delay parameter
+     */
+    // FIXME: reduce visibility once RunUtil interrupt methods are removed
+    public Future<?> allowInterruptAsync(
+            @Nonnull Thread thread, long delay, @Nonnull TimeUnit unit) {
+        if (isInterruptible(thread)) {
+            CLog.v("Thread already interruptible");
+            return CompletableFuture.completedFuture(null);
+        }
+
+        CLog.w("Allowing interrupt in %d ms", unit.toMillis(delay));
+        return mExecutor.schedule(
+                () -> {
+                    CLog.e("Interrupt allowed asynchronously");
+                    mInterruptible.put(thread, true);
+                },
+                delay,
+                unit);
+    }
+
+    /**
+     * Flag a thread, interrupting it if and when it becomes interruptible.
+     *
+     * @param thread thread to mark for interruption
+     * @param template interruption error template
+     * @param args interruption error arguments
+     */
+    // FIXME: reduce visibility once RunUtil interrupt methods are removed
+    public void interrupt(
+            @Nonnull Thread thread, @Nullable String template, @Nullable Object... args) {
+        String message = String.format(String.valueOf(template), args);
+        mInterruptMessage.put(thread, message);
+        if (isInterruptible(thread)) {
+            thread.interrupt();
+        }
+    }
+
+    /**
+     * Interrupts the current thread if it should be interrupted. Threads are encouraged to
+     * periodically call this method in order to throw the right {@link RunInterruptedException}.
+     */
+    public void checkInterrupted() {
+        Thread thread = Thread.currentThread();
+        if (isInterruptible()) {
+            String message = mInterruptMessage.remove(thread);
             if (message != null) {
-                thread.interrupt();
                 throw new RunInterruptedException(message);
-            }
-        }
-    }
-
-    /** Allow to stop the Timer Thread for the run util instance if started. */
-    @VisibleForTesting
-    // FIXME: reduce visibility once RunUtil interrupt tests are removed
-    public void terminateTimer() {
-        if (mWatchdogInterrupt != null && !mWatchdogInterrupt.isEmpty()) {
-            for (Timer t : mWatchdogInterrupt.values()) {
-                t.purge();
-                t.cancel();
-            }
-        }
-    }
-
-    /** Timer that will execute a interrupt on the Thread registered. */
-    private class InterruptTask extends TimerTask {
-
-        private Thread mToInterrupt = null;
-
-        public InterruptTask(Thread t) {
-            mToInterrupt = t;
-        }
-
-        @Override
-        public void run() {
-            if (mToInterrupt != null) {
-                synchronized (mWatchdogInterrupt) {
-                    // Ensure that the timer associated with the task is cancelled too.
-                    mWatchdogInterrupt.get(mToInterrupt).cancel();
-                }
-
-                CLog.e("Interrupting with TimerTask");
-                synchronized (mMapIsInterruptAllowed) {
-                    mMapIsInterruptAllowed.put(mToInterrupt, true);
-                }
-                mToInterrupt.interrupt();
-
-                synchronized (mWatchdogInterrupt) {
-                    mWatchdogInterrupt.remove(mToInterrupt);
-                }
             }
         }
     }
