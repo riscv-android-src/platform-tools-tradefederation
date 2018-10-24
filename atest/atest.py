@@ -389,7 +389,8 @@ def main(argv):
         steps.append(constants.TEST_STEP)
     tests_exit_code = constants.EXIT_CODE_SUCCESS
     if constants.TEST_STEP in steps:
-        tests_exit_code = test_runner_handler.run_all_tests(results_dir, test_infos, extra_args)
+        tests_exit_code = test_runner_handler.run_all_tests(
+            results_dir, test_infos, extra_args)
     if args.detect_regression:
         regression_args = _get_regression_detection_args(args, results_dir)
         # TODO(b/110485713): Should not call run_tests here.
