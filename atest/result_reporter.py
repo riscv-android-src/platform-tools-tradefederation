@@ -134,6 +134,7 @@ class ResultReporter(object):
     def __init__(self):
         self.run_stats = RunStat()
         self.runners = OrderedDict()
+        self.failed_tests = []
 
     def process_test_result(self, test):
         """Given the results of a single test, update stats and print results.
@@ -204,6 +205,7 @@ class ResultReporter(object):
             return tests_ret
         print('\n%s' % au.colorize('Summary', constants.CYAN))
         print('-------')
+        failed_sum = len(self.failed_tests)
         for runner_name, groups in self.runners.items():
             if groups == UNSUPPORTED_FLAG:
                 print(runner_name, 'Unsupported. See raw output above.')
@@ -211,22 +213,69 @@ class ResultReporter(object):
             if groups == FAILURE_FLAG:
                 tests_ret = constants.EXIT_CODE_TEST_FAILURE
                 print(runner_name, 'Crashed. No results to report.')
+                failed_sum += 1
                 continue
             for group_name, stats in groups.items():
                 name = group_name if group_name else runner_name
-                summary = '%s: %s: %s, %s: %s' % (name,
-                                                  au.colorize('Passed', constants.GREEN),
-                                                  stats.passed,
-                                                  au.colorize('Failed', constants.RED),
-                                                  stats.failed)
+                summary = self.process_summary(name, stats)
                 if stats.failed > 0:
                     tests_ret = constants.EXIT_CODE_TEST_FAILURE
                 if stats.run_errors:
-                    summary += ' (Completed With ERRORS)'
                     tests_ret = constants.EXIT_CODE_TEST_FAILURE
+                    failed_sum += 1 if not stats.failed else 0
                 print(summary)
         print()
+        if tests_ret == constants.EXIT_CODE_SUCCESS:
+            print(au.colorize('All tests passed!', constants.GREEN))
+        else:
+            message = '%d %s failed' % (failed_sum,
+                                        'tests' if failed_sum > 1 else 'test')
+            print(au.colorize(message, constants.RED))
+            print('-'*len(message))
+            self.print_failed_tests()
         return tests_ret
+
+    def print_failed_tests(self):
+        """Print the failed tests if existed."""
+        if self.failed_tests:
+            for test_name in self.failed_tests:
+                print('%s' % test_name)
+
+    def process_summary(self, name, stats):
+        """Process the summary line.
+
+        Strategy:
+            Error status happens ->
+                SomeTests: Passed: 2, Failed: 0 <red>(Completed With ERRORS)</red>
+                SomeTests: Passed: 2, <red>Failed</red>: 2 <red>(Completed With ERRORS)</red>
+            More than 1 test fails ->
+                SomeTests: Passed: 2, <red>Failed</red>: 5
+            No test fails ->
+                SomeTests: <green>Passed</green>: 2, Failed: 0
+
+        Args:
+            name: A string of test name.
+            stats: A RunStat instance for a test group.
+
+        Returns:
+            A summary of the test result.
+        """
+        passed_label = 'Passed'
+        failed_label = 'Failed'
+        error_label = ''
+        if stats.failed > 0:
+            failed_label = au.colorize(failed_label, constants.RED)
+        if stats.run_errors:
+            error_label = au.colorize('(Completed With ERRORS)', constants.RED)
+        elif stats.failed == 0:
+            passed_label = au.colorize(passed_label, constants.GREEN)
+        summary = '%s: %s: %s, %s: %s %s' % (name,
+                                             passed_label,
+                                             stats.passed,
+                                             failed_label,
+                                             stats.failed,
+                                             error_label)
+        return summary
 
     def _update_stats(self, test, group):
         """Given the results of a single test, update test run stats.
@@ -242,6 +291,7 @@ class ResultReporter(object):
             group.passed += 1
         elif test.status == test_runner_base.FAILED_STATUS:
             self.run_stats.failed += 1
+            self.failed_tests.append(test.test_name)
             group.failed += 1
         elif test.status == test_runner_base.ERROR_STATUS:
             self.run_stats.run_errors = True
