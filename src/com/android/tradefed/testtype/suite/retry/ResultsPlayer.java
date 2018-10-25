@@ -74,7 +74,13 @@ public final class ResultsPlayer implements IRemoteTest, IInvocationContextRecei
             if (moduleContext != null) {
                 listener.testModuleEnded();
             }
+
+            // Clean up the memory: IRemoteTest object are kept in memory until the command finish
+            // So we need to clean up the entries when we are done with them to free up the
+            // memory early
+            holder.mResults.clear();
         }
+        mModuleResult.clear();
     }
 
     /**
