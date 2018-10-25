@@ -198,7 +198,7 @@ public class BuildInfoTest {
         assertNotNull(deserialized.getVersionedFile(FILE_KEY));
     }
 
-    /** Test {@link BuildInfo#getTestResouce(List, String)} */
+    /** Test {@link BuildInfo#getTestResource(List, String)} */
     @Test
     public void testGetTestResource() {
         List<IBuildInfo> buildInfos = new ArrayList<IBuildInfo>();
@@ -207,18 +207,18 @@ public class BuildInfoTest {
         File testResourceFile = new File("test-resource1");
         testResourceBuild.setFile("test-resource1", testResourceFile, "");
         buildInfos.add(testResourceBuild);
-        File file = BuildInfo.getTestResouce(buildInfos, "test-resource1");
+        File file = BuildInfo.getTestResource(buildInfos, "test-resource1");
         Assert.assertEquals(testResourceFile, file);
     }
 
-    /** Test {@link BuildInfo#getTestResouce(List, String)} */
+    /** Test {@link BuildInfo#getTestResource(List, String)} */
     @Test
     public void testGetTestResource_notExist() {
         List<IBuildInfo> buildInfos = new ArrayList<IBuildInfo>();
         BuildInfo testResourceBuild = new BuildInfo();
         testResourceBuild.setTestResourceBuild(true);
         buildInfos.add(testResourceBuild);
-        File file = BuildInfo.getTestResouce(buildInfos, "test-resource1");
+        File file = BuildInfo.getTestResource(buildInfos, "test-resource1");
         Assert.assertNull(file);
     }
 }
