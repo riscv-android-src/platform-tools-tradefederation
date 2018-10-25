@@ -19,6 +19,7 @@ import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.IShellOutputReceiver;
+import com.android.ddmlib.InstallException;
 import com.android.ddmlib.InstallReceiver;
 import com.android.ddmlib.RawImage;
 import com.android.ddmlib.ShellCommandUnresponsiveException;
@@ -1253,6 +1254,38 @@ public class TestDeviceTest extends TestCase {
         assertNull(mTestDevice.installPackage(new File(apkFile), new File(certFile), true, "-l"));
     }
 
+    /** Test when a timeout during installation with certificat is thrown. */
+    public void testInstallPackages_timeout() throws Exception {
+        final String certFile = "foo.dc";
+        final String apkFile = "foo.apk";
+        EasyMock.expect(mMockIDevice.syncPackageToDevice(EasyMock.contains(certFile)))
+                .andReturn(certFile);
+        EasyMock.expect(mMockIDevice.syncPackageToDevice(EasyMock.contains(apkFile)))
+                .andReturn(apkFile);
+
+        // expect apk path to be passed as extra arg
+        mMockIDevice.installRemotePackage(
+                EasyMock.eq(certFile),
+                EasyMock.eq(true),
+                EasyMock.anyObject(),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_TO_OUTPUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES),
+                EasyMock.eq("-l"),
+                EasyMock.contains(apkFile));
+        EasyMock.expectLastCall().andThrow(new InstallException(new TimeoutException()));
+        mMockIDevice.removeRemotePackage(certFile);
+        mMockIDevice.removeRemotePackage(apkFile);
+
+        replayMocks();
+
+        assertTrue(
+                mTestDevice
+                        .installPackage(new File(apkFile), new File(certFile), true, "-l")
+                        .contains("InstallException during package installation."));
+        verifyMocks();
+    }
+
     /**
      * Test that isRuntimePermissionSupported returns correct result for device reporting LRX22F
      * build attributes
@@ -1355,6 +1388,27 @@ public class TestDeviceTest extends TestCase {
         EasyMock.expectLastCall();
         replayMocks();
         assertNull(mTestDevice.installPackage(new File(apkFile), true));
+    }
+
+    /** Test when a timeout during installation is thrown. */
+    public void testInstallPackage_default_timeout() throws Exception {
+        final String apkFile = "foo.apk";
+        setMockIDeviceRuntimePermissionNotSupported();
+        mMockIDevice.installPackage(
+                EasyMock.contains(apkFile),
+                EasyMock.eq(true),
+                EasyMock.anyObject(),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_TO_OUTPUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES));
+        EasyMock.expectLastCall().andThrow(new InstallException(new TimeoutException()));
+        replayMocks();
+        assertTrue(
+                mTestDevice
+                        .installPackage(new File(apkFile), true)
+                        .contains(
+                                "InstallException during package installation. cause: com.android.ddmlib.InstallException"));
+        verifyMocks();
     }
 
     /**
