@@ -28,9 +28,8 @@ import java.util.Map;
 public class LocalHostResourceManager implements IHostResourceManager {
 
     @Option(
-        name = "host-resources",
-        description = "The host resources to download for the current host."
-    )
+            name = "host-resource",
+            description = "The host resources to download for the current host.")
     private Map<String, String> mHostResources = new HashMap<>();
 
     @Option(name = "disable", description = "Disable the host resource manager or not.")

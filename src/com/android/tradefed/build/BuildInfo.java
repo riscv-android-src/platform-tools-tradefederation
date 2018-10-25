@@ -649,7 +649,7 @@ public class BuildInfo implements IBuildInfo {
      * @param testResourceName the test resource name
      * @return the test resource file.
      */
-    public static File getTestResouce(
+    public static File getTestResource(
             List<IBuildInfo> testResourceBuildInfos, String testResourceName) {
         if (testResourceBuildInfos == null) {
             return null;
