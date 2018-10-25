@@ -153,7 +153,15 @@ public class TestDevice extends NativeDevice {
                                 response[0] = receiver.getErrorMessage();
                             }
                         } catch (InstallException e) {
-                            response[0] = e.getMessage();
+                            String message = e.getMessage();
+                            if (message == null) {
+                                message =
+                                        String.format(
+                                                "InstallException during package installation. "
+                                                        + "cause: %s",
+                                                StreamUtil.getStackTrace(e));
+                            }
+                            response[0] = message;
                         }
                         return response[0] == null;
                     }
@@ -280,7 +288,15 @@ public class TestDevice extends NativeDevice {
                                 response[0] = receiver.getErrorMessage();
                             }
                         } catch (InstallException e) {
-                            response[0] = e.getMessage();
+                            String message = e.getMessage();
+                            if (message == null) {
+                                message =
+                                        String.format(
+                                                "InstallException during package installation. "
+                                                        + "cause: %s",
+                                                StreamUtil.getStackTrace(e));
+                            }
+                            response[0] = message;
                         } finally {
                             getIDevice().removeRemotePackage(remotePackagePath);
                             getIDevice().removeRemotePackage(remoteCertPath);
