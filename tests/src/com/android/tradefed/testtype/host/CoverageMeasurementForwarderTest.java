@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.host;
 
+import static com.google.common.io.Files.getNameWithoutExtension;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.any;
@@ -129,7 +130,8 @@ public final class CoverageMeasurementForwarderTest {
         mForwarder.setCoverageMeasurements(ImmutableList.of(ARTIFACT_NAME1));
         mForwarder.run(mMockListener);
 
-        assertThat(mCapturedJavaLogs).containsExactly(ARTIFACT_NAME1, MEASUREMENT1);
+        assertThat(mCapturedJavaLogs)
+                .containsExactly(getNameWithoutExtension(ARTIFACT_NAME1), MEASUREMENT1);
         assertThat(mCapturedNativeLogs).isEmpty();
     }
 
@@ -139,7 +141,11 @@ public final class CoverageMeasurementForwarderTest {
         mForwarder.run(mMockListener);
 
         assertThat(mCapturedJavaLogs)
-                .containsExactly(ARTIFACT_NAME1, MEASUREMENT1, ARTIFACT_NAME2, MEASUREMENT2);
+                .containsExactly(
+                        getNameWithoutExtension(ARTIFACT_NAME1),
+                        MEASUREMENT1,
+                        getNameWithoutExtension(ARTIFACT_NAME2),
+                        MEASUREMENT2);
         assertThat(mCapturedNativeLogs).isEmpty();
     }
 
@@ -163,7 +169,8 @@ public final class CoverageMeasurementForwarderTest {
         mForwarder.run(mMockListener);
 
         assertThat(mCapturedJavaLogs).isEmpty();
-        assertThat(mCapturedNativeLogs).containsExactly(ARTIFACT_NAME3, MEASUREMENT3);
+        assertThat(mCapturedNativeLogs)
+                .containsExactly(getNameWithoutExtension(ARTIFACT_NAME3), MEASUREMENT3);
     }
 
     @Test
@@ -174,7 +181,11 @@ public final class CoverageMeasurementForwarderTest {
 
         assertThat(mCapturedJavaLogs).isEmpty();
         assertThat(mCapturedNativeLogs)
-                .containsExactly(ARTIFACT_NAME3, MEASUREMENT3, ARTIFACT_NAME4, MEASUREMENT4);
+                .containsExactly(
+                        getNameWithoutExtension(ARTIFACT_NAME3),
+                        MEASUREMENT3,
+                        getNameWithoutExtension(ARTIFACT_NAME4),
+                        MEASUREMENT4);
     }
 
     @Test
