@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype.host;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.io.Files.getNameWithoutExtension;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
@@ -42,9 +43,8 @@ public final class CoverageMeasurementForwarder implements IRemoteTest, IBuildRe
     @Option(
         name = "coverage-measurement",
         description =
-                "The name of the build artifact to forward. The artifact should be a "
-                        + "coverage measurement (either an .ec or .exec file) that to save as a "
-                        + "test result. This option may be repeated.",
+                "The name of the build artifact to forward. The artifact should be a coverage"
+                        + "measurement to save as a test result. This option may be repeated.",
         importance = Importance.IF_UNSET,
         mandatory = false
     )
@@ -86,7 +86,7 @@ public final class CoverageMeasurementForwarder implements IRemoteTest, IBuildRe
             return;
         }
 
-        listener.testRunStarted("CoverageMeasurementedForwarder", 0);
+        listener.testRunStarted("CoverageMeasurementForwarder", 0);
         for (String artifactName : mCoverageMeasurements) {
             File coverageMeasurement =
                     checkNotNull(
@@ -94,7 +94,7 @@ public final class CoverageMeasurementForwarder implements IRemoteTest, IBuildRe
                             "Failed to get artifact '%s' from the build.",
                             artifactName);
             try (InputStreamSource stream = new FileInputStreamSource(coverageMeasurement)) {
-                listener.testLog(artifactName, mLogDataType, stream);
+                listener.testLog(getNameWithoutExtension(artifactName), mLogDataType, stream);
             } finally {
                 FileUtil.deleteFile(coverageMeasurement);
             }
