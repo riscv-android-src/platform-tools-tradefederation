@@ -123,7 +123,8 @@ public class AdbStopServerPreparer extends BaseTargetPreparer implements ITarget
         // Kill the test adb server
         getRunUtil().runTimedCmd(CMD_TIMEOUT, "adb", "kill-server");
         // Restart the one from the parent PATH (original one)
-        getRunUtil().runTimedCmd(CMD_TIMEOUT, "adb", "start-server");
+        CommandResult restart = getRunUtil().runTimedCmd(CMD_TIMEOUT, "adb", "start-server");
+        CLog.d("Restart adb -  stdout: %s\nstderr: %s", restart.getStdout(), restart.getStderr());
         // Restart device manager monitor
         getDeviceManager().restartAdbBridge();
     }
