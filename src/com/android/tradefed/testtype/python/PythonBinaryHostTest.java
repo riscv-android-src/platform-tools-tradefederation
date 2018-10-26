@@ -85,6 +85,12 @@ public class PythonBinaryHostTest
             description = "Whether or not to pass a ANDROID_SERIAL variable to the process.")
     private boolean mInjectAndroidSerialVar = true;
 
+    @Option(
+        name = "python-options",
+        description = "Option string to be passed to the binary when running"
+    )
+    private List<String> mTestOptions = new ArrayList<>();
+
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private IInvocationContext mContext;
@@ -191,6 +197,8 @@ public class PythonBinaryHostTest
             CLog.d("%s", versionRes.getStdout());
             CLog.d("%s", versionRes.getStderr());
         }
+        // Add all the other options
+        commandLine.addAll(mTestOptions);
 
         CommandResult result =
                 getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
