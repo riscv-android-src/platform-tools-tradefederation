@@ -808,7 +808,9 @@ public class NativeDevice implements IManagedTestDevice {
         if (runner instanceof RemoteAndroidTestRunner) {
             String original = ((RemoteAndroidTestRunner) runner).getRunOptions();
             String userRunTimeOption = String.format("--user %s", Integer.toString(userId));
-            ((RemoteAndroidTestRunner) runner).setRunOptions(userRunTimeOption);
+            String updated = (original != null) ? (original + " " + userRunTimeOption)
+                    : userRunTimeOption;
+            ((RemoteAndroidTestRunner) runner).setRunOptions(updated);
             return original;
         } else {
             throw new IllegalStateException(String.format("%s runner does not support multi-user",
