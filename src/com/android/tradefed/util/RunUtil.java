@@ -326,39 +326,45 @@ public class RunUtil implements IRunUtil {
                 CLog.d("Running command without timeout.");
             }
         }
-        runThread.start();
-        long startTime = System.currentTimeMillis();
-        long pollIterval = 0;
-        if (timeout > 0l && timeout < THREAD_JOIN_POLL_INTERVAL) {
-            // only set the pollInterval if we have a timeout
-            pollIterval = timeout;
-        } else {
-            pollIterval = THREAD_JOIN_POLL_INTERVAL;
-        }
-        do {
-            try {
-                runThread.join(pollIterval);
-            } catch (InterruptedException e) {
-                if (isInterruptAllowed()) {
-                    CLog.i("runTimed: interrupted while joining the runnable");
-                    break;
+
+        try {
+            runThread.start();
+            long startTime = System.currentTimeMillis();
+            long pollInterval = 0;
+            if (timeout > 0L && timeout < THREAD_JOIN_POLL_INTERVAL) {
+                // only set the pollInterval if we have a timeout
+                pollInterval = timeout;
+            } else {
+                pollInterval = THREAD_JOIN_POLL_INTERVAL;
+            }
+            do {
+                try {
+                    runThread.join(pollInterval);
+                } catch (InterruptedException e) {
+                    if (isInterruptAllowed()) {
+                        CLog.i("runTimed: interrupted while joining the runnable");
+                        break;
+                    } else {
+                        CLog.i("runTimed: currently uninterruptible, ignoring interrupt");
+                    }
                 }
-                else {
-                    CLog.i("runTimed: received an interrupt but uninterruptible mode, ignoring");
-                }
+                mInterrupter.checkInterrupted();
+            } while ((timeout == 0L || (System.currentTimeMillis() - startTime) < timeout)
+                    && runThread.isAlive());
+            // Snapshot the status when out of the run loop because thread may terminate and return
+            // a false FAILED instead of TIMED_OUT.
+            CommandStatus status = runThread.getStatus();
+            if (CommandStatus.TIMED_OUT.equals(status) || CommandStatus.EXCEPTION.equals(status)) {
+                CLog.i("runTimed: Calling interrupt, status is %s", status);
+                runThread.cancel();
             }
             mInterrupter.checkInterrupted();
-        } while ((timeout == 0l || (System.currentTimeMillis() - startTime) < timeout)
-                && runThread.isAlive());
-        // Snapshot the status when out of the run loop because thread may terminate and return a
-        // false FAILED instead of TIMED_OUT.
-        CommandStatus status = runThread.getStatus();
-        if (CommandStatus.TIMED_OUT.equals(status) || CommandStatus.EXCEPTION.equals(status)) {
-            CLog.i("runTimed: Calling interrupt, status is %s", status);
+            return status;
+
+        } finally {
+            // always ensure the execution is cancelled
             runThread.cancel();
         }
-        mInterrupter.checkInterrupted();
-        return status;
     }
 
     /**
@@ -457,25 +463,30 @@ public class RunUtil implements IRunUtil {
     /** {@inheritDoc} */
     @Override
     public void allowInterrupt(boolean allow) {
-        mInterrupter.allowInterrupt(allow);
+        if (allow) {
+            mInterrupter.allowInterrupt();
+        } else {
+            mInterrupter.blockInterrupt();
+        }
     }
 
     /** {@inheritDoc} */
     @Override
     public boolean isInterruptAllowed() {
-        return mInterrupter.isInterruptAllowed();
+        return mInterrupter.isInterruptible();
     }
 
     /** {@inheritDoc} */
     @Override
     public void setInterruptibleInFuture(Thread thread, final long timeMs) {
-        mInterrupter.setInterruptibleInFuture(thread, timeMs);
+        mInterrupter.allowInterruptAsync(thread, timeMs, TimeUnit.MILLISECONDS);
     }
 
     /** {@inheritDoc} */
     @Override
     public synchronized void interrupt(Thread thread, String message) {
         mInterrupter.interrupt(thread, message);
+        mInterrupter.checkInterrupted();
     }
 
     /**
@@ -716,15 +727,7 @@ public class RunUtil implements IRunUtil {
         return t;
     }
 
-    /** Allow to stop the Timer Thread for the run util instance if started. */
-    @VisibleForTesting
-    void terminateTimer() {
-        mInterrupter.terminateTimer();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void setEnvVariablePriority(EnvPriority priority) {
         if (this.equals(sDefaultInstance)) {
