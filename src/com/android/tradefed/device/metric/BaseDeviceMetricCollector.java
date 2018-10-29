@@ -43,6 +43,9 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     public static final String TEST_CASE_INCLUDE_GROUP_OPTION = "test-case-include-group";
     public static final String TEST_CASE_EXCLUDE_GROUP_OPTION = "test-case-exclude-group";
 
+    @Option(name = "disable", description = "disables the metrics collector")
+    private boolean mDisable = false;
+
     @Option(
         name = TEST_CASE_INCLUDE_GROUP_OPTION,
         description =
@@ -231,6 +234,18 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     @Override
     public final void testIgnored(TestDescription test) {
         mForwarder.testIgnored(test);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public final boolean isDisabled() {
+        return mDisable;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public final void setDisable(boolean isDisabled) {
+        mDisable = isDisabled;
     }
 
     /**
