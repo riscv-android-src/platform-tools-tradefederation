@@ -33,6 +33,8 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
+import com.google.common.xml.XmlEscapers;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -166,7 +168,7 @@ public class XmlSuiteResultFormatterTest {
         assertXmlContainsValue(
                 content,
                 "Result/Module/TestCase/Test/Failure/StackTrace",
-                "module1 failed.\nstack\nstack");
+                XmlEscapers.xmlContentEscaper().escape("module1 failed.\nstack\nstack\0"));
         // Test that we can read back the informations
         SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
@@ -330,7 +332,7 @@ public class XmlSuiteResultFormatterTest {
         assertXmlContainsValue(
                 content,
                 "Result/Module/TestCase/Test/Failure/StackTrace",
-                "module1 failed.\nstack\nstack");
+                XmlEscapers.xmlContentEscaper().escape("module1 failed.\nstack\nstack\0"));
         // Test that we can read back the informations
         SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
@@ -421,7 +423,7 @@ public class XmlSuiteResultFormatterTest {
         assertXmlContainsValue(
                 content,
                 "Result/Module/TestCase/Test/Failure/StackTrace",
-                "module1 failed.\nstack\nstack");
+                XmlEscapers.xmlContentEscaper().escape("module1 failed.\nstack\nstack\0"));
         // Test that we can read back the informations
         SuiteResultHolder holder = mFormatter.parseResults(mResultDir, true);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
@@ -475,7 +477,8 @@ public class XmlSuiteResultFormatterTest {
             TestDescription description =
                     new TestDescription("com.class." + runName, runName + ".failed" + i);
             fakeRes.testStarted(description);
-            fakeRes.testFailed(description, runName + " failed.\nstack\nstack");
+            // Include a null character \0 that is not XML supported
+            fakeRes.testFailed(description, runName + " failed.\nstack\nstack\0");
             HashMap<String, Metric> metrics = new HashMap<String, Metric>();
             if (withMetrics) {
                 metrics.put("metric0" + i, TfMetricProtoUtil.stringToMetric("value0" + i));
