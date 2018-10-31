@@ -24,6 +24,8 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
+import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
+import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -50,9 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Unit tests for {@link com.android.tradefed.testtype.suite.GranularRetriableTestWrapper}.
- */
+/** Unit tests for {@link GranularRetriableTestWrapper}. */
 @RunWith(JUnit4.class)
 public class GranularRetriableTestWrapperTest {
 
@@ -234,11 +234,16 @@ public class GranularRetriableTestWrapperTest {
 
     private GranularRetriableTestWrapper createGranularTestWrapper(
             IRemoteTest test, int maxRunCount) {
+        return createGranularTestWrapper(test, maxRunCount, new ArrayList<>());
+    }
+
+    private GranularRetriableTestWrapper createGranularTestWrapper(
+            IRemoteTest test, int maxRunCount, List<IMetricCollector> collectors) {
         GranularRetriableTestWrapper granularTestWrapper =
                 new GranularRetriableTestWrapper(test, null, null, null, maxRunCount);
         granularTestWrapper.setModuleId("test module");
         granularTestWrapper.setMarkTestsSkipped(false);
-        granularTestWrapper.setMetricCollectors(new ArrayList<IMetricCollector>());
+        granularTestWrapper.setMetricCollectors(collectors);
         // Setup InvocationContext.
         granularTestWrapper.setInvocationContext(new InvocationContext());
         // Setup logsaver.
@@ -726,6 +731,14 @@ public class GranularRetriableTestWrapperTest {
      */
     @Test
     public void testIntraModuleRun_runAnyFailure() throws Exception {
+        List<IMetricCollector> collectors = new ArrayList<>();
+        // Add a disabled collector to ensure it's never called
+        CalledMetricCollector notCalledCollector = new CalledMetricCollector();
+        notCalledCollector.setDisable(true);
+        collectors.add(notCalledCollector);
+        CalledMetricCollector calledCollector = new CalledMetricCollector();
+        collectors.add(calledCollector);
+
         ArrayList<TestDescription> testCases = new ArrayList<>();
         TestDescription fakeTestCase1 = new TestDescription("Class1", "Test1");
         TestDescription fakeTestCase2 = new TestDescription("Class2", "Test2");
@@ -737,7 +750,8 @@ public class GranularRetriableTestWrapperTest {
         // Failed test cases do not affect retry of runs
         test.addFailedTestCase(fakeTestCase1);
         test.addTestBecomePass(fakeTestCase1, 5);
-        GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 7);
+        GranularRetriableTestWrapper granularTestWrapper =
+                createGranularTestWrapper(test, 7, collectors);
         granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
 
@@ -775,5 +789,37 @@ public class GranularRetriableTestWrapperTest {
         // No Test cases tracking since it was a run retry.
         assertEquals(1, granularTestWrapper.getRetrySuccess());
         assertEquals(0, granularTestWrapper.getRetryFailed());
+
+        // Ensure that the disabled collector was not called, and enabled one was called
+        assertFalse(notCalledCollector.wasCalled);
+        assertTrue(calledCollector.wasCalled);
+    }
+
+    /** Collector that track if it was called or not */
+    class CalledMetricCollector extends BaseDeviceMetricCollector {
+
+        boolean wasCalled = false;
+
+        @Override
+        public void onTestRunStart(DeviceMetricData runData) {
+            wasCalled = true;
+        }
+
+        @Override
+        public void onTestRunEnd(
+                DeviceMetricData runData, final Map<String, Metric> currentRunMetrics) {
+            wasCalled = true;
+        }
+
+        @Override
+        public void onTestStart(DeviceMetricData testData) {
+            wasCalled = true;
+        }
+
+        @Override
+        public void onTestEnd(
+                DeviceMetricData testData, final Map<String, Metric> currentTestCaseMetrics) {
+            wasCalled = true;
+        }
     }
 }
