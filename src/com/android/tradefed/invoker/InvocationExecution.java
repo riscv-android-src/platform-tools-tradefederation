@@ -449,7 +449,11 @@ public class InvocationExecution implements IInvocationExecution {
                 // loop to ensure they are always initialized against the right context.
                 ITestInvocationListener listenerWithCollectors = listener;
                 for (IMetricCollector collector : clonedCollectors) {
-                    listenerWithCollectors = collector.init(context, listenerWithCollectors);
+                    if (collector.isDisabled()) {
+                        CLog.d("%s has been disabled. Skipping.", collector);
+                    } else {
+                        listenerWithCollectors = collector.init(context, listenerWithCollectors);
+                    }
                 }
                 test.run(listenerWithCollectors);
             }
