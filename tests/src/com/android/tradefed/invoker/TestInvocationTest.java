@@ -1770,4 +1770,46 @@ public class TestInvocationTest extends TestCase {
         assertEquals("collector2", listKeys.get(2));
         assertEquals("collector1", listKeys.get(3));
     }
+
+    /**
+     * Test that when a device collector is disabled, it will not be part of the initialization and
+     * the collector chain.
+     */
+    public void testMetricCollectionChain_disabled() throws Throwable {
+        IConfiguration configuration = new Configuration("test", "description");
+        StubTest test = new StubTest();
+        OptionSetter setter = new OptionSetter(test);
+        setter.setOptionValue("run-a-test", "true");
+        configuration.setTest(test);
+
+        List<IMetricCollector> collectors = new ArrayList<>();
+        collectors.add(new TestableCollector("collector1"));
+        collectors.add(new TestableCollector("collector2"));
+        // Collector 3 is disabled
+        TestableCollector col3 = new TestableCollector("collector3");
+        col3.setDisable(true);
+        collectors.add(col3);
+        collectors.add(new TestableCollector("collector4"));
+        configuration.setDeviceMetricCollectors(collectors);
+
+        mMockTestListener.testRunStarted("TestStub", 1);
+        TestDescription testId = new TestDescription("StubTest", "StubMethod");
+        mMockTestListener.testStarted(EasyMock.eq(testId), EasyMock.anyLong());
+        mMockTestListener.testEnded(
+                EasyMock.eq(testId),
+                EasyMock.anyLong(),
+                EasyMock.eq(new HashMap<String, Metric>()));
+        Capture<HashMap<String, Metric>> captured = new Capture<>();
+        mMockTestListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(captured));
+        EasyMock.replay(mMockTestListener);
+        new InvocationExecution()
+                .runTests(mStubInvocationMetadata, configuration, mMockTestListener);
+        EasyMock.verify(mMockTestListener);
+        // The collectors are called in sequence
+        List<String> listKeys = new ArrayList<>(captured.getValue().keySet());
+        assertEquals(3, listKeys.size());
+        assertEquals("collector4", listKeys.get(0));
+        assertEquals("collector2", listKeys.get(1));
+        assertEquals("collector1", listKeys.get(2));
+    }
 }

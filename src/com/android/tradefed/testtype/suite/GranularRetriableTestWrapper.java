@@ -195,12 +195,20 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
             // replaying the cached events at the end. This ensure metrics are capture at
             // the proper time in the invocation.
             for (IMetricCollector collector : mRunMetricCollectors) {
-                runListener = collector.init(mModuleInvocationContext, runListener);
+                if (collector.isDisabled()) {
+                    CLog.d("%s has been disabled. Skipping.", collector);
+                } else {
+                    runListener = collector.init(mModuleInvocationContext, runListener);
+                }
             }
         }
         // The module collectors itself are added: this list will be very limited.
         for (IMetricCollector collector : mModuleConfiguration.getMetricCollectors()) {
-            runListener = collector.init(mModuleInvocationContext, runListener);
+            if (collector.isDisabled()) {
+                CLog.d("%s has been disabled. Skipping.", collector);
+            } else {
+                runListener = collector.init(mModuleInvocationContext, runListener);
+            }
         }
 
         return runListener;
