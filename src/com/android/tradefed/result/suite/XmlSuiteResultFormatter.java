@@ -34,6 +34,7 @@ import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
+import com.google.common.xml.XmlEscapers;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -326,9 +327,10 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
             }
             serializer.startTag(NS, FAILURE_TAG);
 
-            serializer.attribute(NS, MESSAGE_ATTR, message);
+            serializer.attribute(NS, MESSAGE_ATTR, sanitizeXmlContent(message));
             serializer.startTag(NS, STACK_TAG);
-            serializer.text(fullStack);
+
+            serializer.text(sanitizeXmlContent(fullStack));
             serializer.endTag(NS, STACK_TAG);
 
             serializer.endTag(NS, FAILURE_TAG);
@@ -593,5 +595,9 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
             parser.require(XmlPullParser.END_TAG, NS, METRIC_TAG);
         }
         return metrics;
+    }
+
+    private static String sanitizeXmlContent(String s) {
+        return XmlEscapers.xmlContentEscaper().escape(s);
     }
 }
