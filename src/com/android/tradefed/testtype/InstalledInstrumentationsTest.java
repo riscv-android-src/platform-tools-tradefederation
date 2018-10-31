@@ -167,6 +167,14 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
     )
     private boolean mHiddenApiChecks = true;
 
+    @Option(
+        name = "isolated-storage",
+        description =
+                "If set to false, the '--no-isolated-storage' flag will be passed to the am "
+                        + "instrument command. Only works for Q or later."
+    )
+    private boolean mIsolatedStorage = true;
+
     private int mTotalShards = 0;
     private int mShardIndex = 0;
 
