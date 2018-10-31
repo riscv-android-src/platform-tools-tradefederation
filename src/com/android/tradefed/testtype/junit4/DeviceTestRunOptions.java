@@ -34,6 +34,7 @@ public class DeviceTestRunOptions {
     private Long mMaxInstrumentationTimeoutMs; // optional
     private boolean mCheckResults = true; // optional
     private boolean mDisableHiddenApiCheck = false; // optional
+    private boolean mDisableIsolatedStorage = false; // optional
     private Map<String, String> mInstrumentationArgs = new LinkedHashMap<>(); // optional
 
     public DeviceTestRunOptions(String packageName) {
@@ -165,6 +166,19 @@ public class DeviceTestRunOptions {
 
     public boolean isHiddenApiCheckDisabled() {
         return mDisableHiddenApiCheck;
+    }
+
+    /**
+     * sets whether or not to add the --no-isolated-storage to the 'am instrument' used from the
+     * host side.
+     */
+    public DeviceTestRunOptions setDisableIsolatedStorage(boolean disableIsolatedStorage) {
+        this.mDisableIsolatedStorage = disableIsolatedStorage;
+        return this;
+    }
+
+    public boolean isIsolatedStorageDisabled() {
+        return mDisableIsolatedStorage;
     }
 
     /** Add an argument that will be passed to the instrumentation. */
