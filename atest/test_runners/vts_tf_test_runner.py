@@ -70,8 +70,7 @@ class VtsTradefedTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
         for run_cmd in run_cmds:
             proc = super(VtsTradefedTestRunner, self).run(run_cmd,
                                                           output_to_stdout=True)
-            proc.wait()
-            ret_code |= proc.returncode
+            ret_code |= self.wait_for_subprocess(proc)
         return ret_code
 
     def _parse_extra_args(self, extra_args):
