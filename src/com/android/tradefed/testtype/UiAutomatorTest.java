@@ -142,6 +142,14 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
     )
     private boolean mHiddenApiChecks = true;
 
+    @Option(
+        name = "isolated-storage",
+        description =
+                "If set to false, the '--no-isolated-storage' flag will be passed to the am "
+                        + "instrument command. Only works for Q or later."
+    )
+    private boolean mIsolatedStorage = true;
+
     /**
      * {@inheritDoc}
      */
@@ -228,10 +236,21 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
             }
             RemoteAndroidTestRunner runner =
                     new RemoteAndroidTestRunner(mPackage, mRunnerName, getDevice().getIDevice());
+            String runOptions = "";
             // hidden-api-checks flag only exists in P and after.
             if (!mHiddenApiChecks && getDevice().getApiLevel() >= 28) {
-                runner.setRunOptions("--no-hidden-api-checks ");
+                runOptions += "--no-hidden-api-checks ";
             }
+            // isolated-storage flag only exists in Q and after.
+            if (!mIsolatedStorage && (getDevice().getApiLevel() >= 29
+                    || "Q".equals(getDevice().getProperty("ro.build.version.release")))) {
+                runOptions += "--no-isolated-storage ";
+            }
+            // Set the run options if any.
+            if (!runOptions.isEmpty()) {
+                runner.setRunOptions(runOptions);
+            }
+
             return runner;
         } else {
             return new UiAutomatorRunner(getDevice().getIDevice(),

@@ -187,6 +187,18 @@ public class InstrumentationTestTest {
         assertThat(runner.getRunOptions()).contains("--no-hidden-api-checks");
     }
 
+    /** Test normal run scenario with --no-isolated-storage specified */
+    @Test
+    public void testRun_isolatedStorage() throws Exception {
+        doReturn(29).when(mMockTestDevice).getApiLevel();
+        OptionSetter setter = new OptionSetter(mInstrumentationTest);
+        setter.setOptionValue("isolated-storage", "false");
+        RemoteAndroidTestRunner runner =
+                (RemoteAndroidTestRunner)
+                        mInstrumentationTest.createRemoteAndroidTestRunner("", "", mMockIDevice);
+        assertThat(runner.getRunOptions()).contains("--no-isolated-storage");
+    }
+
     /** Test normal run scenario with a test class specified. */
     @Test
     public void testRun_class() {

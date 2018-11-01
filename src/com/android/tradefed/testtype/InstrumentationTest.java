@@ -266,6 +266,14 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     )
     private boolean mHiddenApiChecks = true;
 
+    @Option(
+        name = "isolated-storage",
+        description =
+                "If set to false, the '--no-isolated-storage' flag will be passed to the am "
+                        + "instrument command. Only works for Q or later."
+    )
+    private boolean mIsolatedStorage = true;
+
     private IAbi mAbi = null;
 
     private Collection<String> mInstallArgs = new ArrayList<>();
@@ -630,6 +638,11 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         // hidden-api-checks flag only exists in P and after.
         if (!mHiddenApiChecks && getDevice().getApiLevel() >= 28) {
             runOptions += "--no-hidden-api-checks ";
+        }
+        // isolated-storage flag only exists in Q and after.
+        if (!mIsolatedStorage && (getDevice().getApiLevel() >= 29
+                || "Q".equals(getDevice().getProperty("ro.build.version.release")))) {
+            runOptions += "--no-isolated-storage ";
         }
         if (abiName != null) {
             mInstallArgs.add(String.format("--abi %s", abiName));
