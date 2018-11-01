@@ -25,6 +25,7 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.IRunUtil.EnvPriority;
+import com.android.tradefed.util.TimeUtil;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
@@ -38,7 +39,7 @@ import java.util.Set;
 /** A utility class for managing {@link IConfiguration} when doing sandboxing. */
 public class SandboxConfigUtil {
 
-    private static final long DUMP_TIMEOUT = 2 * 60 * 1000; // 2min
+    private static final long DUMP_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
     /**
      * Create a subprocess based on the Tf jars from any version, and dump the xml {@link
@@ -93,7 +94,8 @@ public class SandboxConfigUtil {
         // Do not delete the global configuration file here in this case, it might still be used.
         String errorMessage = "Error when dumping the config.";
         if (CommandStatus.TIMED_OUT.equals(result.getStatus())) {
-            errorMessage += " Timed out.";
+            errorMessage +=
+                    String.format(" Timed out after %s.", TimeUtil.formatElapsedTime(DUMP_TIMEOUT));
         }
         errorMessage += String.format(" stderr: %s", result.getStderr());
         throw new SandboxConfigurationException(errorMessage);
