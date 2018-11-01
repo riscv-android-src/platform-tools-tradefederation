@@ -143,10 +143,6 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
             "Reboot a device before re-running instrumentations.")
     private boolean mRebootBeforeReRun = false;
 
-    @Option(name = "shards", description =
-            "Split test run into this many parallel shards")
-    private int mShards = 0;
-
     @Option(name = "disable", description =
             "Disable the test by setting this flag to true.")
     private boolean mDisable = false;
@@ -396,15 +392,13 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
         return mIsResumeMode;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public Collection<IRemoteTest> split() {
-        if (mShards > 1) {
-            Collection<IRemoteTest> shards = new ArrayList<>(mShards);
-            for (int index = 0; index < mShards; index++) {
-                shards.add(getTestShard(mShards, index));
+    public Collection<IRemoteTest> split(int shardCountHint) {
+        if (shardCountHint > 1) {
+            Collection<IRemoteTest> shards = new ArrayList<>(shardCountHint);
+            for (int index = 0; index < shardCountHint; index++) {
+                shards.add(getTestShard(shardCountHint, index));
             }
             return shards;
         }
@@ -418,7 +412,6 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
         } catch (ConfigurationException e) {
             CLog.e("failed to copy instrumentation options: %s", e.getMessage());
         }
-        shard.mShards = 0;
         shard.mShardIndex = shardIndex;
         shard.mTotalShards = shardCount;
         return shard;
