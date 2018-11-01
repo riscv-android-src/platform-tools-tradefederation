@@ -15,24 +15,31 @@
  */
 package com.android.tradefed.testtype;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import com.android.tradefed.config.ArgsOptionParser;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 
-import junit.framework.TestCase;
-
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
 /** Unit tests for {@link InstalledInstrumentationsTest}. */
-public class InstalledInstrumentationsTestTest extends TestCase {
+@RunWith(JUnit4.class)
+public class InstalledInstrumentationsTestTest {
 
     private static final String TEST_PKG = "com.example.tests";
     private static final String TEST_COVERAGE_TARGET = "com.example";
@@ -46,13 +53,8 @@ public class InstalledInstrumentationsTestTest extends TestCase {
     private List<MockInstrumentationTest> mMockInstrumentationTests;
     private InstalledInstrumentationsTest mInstalledInstrTest;
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
-
+    @Before
+    public void setUp() throws Exception {
         mMockTestDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn("foo");
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
@@ -61,9 +63,8 @@ public class InstalledInstrumentationsTestTest extends TestCase {
         mInstalledInstrTest.setDevice(mMockTestDevice);
     }
 
-    /**
-     * Test the run normal case. Simple verification that expected data is passed along, etc.
-     */
+    /** Test the run normal case. Simple verification that expected data is passed along, etc. */
+    @Test
     public void testRun() throws Exception {
         injectShellResponse(String.format(INSTR_OUTPUT_FORMAT, TEST_PKG, TEST_RUNNER,
                 TEST_COVERAGE_TARGET), 1);
@@ -94,9 +95,8 @@ public class InstalledInstrumentationsTestTest extends TestCase {
         EasyMock.verify(mMockListener, mMockTestDevice);
     }
 
-    /**
-     * Tests the run of sharded InstalledInstrumentationsTests.
-     */
+    /** Tests the run of sharded InstalledInstrumentationsTests. */
+    @Test
     public void testShardedRun() throws Exception {
         final String shardableRunner = "android.support.test.runner.AndroidJUnitRunner";
         final String nonshardableRunner = "android.test.InstrumentationTestRunner";
@@ -186,9 +186,8 @@ public class InstalledInstrumentationsTestTest extends TestCase {
         return test;
     }
 
-    /**
-     * Test that IllegalArgumentException is thrown when attempting run without setting device.
-     */
+    /** Test that IllegalArgumentException is thrown when attempting run without setting device. */
+    @Test
     public void testRun_noDevice() throws Exception {
         mInstalledInstrTest.setDevice(null);
         try {
@@ -200,9 +199,10 @@ public class InstalledInstrumentationsTestTest extends TestCase {
     }
 
     /**
-     * Test that IllegalArgumentException is thrown when attempting run when no instrumentations
-     * are present.
+     * Test that IllegalArgumentException is thrown when attempting run when no instrumentations are
+     * present.
      */
+    @Test
     public void testRun_noInstr() throws Exception {
         injectShellResponse(PM_LIST_ERROR_OUTPUT, 1);
         EasyMock.replay(mMockTestDevice, mMockListener);
@@ -212,5 +212,11 @@ public class InstalledInstrumentationsTestTest extends TestCase {
         } catch (IllegalArgumentException e) {
             // expected
         }
+    }
+
+    @Test
+    public void testSplit() {
+        Collection<IRemoteTest> tests = mInstalledInstrTest.split(5);
+        assertEquals(5, tests.size());
     }
 }
