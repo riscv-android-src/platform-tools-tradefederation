@@ -32,6 +32,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -81,6 +82,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
 
     /** default timeout for tests collection */
     static final long TEST_COLLECTION_TIMEOUT_MS = 2 * 60 * 1000;
+
+    /** test run name for merging coverage measurements */
+    static final String MERGE_COVERAGE_MEASUREMENTS_TEST_NAME = "mergeCoverageMeasurements";
 
     @Option(
         name = "package",
@@ -258,6 +262,14 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     private boolean mCoverage = false;
 
     @Option(
+        name = "merge-coverage-measurements",
+        description =
+                "Merge coverage measurements from all test runs into a single measurement before "
+                        + "logging."
+    )
+    private boolean mMergeCoverageMeasurements = false;
+
+    @Option(
         name = "enforce-ajur-format",
         description = "Whether or not enforcing the AJUR instrumentation output format"
     )
@@ -296,6 +308,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     private ListInstrumentationParser mListInstrumentationParser = null;
 
     private Set<String> mExtraDeviceListener = new HashSet<>();
+
+    private boolean mIsRerun = false;
 
     /**
      * {@inheritDoc}
@@ -468,6 +482,11 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         return mIsRerunMode;
     }
 
+    /** Sets whether this is a test rerun. Reruns do not create new listeners or merge coverage. */
+    void setIsRerun(boolean isRerun) {
+        mIsRerun = isRerun;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -608,6 +627,12 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     @VisibleForTesting
     void setCoverage(boolean coverageEnabled) {
         mCoverage = coverageEnabled;
+    }
+
+    /** Sets the --merge-coverage-measurements option for testing. */
+    @VisibleForTesting
+    void setMergeCoverageMeasurements(boolean merge) {
+        mMergeCoverageMeasurements = merge;
     }
 
     /** Sets the --rerun-from-file option. */
@@ -832,10 +857,15 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         if (mCoverage) {
             mRunner.addInstrumentationArg("coverage", "true");
         }
-        listener = addBugreportListenerIfEnabled(listener);
-        listener = addLogcatListenerIfEnabled(listener);
-        listener = addScreenshotListenerIfEnabled(listener);
-        listener = addCoverageListenerIfEnabled(listener);
+
+        // Reruns do not create new listeners.
+        if (!mIsRerun) {
+            listener = addBugreportListenerIfEnabled(listener);
+            listener = addLogcatListenerIfEnabled(listener);
+            listener = addScreenshotListenerIfEnabled(listener);
+            listener = addCoverageListenerIfEnabled(listener);
+        }
+
         // Add the extra listeners only to the actual run and not the --collect-test-only one
         if (!mExtraDeviceListener.isEmpty()) {
             mRunner.addInstrumentationArg("listener", ArrayUtil.join(",", mExtraDeviceListener));
@@ -848,6 +878,13 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
             runWithRerun(listener, testsToRun);
         } else {
             CLog.i("No tests expected for %s, skipping", mPackageName);
+        }
+
+        // Merge coverage measurements after all tests have been run, but not inside the rerun
+        // itself since the merging will be handled by the caller.
+        if (!mIsRerun && mMergeCoverageMeasurements) {
+            listener.testRunStarted(MERGE_COVERAGE_MEASUREMENTS_TEST_NAME, 0);
+            listener.testRunEnded(0, new HashMap<String, Metric>());
         }
     }
 
@@ -897,7 +934,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
      */
     ITestInvocationListener addCoverageListenerIfEnabled(ITestInvocationListener listener) {
         if (mCoverage) {
-            listener = new CodeCoverageListener(getDevice(), listener);
+            listener = new CodeCoverageListener(getDevice(), mMergeCoverageMeasurements, listener);
         }
         return listener;
     }
