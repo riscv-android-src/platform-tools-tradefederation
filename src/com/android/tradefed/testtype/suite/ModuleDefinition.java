@@ -848,8 +848,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     private void addAttemptStatsToBuild(IBuildInfo build, Map<String, Integer> attemptStats) {
         for (Entry<String, Integer> entry : attemptStats.entrySet()) {
-            build.addBuildAttribute(
-                    FLAKE_DATE_PREFIX + entry.getKey(), Integer.toString(entry.getValue()));
+            String key = String.format("%s%s %s", FLAKE_DATE_PREFIX, getId(), entry.getKey());
+            build.addBuildAttribute(key, Integer.toString(entry.getValue()));
         }
     }
 }
