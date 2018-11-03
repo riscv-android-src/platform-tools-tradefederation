@@ -95,6 +95,7 @@ java_library_host {
         "kxml2-2.3.0",
         "libprotobuf-java-full",
         "longevity-host-lib",
+        "perfetto_config-full",
         "platform-test-annotations",
         "tf-remote-client",
 	"tradefed-grpc-lib-1.0.1",
