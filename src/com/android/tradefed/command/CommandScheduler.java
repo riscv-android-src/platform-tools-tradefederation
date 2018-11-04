@@ -691,23 +691,28 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         }
 
         /**
-         * Stops a running invocation. {@link CommandScheduler#shutdownHard()} will stop
-         * all running invocations.
+         * Stops a running invocation. {@link CommandScheduler#shutdownHard()} will stop all running
+         * invocations.
          */
         public void stopInvocation(String message) {
             getInvocation().notifyInvocationStopped();
             for (ITestDevice device : mInvocationContext.getDevices()) {
-                if (device != null && device.getIDevice().isOnline()) {
+                if (TestDeviceState.ONLINE.equals(device.getDeviceState())) {
                     // Kill all running processes on device.
-                    try {
-                        device.executeShellCommand("am kill-all");
-                    } catch (DeviceNotAvailableException e) {
-                        CLog.e("failed to kill process on device %s",
-                                device.getSerialNumber());
-                        CLog.e(e);
+                    if (!(device.getIDevice() instanceof StubDevice)) {
+                        try {
+                            device.executeShellCommand("am kill-all");
+                        } catch (DeviceNotAvailableException e) {
+                            CLog.e("failed to kill process on device %s", device.getSerialNumber());
+                            CLog.e(e);
+                        }
                     }
-
                 }
+                // Finish with device tear down: We try to ensure that regardless of the invocation
+                // state during the interruption we at least do minimal tear down of devices with
+                // their built-in clean up.
+                CLog.d("Attempting postInvocationTearDown in stopInvocation");
+                device.postInvocationTearDown();
             }
             // If invocation is not currently in an interruptible state we provide a timer
             // after which it will become interruptible.
@@ -760,8 +765,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                         if (RunUtil.getDefault().isInterruptAllowed()) {
                             CLog.i("Stopping %s: battery too low (%d%% < %d%%)",
                                     getName(), batteryLevel, cutoffBattery);
-                            stopInvocation(String.format(
-                                    "battery too low (%d%% < %d%%)", batteryLevel, cutoffBattery));
+                            stopInvocation(
+                                    String.format(
+                                            "battery too low (%d%% < %d%%)",
+                                            batteryLevel, cutoffBattery));
                         } else {
                             // In this case, the battery is check periodically by CommandScheduler
                             // so there will be more opportunity to terminate the invocation when
@@ -1706,6 +1713,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         CLog.logAndDisplay(LogLevel.WARN, "Stopping invocation threads...");
         for (InvocationThread thread : mInvocationThreadMap.values()) {
             thread.disableReporters();
+            // TODO(b/118891716): Improve tear down
             thread.stopInvocation("TF is shutting down");
         }
         getDeviceManager().terminateHard();

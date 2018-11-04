@@ -160,6 +160,7 @@ import com.android.tradefed.targetprep.FlashingResourcesParserTest;
 import com.android.tradefed.targetprep.InstallAllTestZipAppsSetupTest;
 import com.android.tradefed.targetprep.InstallApkSetupTest;
 import com.android.tradefed.targetprep.InstrumentationPreparerTest;
+import com.android.tradefed.targetprep.PerfettoPreparerTest;
 import com.android.tradefed.targetprep.PreloadedClassesPreparerTest;
 import com.android.tradefed.targetprep.PushFilePreparerTest;
 import com.android.tradefed.targetprep.PythonVirtualenvPreparerTest;
@@ -489,6 +490,7 @@ import org.junit.runners.Suite.SuiteClasses;
     InstallAllTestZipAppsSetupTest.class,
     InstallApkSetupTest.class,
     InstrumentationPreparerTest.class,
+    PerfettoPreparerTest.class,
     PreloadedClassesPreparerTest.class,
     PushFilePreparerTest.class,
     PythonVirtualenvPreparerTest.class,
