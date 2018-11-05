@@ -18,6 +18,7 @@ package com.android.tradefed.postprocessor;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.IDisableable;
 
 import com.google.common.collect.ListMultimap;
@@ -52,10 +53,12 @@ public interface IPostProcessor extends ITestInvocationListener, ILogSaverListen
     /**
      * Implement this method to process metrics from each test.
      *
+     * @param testDescription The TestDescription object describing the test.
      * @param testMetrics The set of metrics from the test.
      * @return The set of newly generated metrics from the test metrics.
      */
-    public Map<String, Metric.Builder> processTestMetrics(HashMap<String, Metric> testMetrics);
+    public Map<String, Metric.Builder> processTestMetrics(
+            TestDescription testDescription, HashMap<String, Metric> testMetrics);
 
     /**
      * Implement this method to aggregate test metrics.
