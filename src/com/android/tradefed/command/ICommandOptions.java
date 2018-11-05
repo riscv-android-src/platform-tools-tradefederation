@@ -149,6 +149,9 @@ public interface ICommandOptions {
      */
     public void setShardIndex(Integer shardIndex);
 
+    /** Whether or not sharding should use the token support. */
+    public boolean shouldUseTokenSharding();
+
     /** Return true if the test should skip device setup during TestInvocation setup. */
     public boolean shouldSkipPreDeviceSetup();
 
