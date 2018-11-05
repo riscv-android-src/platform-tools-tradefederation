@@ -57,6 +57,9 @@ public final class FilePullerLogCollector extends FilePullerDeviceMetricCollecto
             if (".png".equals(ext)) {
                 type = LogDataType.PNG;
             }
+            if (".pb".equals(ext)) {
+                type = LogDataType.PB;
+            }
             testLog(metricFile.getName(), type, source);
         }
     }
