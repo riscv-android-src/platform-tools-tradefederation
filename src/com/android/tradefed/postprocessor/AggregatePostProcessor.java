@@ -16,16 +16,17 @@
 package com.android.tradefed.postprocessor;
 
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
-import com.google.common.collect.ListMultimap;
+import com.google.common.collect.ArrayListMultimap;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -43,21 +44,34 @@ public class AggregatePostProcessor extends BasePostProcessor {
     private static final String STATS_KEY_MEAN = "mean";
     private static final String STATS_KEY_VAR = "var";
     private static final String STATS_KEY_STDEV = "stdev";
+    private static final String STATS_KEY_MEDIAN = "median";
     // Separator for final upload
     private static final String STATS_KEY_SEPARATOR = "-";
 
-    @Override
-    public Map<String, Metric.Builder> processRunMetrics(HashMap<String, Metric> rawMetrics) {
-        return new HashMap<String, Metric.Builder>();
-    }
+    // Stores the test metrics for aggregation by test description.
+    // TODO(b/118708851): Remove this workaround once AnTS is ready.
+    private HashMap<String, ArrayListMultimap<String, Metric>> mStoredTestMetrics =
+            new HashMap<String, ArrayListMultimap<String, Metric>>();
 
     @Override
-    public Map<String, Metric.Builder> processAllTestMetrics(
-            ListMultimap<String, Metric> allTestMetrics) {
-        // Aggregate final test metrics.
+    public Map<String, Metric.Builder> processTestMetrics(
+            TestDescription testDescription, HashMap<String, Metric> testMetrics) {
+        // TODO(b/118708851): Move this processing elsewhere once AnTS is ready.
+        // Use the string representation of the test description to key the tests.
+        String fullTestName = testDescription.toString();
+        // Store result from the current test.
+        if (!mStoredTestMetrics.containsKey(fullTestName)) {
+            mStoredTestMetrics.put(fullTestName, ArrayListMultimap.create());
+        }
+        ArrayListMultimap<String, Metric> storedMetricsForThisTest =
+                mStoredTestMetrics.get(fullTestName);
+        for (Map.Entry<String, Metric> entry : testMetrics.entrySet()) {
+            storedMetricsForThisTest.put(entry.getKey(), entry.getValue());
+        }
+        // Aggregate all data in iterations of this test.
         Map<String, Metric.Builder> aggregateMetrics = new HashMap<String, Metric.Builder>();
-        for (String key : allTestMetrics.keySet()) {
-            List<Metric> metrics = allTestMetrics.get(key);
+        for (String metricKey : storedMetricsForThisTest.keySet()) {
+            List<Metric> metrics = storedMetricsForThisTest.get(metricKey);
             List<Measurements> measures =
                     metrics.stream().map(Metric::getMeasurements).collect(Collectors.toList());
             // Parse metrics into a list of SingleString values, concating lists in the process
@@ -103,33 +117,45 @@ public class AggregatePostProcessor extends BasePostProcessor {
                             .getMeasurementsBuilder()
                             .setSingleString(String.format("%2.2f", stats.get(statKey)));
                     aggregateMetrics.put(
-                            String.join(STATS_KEY_SEPARATOR, key, statKey), metricBuilder);
+                            String.join(STATS_KEY_SEPARATOR, metricKey, statKey), metricBuilder);
                 }
             } else {
-                CLog.i("Metric %s is not numeric", key);
+                CLog.i("Metric %s from test %s is not numeric", metricKey, fullTestName);
             }
         }
-        // Ignore the passed-in run metrics.
         return aggregateMetrics;
     }
 
-    private HashMap<String, Double> getStats(Iterable<Double> values) {
+    @Override
+    public Map<String, Metric.Builder> processRunMetrics(HashMap<String, Metric> rawMetrics) {
+        return new HashMap<String, Metric.Builder>();
+    }
+
+    private HashMap<String, Double> getStats(Collection<Double> values) {
+        List<Double> valuesList = new ArrayList<>(values);
+        Collections.sort(valuesList);
         HashMap<String, Double> stats = new HashMap<>();
-        DoubleSummaryStatistics summaryStats = new DoubleSummaryStatistics();
-        for (Double value : values) {
-            summaryStats.accept(value);
+        double sum = values.stream().mapToDouble(Double::doubleValue).sum();
+        double count = (double) valuesList.size();
+        // The orElse situation should never happen.
+        double mean =
+                values.stream()
+                        .mapToDouble(Double::doubleValue)
+                        .average()
+                        .orElseThrow(IllegalStateException::new);
+        double variance = values.stream().reduce(0.0, (a, b) -> a + Math.pow(b - mean, 2) / count);
+        // Calculate median.
+        double median = valuesList.get(valuesList.size() / 2);
+        if (valuesList.size() % 2 == 0) {
+            median = (median + valuesList.get(valuesList.size() / 2 - 1)) / 2.0;
         }
-        Double mean = summaryStats.getAverage();
-        Double count = Long.valueOf(summaryStats.getCount()).doubleValue();
-        Double variance = (double) 0;
-        for (Double value : values) {
-            variance += Math.pow(value - mean, 2) / count;
-        }
-        stats.put(STATS_KEY_MIN, summaryStats.getMin());
-        stats.put(STATS_KEY_MAX, summaryStats.getMax());
+
+        stats.put(STATS_KEY_MIN, valuesList.get(0));
+        stats.put(STATS_KEY_MAX, valuesList.get(valuesList.size() - 1));
         stats.put(STATS_KEY_MEAN, mean);
         stats.put(STATS_KEY_VAR, variance);
         stats.put(STATS_KEY_STDEV, Math.sqrt(variance));
+        stats.put(STATS_KEY_MEDIAN, median);
         return stats;
     }
 }
