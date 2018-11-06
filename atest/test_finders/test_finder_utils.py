@@ -58,8 +58,8 @@ FIND_REFERENCE_TYPE = atest_enum.AtestEnum(['CLASS', 'QUALIFIED_CLASS',
 # Unix find commands for searching for test files based on test type input.
 # Note: Find (unlike grep) exits with status 0 if nothing found.
 FIND_CMDS = {
-    FIND_REFERENCE_TYPE.CLASS: r"find {0} -type d {1} -prune -o -type f -regex "
-                               r"'.*{2}.\(java\|kt\)' -print",
+    FIND_REFERENCE_TYPE.CLASS: r"find {0} -type d {1} -prune -o -type f "
+                               r"\( -name '*{2}.java' -o -name '*{2}.kt' \) -print",
     FIND_REFERENCE_TYPE.QUALIFIED_CLASS: r"find {0} -type d {1} -prune -o "
                                          r"\( -wholename '*{2}.java' "
                                          r"-o -wholename '*{2}.kt' \) -print",
