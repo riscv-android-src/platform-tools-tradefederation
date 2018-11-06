@@ -76,6 +76,10 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.ctr.mod_info = mock.Mock
         self.ctr.mod_info.name_to_module_info = {}
 
+    def tearDown(self):
+        """Run after execution of every test"""
+        reload(uc)
+
     @mock.patch.object(test_finder_handler, 'get_find_methods_for_test')
     def test_get_test_infos(self, mock_getfindmethods):
         """Test _get_test_infos method."""
