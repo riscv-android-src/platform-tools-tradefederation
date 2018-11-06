@@ -118,6 +118,11 @@ java_library_host {
        "tradefed-protos",
        "guava",
    ],
+   openjdk9: {
+       javacflags: [
+           "--add-modules=java.xml.ws.annotation",
+	],
+   },
    static_libs: [
        "grpc-java-context-1.0.1",
        "grpc-java-core-1.0.1",
