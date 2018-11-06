@@ -21,7 +21,6 @@ import static org.junit.Assert.assertTrue;
 import com.android.tradefed.metrics.proto.MetricMeasurement.DataType;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.collect.ListMultimap;
@@ -44,8 +43,7 @@ public class BasePostProcessorTest {
 
     private class TestablePostProcessor extends BasePostProcessor {
         @Override
-        public Map<String, Metric.Builder> processTestMetrics(
-                TestDescription test, HashMap<String, Metric> rawMetrics) {
+        public Map<String, Metric.Builder> processTestMetrics(HashMap<String, Metric> rawMetrics) {
             HashMap<String, Metric.Builder> newMap = new HashMap<>();
             for (String key : rawMetrics.keySet()) {
                 // Change, e.g. "value" to "value2".
