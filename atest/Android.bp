@@ -53,6 +53,9 @@ python_binary_host {
         "*_unittest.py",
         "*/*_unittest.py",
     ],
+    libs: [
+        "py-mock",
+    ],
     defaults: ["atest_py2_default"],
 }
 
@@ -90,4 +93,20 @@ python_library_host {
     srcs: [
         "asuite_metrics.py",
     ],
+}
+
+python_test_host {
+    name: "atest_unittests",
+    main: "atest_run_unittests.py",
+    pkg_path: "atest",
+    srcs: [
+        "**/*.py",
+    ],
+    data: [
+        "unittest_data/**/*",
+        "unittest_data/**/.*",
+    ],
+    test_config: "atest_unittests.xml",
+    test_suites: ["general-tests"],
+    defaults: ["atest_py2_default"],
 }
