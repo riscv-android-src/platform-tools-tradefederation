@@ -57,8 +57,7 @@ public abstract class BasePostProcessor implements IPostProcessor {
 
     /** {@inhericDoc} */
     @Override
-    public Map<String, Metric.Builder> processTestMetrics(
-            TestDescription testDescription, HashMap<String, Metric> testMetrics) {
+    public Map<String, Metric.Builder> processTestMetrics(HashMap<String, Metric> testMetrics) {
         return new HashMap<String, Metric.Builder>();
     }
 
@@ -183,7 +182,7 @@ public abstract class BasePostProcessor implements IPostProcessor {
             for (Map.Entry<String, Metric> entry : rawValues.entrySet()) {
                 storedTestMetrics.put(entry.getKey(), entry.getValue());
             }
-            Map<String, Metric.Builder> results = processTestMetrics(test, rawValues);
+            Map<String, Metric.Builder> results = processTestMetrics(rawValues);
             for (Entry<String, Metric.Builder> newEntry : results.entrySet()) {
                 String newKey = newEntry.getKey();
                 if (testMetrics.containsKey(newKey)) {
