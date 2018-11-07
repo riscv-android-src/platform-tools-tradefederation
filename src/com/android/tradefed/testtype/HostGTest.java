@@ -16,6 +16,7 @@
 
 package com.android.tradefed.testtype;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.DeviceBuildInfo;
@@ -27,6 +28,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
 import org.json.JSONException;
@@ -43,6 +45,7 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
 
     private IBuildInfo mBuildInfo = null;
     private IAbi mAbi = null;
+    private IRunUtil mRunUtil = null;
 
     @Override
     public void setAbi(IAbi abi) {
@@ -66,7 +69,18 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
     public CommandResult executeHostCommand(String cmd) {
         String[] cmds = cmd.split("\\s+");
         long maxTestTimeMs = getMaxTestTimeMs();
-        CommandResult cmdResult = RunUtil.getDefault().runTimedCmd(maxTestTimeMs, cmds);
+
+        if (getShardCount() > 0) {
+            if (isCollectTestsOnly()) {
+                CLog.w(
+                        "--collect-tests-only option ignores sharding parameters, and will cause "
+                                + "each shard to collect all tests.");
+            }
+            getRunUtil().setEnvVariable("GTEST_SHARD_INDEX", Integer.toString(getShardIndex()));
+            getRunUtil().setEnvVariable("GTEST_TOTAL_SHARDS", Integer.toString(getShardCount()));
+        }
+
+        CommandResult cmdResult = getRunUtil().runTimedCmd(maxTestTimeMs, cmds);
         if (!CommandStatus.SUCCESS.equals(cmdResult.getStatus())) {
             throw new RuntimeException(
                     String.format("Command run fail cause by %s.", cmdResult.getStderr()));
@@ -192,5 +206,14 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
         CLog.i("Running gtest %s %s", gTestFile.getName(), flags);
         String filePath = gTestFile.getAbsolutePath();
         runTest(resultParser, filePath, flags);
+    }
+
+    /** Returns the {@link IRunUtil} for host-side execution. */
+    @VisibleForTesting
+    protected IRunUtil getRunUtil() {
+        if (mRunUtil == null) {
+            mRunUtil = new RunUtil();
+        }
+        return mRunUtil;
     }
 }
