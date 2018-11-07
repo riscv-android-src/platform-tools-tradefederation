@@ -136,6 +136,13 @@ public interface IBuildInfo extends Serializable {
     public void addBuildAttribute(String attributeName, String attributeValue);
 
     /**
+     * Add build attributes
+     *
+     * @param buildAttributes Map of attributes to be added
+     */
+    public default void addBuildAttributes(Map<String, String> buildAttributes) {}
+
+    /**
      * Set the {@link BuildInfoProperties} for the {@link IBuildInfo} instance. Override any
      * existing properties set before.
      *
