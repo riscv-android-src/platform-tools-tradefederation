@@ -25,5 +25,6 @@
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/external/junit/junit/linux_glibc_common/combined/junit.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/external/perfetto/perfetto_config-full/linux_glibc_common/combined/perfetto_config-full.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/tools/tradefederation/core/tradefed-grpc-lib-1.0.1/linux_glibc_common/combined/tradefed-grpc-lib-1.0.1.jar"/>
+	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/platform_testing/libraries/aoa-helper/aoa-helper/linux_glibc_common/combined/aoa-helper.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
