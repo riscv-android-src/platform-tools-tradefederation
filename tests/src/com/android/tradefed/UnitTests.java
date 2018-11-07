@@ -68,6 +68,8 @@ import com.android.tradefed.device.TestDeviceTest;
 import com.android.tradefed.device.TopHelperTest;
 import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
+import com.android.tradefed.device.cloud.AcloudConfigParserTest;
+import com.android.tradefed.device.cloud.GceAvdInfoTest;
 import com.android.tradefed.device.metric.AtraceCollectorTest;
 import com.android.tradefed.device.metric.AtraceRunMetricCollectorTest;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
@@ -382,6 +384,10 @@ import org.junit.runners.Suite.SuiteClasses;
     TopHelperTest.class,
     WaitDeviceRecoveryTest.class,
     WifiHelperTest.class,
+
+    // device.cloud
+    AcloudConfigParserTest.class,
+    GceAvdInfoTest.class,
 
     // device.metric
     AtraceCollectorTest.class,
