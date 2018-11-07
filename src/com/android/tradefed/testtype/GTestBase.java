@@ -481,15 +481,6 @@ public abstract class GTestBase
         if (mLdLibraryPath != null) {
             gTestCmdLine.append(String.format("LD_LIBRARY_PATH=%s ", mLdLibraryPath));
         }
-        if (mShardCount > 0) {
-            if (mCollectTestsOnly) {
-                CLog.w(
-                        "--collect-tests-only option ignores sharding parameters, and will cause "
-                                + "each shard to collect all tests.");
-            }
-            gTestCmdLine.append(String.format("GTEST_SHARD_INDEX=%s ", mShardIndex));
-            gTestCmdLine.append(String.format("GTEST_TOTAL_SHARDS=%s ", mShardCount));
-        }
 
         // su to requested user
         if (mRunTestAs != null) {
