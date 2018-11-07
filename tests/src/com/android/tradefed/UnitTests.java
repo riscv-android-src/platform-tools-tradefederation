@@ -147,6 +147,7 @@ import com.android.tradefed.suite.checker.SystemServerFileDescriptorCheckerTest;
 import com.android.tradefed.suite.checker.SystemServerStatusCheckerTest;
 import com.android.tradefed.suite.checker.TimeStatusCheckerTest;
 import com.android.tradefed.targetprep.AllTestAppsInstallSetupTest;
+import com.android.tradefed.targetprep.AoaTargetPreparerTest;
 import com.android.tradefed.targetprep.AppSetupTest;
 import com.android.tradefed.targetprep.BuildInfoAttributePreparerTest;
 import com.android.tradefed.targetprep.DefaultTestsZipInstallerTest;
@@ -477,6 +478,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // targetprep
     AllTestAppsInstallSetupTest.class,
+    AoaTargetPreparerTest.class,
     AppSetupTest.class,
     BuildInfoAttributePreparerTest.class,
     DefaultTestsZipInstallerTest.class,
