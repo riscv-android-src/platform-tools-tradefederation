@@ -274,6 +274,18 @@ public class InvocationContext implements IInvocationContext {
 
     /** {@inheritDoc} */
     @Override
+    public String getBuildInfoName(IBuildInfo info) {
+        for (String name : mNameAndBuildinfoMap.keySet()) {
+            if (info.equals(getBuildInfo(name))) {
+                return name;
+            }
+        }
+        CLog.d("Build info doesn't match a name in the metadata");
+        return null;
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public String getTestTag() {
         return mTestTag;
     }

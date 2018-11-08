@@ -75,6 +75,18 @@ public class InvocationContextTest {
         assertNull(mContext.getDeviceName(device2));
     }
 
+    /** Test the reverse look up of the device name in the configuration for an IBuildInfo */
+    @Test
+    public void testGetBuildInfoName() {
+        IBuildInfo build1 = EasyMock.createMock(IBuildInfo.class);
+        IBuildInfo build2 = EasyMock.createMock(IBuildInfo.class);
+        // assert that at init, map is empty.
+        assertNull(mContext.getBuildInfoName(build1));
+        mContext.addDeviceBuildInfo("test1", build1);
+        assertEquals("test1", mContext.getBuildInfoName(build1));
+        assertNull(mContext.getBuildInfoName(build2));
+    }
+
     /**
      * Test adding attributes and querying them. The map returned is always a copy and does not
      * affect the actual invocation attributes.

@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.result.proto;
 
+import com.android.annotations.VisibleForTesting;
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
@@ -47,6 +49,8 @@ public class ProtoResultParser {
      * invocation scope we should not report it again.
      */
     private boolean mReportInvocation = false;
+    /** The invocation context */
+    private IInvocationContext mContext;
 
     /** Ctor. */
     public ProtoResultParser(ITestInvocationListener listener, boolean reportInvocation) {
@@ -94,6 +98,11 @@ public class ProtoResultParser {
         }
     }
 
+    @VisibleForTesting
+    IInvocationContext getInvocationContext() {
+        return mContext;
+    }
+
     private void evalProto(List<ChildReference> children, boolean isInRun) {
         for (ChildReference child : children) {
             TestRecord childProto = child.getInlineTestRecord();
@@ -135,31 +144,47 @@ public class ProtoResultParser {
     }
 
     private void handleInvocationStart(TestRecord startInvocationProto) {
-        if (!mReportInvocation) {
-            CLog.d("Skipping invocation start reporting.");
-            return;
-        }
         // invocation starting
         Any anyDescription = startInvocationProto.getDescription();
         if (!anyDescription.is(Context.class)) {
             throw new RuntimeException("Expected Any description of type Context");
         }
         try {
-            IInvocationContext context =
-                    InvocationContext.fromProto(anyDescription.unpack(Context.class));
-            mListener.invocationStarted(context);
+            mContext = InvocationContext.fromProto(anyDescription.unpack(Context.class));
         } catch (InvalidProtocolBufferException e) {
             throw new RuntimeException(e);
         }
+
+        if (!mReportInvocation) {
+            CLog.d("Skipping invocation start reporting.");
+            return;
+        }
+        // Only report invocation start if enabled
+        mListener.invocationStarted(mContext);
     }
 
     private void handleInvocationEnded(TestRecord endInvocationProto) {
         // Still report the logs even if not reporting the invocation level.
         handleLogs(endInvocationProto);
+
+        // Get final context in case it changed.
+        Any anyDescription = endInvocationProto.getDescription();
+        if (!anyDescription.is(Context.class)) {
+            throw new RuntimeException("Expected Any description of type Context");
+        }
+        try {
+            IInvocationContext context =
+                    InvocationContext.fromProto(anyDescription.unpack(Context.class));
+            mergeInvocationContext(context);
+        } catch (InvalidProtocolBufferException e) {
+            throw new RuntimeException(e);
+        }
+
         if (!mReportInvocation) {
             CLog.d("Skipping invocation ended reporting.");
             return;
         }
+        // Only report invocation ended if enabled
         long elapsedTime =
                 timeStampToMillis(endInvocationProto.getEndTime())
                         - timeStampToMillis(endInvocationProto.getStartTime());
@@ -288,6 +313,21 @@ public class ProtoResultParser {
                 CLog.e("Couldn't unpack %s as a LogFileInfo", entry.getKey());
                 CLog.e(e);
             }
+        }
+    }
+
+    private void mergeInvocationContext(IInvocationContext endInvocationContext) {
+        if (mContext == null) {
+            return;
+        }
+        // Gather attributes of build infos
+        for (IBuildInfo info : mContext.getBuildInfos()) {
+            String name = mContext.getBuildInfoName(info);
+            IBuildInfo endInvocationInfo = endInvocationContext.getBuildInfo(name);
+            if (endInvocationInfo == null) {
+                continue;
+            }
+            info.addBuildAttributes(endInvocationInfo.getBuildAttributes());
         }
     }
 }
