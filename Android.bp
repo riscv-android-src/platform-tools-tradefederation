@@ -84,6 +84,7 @@ java_library_host {
         ],
     },
     static_libs: [
+        "aoa-helper",
         "commons-compress-prebuilt",
         "error_prone_annotations-2.0.18",
         "google-api-java-client-min-repackaged",
@@ -121,7 +122,7 @@ java_library_host {
    openjdk9: {
        javacflags: [
            "--add-modules=java.xml.ws.annotation",
-	],
+       ],
    },
    static_libs: [
        "grpc-java-context-1.0.1",
