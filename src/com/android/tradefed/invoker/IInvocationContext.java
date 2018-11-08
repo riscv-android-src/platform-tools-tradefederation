@@ -110,6 +110,12 @@ public interface IInvocationContext extends Serializable {
     public String getDeviceName(ITestDevice device);
 
     /**
+     * Returns the name of device set in the xml configuration from the {@link IBuildInfo}. Returns
+     * null if the IBuildInfo cannot be matched
+     */
+    public String getBuildInfoName(IBuildInfo info);
+
+    /**
      * Return the {@link IBuildInfo} associated with the device configuration name provided. Returns
      * null, if the deviceName cannot be matched.
      */
