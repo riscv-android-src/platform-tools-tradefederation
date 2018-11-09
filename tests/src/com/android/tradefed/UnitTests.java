@@ -306,6 +306,7 @@ import com.android.tradefed.util.proto.TestRecordProtoUtilTest;
 import com.android.tradefed.util.proto.TfMetricProtoUtilTest;
 import com.android.tradefed.util.sl4a.Sl4aClientTest;
 import com.android.tradefed.util.sl4a.Sl4aEventDispatcherTest;
+import com.android.tradefed.util.testmapping.TestInfoTest;
 import com.android.tradefed.util.testmapping.TestMappingTest;
 import com.android.tradefed.util.xml.AndroidManifestWriterTest;
 
@@ -695,6 +696,7 @@ import org.junit.runners.Suite.SuiteClasses;
     Sl4aEventDispatcherTest.class,
 
     // util/testmapping
+    TestInfoTest.class,
     TestMappingTest.class,
 
     // util/xml
