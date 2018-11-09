@@ -88,6 +88,7 @@ import com.android.tradefed.device.metric.ScheduleMultipleDeviceMetricCollectorT
 import com.android.tradefed.device.metric.ScheduledDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.TemperatureCollectorTest;
 import com.android.tradefed.device.metric.TraceMetricCollectorTest;
+import com.android.tradefed.device.recovery.RunConfigDeviceRecoveryTest;
 import com.android.tradefed.guice.InvocationScopeTest;
 import com.android.tradefed.host.LocalHostResourceManagerTest;
 import com.android.tradefed.host.gcs.GCSHostResourceManagerTest;
@@ -409,6 +410,9 @@ import org.junit.runners.Suite.SuiteClasses;
     ScheduleMultipleDeviceMetricCollectorTest.class,
     TemperatureCollectorTest.class,
     TraceMetricCollectorTest.class,
+
+    // device.recovery
+    RunConfigDeviceRecoveryTest.class,
 
     // Guice
     InvocationScopeTest.class,
