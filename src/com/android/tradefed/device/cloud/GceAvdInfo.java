@@ -41,7 +41,8 @@ public class GceAvdInfo {
     public static enum GceStatus {
         SUCCESS,
         FAIL,
-        BOOT_FAIL
+        BOOT_FAIL,
+        DEVICE_OFFLINE,
     }
 
     public GceAvdInfo(String instanceName, HostAndPort hostAndPort) {
@@ -85,6 +86,10 @@ public class GceAvdInfo {
 
     public GceStatus getStatus() {
         return mStatus;
+    }
+
+    public void setStatus(GceStatus status) {
+        mStatus = status;
     }
 
     /**
