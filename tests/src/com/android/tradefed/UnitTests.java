@@ -70,6 +70,8 @@ import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
 import com.android.tradefed.device.cloud.AcloudConfigParserTest;
 import com.android.tradefed.device.cloud.GceAvdInfoTest;
+import com.android.tradefed.device.cloud.GceManagerTest;
+import com.android.tradefed.device.cloud.GceRemoteCmdFormatterTest;
 import com.android.tradefed.device.metric.AtraceCollectorTest;
 import com.android.tradefed.device.metric.AtraceRunMetricCollectorTest;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
@@ -390,6 +392,8 @@ import org.junit.runners.Suite.SuiteClasses;
     // device.cloud
     AcloudConfigParserTest.class,
     GceAvdInfoTest.class,
+    GceManagerTest.class,
+    GceRemoteCmdFormatterTest.class,
 
     // device.metric
     AtraceCollectorTest.class,
