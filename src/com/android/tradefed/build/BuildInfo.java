@@ -197,6 +197,12 @@ public class BuildInfo implements IBuildInfo {
         mBuildAttributes.put(attributeName, attributeValue);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void addBuildAttributes(Map<String, String> buildAttributes) {
+        mBuildAttributes.putAll(buildAttributes);
+    }
+
     /**
      * Helper method to copy build attributes, branch, and flavor from other build.
      */

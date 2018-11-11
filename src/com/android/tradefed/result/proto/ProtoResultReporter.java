@@ -48,6 +48,7 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
     private Stack<TestRecord.Builder> mLatestChild;
     private TestRecord.Builder mInvocationRecordBuilder;
     private long mInvocationStartTime;
+    private IInvocationContext mContext;
 
     /**
      * Handling of the partial invocation test record proto after {@link
@@ -128,6 +129,8 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
         mInvocationRecordBuilder.setStartTime(startTime);
         mInvocationRecordBuilder.setDescription(Any.pack(context.toProto()));
 
+        mContext = context;
+
         // Put the invocation record at the bottom of the stack
         mLatestChild.add(mInvocationRecordBuilder);
 
@@ -147,6 +150,8 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
         // Populate end time of invocation
         Timestamp endTime = createTimeStamp(mInvocationStartTime + elapsedTime);
         mInvocationRecordBuilder.setEndTime(endTime);
+        // Update the context in case it changed
+        mInvocationRecordBuilder.setDescription(Any.pack(mContext.toProto()));
 
         // Finalize the protobuf handling: where to put the results.
         TestRecord record = mInvocationRecordBuilder.build();

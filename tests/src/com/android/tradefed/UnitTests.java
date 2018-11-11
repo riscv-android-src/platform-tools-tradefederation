@@ -68,6 +68,8 @@ import com.android.tradefed.device.TestDeviceTest;
 import com.android.tradefed.device.TopHelperTest;
 import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
+import com.android.tradefed.device.cloud.AcloudConfigParserTest;
+import com.android.tradefed.device.cloud.GceAvdInfoTest;
 import com.android.tradefed.device.metric.AtraceCollectorTest;
 import com.android.tradefed.device.metric.AtraceRunMetricCollectorTest;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
@@ -86,6 +88,7 @@ import com.android.tradefed.device.metric.ScheduleMultipleDeviceMetricCollectorT
 import com.android.tradefed.device.metric.ScheduledDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.TemperatureCollectorTest;
 import com.android.tradefed.device.metric.TraceMetricCollectorTest;
+import com.android.tradefed.device.recovery.RunConfigDeviceRecoveryTest;
 import com.android.tradefed.guice.InvocationScopeTest;
 import com.android.tradefed.host.LocalHostResourceManagerTest;
 import com.android.tradefed.host.gcs.GCSHostResourceManagerTest;
@@ -384,6 +387,10 @@ import org.junit.runners.Suite.SuiteClasses;
     WaitDeviceRecoveryTest.class,
     WifiHelperTest.class,
 
+    // device.cloud
+    AcloudConfigParserTest.class,
+    GceAvdInfoTest.class,
+
     // device.metric
     AtraceCollectorTest.class,
     AtraceRunMetricCollectorTest.class,
@@ -403,6 +410,9 @@ import org.junit.runners.Suite.SuiteClasses;
     ScheduleMultipleDeviceMetricCollectorTest.class,
     TemperatureCollectorTest.class,
     TraceMetricCollectorTest.class,
+
+    // device.recovery
+    RunConfigDeviceRecoveryTest.class,
 
     // Guice
     InvocationScopeTest.class,
