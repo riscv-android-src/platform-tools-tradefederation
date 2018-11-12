@@ -546,7 +546,7 @@ public class RunUtil implements IRunUtil {
         private OutputStream stdOut = null;
         private OutputStream stdErr = null;
         private final boolean mCloseStreamAfterRun;
-        private Object mLock = new Object();
+        private final Object mLock = new Object();
         private boolean mCancelled = false;
 
         RunnableResult(final CommandResult result, final String input,
@@ -598,7 +598,7 @@ public class RunUtil implements IRunUtil {
             Thread stdoutThread = null;
             Thread stderrThread = null;
             synchronized (mLock) {
-                if (mCancelled == true) {
+                if (mCancelled) {
                     // if cancel() was called before run() took the lock, we do not even attempt
                     // to run.
                     return false;
@@ -676,7 +676,7 @@ public class RunUtil implements IRunUtil {
         public void cancel() {
             mCancelled = true;
             synchronized (mLock) {
-                if (mProcess == null) {
+                if (mProcess == null || !mProcess.isAlive()) {
                     return;
                 }
                 CLog.i("Cancelling the process execution");
