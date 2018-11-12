@@ -88,6 +88,7 @@ java_library_host {
         "commons-compress-prebuilt",
         "error_prone_annotations-2.0.18",
         "google-api-java-client-min-repackaged",
+        "google-api-services-compute",
         "gson-prebuilt-jar",
         "guice",
         "jline-1.0",
