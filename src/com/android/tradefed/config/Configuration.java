@@ -27,6 +27,7 @@ import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.target.DeviceSideCollectorSpecification;
 import com.android.tradefed.log.ILeveledLogOutput;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.log.StdoutLogger;
 import com.android.tradefed.postprocessor.BasePostProcessor;
 import com.android.tradefed.postprocessor.IPostProcessor;
@@ -40,6 +41,7 @@ import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
@@ -51,6 +53,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.kxml2.io.KXmlSerializer;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -113,6 +116,8 @@ public class Configuration implements IConfiguration {
 
     // Used to track config names that were used to set field values
     private MultiMap<FieldDef, String> mFieldSources = new MultiMap<>();
+    // used to track the files that where dynamically downloaded
+    private Set<File> mRemoteFiles = new HashSet<>();
 
     /**
      * Container struct for built-in config object type
@@ -1266,7 +1271,14 @@ public class Configuration implements IConfiguration {
      */
     @Override
     public void validateOptions() throws ConfigurationException {
-        new ArgsOptionParser(getAllConfigurationObjects()).validateMandatoryOptions();
+        validateOptions(true);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void validateOptions(boolean download) throws ConfigurationException {
+        ArgsOptionParser argsParser = new ArgsOptionParser(getAllConfigurationObjects());
+        argsParser.validateMandatoryOptions();
         ICommandOptions options = getCommandOptions();
         if (options.getShardCount() != null && options.getShardCount() < 1) {
             throw new ConfigurationException("a shard count must be a positive number");
@@ -1275,6 +1287,20 @@ public class Configuration implements IConfiguration {
                 && (options.getShardCount() == null || options.getShardIndex() < 0
                         || options.getShardIndex() >= options.getShardCount())) {
             throw new ConfigurationException("a shard index must be in range [0, shard count)");
+        }
+        if (download) {
+            // TODO: Ensure that it works during sharding and we don't leak files
+            CLog.d("Resolve and remote files from @Option");
+            // Setup and validate the GCS File paths
+            mRemoteFiles.addAll(argsParser.validateGcsFilePath());
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void cleanDynamicOptionFiles() {
+        for (File file : mRemoteFiles) {
+            FileUtil.recursiveDelete(file);
         }
     }
 

@@ -285,8 +285,8 @@ public class CommandSchedulerTest extends TestCase {
         String[] args2 = new String[] {"test"};
         setCreateConfigExpectations(args2, 1);
         setExpectedInvokeCalls(1);
+        mMockConfiguration.validateOptions(false);
         mMockConfiguration.validateOptions();
-        EasyMock.expectLastCall().times(2);
 
         replayMocks();
         mScheduler.start();
