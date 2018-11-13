@@ -59,12 +59,13 @@ public class TestMappingTest {
             List<TestInfo> tests =
                     new TestMapping(testMappingFile.toPath(), Paths.get(tempDir.getAbsolutePath()))
                             .getTests("presubmit");
-            assertEquals(1, tests.size());
+            assertEquals(2, tests.size());
             assertEquals("test1", tests.get(0).getName());
+            assertEquals("suite/stub1", tests.get(1).getName());
             tests =
                     new TestMapping(testMappingFile.toPath(), Paths.get(tempDir.getAbsolutePath()))
                             .getTests("postsubmit");
-            assertEquals(3, tests.size());
+            assertEquals(4, tests.size());
             assertEquals("test2", tests.get(0).getName());
             TestOption option = tests.get(0).getOptions().get(0);
             assertEquals("instrumentation-arg", option.getName());

@@ -16,7 +16,7 @@
 package com.android.tradefed.util.testmapping;
 
 /** Stores the test option details set in a TEST_MAPPING file. */
-public class TestOption {
+public class TestOption implements Comparable<TestOption> {
     // Name of the option
     private String mName = null;
     // Value of the option, can be empty.
@@ -33,6 +33,12 @@ public class TestOption {
 
     public String getValue() {
         return mValue;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public int compareTo(TestOption option) {
+        return (mName.compareTo(option.getName()));
     }
 
     /**

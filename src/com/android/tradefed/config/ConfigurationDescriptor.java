@@ -112,6 +112,18 @@ public class ConfigurationDescriptor implements Serializable {
         mMetaData = metadata;
     }
 
+    /**
+     * Add more values of a given key to the metadata entries.
+     *
+     * @param key {@link String} of the key to add values to.
+     * @param values a list of {@link String} of the additional values.
+     */
+    public void addMetaData(String key, List<String> values) {
+        for (String source : values) {
+            mMetaData.put(key, source);
+        }
+    }
+
     /** Returns if the configuration is shardable or not as part of a suite */
     public boolean isNotShardable() {
         return mNotShardable;
