@@ -19,7 +19,10 @@ import static com.google.common.base.Preconditions.checkState;
 
 import com.android.tradefed.log.LogUtil.CLog;
 
+import com.google.common.base.Joiner;
+
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -46,6 +49,7 @@ public class TestInfo {
 
     public void addOption(TestOption option) {
         mOptions.add(option);
+        Collections.sort(mOptions);
     }
 
     public List<TestOption> getOptions() {
@@ -96,6 +100,7 @@ public class TestInfo {
             Set<TestOption> commonOptions = new HashSet<TestOption>(test.getOptions());
             commonOptions.retainAll(new HashSet<TestOption>(mOptions));
             mOptions = new ArrayList<TestOption>(commonOptions);
+            this.addSources(test.getSources());
             CLog.d("Options are merged, updated test: %s.", this);
             return;
         }
@@ -224,10 +229,17 @@ public class TestInfo {
 
     @Override
     public String toString() {
-        StringBuilder options = new StringBuilder();
-        for (TestOption option : mOptions) {
-            options.append(option.toString());
+        if (mOptions.size() == 0) {
+            return mName;
+        } else {
+            return String.format(
+                    "%s: Options: %s",
+                    mName,
+                    Joiner.on(",")
+                            .join(
+                                    mOptions.stream()
+                                            .map(TestOption::toString)
+                                            .collect(Collectors.toList())));
         }
-        return String.format("%s: Options: %s", mName, options);
     }
 }
