@@ -20,6 +20,7 @@ import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IGlobalConfiguration;
@@ -62,8 +63,6 @@ import java.util.Set;
  */
 public class TradefedSandbox implements ISandbox {
 
-    /** The variable holding TF specific environment */
-    public static final String TF_GLOBAL_CONFIG = "TF_GLOBAL_CONFIG";
     /** Timeout to wait for the events received from subprocess to finish being processed. */
     private static final long EVENT_THREAD_JOIN_TIMEOUT_MS = 30 * 1000;
 
@@ -168,7 +167,8 @@ public class TradefedSandbox implements ISandbox {
         }
         // Unset the current global environment
         mRunUtil = createRunUtil();
-        mRunUtil.unsetEnvVariable(TF_GLOBAL_CONFIG);
+        mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         // TODO: add handling of setting and creating the subprocess global configuration
 
         try {
