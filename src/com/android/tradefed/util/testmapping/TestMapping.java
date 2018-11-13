@@ -45,6 +45,9 @@ import java.util.stream.Stream;
 /** A class for loading a TEST_MAPPING file. */
 public class TestMapping {
 
+    // Key for test sources information stored in meta data of ConfigurationDescription.
+    public static final String TEST_SOURCES = "Test Sources";
+
     private static final String PRESUBMIT = "presubmit";
     private static final String POSTSUBMIT = "postsubmit";
     private static final String IMPORTS = "imports";

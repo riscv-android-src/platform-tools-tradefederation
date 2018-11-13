@@ -15,14 +15,19 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.util.testmapping.TestInfo;
 import com.android.tradefed.util.testmapping.TestMapping;
 import com.android.tradefed.util.testmapping.TestOption;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 /**
  * Implementation of {@link BaseTestSuite} to run tests specified by option include-filter, or
@@ -56,6 +61,9 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
      */
     @Override
     public LinkedHashMap<String, IConfiguration> loadTests() {
+        // Map between test names and a list of test sources for each test.
+        Map<String, List<String>> testsInTestMapping = new HashMap<>();
+
         Set<String> includeFilter = getIncludeFilter();
         if (mTestGroup == null && includeFilter.isEmpty()) {
             throw new RuntimeException(
@@ -92,8 +100,32 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
 
             setIncludeFilter(testNames);
             addModuleArgs(moduleArgs);
+
+            for (TestInfo test : testsToRun) {
+                List<String> testSources = null;
+                // TODO(b/117880789): tests may not be grouped by name once that bug is fixed.
+                // Update the dictionary with better keys.
+                if (testsInTestMapping.containsKey(test.getName())) {
+                    testSources = testsInTestMapping.get(test.toString());
+                } else {
+                    testSources = new ArrayList<String>();
+                    testsInTestMapping.put(test.getName(), testSources);
+                }
+                testSources.addAll(test.getSources());
+            }
         }
 
-        return super.loadTests();
+        LinkedHashMap<String, IConfiguration> testConfigs = super.loadTests();
+        for (Map.Entry<String, IConfiguration> entry : testConfigs.entrySet()) {
+            ConfigurationDescriptor configDescriptor =
+                    entry.getValue().getConfigurationDescription();
+            if (testsInTestMapping.containsKey(configDescriptor.getModuleName())) {
+                configDescriptor.addMetaData(
+                        TestMapping.TEST_SOURCES,
+                        testsInTestMapping.get(configDescriptor.getModuleName()));
+            }
+        }
+
+        return testConfigs;
     }
 }
