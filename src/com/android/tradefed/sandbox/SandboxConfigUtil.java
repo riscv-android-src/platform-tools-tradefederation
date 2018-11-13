@@ -61,6 +61,7 @@ public class SandboxConfigUtil {
                     "Something went wrong with the sandbox setup, classpath was empty.");
         }
         runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         File destination = null;
         try {
             destination = FileUtil.createTempFile("config-container", ".xml");

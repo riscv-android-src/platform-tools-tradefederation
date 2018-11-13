@@ -105,7 +105,9 @@ public class TradefedSandboxTest {
      */
     @Test
     public void testPrepareEnvironment() throws Exception {
-        mMockRunUtil.unsetEnvVariable(TradefedSandbox.TF_GLOBAL_CONFIG);
+        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        EasyMock.expectLastCall().times(2);
+        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         EasyMock.expectLastCall().times(2);
         mMockRunUtil.setEnvVariable(
                 EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), EasyMock.anyObject());
@@ -141,7 +143,9 @@ public class TradefedSandboxTest {
      */
     @Test
     public void testPrepareEnvironment_dumpConfigFail() throws Exception {
-        mMockRunUtil.unsetEnvVariable(TradefedSandbox.TF_GLOBAL_CONFIG);
+        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        EasyMock.expectLastCall().times(2);
+        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         EasyMock.expectLastCall().times(2);
         mMockRunUtil.setEnvVariable(
                 EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), EasyMock.anyObject());
@@ -179,7 +183,8 @@ public class TradefedSandboxTest {
      */
     @Test
     public void testPrepareEnvironment_noTfDirJar() throws Exception {
-        mMockRunUtil.unsetEnvVariable(TradefedSandbox.TF_GLOBAL_CONFIG);
+        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         EasyMock.expect(mMockConfig.getCommandLine()).andReturn("empty --arg 1");
         System.setProperty(TF_JAR_DIR, "");
         EasyMock.replay(mMockConfig, mMockListener, mMockRunUtil);
