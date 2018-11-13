@@ -174,6 +174,10 @@ public class TestDeviceOptions {
     @Option(name = "gce-driver-log-level", description = "Log level for gce driver")
     private LogLevel mGceDriverLogLevel = LogLevel.DEBUG;
 
+    @Option(name = "gce-driver-arg", description = " Additional key-value pairs to pass down to "
+            + "gce driver as parameters.")
+    private List<String> mGceDriverArgs = new ArrayList<>();
+
     @Option(name = "gce-account", description = "email account to use with GCE driver.")
     private String mGceAccount = null;
 
@@ -544,6 +548,11 @@ public class TestDeviceOptions {
     /** Set the log level of the Gce Avd driver. */
     public void setGceDriverLogLevel(LogLevel mGceDriverLogLevel) {
         this.mGceDriverLogLevel = mGceDriverLogLevel;
+    }
+
+    /** Return the additional GCE driver args provided via command parameters */
+    public List<String> getGceDriverArgs() {
+        return mGceDriverArgs;
     }
 
     /** Return the gce email account to use with the driver */
