@@ -225,8 +225,8 @@ public class GceManager {
             gceArgs.add(getTestDeviceOptions().getSystemImageTarget());
             gceArgs.add("--branch");
             gceArgs.add(getTestDeviceOptions().getSystemImageBranch());
-            gceArgs.add("--emulator-build-id");
-            gceArgs.add(b.getBuildId());
+            // TODO(b/119440413) clean this up when this part is migrated into infra config
+            getTestDeviceOptions().setGceDriverBuildIdParam("emulator-build-id");
         } else {
             gceArgs.add("--build_target");
             if (b.getBuildAttributes().containsKey("build_target")) {
@@ -237,13 +237,13 @@ public class GceManager {
             }
             gceArgs.add("--branch");
             gceArgs.add(b.getBuildBranch());
-            gceArgs.add("--build_id");
-            gceArgs.add(b.getBuildId());
         }
+        // handled the build id related params
+        gceArgs.add("--" + getTestDeviceOptions().getGceDriverBuildIdParam());
+        gceArgs.add(b.getBuildId());
         gceArgs.addAll(
                 TestDeviceOptions.getExtraParamsByInstanceType(
                         getTestDeviceOptions().getInstanceType(),
-                        getTestDeviceOptions().getEmulatorBuildId(),
                         getTestDeviceOptions().getBaseImage()));
         gceArgs.add("--config_file");
         gceArgs.add(getAvdConfigFile().getAbsolutePath());
