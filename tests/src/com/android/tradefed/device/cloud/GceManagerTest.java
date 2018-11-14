@@ -333,6 +333,52 @@ public class GceManagerTest {
         EasyMock.verify(mMockRunUtil);
     }
 
+    /** Test {@link GceManager#buildGceCmd(File, IBuildInfo)}. */
+    @Test
+    public void testBuildGceCommandWithKernelBuild() throws Exception {
+        IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        EasyMock.expect(mMockBuildInfo.getBuildAttributes())
+                .andReturn(Collections.<String, String>emptyMap());
+        EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andReturn("FLAVOR");
+        EasyMock.expect(mMockBuildInfo.getBuildBranch()).andReturn("BRANCH");
+        EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn("BUILDID");
+        EasyMock.replay(mMockBuildInfo);
+        File reportFile = null;
+        try {
+            OptionSetter setter = new OptionSetter(mOptions);
+            setter.setOptionValue("gce-driver-build-id-param", "kernel_build_id");
+            reportFile = FileUtil.createTempFile("test-gce-cmd", "report");
+            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo);
+            List<String> expected =
+                    ArrayUtil.list(
+                            mOptions.getAvdDriverBinary().getAbsolutePath(),
+                            "create",
+                            "--build_target",
+                            "FLAVOR",
+                            "--branch",
+                            "BRANCH",
+                            "--kernel_build_id",
+                            "BUILDID",
+                            "--config_file",
+                            mGceManager.getAvdConfigFile().getAbsolutePath(),
+                            "--report_file",
+                            reportFile.getAbsolutePath(),
+                            "-v",
+                            "--logcat_file",
+                            mGceManager.getGceBootLogcatLog().getAbsolutePath(),
+                            "--serial_log_file",
+                            mGceManager.getGceBootSerialLog().getAbsolutePath());
+            assertEquals(expected, result);
+            assertTrue(mGceManager.getGceBootLogcatLog().exists());
+            assertTrue(mGceManager.getGceBootSerialLog().exists());
+        } finally {
+            FileUtil.deleteFile(reportFile);
+            FileUtil.deleteFile(mGceManager.getGceBootLogcatLog());
+            FileUtil.deleteFile(mGceManager.getGceBootSerialLog());
+        }
+        EasyMock.verify(mMockBuildInfo);
+    }
+
     /**
      * Test that a {@link com.android.tradefed.device.cloud.GceAvdInfo} is properly created when the
      * output of acloud and runutil is fine.
