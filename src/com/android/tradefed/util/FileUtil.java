@@ -34,6 +34,7 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystemException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
@@ -402,8 +403,27 @@ public class FileUtil {
      * @throws IOException if failed to hardlink file
      */
     public static void hardlinkFile(File origFile, File destFile) throws IOException {
+        hardlinkFile(origFile, destFile, false);
+    }
+
+    /**
+     * A helper method that hardlinks a file to another file. Fallback to copy in case of cross
+     * partition linking.
+     *
+     * @param origFile the original file
+     * @param destFile the destination file
+     * @param ignoreExistingFile If True and the file being linked already exists, skip the
+     *     exception.
+     * @throws IOException if failed to hardlink file
+     */
+    public static void hardlinkFile(File origFile, File destFile, boolean ignoreExistingFile)
+            throws IOException {
         try {
             Files.createLink(destFile.toPath(), origFile.toPath());
+        } catch (FileAlreadyExistsException e) {
+            if (!ignoreExistingFile) {
+                throw e;
+            }
         } catch (FileSystemException e) {
             if (e.getMessage().contains("Invalid cross-device link")) {
                 CLog.d("Hardlink failed: '%s', falling back to copy.", e.getMessage());
@@ -439,6 +459,23 @@ public class FileUtil {
      * @throws IOException
      */
     public static void recursiveHardlink(File sourceDir, File destDir) throws IOException {
+        recursiveHardlink(sourceDir, destDir, false);
+    }
+
+    /**
+     * Recursively hardlink folder contents.
+     *
+     * <p>Only supports copying of files and directories - symlinks are not copied. If the
+     * destination directory does not exist, it will be created.
+     *
+     * @param sourceDir the folder that contains the files to copy
+     * @param destDir the destination folder
+     * @param ignoreExistingFile If True and the file being linked already exists, skip the
+     *     exception.
+     * @throws IOException
+     */
+    public static void recursiveHardlink(File sourceDir, File destDir, boolean ignoreExistingFile)
+            throws IOException {
         if (!destDir.isDirectory() && !destDir.mkdir()) {
             throw new IOException(String.format("Could not create directory %s",
                     destDir.getAbsolutePath()));
@@ -446,9 +483,9 @@ public class FileUtil {
         for (File childFile : sourceDir.listFiles()) {
             File destChild = new File(destDir, childFile.getName());
             if (childFile.isDirectory()) {
-                recursiveHardlink(childFile, destChild);
+                recursiveHardlink(childFile, destChild, ignoreExistingFile);
             } else if (childFile.isFile()) {
-                hardlinkFile(childFile, destChild);
+                hardlinkFile(childFile, destChild, ignoreExistingFile);
             }
         }
     }
