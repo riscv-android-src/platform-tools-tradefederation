@@ -15,7 +15,7 @@
  */
 package com.android.tradefed.device.recovery;
 
-import com.android.ddmlib.IDevice.DeviceState;
+import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.command.ICommandScheduler;
 import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
 import com.android.tradefed.config.ConfigurationException;
@@ -69,14 +69,28 @@ public class RunConfigDeviceRecovery implements IMultiDeviceRecovery {
             if (DeviceAllocationState.Allocated.equals(device.getAllocationState())) {
                 continue;
             }
-            if (!DeviceState.ONLINE.equals(device.getIDevice().getState())) {
-                continue;
-            }
             if (device.getIDevice() instanceof StubDevice) {
                 continue;
             }
             if (shouldSkip(device)) {
                 continue;
+            }
+
+            List<String> argList = new ArrayList<>();
+            argList.add(mRecoveryConfigName);
+
+            List<String> deviceExtraArgs = getExtraArguments(device);
+            if (deviceExtraArgs == null) {
+                CLog.w("Something went wrong recovery cannot be attempted.");
+                continue;
+            }
+
+            argList.addAll(deviceExtraArgs);
+            for (String args : mExtraArgs) {
+                String[] extraArgs = QuotationAwareTokenizer.tokenizeLine(args);
+                if (extraArgs.length != 0) {
+                    argList.addAll(Arrays.asList(extraArgs));
+                }
             }
 
             String serial = device.getSerialNumber();
@@ -85,17 +99,6 @@ public class RunConfigDeviceRecovery implements IMultiDeviceRecovery {
                 CLog.e("Fail to force allocate '%s'", serial);
                 continue;
             }
-
-            List<String> argList = new ArrayList<>();
-            argList.add(mRecoveryConfigName);
-            argList.addAll(getExtraArguments(device));
-            for (String args : mExtraArgs) {
-                String[] extraArgs = QuotationAwareTokenizer.tokenizeLine(args);
-                if (extraArgs.length != 0) {
-                    argList.addAll(Arrays.asList(extraArgs));
-                }
-            }
-
             try {
                 getCommandScheduler()
                         .execCommand(
@@ -114,10 +117,11 @@ public class RunConfigDeviceRecovery implements IMultiDeviceRecovery {
     }
 
     /**
-     * Get the list of extra arguments to be passed to the configuration.
+     * Get the list of extra arguments to be passed to the configuration. If null is returned
+     * something went wrong and recovery should be attempted.
      *
      * @param device The {@link ITestDevice} to run recovery against
-     * @return The list of extra arguments to be used.
+     * @return The list of extra arguments to be used. Or null if something went wrong.
      */
     public List<String> getExtraArguments(ITestDevice device) {
         return new ArrayList<>();
@@ -134,12 +138,14 @@ public class RunConfigDeviceRecovery implements IMultiDeviceRecovery {
     }
 
     /** Returns a {@link IDeviceManager} instance. Exposed for testing. */
-    IDeviceManager getDeviceManager() {
+    @VisibleForTesting
+    protected IDeviceManager getDeviceManager() {
         return GlobalConfiguration.getInstance().getDeviceManager();
     }
 
     /** Returns a {@link ICommandScheduler} instance. Exposed for testing. */
-    ICommandScheduler getCommandScheduler() {
+    @VisibleForTesting
+    protected ICommandScheduler getCommandScheduler() {
         return GlobalConfiguration.getInstance().getCommandScheduler();
     }
 
