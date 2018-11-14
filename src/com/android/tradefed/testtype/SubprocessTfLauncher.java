@@ -175,6 +175,8 @@ public abstract class SubprocessTfLauncher
 
         // clear the TF_GLOBAL_CONFIG env, so another tradefed will not reuse the global config file
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
+
         if (mGlobalConfig == null) {
             // If the global configuration is not set in option, create a filtered global
             // configuration for subprocess to use.
