@@ -176,7 +176,7 @@ public class TestDeviceOptions {
 
     @Option(
         name = "gce-driver-param",
-        description = " Additional key-value pairs to pass down to " + "gce driver as parameters."
+        description = "Additional args to pass to gce driver as parameters."
     )
     private List<String> mGceDriverParams = new ArrayList<>();
 
@@ -192,9 +192,9 @@ public class TestDeviceOptions {
     private String mGceAccount = null;
 
     @Option(
-            name = "max-gce-attempt",
-            description =
-                    "Maximum number of attempts to start Gce " + "before throwing an exception.")
+        name = "max-gce-attempt",
+        description = "Maximum number of attempts to start Gce before throwing an exception."
+    )
     private int mGceMaxAttempt = 1;
 
     @Option(
