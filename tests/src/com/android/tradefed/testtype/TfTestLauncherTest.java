@@ -115,6 +115,7 @@ public class TfTestLauncherTest {
                 .andReturn(cr);
 
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         mMockRunUtil.unsetEnvVariable(EnvVariable.ANDROID_HOST_OUT_TESTCASES.name());
         mMockRunUtil.unsetEnvVariable(EnvVariable.ANDROID_TARGET_OUT_TESTCASES.name());
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
@@ -225,6 +226,7 @@ public class TfTestLauncherTest {
         EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andReturn(BUILD_FLAVOR).times(2);
         EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn(BUILD_ID).times(2);
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         mMockRunUtil.unsetEnvVariable(EnvVariable.ANDROID_HOST_OUT_TESTCASES.name());
         mMockRunUtil.unsetEnvVariable(EnvVariable.ANDROID_TARGET_OUT_TESTCASES.name());
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
