@@ -274,6 +274,9 @@ public class GceManager {
         mGceBootFailureSerialLog = FileUtil.createTempFile("gce_serial_boot", ".tar.gz");
         gceArgs.add("--serial_log_file");
         gceArgs.add(mGceBootFailureSerialLog.getAbsolutePath());
+
+        // Add additional args passed in.
+        gceArgs.addAll(getTestDeviceOptions().getGceDriverParams());
         return gceArgs;
     }
 
