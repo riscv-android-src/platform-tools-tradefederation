@@ -174,6 +174,20 @@ public class TestDeviceOptions {
     @Option(name = "gce-driver-log-level", description = "Log level for gce driver")
     private LogLevel mGceDriverLogLevel = LogLevel.DEBUG;
 
+    @Option(
+        name = "gce-driver-param",
+        description = " Additional key-value pairs to pass down to " + "gce driver as parameters."
+    )
+    private List<String> mGceDriverParams = new ArrayList<>();
+
+    @Option(
+        name = "gce-driver-build-id-param",
+        description =
+                "The parameter to be paired with "
+                        + "build id from build info when passed down to gce driver"
+    )
+    private String mGceDriverBuildIdParam = "build_id";
+
     @Option(name = "gce-account", description = "email account to use with GCE driver.")
     private String mGceAccount = null;
 
@@ -206,13 +220,6 @@ public class TestDeviceOptions {
             name = "remote-adb-port",
             description = "The port on remote instance where the adb " + "server listens to.")
     private int mRemoteAdbPort = DEFAULT_ADB_PORT;
-
-    @Option(
-            name = "emulator-build-id",
-            description =
-                    "The build id for the emulator binary to be used to launch a specified "
-                            + "emulator system image. To be used only when Instance Type is Emulator.")
-    private String mEmulatorBuildId = null;
 
     @Option(
             name = "base-host-image",
@@ -546,6 +553,21 @@ public class TestDeviceOptions {
         this.mGceDriverLogLevel = mGceDriverLogLevel;
     }
 
+    /** Return the additional GCE driver parameters provided via option */
+    public List<String> getGceDriverParams() {
+        return mGceDriverParams;
+    }
+
+    /** Set the GCE driver parameter that should be paired with the build id from build info */
+    public void setGceDriverBuildIdParam(String gceDriverBuildIdParam) {
+        mGceDriverBuildIdParam = gceDriverBuildIdParam;
+    }
+
+    /** Return the GCE driver parameter that should be paired with the build id from build info */
+    public String getGceDriverBuildIdParam() {
+        return mGceDriverBuildIdParam;
+    }
+
     /** Return the gce email account to use with the driver */
     public String getGceAccount() {
         return mGceAccount;
@@ -584,11 +606,6 @@ public class TestDeviceOptions {
         return mRemoteAdbPort;
     }
 
-    /** Returns the emulator build id to be used for the current instance */
-    public String getEmulatorBuildId() {
-        return mEmulatorBuildId;
-    }
-
     /** Returns the base image name to be used for the current instance */
     public String getBaseImage() {
         return mBaseImage;
@@ -618,15 +635,10 @@ public class TestDeviceOptions {
         throw new RuntimeException("Unexpected InstanceType: " + type);
     }
 
-    public static List<String> getExtraParamsByInstanceType(
-            InstanceType type, String emulatorBuildId, String baseImage) {
-        // TODO(b/77324986) remove this hack when referenced bug has a proper solution
+    public static List<String> getExtraParamsByInstanceType(InstanceType type, String baseImage) {
         if (InstanceType.EMULATOR.equals(type)) {
+            // TODO(b/119440413) remove when base image can be passed via extra gce driver params
             List<String> params = ArrayUtil.list();
-            if (emulatorBuildId != null) {
-                params.add("--emulator_build_id");
-                params.add(emulatorBuildId);
-            }
             if (baseImage != null) {
                 params.add("--base_image");
                 params.add(baseImage);

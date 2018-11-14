@@ -27,6 +27,7 @@ import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IManagedTestDevice;
 import com.android.tradefed.device.IMultiDeviceRecovery;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.QuotationAwareTokenizer;
@@ -69,6 +70,9 @@ public class RunConfigDeviceRecovery implements IMultiDeviceRecovery {
                 continue;
             }
             if (!DeviceState.ONLINE.equals(device.getIDevice().getState())) {
+                continue;
+            }
+            if (device.getIDevice() instanceof StubDevice) {
                 continue;
             }
             if (shouldSkip(device)) {

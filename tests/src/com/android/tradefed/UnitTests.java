@@ -90,6 +90,7 @@ import com.android.tradefed.device.metric.ScheduleMultipleDeviceMetricCollectorT
 import com.android.tradefed.device.metric.ScheduledDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.TemperatureCollectorTest;
 import com.android.tradefed.device.metric.TraceMetricCollectorTest;
+import com.android.tradefed.device.recovery.BatteryUnavailableDeviceRecoveryTest;
 import com.android.tradefed.device.recovery.RunConfigDeviceRecoveryTest;
 import com.android.tradefed.guice.InvocationScopeTest;
 import com.android.tradefed.host.LocalHostResourceManagerTest;
@@ -308,6 +309,9 @@ import com.android.tradefed.util.proto.TestRecordProtoUtilTest;
 import com.android.tradefed.util.proto.TfMetricProtoUtilTest;
 import com.android.tradefed.util.sl4a.Sl4aClientTest;
 import com.android.tradefed.util.sl4a.Sl4aEventDispatcherTest;
+import com.android.tradefed.util.statsd.ConfigUtilTest;
+import com.android.tradefed.util.statsd.MetricUtilTest;
+import com.android.tradefed.util.testmapping.TestInfoTest;
 import com.android.tradefed.util.testmapping.TestMappingTest;
 import com.android.tradefed.util.xml.AndroidManifestWriterTest;
 
@@ -416,6 +420,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TraceMetricCollectorTest.class,
 
     // device.recovery
+    BatteryUnavailableDeviceRecoveryTest.class,
     RunConfigDeviceRecoveryTest.class,
 
     // Guice
@@ -698,7 +703,12 @@ import org.junit.runners.Suite.SuiteClasses;
     Sl4aClientTest.class,
     Sl4aEventDispatcherTest.class,
 
+    // util/statsd
+    ConfigUtilTest.class,
+    MetricUtilTest.class,
+
     // util/testmapping
+    TestInfoTest.class,
     TestMappingTest.class,
 
     // util/xml

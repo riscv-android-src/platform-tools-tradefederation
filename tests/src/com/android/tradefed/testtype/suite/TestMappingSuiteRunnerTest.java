@@ -31,6 +31,7 @@ import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.testmapping.TestMapping;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -42,8 +43,10 @@ import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Paths;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 
 /** Unit tests for {@link TestMappingSuiteRunner}. */
@@ -163,6 +166,22 @@ public class TestMappingSuiteRunnerTest {
             assertTrue(configMap.containsKey(ABI_2 + " instrument"));
             assertTrue(configMap.containsKey(ABI_2 + " suite/stub1"));
             assertTrue(configMap.containsKey(ABI_2 + " suite/stub2"));
+
+            // Confirm test sources are stored in test's ConfigurationDescription.
+            Map<String, Integer> testSouceCount = new HashMap<>();
+            testSouceCount.put("suite/stub1", 2);
+            testSouceCount.put("suite/stub2", 1);
+            testSouceCount.put("instrument", 1);
+
+            assertEquals(6, configMap.size());
+            for (IConfiguration config : configMap.values()) {
+                assertTrue(testSouceCount.containsKey(config.getName()));
+                assertEquals(
+                        testSouceCount.get(config.getName()).intValue(),
+                        config.getConfigurationDescription()
+                                .getMetaData(TestMapping.TEST_SOURCES)
+                                .size());
+            }
 
             EasyMock.verify(mockBuildInfo);
         } finally {
