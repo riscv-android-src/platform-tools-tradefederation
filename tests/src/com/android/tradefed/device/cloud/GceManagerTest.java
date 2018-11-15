@@ -295,6 +295,55 @@ public class GceManagerTest {
         EasyMock.verify(mMockBuildInfo);
     }
 
+    /** Test {@link GceManager#buildGceCmd(File, IBuildInfo)}. */
+    @Test
+    public void testBuildGceCommandWithGceDriverParam() throws Exception {
+        IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        EasyMock.expect(mMockBuildInfo.getBuildAttributes())
+                .andReturn(Collections.<String, String>emptyMap());
+        EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andReturn("FLAVOR");
+        EasyMock.expect(mMockBuildInfo.getBuildBranch()).andReturn("BRANCH");
+        EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn("BUILDID");
+        EasyMock.replay(mMockBuildInfo);
+        File reportFile = null;
+        OptionSetter setter = new OptionSetter(mOptions);
+        setter.setOptionValue("gce-driver-param", "--report-internal-ip");
+        setter.setOptionValue("gce-driver-param", "--no-autoconnect");
+        try {
+            reportFile = FileUtil.createTempFile("test-gce-cmd", "report");
+            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo);
+            List<String> expected =
+                    ArrayUtil.list(
+                            mOptions.getAvdDriverBinary().getAbsolutePath(),
+                            "create",
+                            "--build_target",
+                            "FLAVOR",
+                            "--branch",
+                            "BRANCH",
+                            "--build_id",
+                            "BUILDID",
+                            "--config_file",
+                            mGceManager.getAvdConfigFile().getAbsolutePath(),
+                            "--report_file",
+                            reportFile.getAbsolutePath(),
+                            "-v",
+                            "--logcat_file",
+                            mGceManager.getGceBootLogcatLog().getAbsolutePath(),
+                            "--serial_log_file",
+                            mGceManager.getGceBootSerialLog().getAbsolutePath(),
+                            "--report-internal-ip",
+                            "--no-autoconnect");
+            assertEquals(expected, result);
+            assertTrue(mGceManager.getGceBootLogcatLog().exists());
+            assertTrue(mGceManager.getGceBootSerialLog().exists());
+        } finally {
+            FileUtil.deleteFile(reportFile);
+            FileUtil.deleteFile(mGceManager.getGceBootLogcatLog());
+            FileUtil.deleteFile(mGceManager.getGceBootSerialLog());
+        }
+        EasyMock.verify(mMockBuildInfo);
+    }
+
     /** Ensure exception is thrown after a timeout from the acloud command. */
     @Test
     public void testStartGce_timeout() throws Exception {

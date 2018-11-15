@@ -112,6 +112,7 @@ public class VersionedTfLauncherTest {
 
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
         mMockRunUtil.setEnvVariable(
                 EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE),
@@ -177,6 +178,7 @@ public class VersionedTfLauncherTest {
 
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
         mMockRunUtil.setEnvVariable(
                 EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE),
@@ -233,6 +235,7 @@ public class VersionedTfLauncherTest {
     public void testRun_DeviceNoPreSetup() {
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
         mMockRunUtil.setEnvVariable(
                 EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE),
@@ -313,6 +316,7 @@ public class VersionedTfLauncherTest {
 
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
         mMockRunUtil.setEnvVariable(
                 EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE),
