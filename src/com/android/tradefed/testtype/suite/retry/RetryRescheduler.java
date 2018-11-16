@@ -148,6 +148,9 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
         CollectingTestListener collectedTests =
                 TestRecordInterpreter.interpreteRecord(previousRecord);
 
+        previousLoader.cleanUp();
+        previousRecord = null;
+
         // Appropriately update the configuration
         IRemoteTest test = originalConfig.getTests().get(0);
         if (!(test instanceof BaseTestSuite)) {
@@ -157,6 +160,7 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
         BaseTestSuite suite = (BaseTestSuite) test;
         ResultsPlayer replayer = new ResultsPlayer();
         updateRunner(suite, collectedTests, replayer);
+        collectedTests = null;
         updateConfiguration(originalConfig, replayer);
         // Do the customization of the configuration for specialized use cases.
         customizeConfig(previousLoader, originalConfig);
