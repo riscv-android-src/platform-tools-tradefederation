@@ -464,7 +464,7 @@ public class DeviceManager implements IDeviceManager {
     private void addGceDevices() {
         for (int i = 0; i < mNumRemoteDevicesSupported; i++) {
             addAvailableDevice(
-                    new RemoteAvdIDevice(String.format("%s:%d", GCE_DEVICE_SERIAL_PREFIX, i)));
+                    new RemoteAvdIDevice(String.format("%s-%d", GCE_DEVICE_SERIAL_PREFIX, i)));
         }
     }
 
