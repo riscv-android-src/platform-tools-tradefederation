@@ -33,6 +33,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -54,6 +55,7 @@ public class TestMapping {
     private static final String KEY_NAME = "name";
     private static final String TEST_MAPPING = "TEST_MAPPING";
     private static final String TEST_MAPPINGS_ZIP = "test_mappings.zip";
+    private static final String DISABLED_PRESUBMIT_TESTS = "disabled-presubmit-tests";
     private static final String KEY_OPTIONS = "options";
 
     private Map<String, List<TestInfo>> mTestCollection = null;
@@ -122,20 +124,24 @@ public class TestMapping {
      * Helper to get all tests set in a TEST_MAPPING file for a given group.
      *
      * @param testGroup A {@link String} of the test group.
+     * @param disabledTests A set of {@link String} for the name of the disabled tests.
      * @return A {@code List<TestInfo>} of the test infos.
      */
-    public List<TestInfo> getTests(String testGroup) {
+    public List<TestInfo> getTests(String testGroup, Set<String> disabledTests) {
         List<TestInfo> tests = new ArrayList<TestInfo>();
 
-        if (mTestCollection.containsKey(testGroup)) {
-            for (TestInfo test : mTestCollection.get(testGroup)) {
-                tests.add(test);
-            }
-        }
+        List<String> testGroups = new ArrayList<>();
+        testGroups.add(testGroup);
         // All presubmit tests should be part of postsubmit too.
         if (testGroup.equals(POSTSUBMIT)) {
-            for (TestInfo test :
-                    mTestCollection.getOrDefault(PRESUBMIT, new ArrayList<TestInfo>())) {
+            testGroups.add(PRESUBMIT);
+        }
+        for (String group : testGroups) {
+            for (TestInfo test : mTestCollection.getOrDefault(group, new ArrayList<TestInfo>())) {
+                if (disabledTests != null && disabledTests.contains(test.getName())) {
+                    CLog.d("Test is disabled: %s.", test);
+                    continue;
+                }
                 tests.add(test);
             }
         }
@@ -178,6 +184,7 @@ public class TestMapping {
      */
     public static Set<TestInfo> getTests(IBuildInfo buildInfo, String testGroup) {
         Set<TestInfo> tests = new HashSet<TestInfo>();
+        Set<String> disabledTests = new HashSet<>();
 
         File testMappingsZip = buildInfo.getFile(TEST_MAPPINGS_ZIP);
         File testMappingsDir = null;
@@ -185,13 +192,23 @@ public class TestMapping {
         try {
             testMappingsDir = ZipUtil2.extractZipToTemp(testMappingsZip, TEST_MAPPINGS_ZIP);
             Path testMappingsRootPath = Paths.get(testMappingsDir.getAbsolutePath());
+            if (testGroup.equals(PRESUBMIT)) {
+                File disabledPresubmitTestsFile =
+                        new File(testMappingsRootPath.toString(), DISABLED_PRESUBMIT_TESTS);
+                disabledTests.addAll(
+                        Arrays.asList(
+                                FileUtil.readStringFromFile(disabledPresubmitTestsFile)
+                                        .split("\\r?\\n")));
+            }
+
             stream = Files.walk(testMappingsRootPath, FileVisitOption.FOLLOW_LINKS);
             stream.filter(path -> path.getFileName().toString().equals(TEST_MAPPING))
                     .forEach(
                             path ->
                                     tests.addAll(
-                                            (new TestMapping(path, testMappingsRootPath))
-                                                    .getTests(testGroup)));
+                                            new TestMapping(path, testMappingsRootPath)
+                                                    .getTests(testGroup, disabledTests)));
+
         } catch (IOException e) {
             RuntimeException runtimeException =
                     new RuntimeException(
