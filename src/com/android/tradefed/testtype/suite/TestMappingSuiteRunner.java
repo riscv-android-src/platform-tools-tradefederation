@@ -44,6 +44,11 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
     )
     private String mTestGroup = null;
 
+    /** Special definition in the test mapping structure. */
+    private static final String TEST_MAPPING_INCLUDE_FILTER = "include-filter";
+
+    private static final String TEST_MAPPING_EXCLUDE_FILTER = "exclude-filter";
+
     /**
      * Load the tests configuration that will be run. Each tests is defined by a {@link
      * IConfiguration} and a unique name under which it will report results. There are 2 ways to
@@ -84,21 +89,53 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
             }
 
             // Name of the tests
-            Set<String> testNames = new HashSet<String>();
+            Set<String> testNames = new HashSet<>();
+
+            Set<String> mappingIncludeFilters = new HashSet<>();
+            Set<String> mappingExcludeFilters = new HashSet<>();
+
             // module-arg options compiled from test options for each test.
-            Set<String> moduleArgs = new HashSet<String>();
+            Set<String> moduleArgs = new HashSet<>();
             for (TestInfo test : testsToRun) {
-                testNames.add(test.getName());
+                boolean hasFilters = false;
                 for (TestOption option : test.getOptions()) {
-                    String moduleArg = String.format("%s:%s", test.getName(), option.getName());
-                    if (option.getValue() != null && !option.getValue().isEmpty()) {
-                        moduleArg = String.format("%s:%s", moduleArg, option.getValue());
+                    switch (option.getName()) {
+                            // Handle include and exclude filter at the suite level to hide each
+                            // test runner specific implementation and option names related to filtering
+                        case TEST_MAPPING_INCLUDE_FILTER:
+                            hasFilters = true;
+                            mappingIncludeFilters.add(
+                                    String.format("%s %s", test.getName(), option.getValue()));
+                            break;
+                        case TEST_MAPPING_EXCLUDE_FILTER:
+                            hasFilters = true;
+                            mappingExcludeFilters.add(
+                                    String.format("%s %s", test.getName(), option.getValue()));
+                            break;
+                        default:
+                            String moduleArg =
+                                    String.format("%s:%s", test.getName(), option.getName());
+                            if (option.getValue() != null && !option.getValue().isEmpty()) {
+                                moduleArg = String.format("%s:%s", moduleArg, option.getValue());
+                            }
+                            moduleArgs.add(moduleArg);
+                            break;
                     }
-                    moduleArgs.add(moduleArg);
+                }
+                if (!hasFilters) {
+                    testNames.add(test.getName());
                 }
             }
 
-            setIncludeFilter(testNames);
+            if (mappingIncludeFilters.isEmpty()) {
+                setIncludeFilter(testNames);
+            } else {
+                mappingIncludeFilters.addAll(testNames);
+                setIncludeFilter(mappingIncludeFilters);
+            }
+            if (!mappingExcludeFilters.isEmpty()) {
+                setExcludeFilter(mappingExcludeFilters);
+            }
             addModuleArgs(moduleArgs);
 
             for (TestInfo test : testsToRun) {

@@ -85,11 +85,15 @@ TEST_GROUP_ALL = 'all'
 TEST_MAPPING_IMPORTS = 'imports'
 
 # TradeFed command line args
+TF_INCLUDE_FILTER_OPTION = 'include-filter'
+TF_EXCLUDE_FILTER_OPTION = 'exclude-filter'
 TF_INCLUDE_FILTER = '--include-filter'
+TF_EXCLUDE_FILTER = '--exclude-filter'
 TF_ATEST_INCLUDE_FILTER = '--atest-include-filter'
 TF_ATEST_INCLUDE_FILTER_VALUE_FMT = '{test_name}:{test_filter}'
 TF_MODULE_ARG = '--module-arg'
 TF_MODULE_ARG_VALUE_FMT = '{test_name}:{option_name}:{option_value}'
+TF_SUITE_FILTER_ARG_VALUE_FMT = '"{test_name} {option_value}"'
 
 # Suite Plans
 SUITE_PLANS = frozenset(['cts'])
