@@ -469,6 +469,7 @@ public class Console extends Thread {
                 "%s help:" + LINE_SEPARATOR +
                 "\ti[nvocations]         List all invocation threads" + LINE_SEPARATOR +
                 "\td[evices]             List all detected or known devices" + LINE_SEPARATOR +
+                "\td[devices] all        List all devices including placeholders" + LINE_SEPARATOR +
                 "\tc[ommands]            List all commands currently waiting to be executed" +
                 LINE_SEPARATOR +
                 "\tc[ommands] [pattern]  List all commands matching the pattern and currently " +
@@ -549,9 +550,17 @@ public class Console extends Thread {
                     public void run() {
                         IDeviceManager manager =
                                 GlobalConfiguration.getDeviceManagerInstance();
-                        manager.displayDevicesInfo(new PrintWriter(System.out, true));
+                        manager.displayDevicesInfo(new PrintWriter(System.out, true), false);
                     }
                 }, LIST_PATTERN, "d(?:evices)?");
+        trie.put(new Runnable() {
+            @Override
+            public void run() {
+                IDeviceManager manager =
+                        GlobalConfiguration.getDeviceManagerInstance();
+                manager.displayDevicesInfo(new PrintWriter(System.out, true), true);
+            }
+        }, LIST_PATTERN, "d(?:evices)?", "all");
         trie.put(new Runnable() {
                     @Override
                     public void run() {

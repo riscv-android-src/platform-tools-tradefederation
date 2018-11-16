@@ -210,8 +210,9 @@ public interface IDeviceManager {
      * for commonly used {@link IDeviceSelection} options.
      *
      * @param printWriter the {@link PrintWriter} to output the description to
+     * @param includeStub Whether or not to display stub devices too.
      */
-    public void displayDevicesInfo(PrintWriter printWriter);
+    public void displayDevicesInfo(PrintWriter printWriter, boolean includeStub);
 
     /**
      * Informs the manager that a listener is interested in fastboot state changes.

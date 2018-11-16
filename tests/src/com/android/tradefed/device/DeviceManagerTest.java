@@ -1203,8 +1203,8 @@ public class DeviceManagerTest extends TestCase {
     }
 
     /**
-     * Test that {@link DeviceManager#displayDevicesInfo(PrintWriter)} properly print out the device
-     * info.
+     * Test that {@link DeviceManager#displayDevicesInfo(PrintWriter, boolean)} properly print out
+     * the device info.
      */
     public void testDisplayDevicesInfo() throws Exception {
         setCheckAvailableDeviceExpectations();
@@ -1213,7 +1213,7 @@ public class DeviceManagerTest extends TestCase {
         DeviceManager manager = createDeviceManager(null, mMockIDevice);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PrintWriter pw = new PrintWriter(out);
-        manager.displayDevicesInfo(pw);
+        manager.displayDevicesInfo(pw, false);
         pw.flush();
         verifyMocks();
         assertEquals("Serial  State   Allocation  Product        Variant       Build     Battery  "
