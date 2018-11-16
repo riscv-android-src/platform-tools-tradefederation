@@ -84,6 +84,7 @@ import com.android.tradefed.device.metric.DumpHeapCollectorTest;
 import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.FilePullerLogCollectorTest;
 import com.android.tradefed.device.metric.GraphicsStatsMetricCollectorTest;
+import com.android.tradefed.device.metric.IncidentReportCollectorTest;
 import com.android.tradefed.device.metric.IonHeapInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.MemInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.PagetypeInfoMetricCollectorTest;
@@ -415,6 +416,7 @@ import org.junit.runners.Suite.SuiteClasses;
     FilePullerDeviceMetricCollectorTest.class,
     FilePullerLogCollectorTest.class,
     GraphicsStatsMetricCollectorTest.class,
+    IncidentReportCollectorTest.class,
     IonHeapInfoMetricCollectorTest.class,
     MemInfoMetricCollectorTest.class,
     PagetypeInfoMetricCollectorTest.class,
