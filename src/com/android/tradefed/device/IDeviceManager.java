@@ -192,8 +192,7 @@ public interface IDeviceManager {
     /**
      * Returns a list of DeviceDescriptors for all known devices
      *
-     * @return a list of {@link DeviceDescriptor}
-     * for all known devices
+     * @return a list of {@link DeviceDescriptor} for all known devices
      */
     public List<DeviceDescriptor> listAllDevices();
 
@@ -202,13 +201,13 @@ public interface IDeviceManager {
      *
      * @param serial serial number for the device to get
      * @return the {@link DeviceDescriptor} for the selected device, or null if the serial does not
-     * match a known device.
+     *     match a known device.
      */
     public DeviceDescriptor getDeviceDescriptor(String serial);
 
     /**
-     * Output a user-friendly description containing list of known devices, their state, and
-     * values for commonly used {@link IDeviceSelection} options.
+     * Output a user-friendly description containing list of known devices, their state, and values
+     * for commonly used {@link IDeviceSelection} options.
      *
      * @param printWriter the {@link PrintWriter} to output the description to
      */

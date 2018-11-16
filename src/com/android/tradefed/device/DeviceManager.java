@@ -256,17 +256,18 @@ public class DeviceManager implements IDeviceManager {
         // condition when detecting devices.
         mAdbBridge.addDeviceChangeListener(mManagedDeviceListener);
         if (mDvcMon != null && !mDvcMonRunning) {
-            mDvcMon.setDeviceLister(new DeviceLister() {
-                @Override
-                public List<DeviceDescriptor> listDevices() {
-                    return listAllDevices();
-                }
+            mDvcMon.setDeviceLister(
+                    new DeviceLister() {
+                        @Override
+                        public List<DeviceDescriptor> listDevices() {
+                            return listAllDevices();
+                        }
 
-                @Override
-                public DeviceDescriptor getDeviceDescriptor(String serial) {
-                    return DeviceManager.this.getDeviceDescriptor(serial);
-                }
-            });
+                        @Override
+                        public DeviceDescriptor getDeviceDescriptor(String serial) {
+                            return DeviceManager.this.getDeviceDescriptor(serial);
+                        }
+                    });
             mDvcMon.run();
             mDvcMonRunning = true;
         }
@@ -1050,11 +1051,11 @@ public class DeviceManager implements IDeviceManager {
 
     /**
      * Get the {@link IDeviceSelection} to use to display device info
-     * <p/>
-     * Exposed for unit testing.
+     *
+     * <p>Exposed for unit testing.
      */
     IDeviceSelection getDeviceSelectionOptions() {
-        if(mDeviceSelectionOptions == null) {
+        if (mDeviceSelectionOptions == null) {
             mDeviceSelectionOptions = new DeviceSelectionOptions();
         }
         return mDeviceSelectionOptions;
