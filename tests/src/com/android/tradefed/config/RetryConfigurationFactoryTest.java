@@ -101,6 +101,7 @@ public class RetryConfigurationFactoryTest {
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("suite/apct");
         EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
         mMockLoader.customizeConfiguration(EasyMock.anyObject());
+        mMockLoader.cleanUp();
 
         EasyMock.replay(mMockLoader);
         IConfiguration config =
