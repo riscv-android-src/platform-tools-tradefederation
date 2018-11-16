@@ -35,11 +35,11 @@ import java.util.regex.Pattern;
  */
 public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
 
-    private static final String IPADDRESS_PATTERN =
-            "((^([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\." +
-            "([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\." +
-            "([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\." +
-            "([01]?\\d\\d?|2[0-4]\\d|25[0-5]))|(localhost)){1}";
+    public static final String IPADDRESS_PATTERN =
+            "((^([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\."
+                    + "([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\."
+                    + "([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\."
+                    + "([01]?\\d\\d?|2[0-4]\\d|25[0-5]))|(localhost)){1}";
 
     protected boolean mFastbootEnabled;
     protected IDeviceManager mDeviceManager;
