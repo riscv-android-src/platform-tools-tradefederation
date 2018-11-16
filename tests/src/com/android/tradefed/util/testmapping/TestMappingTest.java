@@ -30,6 +30,7 @@ import org.junit.runners.JUnit4;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -41,6 +42,7 @@ public class TestMappingTest {
     private static final String TEST_DATA_DIR = "testdata";
     private static final String TEST_MAPPING = "TEST_MAPPING";
     private static final String TEST_MAPPINGS_ZIP = "test_mappings.zip";
+    private static final String DISABLED_PRESUBMIT_TESTS = "disabled-presubmit-tests";
 
     /** Test for {@link TestMapping#getTests()} implementation. */
     @Test
@@ -58,13 +60,13 @@ public class TestMappingTest {
                     FileUtil.saveResourceFile(resourceStream, testMappingRootDir, TEST_MAPPING);
             List<TestInfo> tests =
                     new TestMapping(testMappingFile.toPath(), Paths.get(tempDir.getAbsolutePath()))
-                            .getTests("presubmit");
+                            .getTests("presubmit", null);
             assertEquals(2, tests.size());
             assertEquals("test1", tests.get(0).getName());
             assertEquals("suite/stub1", tests.get(1).getName());
             tests =
                     new TestMapping(testMappingFile.toPath(), Paths.get(tempDir.getAbsolutePath()))
-                            .getTests("postsubmit");
+                            .getTests("postsubmit", null);
             assertEquals(4, tests.size());
             assertEquals("test2", tests.get(0).getName());
             TestOption option = tests.get(0).getOptions().get(0);
@@ -74,7 +76,7 @@ public class TestMappingTest {
             assertEquals("instrument", tests.get(1).getName());
             tests =
                     new TestMapping(testMappingFile.toPath(), Paths.get(tempDir.getAbsolutePath()))
-                            .getTests("othertype");
+                            .getTests("othertype", null);
             assertEquals(1, tests.size());
             assertEquals("test3", tests.get(0).getName());
             assertEquals(1, tests.get(0).getSources().size());
@@ -95,7 +97,7 @@ public class TestMappingTest {
             FileUtil.writeToFile("bad format json file", testMappingFile);
             List<TestInfo> tests =
                     new TestMapping(testMappingFile.toPath(), Paths.get(tempDir.getAbsolutePath()))
-                            .getTests("presubmit");
+                            .getTests("presubmit", null);
         } finally {
             FileUtil.recursiveDelete(tempDir);
         }
@@ -116,23 +118,28 @@ public class TestMappingTest {
             srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_2";
             resourceStream = this.getClass().getResourceAsStream(srcFile);
             FileUtil.saveResourceFile(resourceStream, subDir, TEST_MAPPING);
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + DISABLED_PRESUBMIT_TESTS;
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, tempDir, DISABLED_PRESUBMIT_TESTS);
+            List<File> filesToZip =
+                    Arrays.asList(srcDir, new File(tempDir, DISABLED_PRESUBMIT_TESTS));
 
             File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
-            ZipUtil.createZip(srcDir, zipFile);
+            ZipUtil.createZip(filesToZip, zipFile);
             IBuildInfo mockBuildInfo = EasyMock.createMock(IBuildInfo.class);
             EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
 
             EasyMock.replay(mockBuildInfo);
             Set<TestInfo> tests = TestMapping.getTests(mockBuildInfo, "presubmit");
 
-            assertEquals(2, tests.size());
+            assertEquals(1, tests.size());
             Set<String> names = new HashSet<String>();
             for (TestInfo test : tests) {
                 names.add(test.getName());
                 // Make sure the tests for `test1` are merged and no option is kept.
                 assertTrue(test.getOptions().isEmpty());
             }
-            assertTrue(names.contains("suite/stub1"));
+            assertTrue(!names.contains("suite/stub1"));
             assertTrue(names.contains("test1"));
         } finally {
             FileUtil.recursiveDelete(tempDir);
