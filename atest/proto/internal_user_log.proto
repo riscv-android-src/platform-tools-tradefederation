@@ -1,0 +1,37 @@
+syntax = "proto2";
+
+import "proto/common.proto";
+
+// Proto used by Atest CLI Tool for internal Users
+message AtestLogEventInternal {
+
+  // ------------------------
+  // EVENT DEFINITIONS
+  // ------------------------
+  // Occurs immediately upon execution of atest
+  message AtestStartEvent {
+    optional string command_line = 1;
+    repeated string test_references = 2;
+    optional string cwd = 3;
+    optional string os = 4;
+  }
+
+  // Occurs when atest exits for any reason
+  message AtestExitEvent {
+    optional Duration duration = 1;
+    optional int32 exit_code = 2;
+    optional string stacktrace = 3;
+    optional string logs = 4;
+  }
+
+  // ------------------------
+  // FIELDS FOR ATESTLOGEVENT
+  // ------------------------
+  optional string user_key = 1;
+  optional string run_id = 2;
+  optional UserType user_type = 3;
+  oneof event {
+    AtestStartEvent atest_start_event = 4;
+    AtestExitEvent atest_exit_event = 5;
+  }
+}
