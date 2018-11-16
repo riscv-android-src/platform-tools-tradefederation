@@ -333,7 +333,7 @@ public class InstrumentationFileTestTest extends TestCase {
                 EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         // first serial re-run:
-        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 1, 1);
+        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 0, 1);
         // expect test2 to start and finish successfully
         mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
         mMockListener.testEnded(
