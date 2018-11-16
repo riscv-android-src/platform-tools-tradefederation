@@ -91,6 +91,9 @@ public class RetryReschedulerTest {
         mSuite = Mockito.mock(BaseTestSuite.class);
         EasyMock.expect(mRescheduledConfiguration.getTests()).andStubReturn(Arrays.asList(mSuite));
 
+        mMockLoader.cleanUp();
+        EasyMock.expectLastCall();
+
         mMockLoader.customizeConfiguration(EasyMock.anyObject());
         EasyMock.expectLastCall();
 
