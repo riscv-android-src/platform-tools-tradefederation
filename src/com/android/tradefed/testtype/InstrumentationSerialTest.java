@@ -91,7 +91,9 @@ class InstrumentationSerialTest implements IRemoteTest {
             for (TestDescription testToRun : mTests) {
                 InstrumentationTest runner = createInstrumentationTest(mInstrumentationTest);
                 runner.setClassName(testToRun.getClassName());
-                runner.setMethodName(testToRun.getTestName());
+                // We use getTestNameNoParams to avoid attempting re-running individual
+                // parameterized tests. Instead ask the base method to re-run them all.
+                runner.setMethodName(testToRun.getTestNameWithoutParams());
                 // Unset package name if any just in case to avoid conflict with classname.
                 runner.setTestPackageName(null);
                 runTest(runner, listener, testToRun);
@@ -110,11 +112,24 @@ class InstrumentationSerialTest implements IRemoteTest {
                     @Override
                     public void testRunStarted(String name, int numTests, int attemptNumber) {
                         // Make the tracker unaware of attempts to track the current retry attempt
-                        super.testRunStarted(name, numTests, 0);
+                        super.testRunStarted(name, 0, 0);
                     }
                 };
         for (int i=1; i <= FAILED_RUN_TEST_ATTEMPTS; i++) {
-            runner.run(new RetryResultForwarder(i, trackingListener, listener));
+            runner.run(
+                    new RetryResultForwarder(i, trackingListener, listener) {
+                        // Avoid any test count to avoid recounting the tests.
+                        @Override
+                        public void testRunStarted(String runName, int testCount) {
+                            super.testRunStarted(runName, 0);
+                        }
+
+                        @Override
+                        public void testRunStarted(
+                                String runName, int testCount, int attemptNumber) {
+                            super.testRunStarted(runName, 0, attemptNumber);
+                        }
+                    });
             if (trackingListener.getCurrentRunResults().getTestResults().containsKey(testToRun)) {
                 return;
             }
@@ -127,7 +142,8 @@ class InstrumentationSerialTest implements IRemoteTest {
 
     private void markTestAsFailed(
             TestDescription test, TestRunResult testRun, ITestInvocationListener listener) {
-        listener.testRunStarted(testRun.getName(), 1);
+        // Set test count at 0 to avoid re-counting the number of tests.
+        listener.testRunStarted(testRun.getName(), 0);
         listener.testStarted(test);
 
         String message =
