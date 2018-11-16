@@ -18,7 +18,10 @@
       "options": [
         {
           "test-suite-tag": "just_a_name"
-        }
+        },
+	{
+	  "include-filter": "filter.com"
+	}
       ]
     }
   ]
