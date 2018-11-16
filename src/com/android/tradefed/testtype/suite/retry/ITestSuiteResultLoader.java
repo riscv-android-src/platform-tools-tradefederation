@@ -38,4 +38,7 @@ public interface ITestSuiteResultLoader {
      * @param config The {@link IConfiguration} that will be re-run.
      */
     public default void customizeConfiguration(IConfiguration config) {}
+
+    /** Clean up any internal states. */
+    public default void cleanUp() {}
 }
