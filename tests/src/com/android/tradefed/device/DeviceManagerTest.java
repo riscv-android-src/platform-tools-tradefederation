@@ -1175,9 +1175,7 @@ public class DeviceManagerTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Test {@link DeviceManager#getDeviceDescriptor()} returns the device with the given serial
-     */
+    /** Test {@link DeviceManager#getDeviceDescriptor()} returns the device with the given serial */
     public void testGetDeviceDescriptor() throws Exception {
         setCheckAvailableDeviceExpectations();
         setDeviceDescriptorExpectation();
@@ -1205,8 +1203,8 @@ public class DeviceManagerTest extends TestCase {
     }
 
     /**
-     * Test that {@link DeviceManager#displayDevicesInfo(PrintWriter)} properly print out the
-     * device info.
+     * Test that {@link DeviceManager#displayDevicesInfo(PrintWriter)} properly print out the device
+     * info.
      */
     public void testDisplayDevicesInfo() throws Exception {
         setCheckAvailableDeviceExpectations();
