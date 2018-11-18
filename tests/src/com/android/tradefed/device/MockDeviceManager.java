@@ -373,8 +373,15 @@ public class MockDeviceManager implements IDeviceManager {
     /** {@inheritDoc} */
     @Override
     public DeviceDescriptor getDeviceDescriptor(String serial) {
-        return new DeviceDescriptor(serial, false, DeviceAllocationState.Available,
-                "product","productVariant","sdkVersion","buildId","batteryLevel");
+        return new DeviceDescriptor(
+                serial,
+                false,
+                DeviceAllocationState.Available,
+                "product",
+                "productVariant",
+                "sdkVersion",
+                "buildId",
+                "batteryLevel");
     }
 
     @Override

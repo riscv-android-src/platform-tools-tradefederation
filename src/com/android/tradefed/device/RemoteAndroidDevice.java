@@ -26,6 +26,8 @@ import com.android.tradefed.util.RunUtil;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Implementation of a {@link ITestDevice} for a full stack android device connected via
@@ -42,6 +44,9 @@ public class RemoteAndroidDevice extends TestDevice {
     private static final String ADB_SUCCESS_CONNECT_TAG = "connected to";
     private static final String ADB_ALREADY_CONNECTED_TAG = "already";
     private static final String ADB_CONN_REFUSED = "Connection refused";
+
+    private static final Pattern IP_PATTERN =
+            Pattern.compile(ManagedTestDeviceFactory.IPADDRESS_PATTERN);
 
     private File mAdbConnectLogs = null;
 
@@ -145,6 +150,12 @@ public class RemoteAndroidDevice extends TestDevice {
     private boolean checkSerialFormatValid() {
         String[] serial =  getSerialNumber().split(":");
         if (serial.length == 2) {
+            // Check first part is an IP
+            Matcher match = IP_PATTERN.matcher(serial[0]);
+            if (!match.find()) {
+                return false;
+            }
+            // Check second part if a port
             try {
                 Integer.parseInt(serial[1]);
                 return true;

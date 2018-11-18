@@ -256,17 +256,18 @@ public class DeviceManager implements IDeviceManager {
         // condition when detecting devices.
         mAdbBridge.addDeviceChangeListener(mManagedDeviceListener);
         if (mDvcMon != null && !mDvcMonRunning) {
-            mDvcMon.setDeviceLister(new DeviceLister() {
-                @Override
-                public List<DeviceDescriptor> listDevices() {
-                    return listAllDevices();
-                }
+            mDvcMon.setDeviceLister(
+                    new DeviceLister() {
+                        @Override
+                        public List<DeviceDescriptor> listDevices() {
+                            return listAllDevices();
+                        }
 
-                @Override
-                public DeviceDescriptor getDeviceDescriptor(String serial) {
-                    return DeviceManager.this.getDeviceDescriptor(serial);
-                }
-            });
+                        @Override
+                        public DeviceDescriptor getDeviceDescriptor(String serial) {
+                            return DeviceManager.this.getDeviceDescriptor(serial);
+                        }
+                    });
             mDvcMon.run();
             mDvcMonRunning = true;
         }
@@ -463,7 +464,7 @@ public class DeviceManager implements IDeviceManager {
     private void addGceDevices() {
         for (int i = 0; i < mNumRemoteDevicesSupported; i++) {
             addAvailableDevice(
-                    new RemoteAvdIDevice(String.format("%s:%d", GCE_DEVICE_SERIAL_PREFIX, i)));
+                    new RemoteAvdIDevice(String.format("%s-%d", GCE_DEVICE_SERIAL_PREFIX, i)));
         }
     }
 
@@ -1050,11 +1051,11 @@ public class DeviceManager implements IDeviceManager {
 
     /**
      * Get the {@link IDeviceSelection} to use to display device info
-     * <p/>
-     * Exposed for unit testing.
+     *
+     * <p>Exposed for unit testing.
      */
     IDeviceSelection getDeviceSelectionOptions() {
-        if(mDeviceSelectionOptions == null) {
+        if (mDeviceSelectionOptions == null) {
             mDeviceSelectionOptions = new DeviceSelectionOptions();
         }
         return mDeviceSelectionOptions;
