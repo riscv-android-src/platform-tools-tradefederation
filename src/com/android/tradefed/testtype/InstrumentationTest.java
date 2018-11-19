@@ -199,10 +199,13 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
             "Should be an amount that can comfortably fit in memory.")
     private int mMaxLogcatBytes = 500 * 1024; // 500K
 
-    @Option(name = "rerun-from-file", description =
-            "Use test file instead of separate adb commands for each test " +
-            "when re-running instrumentations for tests that failed to run in previous attempts. ")
-    private boolean mReRunUsingTestFile = false;
+    @Option(
+        name = "rerun-from-file",
+        description =
+                "Use test file instead of separate adb commands for each test "
+                        + "when re-running instrumentations for tests that failed to run in previous attempts. "
+    )
+    private boolean mReRunUsingTestFile = true;
 
     @Option(
         name = "rerun-from-file-attempts",
@@ -210,9 +213,11 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     )
     private int mReRunUsingTestFileAttempts = 3;
 
-    @Option(name = "fallback-to-serial-rerun", description =
-            "Rerun tests serially after rerun from file failed.")
-    private boolean mFallbackToSerialRerun = true;
+    @Option(
+        name = "fallback-to-serial-rerun",
+        description = "Rerun tests serially after rerun from file failed."
+    )
+    private boolean mFallbackToSerialRerun = false;
 
     @Option(name = "reboot-before-rerun", description =
             "Reboot a device before re-running instrumentations.")
