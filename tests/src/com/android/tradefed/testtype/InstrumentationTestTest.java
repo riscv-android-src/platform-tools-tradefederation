@@ -124,6 +124,7 @@ public class InstrumentationTestTest {
         mInstrumentationTest.setRunnerName(TEST_RUNNER_VALUE);
         mInstrumentationTest.setDevice(mMockTestDevice);
         mInstrumentationTest.setListInstrumentationParser(mMockListInstrumentationParser);
+        mInstrumentationTest.setReRunUsingTestFile(false);
     }
 
     /** Test normal run scenario. */
