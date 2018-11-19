@@ -26,6 +26,7 @@ import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogRegistry;
@@ -67,11 +68,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * Container for the test run configuration. This class is an helper to prepare and run the tests.
@@ -138,6 +141,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private RetryStrategy mRetryStrategy = RetryStrategy.RETRY_TEST_CASE_FAILURE;
     private boolean mMergeAttempts = true;
 
+    // Token during sharding
+    private Set<TokenProperty> mRequiredTokens = new HashSet<>();
+
     /**
      * Constructor
      *
@@ -173,6 +179,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
         mMultiPreparers.addAll(multiPreparers);
         mPreparersPerDevice = preparersPerDevice;
+
+        // Get the tokens of the module
+        List<String> tokens = configDescriptor.getMetaData(ITestSuite.TOKEN_KEY);
+        if (tokens != null) {
+            for (String token : tokens) {
+                mRequiredTokens.add(TokenProperty.valueOf(token));
+            }
+        }
     }
 
     /**
@@ -786,6 +800,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     /** Returns True if a testRunFailure has been called on the module * */
     public boolean hasModuleFailed() {
         return mIsFailedModule;
+    }
+
+    public Set<TokenProperty> getRequiredTokens() {
+        return mRequiredTokens;
     }
 
     /** {@inheritDoc} */
