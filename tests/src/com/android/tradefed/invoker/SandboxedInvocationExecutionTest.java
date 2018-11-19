@@ -106,6 +106,7 @@ public class SandboxedInvocationExecutionTest {
         mConfig = new Configuration("test", "test");
         mContext = new InvocationContext();
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
+        mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, new BuildInfo());
 
         doReturn(new ByteArrayInputStreamSource("".getBytes())).when(mMockDevice).getLogcat();
     }
