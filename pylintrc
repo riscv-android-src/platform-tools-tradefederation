@@ -7,6 +7,10 @@ disable=
     fixme,no-self-use,
     duplicate-code
 
+[MASTER]
+
+init-hook='import sys, os; sys.path.append(os.getcwd() + '/atest')'
+
 [BASIC]
 
 # Naming hint for method names
