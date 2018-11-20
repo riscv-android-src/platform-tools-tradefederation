@@ -511,8 +511,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     /**
      * Create a wrapper class for the {@link IRemoteTest} which has built-in logic to schedule
-     * multiple test runs for the same module, and have the ability to run testcases in a more
-     * granulated level (a subset of testcases in the module).
+     * multiple test runs for the same module, and have the ability to run testcases at a more
+     * granular level (a subset of testcases in the module).
      *
      * @param test the {@link IRemoteTest} that is being wrapped.
      * @param failureListener a particular listener to collect logs on testFail. Can be null.
