@@ -97,27 +97,18 @@ public class PerfettoPreparer extends BaseTargetPreparer implements ITargetClean
 
             // Write the binary file and push it to the device.
             File tempFile = null;
-            try {
+            try (ByteArrayInputStream byteArray =
+                    new ByteArrayInputStream(traceConfig.toByteArray())) {
                 tempFile = FileUtil.createTempFile("trace", ".pb");
-            } catch (IOException e) {
-                FileUtil.deleteFile(tempFile);
-                fail("Failed to create temporary file", e, device);
-            }
-
-            if (tempFile != null) {
-                try (ByteArrayInputStream byteArray = new ByteArrayInputStream(
-                        traceConfig.toByteArray())) {
-                    FileUtil.writeToFile(byteArray, tempFile);
-                    if (!device.pushFile(tempFile, DEVICE_CONFIG_PATH)) {
-                        fail("Failed to push the perfetto file", null, device);
-                    }
-                } catch (IOException e) {
-                    fail("Failed to write the perfetto binary file", e, device);
-                } finally {
-                    FileUtil.deleteFile(tempFile);
+                FileUtil.writeToFile(byteArray, tempFile);
+                if (!device.pushFile(tempFile, DEVICE_CONFIG_PATH)) {
+                    fail("Failed to push the perfetto file", null, device);
                 }
+            } catch (IOException e) {
+                fail("Failed to write the perfetto binary file", e, device);
+            } finally {
+                FileUtil.deleteFile(tempFile);
             }
-
         }
     }
 
