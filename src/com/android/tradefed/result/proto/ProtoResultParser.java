@@ -52,10 +52,17 @@ public class ProtoResultParser {
     /** The invocation context */
     private IInvocationContext mContext;
 
+    private boolean mQuietParsing = true;
+
     /** Ctor. */
     public ProtoResultParser(ITestInvocationListener listener, boolean reportInvocation) {
         mListener = listener;
         mReportInvocation = reportInvocation;
+    }
+
+    /** Sets whether or not to print when events are received. */
+    public void setQuiet(boolean quiet) {
+        mQuietParsing = quiet;
     }
 
     /**
@@ -155,6 +162,7 @@ public class ProtoResultParser {
             throw new RuntimeException(e);
         }
 
+        log("Received: invocation started proto");
         if (!mReportInvocation) {
             CLog.d("Skipping invocation start reporting.");
             return;
@@ -179,7 +187,7 @@ public class ProtoResultParser {
         } catch (InvalidProtocolBufferException e) {
             throw new RuntimeException(e);
         }
-
+        log("Received: invocation ended proto");
         if (!mReportInvocation) {
             CLog.d("Skipping invocation ended reporting.");
             return;
@@ -195,6 +203,7 @@ public class ProtoResultParser {
     private void handleModuleProto(TestRecord moduleProto) {
         if (moduleProto.hasEndTime()) {
             handleLogs(moduleProto);
+            log("Received: test module ended proto");
             mListener.testModuleEnded();
         } else {
             handleModuleStart(moduleProto);
@@ -206,6 +215,7 @@ public class ProtoResultParser {
         if (!anyDescription.is(Context.class)) {
             throw new RuntimeException("Expected Any description of type Context");
         }
+        log("Received: test module started proto");
         try {
             IInvocationContext moduleContext =
                     InvocationContext.fromProto(anyDescription.unpack(Context.class));
@@ -229,6 +239,7 @@ public class ProtoResultParser {
     }
 
     private void handleTestRunStart(TestRecord runProto) {
+        log("Received: test run started proto");
         if (runProto.getAttemptId() != 0) {
             mListener.testRunStarted(
                     runProto.getTestRecordId(),
@@ -246,6 +257,7 @@ public class ProtoResultParser {
             mListener.testRunFailed(runProto.getDebugInfo().getErrorMessage());
         }
         handleLogs(runProto);
+        log("Received: test run ended proto");
         long elapsedTime =
                 timeStampToMillis(runProto.getEndTime())
                         - timeStampToMillis(runProto.getStartTime());
@@ -260,11 +272,13 @@ public class ProtoResultParser {
         if (testcaseProto.hasEndTime()) {
             handleTestCaseEnd(description, testcaseProto);
         } else {
+            log("Received: test case started proto");
             mListener.testStarted(description, timeStampToMillis(testcaseProto.getStartTime()));
         }
     }
 
     private void handleTestCaseEnd(TestDescription description, TestRecord testcaseProto) {
+        log("Received: test case ended proto");
         switch (testcaseProto.getStatus()) {
             case FAIL:
                 mListener.testFailed(description, testcaseProto.getDebugInfo().getErrorMessage());
@@ -328,6 +342,12 @@ public class ProtoResultParser {
                 continue;
             }
             info.addBuildAttributes(endInvocationInfo.getBuildAttributes());
+        }
+    }
+
+    private void log(String format, Object... obj) {
+        if (!mQuietParsing) {
+            CLog.d(format, obj);
         }
     }
 }
