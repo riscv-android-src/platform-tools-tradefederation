@@ -351,7 +351,8 @@ public class GceManager {
         }
         String remoteFilePath = match.group(2);
         File localTmpFile = FileUtil.createTempFile("bugreport-ssh", ".zip");
-        if (!fetchRemoteFile(gceAvd, options, runUtil, remoteFilePath, localTmpFile)) {
+        if (!RemoteFileUtil.fetchRemoteFile(
+                gceAvd, options, runUtil, REMOTE_FILE_OP_TIMEOUT, remoteFilePath, localTmpFile)) {
             FileUtil.deleteFile(localTmpFile);
             return null;
         }
@@ -392,7 +393,8 @@ public class GceManager {
         CLog.d(pullOutput);
         String remoteFilePath = "./" + new File(deviceFilePath).getName();
         File localTmpFile = FileUtil.createTempFile("bugreport-ssh", ".zip");
-        if (!fetchRemoteFile(gceAvd, options, runUtil, remoteFilePath, localTmpFile)) {
+        if (!RemoteFileUtil.fetchRemoteFile(
+                gceAvd, options, runUtil, REMOTE_FILE_OP_TIMEOUT, remoteFilePath, localTmpFile)) {
             FileUtil.deleteFile(localTmpFile);
             return null;
         }
@@ -417,7 +419,9 @@ public class GceManager {
             IRunUtil runUtil,
             String remoteFilePath,
             LogDataType type) {
-        File remoteFile = fetchRemoteFile(gceAvd, options, runUtil, remoteFilePath);
+        File remoteFile =
+                RemoteFileUtil.fetchRemoteFile(
+                        gceAvd, options, runUtil, REMOTE_FILE_OP_TIMEOUT, remoteFilePath);
         if (remoteFile != null) {
             try (InputStreamSource remoteFileStream = new FileInputStreamSource(remoteFile, true)) {
                 logger.testLog(remoteFile.getName(), type, remoteFileStream);
@@ -442,71 +446,6 @@ public class GceManager {
         // We attempt to get a clean output from our command
         String output = res.getStdout().trim();
         return output;
-    }
-
-    /**
-     * Fetch a remote file in the device or container instance.
-     *
-     * @param gceAvd The {@link GceAvdInfo} that describe the device.
-     * @param options a {@link TestDeviceOptions} describing the device options to be used for the
-     *     GCE device.
-     * @param runUtil a {@link IRunUtil} to execute commands.
-     * @param remoteFilePath The remote path where to find the file.
-     * @param localFile The local {@link File} where the remote file will be pulled
-     * @return True if successful, False otherwise
-     */
-    public static boolean fetchRemoteFile(
-            GceAvdInfo gceAvd,
-            TestDeviceOptions options,
-            IRunUtil runUtil,
-            String remoteFilePath,
-            File localFile) {
-        List<String> scpCmd =
-                GceRemoteCmdFormatter.getScpCommand(
-                        options.getSshPrivateKeyPath(),
-                        null,
-                        options.getInstanceUser(),
-                        gceAvd.hostAndPort().getHostText(),
-                        remoteFilePath,
-                        localFile.getAbsolutePath());
-        CommandResult resScp =
-                runUtil.runTimedCmd(REMOTE_FILE_OP_TIMEOUT, scpCmd.toArray(new String[0]));
-        if (!CommandStatus.SUCCESS.equals(resScp.getStatus())) {
-            CLog.e("issue when fetching file:");
-            CLog.e("%s", resScp.getStderr());
-            return false;
-        } else {
-            return true;
-        }
-    }
-
-    /**
-     * Fetch a remote file in the device or container instance, and name it after the remote file
-     * name.
-     *
-     * @param gceAvd The {@link GceAvdInfo} that describe the device.
-     * @param options a {@link TestDeviceOptions} describing the device options to be used for the
-     *     GCE device.
-     * @param runUtil a {@link IRunUtil} to execute commands.
-     * @param remoteFilePath The remote path where to find the file.
-     * @return The pulled {@link File} or Null if unsuccessful
-     */
-    public static File fetchRemoteFile(
-            GceAvdInfo gceAvd, TestDeviceOptions options, IRunUtil runUtil, String remoteFilePath) {
-        String fileName = new File(remoteFilePath).getName();
-        File localFile = null;
-        try {
-            localFile =
-                    FileUtil.createTempFile(
-                            FileUtil.getBaseName(fileName), FileUtil.getExtension(fileName));
-            if (fetchRemoteFile(gceAvd, options, runUtil, remoteFilePath, localFile)) {
-                return localFile;
-            }
-        } catch (IOException e) {
-            CLog.e(e);
-        }
-        FileUtil.deleteFile(localFile);
-        return null;
     }
 
     /**
