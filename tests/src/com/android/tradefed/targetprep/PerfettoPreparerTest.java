@@ -147,8 +147,7 @@ public class PerfettoPreparerTest {
      * Creates perfetto valid or invalid config text file.
      *
      * @param valid if true create valid perfetto config file.
-     * @return
-     * @throws IOException
+     * @return the created file
      */
     private File createPerfettoFile(boolean valid) throws IOException {
         File tempFile = File.createTempFile("textproto-perfetto-config", ".txt");
