@@ -162,7 +162,7 @@ public class ProtoResultParser {
             throw new RuntimeException(e);
         }
 
-        log("Received: invocation started proto");
+        log("Invocation started proto");
         if (!mReportInvocation) {
             CLog.d("Skipping invocation start reporting.");
             return;
@@ -187,7 +187,7 @@ public class ProtoResultParser {
         } catch (InvalidProtocolBufferException e) {
             throw new RuntimeException(e);
         }
-        log("Received: invocation ended proto");
+        log("Invocation ended proto");
         if (!mReportInvocation) {
             CLog.d("Skipping invocation ended reporting.");
             return;
@@ -203,7 +203,7 @@ public class ProtoResultParser {
     private void handleModuleProto(TestRecord moduleProto) {
         if (moduleProto.hasEndTime()) {
             handleLogs(moduleProto);
-            log("Received: test module ended proto");
+            log("Test module ended proto");
             mListener.testModuleEnded();
         } else {
             handleModuleStart(moduleProto);
@@ -215,7 +215,7 @@ public class ProtoResultParser {
         if (!anyDescription.is(Context.class)) {
             throw new RuntimeException("Expected Any description of type Context");
         }
-        log("Received: test module started proto");
+        log("Test module started proto");
         try {
             IInvocationContext moduleContext =
                     InvocationContext.fromProto(anyDescription.unpack(Context.class));
@@ -239,15 +239,13 @@ public class ProtoResultParser {
     }
 
     private void handleTestRunStart(TestRecord runProto) {
-        log("Received: test run started proto");
+        String id = runProto.getTestRecordId();
+        log("Test run started proto: %s", id);
         if (runProto.getAttemptId() != 0) {
             mListener.testRunStarted(
-                    runProto.getTestRecordId(),
-                    (int) runProto.getNumExpectedChildren(),
-                    (int) runProto.getAttemptId());
+                    id, (int) runProto.getNumExpectedChildren(), (int) runProto.getAttemptId());
         } else {
-            mListener.testRunStarted(
-                    runProto.getTestRecordId(), (int) runProto.getNumExpectedChildren());
+            mListener.testRunStarted(id, (int) runProto.getNumExpectedChildren());
         }
     }
 
@@ -257,7 +255,7 @@ public class ProtoResultParser {
             mListener.testRunFailed(runProto.getDebugInfo().getErrorMessage());
         }
         handleLogs(runProto);
-        log("Received: test run ended proto");
+        log("Test run ended proto: %s", runProto.getTestRecordId());
         long elapsedTime =
                 timeStampToMillis(runProto.getEndTime())
                         - timeStampToMillis(runProto.getStartTime());
@@ -272,23 +270,29 @@ public class ProtoResultParser {
         if (testcaseProto.hasEndTime()) {
             handleTestCaseEnd(description, testcaseProto);
         } else {
-            log("Received: test case started proto");
+            log("Test case started proto: %s", description.toString());
             mListener.testStarted(description, timeStampToMillis(testcaseProto.getStartTime()));
         }
     }
 
     private void handleTestCaseEnd(TestDescription description, TestRecord testcaseProto) {
-        log("Received: test case ended proto");
         switch (testcaseProto.getStatus()) {
             case FAIL:
                 mListener.testFailed(description, testcaseProto.getDebugInfo().getErrorMessage());
+                log(
+                        "Test case failed proto: %s - %s",
+                        description.toString(), testcaseProto.getDebugInfo().getErrorMessage());
                 break;
             case ASSUMPTION_FAILURE:
                 mListener.testAssumptionFailure(
                         description, testcaseProto.getDebugInfo().getTrace());
+                log(
+                        "Test case assumption failure proto: %s - %s",
+                        description.toString(), testcaseProto.getDebugInfo().getTrace());
                 break;
             case IGNORED:
                 mListener.testIgnored(description);
+                log("Test case ignored proto: %s", description.toString());
                 break;
             case PASS:
                 break;
@@ -299,6 +303,7 @@ public class ProtoResultParser {
         }
         handleLogs(testcaseProto);
         HashMap<String, Metric> metrics = new HashMap<>(testcaseProto.getMetrics());
+        log("Test case ended proto: %s", description.toString());
         mListener.testEnded(description, timeStampToMillis(testcaseProto.getEndTime()), metrics);
     }
 
@@ -321,7 +326,7 @@ public class ProtoResultParser {
                                 info.getIsCompressed(),
                                 LogDataType.valueOf(info.getLogType()),
                                 info.getSize());
-                CLog.e("Logging %s from subprocess", entry.getKey());
+                log("Logging %s from subprocess", entry.getKey());
                 logger.logAssociation("subprocess-" + entry.getKey(), file);
             } catch (InvalidProtocolBufferException e) {
                 CLog.e("Couldn't unpack %s as a LogFileInfo", entry.getKey());
