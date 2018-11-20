@@ -665,20 +665,9 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                     test_name=info.test_name, test_filter=test_filter)
                 args.extend([constants.TF_ATEST_INCLUDE_FILTER, filter_arg])
             for option in info.data.get(constants.TI_MODULE_ARG, []):
-                if constants.TF_INCLUDE_FILTER_OPTION == option[0]:
-                    suite_filter = (
-                        constants.TF_SUITE_FILTER_ARG_VALUE_FMT.format(
-                            test_name=info.test_name, option_value=option[1]))
-                    args.extend([constants.TF_INCLUDE_FILTER, suite_filter])
-                elif constants.TF_EXCLUDE_FILTER_OPTION == option[0]:
-                    suite_filter = (
-                        constants.TF_SUITE_FILTER_ARG_VALUE_FMT.format(
-                            test_name=info.test_name, option_value=option[1]))
-                    args.extend([constants.TF_EXCLUDE_FILTER, suite_filter])
-                else:
-                    module_arg = (
-                        constants.TF_MODULE_ARG_VALUE_FMT.format(
-                            test_name=info.test_name, option_name=option[0],
-                            option_value=option[1]))
-                    args.extend([constants.TF_MODULE_ARG, module_arg])
+                module_arg = (
+                    constants.TF_MODULE_ARG_VALUE_FMT.format(
+                        test_name=info.test_name, option_name=option[0],
+                        option_value=option[1]))
+                args.extend([constants.TF_MODULE_ARG, module_arg])
         return args
