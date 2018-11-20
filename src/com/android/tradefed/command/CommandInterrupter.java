@@ -118,7 +118,7 @@ public class CommandInterrupter {
      * Interrupts the current thread if it should be interrupted. Threads are encouraged to
      * periodically call this method in order to throw the right {@link RunInterruptedException}.
      */
-    public void checkInterrupted() {
+    public void checkInterrupted() throws RunInterruptedException {
         Thread thread = Thread.currentThread();
         if (isInterruptible()) {
             String message = mInterruptMessage.remove(thread);
