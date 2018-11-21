@@ -8,7 +8,7 @@
 	<classpathentry kind="src" path="junit"/>
 	<classpathentry kind="src" path="tradefedproto"/>
 	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/tf-remote-client"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/LongevityRunner"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/LongevityHostRunner"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/ddmlib"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/loganalysis"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/platform-annotations"/>
