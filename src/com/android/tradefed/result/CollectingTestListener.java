@@ -63,7 +63,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     private boolean mIsCountDirty = true;
     // Represents the merged test results. This should not be accessed directly since it's only
     // calculated when needed.
-    private List<TestRunResult> mMergedTestRunResults = new ArrayList<>();
+    private final List<TestRunResult> mMergedTestRunResults = new ArrayList<>();
     // Represents the number of tests in each TestStatus state of the merged test results. Indexed
     // by TestStatus.ordinal()
     private int[] mStatusCounts = new int[TestStatus.values().length];
@@ -340,7 +340,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
      */
     public List<TestRunResult> getMergedTestRunResults() {
         computeMergedResults();
-        return mMergedTestRunResults;
+        return new ArrayList<>(mMergedTestRunResults);
     }
 
     /**
@@ -357,16 +357,15 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
      * Computes and stores the merged results and the total status counts since both operations are
      * expensive.
      */
-    private void computeMergedResults() {
+    private synchronized void computeMergedResults() {
         if (!mIsCountDirty) {
             return;
         }
-
-        mMergedTestRunResults = new ArrayList<>(mTestRunResultMap.size());
+        mMergedTestRunResults.clear();
         // Merge results
         if (mTestRunResultMap.isEmpty() && mCurrentTestRunResult.isRunFailure()) {
-            // In case of early failure that is a bit untracked, still add it to the list to not
-            // loose it.
+            // In case of early failure that is a bit untracked, still add it to the list to
+            // not loose it.
             CLog.e("Early failure resulting in no testRunStart. Results might be inconsistent.");
             mMergedTestRunResults.add(mCurrentTestRunResult);
         } else {
