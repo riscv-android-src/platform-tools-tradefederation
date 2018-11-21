@@ -136,16 +136,6 @@ public class CommandOptions implements ICommandOptions {
                             + "invocation context.")
     private UniqueMultiMap<String, String> mInvocationData = new UniqueMultiMap<>();
 
-    /** @deprecated Remove this when all instances have been removed. */
-    @Deprecated
-    @Option(
-        name = "disable-strict-sharding",
-        description =
-                "Whether or not using the IStrictShardableTest interface of tests when sharding. "
-                        + "Temporary option to disable the new sharding logic while being tested."
-    )
-    private boolean mUseTfSharding = true;
-
     public static final String USE_SANDBOX = "use-sandbox";
     public static final String ENABLE_SANDBOX_TEST_MODE = "sandbox-test-mode";
 
