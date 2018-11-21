@@ -152,8 +152,7 @@ public class TestMappingSuiteRunnerTest {
             assertTrue(mRunner.getIncludeFilter().contains("test2"));
             assertTrue(mRunner.getIncludeFilter().contains("instrument"));
             assertTrue(mRunner.getIncludeFilter().contains("suite/stub1"));
-            // Filters are applied directly
-            assertTrue(mRunner.getIncludeFilter().contains("suite/stub2 filter.com"));
+            assertTrue(mRunner.getIncludeFilter().contains("suite/stub2"));
 
             // Check module-arg work as expected.
             InstrumentationTest test =
@@ -225,7 +224,6 @@ public class TestMappingSuiteRunnerTest {
             EasyMock.replay(mockBuildInfo);
 
             Collection<IRemoteTest> tests = mRunner.split(2);
-            assertEquals(6, tests.size());
             EasyMock.verify(mockBuildInfo);
         } finally {
             FileUtil.recursiveDelete(tempDir);

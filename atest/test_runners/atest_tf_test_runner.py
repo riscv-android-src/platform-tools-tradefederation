@@ -314,7 +314,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         """Check Start events and End events. They should be balanced.
 
         If they are not balanced, print the error message in
-        state['last_failed'], then raise TradeFedExitError.
+        state['last_failed']
 
         Args:
             event_name: A string of the event name.
@@ -322,8 +322,6 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             state: A dict of the state of the test run.
             event_stack: A collections.deque(stack) of the events for pairing
                          START and END events.
-        Raises:
-            TradeFedExitError if we doesn't have a balance of START/END events.
         """
         start_event = event_stack.pop() if event_stack else None
         if not start_event or EVENT_PAIRS[start_event] != event_name:
@@ -341,8 +339,10 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                     test_time='',
                     runner_total=None,
                     group_total=state['current_group_total']))
-            raise TradeFedExitError(EVENTS_NOT_BALANCED % (start_event,
-                                                           event_name))
+            # TODO(b/117326576)
+            # Raise TradeFedExitError if EVENTS_NOT_BALANCED happened.
+            # Currently, we are pending on TF to give us more information about
+            # it. Then, we can handle this more elegantly.(b/119239432)
 
     # pylint: disable=too-many-branches
     def _process_event(self, event_name, event_data, reporter, state,
@@ -369,10 +369,15 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             state['current_test'] = None
         elif event_name == EVENT_NAMES['run_started']:
             # Technically there can be more than one run per module.
-            state['current_group_total'] = event_data['testCount']
+            # TODO(b/117326576) We don't reset the test_count if testCount = 0
+            # since it means a test crash and it still in the same test group.
+            # Currently, we are pending on TF to give us more information about
+            # it. Then, we can handle this more elegantly.(b/119239432)
+            if event_data['testCount'] != 0:
+                state['current_group_total'] = event_data['testCount']
+                state['test_count'] = 0
             state['last_failed'] = None
             state['current_test'] = None
-            state['test_count'] = 0
         elif event_name == EVENT_NAMES['test_started']:
             name = TEST_NAME_TEMPLATE % (event_data['className'],
                                          event_data['testName'])
@@ -660,20 +665,9 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                     test_name=info.test_name, test_filter=test_filter)
                 args.extend([constants.TF_ATEST_INCLUDE_FILTER, filter_arg])
             for option in info.data.get(constants.TI_MODULE_ARG, []):
-                if constants.TF_INCLUDE_FILTER_OPTION == option[0]:
-                    suite_filter = (
-                        constants.TF_SUITE_FILTER_ARG_VALUE_FMT.format(
-                            test_name=info.test_name, option_value=option[1]))
-                    args.extend([constants.TF_INCLUDE_FILTER, suite_filter])
-                elif constants.TF_EXCLUDE_FILTER_OPTION == option[0]:
-                    suite_filter = (
-                        constants.TF_SUITE_FILTER_ARG_VALUE_FMT.format(
-                            test_name=info.test_name, option_value=option[1]))
-                    args.extend([constants.TF_EXCLUDE_FILTER, suite_filter])
-                else:
-                    module_arg = (
-                        constants.TF_MODULE_ARG_VALUE_FMT.format(
-                            test_name=info.test_name, option_name=option[0],
-                            option_value=option[1]))
-                    args.extend([constants.TF_MODULE_ARG, module_arg])
+                module_arg = (
+                    constants.TF_MODULE_ARG_VALUE_FMT.format(
+                        test_name=info.test_name, option_name=option[0],
+                        option_value=option[1]))
+                args.extend([constants.TF_MODULE_ARG, module_arg])
         return args
