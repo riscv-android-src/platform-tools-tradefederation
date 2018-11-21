@@ -485,6 +485,30 @@ public class SubprocessEventHelper {
         }
     }
 
+    /** Helper for invocation ended information. */
+    public static class InvocationEndedEventInfo {
+        public Map<String, String> mBuildAttributes;
+
+        public InvocationEndedEventInfo(Map<String, String> buildAttributes) {
+            mBuildAttributes = new HashMap<String, String>(buildAttributes);
+        }
+
+        public InvocationEndedEventInfo(JSONObject jsonObject) throws JSONException {
+            mBuildAttributes = new HashMap<String, String>();
+            Iterator<?> i = jsonObject.keys();
+            while (i.hasNext()) {
+                String key = (String) i.next();
+                mBuildAttributes.put(key, jsonObject.get(key).toString());
+            }
+        }
+
+        @Override
+        public String toString() {
+            JSONObject jsonObject = new JSONObject(mBuildAttributes);
+            return jsonObject.toString();
+        }
+    }
+
     /** Helper for test module started information. */
     public static class TestModuleStartedEventInfo {
         public IInvocationContext mModuleContext;
