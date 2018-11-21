@@ -49,8 +49,23 @@ public class StreamProtoReceiver implements Closeable {
      */
     public StreamProtoReceiver(ITestInvocationListener listener, boolean reportInvocation)
             throws IOException {
+        this(listener, reportInvocation, true);
+    }
+
+    /**
+     * Ctor.
+     *
+     * @param listener the {@link ITestInvocationListener} where to report the results.
+     * @param reportInvocation Whether or not to report the invocation level events.
+     * @param quietParsing Whether or not to let the parser log debug information.
+     * @throws IOException
+     */
+    public StreamProtoReceiver(
+            ITestInvocationListener listener, boolean reportInvocation, boolean quietParsing)
+            throws IOException {
         mListener = listener;
         mParser = new ProtoResultParser(mListener, reportInvocation);
+        mParser.setQuiet(quietParsing);
         mEventReceiver = new EventReceiverThread();
         mEventReceiver.start();
     }
