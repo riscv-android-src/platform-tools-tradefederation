@@ -31,6 +31,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInvocation;
+import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
@@ -329,6 +330,30 @@ public class ModuleDefinitionTest {
                 EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         replayMocks();
         mModule.run(mMockListener);
+        verifyMocks();
+    }
+
+    /** Test that Module definition properly parse tokens out of the configuration description. */
+    @Test
+    public void testParseTokens() throws Exception {
+        Configuration config = new Configuration("", "");
+        ConfigurationDescriptor descriptor = config.getConfigurationDescription();
+        descriptor.addMetaData(ITestSuite.TOKEN_KEY, Arrays.asList("SIM_CARD"));
+        mModule =
+                new ModuleDefinition(
+                        MODULE_NAME,
+                        mTestList,
+                        mMapDeviceTargetPreparer,
+                        mMultiTargetPrepList,
+                        config);
+        mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
+        mModule.getModuleInvocationContext()
+                .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
+        mModule.setBuild(mMockBuildInfo);
+        mModule.setDevice(mMockDevice);
+        replayMocks();
+        assertEquals(1, mModule.getRequiredTokens().size());
+        assertEquals(TokenProperty.SIM_CARD, mModule.getRequiredTokens().iterator().next());
         verifyMocks();
     }
 
