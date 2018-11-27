@@ -289,6 +289,10 @@ public class GceManager {
                             "GCE launcher %s is invalid",
                             getTestDeviceOptions().getAvdDriverBinary()));
         }
+        if (mGceAvdInfo == null) {
+            CLog.d("No instance to shutdown.");
+            return;
+        }
         List<String> gceArgs =
                 ArrayUtil.list(getTestDeviceOptions().getAvdDriverBinary().getAbsolutePath());
         gceArgs.add("delete");
