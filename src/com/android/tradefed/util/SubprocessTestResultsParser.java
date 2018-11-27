@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.util;
 
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -24,6 +25,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.FailedTestEventInfo;
+import com.android.tradefed.util.SubprocessEventHelper.InvocationEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.LogAssociationEventInfo;
@@ -51,6 +53,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -90,6 +93,7 @@ public class SubprocessTestResultsParser implements Closeable {
         public static final String TEST_LOG = "TEST_LOG";
         public static final String LOG_ASSOCIATION = "LOG_ASSOCIATION";
         public static final String INVOCATION_STARTED = "INVOCATION_STARTED";
+        public static final String INVOCATION_ENDED = "INVOCATION_ENDED";
     }
 
     /**
@@ -224,7 +228,8 @@ public class SubprocessTestResultsParser implements Closeable {
         sb.append(StatusKeys.TEST_MODULE_ENDED).append("|");
         sb.append(StatusKeys.TEST_LOG).append("|");
         sb.append(StatusKeys.LOG_ASSOCIATION).append("|");
-        sb.append(StatusKeys.INVOCATION_STARTED);
+        sb.append(StatusKeys.INVOCATION_STARTED).append("|");
+        sb.append(StatusKeys.INVOCATION_ENDED);
         String patt = String.format("(.*)(%s)( )(.*)", sb.toString());
         mPattern = Pattern.compile(patt);
 
@@ -245,6 +250,7 @@ public class SubprocessTestResultsParser implements Closeable {
         mHandlerMap.put(StatusKeys.TEST_LOG, new TestLogEventHandler());
         mHandlerMap.put(StatusKeys.LOG_ASSOCIATION, new LogAssociationEventHandler());
         mHandlerMap.put(StatusKeys.INVOCATION_STARTED, new InvocationStartedEventHandler());
+        mHandlerMap.put(StatusKeys.INVOCATION_ENDED, new InvocationEndedEventHandler());
     }
 
     public void parseFile(File file) {
@@ -474,6 +480,20 @@ public class SubprocessTestResultsParser implements Closeable {
                 mContext.setTestTag(eventStart.mTestTag);
             }
             mStartTime = eventStart.mStartTime;
+        }
+    }
+
+    private class InvocationEndedEventHandler implements EventHandler {
+        @Override
+        public void handleEvent(String eventJson) throws JSONException {
+            JSONObject json = new JSONObject(eventJson);
+            InvocationEndedEventInfo eventEnd = new InvocationEndedEventInfo(json);
+            // Add build attributes to the primary build (the first build
+            // provider of the running configuration).
+            List<IBuildInfo> infos = mContext.getBuildInfos();
+            if (!infos.isEmpty()) {
+                infos.get(0).addBuildAttributes(eventEnd.mBuildAttributes);
+            }
         }
     }
 
