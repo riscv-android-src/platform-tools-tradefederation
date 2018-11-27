@@ -23,6 +23,15 @@ import java.util.List;
 public class GceRemoteCmdFormatter {
 
     /**
+     * SCP can be used to push or pull file depending of the structure of the args. Ensure we can
+     * support both.
+     */
+    public enum ScpMode {
+        PUSH,
+        PULL;
+    }
+
+    /**
      * Utility to create a ssh command for a gce device based on some parameters.
      *
      * @param sshKey the ssh key {@link File}.
@@ -69,6 +78,7 @@ public class GceRemoteCmdFormatter {
      * @param hostName the hostname where to connect to the gce device.
      * @param remoteFile the file to be fetched on the remote gce device.
      * @param localFile the local file where to put the remote file.
+     * @param mode whether we are pushing the local file to the remote or pulling the remote
      * @return a list representing the scp command for a gce device.
      */
     public static List<String> getScpCommand(
@@ -77,7 +87,8 @@ public class GceRemoteCmdFormatter {
             String user,
             String hostName,
             String remoteFile,
-            String localFile) {
+            String localFile,
+            ScpMode mode) {
         List<String> cmd = new ArrayList<>();
         cmd.add("scp");
         cmd.add("-o");
@@ -93,8 +104,13 @@ public class GceRemoteCmdFormatter {
                 cmd.add(op);
             }
         }
-        cmd.add(String.format("%s@%s:%s", user, hostName, remoteFile));
-        cmd.add(localFile);
+        if (ScpMode.PULL.equals(mode)) {
+            cmd.add(String.format("%s@%s:%s", user, hostName, remoteFile));
+            cmd.add(localFile);
+        } else {
+            cmd.add(localFile);
+            cmd.add(String.format("%s@%s:%s", user, hostName, remoteFile));
+        }
         return cmd;
     }
 }
