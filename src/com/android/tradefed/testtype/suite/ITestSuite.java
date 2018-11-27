@@ -32,6 +32,8 @@ import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.shard.token.ITokenRequest;
+import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -90,7 +92,8 @@ public abstract class ITestSuite
                 IRuntimeHintProvider,
                 IMetricCollectorReceiver,
                 IConfigurationReceiver,
-                IReportNotExecuted {
+                IReportNotExecuted,
+                ITokenRequest {
 
     /** The Retry Strategy to be used when re-running some tests. */
     public enum RetryStrategy {
@@ -124,6 +127,7 @@ public abstract class ITestSuite
     public static final String SKIP_HOST_ARCH_CHECK = "skip-host-arch-check";
     public static final String PRIMARY_ABI_RUN = "primary-abi-only";
     public static final String PARAMETER_KEY = "parameter";
+    public static final String TOKEN_KEY = "token";
 
     private static final String PRODUCT_CPU_ABI_KEY = "ro.product.cpu.abi";
 
@@ -905,6 +909,14 @@ public abstract class ITestSuite
      */
     public ModuleDefinition getDirectModule() {
         return mDirectModule;
+    }
+
+    @Override
+    public Set<TokenProperty> getRequiredTokens() {
+        if (mDirectModule == null) {
+            return null;
+        }
+        return mDirectModule.getRequiredTokens();
     }
 
     /**
