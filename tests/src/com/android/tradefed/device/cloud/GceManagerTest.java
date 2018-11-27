@@ -798,67 +798,6 @@ public class GceManagerTest {
         }
     }
 
-    /** Test fetching a remote file via scp. */
-    @Test
-    public void testFetchRemoteFile() throws Exception {
-        GceAvdInfo fakeInfo = new GceAvdInfo("ins-gce", HostAndPort.fromHost("127.0.0.1"));
-        String remotePath = "/home/vsoc-01/cuttlefish_runtime/kernel.log";
-        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq("scp"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("StrictHostKeyChecking=no"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("ServerAliveInterval=10"),
-                                EasyMock.eq("-i"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("root@127.0.0.1:" + remotePath),
-                                EasyMock.anyObject()))
-                .andReturn(res);
-        EasyMock.replay(mMockRunUtil);
-        File resFile = null;
-        try {
-            resFile = GceManager.fetchRemoteFile(fakeInfo, mOptions, mMockRunUtil, remotePath);
-            // The original remote name is used.
-            assertTrue(resFile.getName().startsWith("kernel"));
-        } finally {
-            FileUtil.deleteFile(resFile);
-        }
-        EasyMock.verify(mMockRunUtil);
-    }
-
-    /** Test when fetching a remote file fails. */
-    @Test
-    public void testFetchRemoteFile_fail() throws Exception {
-        GceAvdInfo fakeInfo = new GceAvdInfo("ins-gce", HostAndPort.fromHost("127.0.0.1"));
-        String remotePath = "/home/vsoc-01/cuttlefish_runtime/kernel.log";
-        CommandResult res = new CommandResult(CommandStatus.FAILED);
-        res.setStderr("Failed to fetch file.");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq("scp"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("StrictHostKeyChecking=no"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("ServerAliveInterval=10"),
-                                EasyMock.eq("-i"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("root@127.0.0.1:" + remotePath),
-                                EasyMock.anyObject()))
-                .andReturn(res);
-        EasyMock.replay(mMockRunUtil);
-        File resFile = GceManager.fetchRemoteFile(fakeInfo, mOptions, mMockRunUtil, remotePath);
-        assertNull(resFile);
-        EasyMock.verify(mMockRunUtil);
-    }
-
     /**
      * Test that if the instance bring up reach a timeout but we are able to find a device instance
      * in the logs, we raise it as a failure and attempt to clean up the instance.
