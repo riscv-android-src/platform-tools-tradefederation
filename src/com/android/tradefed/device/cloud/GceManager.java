@@ -32,11 +32,11 @@ import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.GoogleApiClientUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
 import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
@@ -48,8 +48,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.net.HostAndPort;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
@@ -497,51 +495,16 @@ public class GceManager {
     private static Credential createCredential(AcloudConfigParser config, File jsonKeyFile)
             throws GeneralSecurityException, IOException {
         if (jsonKeyFile != null) {
-            return createCredential(jsonKeyFile);
+            return GoogleApiClientUtil.createCredentialFromJsonKeyFile(jsonKeyFile, SCOPES);
         } else if (config.getValueForKey(AcloudKeys.SERVICE_ACCOUNT_JSON_PRIVATE_KEY) != null) {
-            return createCredential(
-                    new File(config.getValueForKey(AcloudKeys.SERVICE_ACCOUNT_JSON_PRIVATE_KEY)));
+            jsonKeyFile =
+                    new File(config.getValueForKey(AcloudKeys.SERVICE_ACCOUNT_JSON_PRIVATE_KEY));
+            return GoogleApiClientUtil.createCredentialFromJsonKeyFile(jsonKeyFile, SCOPES);
         } else {
             String serviceAccount = config.getValueForKey(AcloudKeys.SERVICE_ACCOUNT_NAME);
             String serviceKey = config.getValueForKey(AcloudKeys.SERVICE_ACCOUNT_PRIVATE_KEY);
-            return createCredential(serviceAccount, new File(serviceKey));
-        }
-    }
-
-    /**
-     * Create credentials to interact with the compute project.
-     *
-     * @param serviceAccount The service account name (something@developer.gserviceaccount.com).
-     * @param p12KeyFile The p12 private key to use for secret.
-     * @return The {@link Credential} created.
-     */
-    private static Credential createCredential(String serviceAccount, File p12KeyFile)
-            throws GeneralSecurityException, IOException {
-        return new GoogleCredential.Builder()
-                .setTransport(GoogleNetHttpTransport.newTrustedTransport())
-                .setJsonFactory(JacksonFactory.getDefaultInstance())
-                .setServiceAccountId(serviceAccount)
-                .setServiceAccountScopes(SCOPES)
-                .setServiceAccountPrivateKeyFromP12File(p12KeyFile)
-                .build();
-    }
-
-    /**
-     * Create credentials to interact with the compute project.
-     *
-     * @param jsonKeyFile The json private key to use for secret.
-     * @return The {@link Credential} created.
-     */
-    private static Credential createCredential(File jsonKeyFile)
-            throws IOException, GeneralSecurityException {
-        try {
-            return GoogleCredential.fromStream(
-                            new FileInputStream(jsonKeyFile),
-                            GoogleNetHttpTransport.newTrustedTransport(),
-                            JacksonFactory.getDefaultInstance())
-                    .createScoped(SCOPES);
-        } catch (FileNotFoundException e) {
-            throw new IOException(e.getMessage(), e);
+            return GoogleApiClientUtil.createCredentialFromP12File(
+                    serviceAccount, new File(serviceKey), SCOPES);
         }
     }
 
