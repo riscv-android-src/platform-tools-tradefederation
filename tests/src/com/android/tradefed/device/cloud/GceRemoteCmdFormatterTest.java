@@ -17,6 +17,8 @@ package com.android.tradefed.device.cloud;
 
 import static org.junit.Assert.*;
 
+import com.android.tradefed.device.cloud.GceRemoteCmdFormatter.ScpMode;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -56,7 +58,8 @@ public class GceRemoteCmdFormatterTest {
                         "root",
                         "127.0.0.1",
                         "/sdcard/test",
-                        "/tmp/here");
+                        "/tmp/here",
+                        ScpMode.PULL);
         assertEquals("scp", res.get(0));
         assertEquals("-o", res.get(1));
         assertEquals("UserKnownHostsFile=/dev/null", res.get(2));
