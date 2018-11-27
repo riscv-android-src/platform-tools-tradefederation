@@ -1232,4 +1232,7 @@ public interface INativeDevice {
 
     /** Returns total physical memory size in bytes or -1 in case of internal error */
     public long getTotalMemory();
+
+    /** Returns the current battery level of a device or Null if battery level unavailable. */
+    public Integer getBattery();
 }
