@@ -83,6 +83,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
@@ -4145,6 +4146,27 @@ public class NativeDevice implements IManagedTestDevice {
             return -1;
         }
         return totalMemory * 1024;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Integer getBattery() {
+        if (getIDevice() instanceof StubDevice) {
+            return null;
+        }
+        try {
+            // Use default 5 minutes freshness
+            Future<Integer> batteryFuture = getIDevice().getBattery();
+            // Get cached value or wait up to 500ms for battery level query
+            return batteryFuture.get(500, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException
+                | ExecutionException
+                | java.util.concurrent.TimeoutException e) {
+            CLog.w(
+                    "Failed to query battery level for %s: %s",
+                    getIDevice().getSerialNumber(), e.toString());
+        }
+        return null;
     }
 
     /** Validate that pid is an integer and not empty. */

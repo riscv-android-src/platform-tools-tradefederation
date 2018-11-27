@@ -18,10 +18,7 @@ package com.android.tradefed.device.recovery;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import com.android.ddmlib.IDevice;
 import com.android.tradefed.device.IManagedTestDevice;
-
-import com.google.common.util.concurrent.SettableFuture;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -34,34 +31,27 @@ import org.junit.runners.JUnit4;
 public class BatteryUnavailableDeviceRecoveryTest {
     private BatteryUnavailableDeviceRecovery mRecoverer;
     private IManagedTestDevice mMockDevice;
-    private IDevice mMockIDevice;
 
     @Before
     public void setUp() {
         mRecoverer = new BatteryUnavailableDeviceRecovery();
         mMockDevice = EasyMock.createMock(IManagedTestDevice.class);
-        mMockIDevice = EasyMock.createMock(IDevice.class);
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
     }
 
     @Test
     public void testShouldSkip() {
-        SettableFuture<Integer> battery = SettableFuture.create();
-        battery.set(50);
-        EasyMock.expect(mMockIDevice.getBattery()).andReturn(battery);
-        EasyMock.replay(mMockDevice, mMockIDevice);
+        EasyMock.expect(mMockDevice.getBattery()).andReturn(50);
+        EasyMock.replay(mMockDevice);
         assertTrue(mRecoverer.shouldSkip(mMockDevice));
-        EasyMock.verify(mMockDevice, mMockIDevice);
+        EasyMock.verify(mMockDevice);
     }
 
     @Test
     public void testShouldSkip_recovery() {
-        SettableFuture<Integer> battery = SettableFuture.create();
-        battery.set(null);
-        EasyMock.expect(mMockIDevice.getBattery()).andReturn(battery);
-        EasyMock.replay(mMockDevice, mMockIDevice);
+        EasyMock.expect(mMockDevice.getBattery()).andReturn(null);
+        EasyMock.replay(mMockDevice);
         // Recovery is needed, we don't skip
         assertFalse(mRecoverer.shouldSkip(mMockDevice));
-        EasyMock.verify(mMockDevice, mMockIDevice);
+        EasyMock.verify(mMockDevice);
     }
 }
