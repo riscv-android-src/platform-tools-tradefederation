@@ -168,11 +168,7 @@ public class WifiUtil extends Instrumentation {
             // As a pattern, method implementations below should gather arguments _first_, and then
             // use those arguments so that the system is not left in an inconsistent state if an
             // argument is missing in the middle of an implementation.
-            if ("enableWifi".equals(method)) {
-                result.putBoolean("result", wifiManager.setWifiEnabled(true));
-            } else if ("disableWifi".equals(method)) {
-                result.putBoolean("result", wifiManager.setWifiEnabled(false));
-            } else if ("addOpenNetwork".equals(method)) {
+            if ("addOpenNetwork".equals(method)) {
                 final String ssid = expectString("ssid");
                 final boolean scanSsid = getBoolean("scan_ssid", false);
 
