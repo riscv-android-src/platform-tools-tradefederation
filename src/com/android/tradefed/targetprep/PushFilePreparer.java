@@ -140,7 +140,7 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
             }
             try {
                 // Search the full tests dir if no target dir is available.
-                src = FileUtil.findFile(fileName, mAbi, scanDirs.toArray(new File[] {}));
+                src = FileUtil.findFile(fileName, null, scanDirs.toArray(new File[] {}));
             } catch (IOException e) {
                 CLog.w("Failed to find test files from directory.");
                 src = null;
