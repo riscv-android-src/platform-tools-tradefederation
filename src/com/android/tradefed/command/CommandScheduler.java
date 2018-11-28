@@ -17,7 +17,6 @@
 package com.android.tradefed.command;
 
 import com.android.ddmlib.DdmPreferences;
-import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.command.CommandFileParser.CommandLine;
@@ -100,7 +99,6 @@ import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -750,12 +748,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                         .getDeviceConfigByName(deviceName).getDeviceOptions().getCutoffBattery();
 
                 if (mInvocationContext.getDevice(deviceName) != null && cutoffBattery != null) {
-                    final IDevice device = mInvocationContext.getDevice(deviceName).getIDevice();
-                    int batteryLevel = -1;
-                    try {
-                        batteryLevel = device.getBattery(500, TimeUnit.MILLISECONDS).get();
-                    } catch (InterruptedException | ExecutionException e) {
-                        // fall through
+                    final ITestDevice device = mInvocationContext.getDevice(deviceName);
+                    Integer batteryLevel = device.getBattery();
+                    if (batteryLevel == null) {
+                        return;
                     }
                     CLog.d("device %s: battery level=%d%%", device.getSerialNumber(), batteryLevel);
                     // This logic is based on the assumption that batterLevel will be 0 or -1 if TF

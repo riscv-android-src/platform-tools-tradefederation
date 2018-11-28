@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.invoker;
 
-import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
@@ -60,8 +59,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Default implementation of {@link ITestInvocation}.
@@ -535,26 +532,19 @@ public class TestInvocation implements ITestInvocation {
             if (testDevice == null) {
                 continue;
             }
-            IDevice device = testDevice.getIDevice();
-            if (device == null || device instanceof StubDevice) {
+            Integer batteryLevel = testDevice.getBattery();
+            if (batteryLevel == null) {
+                CLog.v("Failed to get battery level for %s", testDevice.getSerialNumber());
                 continue;
             }
-            try {
-                Integer batteryLevel = device.getBattery(500, TimeUnit.MILLISECONDS).get();
-                CLog.v("%s - %s - %d%%", BATT_TAG, event, batteryLevel);
-                context.getBuildInfo(testDevice)
-                        .addBuildAttribute(
-                                String.format(
-                                        BATTERY_ATTRIBUTE_FORMAT_KEY,
-                                        testDevice.getSerialNumber(),
-                                        event),
-                                batteryLevel.toString());
-                continue;
-            } catch (InterruptedException | ExecutionException e) {
-                // fall through
-            }
-
-            CLog.v("Failed to get battery level for %s", testDevice.getSerialNumber());
+            CLog.v("%s - %s - %d%%", BATT_TAG, event, batteryLevel);
+            context.getBuildInfo(testDevice)
+                    .addBuildAttribute(
+                            String.format(
+                                    BATTERY_ATTRIBUTE_FORMAT_KEY,
+                                    testDevice.getSerialNumber(),
+                                    event),
+                            batteryLevel.toString());
         }
     }
 

@@ -267,6 +267,41 @@ public class PushFilePreparerTest {
         }
     }
 
+    /**
+     * If a folder is found match it first and push it while filtering the abi that are not
+     * considered.
+     */
+    @Test
+    public void testPush_abiDirectory_noBitness() throws Exception {
+        mOptionSetter.setOptionValue("push", "debugger->/data/local/tmp/debugger");
+        mPreparer.setAbi(new Abi("x86", "32"));
+        IDeviceBuildInfo info = new DeviceBuildInfo();
+        File tmpFolder = FileUtil.createTempDir("push-file-tests-dir");
+        try {
+            File debuggerFile = new File(tmpFolder, "target/testcases/debugger/x86/debugger");
+            FileUtil.mkdirsRWX(debuggerFile);
+
+            info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
+            EasyMock.expect(mMockDevice.isDirectory("/data/local/tmp/debugger")).andReturn(false);
+            Capture<Set<String>> capture = new Capture<>();
+            EasyMock.expect(
+                            mMockDevice.pushDir(
+                                    EasyMock.eq(new File(tmpFolder, "target/testcases/debugger")),
+                                    EasyMock.eq("/data/local/tmp/debugger"),
+                                    EasyMock.capture(capture)))
+                    .andReturn(true);
+
+            EasyMock.replay(mMockDevice);
+            mPreparer.setUp(mMockDevice, info);
+            EasyMock.verify(mMockDevice);
+            // The x86 folder was not filtered
+            Set<String> capValue = capture.getValue();
+            assertFalse(capValue.contains("x86"));
+        } finally {
+            FileUtil.recursiveDelete(tmpFolder);
+        }
+    }
+
     /** Test when pushing a directory and the subfolders are abi marked. */
     @Test
     public void testPush_abiDirectory() throws Exception {
