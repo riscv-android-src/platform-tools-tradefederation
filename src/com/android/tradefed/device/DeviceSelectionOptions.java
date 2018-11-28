@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.device;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceManager.FastbootDevice;
@@ -406,13 +407,14 @@ public class DeviceSelectionOptions implements IDeviceSelection {
     }
 
     /**
-     * Helper function used to fetch environment variable. It is essentially a wrapper around
-     * {@link System#getenv(String)} This is done for unit testing purposes.
+     * Helper function used to fetch environment variable. It is essentially a wrapper around {@link
+     * System#getenv(String)} This is done for unit testing purposes.
      *
      * @param name the environment variable to fetch.
      * @return a {@link String} value of the environment variable or null if not available.
      */
-    String fetchEnvironmentVariable(String name) {
+    @VisibleForTesting
+    public String fetchEnvironmentVariable(String name) {
         return System.getenv(name);
     }
 

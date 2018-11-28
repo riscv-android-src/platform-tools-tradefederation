@@ -15,6 +15,13 @@
  */
 package com.android.tradefed.command;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.command.CommandFileParser.CommandLine;
 import com.android.tradefed.command.CommandScheduler.CommandTracker;
@@ -53,13 +60,16 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.keystore.DryRunKeyStore;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
-import junit.framework.TestCase;
-
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -73,10 +83,9 @@ import java.util.List;
 import java.util.Map;
 
 
-/**
- * Unit tests for {@link CommandScheduler}.
- */
-public class CommandSchedulerTest extends TestCase {
+/** Unit tests for {@link CommandScheduler}. */
+@RunWith(JUnit4.class)
+public class CommandSchedulerTest {
 
     private static final long SHORT_WAIT_MS = 100L;
 
@@ -140,19 +149,21 @@ public class CommandSchedulerTest extends TestCase {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
-
+    @Before
+    public void setUp() throws Exception {
         mMockInvocation = EasyMock.createMock(ITestInvocation.class);
         mMockManager = new MockDeviceManager(0);
         mMockConfigFactory = EasyMock.createMock(IConfigurationFactory.class);
         mMockConfiguration = EasyMock.createMock(IConfiguration.class);
         mCommandOptions = new CommandOptions();
-        mDeviceOptions = new DeviceSelectionOptions();
+        // Avoid any issue related to env. variable.
+        mDeviceOptions =
+                new DeviceSelectionOptions() {
+                    @Override
+                    public String fetchEnvironmentVariable(String name) {
+                        return null;
+                    }
+                };
         mMockDeviceConfig = new ArrayList<IDeviceConfiguration>();
         mMockConfigDescriptor = new ConfigurationDescriptor();
         mContext = new InvocationContext();
@@ -161,12 +172,11 @@ public class CommandSchedulerTest extends TestCase {
         // not starting the CommandScheduler yet because test methods need to setup mocks first
     }
 
-    @Override
-    protected void tearDown() throws Exception {
+    @After
+    public void tearDown() throws Exception {
         if (mScheduler != null) {
             mScheduler.shutdown();
         }
-        super.tearDown();
     }
 
     /**
@@ -190,9 +200,8 @@ public class CommandSchedulerTest extends TestCase {
         mMockManager.assertDevicesFreed();
     }
 
-    /**
-     * Test {@link CommandScheduler#run()} when no configs have been added
-     */
+    /** Test {@link CommandScheduler#run()} when no configs have been added */
+    @Test
     public void testRun_empty() throws InterruptedException {
         mMockManager.setNumDevices(1);
         replayMocks();
@@ -206,9 +215,8 @@ public class CommandSchedulerTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Test {@link CommandScheduler#addCommand(String[])} when help mode is specified
-     */
+    /** Test {@link CommandScheduler#addCommand(String[])} when help mode is specified */
+    @Test
     public void testAddConfig_configHelp() throws ConfigurationException {
         String[] args = new String[] {"test"};
         mCommandOptions.setHelpMode(true);
@@ -222,9 +230,8 @@ public class CommandSchedulerTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Test {@link CommandScheduler#addCommand(String[])} when json help mode is specified
-     */
+    /** Test {@link CommandScheduler#addCommand(String[])} when json help mode is specified */
+    @Test
     public void testAddConfig_configJsonHelp() throws ConfigurationException, JSONException {
         String[] args = new String[] {"test"};
         mCommandOptions.setJsonHelpMode(true);
@@ -237,9 +244,8 @@ public class CommandSchedulerTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Test {@link CommandScheduler#run()} when one config has been added
-     */
+    /** Test {@link CommandScheduler#run()} when one config has been added */
+    @Test
     public void testRun_oneConfig() throws Throwable {
         String[] args = new String[] {"test"};
         mMockManager.setNumDevices(2);
@@ -258,6 +264,7 @@ public class CommandSchedulerTest extends TestCase {
      * Test {@link CommandScheduler#removeAllCommands()} for idle case, where command is waiting for
      * device.
      */
+    @Test
     public void testRemoveAllCommands() throws Throwable {
         String[] args = new String[] {"test"};
         mMockManager.setNumDevices(0);
@@ -272,9 +279,8 @@ public class CommandSchedulerTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Test {@link CommandScheduler#run()} when one config has been added in dry-run mode
-     */
+    /** Test {@link CommandScheduler#run()} when one config has been added in dry-run mode */
+    @Test
     public void testRun_dryRun() throws Throwable {
         String[] dryRunArgs = new String[] {"--dry-run"};
         mCommandOptions.setDryRunMode(true);
@@ -303,6 +309,7 @@ public class CommandSchedulerTest extends TestCase {
      * Test {@link CommandScheduler#run()} when one config has been added in noisy-dry-run or
      * dry-run mode the keystore is properly faked by a {@link DryRunKeyStore}.
      */
+    @Test
     public void testRun_dryRun_keystore() throws Throwable {
         mScheduler =
                 new TestableCommandScheduler() {
@@ -326,9 +333,10 @@ public class CommandSchedulerTest extends TestCase {
     }
 
     /**
-     * Test simple case for
-     * {@link CommandScheduler#execCommand(IScheduledInvocationListener, ITestDevice, String[])}
+     * Test simple case for {@link CommandScheduler#execCommand(IScheduledInvocationListener,
+     * ITestDevice, String[])}
      */
+    @Test
     @SuppressWarnings("unchecked")
     public void testExecCommand() throws Throwable {
         String[] args = new String[] {
@@ -400,9 +408,8 @@ public class CommandSchedulerTest extends TestCase {
         return blockResult;
     }
 
-    /**
-     * Test {@link CommandScheduler#run()} when one config has been added in a loop
-     */
+    /** Test {@link CommandScheduler#run()} when one config has been added in a loop */
+    @Test
     public void testRun_oneConfigLoop() throws Throwable {
         String[] args = new String[] {"test"};
         // track if exception occurs on scheduler thread
@@ -448,9 +455,8 @@ public class CommandSchedulerTest extends TestCase {
         }
     }
 
-    /**
-     * Verify that scheduler goes into shutdown mode when a {@link FatalHostError} is thrown.
-     */
+    /** Verify that scheduler goes into shutdown mode when a {@link FatalHostError} is thrown. */
+    @Test
     public void testRun_fatalError() throws Throwable {
         mMockInvocation.invoke((IInvocationContext)EasyMock.anyObject(),
                 (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject(),
@@ -485,9 +491,10 @@ public class CommandSchedulerTest extends TestCase {
 
     /**
      * Test{@link CommandScheduler#run()} when config is matched to a specific device serial number
-     * <p/>
-     * Adds two configs to run, and verify they both run on one device
+     *
+     * <p>Adds two configs to run, and verify they both run on one device
      */
+    @Test
     public void testRun_configSerial() throws Throwable {
         String[] args = new String[] {"test"};
         mMockManager.setNumDevices(2);
@@ -512,9 +519,10 @@ public class CommandSchedulerTest extends TestCase {
     /**
      * Test{@link CommandScheduler#run()} when config is matched to a exclude specific device serial
      * number.
-     * <p/>
-     * Adds two configs to run, and verify they both run on the other device
+     *
+     * <p>Adds two configs to run, and verify they both run on the other device
      */
+    @Test
     public void testRun_configExcludeSerial() throws Throwable {
         String[] args = new String[] {"test"};
         mMockManager.setNumDevices(2);
@@ -537,9 +545,8 @@ public class CommandSchedulerTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Test {@link CommandScheduler#run()} when one config has been rescheduled
-     */
+    /** Test {@link CommandScheduler#run()} when one config has been rescheduled */
+    @Test
     public void testRun_rescheduled() throws Throwable {
         String[] args = new String[] {"test"};
         mMockManager.setNumDevices(2);
@@ -583,8 +590,10 @@ public class CommandSchedulerTest extends TestCase {
 
     /**
      * Simple success case test for {@link CommandScheduler#addCommandFile(String, java.util.List)}
+     *
      * @throws ConfigurationException
      */
+    @Test
     public void testAddCommandFile() throws ConfigurationException {
         // set number of devices to 0 so we can verify command presence
         mMockManager.setNumDevices(0);
@@ -614,6 +623,7 @@ public class CommandSchedulerTest extends TestCase {
      *
      * @throws ConfigurationException
      */
+    @Test
     public void testAddCommandFile_reload() throws ConfigurationException {
         // set number of devices to 0 so we can verify command presence
         mMockManager.setNumDevices(0);
@@ -666,9 +676,8 @@ public class CommandSchedulerTest extends TestCase {
         Assert.assertArrayEquals(cmdFile2Args, cmds.get(1).getArgs());
     }
 
-    /**
-     * Verify attempts to add the same commmand file in reload mode are rejected
-     */
+    /** Verify attempts to add the same commmand file in reload mode are rejected */
+    @Test
     public void testAddCommandFile_twice() throws ConfigurationException {
         // set number of devices to 0 so we can verify command presence
         mMockManager.setNumDevices(0);
@@ -705,9 +714,8 @@ public class CommandSchedulerTest extends TestCase {
         Assert.assertArrayEquals(cmdFile1Args, cmds.get(0).getArgs());
     }
 
-    /**
-     * Test {@link CommandScheduler#shutdown()} when no devices are available.
-     */
+    /** Test {@link CommandScheduler#shutdown()} when no devices are available. */
+    @Test
     public void testShutdown() throws Exception {
         mMockManager.setNumDevices(0);
         mScheduler.start();
@@ -748,9 +756,8 @@ public class CommandSchedulerTest extends TestCase {
         }
     }
 
-    /**
-     * Test that Available device at the end of a test are available to be reselected.
-     */
+    /** Test that Available device at the end of a test are available to be reselected. */
+    @Test
     public void testDeviceReleased() throws Throwable {
         String[] args = new String[] {"test"};
         mMockManager.setNumDevices(1);
@@ -771,6 +778,7 @@ public class CommandSchedulerTest extends TestCase {
      * Test that NOT_AVAILABLE devices at the end of a test are not returned to the selectable
      * devices.
      */
+    @Test
     public void testDeviceReleased_unavailable() throws Throwable {
         String[] args = new String[] {"test"};
         mMockManager.setNumDevicesCustom(1, TestDeviceState.NOT_AVAILABLE, IDevice.class);
@@ -790,6 +798,7 @@ public class CommandSchedulerTest extends TestCase {
     /**
      * Test that only the device NOT_AVAILABLE, selected for invocation is not returned at the end.
      */
+    @Test
     public void testDeviceReleased_unavailableMulti() throws Throwable {
         String[] args = new String[] {"test"};
         mMockManager.setNumDevicesCustom(2, TestDeviceState.NOT_AVAILABLE, IDevice.class);
@@ -806,9 +815,8 @@ public class CommandSchedulerTest extends TestCase {
         assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
     }
 
-    /**
-     * Test that the TCP device NOT available are NOT released.
-     */
+    /** Test that the TCP device NOT available are NOT released. */
+    @Test
     public void testTcpDevice_NotReleased() throws Throwable {
         String[] args = new String[] {"test"};
         mMockManager.setNumDevicesStub(1, TestDeviceState.NOT_AVAILABLE, new TcpDevice("serial"));
@@ -825,9 +833,8 @@ public class CommandSchedulerTest extends TestCase {
         EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
     }
 
-    /**
-     * Test that the TCP device NOT available selected for a run is NOT released.
-     */
+    /** Test that the TCP device NOT available selected for a run is NOT released. */
+    @Test
     public void testTcpDevice_NotReleasedMulti() throws Throwable {
         String[] args = new String[] {"test"};
         mMockManager.setNumDevicesStub(2, TestDeviceState.NOT_AVAILABLE, new TcpDevice("serial"));
@@ -844,9 +851,8 @@ public class CommandSchedulerTest extends TestCase {
         EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
     }
 
-    /**
-     * Test that the Stub device NOT available are NOT released.
-     */
+    /** Test that the Stub device NOT available are NOT released. */
+    @Test
     public void testStubDevice_NotReleased() throws Throwable {
         String[] args = new String[] {"test"};
         IDevice stub = new StubDevice("emulator-5554", true);
@@ -864,9 +870,8 @@ public class CommandSchedulerTest extends TestCase {
         EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
     }
 
-    /**
-     * Test that a device recovery state is reset when returned to the available queue.
-     */
+    /** Test that a device recovery state is reset when returned to the available queue. */
+    @Test
     public void testDeviceRecoveryState() throws Throwable {
         String[] args = new String[] {"test"};
         mMockManager.setNumDevicesCustomRealNoRecovery(1, IDevice.class);
@@ -885,9 +890,8 @@ public class CommandSchedulerTest extends TestCase {
         assertTrue(t.getRecoveryMode().equals(RecoveryMode.AVAILABLE));
     }
 
-    /**
-     * Test that a device that is unresponsive at the end of an invocation is made unavailable.
-     */
+    /** Test that a device that is unresponsive at the end of an invocation is made unavailable. */
+    @Test
     public void testDevice_unresponsive() throws Throwable {
         String[] args = new String[] {"test"};
         mMockManager.setNumDevicesUnresponsive(1);
@@ -906,9 +910,10 @@ public class CommandSchedulerTest extends TestCase {
     }
 
     /**
-     * Test that {@link CommandScheduler#displayCommandQueue(PrintWriter)} is properly printing
-     * the state of a command.
+     * Test that {@link CommandScheduler#displayCommandQueue(PrintWriter)} is properly printing the
+     * state of a command.
      */
+    @Test
     public void testDisplayCommandQueue() throws Throwable {
         String[] args = new String[] {"empty"};
         setCreateConfigExpectations(args, 1);
@@ -931,6 +936,7 @@ public class CommandSchedulerTest extends TestCase {
      * Test that {@link CommandScheduler#dumpCommandsXml(PrintWriter, String)} is properly printing
      * the xml of a command.
      */
+    @Test
     public void testDumpCommandXml() throws Throwable {
         String[] args = new String[] {"empty"};
         OutputStream res = new ByteArrayOutputStream();
@@ -958,6 +964,7 @@ public class CommandSchedulerTest extends TestCase {
      * Test that {@link CommandScheduler#displayCommandsInfo(PrintWriter, String)} is properly
      * printing the command.
      */
+    @Test
     public void testDisplayCommandsInfo() throws Throwable {
         String[] args = new String[] {"empty"};
         setCreateConfigExpectations(args, 1);
@@ -975,9 +982,10 @@ public class CommandSchedulerTest extends TestCase {
     }
 
     /**
-     * Test that {@link CommandScheduler#getInvocationInfo(int)} is properly returning null if
-     * no invocation matching the id.
+     * Test that {@link CommandScheduler#getInvocationInfo(int)} is properly returning null if no
+     * invocation matching the id.
      */
+    @Test
     public void testGetInvocationInfo_null() throws Throwable {
         String[] args = new String[] {"empty", "test"};
         setCreateConfigExpectations(args, 1);
@@ -989,6 +997,7 @@ public class CommandSchedulerTest extends TestCase {
         mScheduler.shutdown();
     }
 
+    @Test
     public void testAllocateDevices() throws Exception {
         String[] args = new String[] {"foo", "test"};
         mMockManager.setNumDevices(1);
@@ -1010,6 +1019,7 @@ public class CommandSchedulerTest extends TestCase {
         return mockConfig;
     }
 
+    @Test
     public void testAllocateDevices_multipleDevices() throws Exception {
         String[] args = new String[] {"foo", "test"};
 
@@ -1028,6 +1038,7 @@ public class CommandSchedulerTest extends TestCase {
         mScheduler.shutdown();
     }
 
+    @Test
     public void testAllocateDevices_multipleDevices_failed() throws Exception {
         String[] args = new String[] {"foo", "test"};
 
@@ -1047,9 +1058,10 @@ public class CommandSchedulerTest extends TestCase {
     }
 
     /**
-     * Test case for execCommand with multiple devices.
-     * {@link CommandScheduler#execCommand(IScheduledInvocationListener, String[])}
+     * Test case for execCommand with multiple devices. {@link
+     * CommandScheduler#execCommand(IScheduledInvocationListener, String[])}
      */
+    @Test
     @SuppressWarnings("unchecked")
     public void testExecCommand_multipleDevices() throws Throwable {
         String[] args = new String[] {
@@ -1080,9 +1092,10 @@ public class CommandSchedulerTest extends TestCase {
     }
 
     /**
-     * Test case for execCommand with multiple devices but fail to allocate some device.
-     * {@link CommandScheduler#execCommand(IScheduledInvocationListener, String[])}
+     * Test case for execCommand with multiple devices but fail to allocate some device. {@link
+     * CommandScheduler#execCommand(IScheduledInvocationListener, String[])}
      */
+    @Test
     public void testExecCommand_multipleDevices_noDevice() throws Throwable {
         String[] args = new String[] {
             "foo"
@@ -1112,6 +1125,7 @@ public class CommandSchedulerTest extends TestCase {
      * Test that when a command runs in the versioned subprocess with --invocation-data option we do
      * not add the attributes again
      */
+    @Test
     public void testExecCommand_versioning() throws Throwable {
         String[] args =
                 new String[] {

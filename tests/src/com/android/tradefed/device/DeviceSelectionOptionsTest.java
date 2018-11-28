@@ -70,7 +70,14 @@ public class DeviceSelectionOptionsTest {
 
     @Before
     public void setUp() throws Exception {
-        mDeviceSelection = new DeviceSelectionOptions();
+        // Avoid any issue related to env. variable.
+        mDeviceSelection =
+                new DeviceSelectionOptions() {
+                    @Override
+                    public String fetchEnvironmentVariable(String name) {
+                        return null;
+                    }
+                };
         mMockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(DEVICE_SERIAL);
         EasyMock.expect(mMockDevice.isEmulator()).andStubReturn(Boolean.FALSE);
@@ -144,7 +151,7 @@ public class DeviceSelectionOptionsTest {
         return new DeviceSelectionOptions() {
             // We don't have the environment variable set, return null.
             @Override
-            String fetchEnvironmentVariable(String name) {
+            public String fetchEnvironmentVariable(String name) {
                 return value;
             }
         };
