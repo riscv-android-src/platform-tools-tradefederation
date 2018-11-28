@@ -986,13 +986,13 @@ public class DeviceManager implements IDeviceManager {
     }
 
     @Override
-    public void displayDevicesInfo(PrintWriter stream) {
+    public void displayDevicesInfo(PrintWriter stream, boolean includeStub) {
         ArrayList<List<String>> displayRows = new ArrayList<List<String>>();
         displayRows.add(Arrays.asList("Serial", "State", "Allocation", "Product", "Variant",
                 "Build", "Battery"));
         List<DeviceDescriptor> deviceList = listAllDevices();
         sortDeviceList(deviceList);
-        addDevicesInfo(displayRows, deviceList);
+        addDevicesInfo(displayRows, deviceList, includeStub);
         new TableFormatter().displayTable(displayRows, stream);
     }
 
@@ -1032,13 +1032,16 @@ public class DeviceManager implements IDeviceManager {
         return mDeviceSelectionOptions;
     }
 
-    private void addDevicesInfo(List<List<String>> displayRows,
-            List<DeviceDescriptor> sortedDeviceList) {
+    private void addDevicesInfo(
+            List<List<String>> displayRows,
+            List<DeviceDescriptor> sortedDeviceList,
+            boolean includeStub) {
         for (DeviceDescriptor desc : sortedDeviceList) {
-            if (desc.isStubDevice() &&
-                    desc.getState() != DeviceAllocationState.Allocated) {
-                // don't add placeholder devices
-                continue;
+            if (!includeStub) {
+                if (desc.isStubDevice() && desc.getState() != DeviceAllocationState.Allocated) {
+                    // don't add placeholder devices
+                    continue;
+                }
             }
             displayRows.add(Arrays.asList(
                     desc.getSerial(),

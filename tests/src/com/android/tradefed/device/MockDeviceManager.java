@@ -354,11 +354,9 @@ public class MockDeviceManager implements IDeviceManager {
         // ignore
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void displayDevicesInfo(PrintWriter stream) {
+    public void displayDevicesInfo(PrintWriter stream, boolean includeStub) {
         // ignore
     }
 
