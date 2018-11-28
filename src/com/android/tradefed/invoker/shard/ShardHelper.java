@@ -26,6 +26,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ShardListener;
 import com.android.tradefed.invoker.ShardMasterResultForwarder;
+import com.android.tradefed.invoker.shard.token.ITokenRequest;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.IShardableListener;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -43,6 +44,7 @@ import com.android.tradefed.util.keystore.KeyStoreException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
@@ -112,7 +114,15 @@ public class ShardHelper implements IShardHelper {
                 CountDownLatch tracker = new CountDownLatch(maxShard);
                 for (int i = 0; i < maxShard; i++) {
                     IConfiguration shardConfig = config.clone();
-                    shardConfig.setTest(new TestsPoolPoller(shardableTests, tracker));
+                    TestsPoolPoller poller = null;
+                    if (config.getCommandOptions().shouldUseTokenSharding()) {
+                        poller =
+                                new TestsPoolPoller(
+                                        shardableTests, extractTokenTests(shardableTests), tracker);
+                    } else {
+                        poller = new TestsPoolPoller(shardableTests, tracker);
+                    }
+                    shardConfig.setTest(poller);
                     rescheduleConfig(shardConfig, config, context, rescheduler, resultCollector);
                 }
             } else {
@@ -121,7 +131,17 @@ public class ShardHelper implements IShardHelper {
                     CLog.i("Rescheduling sharded config...");
                     IConfiguration shardConfig = config.clone();
                     if (config.getCommandOptions().shouldUseDynamicSharding()) {
-                        shardConfig.setTest(new TestsPoolPoller(shardableTests, tracker));
+                        TestsPoolPoller poller = null;
+                        if (config.getCommandOptions().shouldUseTokenSharding()) {
+                            poller =
+                                    new TestsPoolPoller(
+                                            shardableTests,
+                                            extractTokenTests(shardableTests),
+                                            tracker);
+                        } else {
+                            poller = new TestsPoolPoller(shardableTests, tracker);
+                        }
+                        shardConfig.setTest(poller);
                     } else {
                         shardConfig.setTest(testShard);
                     }
@@ -274,4 +294,16 @@ public class ShardHelper implements IShardHelper {
         return shardListeners;
     }
 
+    private Collection<ITokenRequest> extractTokenTests(Collection<IRemoteTest> shardableTests) {
+        List<ITokenRequest> tokenPool = new ArrayList<>();
+        Iterator<IRemoteTest> itr = shardableTests.iterator();
+        while (itr.hasNext()) {
+            IRemoteTest test = itr.next();
+            if (test instanceof ITokenRequest) {
+                tokenPool.add((ITokenRequest) test);
+                shardableTests.remove(test);
+            }
+        }
+        return tokenPool;
+    }
 }
