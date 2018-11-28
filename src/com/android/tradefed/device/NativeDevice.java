@@ -3965,19 +3965,27 @@ public class NativeDevice implements IManagedTestDevice {
     public DeviceDescriptor getDeviceDescriptor() {
         IDeviceSelection selector = new DeviceSelectionOptions();
         IDevice idevice = getIDevice();
-        return new DeviceDescriptor(
-                idevice.getSerialNumber(),
-                idevice instanceof StubDevice,
-                getAllocationState(),
-                getDisplayString(selector.getDeviceProductType(idevice)),
-                getDisplayString(selector.getDeviceProductVariant(idevice)),
-                getDisplayString(idevice.getProperty("ro.build.version.sdk")),
-                getDisplayString(idevice.getProperty("ro.build.id")),
-                getDisplayString(selector.getBatteryLevel(idevice)),
-                getDeviceClass(),
-                getDisplayString(getMacAddress()),
-                getDisplayString(getSimState()),
-                getDisplayString(getSimOperator()));
+        try {
+            return new DeviceDescriptor(
+                    idevice.getSerialNumber(),
+                    idevice instanceof StubDevice,
+                    idevice.getState(),
+                    getAllocationState(),
+                    getDisplayString(selector.getDeviceProductType(idevice)),
+                    getDisplayString(selector.getDeviceProductVariant(idevice)),
+                    getDisplayString(idevice.getProperty("ro.build.version.sdk")),
+                    getDisplayString(idevice.getProperty("ro.build.id")),
+                    getDisplayString(selector.getBatteryLevel(idevice)),
+                    getDeviceClass(),
+                    getDisplayString(getMacAddress()),
+                    getDisplayString(getSimState()),
+                    getDisplayString(getSimOperator()),
+                    idevice);
+        } catch (RuntimeException e) {
+            CLog.e("Exception while building device '%s' description:", getSerialNumber());
+            CLog.e(e);
+        }
+        return null;
     }
 
     /**
