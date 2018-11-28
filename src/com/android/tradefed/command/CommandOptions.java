@@ -112,6 +112,12 @@ public class CommandOptions implements ICommandOptions {
     private Integer mShardIndex;
 
     @Option(
+        name = "enable-token-sharding",
+        description = "Whether or not to allow sharding with the token support enabled."
+    )
+    private boolean mTokenSharding = false;
+
+    @Option(
         name = "skip-pre-device-setup",
         description =
                 "allow TestInvocation to skip calling device.preInvocationSetup. This is for "
@@ -365,6 +371,12 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public void setShardIndex(Integer shardIndex) {
         mShardIndex = shardIndex;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldUseTokenSharding() {
+        return mTokenSharding;
     }
 
     /**

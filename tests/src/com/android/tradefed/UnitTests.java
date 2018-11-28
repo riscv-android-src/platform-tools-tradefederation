@@ -106,6 +106,7 @@ import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecutionTest
 import com.android.tradefed.invoker.shard.ShardHelperTest;
 import com.android.tradefed.invoker.shard.StrictShardHelperTest;
 import com.android.tradefed.invoker.shard.TestsPoolPollerTest;
+import com.android.tradefed.invoker.shard.token.TokenProviderHelperTest;
 import com.android.tradefed.log.FileLoggerTest;
 import com.android.tradefed.log.HistoryLoggerTest;
 import com.android.tradefed.log.LogRegistryTest;
@@ -167,7 +168,6 @@ import com.android.tradefed.targetprep.FlashingResourcesParserTest;
 import com.android.tradefed.targetprep.InstallAllTestZipAppsSetupTest;
 import com.android.tradefed.targetprep.InstallApkSetupTest;
 import com.android.tradefed.targetprep.InstrumentationPreparerTest;
-import com.android.tradefed.targetprep.PerfettoPreparerTest;
 import com.android.tradefed.targetprep.PreloadedClassesPreparerTest;
 import com.android.tradefed.targetprep.PushFilePreparerTest;
 import com.android.tradefed.targetprep.PythonVirtualenvPreparerTest;
@@ -443,6 +443,9 @@ import org.junit.runners.Suite.SuiteClasses;
     StrictShardHelperTest.class,
     TestsPoolPollerTest.class,
 
+    // invoker.shard.token
+    TokenProviderHelperTest.class,
+
     // invoker.sandbox
     ParentSandboxInvocationExecutionTest.class,
 
@@ -507,7 +510,6 @@ import org.junit.runners.Suite.SuiteClasses;
     InstallAllTestZipAppsSetupTest.class,
     InstallApkSetupTest.class,
     InstrumentationPreparerTest.class,
-    PerfettoPreparerTest.class,
     PreloadedClassesPreparerTest.class,
     PushFilePreparerTest.class,
     PythonVirtualenvPreparerTest.class,
