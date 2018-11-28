@@ -184,7 +184,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         List<String> tokens = configDescriptor.getMetaData(ITestSuite.TOKEN_KEY);
         if (tokens != null) {
             for (String token : tokens) {
-                mRequiredTokens.add(TokenProperty.valueOf(token));
+                mRequiredTokens.add(TokenProperty.valueOf(token.toUpperCase()));
             }
         }
     }

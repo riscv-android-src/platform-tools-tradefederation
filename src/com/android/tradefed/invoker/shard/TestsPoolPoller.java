@@ -47,14 +47,16 @@ import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TimeUtil;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+
+import io.netty.util.internal.ConcurrentSet;
 
 /**
  * Tests wrapper that allow to execute all the tests of a pool of tests. Tests can be shared by
@@ -108,7 +110,7 @@ public final class TestsPoolPoller
             CountDownLatch tracker) {
         this(tests, tracker);
         mTokenPool = tokenTests;
-        mRejectedToken = new HashSet<>();
+        mRejectedToken = new ConcurrentSet<>();
     }
 
     /** Returns the first {@link IRemoteTest} from the pool or null if none remaining. */
@@ -155,6 +157,21 @@ public final class TestsPoolPoller
             }
             IRemoteTest test = mGenericPool.iterator().next();
             mGenericPool.remove(test);
+            return test;
+        }
+    }
+
+    private ITokenRequest pollRejectedTokenModule() {
+        if (mTokenPool == null) {
+            return null;
+        }
+        synchronized (mTokenPool) {
+            if (mRejectedToken.isEmpty()) {
+                return null;
+            }
+            ITokenRequest test = mRejectedToken.iterator().next();
+            mRejectedToken.remove(test);
+            mTokenPool.remove(test);
             return test;
         }
     }
@@ -265,6 +282,23 @@ public final class TestsPoolPoller
 
     /** Go through the remaining IRemoteTest and report them as not executed. */
     private void reportNotExecuted(ITestInvocationListener listener) {
+        // Report non-executed token test first
+        ITokenRequest tokenTest = pollRejectedTokenModule();
+        while (tokenTest != null) {
+            if (tokenTest instanceof IReportNotExecuted) {
+                String message =
+                        String.format(
+                                "Test did not run. No token '%s' matching it on any device.",
+                                tokenTest.getRequiredTokens());
+                ((IReportNotExecuted) tokenTest).reportNotExecuted(listener, message);
+            } else {
+                CLog.e(
+                        "Could not report not executed tests from %s.",
+                        tokenTest.getClass().getCanonicalName());
+            }
+            tokenTest = pollRejectedTokenModule();
+        }
+        // Report all remaining test
         IRemoteTest test = poll(true);
         while (test != null) {
             if (test instanceof IReportNotExecuted) {
@@ -355,5 +389,16 @@ public final class TestsPoolPoller
     @Override
     public void setMetricCollectors(List<IMetricCollector> collectors) {
         mCollectors = collectors;
+    }
+
+    /** Get a copy of the pool of token tests. For testing only. */
+    @VisibleForTesting
+    List<ITokenRequest> getTokenPool() {
+        if (mTokenPool == null) {
+            return null;
+        }
+        synchronized (mTokenPool) {
+            return new ArrayList<>(mTokenPool);
+        }
     }
 }
