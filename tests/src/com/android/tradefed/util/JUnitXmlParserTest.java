@@ -41,19 +41,17 @@ public class JUnitXmlParserTest {
     private static final String TEST_PARSE_FILE2 = "JUnitXmlParserTest_error.xml";
 
     private ITestInvocationListener mMockListener;
-    private JUnitXmlParser mParser;
 
     @Before
     public void setUp() {
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
-        mParser = new JUnitXmlParser(mMockListener);
     }
 
     /** Test behavior when data to parse is empty */
     @Test
     public void testEmptyParse() {
         try {
-            mParser.parse(new ByteArrayInputStream(new byte[0]));
+            new JUnitXmlParser(mMockListener).parse(new ByteArrayInputStream(new byte[0]));
             fail("ParseException not thrown");
         } catch (ParseException e) {
             // expected
@@ -63,7 +61,7 @@ public class JUnitXmlParserTest {
     /** Simple success test for xml parsing */
     @Test
     public void testParse() throws ParseException {
-        mMockListener.testRunStarted("suiteName", 3);
+        mMockListener.testRunStarted("runName", 3);
         TestDescription test1 = new TestDescription("PassTest", "testPass");
         mMockListener.testStarted(test1);
         mMockListener.testEnded(test1, new HashMap<String, Metric>());
@@ -80,7 +78,7 @@ public class JUnitXmlParserTest {
 
         mMockListener.testRunEnded(5000L, new HashMap<String, Metric>());
         EasyMock.replay(mMockListener);
-        mParser.parse(extractTestXml(TEST_PARSE_FILE));
+        new JUnitXmlParser("runName", mMockListener).parse(extractTestXml(TEST_PARSE_FILE));
         EasyMock.verify(mMockListener);
     }
 
@@ -105,7 +103,7 @@ public class JUnitXmlParserTest {
 
         mMockListener.testRunEnded(918686L, new HashMap<String, Metric>());
         EasyMock.replay(mMockListener);
-        mParser.parse(extractTestXml(TEST_PARSE_FILE2));
+        new JUnitXmlParser(mMockListener).parse(extractTestXml(TEST_PARSE_FILE2));
         EasyMock.verify(mMockListener);
     }
 
