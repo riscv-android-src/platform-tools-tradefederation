@@ -130,28 +130,18 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         Returns:
             0 if tests succeed, non-zero otherwise.
         """
-        iterations = 1
-        metrics_folder = ''
-        if extra_args.get(constants.PRE_PATCH_ITERATIONS):
-            iterations = extra_args.pop(constants.PRE_PATCH_ITERATIONS)
-            metrics_folder = os.path.join(self.results_dir, 'baseline-metrics')
-        elif extra_args.get(constants.POST_PATCH_ITERATIONS):
-            iterations = extra_args.pop(constants.POST_PATCH_ITERATIONS)
-            metrics_folder = os.path.join(self.results_dir, 'new-metrics')
-        args = self._create_test_args(test_infos)
+        iterations = self._generate_iterations(extra_args)
         reporter.register_unsupported_runner(self.NAME)
 
         ret_code = constants.EXIT_CODE_SUCCESS
         for _ in range(iterations):
-            run_cmd = self._generate_run_command(args, extra_args,
-                                                 metrics_folder)
-            subproc = self.run(run_cmd, output_to_stdout=True)
+            run_cmds = self._generate_run_commands(test_infos, extra_args)
+            subproc = self.run(run_cmds[0], output_to_stdout=True)
             ret_code |= self.wait_for_subprocess(subproc)
         return ret_code
 
     # pylint: disable=broad-except
     # pylint: disable=too-many-locals
-    # pylint: disable=too-many-branches
     def run_tests_pretty(self, test_infos, extra_args, reporter):
         """Run the list of test_infos. See base class for more.
 
@@ -163,34 +153,18 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         Returns:
             0 if tests succeed, non-zero otherwise.
         """
-        iterations = 1
-        metrics_folder = ''
-        if extra_args.get(constants.PRE_PATCH_ITERATIONS):
-            iterations = extra_args.pop(constants.PRE_PATCH_ITERATIONS)
-            metrics_folder = os.path.join(self.results_dir, 'baseline-metrics')
-        elif extra_args.get(constants.POST_PATCH_ITERATIONS):
-            iterations = extra_args.pop(constants.POST_PATCH_ITERATIONS)
-            metrics_folder = os.path.join(self.results_dir, 'new-metrics')
-        args = self._create_test_args(test_infos)
-        # Only need to check one TestInfo to determine if the tests are
-        # configured in TEST_MAPPING.
-        if test_infos[0].from_test_mapping:
-            args.extend(constants.TEST_MAPPING_RESULT_SERVER_ARGS)
-
+        iterations = self._generate_iterations(extra_args)
         ret_code = constants.EXIT_CODE_SUCCESS
         for _ in range(iterations):
             server = self._start_socket_server()
-            run_cmd = self._generate_run_command(args, extra_args,
-                                                 metrics_folder,
-                                                 server.getsockname()[1])
-            subproc = self.run(run_cmd, output_to_stdout=self.is_verbose)
+            run_cmds = self._generate_run_commands(test_infos, extra_args,
+                                                   server.getsockname()[1])
+            subproc = self.run(run_cmds[0], output_to_stdout=self.is_verbose)
             try:
                 signal.signal(signal.SIGINT, self._signal_passer(subproc))
                 conn, addr = self._exec_with_tf_polling(server.accept, subproc)
                 logging.debug('Accepted connection from %s', addr)
                 self._process_connection(conn, reporter)
-                if metrics_folder:
-                    logging.info('Saved metrics in: %s', metrics_folder)
             except Exception as error:
                 # exc_info=1 tells logging to log the stacktrace
                 logging.debug('Caught exception:', exc_info=1)
@@ -523,26 +497,47 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             args_not_supported.append(arg)
         return args_to_append, args_not_supported
 
-    def _generate_run_command(self, args, extra_args, metrics_folder,
-                              port=None):
+    def _generate_metrics_folder(self, extra_args):
+        """Generate metrics folder."""
+        metrics_folder = ''
+        if extra_args.get(constants.PRE_PATCH_ITERATIONS):
+            metrics_folder = os.path.join(self.results_dir, 'baseline-metrics')
+        elif extra_args.get(constants.POST_PATCH_ITERATIONS):
+            metrics_folder = os.path.join(self.results_dir, 'new-metrics')
+        return metrics_folder
+
+    def _generate_iterations(self, extra_args):
+        """Generate iterations."""
+        iterations = 1
+        if extra_args.get(constants.PRE_PATCH_ITERATIONS):
+            iterations = extra_args.pop(constants.PRE_PATCH_ITERATIONS)
+        elif extra_args.get(constants.POST_PATCH_ITERATIONS):
+            iterations = extra_args.pop(constants.POST_PATCH_ITERATIONS)
+        return iterations
+
+    def _generate_run_commands(self, test_infos, extra_args, port=None):
         """Generate a single run command from TestInfos.
 
         Args:
-            args: A list of strings of TF arguments to run the tests.
+            test_infos: A set of TestInfo instances.
             extra_args: A Dict of extra args to append.
-            metrics_folder: A string of the filepath to put metrics.
             port: Optional. An int of the port number to send events to. If
                   None, then subprocess reporter in TF won't try to connect.
 
         Returns:
-            A string that contains the atest tradefed run command.
+            A list that contains the string of atest tradefed run command.
+            Only one command is returned.
         """
+        args = self._create_test_args(test_infos)
+        metrics_folder = self._generate_metrics_folder(extra_args)
+
         # Create a copy of args as more args could be added to the list.
         test_args = list(args)
         if port:
             test_args.extend(['--subprocess-report-port', str(port)])
         if metrics_folder:
             test_args.extend(['--metrics-folder', metrics_folder])
+            logging.info('Saved metrics in: %s', metrics_folder)
         log_level = 'VERBOSE' if self.is_verbose else 'WARN'
         test_args.extend(['--log-level', log_level])
 
@@ -554,7 +549,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
 
         test_args.extend(atest_utils.get_result_server_args())
         self.run_cmd_dict['args'] = ' '.join(test_args)
-        return self._RUN_CMD.format(**self.run_cmd_dict)
+        return [self._RUN_CMD.format(**self.run_cmd_dict)]
 
     def _flatten_test_infos(self, test_infos):
         """Sort and group test_infos by module_name and sort and group filters
@@ -652,8 +647,16 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
 
         Returns: A list of TF arguments to run the tests.
         """
-        test_infos = self._flatten_test_infos(test_infos)
         args = []
+        if not test_infos:
+            return []
+
+        # Only need to check one TestInfo to determine if the tests are
+        # configured in TEST_MAPPING.
+        if test_infos[0].from_test_mapping:
+            args.extend(constants.TEST_MAPPING_RESULT_SERVER_ARGS)
+        test_infos = self._flatten_test_infos(test_infos)
+
         for info in test_infos:
             args.extend([constants.TF_INCLUDE_FILTER, info.test_name])
             filters = set()
