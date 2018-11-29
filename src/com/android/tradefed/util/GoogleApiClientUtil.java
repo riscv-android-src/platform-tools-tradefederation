@@ -15,11 +15,17 @@
  */
 package com.android.tradefed.util;
 
+import com.android.tradefed.log.LogUtil.CLog;
+
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.HttpBackOffUnsuccessfulResponseHandler;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestInitializer;
+import com.google.api.client.http.HttpResponse;
+import com.google.api.client.http.HttpUnsuccessfulResponseHandler;
 import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.client.util.ExponentialBackOff;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -32,7 +38,7 @@ import java.util.Collection;
 public class GoogleApiClientUtil {
 
     public static final String APP_NAME = "tradefed";
-
+  
     /**
      * Create credential from json key file.
      *
@@ -94,5 +100,48 @@ public class GoogleApiClientUtil {
                 request.setReadTimeout(readTimeout);
             }
         };
+    }
+
+    /**
+     * Setup a retry strategy for the provided HttpRequestInitializer. In case of server errors
+     * requests will be automatically retried with an exponential backoff.
+     *
+     * @param initializer - an initializer which will setup a retry strategy.
+     * @return an initializer that will retry failed requests automatically.
+     */
+    public static HttpRequestInitializer configureRetryStrategy(
+            HttpRequestInitializer initializer) {
+        return new HttpRequestInitializer() {
+            @Override
+            public void initialize(HttpRequest request) throws IOException {
+                initializer.initialize(request);
+                request.setUnsuccessfulResponseHandler(new RetryResponseHandler());
+            }
+        };
+    }
+
+    private static class RetryResponseHandler implements HttpUnsuccessfulResponseHandler {
+        // Initial interval to wait before retrying if a request fails.
+        private static final int INITIAL_RETRY_INTERVAL = 1000;
+
+        private final HttpUnsuccessfulResponseHandler backOffHandler;
+
+        public RetryResponseHandler() {
+            backOffHandler =
+                    new HttpBackOffUnsuccessfulResponseHandler(
+                            new ExponentialBackOff.Builder()
+                                    .setInitialIntervalMillis(INITIAL_RETRY_INTERVAL)
+                                    .build());
+        }
+
+        @Override
+        public boolean handleResponse(
+                HttpRequest request, HttpResponse response, boolean supportsRetry)
+                throws IOException {
+            CLog.w(
+                    "Request to %s failed: %d %s",
+                    request.getUrl(), response.getStatusCode(), response.getStatusMessage());
+            return backOffHandler.handleResponse(request, response, supportsRetry);
+        }
     }
 }
