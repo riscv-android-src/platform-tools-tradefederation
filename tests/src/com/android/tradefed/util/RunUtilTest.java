@@ -86,11 +86,8 @@ public class RunUtilTest {
                 CommandResult result,
                 OutputStream stdout,
                 OutputStream stderr,
-                boolean closeStreamAfterRun,
                 String... command) {
-            IRunnableResult real =
-                    super.createRunnableResult(
-                            result, stdout, stderr, closeStreamAfterRun, command);
+            IRunnableResult real = super.createRunnableResult(result, stdout, stderr, command);
             mMockRunnableResult = (RunnableResult) Mockito.spy(real);
             try {
                 if (mShouldThrow) {
