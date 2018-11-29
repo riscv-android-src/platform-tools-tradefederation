@@ -118,7 +118,7 @@ GTF_INT_INFO = test_info.TestInfo(
           constants.TI_REL_CONFIG: GTF_INT_CONFIG})
 
 # Sample test configurations in TEST_MAPPING file.
-TEST_MAPPING_TEST = {'name': MODULE_NAME}
+TEST_MAPPING_TEST = {'name': MODULE_NAME, 'host': True}
 TEST_MAPPING_TEST_WITH_OPTION = {
     'name': CLASS_NAME,
     'options': [
@@ -139,6 +139,10 @@ TEST_MAPPING_TEST_WITH_BAD_OPTION = {
             'arg2': ''
         }
     ]
+}
+TEST_MAPPING_TEST_WITH_BAD_HOST_VALUE = {
+    'name': CLASS_NAME,
+    'host': 'true'
 }
 # Constrants of cc test unittest
 FIND_CC_ONE = ROOT + 'foo/bt/hci/test/pf_test.cc\n'
