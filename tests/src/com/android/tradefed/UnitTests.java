@@ -73,6 +73,7 @@ import com.android.tradefed.device.cloud.GceAvdInfoTest;
 import com.android.tradefed.device.cloud.GceManagerTest;
 import com.android.tradefed.device.cloud.GceRemoteCmdFormatterTest;
 import com.android.tradefed.device.cloud.GceSshTunnelMonitorTest;
+import com.android.tradefed.device.cloud.RemoteFileUtilTest;
 import com.android.tradefed.device.metric.AtraceCollectorTest;
 import com.android.tradefed.device.metric.AtraceRunMetricCollectorTest;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
@@ -398,6 +399,8 @@ import org.junit.runners.Suite.SuiteClasses;
     GceManagerTest.class,
     GceRemoteCmdFormatterTest.class,
     GceSshTunnelMonitorTest.class,
+    RemoteAndroidDeviceTest.class,
+    RemoteFileUtilTest.class,
 
     // device.metric
     AtraceCollectorTest.class,
