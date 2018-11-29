@@ -2,6 +2,7 @@
   "presubmit": [
     {
       "name": "test1",
+      "host": true,
       "options": [
         {
           "include-filter": "some-filter"
