@@ -55,6 +55,7 @@ public class RunUtil implements IRunUtil {
     private Map<String, String> mEnvVariables = new HashMap<String, String>();
     private Set<String> mUnsetEnvVariables = new HashSet<String>();
     private EnvPriority mEnvVariablePriority = EnvPriority.UNSET;
+    private boolean mRedirectStderr = false;
 
     private final CommandInterrupter mInterrupter;
 
@@ -121,6 +122,16 @@ public class RunUtil implements IRunUtil {
             throw new UnsupportedOperationException("Cannot unsetEnvVariable on default RunUtil");
         }
         mUnsetEnvVariables.add(key);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setRedirectStderrToStdout(boolean redirect) {
+        if (this.equals(sDefaultInstance)) {
+            throw new UnsupportedOperationException(
+                    "Cannot setRedirectStderrToStdout on default RunUtil");
+        }
+        mRedirectStderr = redirect;
     }
 
     /**
@@ -199,6 +210,7 @@ public class RunUtil implements IRunUtil {
                 processBuilder.environment().putAll(mEnvVariables);
             }
         }
+        processBuilder.redirectErrorStream(mRedirectStderr);
         return processBuilder.command(commandList);
     }
 
