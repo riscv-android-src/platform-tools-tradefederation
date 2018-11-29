@@ -36,6 +36,7 @@ import java.util.HashMap;
  * @see XmlTestRunListener
  */
 public class JUnitXmlParser extends AbstractXmlParser {
+    private final String mRunName;
     private final ITestInvocationListener mTestListener;
 
     /**
@@ -82,7 +83,8 @@ public class JUnitXmlParser extends AbstractXmlParser {
                 String testCountString = getMandatoryAttribute(name, "tests", attributes);
                 mRunTime = getTimeAttribute(name, TIME_TAG, attributes);
                 int testCount = Integer.parseInt(testCountString);
-                mTestListener.testRunStarted(testSuiteName, testCount);
+                String runName = (mRunName != null) ? mRunName : testSuiteName;
+                mTestListener.testRunStarted(runName, testCount);
             }
             if (TESTCASE_TAG.equalsIgnoreCase(name)) {
                 // start of description of an individual test method - extract out test name and
@@ -190,6 +192,16 @@ public class JUnitXmlParser extends AbstractXmlParser {
      * @param listener the {@link ITestInvocationListener} to forward results to
      */
     public JUnitXmlParser(ITestInvocationListener listener) {
+        mRunName = null;
+        mTestListener = listener;
+    }
+
+    /**
+     * Creates a {@code JUnitXmlParser} that notifies {@code listener}, passing {@code runName}
+     * to {@link ITestInvocationListener#testRunStarted}.
+     */
+    public JUnitXmlParser(String runName, ITestInvocationListener listener) {
+        mRunName = runName;
         mTestListener = listener;
     }
 

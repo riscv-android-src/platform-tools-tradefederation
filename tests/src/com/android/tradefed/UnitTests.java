@@ -72,6 +72,7 @@ import com.android.tradefed.device.cloud.AcloudConfigParserTest;
 import com.android.tradefed.device.cloud.GceAvdInfoTest;
 import com.android.tradefed.device.cloud.GceManagerTest;
 import com.android.tradefed.device.cloud.GceRemoteCmdFormatterTest;
+import com.android.tradefed.device.cloud.GceSshTunnelMonitorTest;
 import com.android.tradefed.device.metric.AtraceCollectorTest;
 import com.android.tradefed.device.metric.AtraceRunMetricCollectorTest;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
@@ -106,6 +107,7 @@ import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecutionTest
 import com.android.tradefed.invoker.shard.ShardHelperTest;
 import com.android.tradefed.invoker.shard.StrictShardHelperTest;
 import com.android.tradefed.invoker.shard.TestsPoolPollerTest;
+import com.android.tradefed.invoker.shard.token.TokenProviderHelperTest;
 import com.android.tradefed.log.FileLoggerTest;
 import com.android.tradefed.log.HistoryLoggerTest;
 import com.android.tradefed.log.LogRegistryTest;
@@ -167,7 +169,6 @@ import com.android.tradefed.targetprep.FlashingResourcesParserTest;
 import com.android.tradefed.targetprep.InstallAllTestZipAppsSetupTest;
 import com.android.tradefed.targetprep.InstallApkSetupTest;
 import com.android.tradefed.targetprep.InstrumentationPreparerTest;
-import com.android.tradefed.targetprep.PerfettoPreparerTest;
 import com.android.tradefed.targetprep.PreloadedClassesPreparerTest;
 import com.android.tradefed.targetprep.PushFilePreparerTest;
 import com.android.tradefed.targetprep.PythonVirtualenvPreparerTest;
@@ -395,6 +396,7 @@ import org.junit.runners.Suite.SuiteClasses;
     GceAvdInfoTest.class,
     GceManagerTest.class,
     GceRemoteCmdFormatterTest.class,
+    GceSshTunnelMonitorTest.class,
 
     // device.metric
     AtraceCollectorTest.class,
@@ -442,6 +444,9 @@ import org.junit.runners.Suite.SuiteClasses;
     ShardHelperTest.class,
     StrictShardHelperTest.class,
     TestsPoolPollerTest.class,
+
+    // invoker.shard.token
+    TokenProviderHelperTest.class,
 
     // invoker.sandbox
     ParentSandboxInvocationExecutionTest.class,
@@ -507,7 +512,6 @@ import org.junit.runners.Suite.SuiteClasses;
     InstallAllTestZipAppsSetupTest.class,
     InstallApkSetupTest.class,
     InstrumentationPreparerTest.class,
-    PerfettoPreparerTest.class,
     PreloadedClassesPreparerTest.class,
     PushFilePreparerTest.class,
     PythonVirtualenvPreparerTest.class,

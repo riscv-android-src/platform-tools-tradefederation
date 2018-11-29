@@ -910,7 +910,7 @@ public abstract class ITestSuite
     public ModuleDefinition getDirectModule() {
         return mDirectModule;
     }
-
+    
     @Override
     public Set<TokenProperty> getRequiredTokens() {
         if (mDirectModule == null) {

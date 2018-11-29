@@ -964,7 +964,10 @@ public class DeviceManager implements IDeviceManager {
             return serialStates;
         }
         for (IManagedTestDevice d : mManagedDeviceList) {
-            DeviceDescriptor desc = buildDeviceDescriptor(d);
+            if (d == null) {
+                continue;
+            }
+            DeviceDescriptor desc = d.getDeviceDescriptor();
             if (desc != null) {
                 serialStates.add(desc);
             }
@@ -975,53 +978,21 @@ public class DeviceManager implements IDeviceManager {
     /** {@inheritDoc} */
     @Override
     public DeviceDescriptor getDeviceDescriptor(String serial) {
-        return buildDeviceDescriptor(mManagedDeviceList.find(serial));
-    }
-
-    /** Creates a DeviceDescriptor from a given IManagedTestDevice */
-    private DeviceDescriptor buildDeviceDescriptor(IManagedTestDevice d) {
-        if (d == null) {
+        IManagedTestDevice device = mManagedDeviceList.find(serial);
+        if (device == null) {
             return null;
         }
-        IDeviceSelection selector = getDeviceSelectionOptions();
-        IDevice idevice = d.getIDevice();
-        DeviceDescriptor descriptor = null;
-        try {
-            descriptor =
-                    new DeviceDescriptor(
-                            idevice.getSerialNumber(),
-                            idevice instanceof StubDevice,
-                            idevice.getState(),
-                            d.getAllocationState(),
-                            getDisplay(selector.getDeviceProductType(idevice)),
-                            getDisplay(selector.getDeviceProductVariant(idevice)),
-                            getDisplay(idevice.getProperty("ro.build.version.sdk")),
-                            getDisplay(idevice.getProperty("ro.build.id")),
-                            getDisplay(selector.getBatteryLevel(idevice)),
-                            d.getDeviceClass(),
-                            getDisplay(d.getMacAddress()),
-                            getDisplay(d.getSimState()),
-                            getDisplay(d.getSimOperator()),
-                            idevice);
-        } catch (RuntimeException e) {
-            CLog.e(e);
-            Map<String, String> information = new HashMap<>();
-            information.put("idevice_type", idevice.getClass().getName());
-            information.put("device_type", d.getClass().getName());
-            information.put("allocation_state", d.getAllocationState().toString());
-            logDeviceEvent(EventType.UNEXPECTED_EXCEPTION, d.getSerialNumber(), information);
-        }
-        return descriptor;
+        return device.getDeviceDescriptor();
     }
 
     @Override
-    public void displayDevicesInfo(PrintWriter stream) {
+    public void displayDevicesInfo(PrintWriter stream, boolean includeStub) {
         ArrayList<List<String>> displayRows = new ArrayList<List<String>>();
         displayRows.add(Arrays.asList("Serial", "State", "Allocation", "Product", "Variant",
                 "Build", "Battery"));
         List<DeviceDescriptor> deviceList = listAllDevices();
         sortDeviceList(deviceList);
-        addDevicesInfo(displayRows, deviceList);
+        addDevicesInfo(displayRows, deviceList, includeStub);
         new TableFormatter().displayTable(displayRows, stream);
     }
 
@@ -1061,13 +1032,16 @@ public class DeviceManager implements IDeviceManager {
         return mDeviceSelectionOptions;
     }
 
-    private void addDevicesInfo(List<List<String>> displayRows,
-            List<DeviceDescriptor> sortedDeviceList) {
+    private void addDevicesInfo(
+            List<List<String>> displayRows,
+            List<DeviceDescriptor> sortedDeviceList,
+            boolean includeStub) {
         for (DeviceDescriptor desc : sortedDeviceList) {
-            if (desc.isStubDevice() &&
-                    desc.getState() != DeviceAllocationState.Allocated) {
-                // don't add placeholder devices
-                continue;
+            if (!includeStub) {
+                if (desc.isStubDevice() && desc.getState() != DeviceAllocationState.Allocated) {
+                    // don't add placeholder devices
+                    continue;
+                }
             }
             displayRows.add(Arrays.asList(
                     desc.getSerial(),
@@ -1079,13 +1053,6 @@ public class DeviceManager implements IDeviceManager {
                     desc.getBatteryLevel())
                     );
         }
-    }
-
-    /**
-     * Return the displayable string for given object
-     */
-    private String getDisplay(Object o) {
-        return o == null ? UNKNOWN_DISPLAY_STRING : o.toString();
     }
 
     /**
@@ -1196,17 +1163,8 @@ public class DeviceManager implements IDeviceManager {
 
     @VisibleForTesting
     void logDeviceEvent(EventType event, String serial) {
-        logDeviceEvent(event, serial, null);
-    }
-
-    /** Helper to log the device events. */
-    @VisibleForTesting
-    void logDeviceEvent(EventType event, String serial, Map<String, String> extraArgs) {
         Map<String, String> args = new HashMap<>();
         args.put("serial", serial);
-        if (extraArgs != null) {
-            args.putAll(extraArgs);
-        }
         LogRegistry.getLogRegistry().logEvent(LogLevel.DEBUG, event, args);
     }
 

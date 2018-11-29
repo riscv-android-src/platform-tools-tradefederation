@@ -30,8 +30,6 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
-import com.google.common.util.concurrent.SettableFuture;
-
 import junit.framework.TestCase;
 
 import org.easymock.Capture;
@@ -402,7 +400,7 @@ public class DeviceManagerTest extends TestCase {
     }
 
     /**
-     * Test {@link DeviceManager#allocateDevice(IDeviceSelection, boolean} when a null device is
+     * Test {@link DeviceManager#allocateDevice(IDeviceSelection, boolean)} when a null device is
      * requested.
      */
     public void testAllocateDevice_nullDevice() {
@@ -1145,17 +1143,23 @@ public class DeviceManagerTest extends TestCase {
      * Helper to set the expectation when a {@link DeviceDescriptor} is expected.
      */
     private void setDeviceDescriptorExpectation() {
-        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
-        EasyMock.expect(mMockTestDevice.getAllocationState())
-                .andReturn(DeviceAllocationState.Available);
-        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.BOARD)).andReturn("hardware_test");
-        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.VARIANT)).andReturn("product_test");
-        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.SDK_VERSION)).andReturn("sdk");
-        EasyMock.expect(mMockIDevice.getProperty("ro.build.id")).andReturn("bid_test");
-        SettableFuture<Integer> future = SettableFuture.create();
-        future.set(50);
-        EasyMock.expect(mMockIDevice.getBattery()).andReturn(future);
-        EasyMock.expect(mMockTestDevice.getDeviceClass()).andReturn("class");
+        DeviceDescriptor descriptor =
+                new DeviceDescriptor(
+                        "serial",
+                        false,
+                        DeviceState.ONLINE,
+                        DeviceAllocationState.Available,
+                        "hardware_test",
+                        "product_test",
+                        "sdk",
+                        "bid_test",
+                        "50",
+                        "class",
+                        MAC_ADDRESS,
+                        SIM_STATE,
+                        SIM_OPERATOR,
+                        null);
+        EasyMock.expect(mMockTestDevice.getDeviceDescriptor()).andReturn(descriptor);
     }
 
     /**
@@ -1175,7 +1179,10 @@ public class DeviceManagerTest extends TestCase {
         verifyMocks();
     }
 
-    /** Test {@link DeviceManager#getDeviceDescriptor()} returns the device with the given serial */
+    /**
+     * Test {@link DeviceManager#getDeviceDescriptor(String)} returns the device with the given
+     * serial.
+     */
     public void testGetDeviceDescriptor() throws Exception {
         setCheckAvailableDeviceExpectations();
         setDeviceDescriptorExpectation();
@@ -1190,8 +1197,8 @@ public class DeviceManagerTest extends TestCase {
     }
 
     /**
-     * Test that {@link DeviceManager#getDeviceDescriptor()} returns null if there are no devices
-     * with the given serial.
+     * Test that {@link DeviceManager#getDeviceDescriptor(String)} returns null if there are no
+     * devices with the given serial.
      */
     public void testGetDeviceDescriptor_noMatch() throws Exception {
         setCheckAvailableDeviceExpectations();
@@ -1203,8 +1210,8 @@ public class DeviceManagerTest extends TestCase {
     }
 
     /**
-     * Test that {@link DeviceManager#displayDevicesInfo(PrintWriter)} properly print out the device
-     * info.
+     * Test that {@link DeviceManager#displayDevicesInfo(PrintWriter, boolean)} properly print out
+     * the device info.
      */
     public void testDisplayDevicesInfo() throws Exception {
         setCheckAvailableDeviceExpectations();
@@ -1213,7 +1220,7 @@ public class DeviceManagerTest extends TestCase {
         DeviceManager manager = createDeviceManager(null, mMockIDevice);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PrintWriter pw = new PrintWriter(out);
-        manager.displayDevicesInfo(pw);
+        manager.displayDevicesInfo(pw, false);
         pw.flush();
         verifyMocks();
         assertEquals("Serial  State   Allocation  Product        Variant       Build     Battery  "
