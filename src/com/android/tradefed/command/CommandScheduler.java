@@ -710,16 +710,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             // If invocation is not currently in an interruptible state we provide a timer
             // after which it will become interruptible.
             // If timeout is 0, we do not enforce future interruption.
-            if (!mInvocationThreadMonitor.isTriggered() && getShutdownTimeout() != 0) {
+            if (getShutdownTimeout() != 0) {
                 RunUtil.getDefault().setInterruptibleInFuture(this, getShutdownTimeout());
             }
             RunUtil.getDefault().interrupt(this, message);
-
-            if (mInvocationThreadMonitor.isTriggered()) {
-                // if we enforce the invocation timeout, we force interrupt the thread.
-                CLog.e("Forcing the interruption.");
-                this.interrupt();
-            }
         }
 
         /**
