@@ -21,12 +21,8 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.atLeast;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.BuildInfoKey;
 import com.android.tradefed.config.ConfigurationException;
@@ -36,6 +32,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.FakeShellOutputReceiver;
 
 import org.junit.After;
 import org.junit.Before;
@@ -46,8 +43,10 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 
 /** Unit tests for {@link HostGTest}. */
 @RunWith(JUnit4.class)
@@ -55,7 +54,7 @@ public class HostGTestTest {
     private File mTestsDir;
     private HostGTest mHostGTest;
     private ITestInvocationListener mMockInvocationListener;
-    private IShellOutputReceiver mMockReceiver;
+    private FakeShellOutputReceiver mFakeReceiver;
     private OptionSetter mSetter;
 
     /** Helper to initialize the object or folder for unittest need. */
@@ -63,12 +62,12 @@ public class HostGTestTest {
     public void setUp() throws Exception {
         mTestsDir = FileUtil.createTempDir("test_folder_for_unittest");
         mMockInvocationListener = Mockito.mock(ITestInvocationListener.class);
-        mMockReceiver = Mockito.mock(IShellOutputReceiver.class);
+        mFakeReceiver = new FakeShellOutputReceiver();
 
         mHostGTest = Mockito.spy(new HostGTest());
         GTestXmlResultParser mockXmlParser = Mockito.mock(GTestXmlResultParser.class);
         when(mHostGTest.createXmlParser(any(), any())).thenReturn(mockXmlParser);
-        when(mHostGTest.createResultParser(any(), any())).thenReturn(mMockReceiver);
+        when(mHostGTest.createResultParser(any(), any())).thenReturn(mFakeReceiver);
 
         mSetter = new OptionSetter(mHostGTest);
     }
@@ -78,27 +77,25 @@ public class HostGTestTest {
         FileUtil.recursiveDelete(mTestsDir);
     }
 
-    /** Helper that verifies all mocks. */
-    private void verifyMocks() {
-        verify(mMockReceiver, atLeast(1)).addOutput(any(), anyInt(), anyInt());
-    }
-
     /**
      * Helper to create a executable script for use in these unit tests.
      *
      * <p>This method will create a executable file for unittest. This executable file is shell
-     * script file. It will echo all arguments to a file like "file.call" when it has be called.
-     * Therefore unittest call get the information form the .call file to determine test success or
-     * not.
+     * script file. It will output all arguments to a file like "file.called" when it has been
+     * called. It will also output to both stdout and stderr. Unit tests can check the .called file
+     * or the test output (or both) to determine test success or not.
      *
      * @param folderName The path where to create.
      * @param fileName The file name you want to create.
-     * @return The file path of "file.call", it is used to check if the file has been called
+     * @return The file path of "file.called", it is used to check if the file has been called
      *     correctly or not.
      */
     private File createTestScript(String folderName, String fileName) throws IOException {
         final Path outputPath = Paths.get(folderName, fileName + ".called");
-        final String script = String.format("echo \"$@\" > %s", outputPath);
+        final String script =
+                String.format(
+                        "echo \"$@\" > %s; echo \"stdout: %s\"; echo \"stderr: %s\" >&2",
+                        outputPath, fileName, fileName);
 
         final Path scriptPath = Paths.get(folderName, fileName);
         createExecutableFile(scriptPath, script);
@@ -184,12 +181,11 @@ public class HostGTestTest {
         File cmd3 = createTestScript(dirPath, "cmd3");
         File cmd4 = createTestScript(dirPath, "cmd4");
 
-        OptionSetter setter = new OptionSetter(mHostGTest);
-        setter.setOptionValue("before-test-cmd", dirPath + File.separator + "cmd1");
-        setter.setOptionValue("before-test-cmd", dirPath + File.separator + "cmd2");
-        setter.setOptionValue("after-test-cmd", dirPath + File.separator + "cmd3");
-        setter.setOptionValue("after-test-cmd", dirPath + File.separator + "cmd4");
-        setter.setOptionValue("module-name", moduleName);
+        mSetter.setOptionValue("before-test-cmd", dirPath + File.separator + "cmd1");
+        mSetter.setOptionValue("before-test-cmd", dirPath + File.separator + "cmd2");
+        mSetter.setOptionValue("after-test-cmd", dirPath + File.separator + "cmd3");
+        mSetter.setOptionValue("after-test-cmd", dirPath + File.separator + "cmd4");
+        mSetter.setOptionValue("module-name", moduleName);
 
         File hostLinkedFolder = createSubFolder("hosttestcases");
         createTestScript(hostLinkedFolder.getAbsolutePath(), moduleName);
@@ -204,7 +200,7 @@ public class HostGTestTest {
         assertTrue(cmd2.exists());
         assertTrue(cmd3.exists());
         assertTrue(cmd4.exists());
-        verifyMocks();
+        assertNotEquals(0, mFakeReceiver.getReceivedOutput().length);
     }
 
     /** Test the run method for host linked folder is set. */
@@ -231,7 +227,7 @@ public class HostGTestTest {
         mHostGTest.run(mMockInvocationListener);
         assertTrue(hostTestcaseExecutedCheckFile.exists());
         assertFalse(testfolderTestcaseCheckExecuted.exists());
-        verifyMocks();
+        assertNotEquals(0, mFakeReceiver.getReceivedOutput().length);
     }
 
     /** Test the run method for host linked folder is not set. */
@@ -257,7 +253,7 @@ public class HostGTestTest {
         mHostGTest.run(mMockInvocationListener);
         assertFalse(hostTestcaseExecutedCheckFile.exists());
         assertTrue(testfolderTestcaseCheckExecuted.exists());
-        verifyMocks();
+        assertNotEquals(0, mFakeReceiver.getReceivedOutput().length);
     }
 
     /** Test can't find testcase. */
@@ -270,7 +266,7 @@ public class HostGTestTest {
         mHostGTest.setBuild(buildInfo);
 
         mHostGTest.run(mMockInvocationListener);
-        verifyMocks();
+        assertNotEquals(0, mFakeReceiver.getReceivedOutput().length);
     }
 
     /** Test the run method for a binary with a suffix. */
@@ -297,7 +293,7 @@ public class HostGTestTest {
         mHostGTest.run(mMockInvocationListener);
         assertTrue(hostTestcaseExecutedCheckFile.exists());
         assertFalse(testfolderTestcaseCheckExecuted.exists());
-        verifyMocks();
+        assertNotEquals(0, mFakeReceiver.getReceivedOutput().length);
     }
 
     /* Test that some command in the test run fails, an exception is thrown and the run stops. */
@@ -337,7 +333,7 @@ public class HostGTestTest {
         String hostLinkedFolderName = "hosttestcases";
         File hostLinkedFolder = createSubFolder(hostLinkedFolderName);
         Path errorScriptPath = Paths.get(hostLinkedFolder.getAbsolutePath(), moduleName);
-        createExecutableFile(errorScriptPath, "exit 1");
+        createExecutableFile(errorScriptPath, "echo 'TEST FAILED'; exit 1");
 
         DeviceBuildInfo buildInfo = new DeviceBuildInfo();
         buildInfo.setFile(BuildInfoKey.BuildInfoFileKey.HOST_LINKED_DIR, hostLinkedFolder, "0.0");
@@ -346,7 +342,8 @@ public class HostGTestTest {
         mSetter.setOptionValue("module-name", moduleName);
 
         mHostGTest.run(mMockInvocationListener);
-        verifyMocks();
+        String testOutput = new String(mFakeReceiver.getReceivedOutput(), StandardCharsets.UTF_8);
+        assertEquals("TEST FAILED\n", testOutput);
     }
 
     /* Test that if the test module exits with a non-zero code other than 1, an exception is thrown
@@ -357,7 +354,7 @@ public class HostGTestTest {
         String hostLinkedFolderName = "hosttestcases";
         File hostLinkedFolder = createSubFolder(hostLinkedFolderName);
         Path errorScriptPath = Paths.get(hostLinkedFolder.getAbsolutePath(), moduleName);
-        createExecutableFile(errorScriptPath, "exit 2");
+        createExecutableFile(errorScriptPath, "echo 'TEST BLOWING UP'; exit 2");
 
         DeviceBuildInfo buildInfo = new DeviceBuildInfo();
         buildInfo.setFile(BuildInfoKey.BuildInfoFileKey.HOST_LINKED_DIR, hostLinkedFolder, "0.0");
@@ -371,6 +368,27 @@ public class HostGTestTest {
         } catch (RuntimeException e) {
             // Expected exception
         }
-        verifyMocks();
+        assertNotEquals(0, mFakeReceiver.getReceivedOutput().length);
+    }
+
+    @Test
+    public void testBothStdoutAndStderrCollected() throws Exception {
+        String moduleName = "hello_world_test";
+        String hostLinkedFolderName = "hosttestcases";
+        File hostLinkedFolder = createSubFolder(hostLinkedFolderName);
+        File hostTestcaseExecutedCheckFile =
+                createTestScript(hostLinkedFolder.getAbsolutePath(), moduleName);
+
+        DeviceBuildInfo buildInfo = new DeviceBuildInfo();
+        buildInfo.setFile(BuildInfoKey.BuildInfoFileKey.HOST_LINKED_DIR, hostLinkedFolder, "0.0");
+        mHostGTest.setBuild(buildInfo);
+
+        mSetter.setOptionValue("module-name", moduleName);
+        mHostGTest.run(mMockInvocationListener);
+        assertTrue(hostTestcaseExecutedCheckFile.exists());
+
+        String expected = String.format("stdout: %s\nstderr: %s\n", moduleName, moduleName);
+        String testOutput = new String(mFakeReceiver.getReceivedOutput(), StandardCharsets.UTF_8);
+        assertEquals(expected, testOutput);
     }
 }

@@ -337,7 +337,7 @@ public class RunUtilTest {
             fail("Failed to create output files: " + e.getMessage());
         }
         RunUtil spyUtil = new SpyRunUtil(false);
-        String[] command = {"echo", "TEST"};
+        String[] command = {"unused", "cmd"};
         CommandResult result =
                 spyUtil.runTimedCmd(LONG_TIMEOUT_MS, stdoutStream, stderrStream, command);
         assertEquals(CommandStatus.SUCCESS, result.getStatus());
@@ -348,8 +348,8 @@ public class RunUtilTest {
         assertTrue(stdout.exists());
         assertTrue(stderr.exists());
         try {
-            assertEquals("TEST\n", FileUtil.readStringFromFile(stdout));
-            assertEquals("", FileUtil.readStringFromFile(stderr));
+            assertEquals("TEST STDOUT\n", FileUtil.readStringFromFile(stdout));
+            assertEquals("TEST STDERR\n", FileUtil.readStringFromFile(stderr));
         } catch (IOException e) {
             fail(e.getMessage());
         } finally {
@@ -366,11 +366,11 @@ public class RunUtilTest {
     @Test
     public void testRuntimedCmd_regularOutput_fileNull() {
         RunUtil spyUtil = new SpyRunUtil(false);
-        String[] command = {"echo", "TEST"};
+        String[] command = {"unused", "cmd"};
         CommandResult result = spyUtil.runTimedCmd(LONG_TIMEOUT_MS, null, null, command);
         assertEquals(CommandStatus.SUCCESS, result.getStatus());
-        assertEquals(result.getStdout(), "TEST\n");
-        assertEquals(result.getStderr(), "");
+        assertEquals(result.getStdout(), "TEST STDOUT\n");
+        assertEquals(result.getStderr(), "TEST STDERR\n");
     }
 
     /**
@@ -394,7 +394,7 @@ public class RunUtilTest {
             fail("Failed to create output files: " + e.getMessage());
         }
         RunUtil spyUtil = new SpyRunUtil(false);
-        String[] command = {"echo", "TEST"};
+        String[] command = {"unused", "cmd"};
         CommandResult result =
                 spyUtil.runTimedCmd(LONG_TIMEOUT_MS, stdoutStream, stderrStream, command);
         try {
@@ -405,8 +405,8 @@ public class RunUtilTest {
                     result.getStderr(), "redirected to " + stderrStream.getClass().getSimpleName());
             assertTrue(stdout.exists());
             assertTrue(stderr.exists());
-            assertEquals("TEST\n", FileUtil.readStringFromFile(stdout));
-            assertEquals("", FileUtil.readStringFromFile(stderr));
+            assertEquals("TEST STDOUT\n", FileUtil.readStringFromFile(stdout));
+            assertEquals("TEST STDERR\n", FileUtil.readStringFromFile(stderr));
         } catch (IOException e) {
             fail(e.getMessage());
         } finally {
@@ -478,9 +478,23 @@ public class RunUtilTest {
         assertEquals(2, (int) result.getExitCode());
     }
 
+    @Test
+    public void testSetRedirectStderrToStdout() {
+        RunUtil testRunUtil = new RunUtil();
+        testRunUtil.setRedirectStderrToStdout(true);
+        CommandResult result =
+                testRunUtil.runTimedCmd(
+                        VERY_LONG_TIMEOUT_MS,
+                        "/bin/bash",
+                        "-c",
+                        "echo 'TEST STDOUT'; echo 'TEST STDERR' >&2");
+        assertEquals("TEST STDOUT\nTEST STDERR\n", result.getStdout());
+        assertEquals("", result.getStderr());
+    }
+
     /**
-     * Implementation of {@link Process} to simulate a success of 'echo Test' without actually
-     * calling the underlying system.
+     * Implementation of {@link Process} to simulate a success of a command that echos to both
+     * stdout and stderr without actually calling the underlying system.
      */
     private class FakeProcess extends Process {
 
@@ -496,13 +510,12 @@ public class RunUtilTest {
 
         @Override
         public InputStream getInputStream() {
-            ByteArrayInputStream stream = new ByteArrayInputStream("TEST\n".getBytes());
-            return stream;
+            return new ByteArrayInputStream("TEST STDOUT\n".getBytes());
         }
 
         @Override
         public InputStream getErrorStream() {
-            return new ByteArrayInputStream("".getBytes());
+            return new ByteArrayInputStream("TEST STDERR\n".getBytes());
         }
 
         @Override

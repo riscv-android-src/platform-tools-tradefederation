@@ -101,6 +101,9 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
             runUtil.setEnvVariable("GTEST_TOTAL_SHARDS", Integer.toString(getShardCount()));
         }
 
+        // Set the RunUtil to combine stderr with stdout so that they are interleaved correctly.
+        runUtil.setRedirectStderrToStdout(true);
+
         // TODO Redirect stdout stream, so we could get results as they come.
         CommandResult result = runUtil.runTimedCmd(timeoutMs, cmds);
         if (result != null && receiver != null) {
