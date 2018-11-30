@@ -348,6 +348,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 metricsProto.put(
                         TEST_TIME, TfMetricProtoUtil.createSingleValue(0L, "milliseconds"));
                 listener.testRunEnded(0, metricsProto);
+                // If it was a not available exception rethrow it to signal the new device state.
+                if (preparationException instanceof DeviceNotAvailableException) {
+                    throw (DeviceNotAvailableException) preparationException;
+                }
                 return;
             }
             mElapsedTest = getCurrentTime();
@@ -581,8 +585,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     /** Run all the prepare steps. */
     private Exception runPreparerSetup(
-            ITestDevice device, IBuildInfo build, ITargetPreparer preparer, ITestLogger logger)
-            throws DeviceNotAvailableException {
+            ITestDevice device, IBuildInfo build, ITargetPreparer preparer, ITestLogger logger) {
         if (preparer.isDisabled()) {
             // If disabled skip completely.
             return null;
@@ -595,7 +598,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             }
             preparer.setUp(device, build);
             return null;
-        } catch (BuildError | TargetSetupError e) {
+        } catch (BuildError | TargetSetupError | DeviceNotAvailableException e) {
             CLog.e("Unexpected Exception from preparer: %s", preparer.getClass().getName());
             CLog.e(e);
             return e;

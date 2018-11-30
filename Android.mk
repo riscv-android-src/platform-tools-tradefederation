@@ -92,7 +92,7 @@ LOCAL_DROIDDOC_OPTIONS := \
         -hdf android.whichdoc online \
         -hdf css.path /reference/assets/css/doclava-devsite.css \
         -hdf book.root toc \
-        -hdf book.path /reference/tradefed/_book.yaml \
+        -hdf book.path /_book.yaml \
         -yaml _book.yaml \
         -apidocsdir reference/tradefed/ \
         -werror \

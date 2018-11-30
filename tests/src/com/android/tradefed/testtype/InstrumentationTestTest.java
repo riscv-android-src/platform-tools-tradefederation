@@ -37,8 +37,10 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
+import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
@@ -690,6 +692,66 @@ public class InstrumentationTestTest {
         // The reported number of tests is the one from the collected output
         InOrder inOrder = Mockito.inOrder(mMockListener);
         inOrder.verify(mMockListener).testRunStarted("fakeName", 5);
+        inOrder.verify(mMockListener)
+                .testRunFailed("Instrumentation run failed due to 'Process crashed.'");
+        inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
+    }
+
+    /** Test that after the first run if there is no tests to re-run we don't launch a rerun. */
+    @Test
+    public void testRun_noMoreTests() throws Exception {
+        doReturn(mock(IRemoteTest.class))
+                .when(mInstrumentationTest)
+                .getTestReRunner(anyCollectionOf(TestDescription.class));
+
+        // We collect successfully 1 tests
+        RunInstrumentationTestsAnswer collected =
+                (runner, listener) -> {
+                    listener.testRunStarted("fakeName", 1);
+                    for (int i = 0; i < 1; i++) {
+                        TestDescription tid = new TestDescription("fakeclass", "fakemethod" + i);
+                        listener.testStarted(tid, 5);
+                        listener.testEnded(tid, 15, EMPTY_STRING_MAP);
+                    }
+                    listener.testRunEnded(500, EMPTY_STRING_MAP);
+                    return true;
+                };
+
+        // We attempt to run the test and it crash
+        RunInstrumentationTestsAnswer partialRun =
+                (runner, listener) -> {
+                    listener.testRunStarted("fakeName", 1);
+                    TestDescription tid = new TestDescription("fakeclass", "fakemethod0");
+                    listener.testStarted(tid, 0L);
+                    listener.testFailed(
+                            tid, "Instrumentation run failed due to 'Process crashed.'");
+                    listener.testEnded(tid, 15L, EMPTY_STRING_MAP);
+                    listener.testRunFailed("Instrumentation run failed due to 'Process crashed.'");
+                    listener.testRunEnded(1, EMPTY_STRING_MAP);
+                    return true;
+                };
+
+        doAnswer(collected)
+                .doAnswer(partialRun)
+                .when(mMockTestDevice)
+                .runInstrumentationTests(
+                        any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
+
+        InputStreamSource source = new ByteArrayInputStreamSource("".getBytes());
+        doReturn(source).when(mMockTestDevice).getLogcatSince(anyLong());
+
+        mInstrumentationTest.run(mMockListener);
+
+        // Ensure no rerunner is requested since there is no more tests.
+        verify(mInstrumentationTest, times(0)).getTestReRunner(any());
+        // The reported number of tests is the one from the collected output
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).testRunStarted("fakeName", 1);
+        TestDescription tid = new TestDescription("fakeclass", "fakemethod0");
+        inOrder.verify(mMockListener).testStarted(tid, 0L);
+        inOrder.verify(mMockListener)
+                .testFailed(tid, "Instrumentation run failed due to 'Process crashed.'");
+        inOrder.verify(mMockListener).testEnded(tid, 15L, EMPTY_STRING_MAP);
         inOrder.verify(mMockListener)
                 .testRunFailed("Instrumentation run failed due to 'Process crashed.'");
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
