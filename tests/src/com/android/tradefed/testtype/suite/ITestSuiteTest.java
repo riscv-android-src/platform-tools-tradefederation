@@ -153,9 +153,9 @@ public class ITestSuiteTest {
         public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
             listener.testRunStarted(TEST_CONFIG_NAME, 1);
             try {
-            if (mException != null) {
-                throw mException;
-            }
+                if (mException != null) {
+                    throw mException;
+                }
                 if (mRunException != null) {
                     throw mRunException;
                 }
@@ -395,6 +395,72 @@ public class ITestSuiteTest {
         mMockListener.testModuleEnded();
         replayMocks();
         mTestSuite.run(mMockListener);
+        verifyMocks();
+    }
+
+    /**
+     * Test that when device goes not available, the exception is bubbled up and not_executed
+     * modules are reported.
+     */
+    @Test
+    public void testRun_deviceUnavailable() throws Exception {
+        List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
+        sysChecker.add(mMockSysChecker);
+        mTestSuite =
+                new TestSuiteImpl() {
+                    @Override
+                    public LinkedHashMap<String, IConfiguration> loadTests() {
+                        LinkedHashMap<String, IConfiguration> testConfig = new LinkedHashMap<>();
+                        try {
+                            IConfiguration fake =
+                                    ConfigurationFactory.getInstance()
+                                            .createConfigurationFromArgs(
+                                                    new String[] {EMPTY_CONFIG});
+                            fake.setTest(
+                                    new StubCollectingTest(
+                                            new DeviceNotAvailableException("I failed", "serial")));
+                            testConfig.put(TEST_CONFIG_NAME, fake);
+                        } catch (ConfigurationException e) {
+                            CLog.e(e);
+                            throw new RuntimeException(e);
+                        }
+                        testConfig.put("NOT_RUN", new Configuration("test", "test"));
+                        return testConfig;
+                    }
+                };
+        mTestSuite.setDevice(mMockDevice);
+        mTestSuite.setBuild(mMockBuildInfo);
+        mTestSuite.setInvocationContext(mContext);
+        mTestSuite.setSystemStatusChecker(sysChecker);
+        mTestSuite.setConfiguration(mStubMainConfiguration);
+        OptionSetter setter = new OptionSetter(mTestSuite);
+        setter.setOptionValue("skip-all-system-status-check", "true");
+        setter.setOptionValue("reboot-per-module", "true");
+        EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("user");
+        mMockListener.testModuleStarted(EasyMock.anyObject());
+        EasyMock.expectLastCall().times(2);
+        mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
+        EasyMock.expectLastCall().times(1);
+        mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
+
+        // The module that didn't run is reported too.
+        mMockListener.testRunStarted("NOT_RUN", 0);
+        mMockListener.testRunFailed("Module did not run due to device not available.");
+        mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
+
+        mMockListener.testModuleEnded();
+        EasyMock.expectLastCall().times(2);
+        replayMocks();
+        // The DNAE is bubbled up to the top
+        try {
+            mTestSuite.run(mMockListener);
+            fail("Should have thrown an exception.");
+        } catch (DeviceNotAvailableException expected) {
+            assertEquals("I failed", expected.getMessage());
+        }
         verifyMocks();
     }
 

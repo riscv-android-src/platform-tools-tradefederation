@@ -375,14 +375,14 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     /**
      * Get the class name to run.
      */
-    String getClassName() {
+    protected String getClassName() {
         return mTestClassName;
     }
 
     /**
      * Get the test method to run.
      */
-    String getMethodName() {
+    protected String getMethodName() {
         return mTestMethodName;
     }
 
@@ -393,10 +393,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         return mTestFilePathOnDevice;
     }
 
-    /**
-     * Get the test java package to run.
-     */
-    String getTestPackageName() {
+    /** Get the test java package to run. */
+    protected String getTestPackageName() {
         return mTestPackageName;
     }
 
@@ -940,6 +938,10 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     private void rerunTests(
             Collection<TestDescription> expectedTests, final ITestInvocationListener listener)
             throws DeviceNotAvailableException {
+        if (expectedTests.isEmpty()) {
+            CLog.d("No tests to re-run, all tests executed at least once.");
+            return;
+        }
         if (mRebootBeforeReRun) {
             mDevice.reboot();
         }

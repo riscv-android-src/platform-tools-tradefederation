@@ -106,6 +106,9 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
      */
     private LogcatItem extractLogcat(ITestDevice device, long startTime) {
         try (InputStreamSource logSource = device.getLogcatSince(startTime)) {
+            if (logSource.size() == 0L) {
+                return null;
+            }
             String message = StreamUtil.getStringFromStream(logSource.createInputStream());
             LogcatParser parser = new LogcatParser();
             List<String> lines = Arrays.asList(message.split("\n"));

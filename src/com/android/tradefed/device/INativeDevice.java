@@ -1188,4 +1188,7 @@ public interface INativeDevice {
      * @param args the args to be replaced via String.format().
      */
     public void logOnDevice(String tag, LogLevel level, String format, Object... args);
+
+    /** Returns total physical memory size in bytes or -1 in case of internal error */
+    public long getTotalMemory();
 }
