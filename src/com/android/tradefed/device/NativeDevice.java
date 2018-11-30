@@ -3975,7 +3975,7 @@ public class NativeDevice implements IManagedTestDevice {
                     getDisplayString(selector.getDeviceProductVariant(idevice)),
                     getDisplayString(idevice.getProperty("ro.build.version.sdk")),
                     getDisplayString(idevice.getProperty("ro.build.id")),
-                    getDisplayString(selector.getBatteryLevel(idevice)),
+                    getDisplayString(getBattery()),
                     getDeviceClass(),
                     getDisplayString(getMacAddress()),
                     getDisplayString(getSimState()),
