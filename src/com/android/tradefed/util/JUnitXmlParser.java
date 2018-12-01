@@ -22,6 +22,8 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.xml.AbstractXmlParser;
 
+import com.google.common.base.Strings;
+
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
@@ -89,7 +91,10 @@ public class JUnitXmlParser extends AbstractXmlParser {
             if (TESTCASE_TAG.equalsIgnoreCase(name)) {
                 // start of description of an individual test method - extract out test name and
                 // store it
-                String testClassName = getMandatoryAttribute(name, "classname", attributes);
+                String testClassName = Strings.nullToEmpty(attributes.getValue("classname"));
+                testClassName = "".equals(testClassName)  // TODO(b/120500865): remove this kludge
+                        ? JUnitXmlParser.class.getSimpleName()
+                        : testClassName;
                 String methodName = getMandatoryAttribute(name, "name", attributes);
                 mCurrentTest = new TestDescription(testClassName, methodName);
                 mTestListener.testStarted(mCurrentTest);
@@ -167,10 +172,7 @@ public class JUnitXmlParser extends AbstractXmlParser {
                 throws SAXException {
             String value = attributes.getValue(attrName);
             if (value == null) {
-                throw new SAXException(
-                        String.format(
-                                "Malformed XML, could not find '%s' attribute in '%s'",
-                                attrName, tagName));
+                return 0L;
             }
             NumberFormat f = NumberFormat.getInstance();
             Number n;
