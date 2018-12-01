@@ -67,7 +67,6 @@ public class JUnitXmlParser extends AbstractXmlParser {
         private static final String SKIPPED_TAG = "skipped";
         private static final String TESTSUITE_TAG = "testsuite";
         private static final String TESTCASE_TAG = "testcase";
-        private static final String TIME_TAG = "time";
         private TestDescription mCurrentTest = null;
         private StringBuffer mFailureContent = null;
         private long mRunTime = 0L;
@@ -83,7 +82,7 @@ public class JUnitXmlParser extends AbstractXmlParser {
                 // top level tag - maps to a test run in TF terminology
                 String testSuiteName = getMandatoryAttribute(name, "name", attributes);
                 String testCountString = getMandatoryAttribute(name, "tests", attributes);
-                mRunTime = getTimeAttribute(name, TIME_TAG, attributes);
+                mRunTime = getTimeAttribute(name, attributes);
                 int testCount = Integer.parseInt(testCountString);
                 String runName = (mRunName != null) ? mRunName : testSuiteName;
                 mTestListener.testRunStarted(runName, testCount);
@@ -168,9 +167,8 @@ public class JUnitXmlParser extends AbstractXmlParser {
         /**
          * Parse the time attributes from the xml, and put it in milliseconds instead of seconds.
          */
-        Long getTimeAttribute(String tagName, String attrName, Attributes attributes)
-                throws SAXException {
-            String value = attributes.getValue(attrName);
+        Long getTimeAttribute(String tagName, Attributes attributes) throws SAXException {
+            String value = attributes.getValue("time");
             if (value == null) {
                 return 0L;
             }
@@ -180,9 +178,7 @@ public class JUnitXmlParser extends AbstractXmlParser {
                 n = f.parse(value);
             } catch (java.text.ParseException e) {
                 throw new SAXException(
-                        String.format(
-                                "Malformed XML, attribute '%s' in '%s' is not a time: '%s'",
-                                attrName, tagName, value));
+                        String.format("%s.time value '%s' is not a number", tagName, value), e);
             }
             return (long) (n.floatValue() * 1000L);
         }
