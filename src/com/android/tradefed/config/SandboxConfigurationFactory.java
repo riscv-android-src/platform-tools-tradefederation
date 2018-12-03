@@ -47,6 +47,9 @@ public class SandboxConfigurationFactory extends ConfigurationFactory {
     static {
         OPTION_IGNORED_ELEMENTS.addAll(SandboxConfigDump.VERSIONED_ELEMENTS);
         OPTION_IGNORED_ELEMENTS.add(Configuration.DEVICE_REQUIREMENTS_TYPE_NAME);
+        OPTION_IGNORED_ELEMENTS.add(Configuration.DEVICE_OPTIONS_TYPE_NAME);
+        OPTION_IGNORED_ELEMENTS.add(Configuration.DEVICE_RECOVERY_TYPE_NAME);
+        OPTION_IGNORED_ELEMENTS.add(Configuration.CMD_OPTIONS_TYPE_NAME);
     }
 
     /** Get the singleton {@link IConfigurationFactory} instance. */
