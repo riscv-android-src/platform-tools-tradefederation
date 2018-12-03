@@ -28,7 +28,7 @@ public class TestInfoTest {
     /** Test for {@link TestInfo#addOption()} implementation. */
     @Test
     public void testAddOption() throws Exception {
-        TestInfo info = new TestInfo("test1", "folder1");
+        TestInfo info = new TestInfo("test1", "folder1", false);
         info.addOption(new TestOption("option2", "value2"));
         info.addOption(new TestOption("option1", "value1"));
         // Confirm the options are sorted.
@@ -37,5 +37,6 @@ public class TestInfoTest {
         assertEquals("option2", info.getOptions().get(1).getName());
         assertEquals("value2", info.getOptions().get(1).getValue());
         assertEquals("test1: Options: option1:value1,option2:value2", info.toString());
+        assertEquals("test1 - false", info.getNameAndHostOnly());
     }
 }

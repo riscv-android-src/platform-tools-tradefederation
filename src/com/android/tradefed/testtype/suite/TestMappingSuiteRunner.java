@@ -82,7 +82,8 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
         }
 
         if (mTestGroup != null) {
-            Set<TestInfo> testsToRun = TestMapping.getTests(getBuildInfo(), mTestGroup);
+            Set<TestInfo> testsToRun =
+                    TestMapping.getTests(getBuildInfo(), mTestGroup, getPrioritizeHostConfig());
             if (testsToRun.isEmpty()) {
                 throw new RuntimeException(
                         String.format("No test found for the given group: %s.", mTestGroup));
