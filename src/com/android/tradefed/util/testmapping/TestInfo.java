@@ -37,10 +37,13 @@ public class TestInfo {
     private List<TestOption> mOptions = new ArrayList<TestOption>();
     // A list of locations with TEST_MAPPING files that containing the test.
     private Set<String> mSources = new HashSet<String>();
+    // True if the test should run on host and require no device.
+    private boolean mHostOnly = false;
 
-    public TestInfo(String name, String source) {
+    public TestInfo(String name, String source, boolean hostOnly) {
         mName = name;
         mSources.add(source);
+        mHostOnly = hostOnly;
     }
 
     public String getName() {
@@ -64,6 +67,18 @@ public class TestInfo {
         return mSources;
     }
 
+    public boolean getHostOnly() {
+        return mHostOnly;
+    }
+
+    /**
+     * Get a {@link String} represent the test name and its host setting. This allows TestInfos to
+     * be grouped by name the requirement on device.
+     */
+    public String getNameAndHostOnly() {
+        return String.format("%s - %s", mName, mHostOnly);
+    }
+
     /**
      * Merge with another test.
      *
@@ -77,8 +92,12 @@ public class TestInfo {
         CLog.d("Merging test %s and %s.", this, test);
         // Merge can only happen for tests for the same module.
         checkState(
-                mName.equals(test.getName()),
-                "Only TestInfo for the same module can be " + "merged.");
+                mName.equals(test.getName()), "Only TestInfo for the same module can be merged.");
+        // Merge can only happen for tests for the same device requirement.
+        checkState(
+                mHostOnly == test.getHostOnly(),
+                "Only TestInfo for the same device requirement (running on device or host) can"
+                        + " be merged.");
 
         List<TestOption> mergedOptions = new ArrayList<>();
 
