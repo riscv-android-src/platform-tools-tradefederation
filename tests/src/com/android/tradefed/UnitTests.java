@@ -139,6 +139,7 @@ import com.android.tradefed.result.TestResultTest;
 import com.android.tradefed.result.TestRunResultTest;
 import com.android.tradefed.result.TestSummaryTest;
 import com.android.tradefed.result.XmlResultReporterTest;
+import com.android.tradefed.result.proto.FileProtoResultReporterTest;
 import com.android.tradefed.result.proto.ProtoResultParserTest;
 import com.android.tradefed.result.proto.ProtoResultReporterTest;
 import com.android.tradefed.result.proto.StreamProtoResultReporterTest;
@@ -492,6 +493,7 @@ import org.junit.runners.Suite.SuiteClasses;
     XmlResultReporterTest.class,
 
     // result.proto
+    FileProtoResultReporterTest.class,
     ProtoResultParserTest.class,
     ProtoResultReporterTest.class,
     StreamProtoResultReporterTest.class,
