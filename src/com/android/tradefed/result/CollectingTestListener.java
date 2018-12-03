@@ -26,6 +26,7 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -54,7 +55,8 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     private IBuildInfo mBuildInfo;
     private Map<String, IInvocationContext> mModuleContextMap = new HashMap<>();
     // Use LinkedHashMap to provide consistent iterations over the keys.
-    private Map<String, List<TestRunResult>> mTestRunResultMap = new LinkedHashMap<>();
+    private Map<String, List<TestRunResult>> mTestRunResultMap =
+            Collections.synchronizedMap(new LinkedHashMap<>());
 
     private IInvocationContext mCurrentModuleContext = null;
     private TestRunResult mCurrentTestRunResult = new TestRunResult();
