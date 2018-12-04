@@ -103,6 +103,9 @@ public class TestDevice extends NativeDevice {
 
     private boolean mWasWifiHelperInstalled = false;
 
+    private static final String APEX_SUFFIX = ".apex";
+    private static final String APEX_ARG = "--apex";
+
     /**
      * @param device
      * @param stateMonitor
@@ -125,6 +128,10 @@ public class TestDevice extends NativeDevice {
     private String internalInstallPackage(
             final File packageFile, final boolean reinstall, final List<String> extraArgs)
                     throws DeviceNotAvailableException {
+        List<String> args = new ArrayList<>(extraArgs);
+        if (packageFile.getName().endsWith(APEX_SUFFIX)) {
+            args.add(APEX_ARG);
+        }
         // use array to store response, so it can be returned to caller
         final String[] response = new String[1];
         DeviceAction installAction =
@@ -141,7 +148,7 @@ public class TestDevice extends NativeDevice {
                                             INSTALL_TIMEOUT_MINUTES,
                                             INSTALL_TIMEOUT_TO_OUTPUT_MINUTES,
                                             TimeUnit.MINUTES,
-                                            extraArgs.toArray(new String[] {}));
+                                            args.toArray(new String[] {}));
                             if (receiver.isSuccessfullyCompleted()) {
                                 response[0] = null;
                             } else if (receiver.getErrorMessage() == null) {
