@@ -126,18 +126,24 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
             description = "Additional instrumentation arguments to provide.")
     private Map<String, String> mInstrArgMap = new HashMap<String, String>();
 
-    @Option(name = "rerun-from-file", description =
-            "Use test file instead of separate adb commands for each test " +
-            "when re-running instrumentations for tests that failed to run in previous attempts. ")
-    private boolean mReRunUsingTestFile = false;
+    @Option(
+        name = "rerun-from-file",
+        description =
+                "Use test file instead of separate adb commands for each test "
+                        + "when re-running instrumentations for tests that failed to run in "
+                        + "previous attempts. "
+    )
+    private boolean mReRunUsingTestFile = true;
 
     @Option(name = "rerun-from-file-attempts", description =
             "Max attempts to rerun tests from file. -1 means rerun from file infinitely.")
     private int mReRunUsingTestFileAttempts = -1;
 
-    @Option(name = "fallback-to-serial-rerun", description =
-            "Rerun tests serially after rerun from file failed.")
-    private boolean mFallbackToSerialRerun = true;
+    @Option(
+        name = "fallback-to-serial-rerun",
+        description = "Rerun tests serially after rerun from file failed."
+    )
+    private boolean mFallbackToSerialRerun = false;
 
     @Option(name = "reboot-before-rerun", description =
             "Reboot a device before re-running instrumentations.")
