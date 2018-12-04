@@ -48,6 +48,7 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -653,9 +654,13 @@ public class GceManagerTest {
         GceAvdInfo fakeInfo = new GceAvdInfo("ins-gce", HostAndPort.fromHost("127.0.0.1"));
         CommandResult res = new CommandResult(CommandStatus.SUCCESS);
         res.setStdout("bugreport success!\nOK:/bugreports/bugreport.zip\n");
+        OutputStream stdout = null;
+        OutputStream stderr = null;
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
                                 EasyMock.anyLong(),
+                                EasyMock.eq(stdout),
+                                EasyMock.eq(stderr),
                                 EasyMock.eq("ssh"),
                                 EasyMock.eq("-o"),
                                 EasyMock.eq("UserKnownHostsFile=/dev/null"),
@@ -703,9 +708,13 @@ public class GceManagerTest {
         GceAvdInfo fakeInfo = new GceAvdInfo("ins-gce", HostAndPort.fromHost("127.0.0.1"));
         CommandResult res = new CommandResult(CommandStatus.SUCCESS);
         res.setStdout("bugreport success!\nOK:/bugreports/bugreport.zip\n");
+        OutputStream stdout = null;
+        OutputStream stderr = null;
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
                                 EasyMock.anyLong(),
+                                EasyMock.eq(stdout),
+                                EasyMock.eq(stderr),
                                 EasyMock.eq("ssh"),
                                 EasyMock.eq("-o"),
                                 EasyMock.eq("UserKnownHostsFile=/dev/null"),
@@ -723,6 +732,8 @@ public class GceManagerTest {
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
                                 EasyMock.anyLong(),
+                                EasyMock.eq(stdout),
+                                EasyMock.eq(stderr),
                                 EasyMock.eq("ssh"),
                                 EasyMock.eq("-o"),
                                 EasyMock.eq("UserKnownHostsFile=/dev/null"),
@@ -772,9 +783,13 @@ public class GceManagerTest {
         GceAvdInfo fakeInfo = new GceAvdInfo("ins-gce", HostAndPort.fromHost("127.0.0.1"));
         CommandResult res = new CommandResult(CommandStatus.FAILED);
         res.setStdout("bugreport failed!\n");
+        OutputStream stdout = null;
+        OutputStream stderr = null;
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
                                 EasyMock.anyLong(),
+                                EasyMock.eq(stdout),
+                                EasyMock.eq(stderr),
                                 EasyMock.eq("ssh"),
                                 EasyMock.eq("-o"),
                                 EasyMock.eq("UserKnownHostsFile=/dev/null"),
