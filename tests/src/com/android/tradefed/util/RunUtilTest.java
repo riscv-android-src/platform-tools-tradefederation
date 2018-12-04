@@ -399,15 +399,15 @@ public class RunUtilTest {
         RunUtil spyUtil = new SpyRunUtil(false);
         String[] command = {"echo", "TEST"};
         CommandResult result =
-                spyUtil.runTimedCmd(SHORT_TIMEOUT_MS, stdoutStream, stderrStream, command);
-        assertEquals(CommandStatus.SUCCESS, result.getStatus());
-        assertEquals(result.getStdout(),
-                "redirected to " + stdoutStream.getClass().getSimpleName());
-        assertEquals(result.getStderr(),
-                "redirected to " + stderrStream.getClass().getSimpleName());
-        assertTrue(stdout.exists());
-        assertTrue(stderr.exists());
+                spyUtil.runTimedCmd(LONG_TIMEOUT_MS, stdoutStream, stderrStream, command);
         try {
+            assertEquals(CommandStatus.SUCCESS, result.getStatus());
+            assertEquals(
+                    result.getStdout(), "redirected to " + stdoutStream.getClass().getSimpleName());
+            assertEquals(
+                    result.getStderr(), "redirected to " + stderrStream.getClass().getSimpleName());
+            assertTrue(stdout.exists());
+            assertTrue(stderr.exists());
             assertEquals("TEST\n", FileUtil.readStringFromFile(stdout));
             assertEquals("", FileUtil.readStringFromFile(stderr));
         } catch (IOException e) {
@@ -435,8 +435,8 @@ public class RunUtilTest {
                                 assertFalse(mRunUtil.isInterruptAllowed());
                                 mRunUtil.setInterruptibleInFuture(Thread.currentThread(), 10);
                                 try {
-                                    mRunUtil.sleep(25);
-                                    mRunUtil.sleep(25);
+                                    mRunUtil.sleep(SHORT_TIMEOUT_MS);
+                                    mRunUtil.sleep(SHORT_TIMEOUT_MS);
                                     fail();
                                 } catch (RunInterruptedException rie) {
                                     assertEquals("TEST", rie.getMessage());
@@ -464,7 +464,7 @@ public class RunUtilTest {
         mRunUtil.sleep(50);
         // Should still be false
         assertFalse(mRunUtil.isInterruptAllowed());
-        mRunUtil.sleep(SHORT_TIMEOUT_MS);
+        mRunUtil.sleep(LONG_TIMEOUT_MS);
         assertTrue(mRunUtil.isInterruptAllowed());
     }
 

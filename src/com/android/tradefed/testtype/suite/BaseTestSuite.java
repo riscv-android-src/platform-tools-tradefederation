@@ -29,6 +29,8 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.params.ModuleParameters;
 import com.android.tradefed.util.ArrayUtil;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
@@ -363,5 +365,20 @@ public class BaseTestSuite extends ITestSuite {
         }
         filters.clear();
         filters.addAll(cleanedFilters);
+    }
+
+    /* Return a {@link boolean} for the setting of prioritize-host-config.*/
+    boolean getPrioritizeHostConfig() {
+        return mPrioritizeHostConfig;
+    }
+
+    /**
+     * Set option prioritize-host-config.
+     *
+     * @param prioritizeHostConfig true to prioritize host config, i.e., run host test if possible.
+     */
+    @VisibleForTesting
+    protected void setPrioritizeHostConfig(boolean prioritizeHostConfig) {
+        mPrioritizeHostConfig = prioritizeHostConfig;
     }
 }

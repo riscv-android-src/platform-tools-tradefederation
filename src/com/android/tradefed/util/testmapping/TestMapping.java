@@ -52,11 +52,12 @@ public class TestMapping {
     private static final String PRESUBMIT = "presubmit";
     private static final String POSTSUBMIT = "postsubmit";
     private static final String IMPORTS = "imports";
+    private static final String KEY_HOST = "host";
     private static final String KEY_NAME = "name";
+    private static final String KEY_OPTIONS = "options";
     private static final String TEST_MAPPING = "TEST_MAPPING";
     private static final String TEST_MAPPINGS_ZIP = "test_mappings.zip";
     private static final String DISABLED_PRESUBMIT_TESTS = "disabled-presubmit-tests";
-    private static final String KEY_OPTIONS = "options";
 
     private Map<String, List<TestInfo>> mTestCollection = null;
 
@@ -88,7 +89,11 @@ public class TestMapping {
                     JSONArray arr = root.getJSONArray(group);
                     for (int i = 0; i < arr.length(); i++) {
                         JSONObject testObject = arr.getJSONObject(i);
-                        TestInfo test = new TestInfo(testObject.getString(KEY_NAME), relativePath);
+                        boolean hostOnly =
+                                testObject.has(KEY_HOST) && testObject.getBoolean(KEY_HOST);
+                        TestInfo test =
+                                new TestInfo(
+                                        testObject.getString(KEY_NAME), relativePath, hostOnly);
                         if (testObject.has(KEY_OPTIONS)) {
                             JSONArray optionObjects = testObject.getJSONArray(KEY_OPTIONS);
                             for (int j = 0; j < optionObjects.length(); j++) {
@@ -125,9 +130,11 @@ public class TestMapping {
      *
      * @param testGroup A {@link String} of the test group.
      * @param disabledTests A set of {@link String} for the name of the disabled tests.
+     * @param hostOnly true if only tests running on host and don't require device should be
+     *     returned. false to return tests that require device to run.
      * @return A {@code List<TestInfo>} of the test infos.
      */
-    public List<TestInfo> getTests(String testGroup, Set<String> disabledTests) {
+    public List<TestInfo> getTests(String testGroup, Set<String> disabledTests, boolean hostOnly) {
         List<TestInfo> tests = new ArrayList<TestInfo>();
 
         List<String> testGroups = new ArrayList<>();
@@ -140,6 +147,10 @@ public class TestMapping {
             for (TestInfo test : mTestCollection.getOrDefault(group, new ArrayList<TestInfo>())) {
                 if (disabledTests != null && disabledTests.contains(test.getName())) {
                     CLog.d("Test is disabled: %s.", test);
+                    continue;
+                }
+                if (test.getHostOnly() != hostOnly) {
+                    CLog.d("Test doesn't match the host requirement: %s.", test);
                     continue;
                 }
                 tests.add(test);
@@ -157,12 +168,14 @@ public class TestMapping {
      * @return A {@code Set<TestInfo>} of tests that each is for a unique test module.
      */
     private static Set<TestInfo> mergeTests(Set<TestInfo> tests) {
-        Map<String, List<TestInfo>> testsGroupedbyName =
+        Map<String, List<TestInfo>> testsGroupedbyNameAndHost =
                 tests.stream()
-                        .collect(Collectors.groupingBy(TestInfo::getName, Collectors.toList()));
+                        .collect(
+                                Collectors.groupingBy(
+                                        TestInfo::getNameAndHostOnly, Collectors.toList()));
 
         Set<TestInfo> mergedTests = new HashSet<>();
-        for (List<TestInfo> multiTests : testsGroupedbyName.values()) {
+        for (List<TestInfo> multiTests : testsGroupedbyNameAndHost.values()) {
             TestInfo mergedTest = multiTests.get(0);
             if (multiTests.size() > 1) {
                 for (TestInfo test : multiTests.subList(1, multiTests.size())) {
@@ -179,10 +192,13 @@ public class TestMapping {
      * Helper to find all tests in all TEST_MAPPING files. This is needed when a suite run requires
      * to run all tests in TEST_MAPPING files for a given group, e.g., presubmit.
      *
+     * @param buildInfo the {@link IBuildInfo} describing the build.
      * @param testGroup a {@link String} of the test group.
+     * @param hostOnly true if only tests running on host and don't require device should be
+     *     returned. false to return tests that require device to run.
      * @return A {@code Set<TestInfo>} of tests set in the build artifact, test_mappings.zip.
      */
-    public static Set<TestInfo> getTests(IBuildInfo buildInfo, String testGroup) {
+    public static Set<TestInfo> getTests(IBuildInfo buildInfo, String testGroup, boolean hostOnly) {
         Set<TestInfo> tests = new HashSet<TestInfo>();
         Set<String> disabledTests = new HashSet<>();
 
@@ -207,7 +223,7 @@ public class TestMapping {
                             path ->
                                     tests.addAll(
                                             new TestMapping(path, testMappingsRootPath)
-                                                    .getTests(testGroup, disabledTests)));
+                                                    .getTests(testGroup, disabledTests, hostOnly)));
 
         } catch (IOException e) {
             RuntimeException runtimeException =

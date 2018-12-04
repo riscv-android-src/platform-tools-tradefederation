@@ -1694,6 +1694,35 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Test installation of APEX is done with --apex flag.
+     * @throws Exception
+     */
+    public void testInstallPackage_apex() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    InstallReceiver createInstallReceiver() {
+                        InstallReceiver receiver = new InstallReceiver();
+                        receiver.processNewLines(new String[] {"Success"});
+                        return receiver;
+                    }
+                };
+        final String apexFile = "foo.apex";
+        setMockIDeviceRuntimePermissionNotSupported();
+        mMockIDevice.installPackage(
+                EasyMock.contains(apexFile),
+                EasyMock.eq(true),
+                EasyMock.anyObject(),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_TO_OUTPUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES),
+                EasyMock.eq("--apex"));
+        EasyMock.expectLastCall();
+        replayMocks();
+        assertNull(mTestDevice.installPackage(new File(apexFile), true));
+    }
+
+    /**
      * Helper method to build a response to a executeShellCommand call
      *
      * @param expectedCommand the shell command to expect or null to skip verification of command
