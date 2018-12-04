@@ -22,6 +22,8 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.xml.AbstractXmlParser;
 
+import com.google.common.base.Strings;
+
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
@@ -65,10 +67,9 @@ public class JUnitXmlParser extends AbstractXmlParser {
         private static final String SKIPPED_TAG = "skipped";
         private static final String TESTSUITE_TAG = "testsuite";
         private static final String TESTCASE_TAG = "testcase";
-        private static final String TIME_TAG = "time";
         private TestDescription mCurrentTest = null;
         private StringBuffer mFailureContent = null;
-        private long mRunTime = 0L;
+        private long mRunTimeMillis = 0L;
 
         /**
         * {@inheritDoc}
@@ -81,7 +82,7 @@ public class JUnitXmlParser extends AbstractXmlParser {
                 // top level tag - maps to a test run in TF terminology
                 String testSuiteName = getMandatoryAttribute(name, "name", attributes);
                 String testCountString = getMandatoryAttribute(name, "tests", attributes);
-                mRunTime = getTimeAttribute(name, TIME_TAG, attributes);
+                mRunTimeMillis = getTimeMillis(name, attributes);
                 int testCount = Integer.parseInt(testCountString);
                 String runName = (mRunName != null) ? mRunName : testSuiteName;
                 mTestListener.testRunStarted(runName, testCount);
@@ -89,7 +90,10 @@ public class JUnitXmlParser extends AbstractXmlParser {
             if (TESTCASE_TAG.equalsIgnoreCase(name)) {
                 // start of description of an individual test method - extract out test name and
                 // store it
-                String testClassName = getMandatoryAttribute(name, "classname", attributes);
+                String testClassName = Strings.nullToEmpty(attributes.getValue("classname"));
+                testClassName = "".equals(testClassName)  // TODO(b/120500865): remove this kludge
+                        ? JUnitXmlParser.class.getSimpleName()
+                        : testClassName;
                 String methodName = getMandatoryAttribute(name, "name", attributes);
                 mCurrentTest = new TestDescription(testClassName, methodName);
                 mTestListener.testStarted(mCurrentTest);
@@ -133,7 +137,7 @@ public class JUnitXmlParser extends AbstractXmlParser {
         @Override
         public void endElement(String uri, String localName, String name) {
             if (TESTSUITE_TAG.equalsIgnoreCase(name)) {
-                mTestListener.testRunEnded(mRunTime, new HashMap<String, Metric>());
+                mTestListener.testRunEnded(mRunTimeMillis, new HashMap<String, Metric>());
             }
             if (TESTCASE_TAG.equalsIgnoreCase(name)) {
                 mTestListener.testEnded(mCurrentTest, new HashMap<String, Metric>());
@@ -163,14 +167,10 @@ public class JUnitXmlParser extends AbstractXmlParser {
         /**
          * Parse the time attributes from the xml, and put it in milliseconds instead of seconds.
          */
-        Long getTimeAttribute(String tagName, String attrName, Attributes attributes)
-                throws SAXException {
-            String value = attributes.getValue(attrName);
+        long getTimeMillis(String tagName, Attributes attributes) throws SAXException {
+            String value = attributes.getValue("time");
             if (value == null) {
-                throw new SAXException(
-                        String.format(
-                                "Malformed XML, could not find '%s' attribute in '%s'",
-                                attrName, tagName));
+                return 0L;
             }
             NumberFormat f = NumberFormat.getInstance();
             Number n;
@@ -178,9 +178,7 @@ public class JUnitXmlParser extends AbstractXmlParser {
                 n = f.parse(value);
             } catch (java.text.ParseException e) {
                 throw new SAXException(
-                        String.format(
-                                "Malformed XML, attribute '%s' in '%s' is not a time: '%s'",
-                                attrName, tagName, value));
+                        String.format("%s.time value '%s' is not a number", tagName, value), e);
             }
             return (long) (n.floatValue() * 1000L);
         }
