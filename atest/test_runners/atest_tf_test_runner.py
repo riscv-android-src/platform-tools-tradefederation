@@ -18,6 +18,7 @@ Atest Tradefed test runner class.
 
 from __future__ import print_function
 from collections import deque
+from datetime import timedelta
 import errno
 import json
 import logging
@@ -70,6 +71,11 @@ CONNECTION_STATE = {
     'test_count': 0,
     'test_start_time': None
 }
+
+# time in millisecond.
+ONE_SECOND = 1000
+ONE_MINUTE = 60000
+ONE_HOUR = 3600000
 
 class TradeFedExitError(Exception):
     """Raised when TradeFed exists before test run has finished."""
@@ -344,6 +350,27 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             # Currently, we are pending on TF to give us more information about
             # it. Then, we can handle this more elegantly.(b/119239432)
 
+    def _print_duration(self, duration):
+        """Convert duration from ms to 3h2m43.034s.
+
+        Args:
+            duration: millisecond
+
+        Returns:
+            string in h:m:s, m:s, s or millis, depends on the duration.
+        """
+        delta = timedelta(milliseconds=duration)
+        timestamp = str(delta).split(':') # hh:mm:microsec
+
+        if duration < ONE_SECOND:
+            return "({}ms)".format(duration)
+        elif duration < ONE_MINUTE:
+            return "({:.3f}s)".format(float(timestamp[2]))
+        elif duration < ONE_HOUR:
+            return "({0}m{1:.3f}s)".format(timestamp[1], float(timestamp[2]))
+        return "({0}h{1}m{2:.3f}s)".format(timestamp[0],
+                                           timestamp[1], float(timestamp[2]))
+
     # pylint: disable=too-many-branches
     def _process_event(self, event_name, event_data, reporter, state,
                        event_stack):
@@ -417,8 +444,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             name = TEST_NAME_TEMPLATE % (event_data['className'],
                                          event_data['testName'])
             if state['test_start_time']:
-                test_time = '(%dms)' % (event_data['end_time'] -
-                                        state['test_start_time'])
+                test_time = self._print_duration(event_data['end_time'] -
+                                                 state['test_start_time'])
             else:
                 test_time = ''
             if state['last_failed'] and name == state['last_failed']['name']:
