@@ -122,3 +122,6 @@ VTS_STAGING_PLAN = 'vts-staging-default'
 
 # TreeHugger TEST_MAPPING SUITE_PLANS
 TEST_MAPPING_SUITES = ['device-tests', 'general-tests']
+
+# VTS TF
+VTS_TF_MODULE = 'vts-tradefed'
