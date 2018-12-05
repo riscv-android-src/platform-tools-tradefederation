@@ -74,8 +74,7 @@ CONNECTION_STATE = {
 class TradeFedExitError(Exception):
     """Raised when TradeFed exists before test run has finished."""
 
-TRADEFED_EXIT_MSG = ('TradeFed subprocess exited early with exit code=%s. '
-                     'Use --verbose to see underlying TradeFed output.')
+TRADEFED_EXIT_MSG = ('TradeFed subprocess exited early with exit code=%s.')
 
 EVENTS_NOT_BALANCED = ('Error: Saw %s Start event and %s End event. These '
                        'should be equal!')
@@ -153,6 +152,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
 
     # pylint: disable=broad-except
     # pylint: disable=too-many-locals
+    # pylint: disable=too-many-branches
     def run_tests_pretty(self, test_infos, extra_args, reporter):
         """Run the list of test_infos. See base class for more.
 
@@ -210,6 +210,11 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                     # we have to save it above.
                     logging.debug('Subproc already terminated, skipping')
                 finally:
+                    if self.test_log_file:
+                        with open(self.test_log_file.name, 'r') as f:
+                            intro_msg = "Unexpected Tradefed Issue. Raw Output:"
+                            print(atest_utils.colorize(intro_msg, constants.RED))
+                            print(f.read())
                     # Ignore socket.recv() raising due to ctrl-c
                     if not error.args or error.args[0] != errno.EINTR:
                         raise exc_type, exc_msg, traceback_obj
