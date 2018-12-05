@@ -17,7 +17,9 @@ package com.android.tradefed.result;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.build.BuildInfo;
@@ -181,12 +183,12 @@ public final class CollectingTestListenerTest {
     @Test
     public void testRun_invalidAttempts() {
         injectTestRun("run", "testFoo1", METRIC_VALUE, 0);
-        try {
-            injectTestRun("run", "testFoo1", METRIC_VALUE, 2);
-            fail("Expected InvalidArgumentException");
-        } catch (IllegalArgumentException e) {
-            // Expected
-        }
+        injectTestRun("run", "testFoo1", METRIC_VALUE, 2);
+        List<TestRunResult> results = mCollectingTestListener.getTestRunAttempts("run");
+        assertEquals(3, results.size());
+        assertFalse(results.get(0).isRunFailure());
+        assertTrue(results.get(1).isRunFailure()); // Missing run is failed
+        assertFalse(results.get(2).isRunFailure());
     }
 
     /** Test run with incomplete tests */
