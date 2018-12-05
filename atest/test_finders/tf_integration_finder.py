@@ -210,23 +210,9 @@ class TFIntegrationFinder(test_finder_base.TestFinderBase):
         path = os.path.realpath(path)
         if not os.path.exists(path):
             return None
-        dir_path, file_name = test_finder_utils.get_dir_path_and_filename(path)
-
-        int_dir = None
-        for possible_dir in self.integration_dirs:
-            abs_int_dir = os.path.join(self.root_dir, possible_dir)
-            if test_finder_utils.is_equal_or_sub_dir(dir_path, abs_int_dir):
-                int_dir = abs_int_dir
-                break
+        int_dir = test_finder_utils.get_int_dir_from_path(path,
+                                                          self.integration_dirs)
         if int_dir:
-            if not file_name:
-                logging.warn('Found dir (%s) matching input (%s).'
-                             ' Referencing an entire Integration/Suite dir'
-                             ' is not supported. If you are trying to reference'
-                             ' a test by its path, please input the path to'
-                             ' the integration/suite config file itself.',
-                             int_dir, path)
-                return None
             rel_config = os.path.relpath(path, self.root_dir)
             match = _INT_NAME_RE.match(rel_config)
             if not match:
