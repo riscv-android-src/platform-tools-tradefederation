@@ -39,6 +39,7 @@ import java.util.HashMap;
 public class JUnitXmlParserTest {
     private static final String TEST_PARSE_FILE = "JUnitXmlParserTest_testParse.xml";
     private static final String TEST_PARSE_FILE2 = "JUnitXmlParserTest_error.xml";
+    private static final String BAZEL_SH_TEST_XML = "JUnitXmlParserTest_bazelShTest.xml";
 
     private ITestInvocationListener mMockListener;
 
@@ -104,6 +105,22 @@ public class JUnitXmlParserTest {
         mMockListener.testRunEnded(918686L, new HashMap<String, Metric>());
         EasyMock.replay(mMockListener);
         new JUnitXmlParser(mMockListener).parse(extractTestXml(TEST_PARSE_FILE2));
+        EasyMock.verify(mMockListener);
+    }
+
+    /** Test parsing the XML from an sh_test rule in Bazel. */
+    @Test
+    public void testParseBazelShTestXml() throws ParseException {
+        mMockListener.testRunStarted("//pkg:target", 1);
+        TestDescription test = new TestDescription(
+                JUnitXmlParser.class.getSimpleName(),  // TODO(b/120500865): remove this kludge
+                "pkg/target");
+        mMockListener.testStarted(test);
+        mMockListener.testEnded(test, new HashMap<String, Metric>());
+
+        mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
+        EasyMock.replay(mMockListener);
+        new JUnitXmlParser("//pkg:target", mMockListener).parse(extractTestXml(BAZEL_SH_TEST_XML));
         EasyMock.verify(mMockListener);
     }
 
