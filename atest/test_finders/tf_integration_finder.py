@@ -35,6 +35,8 @@ from test_runners import atest_tf_test_runner
 _INT_NAME_RE = re.compile(r'^.*\/res\/config\/(?P<int_name>.*).xml$')
 _TF_TARGETS = frozenset(['tradefed', 'tradefed-contrib'])
 _GTF_TARGETS = frozenset(['google-tradefed', 'google-tradefed-contrib'])
+_CONTRIB_TARGETS = frozenset(['tradefed-contrib', 'google-tradefed-contrib'])
+_TF_RES_DIR = '../res/config'
 
 
 class TFIntegrationFinder(test_finder_base.TestFinderBase):
@@ -54,6 +56,11 @@ class TFIntegrationFinder(test_finder_base.TestFinderBase):
     def _get_mod_paths(self, module_name):
         """Return the paths of the given module name."""
         if self.module_info:
+            # Since aosp/801774 merged, the path of test configs have been
+            # changed to ../res/config.
+            if module_name in _CONTRIB_TARGETS:
+                mod_paths = self.module_info.get_paths(module_name)
+                return [os.path.join(path, _TF_RES_DIR) for path in mod_paths]
             return self.module_info.get_paths(module_name)
         return []
 
