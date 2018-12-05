@@ -17,41 +17,40 @@ Result Reporter
 The result reporter formats and prints test results.
 
 ----
-
 Example Output for command to run following tests:
-CtsAnimationTestCases:EvaluatorTest, ScreenDecorWindowTests#testFlagChange and
-HelloWorldTests
+CtsAnimationTestCases:EvaluatorTest, HelloWorldTests, and WmTests
 
 Running Tests ...
 
 CtsAnimationTestCases (7 Tests)
 ------------------------------
-android.animation.cts.EvaluatorTest#testRectEvaluator: PASSED
-android.animation.cts.EvaluatorTest#testIntArrayEvaluator: PASSED
-android.animation.cts.EvaluatorTest#testIntEvaluator: PASSED
-android.animation.cts.EvaluatorTest#testFloatArrayEvaluator: PASSED
-android.animation.cts.EvaluatorTest#testPointFEvaluator: PASSED
-android.animation.cts.EvaluatorTest#testArgbEvaluator: PASSED
-android.animation.cts.EvaluatorTest#testFloatEvaluator: PASSED
+[1/7] android.animation.cts.EvaluatorTest#testRectEvaluator: PASSED (153ms)
+[2/7] android.animation.cts.EvaluatorTest#testIntArrayEvaluator: PASSED (0ms)
+[3/7] android.animation.cts.EvaluatorTest#testIntEvaluator: PASSED (0ms)
+[4/7] android.animation.cts.EvaluatorTest#testFloatArrayEvaluator: PASSED (1ms)
+[5/7] android.animation.cts.EvaluatorTest#testPointFEvaluator: PASSED (1ms)
+[6/7] android.animation.cts.EvaluatorTest#testArgbEvaluator: PASSED (0ms)
+[7/7] android.animation.cts.EvaluatorTest#testFloatEvaluator: PASSED (1ms)
 
-FrameworksServicesTests (1 Test)
--------------------------------
-com.android.server.wm.ScreenDecorWindowTests#testFlagChange: PASSED
+HelloWorldTests (2 Tests)
+------------------------
+[1/2] android.test.example.helloworld.HelloWorldTest#testHalloWelt: PASSED (0ms)
+[2/2] android.test.example.helloworld.HelloWorldTest#testHelloWorld: PASSED (1ms)
 
-HelloWorldTests
+WmTests (1 Test)
 ---------------
-ERROR EXECUTING TEST RUN: Instrumentation run failed due to 'Process crashed.'
+RUNNER ERROR: com.android.tradefed.targetprep.TargetSetupError:
+Failed to install WmTests.apk on 127.0.0.1:54373. Reason:
+    error message ...
 
-SUMMARY
+
+Summary
 -------
 CtsAnimationTestCases: Passed: 7, Failed: 0
-FrameworksServicesTests: Passed: 1, Failed: 0
-HelloWorldTests: Passed: 0, Failed: 0
-(Errors occurred during above test run. Counts may be inaccurate.)
+HelloWorldTests: Passed: 2, Failed: 0
+WmTests: Passed: 0, Failed: 0 (Completed With ERRORS)
 
-WARNING: Errors occurred during test run. Counts may be inaccurate.
-
-TODO(b/79699032): Update reporter to add color and implement final formatting.
+1 test failed
 """
 
 from __future__ import print_function
