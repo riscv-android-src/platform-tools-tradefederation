@@ -359,10 +359,16 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         # It should raise TradeFedExitError in _check_events_are_balanced()
         name = 'TEST_RUN_ENDED'
         data = {}
-        # TODO(b/117326576)
-        # Raise TradeFedExitError if EVENTS_NOT_BALANCED happened.
-        # Currently, we are pending on TF to give us more information about
-        # it. Then, we can handle this more elegantly.(b/119239432)
+        self.assertRaises(atf_tr.TradeFedExitError,
+                          self.tr._check_events_are_balanced,
+                          name, mock_reporter, state, stack)
+        # Event pair: TEST_RUN_STARTED -> TEST_MODULE_ENDED
+        # It should raise TradeFedExitError in _check_events_are_balanced()
+        name = 'TEST_MODULE_ENDED'
+        data = {'foo': 'bar'}
+        self.assertRaises(atf_tr.TradeFedExitError,
+                          self.tr._check_events_are_balanced,
+                          name, mock_reporter, state, stack)
 
     @mock.patch('atest_utils.get_result_server_args')
     def test_generate_run_command(self, mock_resultargs):
