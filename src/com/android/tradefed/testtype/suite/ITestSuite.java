@@ -891,13 +891,19 @@ public abstract class ITestSuite
     /** {@inheritDoc} */
     @Override
     public void reportNotExecuted(ITestInvocationListener listener) {
+        reportNotExecuted(listener, IReportNotExecuted.NOT_EXECUTED_FAILURE);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void reportNotExecuted(ITestInvocationListener listener, String message) {
         List<ModuleDefinition> runModules = createExecutionList();
 
         while (!runModules.isEmpty()) {
             ModuleDefinition module = runModules.remove(0);
             listener.testModuleStarted(module.getModuleInvocationContext());
             listener.testRunStarted(module.getId(), 0);
-            listener.testRunFailed(IReportNotExecuted.NOT_EXECUTED_FAILURE);
+            listener.testRunFailed(message);
             listener.testRunEnded(0, new HashMap<String, Metric>());
             listener.testModuleEnded();
         }
