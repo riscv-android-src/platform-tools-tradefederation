@@ -43,10 +43,17 @@ public class ModuleListener extends CollectingTestListener {
     private ITestInvocationListener mMainListener;
     private boolean mHasFailed = false;
 
+    private boolean mCollectTestsOnly = false;
+
     /** Constructor. */
     public ModuleListener(ITestInvocationListener listener) {
         mMainListener = listener;
         setIsAggregrateMetrics(true);
+    }
+
+    /** Sets whether or not we are only collecting the tests. */
+    public void setCollectTestsOnly(boolean collectTestsOnly) {
+        mCollectTestsOnly = collectTestsOnly;
     }
 
     @Override
@@ -79,7 +86,9 @@ public class ModuleListener extends CollectingTestListener {
     /** {@inheritDoc} */
     @Override
     public void testStarted(TestDescription test, long startTime) {
-        CLog.d("ModuleListener.testStarted(%s)", test.toString());
+        if (!mCollectTestsOnly) {
+            CLog.d("ModuleListener.testStarted(%s)", test.toString());
+        }
         mTestFailed = false;
         super.testStarted(test, startTime);
         if (mSkip) {
@@ -89,7 +98,7 @@ public class ModuleListener extends CollectingTestListener {
 
     /** Helper to log the test passed if it didn't fail. */
     private void logTestPassed(String testName) {
-        if (!mTestFailed) {
+        if (!mTestFailed && !mCollectTestsOnly) {
             CLog.logAndDisplay(
                     LogLevel.INFO, "[%d/%d] %s pass", mTestsRan, getExpectedTests(), testName);
         }
