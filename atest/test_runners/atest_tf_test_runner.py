@@ -141,14 +141,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             run_cmd = self._generate_run_command(args, extra_args,
                                                  metrics_folder)
             subproc = self.run(run_cmd, output_to_stdout=True)
-            try:
-                signal.signal(signal.SIGINT, self._signal_passer(subproc))
-                subproc.wait()
-                ret_code |= subproc.returncode
-            except:
-                # If atest crashes, kill TF subproc group as well.
-                os.killpg(os.getpgid(subproc.pid), signal.SIGINT)
-                raise
+            ret_code |= self.wait_for_subprocess(subproc)
         return ret_code
 
     # pylint: disable=broad-except
@@ -218,27 +211,6 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 subproc.wait()
                 ret_code |= subproc.returncode
         return ret_code
-
-    def _signal_passer(self, proc):
-        """Return the signal_handler func bound to proc.
-
-        Args:
-            proc: The tradefed subprocess.
-
-        Returns:
-            signal_handler function.
-        """
-        def signal_handler(_signal_number, _frame):
-            """Pass SIGINT to proc.
-
-            If user hits ctrl-c during atest run, the TradeFed subprocess
-            won't stop unless we also send it a SIGINT. The TradeFed process
-            is started in a process group, so this SIGINT is sufficient to
-            kill all the child processes TradeFed spawns as well.
-            """
-            print('Ctrl-C received. Killing Tradefed subprocess group')
-            os.killpg(os.getpgid(proc.pid), signal.SIGINT)
-        return signal_handler
 
     def _start_socket_server(self):
         """Start a TCP server."""
