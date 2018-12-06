@@ -43,6 +43,8 @@ import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.INativeDevice;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.TcpDevice;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
 import com.android.tradefed.device.metric.DeviceMetricData;
@@ -1224,8 +1226,7 @@ public class TestInvocationTest extends TestCase {
         final String fakeEvent = "event";
         IInvocationContext context = new InvocationContext();
         ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(device1.getBattery()).andReturn(null);
-        EasyMock.expect(device1.getSerialNumber()).andReturn("serial");
+        EasyMock.expect(device1.getIDevice()).andReturn(new StubDevice("stub"));
         context.addAllocatedDevice("device1", device1);
         EasyMock.replay(device1);
         mTestInvocation.logDeviceBatteryLevel(context, fakeEvent);
@@ -1241,6 +1242,7 @@ public class TestInvocationTest extends TestCase {
         final String fakeEvent = "event";
         IInvocationContext context = new InvocationContext();
         ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device1.getIDevice()).andReturn(EasyMock.createMock(IDevice.class));
         EasyMock.expect(device1.getSerialNumber()).andReturn("serial1");
         EasyMock.expect(device1.getBattery()).andReturn(50);
         context.addAllocatedDevice("device1", device1);
@@ -1264,10 +1266,12 @@ public class TestInvocationTest extends TestCase {
         final String fakeEvent = "event";
         IInvocationContext context = new InvocationContext();
         ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device1.getIDevice()).andReturn(EasyMock.createMock(IDevice.class));
         EasyMock.expect(device1.getSerialNumber()).andReturn("serial1");
         EasyMock.expect(device1.getBattery()).andReturn(50);
 
         ITestDevice device2 = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device2.getIDevice()).andReturn(EasyMock.createMock(IDevice.class));
         EasyMock.expect(device2.getSerialNumber()).andReturn("serial2");
         EasyMock.expect(device2.getBattery()).andReturn(55);
 
@@ -1300,20 +1304,20 @@ public class TestInvocationTest extends TestCase {
         final String fakeEvent = "event";
         IInvocationContext context = new InvocationContext();
         ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device1.getIDevice()).andReturn(EasyMock.createMock(IDevice.class));
         EasyMock.expect(device1.getSerialNumber()).andReturn("serial1");
         EasyMock.expect(device1.getBattery()).andReturn(50);
 
         ITestDevice device2 = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device2.getIDevice()).andReturn(EasyMock.createMock(IDevice.class));
         EasyMock.expect(device2.getSerialNumber()).andReturn("serial2");
         EasyMock.expect(device2.getBattery()).andReturn(50);
 
         ITestDevice device3 = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(device3.getBattery()).andReturn(null);
-        EasyMock.expect(device3.getSerialNumber()).andReturn("stub1");
+        EasyMock.expect(device3.getIDevice()).andReturn(new StubDevice("stub-3"));
 
         ITestDevice device4 = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(device4.getBattery()).andReturn(null);
-        EasyMock.expect(device4.getSerialNumber()).andReturn("stub2");
+        EasyMock.expect(device4.getIDevice()).andReturn(new TcpDevice("tcp-4"));
 
         context.addAllocatedDevice("device1", device1);
         context.addDeviceBuildInfo("device1", new BuildInfo());

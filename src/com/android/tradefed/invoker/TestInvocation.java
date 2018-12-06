@@ -532,6 +532,9 @@ public class TestInvocation implements ITestInvocation {
             if (testDevice == null) {
                 continue;
             }
+            if (testDevice.getIDevice() instanceof StubDevice) {
+                continue;
+            }
             Integer batteryLevel = testDevice.getBattery();
             if (batteryLevel == null) {
                 CLog.v("Failed to get battery level for %s", testDevice.getSerialNumber());
