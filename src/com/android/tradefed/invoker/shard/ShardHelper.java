@@ -112,35 +112,29 @@ public class ShardHelper implements IShardHelper {
                 Collections.shuffle(shardableTests);
                 int maxShard = Math.min(shardCount, shardableTests.size());
                 CountDownLatch tracker = new CountDownLatch(maxShard);
+                Collection<ITokenRequest> tokenPool = null;
+                if (config.getCommandOptions().shouldUseTokenSharding()) {
+                    tokenPool = extractTokenTests(shardableTests);
+                }
                 for (int i = 0; i < maxShard; i++) {
                     IConfiguration shardConfig = config.clone();
-                    TestsPoolPoller poller = null;
-                    if (config.getCommandOptions().shouldUseTokenSharding()) {
-                        poller =
-                                new TestsPoolPoller(
-                                        shardableTests, extractTokenTests(shardableTests), tracker);
-                    } else {
-                        poller = new TestsPoolPoller(shardableTests, tracker);
-                    }
+                    TestsPoolPoller poller =
+                            new TestsPoolPoller(shardableTests, tokenPool, tracker);
                     shardConfig.setTest(poller);
                     rescheduleConfig(shardConfig, config, context, rescheduler, resultCollector);
                 }
             } else {
                 CountDownLatch tracker = new CountDownLatch(shardableTests.size());
+                Collection<ITokenRequest> tokenPool = null;
+                if (config.getCommandOptions().shouldUseTokenSharding()) {
+                    tokenPool = extractTokenTests(shardableTests);
+                }
                 for (IRemoteTest testShard : shardableTests) {
-                    CLog.i("Rescheduling sharded config...");
+                    CLog.d("Rescheduling sharded config...");
                     IConfiguration shardConfig = config.clone();
                     if (config.getCommandOptions().shouldUseDynamicSharding()) {
-                        TestsPoolPoller poller = null;
-                        if (config.getCommandOptions().shouldUseTokenSharding()) {
-                            poller =
-                                    new TestsPoolPoller(
-                                            shardableTests,
-                                            extractTokenTests(shardableTests),
-                                            tracker);
-                        } else {
-                            poller = new TestsPoolPoller(shardableTests, tracker);
-                        }
+                        TestsPoolPoller poller =
+                                new TestsPoolPoller(shardableTests, tokenPool, tracker);
                         shardConfig.setTest(poller);
                     } else {
                         shardConfig.setTest(testShard);
@@ -296,7 +290,8 @@ public class ShardHelper implements IShardHelper {
 
     private Collection<ITokenRequest> extractTokenTests(Collection<IRemoteTest> shardableTests) {
         List<ITokenRequest> tokenPool = new ArrayList<>();
-        Iterator<IRemoteTest> itr = shardableTests.iterator();
+        Iterator<IRemoteTest> itr = new ArrayList<>(shardableTests).iterator();
+
         while (itr.hasNext()) {
             IRemoteTest test = itr.next();
             if (test instanceof ITokenRequest) {

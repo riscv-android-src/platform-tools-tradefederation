@@ -28,7 +28,6 @@ import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.shard.token.ITokenRequest;
-import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -49,10 +48,7 @@ import org.mockito.Mockito;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
 /** Unit tests for {@link TestsPoolPoller}. */
@@ -408,31 +404,8 @@ public class TestsPoolPollerTest {
 
         // The two tokens test did not execute.
         Mockito.verify(mListener, Mockito.times(2))
-                .testFailed(new TestDescription("token.class", "token.test"), "trace");
-    }
-
-    /** Test class for tokens */
-    class TokenTestClass implements IRemoteTest, ITokenRequest, IReportNotExecuted {
-
-        @Override
-        public Set<TokenProperty> getRequiredTokens() {
-            Set<TokenProperty> props = new HashSet<>();
-            props.add(TokenProperty.SIM_CARD);
-            return props;
-        }
-
-        @Override
-        public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-            listener.testRunStarted("TestToken", 1);
-            TestDescription testId = new TestDescription("StubToken", "MethodToken");
-            listener.testStarted(testId);
-            listener.testEnded(testId, new LinkedHashMap<String, Metric>());
-            listener.testRunEnded(500, new LinkedHashMap<String, Metric>());
-        }
-
-        @Override
-        public void reportNotExecuted(ITestInvocationListener listener) {
-            listener.testFailed(new TestDescription("token.class", "token.test"), "trace");
-        }
+                .testFailed(
+                        new TestDescription("token.class", "token.test"),
+                        "Test did not run. No token '[SIM_CARD]' matching it on any device.");
     }
 }
