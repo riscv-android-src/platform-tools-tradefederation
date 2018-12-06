@@ -292,7 +292,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         """Check Start events and End events. They should be balanced.
 
         If they are not balanced, print the error message in
-        state['last_failed']
+        state['last_failed'], then raise TradeFedExitError.
 
         Args:
             event_name: A string of the event name.
@@ -300,6 +300,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             state: A dict of the state of the test run.
             event_stack: A collections.deque(stack) of the events for pairing
                          START and END events.
+        Raises:
+            TradeFedExitError if we doesn't have a balance of START/END events.
         """
         start_event = event_stack.pop() if event_stack else None
         if not start_event or EVENT_PAIRS[start_event] != event_name:
@@ -317,10 +319,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                     test_time='',
                     runner_total=None,
                     group_total=state['current_group_total']))
-            # TODO(b/117326576)
-            # Raise TradeFedExitError if EVENTS_NOT_BALANCED happened.
-            # Currently, we are pending on TF to give us more information about
-            # it. Then, we can handle this more elegantly.(b/119239432)
+            raise TradeFedExitError(EVENTS_NOT_BALANCED % (start_event,
+                                                           event_name))
 
     def _print_duration(self, duration):
         """Convert duration from ms to 3h2m43.034s.
@@ -368,13 +368,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             state['current_test'] = None
         elif event_name == EVENT_NAMES['run_started']:
             # Technically there can be more than one run per module.
-            # TODO(b/117326576) We don't reset the test_count if testCount = 0
-            # since it means a test crash and it still in the same test group.
-            # Currently, we are pending on TF to give us more information about
-            # it. Then, we can handle this more elegantly.(b/119239432)
-            if event_data['testCount'] != 0:
-                state['current_group_total'] = event_data['testCount']
-                state['test_count'] = 0
+            state['current_group_total'] = event_data['testCount']
+            state['test_count'] = 0
             state['last_failed'] = None
             state['current_test'] = None
         elif event_name == EVENT_NAMES['test_started']:
