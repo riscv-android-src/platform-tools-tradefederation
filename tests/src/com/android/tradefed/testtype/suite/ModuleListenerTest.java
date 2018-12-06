@@ -23,6 +23,7 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.TestRunResult;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -30,6 +31,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.util.HashMap;
+import java.util.List;
 
 /** Unit tests for {@link ModuleListener} * */
 @RunWith(JUnit4.class)
@@ -158,5 +160,35 @@ public class ModuleListenerTest {
         for (int attempt = finalRunFailureAtAttempt; attempt < maxRunLimit; attempt++) {
             assertFalse(mListener.hasRunCrashedAtAttempt(attempt));
         }
+    }
+
+    /** Ensure that out of sequence attempts do not mess up reporting. */
+    @Test
+    public void testRetryInvalid() throws Exception {
+        mListener.testRunStarted("apexservice_test", 1, 0);
+        TestDescription test = new TestDescription("ApexServiceTest", "Activate");
+        mListener.testStarted(test);
+        mListener.testFailed(test, "failed");
+        mListener.testEnded(test, new HashMap<String, Metric>());
+        mListener.testRunEnded(500L, new HashMap<String, Metric>());
+        mListener.testRunStarted("apex.test", 0, 1);
+        mListener.testRunFailed("test.apex did not report any run.");
+
+        mListener.testRunStarted("apexservice_test", 1, 1);
+        mListener.testStarted(test);
+        mListener.testEnded(test, new HashMap<String, Metric>());
+        mListener.testRunEnded(500L, new HashMap<String, Metric>());
+
+        List<TestRunResult> results = mListener.getMergedTestRunResults();
+        assertEquals(2, results.size());
+        assertEquals("apexservice_test", results.get(0).getName());
+        assertFalse(results.get(0).isRunFailure());
+
+        assertEquals("apex.test", results.get(1).getName());
+        assertTrue(results.get(1).isRunFailure());
+        assertEquals(
+                "Run attempt 0 of apex.test did not exists, but got attempt 1. This is a placeholder for the missing attempt.\n\n"
+                        + "test.apex did not report any run.",
+                results.get(1).getRunFailureMessage());
     }
 }

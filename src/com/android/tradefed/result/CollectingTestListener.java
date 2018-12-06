@@ -32,6 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * A {@link ITestInvocationListener} that will collect all test results.
@@ -183,10 +184,23 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
             result.setAggregateMetrics(mIsAggregateMetrics);
             results.add(result);
         } else {
-            throw new IllegalArgumentException(
-                    String.format(
-                            "The attempt number cannot contain gaps. Expected [0-%d] and got %d",
-                            results.size(), attemptNumber));
+            int size = results.size();
+            for (int i = size; i < attemptNumber; i++) {
+                TestRunResult result = new TestRunResult();
+                result.setAggregateMetrics(mIsAggregateMetrics);
+                result.testRunStarted(name, numTests);
+                String errorMessage =
+                        String.format(
+                                "Run attempt %s of %s did not exists, but got attempt %s. This is a placeholder for the missing attempt.",
+                                i, name, attemptNumber);
+                result.testRunFailed(errorMessage);
+                result.testRunEnded(0L, new HashMap<String, Metric>());
+                results.add(result);
+            }
+            // New current run
+            TestRunResult newResult = new TestRunResult();
+            newResult.setAggregateMetrics(mIsAggregateMetrics);
+            results.add(newResult);
         }
         mCurrentTestRunResult = results.get(attemptNumber);
 
@@ -371,8 +385,14 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
             CLog.e("Early failure resulting in no testRunStart. Results might be inconsistent.");
             mMergedTestRunResults.add(mCurrentTestRunResult);
         } else {
-            for (List<TestRunResult> results : mTestRunResultMap.values()) {
-                mMergedTestRunResults.add(TestRunResult.merge(results, mStrategy));
+            for (Entry<String, List<TestRunResult>> results : mTestRunResultMap.entrySet()) {
+                TestRunResult res = TestRunResult.merge(results.getValue(), mStrategy);
+                if (res == null) {
+                    // Merge can return null in case of results being empty.
+                    CLog.w("No results for %s", results.getKey());
+                } else {
+                    mMergedTestRunResults.add(res);
+                }
             }
         }
         // Reset counts
