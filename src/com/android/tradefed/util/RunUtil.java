@@ -326,7 +326,7 @@ public class RunUtil implements IRunUtil {
                 CLog.d("Running command without timeout.");
             }
         }
-
+        CommandStatus status = CommandStatus.TIMED_OUT;
         try {
             runThread.start();
             long startTime = System.currentTimeMillis();
@@ -351,20 +351,20 @@ public class RunUtil implements IRunUtil {
                 mInterrupter.checkInterrupted();
             } while ((timeout == 0L || (System.currentTimeMillis() - startTime) < timeout)
                     && runThread.isAlive());
+        } catch (RunInterruptedException e) {
+            runThread.cancel();
+            throw e;
+        } finally {
             // Snapshot the status when out of the run loop because thread may terminate and return
             // a false FAILED instead of TIMED_OUT.
-            CommandStatus status = runThread.getStatus();
+            status = runThread.getStatus();
             if (CommandStatus.TIMED_OUT.equals(status) || CommandStatus.EXCEPTION.equals(status)) {
                 CLog.i("runTimed: Calling interrupt, status is %s", status);
                 runThread.cancel();
             }
-            mInterrupter.checkInterrupted();
-            return status;
-
-        } finally {
-            // always ensure the execution is cancelled
-            runThread.cancel();
         }
+        mInterrupter.checkInterrupted();
+        return status;
     }
 
     /**
@@ -674,12 +674,15 @@ public class RunUtil implements IRunUtil {
 
         @Override
         public void cancel() {
+            if (mCancelled) {
+                return;
+            }
             mCancelled = true;
             synchronized (mLock) {
                 if (mProcess == null || !mProcess.isAlive()) {
                     return;
                 }
-                CLog.i("Cancelling the process execution");
+                CLog.d("Cancelling the process execution");
                 mProcess.destroy();
                 try {
                     // Only allow to continue if the Stdout has been read
