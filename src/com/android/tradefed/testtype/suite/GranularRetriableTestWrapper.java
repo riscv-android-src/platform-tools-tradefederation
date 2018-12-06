@@ -29,6 +29,7 @@ import com.android.tradefed.result.MergeStrategy;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.suite.ITestSuite.RetryStrategy;
 
@@ -65,7 +66,7 @@ import java.util.Set;
  *   <li> X is customized max retry number.
  * </ul>
  */
-public class GranularRetriableTestWrapper implements IRemoteTest {
+public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector {
 
     private IRemoteTest mTest;
     private List<IMetricCollector> mRunMetricCollectors;
@@ -78,6 +79,8 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
     private ILogSaver mLogSaver;
     private String mModuleId;
     private int mMaxRunLimit;
+
+    private boolean mCollectTestsOnly = false;
 
     // Tracking of the metrics
     /** How much time are we spending doing the retry attempts */
@@ -222,6 +225,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        mMainGranularRunListener.setCollectTestsOnly(mCollectTestsOnly);
         ITestInvocationListener allListeners = initializeListeners();
         // First do the regular run, not retried.
         intraModuleRun(allListeners);
@@ -505,5 +509,10 @@ public class GranularRetriableTestWrapper implements IRemoteTest {
         public void incrementAttempt() {
             mAttemptNumber++;
         }
+    }
+
+    @Override
+    public void setCollectTestsOnly(boolean shouldCollectTest) {
+        mCollectTestsOnly = shouldCollectTest;
     }
 }
