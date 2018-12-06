@@ -19,6 +19,7 @@ Class that other test runners will instantiate for test runners.
 """
 
 import logging
+import signal
 import subprocess
 import os
 from collections import namedtuple
@@ -71,6 +72,46 @@ class TestRunnerBase(object):
         return subprocess.Popen(cmd, preexec_fn=os.setsid, shell=True,
                                 stderr=subprocess.STDOUT, stdout=out)
 
+    def wait_for_subprocess(self, proc):
+        """Check the process status. Interrupt the TF subporcess if user
+        hits Ctrl-C.
+
+        Args:
+            proc: The tradefed subprocess.
+
+        Returns:
+            Return code of the subprocess for running tests.
+        """
+        try:
+            logging.debug('Runner Name: %s, Process ID: %s', self.NAME, proc.pid)
+            signal.signal(signal.SIGINT, self._signal_passer(proc))
+            proc.wait()
+            return proc.returncode
+        except:
+            # If atest crashes, kill TF subproc group as well.
+            os.killpg(os.getpgid(proc.pid), signal.SIGINT)
+            raise
+
+    def _signal_passer(self, proc):
+        """Return the signal_handler func bound to proc.
+
+        Args:
+            proc: The tradefed subprocess.
+
+        Returns:
+            signal_handler function.
+        """
+        def signal_handler(_signal_number, _frame):
+            """Pass SIGINT to proc.
+
+            If user hits ctrl-c during atest run, the TradeFed subprocess
+            won't stop unless we also send it a SIGINT. The TradeFed process
+            is started in a process group, so this SIGINT is sufficient to
+            kill all the child processes TradeFed spawns as well.
+            """
+            logging.info('Ctrl-C received. Killing Tradefed subprocess group')
+            os.killpg(os.getpgid(proc.pid), signal.SIGINT)
+        return signal_handler
 
     def run_tests(self, test_infos, extra_args, reporter):
         """Run the list of test_infos.
