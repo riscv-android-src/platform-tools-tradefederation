@@ -435,6 +435,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                                 moduleLevelListeners,
                                 skipTestCases,
                                 maxRunLimit);
+                retriableTest.setCollectTestsOnly(mCollectTestsOnly);
                 try {
                     retriableTest.run(listener);
                 } catch (DeviceNotAvailableException dnae) {
