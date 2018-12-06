@@ -106,15 +106,15 @@ EVENTS_NORMAL = [
         'moduleContextFileName':'serial-util1146216{974}2772610436.ser',
         'moduleName':'someTestModule'}),
     ('TEST_RUN_STARTED', {'testCount': 2}),
-    ('TEST_STARTED', {'start_time':10, 'className':'someClassName',
+    ('TEST_STARTED', {'start_time':52, 'className':'someClassName',
                       'testName':'someTestName'}),
-    ('TEST_ENDED', {'end_time':12, 'className':'someClassName',
+    ('TEST_ENDED', {'end_time':1048, 'className':'someClassName',
                     'testName':'someTestName'}),
-    ('TEST_STARTED', {'start_time':13, 'className':'someClassName2',
+    ('TEST_STARTED', {'start_time':48, 'className':'someClassName2',
                       'testName':'someTestName2'}),
     ('TEST_FAILED', {'className':'someClassName2', 'testName':'someTestName2',
                      'trace': 'someTrace'}),
-    ('TEST_ENDED', {'end_time':18, 'className':'someClassName2',
+    ('TEST_ENDED', {'end_time':9876450, 'className':'someClassName2',
                     'testName':'someTestName2'}),
     ('TEST_RUN_ENDED', {}),
     ('TEST_MODULE_ENDED', {'foo': 'bar'}),
@@ -279,7 +279,7 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
             status=test_runner_base.PASSED_STATUS,
             details=None,
             test_count=1,
-            test_time='(2ms)',
+            test_time='(996ms)',
             runner_total=None,
             group_total=2
         ))
@@ -290,7 +290,7 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
             status=test_runner_base.FAILED_STATUS,
             details='someTrace',
             test_count=2,
-            test_time='(5ms)',
+            test_time='(2h44m36.402s)',
             runner_total=None,
             group_total=2
         ))
