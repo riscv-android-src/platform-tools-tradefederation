@@ -21,6 +21,7 @@ Class that other test runners will instantiate for test runners.
 import logging
 import signal
 import subprocess
+import tempfile
 import os
 from collections import namedtuple
 
@@ -44,6 +45,7 @@ class TestRunnerBase(object):
     def __init__(self, results_dir, **kwargs):
         """Init stuff for base class."""
         self.results_dir = results_dir
+        self.test_log_file = None
         if not self.NAME:
             raise atest_error.NoTestRunnerName('Class var NAME is not defined.')
         if not self.EXECUTABLE:
@@ -52,8 +54,7 @@ class TestRunnerBase(object):
         if kwargs:
             logging.info('ignoring the following args: %s', kwargs)
 
-    @staticmethod
-    def run(cmd, output_to_stdout=False):
+    def run(self, cmd, output_to_stdout=False):
         """Shell out and execute command.
 
         Args:
@@ -67,10 +68,13 @@ class TestRunnerBase(object):
                               Set to True to see the output of the cmd. This
                               would be appropriate for verbose runs.
         """
+        if not output_to_stdout:
+            self.test_log_file = tempfile.NamedTemporaryFile(mode='w',
+                                                             dir=self.results_dir,
+                                                             delete=True)
         logging.debug('Executing command: %s', cmd)
-        out = None if output_to_stdout else open(os.devnull, 'w')
         return subprocess.Popen(cmd, preexec_fn=os.setsid, shell=True,
-                                stderr=subprocess.STDOUT, stdout=out)
+                                stderr=subprocess.STDOUT, stdout=self.test_log_file)
 
     def wait_for_subprocess(self, proc):
         """Check the process status. Interrupt the TF subporcess if user
