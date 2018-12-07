@@ -36,7 +36,7 @@ import java.util.List;
  * xml.
  */
 @OptionClass(alias = "config-descriptor")
-public class ConfigurationDescriptor implements Serializable {
+public class ConfigurationDescriptor implements Serializable, Cloneable {
 
     /** Enum used to indicate local test runner. */
     public enum LocalTestRunner {
@@ -104,7 +104,11 @@ public class ConfigurationDescriptor implements Serializable {
 
     /** Get the named metadata entries */
     public List<String> getMetaData(String name) {
-        return mMetaData.get(name);
+        List<String> entry = mMetaData.get(name);
+        if (entry == null) {
+            return null;
+        }
+        return new ArrayList<>(entry);
     }
 
     @VisibleForTesting
@@ -235,5 +239,11 @@ public class ConfigurationDescriptor implements Serializable {
             configDescriptor.mAbi = Abi.fromProto(protoDescriptor.getAbi());
         }
         return configDescriptor;
+    }
+
+    /** Return a deep-copy of the {@link ConfigurationDescriptor} object. */
+    @Override
+    public ConfigurationDescriptor clone() {
+        return fromProto(this.toProto());
     }
 }
