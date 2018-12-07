@@ -17,6 +17,8 @@
 """Unittests for atest_tf_test_runner."""
 
 import os
+import sys
+import tempfile
 import unittest
 import json
 import socket
@@ -29,6 +31,11 @@ import unittest_utils
 import atest_tf_test_runner as atf_tr
 from test_finders import test_info
 from test_runners import test_runner_base
+
+if sys.version_info[0] == 2:
+    from StringIO import StringIO
+else:
+    from io import StringIO
 
 #pylint: disable=protected-access
 #pylint: disable=invalid-name
@@ -190,9 +197,17 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         self.tr.run_tests_pretty([MODULE2_INFO], {}, mock_reporter)
 
         # Test early TF exit
+        tmp_file = tempfile.NamedTemporaryFile()
+        with open(tmp_file.name, 'w') as f:
+            f.write("tf msg")
+        self.tr.test_log_file = tmp_file
         mock_exec_w_poll.side_effect = atf_tr.TradeFedExitError()
+        capture_output = StringIO()
+        sys.stdout = capture_output
         self.assertRaises(atf_tr.TradeFedExitError, self.tr.run_tests_pretty,
                           [MODULE2_INFO], {}, mock_reporter)
+        sys.stdout = sys.__stdout__
+        self.assertTrue('tf msg' in capture_output.getvalue())
 
     def test_exec_with_tf_polling(self):
         """Test _exec_with_tf_polling method."""
