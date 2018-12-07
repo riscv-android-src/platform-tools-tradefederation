@@ -101,6 +101,12 @@ public class SuiteApkInstaller extends TestAppInstallSetup {
                 return apkFile;
             }
 
+            // Check build info directly
+            apkFile = buildInfo.getFile(apkFileName);
+            if (apkFile != null && apkFile.isFile()) {
+                return apkFile;
+            }
+
             // check ROOT_DIR
             apkFile = FileUtil.findFile(getTestsDir(buildInfo), apkFileName);
             if (apkFile == null || !apkFile.isFile()) {

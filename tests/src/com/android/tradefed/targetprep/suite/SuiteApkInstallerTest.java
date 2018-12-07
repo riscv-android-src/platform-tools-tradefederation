@@ -15,7 +15,9 @@
  */
 package com.android.tradefed.targetprep.suite;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -231,6 +233,26 @@ public class SuiteApkInstallerTest {
             EasyMock.verify(deviceBuildInfo);
         } finally {
             FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
+    /** If the file is found directly in the build info keys, use it. */
+    @Test
+    public void testGetLocalPathForFileName_inBuildKey() throws Exception {
+        File tmpApk = FileUtil.createTempFile("suite-apk-installer", ".apk");
+        mPreparer =
+                new SuiteApkInstaller() {
+                    @Override
+                    protected File getTestsDir(IBuildInfo buildInfo) throws FileNotFoundException {
+                        return null;
+                    }
+                };
+        Mockito.doReturn(tmpApk).when(mMockBuildInfo).getFile("foo.apk");
+        try {
+            File apk = mPreparer.getLocalPathForFilename(mMockBuildInfo, "foo.apk", mMockDevice);
+            assertEquals(tmpApk.getAbsolutePath(), apk.getAbsolutePath());
+        } finally {
+            FileUtil.deleteFile(tmpApk);
         }
     }
 }
