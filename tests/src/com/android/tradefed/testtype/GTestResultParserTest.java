@@ -353,4 +353,32 @@ public class GTestResultParserTest extends GTestParserTestBase {
         resultParser.flush();
         EasyMock.verify(mockRunListener);
     }
+
+    /** Tests the parser for a simple test run output with 11 tests where some are skipped. */
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testParseSimpleFileWithSkips() throws Exception {
+        String[] contents = readInFile(GTEST_OUTPUT_FILE_11);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
+        mockRunListener.testRunStarted(TEST_MODULE_NAME, 11);
+        // 11 tests run, with the fifth and sixth tests being ignored
+        for (int i = 0; i < 11; ++i) {
+            mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+            if (i == 4 || i == 5) {
+                mockRunListener.testIgnored((TestDescription) EasyMock.anyObject());
+            }
+            mockRunListener.testEnded(
+                    (TestDescription) EasyMock.anyObject(),
+                    (HashMap<String, Metric>) EasyMock.anyObject());
+        }
+        // TODO: validate param values
+        mockRunListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        EasyMock.replay(mockRunListener);
+        GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
+        resultParser.processNewLines(contents);
+        resultParser.flush();
+        EasyMock.verify(mockRunListener);
+    }
 }
