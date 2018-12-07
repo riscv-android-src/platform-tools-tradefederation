@@ -373,6 +373,25 @@ public class BaseTestSuiteTest {
         EasyMock.verify(mockDevice);
     }
 
+    @Test
+    public void testLoadTests_parameterizedModule_only_instant() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite-parameters-abi-alone");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue("module-parameter", "INSTANT_APP");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.testtype.suite.TestSuiteStub:"
+                        + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(0, configMap.size());
+        EasyMock.verify(mockDevice);
+    }
+
     /**
      * Test when the config supports multi_abi and is run with a parameter to ignore its
      * parameterization. In this case all standard abi are created and not parameter.
