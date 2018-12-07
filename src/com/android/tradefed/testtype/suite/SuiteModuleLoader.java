@@ -244,6 +244,10 @@ public class SuiteModuleLoader {
                     // If we find any parameterized combination.
                     for (IModuleParameter param : params) {
                         if (param instanceof NegativeHandler) {
+                            if (mForcedParameter != null
+                                    && !param.getClass().equals(mForcedParameter.getClass())) {
+                                skipCreatingBaseConfig = true;
+                            }
                             continue;
                         }
                         if (mForcedParameter != null) {
