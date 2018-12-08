@@ -116,6 +116,7 @@ public class TestInvocationMultiTest {
         mProvider1 = EasyMock.createMock(IBuildProvider.class);
         holder1.addSpecificConfig(mProvider1);
         EasyMock.expect(mMockConfig.getDeviceConfigByName("device1")).andStubReturn(holder1);
+        EasyMock.expect(mMockConfig.isDeviceConfiguredFake("device1")).andReturn(false);
         mDevice1.setOptions(EasyMock.anyObject());
         mDevice1.setRecovery(EasyMock.anyObject());
 
