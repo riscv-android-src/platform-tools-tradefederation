@@ -17,6 +17,8 @@
 """Unittests for atest_tf_test_runner."""
 
 import os
+import sys
+import tempfile
 import unittest
 import json
 import socket
@@ -29,6 +31,11 @@ import unittest_utils
 import atest_tf_test_runner as atf_tr
 from test_finders import test_info
 from test_runners import test_runner_base
+
+if sys.version_info[0] == 2:
+    from StringIO import StringIO
+else:
+    from io import StringIO
 
 #pylint: disable=protected-access
 #pylint: disable=invalid-name
@@ -106,15 +113,15 @@ EVENTS_NORMAL = [
         'moduleContextFileName':'serial-util1146216{974}2772610436.ser',
         'moduleName':'someTestModule'}),
     ('TEST_RUN_STARTED', {'testCount': 2}),
-    ('TEST_STARTED', {'start_time':10, 'className':'someClassName',
+    ('TEST_STARTED', {'start_time':52, 'className':'someClassName',
                       'testName':'someTestName'}),
-    ('TEST_ENDED', {'end_time':12, 'className':'someClassName',
+    ('TEST_ENDED', {'end_time':1048, 'className':'someClassName',
                     'testName':'someTestName'}),
-    ('TEST_STARTED', {'start_time':13, 'className':'someClassName2',
+    ('TEST_STARTED', {'start_time':48, 'className':'someClassName2',
                       'testName':'someTestName2'}),
     ('TEST_FAILED', {'className':'someClassName2', 'testName':'someTestName2',
                      'trace': 'someTrace'}),
-    ('TEST_ENDED', {'end_time':18, 'className':'someClassName2',
+    ('TEST_ENDED', {'end_time':9876450, 'className':'someClassName2',
                     'testName':'someTestName2'}),
     ('TEST_RUN_ENDED', {}),
     ('TEST_MODULE_ENDED', {'foo': 'bar'}),
@@ -190,9 +197,17 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         self.tr.run_tests_pretty([MODULE2_INFO], {}, mock_reporter)
 
         # Test early TF exit
+        tmp_file = tempfile.NamedTemporaryFile()
+        with open(tmp_file.name, 'w') as f:
+            f.write("tf msg")
+        self.tr.test_log_file = tmp_file
         mock_exec_w_poll.side_effect = atf_tr.TradeFedExitError()
+        capture_output = StringIO()
+        sys.stdout = capture_output
         self.assertRaises(atf_tr.TradeFedExitError, self.tr.run_tests_pretty,
                           [MODULE2_INFO], {}, mock_reporter)
+        sys.stdout = sys.__stdout__
+        self.assertTrue('tf msg' in capture_output.getvalue())
 
     def test_exec_with_tf_polling(self):
         """Test _exec_with_tf_polling method."""
@@ -279,7 +294,7 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
             status=test_runner_base.PASSED_STATUS,
             details=None,
             test_count=1,
-            test_time='(2ms)',
+            test_time='(996ms)',
             runner_total=None,
             group_total=2
         ))
@@ -290,7 +305,7 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
             status=test_runner_base.FAILED_STATUS,
             details='someTrace',
             test_count=2,
-            test_time='(5ms)',
+            test_time='(2h44m36.402s)',
             runner_total=None,
             group_total=2
         ))
@@ -359,10 +374,16 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         # It should raise TradeFedExitError in _check_events_are_balanced()
         name = 'TEST_RUN_ENDED'
         data = {}
-        # TODO(b/117326576)
-        # Raise TradeFedExitError if EVENTS_NOT_BALANCED happened.
-        # Currently, we are pending on TF to give us more information about
-        # it. Then, we can handle this more elegantly.(b/119239432)
+        self.assertRaises(atf_tr.TradeFedExitError,
+                          self.tr._check_events_are_balanced,
+                          name, mock_reporter, state, stack)
+        # Event pair: TEST_RUN_STARTED -> TEST_MODULE_ENDED
+        # It should raise TradeFedExitError in _check_events_are_balanced()
+        name = 'TEST_MODULE_ENDED'
+        data = {'foo': 'bar'}
+        self.assertRaises(atf_tr.TradeFedExitError,
+                          self.tr._check_events_are_balanced,
+                          name, mock_reporter, state, stack)
 
     @mock.patch('atest_utils.get_result_server_args')
     def test_generate_run_command(self, mock_resultargs):

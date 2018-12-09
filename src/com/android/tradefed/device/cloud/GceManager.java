@@ -433,14 +433,9 @@ public class GceManager {
 
     private static String remoteSshCommandExec(
             GceAvdInfo gceAvd, TestDeviceOptions options, IRunUtil runUtil, String... command) {
-        List<String> sshCmd =
-                GceRemoteCmdFormatter.getSshCommand(
-                        options.getSshPrivateKeyPath(),
-                        null,
-                        options.getInstanceUser(),
-                        gceAvd.hostAndPort().getHostText(),
-                        command);
-        CommandResult res = runUtil.runTimedCmd(BUGREPORT_TIMEOUT, sshCmd.toArray(new String[0]));
+        CommandResult res =
+                RemoteSshUtil.remoteSshCommandExec(
+                        gceAvd, options, runUtil, BUGREPORT_TIMEOUT, command);
         if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
             CLog.e("issue when attempting to execute '%s':", Arrays.asList(command));
             CLog.e("%s", res.getStderr());

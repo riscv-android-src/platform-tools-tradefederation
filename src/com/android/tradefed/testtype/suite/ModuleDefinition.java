@@ -163,7 +163,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         mModuleConfiguration = moduleConfig;
         ConfigurationDescriptor configDescriptor = moduleConfig.getConfigurationDescription();
         mModuleInvocationContext = new InvocationContext();
-        mModuleInvocationContext.setConfigurationDescriptor(configDescriptor);
+        mModuleInvocationContext.setConfigurationDescriptor(configDescriptor.clone());
 
         // If available in the suite, add the abi name
         if (configDescriptor.getAbi() != null) {
@@ -184,7 +184,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         List<String> tokens = configDescriptor.getMetaData(ITestSuite.TOKEN_KEY);
         if (tokens != null) {
             for (String token : tokens) {
-                mRequiredTokens.add(TokenProperty.valueOf(token));
+                mRequiredTokens.add(TokenProperty.valueOf(token.toUpperCase()));
             }
         }
     }
@@ -435,6 +435,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                                 moduleLevelListeners,
                                 skipTestCases,
                                 maxRunLimit);
+                retriableTest.setCollectTestsOnly(mCollectTestsOnly);
                 try {
                     retriableTest.run(listener);
                 } catch (DeviceNotAvailableException dnae) {
@@ -690,6 +691,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             if (preparer instanceof ITestLoggerReceiver) {
                 ((ITestLoggerReceiver) preparer).setTestLogger(logger);
             }
+            if (preparer instanceof IInvocationContextReceiver) {
+                ((IInvocationContextReceiver) preparer)
+                        .setInvocationContext(mModuleInvocationContext);
+            }
             preparer.setUp(device, build);
             return null;
         } catch (BuildError | TargetSetupError | DeviceNotAvailableException | RuntimeException e) {
@@ -710,6 +715,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             // set the logger in case they need it.
             if (preparer instanceof ITestLoggerReceiver) {
                 ((ITestLoggerReceiver) preparer).setTestLogger(logger);
+            }
+            if (preparer instanceof IInvocationContextReceiver) {
+                ((IInvocationContextReceiver) preparer)
+                        .setInvocationContext(mModuleInvocationContext);
             }
             preparer.setUp(mModuleInvocationContext);
             return null;

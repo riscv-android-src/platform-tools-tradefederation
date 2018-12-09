@@ -52,9 +52,11 @@ python_binary_host {
     exclude_srcs: [
         "*_unittest.py",
         "*/*_unittest.py",
+	"proto/*_pb2.py",
+        "proto/__init__.py",
     ],
     libs: [
-        "py-mock",
+	"atest_proto",
     ],
     defaults: ["atest_py2_default"],
 }
@@ -106,7 +108,26 @@ python_test_host {
         "unittest_data/**/*",
         "unittest_data/**/.*",
     ],
+    exclude_srcs: [
+        "proto/*_pb2.py",
+        "proto/__init__.py",
+    ],
+    libs: [
+        "py-mock",
+        "atest_proto",
+    ],
     test_config: "atest_unittests.xml",
     test_suites: ["general-tests"],
     defaults: ["atest_py2_default"],
+}
+
+python_library_host {
+    name: "atest_proto",
+    defaults: ["atest_py2_default"],
+    srcs: [
+        "proto/*.proto",
+    ],
+    proto: {
+        canonical_path_from_root: false,
+    },
 }

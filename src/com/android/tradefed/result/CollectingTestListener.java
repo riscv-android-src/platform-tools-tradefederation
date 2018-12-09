@@ -33,6 +33,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A {@link ITestInvocationListener} that will collect all test results.
@@ -63,7 +64,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     private TestRunResult mCurrentTestRunResult = new TestRunResult();
 
     // Tracks if mStatusCounts are accurate, or if they need to be recalculated
-    private boolean mIsCountDirty = true;
+    private AtomicBoolean mIsCountDirty = new AtomicBoolean(true);
     // Represents the merged test results. This should not be accessed directly since it's only
     // calculated when needed.
     private final List<TestRunResult> mMergedTestRunResults = new ArrayList<>();
@@ -159,7 +160,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     /** {@inheritDoc} */
     @Override
     public void testRunStarted(String name, int numTests, int attemptNumber) {
-        mIsCountDirty = true;
+        setCountDirty();
 
         // Associate the run name with the current module context
         if (mCurrentModuleContext != null) {
@@ -210,21 +211,21 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     /** {@inheritDoc} */
     @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
-        mIsCountDirty = true;
+        setCountDirty();
         mCurrentTestRunResult.testRunEnded(elapsedTime, runMetrics);
     }
 
     /** {@inheritDoc} */
     @Override
     public void testRunFailed(String errorMessage) {
-        mIsCountDirty = true;
+        setCountDirty();
         mCurrentTestRunResult.testRunFailed(errorMessage);
     }
 
     /** {@inheritDoc} */
     @Override
     public void testRunStopped(long elapsedTime) {
-        mIsCountDirty = true;
+        setCountDirty();
         mCurrentTestRunResult.testRunStopped(elapsedTime);
     }
 
@@ -237,7 +238,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     /** {@inheritDoc} */
     @Override
     public void testStarted(TestDescription test, long startTime) {
-        mIsCountDirty = true;
+        setCountDirty();
         mCurrentTestRunResult.testStarted(test, startTime);
     }
 
@@ -250,26 +251,26 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     /** {@inheritDoc} */
     @Override
     public void testEnded(TestDescription test, long endTime, HashMap<String, Metric> testMetrics) {
-        mIsCountDirty = true;
+        setCountDirty();
         mCurrentTestRunResult.testEnded(test, endTime, testMetrics);
     }
 
     /** {@inheritDoc} */
     @Override
     public void testFailed(TestDescription test, String trace) {
-        mIsCountDirty = true;
+        setCountDirty();
         mCurrentTestRunResult.testFailed(test, trace);
     }
 
     @Override
     public void testAssumptionFailure(TestDescription test, String trace) {
-        mIsCountDirty = true;
+        setCountDirty();
         mCurrentTestRunResult.testAssumptionFailure(test, trace);
     }
 
     @Override
     public void testIgnored(TestDescription test) {
-        mIsCountDirty = true;
+        setCountDirty();
         mCurrentTestRunResult.testIgnored(test);
     }
 
@@ -374,9 +375,11 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
      * expensive.
      */
     private synchronized void computeMergedResults() {
-        if (!mIsCountDirty) {
+        // If not dirty, nothing to be done
+        if (!mIsCountDirty.compareAndSet(true, false)) {
             return;
         }
+
         mMergedTestRunResults.clear();
         // Merge results
         if (mTestRunResultMap.isEmpty() && mCurrentTestRunResult.isRunFailure()) {
@@ -406,8 +409,14 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
                 mStatusCounts[s.ordinal()] += result.getNumTestsInState(s);
             }
         }
+    }
 
-        mIsCountDirty = false;
+    /**
+     * Keep dirty count as AtomicBoolean to ensure when accessed from another thread the state is
+     * consistent.
+     */
+    private void setCountDirty() {
+        mIsCountDirty.set(true);
     }
 
     /**

@@ -18,6 +18,7 @@ Atest Tradefed test runner class.
 
 from __future__ import print_function
 from collections import deque
+from datetime import timedelta
 import errno
 import json
 import logging
@@ -71,11 +72,15 @@ CONNECTION_STATE = {
     'test_start_time': None
 }
 
+# time in millisecond.
+ONE_SECOND = 1000
+ONE_MINUTE = 60000
+ONE_HOUR = 3600000
+
 class TradeFedExitError(Exception):
     """Raised when TradeFed exists before test run has finished."""
 
-TRADEFED_EXIT_MSG = ('TradeFed subprocess exited early with exit code=%s. '
-                     'Use --verbose to see underlying TradeFed output.')
+TRADEFED_EXIT_MSG = ('TradeFed subprocess exited early with exit code=%s.')
 
 EVENTS_NOT_BALANCED = ('Error: Saw %s Start event and %s End event. These '
                        'should be equal!')
@@ -141,18 +146,12 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             run_cmd = self._generate_run_command(args, extra_args,
                                                  metrics_folder)
             subproc = self.run(run_cmd, output_to_stdout=True)
-            try:
-                signal.signal(signal.SIGINT, self._signal_passer(subproc))
-                subproc.wait()
-                ret_code |= subproc.returncode
-            except:
-                # If atest crashes, kill TF subproc group as well.
-                os.killpg(os.getpgid(subproc.pid), signal.SIGINT)
-                raise
+            ret_code |= self.wait_for_subprocess(subproc)
         return ret_code
 
     # pylint: disable=broad-except
     # pylint: disable=too-many-locals
+    # pylint: disable=too-many-branches
     def run_tests_pretty(self, test_infos, extra_args, reporter):
         """Run the list of test_infos. See base class for more.
 
@@ -210,6 +209,11 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                     # we have to save it above.
                     logging.debug('Subproc already terminated, skipping')
                 finally:
+                    if self.test_log_file:
+                        with open(self.test_log_file.name, 'r') as f:
+                            intro_msg = "Unexpected Tradefed Issue. Raw Output:"
+                            print(atest_utils.colorize(intro_msg, constants.RED))
+                            print(f.read())
                     # Ignore socket.recv() raising due to ctrl-c
                     if not error.args or error.args[0] != errno.EINTR:
                         raise exc_type, exc_msg, traceback_obj
@@ -218,27 +222,6 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 subproc.wait()
                 ret_code |= subproc.returncode
         return ret_code
-
-    def _signal_passer(self, proc):
-        """Return the signal_handler func bound to proc.
-
-        Args:
-            proc: The tradefed subprocess.
-
-        Returns:
-            signal_handler function.
-        """
-        def signal_handler(_signal_number, _frame):
-            """Pass SIGINT to proc.
-
-            If user hits ctrl-c during atest run, the TradeFed subprocess
-            won't stop unless we also send it a SIGINT. The TradeFed process
-            is started in a process group, so this SIGINT is sufficient to
-            kill all the child processes TradeFed spawns as well.
-            """
-            print('Ctrl-C received. Killing Tradefed subprocess group')
-            os.killpg(os.getpgid(proc.pid), signal.SIGINT)
-        return signal_handler
 
     def _start_socket_server(self):
         """Start a TCP server."""
@@ -314,7 +297,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         """Check Start events and End events. They should be balanced.
 
         If they are not balanced, print the error message in
-        state['last_failed']
+        state['last_failed'], then raise TradeFedExitError.
 
         Args:
             event_name: A string of the event name.
@@ -322,6 +305,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             state: A dict of the state of the test run.
             event_stack: A collections.deque(stack) of the events for pairing
                          START and END events.
+        Raises:
+            TradeFedExitError if we doesn't have a balance of START/END events.
         """
         start_event = event_stack.pop() if event_stack else None
         if not start_event or EVENT_PAIRS[start_event] != event_name:
@@ -339,10 +324,29 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                     test_time='',
                     runner_total=None,
                     group_total=state['current_group_total']))
-            # TODO(b/117326576)
-            # Raise TradeFedExitError if EVENTS_NOT_BALANCED happened.
-            # Currently, we are pending on TF to give us more information about
-            # it. Then, we can handle this more elegantly.(b/119239432)
+            raise TradeFedExitError(EVENTS_NOT_BALANCED % (start_event,
+                                                           event_name))
+
+    def _print_duration(self, duration):
+        """Convert duration from ms to 3h2m43.034s.
+
+        Args:
+            duration: millisecond
+
+        Returns:
+            string in h:m:s, m:s, s or millis, depends on the duration.
+        """
+        delta = timedelta(milliseconds=duration)
+        timestamp = str(delta).split(':') # hh:mm:microsec
+
+        if duration < ONE_SECOND:
+            return "({}ms)".format(duration)
+        elif duration < ONE_MINUTE:
+            return "({:.3f}s)".format(float(timestamp[2]))
+        elif duration < ONE_HOUR:
+            return "({0}m{1:.3f}s)".format(timestamp[1], float(timestamp[2]))
+        return "({0}h{1}m{2:.3f}s)".format(timestamp[0],
+                                           timestamp[1], float(timestamp[2]))
 
     # pylint: disable=too-many-branches
     def _process_event(self, event_name, event_data, reporter, state,
@@ -369,13 +373,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             state['current_test'] = None
         elif event_name == EVENT_NAMES['run_started']:
             # Technically there can be more than one run per module.
-            # TODO(b/117326576) We don't reset the test_count if testCount = 0
-            # since it means a test crash and it still in the same test group.
-            # Currently, we are pending on TF to give us more information about
-            # it. Then, we can handle this more elegantly.(b/119239432)
-            if event_data['testCount'] != 0:
-                state['current_group_total'] = event_data['testCount']
-                state['test_count'] = 0
+            state['current_group_total'] = event_data['testCount']
+            state['test_count'] = 0
             state['last_failed'] = None
             state['current_test'] = None
         elif event_name == EVENT_NAMES['test_started']:
@@ -417,8 +416,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             name = TEST_NAME_TEMPLATE % (event_data['className'],
                                          event_data['testName'])
             if state['test_start_time']:
-                test_time = '(%dms)' % (event_data['end_time'] -
-                                        state['test_start_time'])
+                test_time = self._print_duration(event_data['end_time'] -
+                                                 state['test_start_time'])
             else:
                 test_time = ''
             if state['last_failed'] and name == state['last_failed']['name']:
