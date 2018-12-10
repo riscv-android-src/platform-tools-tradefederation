@@ -533,6 +533,19 @@ public interface IConfiguration {
     public void validateOptions() throws ConfigurationException;
 
     /**
+     * Validate option values.
+     *
+     * <p>Currently this will just validate that all mandatory options have been set
+     *
+     * @param resolvedGcsPath Whether or not to download the files associated to a gcs path
+     * @throws ConfigurationException if config is not valid
+     */
+    public void validateOptions(boolean resolvedGcsPath) throws ConfigurationException;
+
+    /** Delete any files that was downloaded to resolved Option fields of remote files. */
+    public void cleanDynamicOptionFiles();
+
+    /**
      * Sets the command line used to create this {@link IConfiguration}.
      * This stores the whole command line, including the configuration name,
      * unlike setOptionsFromCommandLineArgs.

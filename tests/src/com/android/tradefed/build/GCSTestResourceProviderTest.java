@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.build;
 
+import com.android.tradefed.build.gcs.GCSDownloaderHelper;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.util.FileUtil;
 
@@ -41,31 +42,18 @@ public class GCSTestResourceProviderTest {
     @Before
     public void setUp() throws Exception {
         mRoot = FileUtil.createTempDir(GCSTestResourceProviderTest.class.getSimpleName());
-
         mTestResourceProvider =
                 new GCSTestResourceProvider() {
                     @Override
-                    IFileDownloader getGCSFileDownloader() {
-                        return new IFileDownloader() {
-
+                    GCSDownloaderHelper getHelper() {
+                        return new GCSDownloaderHelper() {
                             @Override
-                            public void downloadFile(String relativeRemotePath, File destFile)
+                            public File fetchTestResource(String gsPath)
                                     throws BuildRetrievalError {
                                 try {
-                                    FileUtil.writeToFile(relativeRemotePath, destFile);
-                                } catch (IOException e) {
-                                    throw new BuildRetrievalError(e.getMessage(), e);
-                                }
-                            }
-
-                            @Override
-                            public File downloadFile(String remoteFilePath)
-                                    throws BuildRetrievalError {
-                                try {
-                                    File destFile =
-                                            FileUtil.createTempFileForRemote(remoteFilePath, mRoot);
-                                    downloadFile(remoteFilePath, destFile);
-                                    return destFile;
+                                    File f = FileUtil.createTempFile("test-gcs-file", "txt");
+                                    FileUtil.writeToFile(gsPath, f);
+                                    return f;
                                 } catch (IOException e) {
                                     throw new BuildRetrievalError(e.getMessage(), e);
                                 }
