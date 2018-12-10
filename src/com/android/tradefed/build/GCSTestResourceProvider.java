@@ -15,10 +15,8 @@
  */
 package com.android.tradefed.build;
 
-import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.build.gcs.GCSDownloaderHelper;
 import com.android.tradefed.config.Option;
-import com.android.tradefed.host.IHostOptions;
-import com.android.tradefed.util.GCSFileDownloader;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -38,7 +36,7 @@ public class GCSTestResourceProvider implements IBuildProvider {
     private Map<String, String> mTestResources = new HashMap<>();
 
     private IBuildInfo mBuildInfo;
-    private IFileDownloader mFileDownloader = null;
+    private GCSDownloaderHelper mDownloaderHelper = null;
 
     @Override
     public IBuildInfo getBuild() throws BuildRetrievalError {
@@ -55,7 +53,7 @@ public class GCSTestResourceProvider implements IBuildProvider {
     }
 
     private void fetchTestResource(String key, String value) throws BuildRetrievalError {
-        File localFile = getGCSFileDownloader().downloadFile(value);
+        File localFile = getHelper().fetchTestResource(value);
         mBuildInfo.setFile(key, localFile, "");
     }
 
@@ -69,23 +67,12 @@ public class GCSTestResourceProvider implements IBuildProvider {
         info.cleanUp();
     }
 
+    /** Returns the {@link GCSDownloaderHelper} that downloads from GCS buckets. */
     @VisibleForTesting
-    IFileDownloader getGCSFileDownloader() {
-        if (mFileDownloader == null) {
-            mFileDownloader =
-                    new FileDownloadCacheWrapper(
-                            getHostOptions().getDownloadCacheDir(), new GCSFileDownloader());
+    GCSDownloaderHelper getHelper() {
+        if (mDownloaderHelper == null) {
+            mDownloaderHelper = new GCSDownloaderHelper();
         }
-        return mFileDownloader;
-    }
-
-    /**
-     * Gets the {@link IHostOptions} instance to use.
-     *
-     * <p>Exposed for unit testing
-     */
-    @VisibleForTesting
-    IHostOptions getHostOptions() {
-        return GlobalConfiguration.getInstance().getHostOptions();
+        return mDownloaderHelper;
     }
 }
