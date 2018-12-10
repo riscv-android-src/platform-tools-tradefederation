@@ -26,6 +26,7 @@ import com.android.tradefed.util.proto.TfMetricProtoUtil;
 import java.io.File;
 import java.io.IOException;
 import java.util.AbstractMap.SimpleEntry;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -65,6 +66,11 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
     @Override
     public void onTestEnd(DeviceMetricData testData, Map<String, Metric> currentTestCaseMetrics) {
         processMetricRequest(testData, TfMetricProtoUtil.compatibleConvert(currentTestCaseMetrics));
+    }
+
+    /** Adds additional pattern keys to the pull from the device. */
+    protected void addKeys(String... keys) {
+        mKeys.addAll(Arrays.asList(keys));
     }
 
     /**
