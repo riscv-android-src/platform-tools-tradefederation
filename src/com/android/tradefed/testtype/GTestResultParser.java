@@ -123,6 +123,12 @@ public class GTestResultParser extends MultiLineReceiver {
     /** Whether or not to prepend filename to classname. */
     private boolean mPrependFileName = false;
 
+    /** The final status of the test. */
+    enum TestStatus {
+        OK,
+        FAILED,
+        SKIPPED
+    }
 
     public void setPrependFileName(boolean prepend) {
         mPrependFileName = prepend;
@@ -213,6 +219,7 @@ public class GTestResultParser extends MultiLineReceiver {
         private static final String TEST_RUN_MARKER = "[==========]";
         private static final String START_TEST_MARKER = "[ RUN      ]"; // GTest format
         private static final String OK_TEST_MARKER = "[       OK ]"; // GTest format
+        private static final String SKIPPED_TEST_MARKER = "[  SKIPPED ]"; // GTest format
         private static final String FAILED_TEST_MARKER = "[  FAILED  ]";
         // Alternative non GTest format can be generated from Google Test AOSP and respond to
         // different needs (parallelism of tests) that the GTest format can't describe well.
@@ -294,6 +301,23 @@ public class GTestResultParser extends MultiLineReceiver {
                 // Individual test started
                 message = line.substring(Prefixes.START_TEST_MARKER.length()).trim();
                 processTestStartedTag(message);
+            } else if (line.contains(Prefixes.SKIPPED_TEST_MARKER)) {
+                // Individual test was skipped.
+                // Logs from test could offset the SKIPPED marker
+                message =
+                        line.substring(
+                                        line.indexOf(Prefixes.SKIPPED_TEST_MARKER)
+                                                + Prefixes.SKIPPED_TEST_MARKER.length())
+                                .trim();
+                if (!testInProgress()) {
+                    // If we are missing the RUN tag, skip it wrong format
+                    CLog.e(
+                            "Found %s without %s before, Ensure you are using GTest format",
+                            line, Prefixes.START_TEST_MARKER);
+                    return;
+                }
+                processSkippedTag(message);
+                clearCurrentTestResult();
             }
             else if (line.contains(Prefixes.OK_TEST_MARKER)) {
                 // Individual test completed successfully
@@ -580,12 +604,11 @@ public class GTestResultParser extends MultiLineReceiver {
     /**
      * Helper method to do the work necessary when a test has ended.
      *
-     * @param identifier Raw log output of the form "classname.testname" with an optional (XX ms)
-     *          at the end indicating the running time.
-     * @param testPassed Indicates whether the test passed or failed (set to true if passed, false
-     *          if failed)
+     * @param identifier Raw log output of the form "classname.testname" with an optional (XX ms) at
+     *     the end indicating the running time.
+     * @param testStatus Indicates the final test status.
      */
-    private void doTestEnded(String identifier, boolean testPassed) {
+    private void doTestEnded(String identifier, TestStatus testStatus) {
         ParsedTestInfo parsedResults = parseTestDescription(identifier);
         TestResult testResult = getCurrentTestResult();
         TestDescription testId = null;
@@ -640,12 +663,16 @@ public class GTestResultParser extends MultiLineReceiver {
             for (ITestInvocationListener listener : mTestListeners) {
                 listener.testFailed(testId, mCurrentTestResult.getTrace());
             }
-        }
-        else if (!testPassed) {  // test failed
+        } else if (TestStatus.FAILED.equals(testStatus)) { // test failed
             for (ITestInvocationListener listener : mTestListeners) {
                 listener.testFailed(testId, mCurrentTestResult.getTrace());
             }
+        } else if (TestStatus.SKIPPED.equals(testStatus)) { // test was skipped
+            for (ITestInvocationListener listener : mTestListeners) {
+                listener.testIgnored(testId);
+            }
         }
+
         // For all cases (pass or fail), we ultimately need to report test has ended
         HashMap<String, Metric> emptyMap = new HashMap<>();
         for (ITestInvocationListener listener : mTestListeners) {
@@ -664,7 +691,7 @@ public class GTestResultParser extends MultiLineReceiver {
      *          at the end indicating the running time.
      */
     private void processOKTag(String identifier) {
-        doTestEnded(identifier, true);
+        doTestEnded(identifier, TestStatus.OK);
     }
 
     /**
@@ -674,8 +701,19 @@ public class GTestResultParser extends MultiLineReceiver {
      *          at the end indicating the running time.
      */
     private void processFailedTag(String identifier) {
-        doTestEnded(identifier, false);
+        doTestEnded(identifier, TestStatus.FAILED);
     }
+
+    /**
+     * Processes and informs listener when we encounter the SKIPPED tag.
+     *
+     * @param identifier Raw log output of the form "classname.testname" with an optional (XX ms) at
+     *     the end indicating the running time.
+     */
+    private void processSkippedTag(String identifier) {
+        doTestEnded(identifier, TestStatus.SKIPPED);
+    }
+
 
     /**
      * Appends the test output to the current TestResult.
