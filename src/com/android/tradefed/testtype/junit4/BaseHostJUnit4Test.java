@@ -105,6 +105,10 @@ public abstract class BaseHostJUnit4Test
         mContext = invocationContext;
     }
 
+    public final IInvocationContext getInvocationContext() {
+        return mContext;
+    }
+
     public final List<ITestDevice> getListDevices() {
         return mContext.getDevices();
     }
