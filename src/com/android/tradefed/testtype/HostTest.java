@@ -95,7 +95,6 @@ public class HostTest
                 IMultiDeviceTest,
                 IInvocationContextReceiver {
 
-
     @Option(name = "class", description = "The JUnit test classes to run, in the format "
             + "<package>.<class>. eg. \"com.android.foo.Bar\". This field can be repeated.",
             importance = Importance.IF_UNSET)

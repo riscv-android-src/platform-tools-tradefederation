@@ -16,8 +16,12 @@
 
 package com.android.tradefed.config;
 
+import com.android.annotations.VisibleForTesting;
+import com.android.tradefed.build.BuildRetrievalError;
+import com.android.tradefed.build.gcs.GCSDownloaderHelper;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.TimeVal;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
@@ -38,6 +42,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -749,6 +754,73 @@ public class OptionSetter {
             }
         }
         return unsetOptions;
+    }
+
+    protected Set<File> validateGcsFilePath() throws ConfigurationException {
+        Set<File> gcsFiles = new HashSet<>();
+        for (Map.Entry<String, OptionFieldsForName> optionPair : mOptionMap.entrySet()) {
+            final String optName = optionPair.getKey();
+            final OptionFieldsForName optionFields = optionPair.getValue();
+            if (optName.indexOf(NAMESPACE_SEPARATOR) >= 0) {
+                // Only return unqualified option names
+                continue;
+            }
+            GCSDownloaderHelper downloader = createDownloader();
+            for (Map.Entry<Object, Field> fieldEntry : optionFields) {
+                final Object obj = fieldEntry.getKey();
+                final Field field = fieldEntry.getValue();
+                final Option option = field.getAnnotation(Option.class);
+                if (option == null) {
+                    continue;
+                }
+                // At this point, we know this is an option field; make sure it's set
+                field.setAccessible(true);
+                final Object value;
+                try {
+                    value = field.get(obj);
+                } catch (IllegalAccessException e) {
+                    throw new ConfigurationException(
+                            String.format("internal error: %s", e.getMessage()));
+                }
+
+                if (value == null) {
+                    continue;
+                } else if (value instanceof File) {
+                    File consideredFile = (File) value;
+                    // Don't use absolute path as it would not start with gs:
+                    if (consideredFile.getPath().startsWith("gs:/")) {
+                        // File object remote double // so we have to rebuild it
+                        String path = consideredFile.getPath().replaceAll("gs:/", "gs://");
+                        CLog.d(
+                                "Considering option '%s' with path: '%s' for download.",
+                                option.name(), path);
+                        // We need to download the file from the bucket
+                        try {
+                            File gsFile = downloader.fetchTestResource(path);
+                            gcsFiles.add(gsFile);
+                            // Replace the field value
+                            field.set(obj, gsFile);
+                        } catch (BuildRetrievalError | IllegalAccessException e) {
+                            CLog.e(e);
+                            // Clean up all files
+                            for (File f : gcsFiles) {
+                                FileUtil.deleteFile(f);
+                            }
+                            throw new ConfigurationException(
+                                    String.format("Failed to download %s", path), e);
+                        }
+                    }
+                }
+                // TODO: Handle collection of files
+            }
+        }
+        return gcsFiles;
+    }
+
+    /** Returns the downloader helping to resolve the remote file. */
+    @VisibleForTesting
+    GCSDownloaderHelper createDownloader() {
+        return new GCSDownloaderHelper();
     }
 
     /**
