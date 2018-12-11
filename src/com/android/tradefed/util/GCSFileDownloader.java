@@ -36,6 +36,9 @@ import java.util.regex.Pattern;
 
 /** File downloader to download file from google cloud storage (GCS). */
 public class GCSFileDownloader implements IFileDownloader {
+    public static final String GCS_PREFIX = "gs://";
+    public static final String GCS_APPROX_PREFIX = "gs:/";
+
     private static final long TIMEOUT = 10 * 60 * 1000; // 10minutes
     private static final long RETRY_INTERVAL = 1000; // 1s
     private static final int ATTETMPTS = 3;
@@ -67,6 +70,11 @@ public class GCSFileDownloader implements IFileDownloader {
      */
     @Override
     public File downloadFile(String remoteFilePath) throws BuildRetrievalError {
+        if (remoteFilePath.startsWith(GCS_APPROX_PREFIX)
+                && !remoteFilePath.startsWith(GCS_PREFIX)) {
+            // File object remove double // so we have to rebuild it in some cases
+            remoteFilePath = remoteFilePath.replaceAll(GCS_APPROX_PREFIX, GCS_PREFIX);
+        }
         File destFile = createTempFile(remoteFilePath, null);
         try {
             downloadFile(remoteFilePath, destFile);
