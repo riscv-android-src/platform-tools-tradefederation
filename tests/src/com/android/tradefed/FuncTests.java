@@ -18,14 +18,7 @@ package com.android.tradefed;
 import com.android.tradefed.build.FileDownloadCacheFuncTest;
 import com.android.tradefed.command.CommandSchedulerFuncTest;
 import com.android.tradefed.command.remote.RemoteManagerFuncTest;
-import com.android.tradefed.device.TestDeviceFuncTest;
 import com.android.tradefed.device.metric.DeviceMetricDataFuncTest;
-import com.android.tradefed.proto.PlatformProtosFuncTest;
-import com.android.tradefed.targetprep.AppSetupFuncTest;
-import com.android.tradefed.targetprep.DeviceSetupFuncTest;
-import com.android.tradefed.targetprep.UserCleanerFuncTest;
-import com.android.tradefed.testtype.DeviceSuite;
-import com.android.tradefed.testtype.InstrumentationTestFuncTest;
 import com.android.tradefed.util.FileUtilFuncTest;
 import com.android.tradefed.util.GCSBucketUtilFuncTest;
 import com.android.tradefed.util.GCSFileDownloaderFuncTest;
@@ -33,14 +26,11 @@ import com.android.tradefed.util.RunUtilFuncTest;
 import com.android.tradefed.util.net.HttpHelperFuncTest;
 
 import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 
-/**
- * A test suite for all Trade Federation functional tests.
- *
- * <p>This suite requires a device.
- */
-@RunWith(DeviceSuite.class)
+/** A test suite for all Trade Federation functional tests that do not require a device. */
+@RunWith(Suite.class)
 @SuiteClasses({
     // build
     FileDownloadCacheFuncTest.class,
@@ -48,24 +38,12 @@ import org.junit.runners.Suite.SuiteClasses;
     CommandSchedulerFuncTest.class,
     // command.remote
     RemoteManagerFuncTest.class,
-    // device
-    TestDeviceFuncTest.class,
     // device.metric
     DeviceMetricDataFuncTest.class,
-    // proto
-    PlatformProtosFuncTest.class,
-    // targetprep
-    AppSetupFuncTest.class,
-    DeviceSetupFuncTest.class,
-    UserCleanerFuncTest.class,
-    // testtype
-    InstrumentationTestFuncTest.class,
     // util
     FileUtilFuncTest.class,
     GCSFileDownloaderFuncTest.class,
     GCSBucketUtilFuncTest.class,
-    // TODO: temporarily remove from suite until we figure out how to install gtest data
-    //this.addTestSuite(GTestFuncTest.class);
     HttpHelperFuncTest.class,
     RunUtilFuncTest.class,
 })
