@@ -538,7 +538,7 @@ public class SuiteModuleLoader {
         config.getConfigurationDescription().setAbi(abi);
         config.getConfigurationDescription().setModuleName(name);
 
-        config.validateOptions();
+        config.validateOptions(false);
     }
 
     /** Whether or not the base configuration should be created for all abis or not. */

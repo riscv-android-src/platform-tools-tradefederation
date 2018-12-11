@@ -163,6 +163,7 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
         EasyMock.expect(mMockConfig.getTests()).andStubReturn(new ArrayList<>());
+        mMockConfig.cleanDynamicOptionFiles();
         IBuildInfo build1 = new BuildInfo();
         EasyMock.expect(mProvider1.getBuild()).andReturn(build1);
         // Second build is not found
@@ -241,6 +242,7 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
         EasyMock.expect(mMockConfig.getTests()).andStubReturn(new ArrayList<>());
+        mMockConfig.cleanDynamicOptionFiles();
 
         mMockTestListener.invocationStarted(mContext);
         mMockLogSaver.invocationStarted(mContext);
@@ -319,6 +321,7 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
         EasyMock.expect(mMockConfig.getTests()).andStubReturn(new ArrayList<>());
+        mMockConfig.cleanDynamicOptionFiles();
 
         mMockTestListener.invocationStarted(mContext);
         mMockLogSaver.invocationStarted(mContext);

@@ -16,16 +16,9 @@
 
 package com.android.tradefed.config;
 
-import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.regex.Pattern;
-
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.gcs.GCSDownloaderHelper;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.targetprep.BaseTargetPreparer;
@@ -36,6 +29,16 @@ import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.TimeVal;
 
 import junit.framework.TestCase;
+
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Unit tests for {@link OptionSetter}.
@@ -264,6 +267,11 @@ public class OptionSetterTest extends TestCase {
     private static class FinalOption {
         @Option(name = "final-string", description="final field, not allowed")
         private final String mFinal= "foo";
+    }
+
+    private static class RemoteFileOption {
+        @Option(name = "remote-file")
+        public File remoteFile = null;
     }
 
     /**
@@ -795,7 +803,7 @@ public class OptionSetterTest extends TestCase {
     /**
      * Test {@link OptionSetter#setOptionValue(String, String)} for a Pattern with invalid input.
      */
-    public void testSetOptionValue_patternInvalid() throws ConfigurationException {
+    public void testSetOptionValue_patternInvalid() {
         AllTypesOptionSource optionSource = new AllTypesOptionSource();
         assertSetOptionValueInvalid(optionSource, "pattern", "\\");
     }
@@ -970,6 +978,43 @@ public class OptionSetterTest extends TestCase {
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected
+        }
+    }
+
+    /** Test {@link OptionSetter#validateGcsFilePath()}. */
+    public void testOptionSetter_remoteFile() throws ConfigurationException {
+        RemoteFileOption object = new RemoteFileOption();
+        OptionSetter setter =
+                new OptionSetter(object) {
+                    @Override
+                    GCSDownloaderHelper createDownloader() {
+                        return new GCSDownloaderHelper() {
+                            @Override
+                            public File fetchTestResource(String gsPath)
+                                    throws BuildRetrievalError {
+                                try {
+                                    File fake =
+                                            FileUtil.createTempFile("gs-option-setter-test", "txt");
+                                    return fake;
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            }
+                        };
+                    }
+                };
+        setter.setOptionValue("remote-file", "gs://fake/path");
+        assertEquals("gs:/fake/path", object.remoteFile.getPath());
+        Set<File> downloadedFile = setter.validateGcsFilePath();
+        try {
+            assertEquals(1, downloadedFile.size());
+            File downloaded = downloadedFile.iterator().next();
+            // The file has been replaced by the downloaded one.
+            assertEquals(downloaded.getAbsolutePath(), object.remoteFile.getAbsolutePath());
+        } finally {
+            for (File f : downloadedFile) {
+                FileUtil.recursiveDelete(f);
+            }
         }
     }
 
