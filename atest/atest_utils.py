@@ -34,7 +34,7 @@ import constants
 
 _MAKE_CMD = '%s/build/soong/soong_ui.bash' % os.environ.get(
     constants.ANDROID_BUILD_TOP)
-_BUILD_CMD = [_MAKE_CMD, '--make-mode']
+BUILD_CMD = [_MAKE_CMD, '--make-mode']
 _BASH_RESET_CODE = '\033[0m\n'
 # Arbitrary number to limit stdout for failed runs in _run_limited_output.
 # Reason for its use is that the make command itself has its own carriage
@@ -142,7 +142,7 @@ def build(build_targets, verbose=False, env_vars=None):
     print('\n%s\n%s' % (colorize("Building Dependencies...", constants.CYAN),
                         ', '.join(build_targets)))
     logging.debug('Building Dependencies: %s', ' '.join(build_targets))
-    cmd = _BUILD_CMD + list(build_targets)
+    cmd = BUILD_CMD + list(build_targets)
     logging.debug('Executing command: %s', cmd)
     try:
         if verbose:
