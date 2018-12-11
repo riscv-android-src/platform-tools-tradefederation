@@ -362,6 +362,7 @@ public class BaseHostJUnit4TestTest {
             mMockListener.testStarted(description);
             Map<String, String> properties = new HashMap<>();
             properties.put("ROOT_DIR", fakeTestsDir.getAbsolutePath());
+            EasyMock.expect(mMockBuild.getFile("apkFileName")).andReturn(null);
             EasyMock.expect(mMockBuild.getBuildAttributes()).andReturn(properties).times(2);
             EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null);
 
