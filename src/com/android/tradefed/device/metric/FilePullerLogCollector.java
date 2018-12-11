@@ -30,7 +30,7 @@ import java.util.Map;
  * (AndroidTest.xml). TODO: When device-side reporting gets better, fix the LogDataType to be more
  * accurate.
  */
-public final class FilePullerLogCollector extends FilePullerDeviceMetricCollector {
+public class FilePullerLogCollector extends FilePullerDeviceMetricCollector {
 
     @Option(
         name = "collect-on-run-ended-only",
@@ -49,23 +49,28 @@ public final class FilePullerLogCollector extends FilePullerDeviceMetricCollecto
     }
 
     @Override
-    public void processMetricFile(String key, File metricFile, DeviceMetricData runData) {
-        try (InputStreamSource source = new FileInputStreamSource(metricFile, true)) {
-            // Try to infer the type. This will be improved eventually, see todo on the class.
-            LogDataType type = LogDataType.TEXT;
-            String ext = FileUtil.getExtension(metricFile.getName()).toLowerCase();
-            if (".png".equals(ext)) {
-                type = LogDataType.PNG;
+    public final void processMetricFile(String key, File metricFile, DeviceMetricData runData) {
+        try {
+            postProcessMetricFile(key, metricFile, runData);
+        } finally {
+            try (InputStreamSource source = new FileInputStreamSource(metricFile, true)) {
+                // Try to infer the type. This will be improved eventually, see todo on the class.
+                LogDataType type = LogDataType.TEXT;
+                String ext = FileUtil.getExtension(metricFile.getName()).toLowerCase();
+                if (".png".equals(ext)) {
+                    type = LogDataType.PNG;
+                }
+                if (".pb".equals(ext)) {
+                    type = LogDataType.PB;
+                }
+                testLog(metricFile.getName(), type, source);
             }
-            if (".pb".equals(ext)) {
-                type = LogDataType.PB;
-            }
-            testLog(metricFile.getName(), type, source);
         }
     }
 
     @Override
-    public void processMetricDirectory(String key, File metricDirectory, DeviceMetricData runData) {
+    public final void processMetricDirectory(
+            String key, File metricDirectory, DeviceMetricData runData) {
         for (File f : metricDirectory.listFiles()) {
             if (f.isDirectory()) {
                 processMetricDirectory(key, f, runData);
@@ -74,4 +79,6 @@ public final class FilePullerLogCollector extends FilePullerDeviceMetricCollecto
             }
         }
     }
+
+    protected void postProcessMetricFile(String key, File metricFile, DeviceMetricData runData) {}
 }
