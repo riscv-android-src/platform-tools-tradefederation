@@ -22,6 +22,7 @@ import com.android.tradefed.build.gcs.GCSDownloaderHelper;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.GCSFileDownloader;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.TimeVal;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
@@ -788,9 +789,9 @@ public class OptionSetter {
                 } else if (value instanceof File) {
                     File consideredFile = (File) value;
                     // Don't use absolute path as it would not start with gs:
-                    if (consideredFile.getPath().startsWith("gs:/")) {
-                        // File object remote double // so we have to rebuild it
-                        String path = consideredFile.getPath().replaceAll("gs:/", "gs://");
+                    if (consideredFile.getPath().startsWith(GCSFileDownloader.GCS_APPROX_PREFIX)
+                            || consideredFile.getPath().startsWith(GCSFileDownloader.GCS_PREFIX)) {
+                        String path = consideredFile.getPath();
                         CLog.d(
                                 "Considering option '%s' with path: '%s' for download.",
                                 option.name(), path);
