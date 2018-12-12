@@ -102,6 +102,7 @@ public class SubprocessTestResultsParser implements Closeable {
     private class EventReceiverThread extends Thread {
         private ServerSocket mSocket;
         private CountDownLatch mCountDown;
+        private boolean mShouldParse = true;
 
         public EventReceiverThread() throws IOException {
             super("EventReceiverThread");
@@ -123,6 +124,14 @@ public class SubprocessTestResultsParser implements Closeable {
             }
         }
 
+        /**
+         * When reaching some issues, we might want to terminate the buffer of the socket to spy
+         * which events are still in the pipe.
+         */
+        public void stopParsing() {
+            mShouldParse = false;
+        }
+
         @Override
         public void run() {
             Socket client = null;
@@ -133,8 +142,12 @@ public class SubprocessTestResultsParser implements Closeable {
                 String event = null;
                 while ((event = in.readLine()) != null) {
                     try {
-                        CLog.d("received event: '%s'", event);
-                        parse(event);
+                        if (mShouldParse) {
+                            CLog.d("received event: '%s'", event);
+                            parse(event);
+                        } else {
+                            CLog.d("Skipping parsing of event: '%s'", event);
+                        }
                     } catch (JSONException e) {
                         CLog.e(e);
                     }
@@ -151,6 +164,7 @@ public class SubprocessTestResultsParser implements Closeable {
 
     /**
      * If the event receiver is being used, ensure that we wait for it to terminate.
+     *
      * @param millis timeout in milliseconds.
      * @return True if receiver thread terminate before timeout, False otherwise.
      */
@@ -159,6 +173,7 @@ public class SubprocessTestResultsParser implements Closeable {
             try {
                 CLog.i("Waiting for events to finish being processed.");
                 if (!mEventReceiver.getCountDown().await(millis, TimeUnit.MILLISECONDS)) {
+                    mEventReceiver.stopParsing();
                     CLog.e("Event receiver thread did not complete. Some events may be missing.");
                     return false;
                 }
