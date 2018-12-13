@@ -15,7 +15,11 @@
  */
 package com.android.tradefed.build;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -252,6 +256,54 @@ public class FileDownloadCacheTest {
         EasyMock.replay(mMockDownloader);
         assertFetchRemoteFile(REMOTE_PATH, relativePaths);
         EasyMock.verify(mMockDownloader);
+    }
+
+    /** Test that when the cache is rebuilt we can find the file without a new download. */
+    @Test
+    public void testCacheRebuild() throws Exception {
+        File cacheDir = FileUtil.createTempDir("cache-unittest");
+        File subDir = FileUtil.createTempDir("subdir", cacheDir);
+        File file = FileUtil.createTempFile("test-cache-file", ".txt", subDir);
+        File cacheFile = null;
+        try {
+            mCache = new FileDownloadCache(cacheDir);
+            setFreshnessExpections(true);
+
+            EasyMock.replay(mMockDownloader);
+            cacheFile =
+                    mCache.fetchRemoteFile(
+                            mMockDownloader, subDir.getName() + "/" + file.getName());
+            assertNotNull(cacheFile);
+            EasyMock.verify(mMockDownloader);
+        } finally {
+            FileUtil.recursiveDelete(cacheDir);
+            FileUtil.deleteFile(cacheFile);
+        }
+    }
+
+    /** Test that keys with multiple slashes are properly handled. */
+    @Test
+    public void testCacheRebuild_multiSlashPath() throws Exception {
+        String gsPath = "foo//bar";
+        // Perform successful download
+        setDownloadExpections(gsPath);
+        EasyMock.replay(mMockDownloader);
+        assertFetchRemoteFile(gsPath, null);
+        EasyMock.verify(mMockDownloader);
+
+        File cachedFile = mCache.getCachedFile(gsPath);
+        try {
+            assertNotNull(cachedFile);
+
+            // Now rebuild the cache and try to find our file
+            mCache = new FileDownloadCache(mCacheDir);
+            File cachedFileRebuilt = mCache.getCachedFile(gsPath);
+            assertNotNull(cachedFileRebuilt);
+
+            assertEquals(cachedFile, cachedFileRebuilt);
+        } finally {
+            FileUtil.deleteFile(cachedFile);
+        }
     }
 
     /** Perform one fetchRemoteFile call and verify contents for default remote path */
