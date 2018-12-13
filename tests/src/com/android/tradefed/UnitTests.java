@@ -224,8 +224,6 @@ import com.android.tradefed.testtype.host.CoverageMeasurementForwarderTest;
 import com.android.tradefed.testtype.junit4.BaseHostJUnit4TestTest;
 import com.android.tradefed.testtype.junit4.DeviceParameterizedRunnerTest;
 import com.android.tradefed.testtype.junit4.LongevityHostRunnerTest;
-import com.android.tradefed.testtype.metricregression.DetectRegressionTest;
-import com.android.tradefed.testtype.metricregression.MetricsTest;
 import com.android.tradefed.testtype.python.PythonBinaryHostTestTest;
 import com.android.tradefed.testtype.suite.AtestRunnerTest;
 import com.android.tradefed.testtype.suite.BaseTestSuiteTest;
@@ -277,7 +275,6 @@ import com.android.tradefed.util.KeyguardControllerStateTest;
 import com.android.tradefed.util.ListInstrumentationParserTest;
 import com.android.tradefed.util.LocalRunInstructionBuilderTest;
 import com.android.tradefed.util.LogcatEventParserTest;
-import com.android.tradefed.util.MetricsXmlParserTest;
 import com.android.tradefed.util.MultiMapTest;
 import com.android.tradefed.util.NullUtilTest;
 import com.android.tradefed.util.PairTest;
@@ -606,10 +603,6 @@ import org.junit.runners.Suite.SuiteClasses;
     DeviceParameterizedRunnerTest.class,
     LongevityHostRunnerTest.class,
 
-    // testtype/metricregression
-    DetectRegressionTest.class,
-    MetricsTest.class,
-
     // testtype/python
     PythonBinaryHostTestTest.class,
 
@@ -674,7 +667,6 @@ import org.junit.runners.Suite.SuiteClasses;
     LegacySubprocessResultsReporterTest.class,
     ListInstrumentationParserTest.class,
     LogcatEventParserTest.class,
-    MetricsXmlParserTest.class,
     MultiMapTest.class,
     NullUtilTest.class,
     PairTest.class,
