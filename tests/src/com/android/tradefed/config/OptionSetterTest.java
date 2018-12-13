@@ -36,6 +36,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -272,6 +273,9 @@ public class OptionSetterTest extends TestCase {
     private static class RemoteFileOption {
         @Option(name = "remote-file")
         public File remoteFile = null;
+
+        @Option(name = "remote-file-list")
+        public Collection<File> remoteFileList = new ArrayList<>();
     }
 
     /**
@@ -1011,6 +1015,50 @@ public class OptionSetterTest extends TestCase {
             File downloaded = downloadedFile.iterator().next();
             // The file has been replaced by the downloaded one.
             assertEquals(downloaded.getAbsolutePath(), object.remoteFile.getAbsolutePath());
+        } finally {
+            for (File f : downloadedFile) {
+                FileUtil.recursiveDelete(f);
+            }
+        }
+    }
+
+    /** Test {@link OptionSetter#validateGcsFilePath()}. */
+    public void testOptionSetter_remoteFileList() throws ConfigurationException {
+        RemoteFileOption object = new RemoteFileOption();
+        OptionSetter setter =
+                new OptionSetter(object) {
+                    @Override
+                    GCSDownloaderHelper createDownloader() {
+                        return new GCSDownloaderHelper() {
+                            @Override
+                            public File fetchTestResource(String gsPath)
+                                    throws BuildRetrievalError {
+                                try {
+                                    File fake =
+                                            FileUtil.createTempFile("gs-option-setter-test", "txt");
+                                    return fake;
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            }
+                        };
+                    }
+                };
+        setter.setOptionValue("remote-file-list", "gs://fake/path");
+        setter.setOptionValue("remote-file-list", "fake/file");
+        assertEquals(2, object.remoteFileList.size());
+        Set<File> downloadedFile = setter.validateGcsFilePath();
+        try {
+            assertEquals(1, downloadedFile.size());
+            File downloaded = downloadedFile.iterator().next();
+            // The file has been replaced by the downloaded one.
+            assertEquals(2, object.remoteFileList.size());
+
+            Iterator<File> ite = object.remoteFileList.iterator();
+            File notGsFile = ite.next();
+            assertEquals("fake/file", notGsFile.getPath());
+            File gsFile = ite.next();
+            assertEquals(downloaded.getAbsolutePath(), gsFile.getAbsolutePath());
         } finally {
             for (File f : downloadedFile) {
                 FileUtil.recursiveDelete(f);
