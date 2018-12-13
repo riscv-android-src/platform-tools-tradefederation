@@ -320,7 +320,7 @@ public class TfTestLauncher extends SubprocessTfLauncher {
         runMetrics.put(
                 "elapsed-time", TfMetricProtoUtil.stringToMetric(Long.toString(elapsedTime)));
         listener.testEnded(tid, runMetrics);
-        listener.testRunEnded(elapsedTime, runMetrics);
+        listener.testRunEnded(0L, runMetrics);
     }
 
     /**
