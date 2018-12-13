@@ -21,11 +21,14 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.log.ILogRegistry;
+import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -49,11 +52,13 @@ public class TestsPoolPollerTest {
     private ITestInvocationListener mListener;
     private ITestDevice mDevice;
     private List<IMetricCollector> mMetricCollectors;
+    private ILogRegistry mMockRegistry;
 
     @Before
     public void setUp() {
         mListener = Mockito.mock(ITestInvocationListener.class);
         mDevice = Mockito.mock(ITestDevice.class);
+        mMockRegistry = Mockito.mock(ILogRegistry.class);
         Mockito.doReturn("serial").when(mDevice).getSerialNumber();
         mMetricCollectors = new ArrayList<>();
     }
@@ -198,6 +203,7 @@ public class TestsPoolPollerTest {
         TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
         poller.setMetricCollectors(mMetricCollectors);
         poller.setDevice(mDevice);
+        poller.setLogRegistry(mMockRegistry);
         try {
             poller.run(mListener);
             fail("Should have thrown an exception.");
@@ -210,6 +216,11 @@ public class TestsPoolPollerTest {
         Mockito.verify(mListener, Mockito.times(0))
                 .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
         assertEquals(0, tracker.getCount());
+        Mockito.verify(mMockRegistry)
+                .logEvent(
+                        Mockito.eq(LogLevel.DEBUG),
+                        Mockito.eq(EventType.SHARD_POLLER_EARLY_TERMINATION),
+                        Mockito.any());
     }
 
     /**
@@ -250,5 +261,60 @@ public class TestsPoolPollerTest {
         Mockito.verify(mDevice).waitForDeviceAvailable(Mockito.anyLong());
         Mockito.verify(mDevice).reboot();
         assertEquals(2, tracker.getCount());
+    }
+
+    /**
+     * If a device not available exception is thrown from a tests, and the poller is not the last
+     * one alive, we wait and attempt to recover the device. In case of failure, execution will not
+     * proceed and we log an event.
+     */
+    @Test
+    public void testRun_dnae_NotLastDevice_offline() throws Exception {
+        List<IRemoteTest> testsList = new ArrayList<>();
+        // Add one bad test first that will throw an exception.
+        IRemoteTest badTest = new StubTest();
+        OptionSetter setter = new OptionSetter(badTest);
+        setter.setOptionValue("test-throw-not-available", "true");
+        testsList.add(badTest);
+        // Add tests that can run
+        int numTests = 5;
+        for (int i = 0; i < numTests; i++) {
+            IRemoteTest test = new StubTest();
+            OptionSetter s = new OptionSetter(test);
+            s.setOptionValue("run-a-test", "true");
+            testsList.add(test);
+        }
+        CountDownLatch tracker = new CountDownLatch(3);
+        TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
+        poller.setMetricCollectors(mMetricCollectors);
+        poller.setDevice(mDevice);
+        poller.setLogRegistry(mMockRegistry);
+
+        Mockito.doThrow(new DeviceNotAvailableException())
+                .when(mDevice)
+                .waitForDeviceAvailable(Mockito.anyLong());
+        try {
+            poller.run(mListener);
+            fail("Should have thrown an exception.");
+        } catch (DeviceNotAvailableException expected) {
+            assertEquals(StubTest.DNAE_MESSAGE, expected.getMessage());
+        }
+        // The callbacks from all the other tests are not called because device was unavailable.
+        Mockito.verify(mListener, Mockito.times(0))
+                .testRunStarted(Mockito.anyString(), Mockito.anyInt());
+        Mockito.verify(mListener, Mockito.times(0)).testStarted(Mockito.any());
+        Mockito.verify(mListener, Mockito.times(0))
+                .testEnded(Mockito.any(), (HashMap<String, Metric>) Mockito.any());
+        Mockito.verify(mListener, Mockito.times(0))
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+        Mockito.verify(mDevice).waitForDeviceAvailable(Mockito.anyLong());
+        Mockito.verify(mDevice, Mockito.times(0)).reboot();
+        assertEquals(2, tracker.getCount());
+
+        Mockito.verify(mMockRegistry)
+                .logEvent(
+                        Mockito.eq(LogLevel.DEBUG),
+                        Mockito.eq(EventType.SHARD_POLLER_EARLY_TERMINATION),
+                        Mockito.any());
     }
 }
