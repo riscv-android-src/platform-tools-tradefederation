@@ -155,6 +155,7 @@ import com.android.tradefed.suite.checker.ActivityStatusCheckerTest;
 import com.android.tradefed.suite.checker.DeviceSettingCheckerTest;
 import com.android.tradefed.suite.checker.KeyguardStatusCheckerTest;
 import com.android.tradefed.suite.checker.LeakedThreadStatusCheckerTest;
+import com.android.tradefed.suite.checker.ShellStatusCheckerTest;
 import com.android.tradefed.suite.checker.SystemServerFileDescriptorCheckerTest;
 import com.android.tradefed.suite.checker.SystemServerStatusCheckerTest;
 import com.android.tradefed.suite.checker.TimeStatusCheckerTest;
@@ -563,6 +564,7 @@ import org.junit.runners.Suite.SuiteClasses;
     DeviceSettingCheckerTest.class,
     KeyguardStatusCheckerTest.class,
     LeakedThreadStatusCheckerTest.class,
+    ShellStatusCheckerTest.class,
     SystemServerFileDescriptorCheckerTest.class,
     SystemServerStatusCheckerTest.class,
     TimeStatusCheckerTest.class,
