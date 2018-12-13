@@ -29,7 +29,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
 /** Service allowing TradeFederation commands to be interrupted or marked as uninterruptible. */
 public class CommandInterrupter {
@@ -101,13 +100,13 @@ public class CommandInterrupter {
      * Flag a thread, interrupting it if and when it becomes interruptible.
      *
      * @param thread thread to mark for interruption
-     * @param template interruption error template
-     * @param args interruption error arguments
+     * @param message interruption message
      */
     // FIXME: reduce visibility once RunUtil interrupt methods are removed
-    public void interrupt(
-            @Nonnull Thread thread, @Nullable String template, @Nullable Object... args) {
-        String message = String.format(String.valueOf(template), args);
+    public void interrupt(@Nonnull Thread thread, @Nonnull String message) {
+        if (message == null) {
+            throw new IllegalArgumentException("message cannot be null.");
+        }
         mInterruptMessage.put(thread, message);
         if (isInterruptible(thread)) {
             thread.interrupt();
