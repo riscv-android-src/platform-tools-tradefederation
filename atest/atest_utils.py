@@ -277,3 +277,18 @@ def colorful_print(text, color, highlight=False, auto_wrap=True):
         print(output)
     else:
         print(output, end="")
+
+
+def is_external_run():
+    """Check is external run or not.
+
+    Returns:
+        True if this is an external run, False otherwise.
+    """
+    try:
+        output = subprocess.check_output(['git', 'config', '--get', 'user.email'])
+        if output and output.strip().endswith(constants.INTERNAL_EMAIL):
+            return False
+    except subprocess.CalledProcessError:
+        return True
+    return True

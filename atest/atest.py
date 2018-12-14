@@ -30,6 +30,7 @@ import os
 import sys
 import tempfile
 import time
+import platform
 
 import atest_arg_parser
 import atest_metrics
@@ -40,6 +41,8 @@ import constants
 import module_info
 import result_reporter
 import test_runner_handler
+from metrics import metrics
+from metrics import metrics_utils
 from test_runners import regression_test_runner
 
 EXPECTED_VARS = frozenset([
@@ -355,7 +358,12 @@ def main(argv):
     _configure_logging(args.verbose)
     _validate_args(args)
     atest_metrics.log_start_event()
-
+    start = time.time()
+    metrics.AtestStartEvent(
+        command_line=' '.join(argv),
+        test_references=args.tests,
+        cwd=os.getcwd(),
+        os=platform.platform())
     results_dir = make_test_run_dir()
     mod_info = module_info.ModuleInfo(force_build=args.rebuild_module_info)
     translator = cli_translator.CLITranslator(module_info=mod_info)
@@ -364,9 +372,11 @@ def main(argv):
     if _will_run_tests(args):
         build_targets, test_infos = translator.translate(args)
         if not test_infos:
+            metrics_utils.send_exit_event(start, constants.EXIT_CODE_TEST_NOT_FOUND)
             return constants.EXIT_CODE_TEST_NOT_FOUND
         args = _validate_exec_mode(args, test_infos)
     if args.info:
+        metrics_utils.send_exit_event(start, constants.EXIT_CODE_SUCCESS)
         return _print_test_info(mod_info, test_infos)
     build_targets |= test_runner_handler.get_test_runner_reqs(mod_info,
                                                               test_infos)
@@ -382,6 +392,7 @@ def main(argv):
         build_targets.add(mod_info.module_info_target)
         success = atest_utils.build(build_targets, args.verbose)
         if not success:
+            metrics_utils.send_exit_event(start, constants.EXIT_CODE_BUILD_FAILURE)
             return constants.EXIT_CODE_BUILD_FAILURE
     elif constants.TEST_STEP not in steps:
         logging.warn('Install step without test step currently not '
@@ -399,6 +410,7 @@ def main(argv):
             None, regression_args, reporter)
     if tests_exit_code != constants.EXIT_CODE_SUCCESS:
         tests_exit_code = constants.EXIT_CODE_TEST_FAILURE
+    metrics_utils.send_exit_event(start, tests_exit_code)
     return tests_exit_code
 
 if __name__ == '__main__':
