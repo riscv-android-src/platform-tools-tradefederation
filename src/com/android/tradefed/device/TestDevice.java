@@ -1331,7 +1331,8 @@ public class TestDevice extends NativeDevice {
                 // Line is "Profile owner (User <id>):
                 String[] tokens = line.split("\\(|\\)| ");
                 int userId = Integer.parseInt(tokens[4]);
-                i++;
+
+                i = moveToNextIndexMatchingRegex(".*admin=.*", lines, i);
                 line = lines[i].trim();
                 // Line is admin=ComponentInfo{<component>}
                 tokens = line.split("\\{|\\}");
@@ -1339,13 +1340,14 @@ public class TestDevice extends NativeDevice {
                 CLog.d("Cleaning up profile owner " + userId + " " + componentName);
                 removeAdmin(componentName, userId);
             } else if (line.contains("Device Owner:")) {
-                i++;
+                i = moveToNextIndexMatchingRegex(".*admin=.*", lines, i);
                 line = lines[i].trim();
                 // Line is admin=ComponentInfo{<component>}
                 String[] tokens = line.split("\\{|\\}");
                 String componentName = tokens[1];
+
                 // Skip to user id line.
-                i += 3;
+                i = moveToNextIndexMatchingRegex(".*User ID:.*", lines, i);
                 line = lines[i].trim();
                 // Line is User ID: <N>
                 tokens = line.split(":");
@@ -1354,6 +1356,30 @@ public class TestDevice extends NativeDevice {
                 removeAdmin(componentName, userId);
             }
         }
+    }
+
+    /**
+     * Search forward from the current index to find a string matching the given regex.
+     *
+     * @param regex The regex to match each line against.
+     * @param lines An array of strings to be searched.
+     * @param currentIndex the index to start searching from.
+     * @return The index of a string beginning with the regex.
+     * @throws IllegalStateException if the line cannot be found.
+     */
+    private int moveToNextIndexMatchingRegex(String regex, String[] lines, int currentIndex) {
+        while (currentIndex < lines.length && !lines[currentIndex].matches(regex)) {
+            currentIndex++;
+        }
+
+        if (currentIndex >= lines.length) {
+            throw new IllegalStateException(
+                    "The output of 'dumpsys device_policy' was not as expected. Owners have not "
+                            + "been removed. This will leave the device in an unstable state and "
+                            + "will lead to further test failures.");
+        }
+
+        return currentIndex;
     }
 
     /**

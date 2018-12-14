@@ -3639,6 +3639,44 @@ public class TestDeviceTest extends TestCase {
         assertEquals(Integer.valueOf(10), intArgs.get(1));
     }
 
+    public void testRemoveOwnersWithAdditionalLines() throws Exception {
+        mTestDevice =
+                Mockito.spy(
+                        new TestableTestDevice() {
+                            @Override
+                            public String executeShellCommand(String command)
+                                    throws DeviceNotAvailableException {
+                                return "Current Device Policy Manager state:\n"
+                                        + "  Device Owner: \n"
+                                        + "    admin=ComponentInfo{aaa/aaa}\n"
+                                        + "    name=\n"
+                                        + "    package=aaa\n"
+                                        + "    moreLines=true\n"
+                                        + "    User ID: 0\n"
+                                        + "\n"
+                                        + "  Profile Owner (User 10): \n"
+                                        + "    admin=ComponentInfo{bbb/bbb}\n"
+                                        + "    name=bbb\n"
+                                        + "    package=bbb\n";
+                            }
+                        });
+        mTestDevice.removeOwners();
+
+        // Verified removeAdmin is called to remove owners.
+        ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Integer> intCaptor = ArgumentCaptor.forClass(Integer.class);
+        Mockito.verify(mTestDevice, Mockito.times(2))
+                .removeAdmin(stringCaptor.capture(), intCaptor.capture());
+        List<String> stringArgs = stringCaptor.getAllValues();
+        List<Integer> intArgs = intCaptor.getAllValues();
+
+        assertEquals("aaa/aaa", stringArgs.get(0));
+        assertEquals(Integer.valueOf(0), intArgs.get(0));
+
+        assertEquals("bbb/bbb", stringArgs.get(1));
+        assertEquals(Integer.valueOf(10), intArgs.get(1));
+    }
+
     /** Test that the output of cryptfs allows for encryption for newest format. */
     public void testIsEncryptionSupported_newformat() throws Exception {
         mTestDevice =
