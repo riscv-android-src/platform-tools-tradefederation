@@ -38,8 +38,10 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.IReportNotExecuted;
 import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.TimeUtil;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -166,6 +168,11 @@ public final class TestsPoolPoller
             }
         } finally {
             mTracker.countDown();
+            if (mTracker.getCount() == 0) {
+                // If the last poller is also disconnected we want to know about the tests that
+                // did not execute.
+                reportNotExecuted(listener);
+            }
         }
     }
 
@@ -177,7 +184,9 @@ public final class TestsPoolPoller
             throws DeviceNotAvailableException {
         try {
             if (mTracker.getCount() > 1) {
-                CLog.d("Wait 5 min for device to maybe coming back online.");
+                CLog.d(
+                        "Wait %s for device to maybe come back online.",
+                        TimeUtil.formatElapsedTime(WAIT_RECOVERY_TIME));
                 mDevice.waitForDeviceAvailable(WAIT_RECOVERY_TIME);
                 mDevice.reboot();
                 CLog.d("TestPoller was recovered after %s went offline", mDevice.getSerialNumber());
@@ -201,6 +210,21 @@ public final class TestsPoolPoller
                 mDevice.getSerialNumber(),
                 originalException);
         throw originalException;
+    }
+
+    /** Go through the remaining IRemoteTest and report them as not executed. */
+    private void reportNotExecuted(ITestInvocationListener listener) {
+        IRemoteTest test = poll();
+        while (test != null) {
+            if (test instanceof IReportNotExecuted) {
+                ((IReportNotExecuted) test).reportNotExecuted(listener);
+            } else {
+                CLog.e(
+                        "Could not report not executed tests from %s.",
+                        test.getClass().getCanonicalName());
+            }
+            test = poll();
+        }
     }
 
     /** Helper to log the device events. */

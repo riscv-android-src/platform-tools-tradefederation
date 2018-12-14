@@ -32,7 +32,10 @@ import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.IReportNotExecuted;
 import com.android.tradefed.testtype.StubTest;
+import com.android.tradefed.testtype.suite.ITestSuite;
+import com.android.tradefed.testtype.suite.ITestSuiteTest.TestSuiteImpl;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -214,6 +217,56 @@ public class TestsPoolPollerTest {
         Mockito.verify(mListener, Mockito.times(0))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(0))
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+        assertEquals(0, tracker.getCount());
+        Mockito.verify(mMockRegistry)
+                .logEvent(
+                        Mockito.eq(LogLevel.DEBUG),
+                        Mockito.eq(EventType.SHARD_POLLER_EARLY_TERMINATION),
+                        Mockito.any());
+    }
+
+    /**
+     * Test that a runner that implements {@link IReportNotExecuted} can report the non-executed
+     * tests when the DNAE occurs.
+     */
+    @Test
+    public void testRun_dnae_reportNotExecuted() throws Exception {
+        List<IRemoteTest> testsList = new ArrayList<>();
+        // Add one bad test first that will throw an exception.
+        IRemoteTest badTest = new StubTest();
+        OptionSetter setter = new OptionSetter(badTest);
+        setter.setOptionValue("test-throw-not-available", "true");
+        testsList.add(badTest);
+        // Add tests that from a suite that can report their not executed tests.
+        int numTests = 5;
+        ITestSuite suite = new TestSuiteImpl(numTests);
+        testsList.addAll(suite.split(3));
+        CountDownLatch tracker = new CountDownLatch(1);
+        TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
+        poller.setMetricCollectors(mMetricCollectors);
+        poller.setDevice(mDevice);
+        poller.setLogRegistry(mMockRegistry);
+        try {
+            poller.run(mListener);
+            fail("Should have thrown an exception.");
+        } catch (DeviceNotAvailableException expected) {
+            // expected
+        }
+        // We expect all the non-executed tests to be reported.
+        Mockito.verify(mListener, Mockito.times(1))
+                .testRunStarted(Mockito.eq("test"), Mockito.eq(0));
+        Mockito.verify(mListener, Mockito.times(1))
+                .testRunStarted(Mockito.eq("test1"), Mockito.eq(0));
+        Mockito.verify(mListener, Mockito.times(1))
+                .testRunStarted(Mockito.eq("test2"), Mockito.eq(0));
+        Mockito.verify(mListener, Mockito.times(1))
+                .testRunStarted(Mockito.eq("test3"), Mockito.eq(0));
+        Mockito.verify(mListener, Mockito.times(1))
+                .testRunStarted(Mockito.eq("test4"), Mockito.eq(0));
+        Mockito.verify(mListener, Mockito.times(5))
+                .testRunFailed(IReportNotExecuted.NOT_EXECUTED_FAILURE);
+        Mockito.verify(mListener, Mockito.times(5))
                 .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
         assertEquals(0, tracker.getCount());
         Mockito.verify(mMockRegistry)

@@ -50,6 +50,7 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.IReportNotExecuted;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
@@ -86,7 +87,8 @@ public abstract class ITestSuite
                 IInvocationContextReceiver,
                 IRuntimeHintProvider,
                 IMetricCollectorReceiver,
-                IConfigurationReceiver {
+                IConfigurationReceiver,
+                IReportNotExecuted {
 
     public static final String SKIP_SYSTEM_STATUS_CHECKER = "skip-system-status-check";
     public static final String RUNNER_WHITELIST = "runner-whitelist";
@@ -535,7 +537,13 @@ public abstract class ITestSuite
                 continue;
             }
 
-            StatusCheckerResult result = checker.preExecutionCheck(device);
+            StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
+            try {
+                result = checker.preExecutionCheck(device);
+            } catch (RuntimeException e) {
+                // Catch RuntimeException to avoid leaking throws that go to the invocation.
+                result.setErrorMessage(e.getMessage());
+            }
             if (!CheckStatus.SUCCESS.equals(result.getStatus())) {
                 String errorMessage =
                         (result.getErrorMessage() == null) ? "" : result.getErrorMessage();
@@ -577,7 +585,13 @@ public abstract class ITestSuite
                 continue;
             }
 
-            StatusCheckerResult result = checker.postExecutionCheck(device);
+            StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
+            try {
+                result = checker.postExecutionCheck(device);
+            } catch (RuntimeException e) {
+                // Catch RuntimeException to avoid leaking throws that go to the invocation.
+                result.setErrorMessage(e.getMessage());
+            }
             if (!CheckStatus.SUCCESS.equals(result.getStatus())) {
                 String errorMessage =
                         (result.getErrorMessage() == null) ? "" : result.getErrorMessage();
@@ -778,6 +792,21 @@ public abstract class ITestSuite
     @Override
     public void setConfiguration(IConfiguration configuration) {
         mMainConfiguration = configuration;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void reportNotExecuted(ITestInvocationListener listener) {
+        List<ModuleDefinition> runModules = createExecutionList();
+
+        while (!runModules.isEmpty()) {
+            ModuleDefinition module = runModules.remove(0);
+            listener.testModuleStarted(module.getModuleInvocationContext());
+            listener.testRunStarted(module.getId(), 0);
+            listener.testRunFailed(IReportNotExecuted.NOT_EXECUTED_FAILURE);
+            listener.testRunEnded(0, new HashMap<String, Metric>());
+            listener.testModuleEnded();
+        }
     }
 
     /**
