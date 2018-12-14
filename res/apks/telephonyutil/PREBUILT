@@ -1,0 +1,4 @@
+This apk can be rebuilt from
+        platform/platform_testing
+
+By running `m TelephonyUtility` on revision e295cf9c1b0c4db11a41bdcbe220f7179b075b8a
