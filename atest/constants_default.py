@@ -116,6 +116,9 @@ BOTH_TEST = 'both'
 
 # Metrics
 METRICS_URL = 'http://asuite-218222.appspot.com/atest/metrics'
+EXTERNAL = 'EXTERNAL_RUN'
+INTERNAL = 'INTERNAL_RUN'
+INTERNAL_EMAIL = '@google.com'
 
 # VTS plans
 VTS_STAGING_PLAN = 'vts-staging-default'
