@@ -20,6 +20,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -43,6 +44,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link RunUtil} */
 @RunWith(JUnit4.class)
@@ -426,46 +428,16 @@ public class RunUtilTest {
      */
     @Test
     public void testSetInterruptibleInFuture() {
-        final Thread test =
-                new Thread(
-                        new Runnable() {
-                            @Override
-                            public void run() {
-                                mRunUtil.allowInterrupt(false);
-                                assertFalse(mRunUtil.isInterruptAllowed());
-                                mRunUtil.setInterruptibleInFuture(Thread.currentThread(), 10);
-                                try {
-                                    mRunUtil.sleep(SHORT_TIMEOUT_MS);
-                                    mRunUtil.sleep(SHORT_TIMEOUT_MS);
-                                    fail();
-                                } catch (RunInterruptedException rie) {
-                                    assertEquals("TEST", rie.getMessage());
-                                }
-                                success = mRunUtil.isInterruptAllowed();
-                            }
-                        });
-        mRunUtil.interrupt(test, "TEST");
-        test.start();
-        try {
-            test.join();
-        } catch (InterruptedException e) {
-            // Ignore
-        }
-        assertTrue(success);
-    }
+        CommandInterrupter interrupter = Mockito.mock(CommandInterrupter.class);
+        RunUtil runUtil = new RunUtil(interrupter);
 
-    /** Test whether a {@link RunUtil#setInterruptibleInFuture} has not change the state yet. */
-    @Test
-    public void testSetInterruptibleInFuture_beforeTimeout() {
-        mRunUtil.allowInterrupt(false);
-        assertFalse(mRunUtil.isInterruptAllowed());
+        Thread thread = new Thread();
+        runUtil.setInterruptibleInFuture(thread, 123L);
 
-        mRunUtil.setInterruptibleInFuture(Thread.currentThread(), SHORT_TIMEOUT_MS);
-        mRunUtil.sleep(50);
-        // Should still be false
-        assertFalse(mRunUtil.isInterruptAllowed());
-        mRunUtil.sleep(LONG_TIMEOUT_MS);
-        assertTrue(mRunUtil.isInterruptAllowed());
+        // RunUtil delegates to CommandInterrupter#allowInterruptAsync
+        Mockito.verify(interrupter)
+                .allowInterruptAsync(eq(thread), eq(123L), eq(TimeUnit.MILLISECONDS));
+        Mockito.verifyNoMoreInteractions(interrupter);
     }
 
     /** Test {@link RunUtil#setEnvVariablePriority(EnvPriority)} properly prioritize unset. */
