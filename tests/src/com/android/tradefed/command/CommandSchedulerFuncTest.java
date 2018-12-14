@@ -16,12 +16,16 @@
 
 package com.android.tradefed.command;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.tradefed.config.ConfigurationDescriptor;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DeviceConfigurationHolder;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
@@ -42,18 +46,16 @@ import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
-import com.google.common.util.concurrent.SettableFuture;
-
 import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Future;
 
 /** Longer running test for {@link CommandScheduler} */
 @RunWith(JUnit4.class)
@@ -73,6 +75,15 @@ public class CommandSchedulerFuncTest {
     private DeviceSelectionOptions mDeviceOptions;
     private boolean mInterruptible = false;
     private IDeviceConfiguration mMockConfig;
+
+    @BeforeClass
+    public static void setUpClass() throws ConfigurationException {
+        try {
+            GlobalConfiguration.createGlobalConfiguration(new String[] {"empty"});
+        } catch (IllegalStateException e) {
+            // ignore
+        }
+    }
 
     @Before
     public void setUp() throws Exception {
@@ -300,15 +311,8 @@ public class CommandSchedulerFuncTest {
     public void testBatteryLowLevel_interruptible() throws Throwable {
         ITestDevice mockDevice = EasyMock.createNiceMock(ITestDevice.class);
         EasyMock.expect(mockDevice.getSerialNumber()).andReturn("serial").anyTimes();
-        IDevice mockIDevice = new StubDevice("serial") {
-            @Override
-            public Future<Integer> getBattery() {
-                SettableFuture<Integer> f = SettableFuture.create();
-                f.set(10);
-                return f;
-            }
-        };
-
+        IDevice mockIDevice = new StubDevice("serial");
+        EasyMock.expect(mockDevice.getBattery()).andReturn(10);
         EasyMock.expect(mockDevice.getIDevice()).andReturn(mockIDevice).anyTimes();
         EasyMock.expect(mockDevice.getDeviceState()).andReturn(
                 TestDeviceState.ONLINE).anyTimes();
