@@ -138,3 +138,17 @@ class TestRunnerBase(object):
     def get_test_runner_build_reqs(self):
         """Returns a list of build targets required by the test runner."""
         raise NotImplementedError
+
+    def _generate_run_commands(self, test_infos, extra_args, port=None):
+        """Generate a list of run commands from TestInfos.
+
+        Args:
+            test_infos: A set of TestInfo instances.
+            extra_args: A Dict of extra args to append.
+            port: Optional. An int of the port number to send events to.
+                  Subprocess reporter in TF won't try to connect if it's None.
+
+        Returns:
+            A list of run commands to run the tests.
+        """
+        raise NotImplementedError
