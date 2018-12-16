@@ -757,6 +757,7 @@ public class OptionSetter {
         return unsetOptions;
     }
 
+    @SuppressWarnings("unchecked")
     protected Set<File> validateGcsFilePath() throws ConfigurationException {
         Set<File> gcsFiles = new HashSet<>();
         for (Map.Entry<String, OptionFieldsForName> optionPair : mOptionMap.entrySet()) {
@@ -788,31 +789,41 @@ public class OptionSetter {
                     continue;
                 } else if (value instanceof File) {
                     File consideredFile = (File) value;
-                    // Don't use absolute path as it would not start with gs:
-                    if (consideredFile.getPath().startsWith(GCSFileDownloader.GCS_APPROX_PREFIX)
-                            || consideredFile.getPath().startsWith(GCSFileDownloader.GCS_PREFIX)) {
-                        String path = consideredFile.getPath();
-                        CLog.d(
-                                "Considering option '%s' with path: '%s' for download.",
-                                option.name(), path);
-                        // We need to download the file from the bucket
+                    File downloadedFile =
+                            resolveGcsFiles(consideredFile, downloader, option, gcsFiles);
+                    if (downloadedFile != null) {
+                        // Replace the field value
                         try {
-                            File gsFile = downloader.fetchTestResource(path);
-                            gcsFiles.add(gsFile);
-                            // Replace the field value
-                            field.set(obj, gsFile);
-                        } catch (BuildRetrievalError | IllegalAccessException e) {
+                            field.set(obj, downloadedFile);
+                        } catch (IllegalAccessException e) {
                             CLog.e(e);
                             // Clean up all files
                             for (File f : gcsFiles) {
                                 FileUtil.deleteFile(f);
                             }
                             throw new ConfigurationException(
-                                    String.format("Failed to download %s", path), e);
+                                    String.format(
+                                            "Failed to download %s", consideredFile.getPath()),
+                                    e);
+                        }
+                    }
+                } else if (value instanceof Collection) {
+                    Collection c = (Collection) value;
+                    Collection copy = new ArrayList<>(c);
+                    for (Object o : copy) {
+                        if (o instanceof File) {
+                            File consideredFile = (File) o;
+                            File downloadedFile =
+                                    resolveGcsFiles(consideredFile, downloader, option, gcsFiles);
+                            if (downloadedFile != null) {
+                                // TODO: See if order could be preserved.
+                                c.remove(consideredFile);
+                                c.add(downloadedFile);
+                            }
                         }
                     }
                 }
-                // TODO: Handle collection of files
+                // TODO: Handle Map of files
             }
         }
         return gcsFiles;
@@ -822,6 +833,31 @@ public class OptionSetter {
     @VisibleForTesting
     GCSDownloaderHelper createDownloader() {
         return new GCSDownloaderHelper();
+    }
+
+    private File resolveGcsFiles(
+            File consideredFile, GCSDownloaderHelper downloader, Option option, Set<File> gcsFiles)
+            throws ConfigurationException {
+        // Don't use absolute path as it would not start with gs:
+        if (consideredFile.getPath().startsWith(GCSFileDownloader.GCS_APPROX_PREFIX)
+                || consideredFile.getPath().startsWith(GCSFileDownloader.GCS_PREFIX)) {
+            String path = consideredFile.getPath();
+            CLog.d("Considering option '%s' with path: '%s' for download.", option.name(), path);
+            // We need to download the file from the bucket
+            try {
+                File gsFile = downloader.fetchTestResource(path);
+                gcsFiles.add(gsFile);
+                return gsFile;
+            } catch (BuildRetrievalError e) {
+                CLog.e(e);
+                // Clean up all files
+                for (File f : gcsFiles) {
+                    FileUtil.deleteFile(f);
+                }
+                throw new ConfigurationException(String.format("Failed to download %s", path), e);
+            }
+        }
+        return null;
     }
 
     /**

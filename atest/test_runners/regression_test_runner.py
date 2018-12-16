@@ -46,13 +46,8 @@ class RegressionTestRunner(test_runner_base.TestRunnerBase):
         Returns:
             Return code of the process for running tests.
         """
-        reporter.register_unsupported_runner(self.NAME)
-        pre = extra_args.pop(constants.PRE_PATCH_FOLDER)
-        post = extra_args.pop(constants.POST_PATCH_FOLDER)
-        args = ['--pre-patch-metrics', pre, '--post-patch-metrics', post]
-        self.run_cmd_dict['args'] = ' '.join(args)
-        run_cmd = self._RUN_CMD.format(**self.run_cmd_dict)
-        proc = super(RegressionTestRunner, self).run(run_cmd,
+        run_cmds = self._generate_run_commands(test_infos, extra_args)
+        proc = super(RegressionTestRunner, self).run(run_cmds[0],
                                                      output_to_stdout=True)
         proc.wait()
         return proc.returncode
@@ -73,3 +68,24 @@ class RegressionTestRunner(test_runner_base.TestRunnerBase):
             Set of build targets.
         """
         return self._BUILD_REQ
+
+    # pylint: disable=unused-argument
+    def _generate_run_commands(self, test_infos, extra_args, port=None):
+        """Generate a list of run commands from TestInfos.
+
+        Args:
+            test_infos: A set of TestInfo instances.
+            extra_args: A Dict of extra args to append.
+            port: Optional. An int of the port number to send events to.
+                  Subprocess reporter in TF won't try to connect if it's None.
+
+        Returns:
+            A list that contains the string of atest tradefed run command.
+            Only one command is returned.
+        """
+        pre = extra_args.pop(constants.PRE_PATCH_FOLDER)
+        post = extra_args.pop(constants.POST_PATCH_FOLDER)
+        args = ['--pre-patch-metrics', pre, '--post-patch-metrics', post]
+        self.run_cmd_dict['args'] = ' '.join(args)
+        run_cmd = self._RUN_CMD.format(**self.run_cmd_dict)
+        return [run_cmd]

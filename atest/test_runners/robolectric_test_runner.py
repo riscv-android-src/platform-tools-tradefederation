@@ -20,6 +20,7 @@ robolectric tests will be invoked through AtestTFTestRunner.
 """
 
 import logging
+import os
 
 # pylint: disable=import-error
 import atest_utils
@@ -105,3 +106,24 @@ class RobolectricTestRunner(test_runner_base.TestRunnerBase):
             Set of build targets.
         """
         return set()
+
+    # pylint: disable=unused-argument
+    def _generate_run_commands(self, test_infos, extra_args, port=None):
+        """Generate a list of run commands from TestInfos.
+
+        Args:
+            test_infos: A set of TestInfo instances.
+            extra_args: A Dict of extra args to append.
+            port: Optional. An int of the port number to send events to.
+                  Subprocess reporter in TF won't try to connect if it's None.
+
+        Returns:
+            A list of run commands to run the tests.
+        """
+        run_cmds = []
+        for test_info in test_infos:
+            robo_command = atest_utils.BUILD_CMD + [str(test_info.test_name)]
+            run_cmd = ' '.join(x for x in robo_command).replace(
+                os.environ.get(constants.ANDROID_BUILD_TOP) + os.sep, '')
+            run_cmds.append(run_cmd)
+        return run_cmds
