@@ -86,6 +86,32 @@ public interface ITestDevice extends INativeDevice {
         }
     }
 
+    /** A simple struct class to store information about a single APEX */
+    public static class ApexInfo {
+        public final String name;
+        public final long versionCode;
+
+        public ApexInfo(String name, long versionCode) {
+            this.name = name;
+            this.versionCode = versionCode;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (other != null && other instanceof ApexInfo) {
+                ApexInfo ai = (ApexInfo) other;
+                return name.equals(ai.name) && versionCode == ai.versionCode;
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            // no need to consider versionCode here.
+            return name.hashCode();
+        }
+    }
+
     /**
      * Install an Android package on device.
      *
@@ -362,6 +388,14 @@ public interface ITestDevice extends INativeDevice {
      * @throws DeviceNotAvailableException
      */
     public Set<String> getInstalledPackageNames() throws DeviceNotAvailableException;
+
+    /**
+     * Fetch the information about APEXes activated on the device.
+     *
+     * @return {@link Set} of {@link ApexInfo} currently activated on the device
+     * @throws DeviceNotAvailableException
+     */
+    public Set<ApexInfo> getActiveApexes() throws DeviceNotAvailableException;
 
     /**
      * Fetch the application package names that can be uninstalled. This is presently defined as

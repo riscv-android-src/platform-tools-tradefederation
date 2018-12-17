@@ -236,6 +236,17 @@ public class NativeDeviceTest {
         fail("getInstalledPackageNames should have thrown an exception");
     }
 
+    /** Unit test for {@link NativeDevice#getActiveApexes()}. */
+    @Test
+    public void testGetActiveApexes_exception() throws Exception {
+        try {
+            mTestDevice.getActiveApexes();
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("getActiveApexes should have thrown an exception");
+    }
+
     /** Unit test for {@link NativeDevice#getScreenshot()}. */
     @Test
     public void testGetScreenshot_exception() throws Exception {
