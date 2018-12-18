@@ -18,12 +18,13 @@ package com.android.tradefed.postprocessor;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.TestDescription;
 
+import com.google.common.collect.ImmutableList;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import com.google.common.collect.ImmutableList;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -234,6 +235,7 @@ public class AggregatePostProcessorTest {
                         .getSingleString());
     }
 
+
     /** Test that non-numeric metric does not show up in the reported results. */
     @Test
     public void testNonNumericMetric() {
@@ -390,6 +392,83 @@ public class AggregatePostProcessorTest {
                         .build()
                         .getMeasurements()
                         .getSingleString());
+    }
+
+
+    /**
+     *  Test successful processed run metrics when there are more than one comma
+     *  separated value.
+     */
+    @Test
+    public void testSuccessfullProcessRunMetrics() {
+        final String key = "single_run";
+        final String value = "1.00, 2.00";
+
+        HashMap<String, Metric> runMetrics = new HashMap<String, Metric>();
+        Metric.Builder metricBuilder = Metric.newBuilder();
+        metricBuilder.getMeasurementsBuilder().setSingleString(value);
+        Metric currentRunMetric = metricBuilder.build();
+        runMetrics.put(key, currentRunMetric);
+        Map<String, Metric.Builder> processedMetrics =
+                mProcessor.processRunMetrics(runMetrics);
+
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_MIN)));
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_MAX)));
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_MEAN)));
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_VAR)));
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_STDEV)));
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_MEDIAN)));
+    }
+
+    /**
+     *  Test empty processed run metrics when there is one double value associated with
+     *  the key.
+     */
+    @Test
+    public void testSingleValueProcessRunMetrics() {
+        final String key = "single_run";
+        final String value = "1.00";
+
+        HashMap<String, Metric> runMetrics = new HashMap<String, Metric>();
+        Metric.Builder metricBuilder = Metric.newBuilder();
+        metricBuilder.getMeasurementsBuilder().setSingleString(value);
+        Metric currentRunMetric = metricBuilder.build();
+        runMetrics.put(key, currentRunMetric);
+        Map<String, Metric.Builder> processedMetrics =
+                mProcessor.processRunMetrics(runMetrics);
+
+        Assert.assertEquals(0, processedMetrics.size());
+    }
+
+    /**
+     *  Test non double run metrics values return empty processed metrics.
+     */
+    @Test
+    public void testNoDoubleProcessRunMetrics() {
+        final String key = "single_run";
+        final String value = "1.00, abc";
+
+        HashMap<String, Metric> runMetrics = new HashMap<String, Metric>();
+        Metric.Builder metricBuilder = Metric.newBuilder();
+        metricBuilder.getMeasurementsBuilder().setSingleString(value);
+        Metric currentRunMetric = metricBuilder.build();
+        runMetrics.put(key, currentRunMetric);
+        Map<String, Metric.Builder> processedMetrics =
+                mProcessor.processRunMetrics(runMetrics);
+
+        Assert.assertEquals(0, processedMetrics.size());
     }
 
     /** Test that metrics are correctly aggregated for different tests. */
