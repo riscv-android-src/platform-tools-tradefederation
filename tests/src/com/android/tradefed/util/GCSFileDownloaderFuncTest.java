@@ -42,7 +42,7 @@ public class GCSFileDownloaderFuncTest {
     private static final String FOLDER_NAME1 = "folder1";
     private static final String FOLDER_NAME2 = "folder2";
     private static final String FILE_CONTENT = "Hello World!";
-    private static final long TIMEOUT = 10000;
+    private static final long TIMEOUT = 30000L;
 
     private GCSFileDownloader mDownloader;
     private String mRemoteRoot;
