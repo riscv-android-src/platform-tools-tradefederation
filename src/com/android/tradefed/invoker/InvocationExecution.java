@@ -17,6 +17,7 @@ package com.android.tradefed.invoker;
 
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.build.BuildInfoKey;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
@@ -119,6 +120,7 @@ public class InvocationExecution implements IInvocationExecution {
                 }
                 // TODO: remove build update when reporting is done on context
                 updateBuild(info, config);
+                info.setTestResourceBuild(config.isDeviceConfiguredFake(currentDeviceName));
             }
         } catch (BuildRetrievalError e) {
             CLog.e(e);
@@ -130,6 +132,7 @@ public class InvocationExecution implements IInvocationExecution {
             }
             throw e;
         }
+        createSharedResources(context);
         return true;
     }
 
@@ -641,6 +644,53 @@ public class InvocationExecution implements IInvocationExecution {
             subDir.deleteOnExit();
         } catch (IOException e) {
             CLog.e("Failed to load external test dir %s. Ignoring it.", externalDir);
+            CLog.e(e);
+        }
+    }
+
+    /** Populate the shared resources directory for all non-resource build */
+    private void createSharedResources(IInvocationContext context) {
+        List<IBuildInfo> infos = context.getBuildInfos();
+        if (infos.size() <= 1) {
+            return;
+        }
+        try {
+            File resourcesDir = null;
+            for (IBuildInfo info : infos) {
+                if (info.isTestResourceBuild()) {
+                    if (resourcesDir == null) {
+                        resourcesDir = FileUtil.createTempDir("invocation-resources-dir");
+                    }
+                    // Create a reception sub-folder for each build info resource to avoid mixing
+                    String name =
+                            String.format(
+                                    "%s_%s_%s",
+                                    info.getBuildBranch(),
+                                    info.getBuildId(),
+                                    info.getBuildFlavor());
+                    File buildDir = FileUtil.createTempDir(name, resourcesDir);
+                    for (BuildInfoFileKey key : BuildInfoKey.SHARED_KEY) {
+                        File f = info.getFile(key);
+                        if (f == null) {
+                            continue;
+                        }
+                        File subDir = new File(buildDir, f.getName());
+                        FileUtil.symlinkFile(f, subDir);
+                    }
+                }
+            }
+            if (resourcesDir == null) {
+                return;
+            }
+            // Only set the shared dir on real build if it exists.
+            CLog.d("Creating shared resources directory.");
+            for (IBuildInfo info : infos) {
+                if (!info.isTestResourceBuild()) {
+                    info.setFile(BuildInfoFileKey.SHARED_RESOURCE_DIR, resourcesDir, "v1");
+                }
+            }
+        } catch (IOException e) {
+            CLog.e("Failed to create the shared resources dir.");
             CLog.e(e);
         }
     }

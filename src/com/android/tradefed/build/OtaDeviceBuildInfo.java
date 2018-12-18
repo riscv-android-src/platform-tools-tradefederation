@@ -293,6 +293,18 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
         mBaselineBuild.setTestsDir(testsZipFile, version);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public File getResourcesDir() {
+        return mBaselineBuild.getResourcesDir();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setResourcesDir(File resourceDir, String version) {
+        mBaselineBuild.setResourcesDir(resourceDir, version);
+    }
+
     /**
      * {@inheritDoc}
      */

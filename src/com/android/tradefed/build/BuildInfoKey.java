@@ -15,6 +15,9 @@
  */
 package com.android.tradefed.build;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /** Class holding enumeration related to build information queries. */
 public class BuildInfoKey {
 
@@ -40,6 +43,9 @@ public class BuildInfoKey {
         // of the build info.
         TARGET_LINKED_DIR("target_testcases", false),
         HOST_LINKED_DIR("host_testcases", false),
+
+        // A folder containing the resources from isFake=true devices
+        SHARED_RESOURCE_DIR("resources_dir", false),
 
         // Keys that can hold lists of files.
         PACKAGE_FILES("package_files", true);
@@ -77,5 +83,17 @@ public class BuildInfoKey {
             }
             return null;
         }
+    }
+
+    /**
+     * Files key that should be shared from a resources build info to all build infos via the {@link
+     * IDeviceBuildInfo#getResourcesDir()}.
+     */
+    public static final Set<BuildInfoFileKey> SHARED_KEY = new HashSet<>();
+
+    static {
+        SHARED_KEY.add(BuildInfoFileKey.PACKAGE_FILES);
+        SHARED_KEY.add(BuildInfoFileKey.TESTDIR_IMAGE);
+        SHARED_KEY.add(BuildInfoFileKey.ROOT_DIRECTORY);
     }
 }
