@@ -16,10 +16,17 @@
 package com.android.tradefed.invoker;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
+import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IBuildProvider;
+import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
@@ -45,6 +52,7 @@ import org.junit.runners.JUnit4;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -60,6 +68,7 @@ public class InvocationExecutionTest {
     private IInvocationContext mContext;
     private IConfiguration mConfig;
     private ITestInvocationListener mMockListener;
+    private ITestDevice mMockDevice;
 
     @Before
     public void setUp() {
@@ -67,6 +76,7 @@ public class InvocationExecutionTest {
         mContext = new InvocationContext();
         mConfig = new Configuration("test", "test");
         mMockListener = mock(ITestInvocationListener.class);
+        mMockDevice = EasyMock.createMock(ITestDevice.class);
     }
 
     /** Test class for a target preparer class that also do host cleaner. */
@@ -317,5 +327,47 @@ public class InvocationExecutionTest {
         inOrder.verify(stub2).tearDown(mContext, exception);
         inOrder.verify(stub1).isDisabled();
         inOrder.verify(stub1).tearDown(mContext, exception);
+    }
+
+    /** Ensure we create the shared folder from the resource build. */
+    @Test
+    public void testFetchBuild_createSharedFolder() throws Throwable {
+        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("serial");
+        mMockDevice.setRecovery(EasyMock.anyObject());
+        EasyMock.expectLastCall().times(2);
+
+        List<IDeviceConfiguration> listDeviceConfig = new ArrayList<>();
+        DeviceConfigurationHolder holder = new DeviceConfigurationHolder("device1");
+        IBuildProvider provider = new StubBuildProvider();
+        holder.addSpecificConfig(provider);
+        mContext.addAllocatedDevice("device1", mMockDevice);
+        listDeviceConfig.add(holder);
+
+        DeviceConfigurationHolder holder2 = new DeviceConfigurationHolder("device2", true);
+        IBuildProvider provider2 = new StubBuildProvider();
+        holder2.addSpecificConfig(provider2);
+        mContext.addAllocatedDevice("device2", mMockDevice);
+        listDeviceConfig.add(holder2);
+
+        mConfig.setDeviceConfigList(listDeviceConfig);
+        // Download
+        EasyMock.replay(mMockDevice);
+        assertTrue(mExec.fetchBuild(mContext, mConfig, null, mMockListener));
+        EasyMock.verify(mMockDevice);
+
+        List<IBuildInfo> builds = mContext.getBuildInfos();
+        try {
+            assertEquals(2, builds.size());
+            IBuildInfo realBuild = builds.get(0);
+            File shared = realBuild.getFile(BuildInfoFileKey.SHARED_RESOURCE_DIR);
+            assertNotNull(shared);
+
+            IBuildInfo fakeBuild = builds.get(1);
+            assertNull(fakeBuild.getFile(BuildInfoFileKey.SHARED_RESOURCE_DIR));
+        } finally {
+            for (IBuildInfo info : builds) {
+                info.cleanUp();
+            }
+        }
     }
 }
