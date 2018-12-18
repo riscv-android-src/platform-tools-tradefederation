@@ -209,6 +209,8 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andStubReturn("flavor");
         EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(new HashSet<>());
         EasyMock.expect(mMockBuildInfo.isTestResourceBuild()).andStubReturn(false);
+        mMockBuildInfo.setTestResourceBuild(EasyMock.anyBoolean());
+        EasyMock.expectLastCall().anyTimes();
 
         // always expect logger initialization and cleanup calls
         mMockLogRegistry.registerLogger(mMockLogger);
@@ -1526,6 +1528,9 @@ public class TestInvocationTest extends TestCase {
         mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
         EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(new HashSet<>());
         EasyMock.expect(mMockBuildInfo.isTestResourceBuild()).andStubReturn(false);
+        mMockBuildInfo.setTestResourceBuild(EasyMock.anyBoolean());
+        EasyMock.expectLastCall().anyTimes();
+
         IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
         ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
         EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
@@ -1611,6 +1616,8 @@ public class TestInvocationTest extends TestCase {
                     .andReturn(tmpTestsDir);
             EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(new HashSet<>());
             EasyMock.expect(mMockBuildInfo.isTestResourceBuild()).andStubReturn(false);
+            mMockBuildInfo.setTestResourceBuild(EasyMock.anyBoolean());
+            EasyMock.expectLastCall().anyTimes();
 
             setupMockSuccessListeners();
             setupNormalInvoke(test);
@@ -1691,6 +1698,8 @@ public class TestInvocationTest extends TestCase {
             prop.add(BuildInfoProperties.DO_NOT_LINK_TESTS_DIR);
             EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(prop);
             EasyMock.expect(mMockBuildInfo.isTestResourceBuild()).andStubReturn(false);
+            mMockBuildInfo.setTestResourceBuild(EasyMock.anyBoolean());
+            EasyMock.expectLastCall().anyTimes();
 
             setupMockSuccessListeners();
             setupNormalInvoke(test);
