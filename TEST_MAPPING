@@ -7,6 +7,10 @@
           "instrumentation-arg": "annotation:=android.support.test.filters.SmallTest"
         }
       ]
+    },
+    {
+      "name": "hello_world_test",
+      "host": true
     }
   ]
 }
