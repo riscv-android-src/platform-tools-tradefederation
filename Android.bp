@@ -99,8 +99,9 @@ java_library_host {
         "longevity-host-lib",
         "perfetto_config-full",
         "platform-test-annotations",
+        "test-composers",
         "tf-remote-client",
-	"tradefed-grpc-lib-1.0.1",
+        "tradefed-grpc-lib-1.0.1",
         "tradefed-protos",
     ],
     libs: [
