@@ -133,6 +133,18 @@ public class DeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo {
         setFile(BuildInfoFileKey.TESTDIR_IMAGE, testsDir, version);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public File getResourcesDir() {
+        return getFile(BuildInfoFileKey.SHARED_RESOURCE_DIR);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setResourcesDir(File resourceDir, String version) {
+        setFile(BuildInfoFileKey.SHARED_RESOURCE_DIR, resourceDir, version);
+    }
+
     /**
      * {@inheritDoc}
      */
