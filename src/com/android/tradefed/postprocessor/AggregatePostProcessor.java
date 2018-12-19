@@ -15,18 +15,17 @@
  */
 package com.android.tradefed.postprocessor;
 
-import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.TestDescription;
 
 import com.google.common.collect.ArrayListMultimap;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -95,32 +94,8 @@ public class AggregatePostProcessor extends BasePostProcessor {
             if (rawValues.isEmpty()) {
                 continue;
             }
-            boolean areAllDoubles =
-                    rawValues
-                            .stream()
-                            .allMatch(
-                                    val -> {
-                                        try {
-                                            Double.parseDouble(val);
-                                            return true;
-                                        } catch (NumberFormatException e) {
-                                            return false;
-                                        }
-                                    });
-            if (areAllDoubles) {
-                List<Double> values =
-                        rawValues.stream().map(Double::parseDouble).collect(Collectors.toList());
-                HashMap<String, Double> stats = getStats(values);
-                for (String statKey : stats.keySet()) {
-                    Metric.Builder metricBuilder = Metric.newBuilder();
-                    metricBuilder
-                            .getMeasurementsBuilder()
-                            .setSingleString(String.format("%2.2f", stats.get(statKey)));
-                    aggregateMetrics.put(
-                            String.join(STATS_KEY_SEPARATOR, metricKey, statKey), metricBuilder);
-                }
-            } else {
-                CLog.i("Metric %s from test %s is not numeric", metricKey, fullTestName);
+            if (isAllDoubleValues(rawValues)) {
+                buildStats(metricKey, rawValues, aggregateMetrics);
             }
         }
         return aggregateMetrics;
@@ -128,7 +103,62 @@ public class AggregatePostProcessor extends BasePostProcessor {
 
     @Override
     public Map<String, Metric.Builder> processRunMetrics(HashMap<String, Metric> rawMetrics) {
-        return new HashMap<String, Metric.Builder>();
+        // Aggregate the test run metrics which has comma separated values which can be
+        // parsed to double values.
+        Map<String, Metric.Builder> aggregateMetrics = new HashMap<String, Metric.Builder>();
+        for (Map.Entry<String, Metric> entry : rawMetrics.entrySet()) {
+            String values = entry.getValue().getMeasurements().getSingleString();
+            List<String> splitVals = Arrays.asList(values.split(",", 0));
+            // Build stats only for the keys with more than one value.
+            if (isAllDoubleValues(splitVals) && splitVals.size() > 1) {
+                buildStats(entry.getKey(), splitVals, aggregateMetrics);
+            }
+        }
+        return aggregateMetrics;
+    }
+
+    /**
+     * Return true is all the values can be parsed to double value.
+     * Otherwise return false.
+     * @param rawValues list whose values are validated.
+     * @return
+     */
+    private boolean isAllDoubleValues(List<String> rawValues) {
+        return rawValues
+                .stream()
+                .allMatch(
+                        val -> {
+                            try {
+                                Double.parseDouble(val);
+                                return true;
+                            } catch (NumberFormatException e) {
+                                return false;
+                            }
+                        });
+    }
+
+    /**
+     * Build stats for the given set of values and build the metrics using the metric key
+     * and stats name and update the results in aggregated metrics.
+     *
+     * @param metricKey key to which the values correspond to.
+     * @param values list of raw values.
+     * @param aggregateMetrics where final metrics will be stored.
+     */
+    private void buildStats(String metricKey, List<String> values,
+            Map<String, Metric.Builder> aggregateMetrics) {
+        List<Double> doubleValues =
+                values.stream().map(Double::parseDouble).collect(Collectors.toList());
+        HashMap<String, Double> stats = getStats(doubleValues);
+        for (String statKey : stats.keySet()) {
+            Metric.Builder metricBuilder = Metric.newBuilder();
+            metricBuilder
+                    .getMeasurementsBuilder()
+                    .setSingleString(String.format("%2.2f", stats.get(statKey)));
+            aggregateMetrics.put(
+                    String.join(STATS_KEY_SEPARATOR, metricKey, statKey),
+                    metricBuilder);
+        }
     }
 
     private HashMap<String, Double> getStats(Collection<Double> values) {
