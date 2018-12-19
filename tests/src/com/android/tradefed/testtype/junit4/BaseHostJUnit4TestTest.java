@@ -20,6 +20,7 @@ import static org.junit.Assert.fail;
 
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.ConfigurationDef;
@@ -363,6 +364,8 @@ public class BaseHostJUnit4TestTest {
             Map<String, String> properties = new HashMap<>();
             properties.put("ROOT_DIR", fakeTestsDir.getAbsolutePath());
             EasyMock.expect(mMockBuild.getFile("apkFileName")).andReturn(null);
+            EasyMock.expect(mMockBuild.getFile(BuildInfoFileKey.SHARED_RESOURCE_DIR))
+                    .andReturn(null);
             EasyMock.expect(mMockBuild.getBuildAttributes()).andReturn(properties).times(2);
             EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null);
 
