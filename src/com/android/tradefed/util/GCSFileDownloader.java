@@ -70,11 +70,6 @@ public class GCSFileDownloader implements IFileDownloader {
      */
     @Override
     public File downloadFile(String remoteFilePath) throws BuildRetrievalError {
-        if (remoteFilePath.startsWith(GCS_APPROX_PREFIX)
-                && !remoteFilePath.startsWith(GCS_PREFIX)) {
-            // File object remove double // so we have to rebuild it in some cases
-            remoteFilePath = remoteFilePath.replaceAll(GCS_APPROX_PREFIX, GCS_PREFIX);
-        }
         File destFile = createTempFile(remoteFilePath, null);
         try {
             downloadFile(remoteFilePath, destFile);
@@ -102,6 +97,10 @@ public class GCSFileDownloader implements IFileDownloader {
     }
 
     String[] parseGcsPath(String remotePath) throws BuildRetrievalError {
+        if (remotePath.startsWith(GCS_APPROX_PREFIX) && !remotePath.startsWith(GCS_PREFIX)) {
+            // File object remove double // so we have to rebuild it in some cases
+            remotePath = remotePath.replaceAll(GCS_APPROX_PREFIX, GCS_PREFIX);
+        }
         Matcher m = GCS_PATH_PATTERN.matcher(remotePath);
         if (!m.find()) {
             throw new BuildRetrievalError(
