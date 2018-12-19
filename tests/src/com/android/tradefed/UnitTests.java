@@ -42,6 +42,7 @@ import com.android.tradefed.config.ConfigurationDescriptorTest;
 import com.android.tradefed.config.ConfigurationFactoryTest;
 import com.android.tradefed.config.ConfigurationTest;
 import com.android.tradefed.config.ConfigurationXmlParserTest;
+import com.android.tradefed.config.DynamicRemoteFileResolverTest;
 import com.android.tradefed.config.GlobalConfigurationTest;
 import com.android.tradefed.config.OptionCopierTest;
 import com.android.tradefed.config.OptionSetterTest;
@@ -50,6 +51,7 @@ import com.android.tradefed.config.RetryConfigurationFactoryTest;
 import com.android.tradefed.config.SandboxConfigurationFactoryTest;
 import com.android.tradefed.config.gcs.GCSConfigurationFactoryTest;
 import com.android.tradefed.config.gcs.GCSConfigurationServerTest;
+import com.android.tradefed.config.remote.GcsRemoteFileResolverTest;
 import com.android.tradefed.device.AndroidDebugBridgeWrapperTest;
 import com.android.tradefed.device.BackgroundDeviceActionTest;
 import com.android.tradefed.device.CpuStatsCollectorTest;
@@ -365,6 +367,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ConfigurationFactoryTest.class,
     ConfigurationTest.class,
     ConfigurationXmlParserTest.class,
+    DynamicRemoteFileResolverTest.class,
     GlobalConfigurationTest.class,
     OptionCopierTest.class,
     OptionSetterTest.class,
@@ -375,6 +378,9 @@ import org.junit.runners.Suite.SuiteClasses;
     // config.gcs
     GCSConfigurationServerTest.class,
     GCSConfigurationFactoryTest.class,
+
+    // config.remote
+    GcsRemoteFileResolverTest.class,
 
     // device
     AndroidDebugBridgeWrapperTest.class,

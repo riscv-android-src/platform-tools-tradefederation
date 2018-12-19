@@ -16,9 +16,7 @@
 
 package com.android.tradefed.config;
 
-import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.gcs.GCSDownloaderHelper;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.targetprep.BaseTargetPreparer;
@@ -36,9 +34,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -982,146 +978,6 @@ public class OptionSetterTest extends TestCase {
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected
-        }
-    }
-
-    /** Test {@link OptionSetter#validateRemoteFilePath()}. */
-    public void testOptionSetter_remoteFile() throws ConfigurationException {
-        RemoteFileOption object = new RemoteFileOption();
-        OptionSetter setter =
-                new OptionSetter(object) {
-                    @Override
-                    DynamicRemoteFileResolver createResolver() {
-                        return new DynamicRemoteFileResolver() {
-                            @Override
-                            GCSDownloaderHelper createDownloader() {
-                                return new GCSDownloaderHelper() {
-                                    @Override
-                                    public File fetchTestResource(String gsPath)
-                                            throws BuildRetrievalError {
-                                        try {
-                                            File fake =
-                                                    FileUtil.createTempFile(
-                                                            "gs-option-setter-test", "txt");
-                                            return fake;
-                                        } catch (IOException e) {
-                                            throw new RuntimeException(e);
-                                        }
-                                    }
-                                };
-                            }
-                        };
-                    }
-                };
-        setter.setOptionValue("remote-file", "gs://fake/path");
-        assertEquals("gs:/fake/path", object.remoteFile.getPath());
-        Set<File> downloadedFile = setter.validateRemoteFilePath();
-        try {
-            assertEquals(1, downloadedFile.size());
-            File downloaded = downloadedFile.iterator().next();
-            // The file has been replaced by the downloaded one.
-            assertEquals(downloaded.getAbsolutePath(), object.remoteFile.getAbsolutePath());
-        } finally {
-            for (File f : downloadedFile) {
-                FileUtil.recursiveDelete(f);
-            }
-        }
-    }
-
-    /** Test {@link OptionSetter#validateRemoteFilePath()}. */
-    public void testOptionSetter_remoteFileList() throws ConfigurationException {
-        RemoteFileOption object = new RemoteFileOption();
-        OptionSetter setter =
-                new OptionSetter(object) {
-                    @Override
-                    DynamicRemoteFileResolver createResolver() {
-                        return new DynamicRemoteFileResolver() {
-                            @Override
-                            GCSDownloaderHelper createDownloader() {
-                                return new GCSDownloaderHelper() {
-                                    @Override
-                                    public File fetchTestResource(String gsPath)
-                                            throws BuildRetrievalError {
-                                        try {
-                                            File fake =
-                                                    FileUtil.createTempFile(
-                                                            "gs-option-setter-test", "txt");
-                                            return fake;
-                                        } catch (IOException e) {
-                                            throw new RuntimeException(e);
-                                        }
-                                    }
-                                };
-                            }
-                        };
-                    }
-                };
-        setter.setOptionValue("remote-file-list", "gs://fake/path");
-        setter.setOptionValue("remote-file-list", "fake/file");
-        assertEquals(2, object.remoteFileList.size());
-        Set<File> downloadedFile = setter.validateRemoteFilePath();
-        try {
-            assertEquals(1, downloadedFile.size());
-            File downloaded = downloadedFile.iterator().next();
-            // The file has been replaced by the downloaded one.
-            assertEquals(2, object.remoteFileList.size());
-
-            Iterator<File> ite = object.remoteFileList.iterator();
-            File notGsFile = ite.next();
-            assertEquals("fake/file", notGsFile.getPath());
-            File gsFile = ite.next();
-            assertEquals(downloaded.getAbsolutePath(), gsFile.getAbsolutePath());
-        } finally {
-            for (File f : downloadedFile) {
-                FileUtil.recursiveDelete(f);
-            }
-        }
-    }
-
-    /** Test {@link OptionSetter#validateRemoteFilePath()}. */
-    public void testOptionSetter_remoteFileList_downloadError() throws ConfigurationException {
-        RemoteFileOption object = new RemoteFileOption();
-        OptionSetter setter =
-                new OptionSetter(object) {
-                    @Override
-                    DynamicRemoteFileResolver createResolver() {
-                        return new DynamicRemoteFileResolver() {
-                            @Override
-                            GCSDownloaderHelper createDownloader() {
-                                return new GCSDownloaderHelper() {
-                                    @Override
-                                    public File fetchTestResource(String gsPath)
-                                            throws BuildRetrievalError {
-                                        if (gsPath.contains("success")) {
-                                            try {
-                                                File fake =
-                                                        FileUtil.createTempFile(
-                                                                "gs-option-setter-test", "txt");
-                                                return fake;
-                                            } catch (IOException e) {
-                                                throw new RuntimeException(e);
-                                            }
-                                        } else {
-                                            throw new BuildRetrievalError(
-                                                    String.format("Couldn't download %s", gsPath));
-                                        }
-                                    }
-                                };
-                            }
-                        };
-                    }
-                };
-        setter.setOptionValue("remote-file-list", "fake/file");
-        setter.setOptionValue("remote-file-list", "gs://success/fake/path");
-        setter.setOptionValue("remote-file-list", "gs://success/fake/path2");
-        setter.setOptionValue("remote-file-list", "gs://failure/test");
-        assertEquals(4, object.remoteFileList.size());
-        try {
-            setter.validateRemoteFilePath();
-            fail("Should have thrown an exception");
-        } catch (ConfigurationException expected) {
-            // Only when we reach failure/test it fails
-            assertTrue(expected.getMessage().contains("failure/test"));
         }
     }
 
