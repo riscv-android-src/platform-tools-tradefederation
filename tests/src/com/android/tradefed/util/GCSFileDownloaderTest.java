@@ -95,6 +95,15 @@ public class GCSFileDownloaderTest {
     }
 
     @Test
+    public void testparseGcsPath_singleSlash() throws Exception {
+
+        String gcsPath = "gs:/bucketName/path/to/file";
+        String[] parts = mGCSFileDownloader.parseGcsPath(gcsPath);
+        Assert.assertEquals("bucketName", parts[0]);
+        Assert.assertEquals("/path/to/file", parts[1]);
+    }
+
+    @Test
     public void testParseGcsPath_noGCSPath() {
         try {
             mGCSFileDownloader.parseGcsPath("/bucketname/path/to/file");
