@@ -36,8 +36,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -60,6 +62,14 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
             "A push-spec, formatted as '/path/to/srcfile.txt->/path/to/destfile.txt' or " +
             "'/path/to/srcfile.txt->/path/to/destdir/'. May be repeated.")
     private Collection<String> mPushSpecs = new ArrayList<>();
+
+    @Option(
+        name = "push-file",
+        description =
+                "A push-spec, specifying the local file to the path where it should be pushed on "
+                        + "device. May be repeated."
+    )
+    private Map<File, String> mPushFileSpecs = new HashMap<>();
 
     @Option(name="post-push", description=
             "A command to run on the device (with `adb shell (yourcommand)`) after all pushes " +
@@ -167,49 +177,18 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
             }
             Log.d(LOG_TAG, String.format("Trying to push local '%s' to remote '%s'", pair[0],
                     pair[1]));
-
             File src = new File(pair[0]);
             String remotePath = pair[1];
-            // If we attempt to push to an existing directory
-            if (device.isDirectory(remotePath)) {
-                remotePath = remotePath + "/" + src.getName();
-            }
-            if (!src.isAbsolute()) {
-                src = resolveRelativeFilePath(buildInfo, pair[0]);
-            }
-            if (src == null || !src.exists()) {
-                fail(String.format("Local source file '%s' does not exist", pair[0]), device);
-                continue;
-            }
-            if (src.isDirectory()) {
-                Set<String> filter = new HashSet<>();
-                if (mAbi != null) {
-                    String currentArch = AbiUtils.getArchForAbi(mAbi.getName());
-                    filter.addAll(AbiUtils.getArchSupported());
-                    filter.remove(currentArch);
-                }
-                if (!device.pushDir(src, remotePath, filter)) {
-                    fail(
-                            String.format(
-                                    "Failed to push local '%s' to remote '%s'",
-                                    pair[0], remotePath),
-                            device);
-                    continue;
-                } else {
-                    addPushedFile(device, remotePath);
-                }
-            } else {
-                if (!device.pushFile(src, remotePath)) {
-                    fail(
-                            String.format(
-                                    "Failed to push local '%s' to remote '%s'",
-                                    pair[0], remotePath),
-                            device);
-                    continue;
-                } else {
-                    addPushedFile(device, remotePath);
-                }
-            }
+            evaluatePushingPair(device, buildInfo, src, remotePath);
+        }
+        // Push the file structure
+        for (File src : mPushFileSpecs.keySet()) {
+            String remotePath = mPushFileSpecs.get(src);
+            Log.d(
+                    LOG_TAG,
+                    String.format(
+                            "Trying to push local '%s' to remote '%s'", src.getPath(), remotePath));
+            evaluatePushingPair(device, buildInfo, src, remotePath);
         }
 
         for (String command : mPostPushCommands) {
@@ -248,5 +227,49 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
                     device.getDeviceDescriptor());
         }
         mFilesPushed.add(remotePath);
+    }
+
+    private void evaluatePushingPair(
+            ITestDevice device, IBuildInfo buildInfo, File src, String remotePath)
+            throws TargetSetupError, DeviceNotAvailableException {
+        String localPath = src.getPath();
+        // If we attempt to push to an existing directory
+        if (device.isDirectory(remotePath)) {
+            remotePath = remotePath + "/" + src.getName();
+        }
+        if (!src.isAbsolute()) {
+            src = resolveRelativeFilePath(buildInfo, localPath);
+        }
+        if (src == null || !src.exists()) {
+            fail(String.format("Local source file '%s' does not exist", localPath), device);
+            return;
+        }
+        if (src.isDirectory()) {
+            Set<String> filter = new HashSet<>();
+            if (mAbi != null) {
+                String currentArch = AbiUtils.getArchForAbi(mAbi.getName());
+                filter.addAll(AbiUtils.getArchSupported());
+                filter.remove(currentArch);
+            }
+            if (!device.pushDir(src, remotePath, filter)) {
+                fail(
+                        String.format(
+                                "Failed to push local '%s' to remote '%s'", localPath, remotePath),
+                        device);
+                return;
+            } else {
+                addPushedFile(device, remotePath);
+            }
+        } else {
+            if (!device.pushFile(src, remotePath)) {
+                fail(
+                        String.format(
+                                "Failed to push local '%s' to remote '%s'", localPath, remotePath),
+                        device);
+                return;
+            } else {
+                addPushedFile(device, remotePath);
+            }
+        }
     }
 }
