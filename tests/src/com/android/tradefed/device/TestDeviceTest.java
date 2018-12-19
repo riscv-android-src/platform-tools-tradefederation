@@ -28,6 +28,7 @@ import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.ITestDevice.ApexInfo;
 import com.android.tradefed.device.ITestDevice.MountPointInfo;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.host.HostOptions;
@@ -1846,6 +1847,32 @@ public class TestDeviceTest extends TestCase {
         EasyMock.replay(mMockIDevice, mMockStateMonitor);
         Set<String> actualPkgs = mTestDevice.getInstalledPackageNames();
         assertEquals(0, actualPkgs.size());
+    }
+
+    /** Unit test for {@link TestDevice#getActiveApexes()}. */
+    public void testGetActiveApexes() throws Exception {
+        final String output =
+                "package:com.android.foo versionCode:100\n"
+                        + "package:com.android.bar versionCode:200";
+        injectShellResponse(TestDevice.LIST_APEXES_CMD, output);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor);
+        Set<ApexInfo> actual = mTestDevice.getActiveApexes();
+        assertEquals(2, actual.size());
+        assertTrue(actual.contains(new ApexInfo("com.android.foo", 100)));
+        assertTrue(actual.contains(new ApexInfo("com.android.bar", 200)));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getActiveApexes()}.
+     *
+     * <p>Test bad output.
+     */
+    public void testGetActiveApexesForBadOutput() throws Exception {
+        final String output = "junk output";
+        injectShellResponse(TestDevice.LIST_APEXES_CMD, output);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor);
+        Set<ApexInfo> actual = mTestDevice.getActiveApexes();
+        assertEquals(0, actual.size());
     }
 
     /**
