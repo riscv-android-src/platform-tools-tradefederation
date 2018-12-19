@@ -17,12 +17,8 @@
 package com.android.tradefed.config;
 
 import com.android.annotations.VisibleForTesting;
-import com.android.tradefed.build.BuildRetrievalError;
-import com.android.tradefed.build.gcs.GCSDownloaderHelper;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
-import com.android.tradefed.util.FileUtil;
-import com.android.tradefed.util.GCSFileDownloader;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.TimeVal;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
@@ -250,11 +246,11 @@ public class OptionSetter {
 
     /**
      * Container for the list of option fields with given name.
-     * <p/>
-     * Used to enforce constraint that fields with same name can exist in different option sources,
-     * but not the same option source
+     *
+     * <p>Used to enforce constraint that fields with same name can exist in different option
+     * sources, but not the same option source
      */
-    private class OptionFieldsForName implements Iterable<Map.Entry<Object, Field>> {
+    protected class OptionFieldsForName implements Iterable<Map.Entry<Object, Field>> {
 
         private Map<Object, Field> mSourceFieldMap = new HashMap<Object, Field>();
 
@@ -757,107 +753,24 @@ public class OptionSetter {
         return unsetOptions;
     }
 
-    @SuppressWarnings("unchecked")
-    protected Set<File> validateGcsFilePath() throws ConfigurationException {
-        Set<File> gcsFiles = new HashSet<>();
-        for (Map.Entry<String, OptionFieldsForName> optionPair : mOptionMap.entrySet()) {
-            final String optName = optionPair.getKey();
-            final OptionFieldsForName optionFields = optionPair.getValue();
-            if (optName.indexOf(NAMESPACE_SEPARATOR) >= 0) {
-                // Only return unqualified option names
-                continue;
-            }
-            GCSDownloaderHelper downloader = createDownloader();
-            for (Map.Entry<Object, Field> fieldEntry : optionFields) {
-                final Object obj = fieldEntry.getKey();
-                final Field field = fieldEntry.getValue();
-                final Option option = field.getAnnotation(Option.class);
-                if (option == null) {
-                    continue;
-                }
-                // At this point, we know this is an option field; make sure it's set
-                field.setAccessible(true);
-                final Object value;
-                try {
-                    value = field.get(obj);
-                } catch (IllegalAccessException e) {
-                    throw new ConfigurationException(
-                            String.format("internal error: %s", e.getMessage()));
-                }
-
-                if (value == null) {
-                    continue;
-                } else if (value instanceof File) {
-                    File consideredFile = (File) value;
-                    File downloadedFile =
-                            resolveGcsFiles(consideredFile, downloader, option, gcsFiles);
-                    if (downloadedFile != null) {
-                        // Replace the field value
-                        try {
-                            field.set(obj, downloadedFile);
-                        } catch (IllegalAccessException e) {
-                            CLog.e(e);
-                            // Clean up all files
-                            for (File f : gcsFiles) {
-                                FileUtil.deleteFile(f);
-                            }
-                            throw new ConfigurationException(
-                                    String.format(
-                                            "Failed to download %s", consideredFile.getPath()),
-                                    e);
-                        }
-                    }
-                } else if (value instanceof Collection) {
-                    Collection c = (Collection) value;
-                    Collection copy = new ArrayList<>(c);
-                    for (Object o : copy) {
-                        if (o instanceof File) {
-                            File consideredFile = (File) o;
-                            File downloadedFile =
-                                    resolveGcsFiles(consideredFile, downloader, option, gcsFiles);
-                            if (downloadedFile != null) {
-                                // TODO: See if order could be preserved.
-                                c.remove(consideredFile);
-                                c.add(downloadedFile);
-                            }
-                        }
-                    }
-                }
-                // TODO: Handle Map of files
-            }
-        }
-        return gcsFiles;
+    /**
+     * Runs through all the {@link File} option type and check if their path should be resolved.
+     *
+     * @return The list of {@link File} that was resolved that way.
+     * @throws ConfigurationException
+     */
+    protected Set<File> validateRemoteFilePath() throws ConfigurationException {
+        DynamicRemoteFileResolver resolver = createResolver();
+        resolver.setOptionMap(mOptionMap);
+        return resolver.validateRemoteFilePath();
     }
 
-    /** Returns the downloader helping to resolve the remote file. */
+    /**
+     * Create a {@link DynamicRemoteFileResolver} that will resolved {@link File} of remote file.
+     */
     @VisibleForTesting
-    GCSDownloaderHelper createDownloader() {
-        return new GCSDownloaderHelper();
-    }
-
-    private File resolveGcsFiles(
-            File consideredFile, GCSDownloaderHelper downloader, Option option, Set<File> gcsFiles)
-            throws ConfigurationException {
-        // Don't use absolute path as it would not start with gs:
-        if (consideredFile.getPath().startsWith(GCSFileDownloader.GCS_APPROX_PREFIX)
-                || consideredFile.getPath().startsWith(GCSFileDownloader.GCS_PREFIX)) {
-            String path = consideredFile.getPath();
-            CLog.d("Considering option '%s' with path: '%s' for download.", option.name(), path);
-            // We need to download the file from the bucket
-            try {
-                File gsFile = downloader.fetchTestResource(path);
-                gcsFiles.add(gsFile);
-                return gsFile;
-            } catch (BuildRetrievalError e) {
-                CLog.e(e);
-                // Clean up all files
-                for (File f : gcsFiles) {
-                    FileUtil.deleteFile(f);
-                }
-                throw new ConfigurationException(String.format("Failed to download %s", path), e);
-            }
-        }
-        return null;
+    DynamicRemoteFileResolver createResolver() {
+        return new DynamicRemoteFileResolver();
     }
 
     /**
