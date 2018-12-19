@@ -21,15 +21,20 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.android.tradefed.util.RunInterruptedException;
-import com.android.tradefed.util.RunUtil;
+
+import com.google.common.base.Stopwatch;
+import com.google.common.base.Throwables;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** Unit tests for {@link CommandInterrupter} */
 @RunWith(JUnit4.class)
@@ -125,18 +130,23 @@ public class CommandInterrupterTest {
         execute(
                 () -> {
                     // allow interruptions after a delay
+                    Stopwatch stopwatch = Stopwatch.createStarted();
                     Future<?> future =
                             mInterrupter.allowInterruptAsync(
                                     Thread.currentThread(), 200L, TimeUnit.MILLISECONDS);
-                    assertFalse(future.isDone());
 
                     // not yet marked as interruptible
-                    RunUtil.getDefault().sleep(50);
                     assertFalse(mInterrupter.isInterruptible());
 
-                    // marked as interruptible after enough time has passed
-                    RunUtil.getDefault().sleep(200L);
-                    assertTrue(mInterrupter.isInterruptible());
+                    try {
+                        // marked as interruptible after enough time has passed
+                        future.get(500L, TimeUnit.MILLISECONDS);
+                        assertTrue(mInterrupter.isInterruptible());
+                        assertTrue(stopwatch.elapsed(TimeUnit.MILLISECONDS) >= 200L);
+
+                    } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                        throw new RuntimeException(e);
+                    }
                 });
     }
 
@@ -158,9 +168,17 @@ public class CommandInterrupterTest {
 
     // Execute test in separate thread
     private static void execute(Runnable runnable) throws InterruptedException {
+        AtomicReference<Throwable> throwableRef = new AtomicReference<>();
+
         Thread thread = new Thread(runnable, "CommandInterrupterTest");
         thread.setDaemon(true);
+        thread.setUncaughtExceptionHandler((t, throwable) -> throwableRef.set(throwable));
         thread.start();
         thread.join();
+
+        Throwable throwable = throwableRef.get();
+        if (throwable != null) {
+            throw Throwables.propagate(throwable);
+        }
     }
 }
