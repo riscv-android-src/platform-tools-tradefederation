@@ -80,6 +80,9 @@ public class TestDevice extends NativeDevice {
     static final String LIST_PACKAGES_CMD = "pm list packages -f";
     private static final Pattern PACKAGE_REGEX = Pattern.compile("package:(.*)=(.*)");
 
+    static final String LIST_APEXES_CMD = "pm list packages --apex-only --show-versioncode";
+    private static final Pattern APEXES_REGEX = Pattern.compile("package:(.*) versionCode:(.*)");
+
     private static final int FLAG_PRIMARY = 1; // From the UserInfo class
 
     private static final String[] SETTINGS_NAMESPACE = {"system", "secure", "global"};
@@ -701,6 +704,22 @@ public class TestDevice extends NativeDevice {
                 return true;
             }
         });
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<ApexInfo> getActiveApexes() throws DeviceNotAvailableException {
+        Set<ApexInfo> ret = new HashSet<>();
+        String output = executeShellCommand(LIST_APEXES_CMD);
+        if (output != null) {
+            Matcher m = APEXES_REGEX.matcher(output);
+            while (m.find()) {
+                String name = m.group(1);
+                long version = Long.valueOf(m.group(2));
+                ret.add(new ApexInfo(name, version));
+            }
+        }
+        return ret;
     }
 
     /**
