@@ -58,6 +58,8 @@ class FakeTestRunnerA(tr_base.TestRunnerBase):
     def get_test_runner_build_reqs(self):
         return FAKE_TR_A_REQS
 
+    def _generate_run_commands(self, test_infos, extra_args, port=None):
+        return ['fake command']
 
 class FakeTestRunnerB(FakeTestRunnerA):
     """Fake test runner B."""
@@ -120,23 +122,20 @@ class TestRunnerHandlerUnittests(unittest.TestCase):
         test_infos = [MODULE_INFO_A, MODULE_INFO_A_AGAIN]
         self.assertEqual(
             0,
-            test_runner_handler.run_all_tests(results_dir,
-                                              test_infos,
-                                              extra_args))
+            test_runner_handler.run_all_tests(
+                results_dir, test_infos, extra_args)[0])
         # Tests both run_tests return 1
         test_infos = [MODULE_INFO_B, MODULE_INFO_B_AGAIN]
         self.assertEqual(
             1,
-            test_runner_handler.run_all_tests(results_dir,
-                                              test_infos,
-                                              extra_args))
+            test_runner_handler.run_all_tests(
+                results_dir, test_infos, extra_args)[0])
         # Tests with on run_tests return 0, the other return 1
         test_infos = [MODULE_INFO_A, MODULE_INFO_B]
         self.assertEqual(
             1,
-            test_runner_handler.run_all_tests(results_dir,
-                                              test_infos,
-                                              extra_args))
+            test_runner_handler.run_all_tests(
+                results_dir, test_infos, extra_args)[0])
 
 if __name__ == '__main__':
     unittest.main()
