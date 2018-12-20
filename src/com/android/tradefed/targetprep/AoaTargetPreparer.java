@@ -16,10 +16,11 @@
 package com.android.tradefed.targetprep;
 
 import com.android.helper.aoa.AoaDevice;
-import com.android.helper.aoa.AoaDeviceManager;
+import com.android.helper.aoa.UsbHelper;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.RegexTrie;
 
@@ -135,22 +136,27 @@ public class AoaTargetPreparer extends BaseTargetPreparer {
     private List<String> mActions = new ArrayList<>();
 
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError {
+    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+            throws TargetSetupError, DeviceNotAvailableException {
         if (mActions.isEmpty()) {
             return;
         }
 
         try {
             configure(device.getSerialNumber());
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             throw new TargetSetupError(e.getMessage(), e, device.getDeviceDescriptor());
         }
     }
 
     // Connect to device using its serial number and perform actions
-    private void configure(String serialNumber) {
-        try (AoaDeviceManager manager = new AoaDeviceManager();
-                AoaDevice device = manager.waitForDevice(serialNumber, DEVICE_TIMEOUT)) {
+    private void configure(String serialNumber) throws DeviceNotAvailableException {
+        try (UsbHelper usb = new UsbHelper();
+                AoaDevice device = usb.getAoaDevice(serialNumber, DEVICE_TIMEOUT)) {
+            if (device == null) {
+                throw new DeviceNotAvailableException(
+                        "AOAv2-compatible device not found", serialNumber);
+            }
             mActions.forEach(action -> execute(device, action));
         }
     }
