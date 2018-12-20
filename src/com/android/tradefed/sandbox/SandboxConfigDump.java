@@ -65,6 +65,7 @@ public class SandboxConfigDump {
     static {
         VERSIONED_ELEMENTS.add(Configuration.SYSTEM_STATUS_CHECKER_TYPE_NAME);
         VERSIONED_ELEMENTS.add(Configuration.DEVICE_METRICS_COLLECTOR_TYPE_NAME);
+        VERSIONED_ELEMENTS.add(Configuration.MULTI_PRE_TARGET_PREPARER_TYPE_NAME);
         VERSIONED_ELEMENTS.add(Configuration.MULTI_PREPARER_TYPE_NAME);
         VERSIONED_ELEMENTS.add(Configuration.TARGET_PREPARER_TYPE_NAME);
         VERSIONED_ELEMENTS.add(Configuration.TEST_TYPE_NAME);
