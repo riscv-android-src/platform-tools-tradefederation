@@ -358,6 +358,14 @@ public abstract class ITestSuite
         return res;
     }
 
+    /**
+     * Opportunity to clean up all the things that were needed during the suites setup but are not
+     * required to run the tests.
+     */
+    void cleanUpSuiteSetup() {
+        // Empty by default.
+    }
+
     /** Generic run method for all test loaded from {@link #loadTests()}. */
     @Override
     public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
@@ -656,6 +664,12 @@ public abstract class ITestSuite
                         runConfig, shardCountHint, mShouldMakeDynamicModule);
         runConfig.clear();
         runConfig = null;
+
+        // Clean up the parent that will get sharded: It is fine to clean up before copying the
+        // options, because the sharded module is already created/populated so there is no need
+        // to carry these extra data.
+        cleanUpSuiteSetup();
+
         // create an association of one ITestSuite <=> one ModuleDefinition as the smallest
         // execution unit supported.
         List<IRemoteTest> splitTests = new ArrayList<>();
