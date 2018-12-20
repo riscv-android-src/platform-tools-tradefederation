@@ -92,6 +92,7 @@ class CLITranslator(object):
                         test_info.data[constants.TI_MODULE_ARG] = (
                             tm_test_detail.options)
                         test_info.from_test_mapping = True
+                        test_info.host = tm_test_detail.host
                     test_infos.add(test_info)
                     test_found = True
                     finder_info = finder.finder_info
