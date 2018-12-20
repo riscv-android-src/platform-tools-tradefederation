@@ -100,7 +100,8 @@ def get_test_runner_reqs(module_info, test_infos):
     return test_runner_build_req
 
 
-def run_all_tests(results_dir, test_infos, extra_args):
+def run_all_tests(results_dir, test_infos, extra_args,
+                  delay_print_summary=False):
     """Run the given tests.
 
     Args:
@@ -122,4 +123,6 @@ def run_all_tests(results_dir, test_infos, extra_args):
         except Exception:
             reporter.runner_failure(test_runner.NAME, traceback.format_exc())
             tests_ret_code = constants.EXIT_CODE_TEST_FAILURE
-    return reporter.print_summary() or tests_ret_code
+    if delay_print_summary:
+        return tests_ret_code, reporter
+    return reporter.print_summary() or tests_ret_code, reporter
