@@ -47,8 +47,6 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.ZipUtil2;
 
-import com.google.common.util.concurrent.SettableFuture;
-
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
@@ -69,7 +67,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -1772,16 +1769,15 @@ public class TestDeviceTest extends TestCase {
 
     /**
      * Helper method to inject a response to {@link TestDevice#getProperty(String)} calls
+     *
      * @param property property name
      * @param value property value
      * @return preset {@link IExpectationSetters} returned by {@link EasyMock} where further
-     * expectations can be added
+     *     expectations can be added
      */
-    private IExpectationSetters<Future<String>> injectSystemProperty(
+    private IExpectationSetters<String> injectSystemProperty(
             final String property, final String value) {
-        SettableFuture<String> valueResponse = SettableFuture.create();
-        valueResponse.set(value);
-        return EasyMock.expect(mMockIDevice.getSystemProperty(property)).andReturn(valueResponse);
+        return EasyMock.expect(mMockIDevice.getProperty(property)).andReturn(value);
     }
 
     /**
