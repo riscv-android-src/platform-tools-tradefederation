@@ -54,6 +54,13 @@ CUSTOM_ARG_FLAG = '--'
 OPTION_NOT_FOR_TEST_MAPPING = (
     'Option `%s` does not work for running tests in TEST_MAPPING files')
 
+DEVICE_TESTS = 'tests that require device'
+HOST_TESTS = 'tests that do NOT require device'
+RESULT_HEADER_FMT = '\nResults from %(test_type)s:'
+RUN_HEADER_FMT = '\nRunning %(test_count)d %(test_type)s.'
+TEST_COUNT = 'test_count'
+TEST_TYPE = 'test_type'
+
 
 def _parse_args(argv):
     """Parse command line arguments.
@@ -170,7 +177,7 @@ def _get_regression_detection_args(args, results_dir):
     return regression_args
 
 
-def _validate_exec_mode(args, test_infos):
+def _validate_exec_mode(args, test_infos, host_tests=None):
     """Validate all test execution modes are not in conflict.
 
     Exit the program with error code if have device-only and host-only.
@@ -179,13 +186,13 @@ def _validate_exec_mode(args, test_infos):
     Args:
         args: parsed args object.
         test_info: TestInfo object.
-
-    Returns:
-        Updated args.
+        host_tests: True if all tests should be deviceless, False if all tests
+            should be device tests. Default is set to None, which means
+            tests can be either deviceless or device tests.
     """
     all_device_modes = [x.get_supported_exec_mode() for x in test_infos]
     # In the case of '$atest <device-only> --host', exit.
-    if args.host and constants.DEVICE_TEST in all_device_modes:
+    if (host_tests or args.host) and constants.DEVICE_TEST in all_device_modes:
         err_msg = ('Test side and option(--host) conflict. Please remove '
                    '--host if the test run on device side.')
         logging.error(err_msg)
@@ -197,10 +204,37 @@ def _validate_exec_mode(args, test_infos):
         err_msg = 'There are host-only and device-only tests in command.'
         logging.error(err_msg)
         sys.exit(constants.EXIT_CODE_ERROR)
+    if host_tests is False and constants.DEVICELESS_TEST in all_device_modes:
+        err_msg = 'There are host-only tests in command.'
+        logging.error(err_msg)
+        sys.exit(constants.EXIT_CODE_ERROR)
     # In the case of '$atest <host-only>', we add --host to run on host-side.
-    if not args.host:
+    # The option should only be overriden if `host_tests` is not set.
+    if not args.host and host_tests is None:
         args.host = bool(constants.DEVICELESS_TEST in all_device_modes)
-    return args
+
+
+def _validate_tm_tests_exec_mode(args, test_infos):
+    """Validate all test execution modes are not in conflict.
+
+    Split the tests in Test Mapping files into two groups, device tests and
+    deviceless tests running on host. Validate the tests' host setting.
+    For device tests, exit the program if any test is found for host-only.
+    For deviceless tests, exit the program if any test is found for device-only.
+
+    Args:
+        args: parsed args object.
+        test_info: TestInfo object.
+    """
+    device_test_infos, host_test_infos = _split_test_mapping_tests(
+        test_infos)
+    # No need to verify device tests if atest command is set to only run host
+    # tests.
+    if device_test_infos and not args.host:
+        _validate_exec_mode(args, device_test_infos, host_tests=False)
+    if host_test_infos:
+        _validate_exec_mode(args, host_test_infos, host_tests=True)
+
 
 def _will_run_tests(args):
     """Determine if there are tests to run.
@@ -291,7 +325,8 @@ def _validate_args(args):
     if _missing_environment_variables():
         sys.exit(constants.EXIT_CODE_ENV_NOT_SETUP)
     if args.generate_baseline and args.generate_new_metrics:
-        logging.error('Cannot collect both baseline and new metrics at the same time.')
+        logging.error(
+            'Cannot collect both baseline and new metrics at the same time.')
         sys.exit(constants.EXIT_CODE_ERROR)
     if not _has_valid_regression_detection_args(args):
         sys.exit(constants.EXIT_CODE_ERROR)
@@ -309,9 +344,10 @@ def _print_module_info_from_module_name(mod_info, module_name):
     Returns:
         True if the module_info is found.
     """
-    title_mapping = {constants.MODULE_PATH: "Source code path",
-                     constants.MODULE_INSTALLED: "Installed path",
-                     constants.MODULE_COMPATIBILITY_SUITES: "Compatibility suite"}
+    title_mapping = {
+        constants.MODULE_PATH: "Source code path",
+        constants.MODULE_INSTALLED: "Installed path",
+        constants.MODULE_COMPATIBILITY_SUITES: "Compatibility suite"}
     target_module_info = mod_info.get_module_info(module_name)
     is_module_found = False
     if target_module_info:
@@ -345,6 +381,95 @@ def _print_test_info(mod_info, test_infos):
         atest_utils.colorful_print("", constants.WHITE)
     return constants.EXIT_CODE_SUCCESS
 
+
+def is_from_test_mapping(test_infos):
+    """Check that the test_infos came from TEST_MAPPING files.
+
+    Args:
+        test_infos: A set of TestInfos.
+
+    Retruns:
+        True if the test infos are from TEST_MAPPING files.
+    """
+    return list(test_infos)[0].from_test_mapping
+
+
+def _split_test_mapping_tests(test_infos):
+    """Split Test Mapping tests into 2 groups: device tests and host tests.
+
+    Args:
+        test_infos: A set of TestInfos.
+
+    Retruns:
+        A tuple of (device_test_infos, host_test_infos), where
+        device_test_infos: A set of TestInfos for tests that require device.
+        host_test_infos: A set of TestInfos for tests that do NOT require
+            device.
+    """
+    assert is_from_test_mapping(test_infos)
+    host_test_infos = set([info for info in test_infos if info.host])
+    device_test_infos = set([info for info in test_infos if not info.host])
+    return device_test_infos, host_test_infos
+
+
+# pylint: disable=too-many-locals
+def _run_test_mapping_tests(results_dir, test_infos, extra_args):
+    """Run all tests in TEST_MAPPING files.
+
+    Args:
+        results_dir: String directory to store atest results.
+        test_infos: A set of TestInfos.
+        extra_args: Dict of extra args to add to test run.
+
+    Returns:
+        Exit code.
+    """
+    device_test_infos, host_test_infos = _split_test_mapping_tests(test_infos)
+    # `host` option needs to be set to True to run host side tests.
+    host_extra_args = extra_args.copy()
+    host_extra_args[constants.HOST] = True
+    test_runs = [(host_test_infos, host_extra_args, HOST_TESTS)]
+    if extra_args.get(constants.HOST):
+        atest_utils.colorful_print(
+            'Option `--host` specified. Skip running device tests.',
+            constants.MAGENTA)
+    else:
+        test_runs.append((device_test_infos, extra_args, DEVICE_TESTS))
+
+    test_results = []
+    for tests, args, test_type in test_runs:
+        if not tests:
+            continue
+        header = RUN_HEADER_FMT % {TEST_COUNT: len(tests), TEST_TYPE: test_type}
+        atest_utils.colorful_print(header, constants.MAGENTA)
+        logging.debug('\n'.join([str(info) for info in tests]))
+        tests_exit_code, reporter = test_runner_handler.run_all_tests(
+            results_dir, tests, args, delay_print_summary=True)
+        test_results.append((tests_exit_code, reporter, test_type))
+
+    all_tests_exit_code = constants.EXIT_CODE_SUCCESS
+    failed_tests = []
+    for tests_exit_code, reporter, test_type in test_results:
+        atest_utils.colorful_print(
+            RESULT_HEADER_FMT % {TEST_TYPE: test_type}, constants.MAGENTA)
+        result = tests_exit_code | reporter.print_summary()
+        if result:
+            failed_tests.append(test_type)
+        all_tests_exit_code |= result
+
+    # List failed tests at the end as a reminder.
+    if failed_tests:
+        atest_utils.colorful_print(
+            '\n==============================', constants.YELLOW)
+        atest_utils.colorful_print(
+            '\nFollowing tests failed:', constants.MAGENTA)
+        for failure in failed_tests:
+            atest_utils.colorful_print(failure, constants.RED)
+
+    return all_tests_exit_code
+
+
+# pylint: disable=too-many-branches
 def main(argv):
     """Entry point of atest script.
 
@@ -374,7 +499,10 @@ def main(argv):
         if not test_infos:
             metrics_utils.send_exit_event(start, constants.EXIT_CODE_TEST_NOT_FOUND)
             return constants.EXIT_CODE_TEST_NOT_FOUND
-        args = _validate_exec_mode(args, test_infos)
+        if not is_from_test_mapping(test_infos):
+            _validate_exec_mode(args, test_infos)
+        else:
+            _validate_tm_tests_exec_mode(args, test_infos)
     if args.info:
         metrics_utils.send_exit_event(start, constants.EXIT_CODE_SUCCESS)
         return _print_test_info(mod_info, test_infos)
@@ -400,14 +528,19 @@ def main(argv):
         steps.append(constants.TEST_STEP)
     tests_exit_code = constants.EXIT_CODE_SUCCESS
     if constants.TEST_STEP in steps:
-        tests_exit_code = test_runner_handler.run_all_tests(
-            results_dir, test_infos, extra_args)
+        if not is_from_test_mapping(test_infos):
+            tests_exit_code = test_runner_handler.run_all_tests(
+                results_dir, test_infos, extra_args)
+        else:
+            tests_exit_code = _run_test_mapping_tests(
+                results_dir, test_infos, extra_args)
     if args.detect_regression:
         regression_args = _get_regression_detection_args(args, results_dir)
         # TODO(b/110485713): Should not call run_tests here.
         reporter = result_reporter.ResultReporter()
-        tests_exit_code |= regression_test_runner.RegressionTestRunner('').run_tests(
-            None, regression_args, reporter)
+        tests_exit_code |= regression_test_runner.RegressionTestRunner(
+            '').run_tests(
+                None, regression_args, reporter)
     if tests_exit_code != constants.EXIT_CODE_SUCCESS:
         tests_exit_code = constants.EXIT_CODE_TEST_FAILURE
     metrics_utils.send_exit_event(start, tests_exit_code)

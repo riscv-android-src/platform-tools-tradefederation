@@ -231,44 +231,59 @@ class AtestUnittests(unittest.TestCase):
             install_locations=set(['host', 'device']))
 
         # $atest <host-only>
-        test_infos = []
-        test_infos.append(host_test_info)
-        updated_args = atest._validate_exec_mode(parsed_args, test_infos)
-        self.assertTrue(updated_args.host)
+        test_infos = [host_test_info]
+        atest._validate_exec_mode(parsed_args, test_infos)
+        self.assertTrue(parsed_args.host)
+
+        # $atest <host-only> with host_tests set to True
+        parsed_args = atest._parse_args([])
+        test_infos = [host_test_info]
+        atest._validate_exec_mode(parsed_args, test_infos, host_tests=True)
+        # Make sure the host option is not set.
+        self.assertFalse(parsed_args.host)
+
+        # $atest <host-only> with host_tests set to False
+        parsed_args = atest._parse_args([])
+        test_infos = [host_test_info]
+        self.assertRaises(SystemExit, atest._validate_exec_mode,
+                          parsed_args, test_infos, host_tests=False)
+
+        # $atest <device-only> with host_tests set to False
+        parsed_args = atest._parse_args([])
+        test_infos = [device_test_info]
+        atest._validate_exec_mode(parsed_args, test_infos, host_tests=False)
+        # Make sure the host option is not set.
+        self.assertFalse(parsed_args.host)
+
+        # $atest <device-only> with host_tests set to True
+        parsed_args = atest._parse_args([])
+        test_infos = [device_test_info]
+        self.assertRaises(SystemExit, atest._validate_exec_mode,
+                          parsed_args, test_infos, host_tests=True)
 
         # $atest <Both-support>
-        args = []
-        parsed_args = atest._parse_args(args)
-        test_infos = []
-        test_infos.append(both_test_info)
-        updated_args = atest._validate_exec_mode(parsed_args, test_infos)
-        self.assertFalse(updated_args.host)
+        parsed_args = atest._parse_args([])
+        test_infos = [both_test_info]
+        atest._validate_exec_mode(parsed_args, test_infos)
+        self.assertFalse(parsed_args.host)
 
         # $atest <host-only> <both-support>
-        args = []
-        parsed_args = atest._parse_args(args)
-        test_infos = []
-        test_infos.append(both_test_info)
-        test_infos.append(host_test_info)
-        updated_args = atest._validate_exec_mode(parsed_args, test_infos)
-        self.assertTrue(updated_args.host)
+        parsed_args = atest._parse_args([])
+        test_infos = [both_test_info, host_test_info]
+        atest._validate_exec_mode(parsed_args, test_infos)
+        self.assertTrue(parsed_args.host)
 
         # $atest <device-only> <host-only>
-        args = []
-        parsed_args = atest._parse_args(args)
-        test_infos = []
-        test_infos.append(device_test_info)
-        test_infos.append(host_test_info)
+        parsed_args = atest._parse_args([])
+        test_infos = [device_test_info, host_test_info]
         self.assertRaises(SystemExit, atest._validate_exec_mode,
                           parsed_args, test_infos)
 
         # $atest <no_install_test_info>
-        args = []
-        parsed_args = atest._parse_args(args)
-        test_infos = []
-        test_infos.append(no_install_test_info)
-        updated_args = atest._validate_exec_mode(parsed_args, test_infos)
-        self.assertFalse(updated_args.host)
+        parsed_args = atest._parse_args([])
+        test_infos = [no_install_test_info]
+        atest._validate_exec_mode(parsed_args, test_infos)
+        self.assertFalse(parsed_args.host)
 
 if __name__ == '__main__':
     unittest.main()
