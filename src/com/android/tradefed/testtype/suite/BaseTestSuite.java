@@ -293,6 +293,17 @@ public class BaseTestSuite extends ITestSuite {
         }
     }
 
+    @Override
+    void cleanUpSuiteSetup() {
+        super.cleanUpSuiteSetup();
+        // Clean the filters because at that point they have been applied to the runners.
+        // This can save several GB of memories during sharding.
+        mIncludeFilters.clear();
+        mExcludeFilters.clear();
+        mIncludeFiltersParsed.clear();
+        mExcludeFiltersParsed.clear();
+    }
+
     /* Helper method designed to remove filters in a list not applicable to the given module */
     private static void checkFilters(Set<String> filters, String moduleName) {
         Set<String> cleanedFilters = new HashSet<String>();
