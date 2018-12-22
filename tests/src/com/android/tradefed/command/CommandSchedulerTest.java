@@ -155,6 +155,7 @@ public class CommandSchedulerTest {
         mMockManager = new MockDeviceManager(0);
         mMockConfigFactory = EasyMock.createMock(IConfigurationFactory.class);
         mMockConfiguration = EasyMock.createMock(IConfiguration.class);
+        EasyMock.expect(mMockConfiguration.getTests()).andStubReturn(new ArrayList<>());
         mCommandOptions = new CommandOptions();
         // Avoid any issue related to env. variable.
         mDeviceOptions =
