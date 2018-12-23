@@ -144,8 +144,9 @@ public class RunUtilTest {
         mockRunnable.cancel(); // cancel due to exception
         mockRunnable.cancel(); // always ensure execution is cancelled
         EasyMock.replay(mockRunnable);
-        assertEquals(CommandStatus.EXCEPTION,
-                mRunUtil.runTimed(SHORT_TIMEOUT_MS, mockRunnable, true));
+        assertEquals(
+                CommandStatus.EXCEPTION,
+                mRunUtil.runTimed(VERY_LONG_TIMEOUT_MS, mockRunnable, true));
     }
 
     /** Test interrupted case for {@link RunUtil#runTimed(long, IRunnableResult, boolean)}. */
