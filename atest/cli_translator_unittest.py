@@ -32,7 +32,7 @@ from test_finders import test_finder_base
 # TEST_MAPPING related consts
 TEST_MAPPING_TOP_DIR = os.path.join(uc.TEST_DATA_DIR, 'test_mapping')
 TEST_MAPPING_DIR = os.path.join(TEST_MAPPING_TOP_DIR, 'folder1')
-TEST_1 = test_mapping.TestDetail({'name': 'test1'})
+TEST_1 = test_mapping.TestDetail({'name': 'test1', 'host': True})
 TEST_2 = test_mapping.TestDetail({'name': 'test2'})
 TEST_3 = test_mapping.TestDetail({'name': 'test3'})
 TEST_4 = test_mapping.TestDetail({'name': 'test4'})

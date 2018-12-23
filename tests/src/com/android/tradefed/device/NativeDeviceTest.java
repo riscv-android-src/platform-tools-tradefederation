@@ -51,8 +51,6 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.StreamUtil;
 
-import com.google.common.util.concurrent.SettableFuture;
-
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
@@ -234,6 +232,17 @@ public class NativeDeviceTest {
             return;
         }
         fail("getInstalledPackageNames should have thrown an exception");
+    }
+
+    /** Unit test for {@link NativeDevice#getActiveApexes()}. */
+    @Test
+    public void testGetActiveApexes_exception() throws Exception {
+        try {
+            mTestDevice.getActiveApexes();
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("getActiveApexes should have thrown an exception");
     }
 
     /** Unit test for {@link NativeDevice#getScreenshot()}. */
@@ -2298,9 +2307,7 @@ public class NativeDeviceTest {
     @Test
     public void testGetLogcatSince() throws Exception {
         long date = 1512990942000L; // 2017-12-11 03:15:42.015
-        SettableFuture<String> value = SettableFuture.create();
-        value.set("23");
-        EasyMock.expect(mMockIDevice.getSystemProperty("ro.build.version.sdk")).andReturn(value);
+        EasyMock.expect(mMockIDevice.getProperty("ro.build.version.sdk")).andReturn("23");
         mMockIDevice.executeShellCommand(
                 EasyMock.eq("logcat -v threadtime -t '12-11 03:15:42.015'"), EasyMock.anyObject());
         EasyMock.replay(mMockIDevice);

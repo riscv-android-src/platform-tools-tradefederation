@@ -414,9 +414,10 @@ public class NativeDevice implements IManagedTestDevice {
                     getSerialNumber());
             return getFastbootVariable(fastbootVar);
         } else {
-            CLog.d("property collection for device %s is null, re-querying for prop %s",
-                    getSerialNumber(), description);
-            return getProperty(propName);
+            CLog.d(
+                    "property collection '%s' for device %s is null.",
+                    description, getSerialNumber());
+            return null;
         }
     }
 
@@ -433,38 +434,7 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.d("Device %s is not online cannot get property %s.", getSerialNumber(), name);
             return null;
         }
-        final String[] result = new String[1];
-        DeviceAction propAction = new DeviceAction() {
-
-            @Override
-            public boolean run() throws IOException, TimeoutException, AdbCommandRejectedException,
-                    ShellCommandUnresponsiveException, InstallException, SyncException {
-                try {
-                    result[0] = getIDevice().getSystemProperty(name).get();
-                } catch (InterruptedException | ExecutionException e) {
-                    // getProperty will stash the original exception inside
-                    // ExecutionException.getCause
-                    // throw the specific original exception if available in case TF ever does
-                    // specific handling for different exceptions
-                    if (e.getCause() instanceof IOException) {
-                        throw (IOException)e.getCause();
-                    } else if (e.getCause() instanceof TimeoutException) {
-                        throw (TimeoutException)e.getCause();
-                    } else if (e.getCause() instanceof AdbCommandRejectedException) {
-                        throw (AdbCommandRejectedException)e.getCause();
-                    } else if (e.getCause() instanceof ShellCommandUnresponsiveException) {
-                        throw (ShellCommandUnresponsiveException)e.getCause();
-                    }
-                    else {
-                        throw new IOException(e);
-                    }
-                }
-                return true;
-            }
-
-        };
-        performDeviceAction("getprop", propAction, MAX_RETRY_ATTEMPTS);
-        return result[0];
+        return getIDevice().getProperty(name);
     }
 
     /** {@inheritDoc} */
@@ -3474,6 +3444,12 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public Set<String> getInstalledPackageNames() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Package's feature");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<ApexInfo> getActiveApexes() throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("No support for Package's feature");
     }
 

@@ -32,6 +32,7 @@ class TestDetail(object):
         Parse test detail from a dictionary, e.g.,
         {
           "name": "SettingsUnitTests",
+          "host": true,
           "options": [
             {
               "instrumentation-arg":
@@ -45,6 +46,9 @@ class TestDetail(object):
         """
         self.name = details['name']
         self.options = []
+        # True if the test should run on host and require no device.
+        self.host = details.get('host', False)
+        assert isinstance(self.host, bool), 'host can only have boolean value.'
         options = details.get('options', [])
         for option in options:
             assert len(option) == 1, 'Each option can only have one key.'
@@ -53,13 +57,15 @@ class TestDetail(object):
 
     def __str__(self):
         """String value of the TestDetail object."""
+        host_info = (', runs on host without device required.' if self.host
+                     else '')
         if not self.options:
-            return self.name
+            return self.name + host_info
         options = ''
         for option in self.options:
             options += '%s: %s, ' % option
 
-        return '%s (%s)' % (self.name, options.strip(', '))
+        return '%s (%s)%s' % (self.name, options.strip(', '), host_info)
 
     def __hash__(self):
         """Get the hash of TestDetail based on the details"""

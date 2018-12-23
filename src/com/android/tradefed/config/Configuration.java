@@ -1292,7 +1292,7 @@ public class Configuration implements IConfiguration {
             // TODO: Ensure that it works during sharding and we don't leak files
             CLog.d("Resolve and remote files from @Option");
             // Setup and validate the GCS File paths
-            mRemoteFiles.addAll(argsParser.validateGcsFilePath());
+            mRemoteFiles.addAll(argsParser.validateRemoteFilePath());
         }
     }
 

@@ -22,6 +22,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.device.ITestDevice;
@@ -31,6 +32,8 @@ import com.android.tradefed.util.FileUtil;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.io.File;
@@ -39,6 +42,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /** Unit test for {@link SuiteApkInstaller} */
+@RunWith(JUnit4.class)
 public class SuiteApkInstallerTest {
 
     private SuiteApkInstaller mPreparer;
@@ -67,7 +71,7 @@ public class SuiteApkInstallerTest {
                 };
         doReturn(new HashMap<String, String>()).when(mMockBuildInfo).getBuildAttributes();
         try {
-            mPreparer.getTestsDir(mMockBuildInfo);
+            mPreparer.getRootDir(mMockBuildInfo);
             fail("Should have thrown an exception.");
         } catch (FileNotFoundException expected) {
             // expected
@@ -92,7 +96,7 @@ public class SuiteApkInstallerTest {
             Map<String, String> attributes = new HashMap<>();
             attributes.put("ROOT_DIR", tmpDir.getAbsolutePath());
             doReturn(attributes).when(mMockBuildInfo).getBuildAttributes();
-            File res = mPreparer.getTestsDir(mMockBuildInfo);
+            File res = mPreparer.getRootDir(mMockBuildInfo);
             assertNotNull(res);
             assertEquals(tmpDir.getAbsolutePath(), res.getAbsolutePath());
         } finally {
@@ -168,7 +172,7 @@ public class SuiteApkInstallerTest {
         mPreparer =
                 new SuiteApkInstaller() {
                     @Override
-                    protected File getTestsDir(IBuildInfo buildInfo) throws FileNotFoundException {
+                    protected File getRootDir(IBuildInfo buildInfo) throws FileNotFoundException {
                         return tmpApk.getParentFile();
                     }
                 };
@@ -192,7 +196,7 @@ public class SuiteApkInstallerTest {
         mPreparer =
                 new SuiteApkInstaller() {
                     @Override
-                    protected File getTestsDir(IBuildInfo buildInfo) throws FileNotFoundException {
+                    protected File getRootDir(IBuildInfo buildInfo) throws FileNotFoundException {
                         return tmpApk.getParentFile();
                     }
                 };
@@ -215,7 +219,7 @@ public class SuiteApkInstallerTest {
         mPreparer =
                 new SuiteApkInstaller() {
                     @Override
-                    protected File getTestsDir(IBuildInfo buildInfo) throws FileNotFoundException {
+                    protected File getRootDir(IBuildInfo buildInfo) throws FileNotFoundException {
                         return null;
                     }
                 };
@@ -243,7 +247,7 @@ public class SuiteApkInstallerTest {
         mPreparer =
                 new SuiteApkInstaller() {
                     @Override
-                    protected File getTestsDir(IBuildInfo buildInfo) throws FileNotFoundException {
+                    protected File getRootDir(IBuildInfo buildInfo) throws FileNotFoundException {
                         return null;
                     }
                 };
@@ -253,6 +257,30 @@ public class SuiteApkInstallerTest {
             assertEquals(tmpApk.getAbsolutePath(), apk.getAbsolutePath());
         } finally {
             FileUtil.deleteFile(tmpApk);
+        }
+    }
+
+    /** If the file is found in the build shared resources directory, use it. */
+    @Test
+    public void testGetLocalPathForFileName_inSharedDir() throws Exception {
+        File tmpDir = FileUtil.createTempDir("suite-apk-installer");
+        File tmpApk = FileUtil.createTempFile("suite-apk-installer", ".apk", tmpDir);
+        mPreparer =
+                new SuiteApkInstaller() {
+                    @Override
+                    protected File getRootDir(IBuildInfo buildInfo) throws FileNotFoundException {
+                        return null;
+                    }
+                };
+        Mockito.doReturn(tmpDir).when(mMockBuildInfo).getFile(BuildInfoFileKey.SHARED_RESOURCE_DIR);
+        try {
+            File apk =
+                    mPreparer.getLocalPathForFilename(
+                            mMockBuildInfo, tmpApk.getName(), mMockDevice);
+            assertEquals(tmpApk.getAbsolutePath(), apk.getAbsolutePath());
+        } finally {
+            FileUtil.deleteFile(tmpApk);
+            FileUtil.recursiveDelete(tmpDir);
         }
     }
 }

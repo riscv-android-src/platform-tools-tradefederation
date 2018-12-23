@@ -28,6 +28,7 @@ import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.ITestDevice.ApexInfo;
 import com.android.tradefed.device.ITestDevice.MountPointInfo;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.host.HostOptions;
@@ -45,8 +46,6 @@ import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.ZipUtil2;
-
-import com.google.common.util.concurrent.SettableFuture;
 
 import junit.framework.TestCase;
 
@@ -68,7 +67,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -1771,16 +1769,15 @@ public class TestDeviceTest extends TestCase {
 
     /**
      * Helper method to inject a response to {@link TestDevice#getProperty(String)} calls
+     *
      * @param property property name
      * @param value property value
      * @return preset {@link IExpectationSetters} returned by {@link EasyMock} where further
-     * expectations can be added
+     *     expectations can be added
      */
-    private IExpectationSetters<Future<String>> injectSystemProperty(
+    private IExpectationSetters<String> injectSystemProperty(
             final String property, final String value) {
-        SettableFuture<String> valueResponse = SettableFuture.create();
-        valueResponse.set(value);
-        return EasyMock.expect(mMockIDevice.getSystemProperty(property)).andReturn(valueResponse);
+        return EasyMock.expect(mMockIDevice.getProperty(property)).andReturn(value);
     }
 
     /**
@@ -1846,6 +1843,32 @@ public class TestDeviceTest extends TestCase {
         EasyMock.replay(mMockIDevice, mMockStateMonitor);
         Set<String> actualPkgs = mTestDevice.getInstalledPackageNames();
         assertEquals(0, actualPkgs.size());
+    }
+
+    /** Unit test for {@link TestDevice#getActiveApexes()}. */
+    public void testGetActiveApexes() throws Exception {
+        final String output =
+                "package:com.android.foo versionCode:100\n"
+                        + "package:com.android.bar versionCode:200";
+        injectShellResponse(TestDevice.LIST_APEXES_CMD, output);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor);
+        Set<ApexInfo> actual = mTestDevice.getActiveApexes();
+        assertEquals(2, actual.size());
+        assertTrue(actual.contains(new ApexInfo("com.android.foo", 100)));
+        assertTrue(actual.contains(new ApexInfo("com.android.bar", 200)));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getActiveApexes()}.
+     *
+     * <p>Test bad output.
+     */
+    public void testGetActiveApexesForBadOutput() throws Exception {
+        final String output = "junk output";
+        injectShellResponse(TestDevice.LIST_APEXES_CMD, output);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor);
+        Set<ApexInfo> actual = mTestDevice.getActiveApexes();
+        assertEquals(0, actual.size());
     }
 
     /**
