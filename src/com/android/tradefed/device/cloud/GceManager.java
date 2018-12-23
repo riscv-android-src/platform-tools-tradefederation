@@ -431,11 +431,30 @@ public class GceManager {
         }
     }
 
+    /**
+     * Execute the remote command via ssh on an instance.
+     *
+     * @param gceAvd The {@link GceAvdInfo} that describe the device.
+     * @param options a {@link TestDeviceOptions} describing the device options to be used for the
+     *     GCE device.
+     * @param runUtil a {@link IRunUtil} to execute commands.
+     * @param timeoutMs The timeout in millisecond for the command. 0 means no timeout.
+     * @param command The remote command to execute.
+     * @return {@link CommandResult} containing the result of the execution.
+     */
+    public static CommandResult remoteSshCommandExecution(
+            GceAvdInfo gceAvd,
+            TestDeviceOptions options,
+            IRunUtil runUtil,
+            long timeoutMs,
+            String... command) {
+        return RemoteSshUtil.remoteSshCommandExec(gceAvd, options, runUtil, timeoutMs, command);
+    }
+
     private static String remoteSshCommandExec(
             GceAvdInfo gceAvd, TestDeviceOptions options, IRunUtil runUtil, String... command) {
         CommandResult res =
-                RemoteSshUtil.remoteSshCommandExec(
-                        gceAvd, options, runUtil, BUGREPORT_TIMEOUT, command);
+                remoteSshCommandExecution(gceAvd, options, runUtil, BUGREPORT_TIMEOUT, command);
         if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
             CLog.e("issue when attempting to execute '%s':", Arrays.asList(command));
             CLog.e("%s", res.getStderr());
