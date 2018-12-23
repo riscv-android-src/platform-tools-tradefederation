@@ -19,6 +19,7 @@ import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceManager.FastbootDevice;
+import com.android.tradefed.device.cloud.VmRemoteDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.util.ArrayList;
@@ -46,7 +47,9 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         /** Use a placeholder for a remote device that will be connected later. */
         TCP_DEVICE(TcpDevice.class),
         /** Use a placeholder for a remote device nested in a virtualized environment. */
-        GCE_DEVICE(RemoteAvdIDevice.class);
+        GCE_DEVICE(RemoteAvdIDevice.class),
+        /** Use a placeholder for a remote device in virtualized environment. */
+        REMOTE_DEVICE(VmRemoteDevice.class);
 
         private Class<?> mRequiredIDeviceClass;
 
@@ -295,6 +298,10 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         return mGceDeviceRequested;
     }
 
+    public boolean remoteDeviceRequested() {
+        return DeviceRequestedType.REMOTE_DEVICE.equals(mRequestedType);
+    }
+
     /**
      * Sets the emulator requested flag
      */
@@ -328,6 +335,10 @@ public class DeviceSelectionOptions implements IDeviceSelection {
      */
     public void setTcpDeviceRequested(boolean tcpDeviceRequested) {
         mTcpDeviceRequested = tcpDeviceRequested;
+    }
+
+    public void setDeviceTypeRequested(DeviceRequestedType requestedType) {
+        mRequestedType = requestedType;
     }
 
     /**
@@ -557,6 +568,9 @@ public class DeviceSelectionOptions implements IDeviceSelection {
             }
             if (gceDeviceRequested() != (RemoteAvdIDevice.class.equals(device.getClass()))) {
                 // We only match an exact RemoteAvdIDevice here, no child class.
+                return false;
+            }
+            if (remoteDeviceRequested() != (VmRemoteDevice.class.equals(device.getClass()))) {
                 return false;
             }
         }
