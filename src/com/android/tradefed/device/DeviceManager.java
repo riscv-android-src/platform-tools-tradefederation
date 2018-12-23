@@ -29,6 +29,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.IDeviceMonitor.DeviceLister;
 import com.android.tradefed.device.IManagedTestDevice.DeviceEventResponse;
+import com.android.tradefed.device.cloud.VmRemoteDevice;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.LogRegistry;
@@ -92,6 +93,7 @@ public class DeviceManager implements IDeviceManager {
     private static final String EMULATOR_SERIAL_PREFIX = "emulator";
     private static final String TCP_DEVICE_SERIAL_PREFIX = "tcp-device";
     private static final String GCE_DEVICE_SERIAL_PREFIX = "gce-device";
+    private static final String REMOTE_DEVICE_SERIAL_PREFIX = "remote-device";
 
     /**
      * Pattern for a device listed by 'adb devices':
@@ -140,8 +142,15 @@ public class DeviceManager implements IDeviceManager {
     private int mNumTcpDevicesSupported = 1;
 
     @Option(
-            name = "max-gce-devices",
-            description = "the maximum number of remote devices that can be allocated at one time")
+        name = "max-gce-devices",
+        description = "the maximum number of remote gce devices that can be allocated at one time"
+    )
+    private int mNumGceDevicesSupported = 1;
+
+    @Option(
+        name = "max-remote-devices",
+        description = "the maximum number of remote devices that can be allocated at one time"
+    )
     private int mNumRemoteDevicesSupported = 1;
 
     private boolean mSynchronousMode = false;
@@ -277,6 +286,7 @@ public class DeviceManager implements IDeviceManager {
         addNullDevices();
         addTcpDevices();
         addGceDevices();
+        addRemoteDevices();
 
         List<IMultiDeviceRecovery> recoverers = getGlobalConfig().getMultiDeviceRecoveryHandlers();
         if (recoverers != null) {
@@ -460,11 +470,19 @@ public class DeviceManager implements IDeviceManager {
         }
     }
 
-    /** Add placeholder objects for the max number of tcp devices that can be connected */
+    /** Add placeholder objects for the max number of gce devices that can be connected */
     private void addGceDevices() {
-        for (int i = 0; i < mNumRemoteDevicesSupported; i++) {
+        for (int i = 0; i < mNumGceDevicesSupported; i++) {
             addAvailableDevice(
                     new RemoteAvdIDevice(String.format("%s-%d", GCE_DEVICE_SERIAL_PREFIX, i)));
+        }
+    }
+
+    /** Add placeholder objects for the max number of remote devices that can be managed */
+    private void addRemoteDevices() {
+        for (int i = 0; i < mNumRemoteDevicesSupported; i++) {
+            addAvailableDevice(
+                    new VmRemoteDevice(String.format("%s-%s", REMOTE_DEVICE_SERIAL_PREFIX, i)));
         }
     }
 
@@ -1305,6 +1323,11 @@ public class DeviceManager implements IDeviceManager {
     @VisibleForTesting
     void setMaxTcpDevices(int tcpDevices) {
         mNumTcpDevicesSupported = tcpDevices;
+    }
+
+    @VisibleForTesting
+    void setMaxGceDevices(int gceDevices) {
+        mNumGceDevicesSupported = gceDevices;
     }
 
     @VisibleForTesting
