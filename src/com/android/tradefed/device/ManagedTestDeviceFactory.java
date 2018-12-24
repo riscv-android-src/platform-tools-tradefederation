@@ -21,7 +21,9 @@ import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.device.DeviceManager.FastbootDevice;
+import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
+import com.android.tradefed.device.cloud.VmRemoteDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
@@ -64,14 +66,19 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
     @Override
     public IManagedTestDevice createDevice(IDevice idevice) {
         IManagedTestDevice testDevice = null;
-        if (idevice instanceof RemoteAvdIDevice) {
+        if (idevice instanceof VmRemoteDevice) {
+            testDevice =
+                    new ManagedRemoteDevice(
+                            idevice,
+                            new DeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
+                            mAllocationMonitor);
+            testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+        } else if (idevice instanceof RemoteAvdIDevice) {
             testDevice =
                     new RemoteAndroidVirtualDevice(
                             idevice,
                             new DeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
                             mAllocationMonitor);
-            testDevice.setFastbootEnabled(mFastbootEnabled);
-            testDevice.setFastbootPath(mDeviceManager.getFastbootPath());
             testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
         } else if (idevice instanceof TcpDevice || isTcpDeviceSerial(idevice.getSerialNumber())) {
             // Special device for Tcp device for custom handling.
