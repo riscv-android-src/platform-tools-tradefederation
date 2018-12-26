@@ -58,8 +58,9 @@ class FakeTestRunnerA(tr_base.TestRunnerBase):
     def get_test_runner_build_reqs(self):
         return FAKE_TR_A_REQS
 
-    def _generate_run_commands(self, test_infos, extra_args, port=None):
+    def generate_run_commands(self, test_infos, extra_args, port=None):
         return ['fake command']
+
 
 class FakeTestRunnerB(FakeTestRunnerA):
     """Fake test runner B."""
@@ -97,12 +98,12 @@ class TestRunnerHandlerUnittests(unittest.TestCase):
                      (FakeTestRunnerB, [MODULE_INFO_B, MODULE_INFO_B_AGAIN])]
         self.assertEqual(
             want_list,
-            test_runner_handler._group_tests_by_test_runners(test_infos))
+            test_runner_handler.group_tests_by_test_runners(test_infos))
 
         # Let's make sure we fail as expected.
         self.assertRaises(
             atest_error.UnknownTestRunnerError,
-            test_runner_handler._group_tests_by_test_runners, [BAD_TESTINFO])
+            test_runner_handler.group_tests_by_test_runners, [BAD_TESTINFO])
 
     def test_get_test_runner_reqs(self):
         """Test that we get all the reqs from the test runners."""

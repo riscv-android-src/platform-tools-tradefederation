@@ -52,7 +52,7 @@ class TestRunnerBase(object):
             raise atest_error.NoTestRunnerExecutable('Class var EXECUTABLE is '
                                                      'not defined.')
         if kwargs:
-            logging.info('ignoring the following args: %s', kwargs)
+            logging.debug('ignoring the following args: %s', kwargs)
 
     def run(self, cmd, output_to_stdout=False):
         """Shell out and execute command.
@@ -139,7 +139,7 @@ class TestRunnerBase(object):
         """Returns a list of build targets required by the test runner."""
         raise NotImplementedError
 
-    def _generate_run_commands(self, test_infos, extra_args, port=None):
+    def generate_run_commands(self, test_infos, extra_args, port=None):
         """Generate a list of run commands from TestInfos.
 
         Args:
