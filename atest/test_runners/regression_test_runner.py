@@ -46,7 +46,7 @@ class RegressionTestRunner(test_runner_base.TestRunnerBase):
         Returns:
             Return code of the process for running tests.
         """
-        run_cmds = self._generate_run_commands(test_infos, extra_args)
+        run_cmds = self.generate_run_commands(test_infos, extra_args)
         proc = super(RegressionTestRunner, self).run(run_cmds[0],
                                                      output_to_stdout=True)
         proc.wait()
@@ -70,7 +70,7 @@ class RegressionTestRunner(test_runner_base.TestRunnerBase):
         return self._BUILD_REQ
 
     # pylint: disable=unused-argument
-    def _generate_run_commands(self, test_infos, extra_args, port=None):
+    def generate_run_commands(self, test_infos, extra_args, port=None):
         """Generate a list of run commands from TestInfos.
 
         Args:
