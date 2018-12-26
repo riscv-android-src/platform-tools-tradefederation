@@ -66,7 +66,7 @@ class VtsTradefedTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
         """
         ret_code = constants.EXIT_CODE_SUCCESS
         reporter.register_unsupported_runner(self.NAME)
-        run_cmds = self._generate_run_commands(test_infos, extra_args)
+        run_cmds = self.generate_run_commands(test_infos, extra_args)
         for run_cmd in run_cmds:
             proc = super(VtsTradefedTestRunner, self).run(run_cmd,
                                                           output_to_stdout=True)
@@ -97,6 +97,8 @@ class VtsTradefedTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
             if constants.CUSTOM_ARGS == arg:
                 args_to_append.extend(extra_args[arg])
                 continue
+            if constants.DRY_RUN == arg:
+                continue
             args_not_supported.append(arg)
         if args_not_supported:
             logging.info('%s does not support the following args: %s',
@@ -104,7 +106,7 @@ class VtsTradefedTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
         return args_to_append
 
     # pylint: disable=arguments-differ
-    def _generate_run_commands(self, test_infos, extra_args):
+    def generate_run_commands(self, test_infos, extra_args):
         """Generate a list of run commands from TestInfos.
 
         Args:

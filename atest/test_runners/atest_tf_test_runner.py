@@ -135,7 +135,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
 
         ret_code = constants.EXIT_CODE_SUCCESS
         for _ in range(iterations):
-            run_cmds = self._generate_run_commands(test_infos, extra_args)
+            run_cmds = self.generate_run_commands(test_infos, extra_args)
             subproc = self.run(run_cmds[0], output_to_stdout=True)
             ret_code |= self.wait_for_subprocess(subproc)
         return ret_code
@@ -157,8 +157,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         ret_code = constants.EXIT_CODE_SUCCESS
         for _ in range(iterations):
             server = self._start_socket_server()
-            run_cmds = self._generate_run_commands(test_infos, extra_args,
-                                                   server.getsockname()[1])
+            run_cmds = self.generate_run_commands(test_infos, extra_args,
+                                                  server.getsockname()[1])
             subproc = self.run(run_cmds[0], output_to_stdout=self.is_verbose)
             try:
                 signal.signal(signal.SIGINT, self._signal_passer(subproc))
@@ -494,6 +494,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             if constants.ALL_ABI == arg:
                 args_to_append.append('--all-abi')
                 continue
+            if constants.DRY_RUN == arg:
+                continue
             args_not_supported.append(arg)
         return args_to_append, args_not_supported
 
@@ -515,7 +517,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             iterations = extra_args.pop(constants.POST_PATCH_ITERATIONS)
         return iterations
 
-    def _generate_run_commands(self, test_infos, extra_args, port=None):
+    def generate_run_commands(self, test_infos, extra_args, port=None):
         """Generate a single run command from TestInfos.
 
         Args:

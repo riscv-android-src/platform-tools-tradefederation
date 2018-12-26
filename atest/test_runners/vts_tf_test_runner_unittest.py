@@ -34,7 +34,7 @@ class VtsTradefedTestRunnerUnittests(unittest.TestCase):
     @mock.patch('subprocess.Popen')
     @mock.patch.object(vts_tf_test_runner.VtsTradefedTestRunner, 'run')
     @mock.patch.object(vts_tf_test_runner.VtsTradefedTestRunner,
-                       '_generate_run_commands')
+                       'generate_run_commands')
     def test_run_tests(self, _mock_gen_cmd, _mock_run, _mock_popen):
         """Test run_tests method."""
         test_infos = []

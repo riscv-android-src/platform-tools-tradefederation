@@ -35,7 +35,7 @@ class ExampleTestRunner(test_runner_base.TestRunnerBase):
             extra_args: Dict of extra args to add to test run.
             reporter: An instance of result_report.ResultReporter
         """
-        run_cmds = self._generate_run_commands(test_infos, extra_args)
+        run_cmds = self.generate_run_commands(test_infos, extra_args)
         for run_cmd in run_cmds:
             super(ExampleTestRunner, self).run(run_cmd)
 
@@ -57,7 +57,7 @@ class ExampleTestRunner(test_runner_base.TestRunnerBase):
         return set()
 
     # pylint: disable=unused-argument
-    def _generate_run_commands(self, test_infos, extra_args, port=None):
+    def generate_run_commands(self, test_infos, extra_args, port=None):
         """Generate a list of run commands from TestInfos.
 
         Args:

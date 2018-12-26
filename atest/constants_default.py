@@ -38,6 +38,7 @@ SERIAL = 'SERIAL'
 ALL_ABI = 'ALL_ABI'
 HOST = 'HOST'
 CUSTOM_ARGS = 'CUSTOM_ARGS'
+DRY_RUN = 'DRY_RUN'
 
 # Application exit codes.
 EXIT_CODE_SUCCESS = 0
