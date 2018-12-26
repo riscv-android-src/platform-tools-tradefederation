@@ -157,6 +157,8 @@ def get_extra_args(args):
         extra_args[constants.POST_PATCH_ITERATIONS] = args.generate_new_metrics
     if args.host:
         extra_args[constants.HOST] = args.host
+    if args.dry_run:
+        extra_args[constants.DRY_RUN] = args.dry_run
     if args.custom_args:
         extra_args[constants.CUSTOM_ARGS] = args.custom_args
     return extra_args
@@ -474,6 +476,23 @@ def _run_test_mapping_tests(results_dir, test_infos, extra_args):
     return all_tests_exit_code
 
 
+def _dry_run(results_dir, extra_args, test_infos):
+    """Only print the commands of the target tests rather than running them in actual.
+
+    Args:
+        results_dir: Path for saving atest logs.
+        extra_args: Dict of extra args for test runners to utilize.
+        test_infos: A list of TestInfos.
+
+    """
+    for test_runner, tests in test_runner_handler.group_tests_by_test_runners(test_infos):
+        runner = test_runner(results_dir)
+        run_cmds = runner.generate_run_commands(tests, extra_args)
+        for run_cmd in run_cmds:
+            print('Would run test via command: %s'
+                  % (atest_utils.colorize(run_cmd, constants.GREEN)))
+
+
 # pylint: disable=too-many-statements
 # pylint: disable=too-many-branches
 def main(argv):
@@ -518,6 +537,12 @@ def main(argv):
     build_targets |= test_runner_handler.get_test_runner_reqs(mod_info,
                                                               test_infos)
     extra_args = get_extra_args(args)
+    if args.dry_run:
+        _dry_run(results_dir, extra_args, test_infos)
+        if SEND_CC_LOG:
+            metrics_utils.send_exit_event(start, constants.EXIT_CODE_SUCCESS)
+        return constants.EXIT_CODE_SUCCESS
+
     if args.detect_regression:
         build_targets |= (regression_test_runner.RegressionTestRunner('')
                           .get_test_runner_build_reqs())
