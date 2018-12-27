@@ -174,7 +174,7 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
     @mock.patch.object(atf_tr.AtestTradefedTestRunner,
                        '_create_test_args', return_value=['some_args'])
     @mock.patch.object(atf_tr.AtestTradefedTestRunner,
-                       '_generate_run_commands', return_value='some_cmd')
+                       'generate_run_commands', return_value='some_cmd')
     @mock.patch.object(atf_tr.AtestTradefedTestRunner,
                        '_process_connection', return_value=None)
     @mock.patch('os.killpg', return_value=None)
@@ -389,18 +389,18 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
     @mock.patch.object(atf_tr.AtestTradefedTestRunner, '_generate_metrics_folder')
     @mock.patch('atest_utils.get_result_server_args')
     def test_generate_run_commands(self, mock_resultargs, mock_mertrics):
-        """Test _generate_run_command method."""
+        """Test generate_run_command method."""
         # Basic Run Cmd
         mock_resultargs.return_value = []
         mock_mertrics.return_value = ''
         unittest_utils.assert_strict_equal(
             self,
-            self.tr._generate_run_commands([], {}),
+            self.tr.generate_run_commands([], {}),
             [RUN_CMD.format(metrics='')])
         mock_mertrics.return_value = METRICS_DIR
         unittest_utils.assert_strict_equal(
             self,
-            self.tr._generate_run_commands([], {}),
+            self.tr.generate_run_commands([], {}),
             [RUN_CMD.format(metrics=METRICS_DIR_ARG)])
         # Run cmd with result server args.
         result_arg = '--result_arg'
@@ -408,7 +408,7 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         mock_mertrics.return_value = ''
         unittest_utils.assert_strict_equal(
             self,
-            self.tr._generate_run_commands([], {}),
+            self.tr.generate_run_commands([], {}),
             [RUN_CMD.format(metrics='') + ' ' + result_arg])
 
     def test_flatten_test_filters(self):

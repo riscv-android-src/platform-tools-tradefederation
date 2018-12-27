@@ -57,7 +57,7 @@ def _get_test_runners():
     return test_runners_dict
 
 
-def _group_tests_by_test_runners(test_infos):
+def group_tests_by_test_runners(test_infos):
     """Group the test_infos by test runners
 
     Args:
@@ -93,7 +93,7 @@ def get_test_runner_reqs(module_info, test_infos):
     """
     dummy_result_dir = ''
     test_runner_build_req = set()
-    for test_runner, _ in _group_tests_by_test_runners(test_infos):
+    for test_runner, _ in group_tests_by_test_runners(test_infos):
         test_runner_build_req |= test_runner(
             dummy_result_dir,
             module_info=module_info).get_test_runner_build_reqs()
@@ -115,7 +115,7 @@ def run_all_tests(results_dir, test_infos, extra_args,
     reporter = result_reporter.ResultReporter()
     reporter.print_starting_text()
     tests_ret_code = constants.EXIT_CODE_SUCCESS
-    for test_runner, tests in _group_tests_by_test_runners(test_infos):
+    for test_runner, tests in group_tests_by_test_runners(test_infos):
         try:
             test_runner = test_runner(results_dir)
             tests_ret_code |= test_runner.run_tests(tests, extra_args, reporter)
