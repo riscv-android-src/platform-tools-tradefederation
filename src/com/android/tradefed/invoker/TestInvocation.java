@@ -36,10 +36,12 @@ import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.postprocessor.IPostProcessor;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogSaverResultForwarder;
+import com.android.tradefed.result.ResultAndLogForwarder;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.DeviceFailedToBootError;
@@ -612,8 +614,21 @@ public class TestInvocation implements ITestInvocation {
                 new ArrayList<>(config.getTestInvocationListeners().size() + extraListeners.length);
         allListeners.addAll(config.getTestInvocationListeners());
         allListeners.addAll(Arrays.asList(extraListeners));
-        ITestInvocationListener listener =
-                new LogSaverResultForwarder(config.getLogSaver(), allListeners);
+        ITestInvocationListener listener = null;
+        if (!config.getPostProcessors().isEmpty()) {
+            ITestInvocationListener forwarder = new ResultAndLogForwarder(allListeners);
+            // Post-processors are the first layer around the final reporters.
+            for (IPostProcessor postProcessor : config.getPostProcessors()) {
+                if (postProcessor.isDisabled()) {
+                    CLog.d("%s has been disabled. skipping.", postProcessor);
+                } else {
+                    forwarder = postProcessor.init(forwarder);
+                }
+            }
+            listener = new LogSaverResultForwarder(config.getLogSaver(), Arrays.asList(forwarder));
+        } else {
+            listener = new LogSaverResultForwarder(config.getLogSaver(), allListeners);
+        }
 
         RunMode mode = RunMode.REGULAR;
         if (config.getConfigurationDescription().shouldUseSandbox()) {
