@@ -113,6 +113,11 @@ public abstract class BasePostProcessor implements IPostProcessor {
     }
 
     @Override
+    public final void testRunStarted(String runName, int testCount, int attemptNumber) {
+        mForwarder.testRunStarted(runName, testCount, attemptNumber);
+    }
+
+    @Override
     public final void testRunFailed(String errorMessage) {
         mForwarder.testRunFailed(errorMessage);
     }
@@ -172,6 +177,11 @@ public abstract class BasePostProcessor implements IPostProcessor {
     public final void testEnded(
             TestDescription test, long endTime, Map<String, String> testMetrics) {
         testEnded(test, endTime, TfMetricProtoUtil.upgradeConvert(testMetrics));
+    }
+
+    @Override
+    public final void testEnded(TestDescription test, HashMap<String, Metric> testMetrics) {
+        testEnded(test, System.currentTimeMillis(), testMetrics);
     }
 
     @Override

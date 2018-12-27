@@ -33,6 +33,7 @@ import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
+import com.android.tradefed.postprocessor.IPostProcessor;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -67,10 +68,15 @@ public class TestInvocationMultiTest {
     private IBuildProvider mProvider1;
     private IBuildProvider mProvider2;
 
+    private List<IPostProcessor> mPostProcessors;
+
     @Before
     public void setUp() {
         mContext = new InvocationContext();
+        mPostProcessors = new ArrayList<>();
+
         mMockConfig = EasyMock.createMock(IConfiguration.class);
+        EasyMock.expect(mMockConfig.getPostProcessors()).andReturn(mPostProcessors);
         mMockRescheduler = EasyMock.createMock(IRescheduler.class);
         mMockTestListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
