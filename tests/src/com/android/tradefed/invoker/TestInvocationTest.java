@@ -56,6 +56,9 @@ import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric.Builder;
+import com.android.tradefed.postprocessor.BasePostProcessor;
+import com.android.tradefed.postprocessor.IPostProcessor;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ILogSaverListener;
@@ -94,6 +97,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -195,7 +199,7 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mMockDevice.getBattery()).andStubReturn(null);
         mMockDevice.setRecovery(mMockRecovery);
         mMockDevice.preInvocationSetup(
-                (IBuildInfo) EasyMock.anyObject(), (List<IBuildInfo>) EasyMock.anyObject());
+                (IBuildInfo) EasyMock.anyObject(), EasyMock.<List<IBuildInfo>>anyObject());
         EasyMock.expectLastCall().anyTimes();
         mMockDevice.postInvocationTearDown();
         EasyMock.expectLastCall().anyTimes();
@@ -1817,5 +1821,73 @@ public class TestInvocationTest extends TestCase {
         assertEquals("collector4", listKeys.get(0));
         assertEquals("collector2", listKeys.get(1));
         assertEquals("collector1", listKeys.get(2));
+    }
+
+    public static class TestableProcessor extends BasePostProcessor {
+
+        @Option(name = "name")
+        private String mName;
+
+        public TestableProcessor() {}
+
+        public TestableProcessor(String name) {
+            mName = name;
+        }
+
+        @Override
+        public Map<String, Builder> processRunMetrics(HashMap<String, Metric> rawMetrics) {
+            Map<String, Builder> post = new LinkedHashMap<>();
+            post.put(mName, Metric.newBuilder());
+            return post;
+        }
+    }
+
+    /** Ensure post processors are called in order. */
+    public void testProcessorCollectionChain() throws Throwable {
+        mMockTestListener = EasyMock.createMock(ITestInvocationListener.class);
+        List<ITestInvocationListener> listenerList = new ArrayList<ITestInvocationListener>(1);
+        listenerList.add(mMockTestListener);
+        mStubConfiguration.setTestInvocationListeners(listenerList);
+
+        List<IPostProcessor> processors = new ArrayList<>();
+        processors.add(new TestableProcessor("processor1"));
+        processors.add(new TestableProcessor("processor2"));
+        processors.add(new TestableProcessor("processor3"));
+        processors.add(new TestableProcessor("processor4"));
+        mStubConfiguration.setPostProcessors(processors);
+
+        mMockTestListener.testRunStarted("TestStub", 1);
+        TestDescription testId = new TestDescription("StubTest", "StubMethod");
+        mMockTestListener.testStarted(EasyMock.eq(testId), EasyMock.anyLong());
+        mMockTestListener.testEnded(
+                EasyMock.eq(testId),
+                EasyMock.anyLong(),
+                EasyMock.eq(new HashMap<String, Metric>()));
+        Capture<HashMap<String, Metric>> captured = new Capture<>();
+        mMockTestListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(captured));
+
+        setupMockSuccessListeners();
+        setupInvokeWithBuild();
+        StubTest test = new StubTest();
+        OptionSetter setter = new OptionSetter(test);
+        setter.setOptionValue("run-a-test", "true");
+        mStubConfiguration.setTest(test);
+        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
+
+        mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.reset(mMockSummaryListener);
+        replayMocks();
+        EasyMock.replay(mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
+        verifyMocks(mockRescheduler);
+
+        // The post processors are called in sequence
+        List<String> listKeys = new ArrayList<>(captured.getValue().keySet());
+        assertEquals(4, listKeys.size());
+        assertEquals("processor4", listKeys.get(0));
+        assertEquals("processor3", listKeys.get(1));
+        assertEquals("processor2", listKeys.get(2));
+        assertEquals("processor1", listKeys.get(3));
     }
 }
