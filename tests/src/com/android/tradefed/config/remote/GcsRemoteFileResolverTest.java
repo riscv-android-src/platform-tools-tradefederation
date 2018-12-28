@@ -59,7 +59,7 @@ public class GcsRemoteFileResolverTest {
 
     @Test
     public void testResolve_error() throws Exception {
-        Mockito.doThrow(new BuildRetrievalError(""))
+        Mockito.doThrow(new BuildRetrievalError("download failure"))
                 .when(mMockHelper)
                 .fetchTestResource("gs:/fake/file");
 
@@ -67,7 +67,9 @@ public class GcsRemoteFileResolverTest {
             mResolver.resolveRemoteFiles(new File("gs:/fake/file"), Mockito.mock(Option.class));
             fail("Should have thrown an exception.");
         } catch (ConfigurationException expected) {
-            assertEquals("Failed to download gs:/fake/file", expected.getMessage());
+            assertEquals(
+                    "Failed to download gs:/fake/file due to: download failure",
+                    expected.getMessage());
         }
 
         Mockito.verify(mMockHelper).fetchTestResource("gs:/fake/file");
