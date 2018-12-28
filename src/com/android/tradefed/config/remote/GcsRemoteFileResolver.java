@@ -42,7 +42,8 @@ public class GcsRemoteFileResolver implements IRemoteFileResolver {
             return getDownloader().fetchTestResource(path);
         } catch (BuildRetrievalError e) {
             CLog.e(e);
-            throw new ConfigurationException(String.format("Failed to download %s", path), e);
+            throw new ConfigurationException(
+                    String.format("Failed to download %s due to: %s", path, e.getMessage()), e);
         }
     }
 
