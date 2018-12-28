@@ -547,6 +547,7 @@ public class TestInvocationTest extends TestCase {
 
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
         resumeListener.invocationStarted(mStubInvocationMetadata);
+        EasyMock.expect(resumeListener.getSummary()).andReturn(null);
         mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.setOptions((TestDeviceOptions)EasyMock.anyObject());
         mMockBuildInfo.setDeviceSerial(SERIAL);
@@ -616,6 +617,7 @@ public class TestInvocationTest extends TestCase {
         mMockDevice.stopLogcat();
 
         mMockLogger.init();
+
         mMockLogSaver.invocationStarted(mStubInvocationMetadata);
         // now set resumed invocation expectations
         mMockDevice.clearLastConnectedWifiNetwork();
@@ -866,7 +868,7 @@ public class TestInvocationTest extends TestCase {
         logSaverListener.logAssociation(
                 EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME), EasyMock.anyObject());
         logSaverListener.invocationEnded(EasyMock.anyLong());
-        EasyMock.expect(logSaverListener.getSummary()).andReturn(mSummary);
+        EasyMock.expect(logSaverListener.getSummary()).andReturn(mSummary).times(2);
 
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         setupMockSuccessListeners();
@@ -1087,7 +1089,10 @@ public class TestInvocationTest extends TestCase {
         // invocationStarted
         mMockLogSaver.invocationStarted(mStubInvocationMetadata);
         mMockTestListener.invocationStarted(mStubInvocationMetadata);
+        EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
+        mMockSummaryListener.putEarlySummary(EasyMock.anyObject());
         mMockSummaryListener.invocationStarted(mStubInvocationMetadata);
+        EasyMock.expect(mMockSummaryListener.getSummary()).andReturn(null);
 
         if (!(throwable instanceof BuildRetrievalError)) {
             EasyMock.expect(
