@@ -100,7 +100,8 @@ public class DynamicRemoteFileResolver {
                                 CLog.e(e);
                                 throw new ConfigurationException(
                                         String.format(
-                                                "Failed to download %s", consideredFile.getPath()),
+                                                "Failed to download %s due to '%s'",
+                                                consideredFile.getPath(), e.getMessage()),
                                         e);
                             }
                         }
