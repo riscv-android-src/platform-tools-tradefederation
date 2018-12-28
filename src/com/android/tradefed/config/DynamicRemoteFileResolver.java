@@ -63,12 +63,7 @@ public class DynamicRemoteFileResolver {
         Set<File> downloadedFiles = new HashSet<>();
         try {
             for (Map.Entry<String, OptionFieldsForName> optionPair : mOptionMap.entrySet()) {
-                final String optName = optionPair.getKey();
                 final OptionFieldsForName optionFields = optionPair.getValue();
-                if (optName.indexOf(OptionSetter.NAMESPACE_SEPARATOR) >= 0) {
-                    // Only return unqualified option names
-                    continue;
-                }
                 for (Map.Entry<Object, Field> fieldEntry : optionFields) {
                     final Object obj = fieldEntry.getKey();
                     final Field field = fieldEntry.getValue();
