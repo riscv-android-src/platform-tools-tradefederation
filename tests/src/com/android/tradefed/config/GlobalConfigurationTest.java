@@ -21,6 +21,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.doReturn;
 
 import com.android.tradefed.command.CommandScheduler;
 import com.android.tradefed.config.Option.Importance;
@@ -32,6 +33,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -170,9 +172,12 @@ public class GlobalConfigurationTest {
                 configFactory.createGlobalConfigurationFromArgs(
                         ArrayUtil.buildArray(new String[] {globalConfigPath}, args), nonGlobalArgs);
 
+        GlobalConfiguration spyGlobal = Mockito.spy((GlobalConfiguration) globalConfig);
+        doReturn(configFactory).when(spyGlobal).getConfigurationFactory();
+
         File tmpXml = null;
         try {
-            tmpXml = globalConfig.cloneConfigWithFilter();
+            tmpXml = spyGlobal.cloneConfigWithFilter();
 
             // Load the filtered XML and confirm it has desired content.
             IGlobalConfiguration filteredGlobalConfig =
@@ -186,6 +191,7 @@ public class GlobalConfigurationTest {
             // Fail if any configuration not in the white list presents.
             assertNull(filteredGlobalConfig.getDeviceMonitors());
             assertNull(filteredGlobalConfig.getWtfHandler());
+            assertNull(filteredGlobalConfig.getConfigurationObject("remote-manager"));
         } finally {
             FileUtil.deleteFile(tmpXml);
         }
@@ -210,9 +216,13 @@ public class GlobalConfigurationTest {
                 configFactory.createGlobalConfigurationFromArgs(
                         ArrayUtil.buildArray(new String[] {globalConfigPath}, args), nonGlobalArgs);
 
+        GlobalConfiguration spyGlobal = Mockito.spy((GlobalConfiguration) globalConfig);
+        doReturn(configFactory).when(spyGlobal).getConfigurationFactory();
+
         File tmpXml = null;
         try {
-            tmpXml = globalConfig.cloneConfigWithFilter(new String[] {"wtf_handler"});
+            tmpXml =
+                    spyGlobal.cloneConfigWithFilter(new String[] {"wtf_handler", "remote-manager"});
 
             // Load the filtered XML and confirm it has desired content.
             IGlobalConfiguration filteredGlobalConfig =
@@ -221,6 +231,8 @@ public class GlobalConfigurationTest {
                             nonGlobalArgs);
             assertNotNull(filteredGlobalConfig);
             assertNotNull(filteredGlobalConfig.getWtfHandler());
+            // We can dump and re-parse generic objects.
+            assertNotNull(filteredGlobalConfig.getConfigurationObject("remote-manager"));
             filteredGlobalConfig.validateOptions();
             // Fail if any configuration not in the white list presents.
             assertNull(filteredGlobalConfig.getDeviceMonitors());

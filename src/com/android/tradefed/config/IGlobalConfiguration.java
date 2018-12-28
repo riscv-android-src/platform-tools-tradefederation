@@ -337,4 +337,7 @@ public interface IGlobalConfiguration {
 
     /** Proper cleanup when tradefed shutdown. */
     public void cleanup();
+
+    /** Sets the original config used to create the global configuration. */
+    public void setOriginalConfig(String config);
 }
