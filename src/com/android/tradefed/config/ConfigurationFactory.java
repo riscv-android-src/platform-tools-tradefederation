@@ -605,7 +605,9 @@ public class ConfigurationFactory implements IConfigurationFactory {
         // first arg is config name
         final String configName = optionArgsRef.remove(0);
         ConfigurationDef configDef = getConfigurationDef(configName, true, null);
-        return configDef.createGlobalConfiguration();
+        IGlobalConfiguration config = configDef.createGlobalConfiguration();
+        config.setOriginalConfig(configName);
+        return config;
     }
 
     /**
