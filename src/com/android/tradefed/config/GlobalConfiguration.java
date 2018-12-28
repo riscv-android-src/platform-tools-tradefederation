@@ -32,6 +32,7 @@ import com.android.tradefed.host.LocalHostResourceManager;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.ITerribleFailureHandler;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
@@ -90,11 +91,17 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     // Configurations to be passed to subprocess: Typical object that are representing the host
     // level and the subprocess should follow too.
     private static final String[] CONFIGS_FOR_SUBPROCESS_WHITE_LIST =
-            new String[] {DEVICE_MANAGER_TYPE_NAME, KEY_STORE_TYPE_NAME, HOST_OPTIONS_TYPE_NAME};
+            new String[] {
+                DEVICE_MANAGER_TYPE_NAME,
+                KEY_STORE_TYPE_NAME,
+                HOST_OPTIONS_TYPE_NAME,
+                "android-build"
+            };
 
     /** Mapping of config object type name to config objects. */
     private Map<String, List<Object>> mConfigMap;
     private MultiMap<String, String> mOptionMap;
+    private String[] mOriginalArgs;
     private final String mName;
     private final String mDescription;
 
@@ -152,19 +159,21 @@ public class GlobalConfiguration implements IGlobalConfiguration {
             if (globalConfigServer == null) {
                 String path = getGlobalConfigPath();
                 IConfigurationFactory configFactory = ConfigurationFactory.getInstance();
+                String[] arrayArgs = ArrayUtil.buildArray(new String[] {path}, args);
                 sInstance =
-                        configFactory.createGlobalConfigurationFromArgs(
-                                ArrayUtil.buildArray(new String[] {path}, args), nonGlobalArgs);
+                        configFactory.createGlobalConfigurationFromArgs(arrayArgs, nonGlobalArgs);
+                ((GlobalConfiguration) sInstance).mOriginalArgs = arrayArgs;
             } else {
                 String currentHostConfig = globalConfigServer.getCurrentHostConfig();
                 IConfigurationFactory configFactory =
                         GCSConfigurationFactory.getInstance(globalConfigServer);
+                String[] arrayArgs =
+                        ArrayUtil.buildArray(
+                                new String[] {currentHostConfig},
+                                nonConfigServerArgs.toArray(new String[0]));
                 sInstance =
-                        configFactory.createGlobalConfigurationFromArgs(
-                                ArrayUtil.buildArray(
-                                        new String[] {currentHostConfig},
-                                        nonConfigServerArgs.toArray(new String[0])),
-                                nonGlobalArgs);
+                        configFactory.createGlobalConfigurationFromArgs(arrayArgs, nonGlobalArgs);
+                ((GlobalConfiguration) sInstance).mOriginalArgs = arrayArgs;
             }
             // Validate that madatory options have been set
             sInstance.validateOptions();
@@ -298,6 +307,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         mDescription = description;
         mConfigMap = new LinkedHashMap<String, List<Object>>();
         mOptionMap = new MultiMap<String, String>();
+        mOriginalArgs = new String[] {"empty"};
         setHostOptions(new HostOptions());
         setHostResourceManager(new LocalHostResourceManager());
         setDeviceRequirements(new DeviceSelectionOptions());
@@ -305,6 +315,12 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         setCommandScheduler(new CommandScheduler());
         setKeyStoreFactory(new StubKeyStoreFactory());
         setShardingStrategy(new StrictShardHelper());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setOriginalConfig(String config) {
+        mOriginalArgs = new String[] {config};
     }
 
     /** {@inheritDoc} */
@@ -727,9 +743,16 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      */
     @Override
     public void validateOptions() throws ConfigurationException {
-        new ArgsOptionParser(getAllConfigurationObjects()).validateMandatoryOptions();
+        ArgsOptionParser argsParser = new ArgsOptionParser(getAllConfigurationObjects());
+        argsParser.validateMandatoryOptions();
 
         getHostOptions().validateOptions();
+
+        CLog.d("Resolve and remote files from @Option");
+        // Setup and validate the GCS File paths, they will be deleted when TF ends
+        List<File> remoteFiles = new ArrayList<>();
+        remoteFiles.addAll(argsParser.validateRemoteFilePath());
+        remoteFiles.forEach(File::deleteOnExit);
     }
 
     /** {@inheritDoc} */
@@ -742,6 +765,17 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @Override
     public File cloneConfigWithFilter(Set<String> exclusionPatterns, String... whitelistConfigs)
             throws IOException {
+        IConfigurationFactory configFactory = getConfigurationFactory();
+        IGlobalConfiguration copy = null;
+        try {
+            // Use a copy with default original options
+            copy =
+                    configFactory.createGlobalConfigurationFromArgs(
+                            mOriginalArgs, new ArrayList<>());
+        } catch (ConfigurationException e) {
+            throw new IOException(e);
+        }
+
         File filteredGlobalConfig = FileUtil.createTempFile("filtered_global_config", ".config");
         KXmlSerializer serializer = ConfigurationUtil.createSerializer(filteredGlobalConfig);
         serializer.startTag(null, ConfigurationUtil.CONFIGURATION_NAME);
@@ -749,16 +783,30 @@ public class GlobalConfiguration implements IGlobalConfiguration {
             whitelistConfigs = CONFIGS_FOR_SUBPROCESS_WHITE_LIST;
         }
         for (String config : whitelistConfigs) {
-            Object configObj = getConfigurationObject(config);
+            Object configObj = copy.getConfigurationObject(config);
+            if (configObj == null) {
+                CLog.d("Object '%s' was not found in global config.", config);
+                continue;
+            }
             String name = configObj.getClass().getCanonicalName();
             if (!shouldDump(name, exclusionPatterns)) {
                 continue;
             }
-            ConfigurationUtil.dumpClassToXml(serializer, config, configObj, new ArrayList<>());
+            boolean isGenericObject = false;
+            if (getObjTypeMap().get(config) == null) {
+                isGenericObject = true;
+            }
+            ConfigurationUtil.dumpClassToXml(
+                    serializer, config, configObj, isGenericObject, new ArrayList<>());
         }
         serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
         serializer.endDocument();
         return filteredGlobalConfig;
+    }
+
+    @VisibleForTesting
+    protected IConfigurationFactory getConfigurationFactory() {
+        return ConfigurationFactory.getInstance();
     }
 
     private boolean shouldDump(String name, Set<String> patterns) {
