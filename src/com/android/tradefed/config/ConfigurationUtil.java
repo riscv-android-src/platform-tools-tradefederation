@@ -78,16 +78,45 @@ public class ConfigurationUtil {
             Object obj,
             List<String> excludeClassFilter)
             throws IOException {
+        dumpClassToXml(serializer, classTypeName, obj, false, excludeClassFilter);
+    }
+
+    /**
+     * Add a class to the configuration XML dump.
+     *
+     * @param serializer a {@link KXmlSerializer} to create the XML dump
+     * @param classTypeName a {@link String} of the class type's name
+     * @param obj {@link Object} to be added to the XML dump
+     * @param isGenericObject Whether or not the object is specified as <object> in the xml
+     * @param excludeClassFilter list of object configuration type or fully qualified class names to
+     *     be excluded from the dump. for example: {@link Configuration#TARGET_PREPARER_TYPE_NAME}.
+     *     com.android.tradefed.testtype.StubTest
+     */
+    static void dumpClassToXml(
+            KXmlSerializer serializer,
+            String classTypeName,
+            Object obj,
+            boolean isGenericObject,
+            List<String> excludeClassFilter)
+            throws IOException {
         if (excludeClassFilter.contains(classTypeName)) {
             return;
         }
         if (excludeClassFilter.contains(obj.getClass().getName())) {
             return;
         }
-        serializer.startTag(null, classTypeName);
-        serializer.attribute(null, CLASS_NAME, obj.getClass().getName());
-        dumpOptionsToXml(serializer, obj);
-        serializer.endTag(null, classTypeName);
+        if (isGenericObject) {
+            serializer.startTag(null, "object");
+            serializer.attribute(null, "type", classTypeName);
+            serializer.attribute(null, CLASS_NAME, obj.getClass().getName());
+            dumpOptionsToXml(serializer, obj);
+            serializer.endTag(null, "object");
+        } else {
+            serializer.startTag(null, classTypeName);
+            serializer.attribute(null, CLASS_NAME, obj.getClass().getName());
+            dumpOptionsToXml(serializer, obj);
+            serializer.endTag(null, classTypeName);
+        }
     }
 
     /**
