@@ -103,6 +103,7 @@ import com.android.tradefed.host.LocalHostResourceManagerTest;
 import com.android.tradefed.host.gcs.GCSHostResourceManagerTest;
 import com.android.tradefed.invoker.InvocationContextTest;
 import com.android.tradefed.invoker.InvocationExecutionTest;
+import com.android.tradefed.invoker.RemoteInvocationExecutionTest;
 import com.android.tradefed.invoker.SandboxedInvocationExecutionTest;
 import com.android.tradefed.invoker.ShardListenerTest;
 import com.android.tradefed.invoker.ShardMasterResultForwarderTest;
@@ -452,6 +453,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // invoker
     InvocationContextTest.class,
     InvocationExecutionTest.class,
+    RemoteInvocationExecutionTest.class,
     SandboxedInvocationExecutionTest.class,
     ShardListenerTest.class,
     ShardMasterResultForwarderTest.class,
