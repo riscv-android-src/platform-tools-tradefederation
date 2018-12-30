@@ -27,6 +27,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceState;
+import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecution;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
@@ -112,7 +113,8 @@ public class TestInvocation implements ITestInvocation {
     public enum RunMode {
         REGULAR,
         PARENT_SANDBOX,
-        SANDBOX
+        SANDBOX,
+        REMOTE_INVOCATION,
     }
 
     private String mStatus = "(not invoked)";
@@ -637,6 +639,9 @@ public class TestInvocation implements ITestInvocation {
         if (config.getCommandOptions().shouldUseSandboxing()) {
             mode = RunMode.PARENT_SANDBOX;
         }
+        if (context.getDevices().get(0) instanceof ManagedRemoteDevice) {
+            mode = RunMode.REMOTE_INVOCATION;
+        }
         IInvocationExecution invocationPath = createInvocationExec(mode);
 
         // Create the Guice scope
@@ -803,6 +808,8 @@ public class TestInvocation implements ITestInvocation {
                 return new ParentSandboxInvocationExecution();
             case SANDBOX:
                 return new SandboxedInvocationExecution();
+            case REMOTE_INVOCATION:
+                return new RemoteInvocationExecution();
             default:
                 return new InvocationExecution();
         }
