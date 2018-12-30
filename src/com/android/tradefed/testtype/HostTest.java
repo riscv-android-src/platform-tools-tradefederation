@@ -784,10 +784,16 @@ public class HostTest
     }
 
     protected final List<Class<?>> getClasses() throws IllegalArgumentException {
+        // Use a set to avoid repeat between filters and jar search
+        Set<String> classNames = new HashSet<>();
         List<Class<?>> classes = new ArrayList<>();
         for (String className : mClasses) {
+            if (classNames.contains(className)) {
+                continue;
+            }
             try {
                 classes.add(Class.forName(className, true, getClassLoader()));
+                classNames.add(className);
             } catch (ClassNotFoundException e) {
                 throw new IllegalArgumentException(String.format("Could not load Test class %s",
                         className), e);
@@ -811,6 +817,9 @@ public class HostTest
                         continue;
                     }
                     String className = getClassName(je.getName());
+                    if (classNames.contains(className)) {
+                        continue;
+                    }
                     try {
                         Class<?> cls = cl.loadClass(className);
                         int modifiers = cls.getModifiers();
@@ -823,6 +832,7 @@ public class HostTest
                                 && !Modifier.isInterface(modifiers)
                                 && !Modifier.isAbstract(modifiers)) {
                             classes.add(cls);
+                            classNames.add(className);
                         }
                     } catch (ClassNotFoundException cnfe) {
                         throw new IllegalArgumentException(

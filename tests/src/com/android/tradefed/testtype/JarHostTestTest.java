@@ -208,6 +208,23 @@ public class JarHostTestTest {
         assertEquals(238, total);
     }
 
+    /** Avoid collision between --class and --jar when they reference common classes. */
+    @Test
+    public void testSplit_countWithFilter() throws Exception {
+        File testJar = getJarResource(TEST_JAR1, mTestDir);
+        mTest = new HostTestLoader(mTestDir, testJar);
+        mTest.setBuild(mStubBuildInfo);
+        ITestDevice device = EasyMock.createNiceMock(ITestDevice.class);
+        mTest.setDevice(device);
+        OptionSetter setter = new OptionSetter(mTest);
+        setter.setOptionValue("enable-pretty-logs", "false");
+        setter.setOptionValue("jar", testJar.getName());
+        // Explicitly request a class from the jar
+        setter.setOptionValue("class", "android.ui.cts.TestClass8");
+        // full class count without sharding should be 238
+        assertEquals(238, mTest.countTestCases());
+    }
+
     /**
      * Testable version of {@link HostTest} that allows adding jar to classpath for testing purpose.
      */
@@ -278,7 +295,7 @@ public class JarHostTestTest {
         metrics.put("key", "value");
         mListener.testEnded(
                 EasyMock.eq(tid), EasyMock.eq(TfMetricProtoUtil.upgradeConvert(metrics)));
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.replay(mListener);
         mTest.run(mListener);
         EasyMock.verify(mListener);
