@@ -144,6 +144,7 @@ public class CommandOptions implements ICommandOptions {
 
     public static final String USE_SANDBOX = "use-sandbox";
     public static final String ENABLE_SANDBOX_TEST_MODE = "sandbox-test-mode";
+    public static final String USE_REMOTE_SANDBOX = "use-remote-sandbox";
 
     @Option(
         name = USE_SANDBOX,
@@ -157,6 +158,12 @@ public class CommandOptions implements ICommandOptions {
                     "Sandbox test mode where the sandbox will use itself to generate another layer "
                             + "of sandboxing. This is used for the sandbox to validate itself.")
     private boolean mSandboxTestMode = false;
+
+    @Option(
+        name = USE_REMOTE_SANDBOX,
+        description = "Whether or not to trigger --use-sandbox in the remote invocation."
+    )
+    private boolean mUseRemoteSandbox = false;
 
     /**
      * Set the help mode for the config.
@@ -444,5 +451,11 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public void setUseSandboxTestMode(boolean use) {
         mSandboxTestMode = use;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldUseRemoteSandboxMode() {
+        return mUseRemoteSandbox;
     }
 }
