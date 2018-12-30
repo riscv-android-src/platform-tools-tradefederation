@@ -38,7 +38,6 @@ import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.postprocessor.IPostProcessor;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.InputStreamSource;
@@ -411,15 +410,6 @@ public class InvocationExecution implements IInvocationExecution {
     public void runTests(
             IInvocationContext context, IConfiguration config, ITestInvocationListener listener)
             throws Throwable {
-        // Post-processors are the first layer around the final reporters.
-        for (IPostProcessor postProcessor : config.getPostProcessors()) {
-            if (postProcessor.isDisabled()) {
-                CLog.d("%s has been disabled. skipping.", postProcessor);
-            } else {
-                listener = postProcessor.init(listener);
-            }
-        }
-
         for (IRemoteTest test : config.getTests()) {
             // For compatibility of those receivers, they are assumed to be single device alloc.
             if (test instanceof IDeviceTest) {

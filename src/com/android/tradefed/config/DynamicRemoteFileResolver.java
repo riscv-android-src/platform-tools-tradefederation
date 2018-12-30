@@ -16,17 +16,17 @@
 package com.android.tradefed.config;
 
 import com.android.annotations.VisibleForTesting;
-import com.android.tradefed.build.BuildRetrievalError;
-import com.android.tradefed.build.gcs.GCSDownloaderHelper;
 import com.android.tradefed.config.OptionSetter.OptionFieldsForName;
+import com.android.tradefed.config.remote.GcsRemoteFileResolver;
+import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
-import com.android.tradefed.util.GCSFileDownloader;
 
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -36,10 +36,15 @@ import java.util.Set;
  *
  * <p>For example: gs://bucket/path/file.txt will be resolved by downloading the file from the GCS
  * bucket.
- *
- * <p>TODO: Finish Refactoring to support more than just gs:// types.
  */
 public class DynamicRemoteFileResolver {
+
+    private static final Map<String, IRemoteFileResolver> PROTOCOL_SUPPORT = new HashMap<>();
+
+    static {
+        // TODO: Have a way to dynamically specify more support
+        PROTOCOL_SUPPORT.put(GcsRemoteFileResolver.PROTOCOL, new GcsRemoteFileResolver());
+    }
 
     private Map<String, OptionFieldsForName> mOptionMap;
 
@@ -58,13 +63,7 @@ public class DynamicRemoteFileResolver {
         Set<File> downloadedFiles = new HashSet<>();
         try {
             for (Map.Entry<String, OptionFieldsForName> optionPair : mOptionMap.entrySet()) {
-                final String optName = optionPair.getKey();
                 final OptionFieldsForName optionFields = optionPair.getValue();
-                if (optName.indexOf(OptionSetter.NAMESPACE_SEPARATOR) >= 0) {
-                    // Only return unqualified option names
-                    continue;
-                }
-                GCSDownloaderHelper downloader = createDownloader();
                 for (Map.Entry<Object, Field> fieldEntry : optionFields) {
                     final Object obj = fieldEntry.getKey();
                     final Field field = fieldEntry.getValue();
@@ -86,7 +85,7 @@ public class DynamicRemoteFileResolver {
                         continue;
                     } else if (value instanceof File) {
                         File consideredFile = (File) value;
-                        File downloadedFile = resolveGcsFiles(consideredFile, downloader, option);
+                        File downloadedFile = resolveRemoteFiles(consideredFile, option);
                         if (downloadedFile != null) {
                             downloadedFiles.add(downloadedFile);
                             // Replace the field value
@@ -96,7 +95,8 @@ public class DynamicRemoteFileResolver {
                                 CLog.e(e);
                                 throw new ConfigurationException(
                                         String.format(
-                                                "Failed to download %s", consideredFile.getPath()),
+                                                "Failed to download %s due to '%s'",
+                                                consideredFile.getPath(), e.getMessage()),
                                         e);
                             }
                         }
@@ -106,8 +106,7 @@ public class DynamicRemoteFileResolver {
                         for (Object o : copy) {
                             if (o instanceof File) {
                                 File consideredFile = (File) o;
-                                File downloadedFile =
-                                        resolveGcsFiles(consideredFile, downloader, option);
+                                File downloadedFile = resolveRemoteFiles(consideredFile, option);
                                 if (downloadedFile != null) {
                                     downloadedFiles.add(downloadedFile);
                                     // TODO: See if order could be preserved.
@@ -130,28 +129,32 @@ public class DynamicRemoteFileResolver {
         return downloadedFiles;
     }
 
-    /** Returns the downloader helping to resolve the remote file. */
     @VisibleForTesting
-    GCSDownloaderHelper createDownloader() {
-        return new GCSDownloaderHelper();
+    IRemoteFileResolver getResolver(String protocol) {
+        return PROTOCOL_SUPPORT.get(protocol);
     }
 
-    private File resolveGcsFiles(File consideredFile, GCSDownloaderHelper downloader, Option option)
+    private File resolveRemoteFiles(File consideredFile, Option option)
             throws ConfigurationException {
-        // Don't use absolute path as it would not start with gs:
-        if (consideredFile.getPath().startsWith(GCSFileDownloader.GCS_APPROX_PREFIX)
-                || consideredFile.getPath().startsWith(GCSFileDownloader.GCS_PREFIX)) {
-            String path = consideredFile.getPath();
-            CLog.d("Considering option '%s' with path: '%s' for download.", option.name(), path);
-            // We need to download the file from the bucket
-            try {
-                File gsFile = downloader.fetchTestResource(path);
-                return gsFile;
-            } catch (BuildRetrievalError e) {
-                CLog.e(e);
-                throw new ConfigurationException(String.format("Failed to download %s", path), e);
-            }
+        String path = consideredFile.getPath();
+        String protocol = getProtocol(path);
+        IRemoteFileResolver resolver = getResolver(protocol);
+        if (resolver != null) {
+            return resolver.resolveRemoteFiles(consideredFile, option);
         }
+        // Not a remote file
         return null;
+    }
+
+    /**
+     * Java URL doesn't recognize 'gs' as a protocol and throws an exception so we do the protocol
+     * extraction ourselves.
+     */
+    private String getProtocol(String path) {
+        int index = path.indexOf(":/");
+        if (index == -1) {
+            return "";
+        }
+        return path.substring(0, index);
     }
 }
