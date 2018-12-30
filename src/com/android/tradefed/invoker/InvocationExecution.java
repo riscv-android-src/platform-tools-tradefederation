@@ -520,7 +520,7 @@ public class InvocationExecution implements IInvocationExecution {
      * @param context the {@link IInvocationContext}
      * @param config the {@link IConfiguration}
      */
-    private void updateInvocationContext(IInvocationContext context, IConfiguration config) {
+    void updateInvocationContext(IInvocationContext context, IConfiguration config) {
         // TODO: Once reporting on context is done, only set context attributes
         if (config.getCommandLine() != null) {
             // TODO: obfuscate the password if any.
@@ -554,7 +554,7 @@ public class InvocationExecution implements IInvocationExecution {
      * @param info the {@link IBuildInfo}
      * @param config the {@link IConfiguration}
      */
-    private void updateBuild(IBuildInfo info, IConfiguration config) {
+    void updateBuild(IBuildInfo info, IConfiguration config) {
         if (config.getCommandLine() != null) {
             // TODO: obfuscate the password if any.
             info.addBuildAttribute(TestInvocation.COMMAND_ARGS_KEY, config.getCommandLine());
