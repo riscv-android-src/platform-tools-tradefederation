@@ -172,4 +172,7 @@ public interface ICommandOptions {
 
     /** Sets whether or not we should use the TF sandbox test mode. */
     public void setUseSandboxTestMode(boolean use);
+
+    /** Whether or not to use sandbox mode in remote invocation. */
+    public boolean shouldUseRemoteSandboxMode();
 }
