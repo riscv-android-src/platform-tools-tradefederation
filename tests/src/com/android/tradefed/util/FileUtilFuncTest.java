@@ -342,6 +342,24 @@ public class FileUtilFuncTest extends TestCase {
         }
     }
 
+    /**
+     * Verify {@link FileUtil#calculateBase64Md5(File)} works.
+     *
+     * @throws IOException
+     */
+    public void testCalculateBase64Md5() throws IOException {
+        final String source = "testtesttesttesttest";
+        final String base64Md5 = "8xf2gvr+AwnGpCOvC076WQ==";
+        File tmpFile = FileUtil.createTempFile("testCalculateMd5", ".txt");
+        try {
+            FileUtil.writeToFile(source, tmpFile);
+            String actualBase64Md5 = FileUtil.calculateBase64Md5(tmpFile);
+            assertEquals(base64Md5, actualBase64Md5);
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+        }
+    }
+
     /** Test that {@link FileUtil#recursiveSymlink(File, File)} properly simlink files. */
     public void testRecursiveSymlink() throws IOException {
         File dir1 = null;
