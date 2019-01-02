@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Class that helps resolving path to remote files.
@@ -39,12 +40,14 @@ import java.util.Set;
  */
 public class DynamicRemoteFileResolver {
 
+    public static final String DYNAMIC_RESOLVER = "dynamic-resolver";
     private static final Map<String, IRemoteFileResolver> PROTOCOL_SUPPORT = new HashMap<>();
 
     static {
-        // TODO: Have a way to dynamically specify more support
         PROTOCOL_SUPPORT.put(GcsRemoteFileResolver.PROTOCOL, new GcsRemoteFileResolver());
     }
+    // The configuration map being static, we only need to update it once per TF instance.
+    private static AtomicBoolean sIsUpdateDone = new AtomicBoolean(false);
 
     private Map<String, OptionFieldsForName> mOptionMap;
 
@@ -131,7 +134,30 @@ public class DynamicRemoteFileResolver {
 
     @VisibleForTesting
     IRemoteFileResolver getResolver(String protocol) {
+        if (updateProtocols()) {
+            IGlobalConfiguration globalConfig = getGlobalConfig();
+            Object o = globalConfig.getConfigurationObject(DYNAMIC_RESOLVER);
+            if (o != null) {
+                if (o instanceof IRemoteFileResolver) {
+                    IRemoteFileResolver resolver = (IRemoteFileResolver) o;
+                    CLog.d("Adding %s to supported remote file resolver", resolver);
+                    PROTOCOL_SUPPORT.put(resolver.getSupportedProtocol(), resolver);
+                } else {
+                    CLog.e("%s is not of type IRemoteFileResolver", o);
+                }
+            }
+        }
         return PROTOCOL_SUPPORT.get(protocol);
+    }
+
+    @VisibleForTesting
+    boolean updateProtocols() {
+        return sIsUpdateDone.compareAndSet(false, true);
+    }
+
+    @VisibleForTesting
+    IGlobalConfiguration getGlobalConfig() {
+        return GlobalConfiguration.getInstance();
     }
 
     private File resolveRemoteFiles(File consideredFile, Option option)
