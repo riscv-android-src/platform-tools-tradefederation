@@ -35,6 +35,8 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
 
+import javax.annotation.Nonnull;
+
 /** Unit tests for {@link DynamicRemoteFileResolver}. */
 @RunWith(JUnit4.class)
 public class DynamicRemoteFileResolverTest {
@@ -67,6 +69,12 @@ public class DynamicRemoteFileResolverTest {
                             return mMockResolver;
                         }
                         return null;
+                    }
+
+                    @Override
+                    boolean updateProtocols() {
+                        // Do not set the static variable
+                        return false;
                     }
                 };
     }
@@ -212,6 +220,85 @@ public class DynamicRemoteFileResolverTest {
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path")), EasyMock.anyObject()))
+                .andReturn(fake);
+        EasyMock.replay(mMockResolver);
+
+        Set<File> downloadedFile = setter.validateRemoteFilePath();
+        try {
+            assertEquals(1, downloadedFile.size());
+            File downloaded = downloadedFile.iterator().next();
+            // The file has been replaced by the downloaded one.
+            assertEquals(downloaded.getAbsolutePath(), object.remoteFile.getAbsolutePath());
+        } finally {
+            for (File f : downloadedFile) {
+                FileUtil.recursiveDelete(f);
+            }
+        }
+        EasyMock.verify(mMockResolver);
+    }
+
+    /** Allow extra resolver to be provided via global configuration. */
+    @Test
+    public void testResolve_addition() throws Exception {
+        mResolver =
+                new DynamicRemoteFileResolver() {
+                    @Override
+                    boolean updateProtocols() {
+                        // Do not set the static variable
+                        return true;
+                    }
+
+                    @Override
+                    IGlobalConfiguration getGlobalConfig() {
+                        IGlobalConfiguration config;
+                        try {
+                            config =
+                                    ConfigurationFactory.getInstance()
+                                            .createGlobalConfigurationFromArgs(
+                                                    new String[] {"empty"}, new ArrayList<>());
+                            // Add a custom object to the resolving map
+                            config.setConfigurationObject(
+                                    DynamicRemoteFileResolver.DYNAMIC_RESOLVER,
+                                    new IRemoteFileResolver() {
+
+                                        @Override
+                                        public @Nonnull File resolveRemoteFiles(
+                                                File consideredFile, Option option)
+                                                throws ConfigurationException {
+                                            return mMockResolver.resolveRemoteFiles(
+                                                    consideredFile, option);
+                                        }
+
+                                        @Override
+                                        public @Nonnull String getSupportedProtocol() {
+                                            return "fakeprotocol";
+                                        }
+                                    });
+
+                        } catch (ConfigurationException e) {
+                            throw new RuntimeException(e);
+                        }
+                        return config;
+                    }
+                };
+        RemoteFileOption object = new RemoteFileOption();
+        OptionSetter setter =
+                new OptionSetter(object) {
+                    @Override
+                    DynamicRemoteFileResolver createResolver() {
+                        return mResolver;
+                    }
+                };
+
+        File fake = FileUtil.createTempFile("gs-option-setter-test", "txt");
+
+        setter.setOptionValue("remote-file", "fakeprotocol://fake/path");
+        assertEquals("fakeprotocol:/fake/path", object.remoteFile.getPath());
+
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("fakeprotocol:/fake/path")),
+                                EasyMock.anyObject()))
                 .andReturn(fake);
         EasyMock.replay(mMockResolver);
 
