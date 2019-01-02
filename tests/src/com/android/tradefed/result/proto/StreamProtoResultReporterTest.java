@@ -79,9 +79,9 @@ public class StreamProtoResultReporterTest {
             mMockListener.testEnded(
                     EasyMock.eq(test2),
                     EasyMock.anyLong(),
-                    (HashMap<String, Metric>) EasyMock.anyObject());
+                    EasyMock.<HashMap<String, Metric>>anyObject());
             mMockListener.testRunEnded(
-                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                    EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
             mMockListener.testModuleEnded();
 
             mMockListener.invocationEnded(500L);
@@ -144,9 +144,9 @@ public class StreamProtoResultReporterTest {
             mMockListener.testEnded(
                     EasyMock.eq(test2),
                     EasyMock.anyLong(),
-                    (HashMap<String, Metric>) EasyMock.anyObject());
+                    EasyMock.<HashMap<String, Metric>>anyObject());
             mMockListener.testRunEnded(
-                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                    EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
             mMockListener.testModuleEnded();
 
             EasyMock.replay(mMockListener);
