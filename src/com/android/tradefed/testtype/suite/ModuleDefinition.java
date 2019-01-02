@@ -335,9 +335,26 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // Setup
         long prepStartTime = getCurrentTime();
 
-        for (String deviceName : mModuleInvocationContext.getDeviceConfigNames()) {
+        for (int i = 0; i < mModuleInvocationContext.getDeviceConfigNames().size(); i++) {
+            String deviceName = mModuleInvocationContext.getDeviceConfigNames().get(i);
             ITestDevice device = mModuleInvocationContext.getDevice(deviceName);
-            for (ITargetPreparer preparer : mPreparersPerDevice.get(deviceName)) {
+            if (i >= mPreparersPerDevice.size()) {
+                CLog.d(
+                        "Main configuration has more devices than the module configuration. '%s' "
+                                + "will not run any preparation.",
+                        deviceName);
+                continue;
+            }
+            List<ITargetPreparer> preparers = mPreparersPerDevice.get(deviceName);
+            if (preparers == null) {
+                CLog.w(
+                        "Module configuration devices mismatch the main configuration "
+                                + "(Missing device '%s'), resolving preparers by index.",
+                        deviceName);
+                String key = new ArrayList<>(mPreparersPerDevice.keySet()).get(i);
+                preparers = mPreparersPerDevice.get(key);
+            }
+            for (ITargetPreparer preparer : preparers) {
                 preparationException =
                         runPreparerSetup(
                                 device,
@@ -743,9 +760,25 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             multiCleaner.tearDown(mModuleInvocationContext, setupException);
         }
 
-        for (String deviceName : mModuleInvocationContext.getDeviceConfigNames()) {
+        for (int i = 0; i < mModuleInvocationContext.getDeviceConfigNames().size(); i++) {
+            String deviceName = mModuleInvocationContext.getDeviceConfigNames().get(i);
             ITestDevice device = mModuleInvocationContext.getDevice(deviceName);
+            if (i >= mPreparersPerDevice.size()) {
+                CLog.d(
+                        "Main configuration has more devices than the module configuration. '%s' "
+                                + "will not run any tear down.",
+                        deviceName);
+                continue;
+            }
             List<ITargetPreparer> preparers = mPreparersPerDevice.get(deviceName);
+            if (preparers == null) {
+                CLog.w(
+                        "Module configuration devices mismatch the main configuration "
+                                + "(Missing device '%s'), resolving preparers by index.",
+                        deviceName);
+                String key = new ArrayList<>(mPreparersPerDevice.keySet()).get(i);
+                preparers = mPreparersPerDevice.get(key);
+            }
             ListIterator<ITargetPreparer> itr = preparers.listIterator(preparers.size());
             while (itr.hasPrevious()) {
                 ITargetPreparer preparer = itr.previous();
