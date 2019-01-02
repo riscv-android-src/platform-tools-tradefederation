@@ -129,3 +129,6 @@ TEST_MAPPING_SUITES = ['device-tests', 'general-tests']
 
 # VTS TF
 VTS_TF_MODULE = 'vts-tradefed'
+
+# ATest TF
+ATEST_TF_MODULE = 'atest-tradefed'
