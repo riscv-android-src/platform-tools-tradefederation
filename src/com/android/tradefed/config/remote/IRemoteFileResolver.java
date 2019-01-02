@@ -38,4 +38,7 @@ public interface IRemoteFileResolver {
      */
     public @Nonnull File resolveRemoteFiles(File consideredFile, Option option)
             throws ConfigurationException;
+
+    /** Returns the associated protocol supported for download. */
+    public @Nonnull String getSupportedProtocol();
 }
