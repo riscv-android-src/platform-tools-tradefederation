@@ -89,6 +89,7 @@ java_library_host {
         "error_prone_annotations-2.0.18",
         "google-api-java-client-min-repackaged",
         "google-api-services-compute",
+        "google-api-services-storage",
         "gson-prebuilt-jar",
         "guice",
         "jacoco-cli",
