@@ -1290,7 +1290,7 @@ public class Configuration implements IConfiguration {
         }
         if (download) {
             // TODO: Ensure that it works during sharding and we don't leak files
-            CLog.d("Resolve and remote files from @Option");
+            CLog.d("Resolve and download remote files from @Option");
             // Setup and validate the GCS File paths
             mRemoteFiles.addAll(argsParser.validateRemoteFilePath());
         }
