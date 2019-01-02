@@ -187,6 +187,13 @@ public class ProtoResultParser {
         } catch (InvalidProtocolBufferException e) {
             throw new RuntimeException(e);
         }
+
+        if (endInvocationProto.hasDebugInfo()) {
+            // TODO: Re-interpret the exception with proper type.
+            String trace = endInvocationProto.getDebugInfo().getTrace();
+            mListener.invocationFailed(new Throwable(trace));
+        }
+
         log("Invocation ended proto");
         if (!mReportInvocation) {
             CLog.d("Skipping invocation ended reporting.");
