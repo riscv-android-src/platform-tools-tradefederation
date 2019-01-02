@@ -537,10 +537,10 @@ public interface IConfiguration {
      *
      * <p>Currently this will just validate that all mandatory options have been set
      *
-     * @param resolvedGcsPath Whether or not to download the files associated to a gcs path
+     * @param download Whether or not to download the files associated to a remote path
      * @throws ConfigurationException if config is not valid
      */
-    public void validateOptions(boolean resolvedGcsPath) throws ConfigurationException;
+    public void validateOptions(boolean download) throws ConfigurationException;
 
     /** Delete any files that was downloaded to resolved Option fields of remote files. */
     public void cleanDynamicOptionFiles();
