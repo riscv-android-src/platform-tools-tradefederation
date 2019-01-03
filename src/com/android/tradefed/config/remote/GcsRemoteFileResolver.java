@@ -24,6 +24,8 @@ import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.File;
 
+import javax.annotation.Nonnull;
+
 /** Implementation of {@link IRemoteFileResolver} that allows downloading from a GCS bucket. */
 public class GcsRemoteFileResolver implements IRemoteFileResolver {
 
@@ -45,6 +47,11 @@ public class GcsRemoteFileResolver implements IRemoteFileResolver {
             throw new ConfigurationException(
                     String.format("Failed to download %s due to: %s", path, e.getMessage()), e);
         }
+    }
+
+    @Override
+    public @Nonnull String getSupportedProtocol() {
+        return PROTOCOL;
     }
 
     @VisibleForTesting
