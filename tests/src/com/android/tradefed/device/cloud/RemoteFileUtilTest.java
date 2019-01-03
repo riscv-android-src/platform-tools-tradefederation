@@ -133,7 +133,7 @@ public class RemoteFileUtilTest {
                                 EasyMock.eq("-i"),
                                 EasyMock.anyObject(),
                                 EasyMock.eq("-R"),
-                                EasyMock.eq(localFile.getAbsolutePath() + "/"),
+                                EasyMock.eq(localFile.getAbsolutePath()),
                                 EasyMock.eq("root@127.0.0.1:" + remotePath)))
                 .andReturn(res);
         EasyMock.replay(mMockRunUtil);
@@ -176,7 +176,7 @@ public class RemoteFileUtilTest {
                                 EasyMock.eq("-i"),
                                 EasyMock.anyObject(),
                                 EasyMock.eq("-R"),
-                                EasyMock.eq(localFile.getAbsolutePath() + "/"),
+                                EasyMock.eq(localFile.getAbsolutePath()),
                                 EasyMock.eq("root@127.0.0.1:" + remotePath)))
                 .andReturn(res);
         EasyMock.replay(mMockRunUtil);

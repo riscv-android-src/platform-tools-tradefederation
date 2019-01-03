@@ -87,7 +87,7 @@ public class GceRemoteCmdFormatter {
             String user,
             String hostName,
             String remoteFile,
-            File localFile,
+            String localFile,
             ScpMode mode) {
         List<String> cmd = new ArrayList<>();
         cmd.add("scp");
@@ -106,13 +106,9 @@ public class GceRemoteCmdFormatter {
         }
         if (ScpMode.PULL.equals(mode)) {
             cmd.add(String.format("%s@%s:%s", user, hostName, remoteFile));
-            cmd.add(localFile.getAbsolutePath());
+            cmd.add(localFile);
         } else {
-            if (localFile.isDirectory()) {
-                cmd.add(localFile.getAbsolutePath() + "/");
-            } else {
-                cmd.add(localFile.getAbsolutePath());
-            }
+            cmd.add(localFile);
             cmd.add(String.format("%s@%s:%s", user, hostName, remoteFile));
         }
         return cmd;

@@ -113,7 +113,10 @@ public class RemoteInvocationExecution extends InvocationExecution {
             listener.invocationFailed(new RuntimeException("Failed to find $TF_JAR_DIR."));
             return;
         }
-        File currentTf = new File(tfPath + "/");
+        File currentTf = new File(tfPath).getAbsoluteFile();
+        if (tfPath.equals(".")) {
+            currentTf = new File("").getAbsoluteFile();
+        }
         mRemoteTradefedDir = mainRemoteDir + "tradefed/";
         CommandResult createRemoteDir =
                 GceManager.remoteSshCommandExecution(
@@ -138,6 +141,12 @@ public class RemoteInvocationExecution extends InvocationExecution {
             return;
         }
 
+        mRemoteTradefedDir = mRemoteTradefedDir + currentTf.getName() + "/";
+        CommandResult listRemoteDir =
+                GceManager.remoteSshCommandExecution(
+                        info, options, runUtil, 120000L, "ls", "-l", mRemoteTradefedDir);
+        CLog.d("stdout: %s", listRemoteDir.getStdout());
+        CLog.d("stderr: %s", listRemoteDir.getStderr());
         mRemoteFinalResult = mRemoteTradefedDir + PROTO_RESULT_NAME;
 
         // Setup the remote reporting to a proto file
