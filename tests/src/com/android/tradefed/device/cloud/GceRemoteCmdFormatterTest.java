@@ -58,7 +58,7 @@ public class GceRemoteCmdFormatterTest {
                         "root",
                         "127.0.0.1",
                         "/sdcard/test",
-                        "/tmp/here",
+                        new File("/tmp/here"),
                         ScpMode.PULL);
         assertEquals("scp", res.get(0));
         assertEquals("-o", res.get(1));

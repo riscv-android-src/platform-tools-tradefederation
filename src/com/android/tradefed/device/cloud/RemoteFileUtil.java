@@ -142,7 +142,7 @@ public class RemoteFileUtil {
                         options.getInstanceUser(),
                         remoteInstance.hostAndPort().getHostText(),
                         remoteFilePath,
-                        localFile.getAbsolutePath(),
+                        localFile,
                         mode);
         CommandResult resScp = runUtil.runTimedCmd(timeout, scpCmd.toArray(new String[0]));
         if (!CommandStatus.SUCCESS.equals(resScp.getStatus())) {
