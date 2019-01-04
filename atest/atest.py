@@ -564,7 +564,7 @@ def main(argv):
     tests_exit_code = constants.EXIT_CODE_SUCCESS
     if constants.TEST_STEP in steps:
         if not is_from_test_mapping(test_infos):
-            tests_exit_code = test_runner_handler.run_all_tests(
+            tests_exit_code, _ = test_runner_handler.run_all_tests(
                 results_dir, test_infos, extra_args)
         else:
             tests_exit_code = _run_test_mapping_tests(
