@@ -21,6 +21,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.Abi;
@@ -82,9 +83,13 @@ public class SuiteModuleLoaderTest {
         FileUtil.writeToFile(TEST_CONFIG, module);
     }
 
+    @OptionClass(alias = "test-inject")
     public static class TestInject implements IRemoteTest {
         @Option(name = "simple-string")
         public String test = null;
+
+        @Option(name = "alias-option")
+        public String testAlias = null;
 
         @Option(name = "list-string")
         public List<String> testList = new ArrayList<>();
@@ -183,5 +188,31 @@ public class SuiteModuleLoaderTest {
         // Chech map
         assertTrue(checker.testMap.size() == 1);
         assertEquals("moreoption", checker.testMap.get("set-option"));
+    }
+
+    @Test
+    public void testInjectConfigOptions_moduleArgs_alias() throws Exception {
+        List<String> moduleArgs = new ArrayList<>();
+        moduleArgs.add("module1:{test-inject}alias-option:value1");
+
+        createModuleConfig("module1");
+
+        mRepo =
+                new SuiteModuleLoader(
+                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new ArrayList<>(),
+                        moduleArgs);
+        List<String> patterns = new ArrayList<>();
+        patterns.add(".*.config");
+        patterns.add(".*.xml");
+        LinkedHashMap<String, IConfiguration> res =
+                mRepo.loadConfigsFromDirectory(
+                        Arrays.asList(mTestsDir), mAbis, null, null, patterns);
+        assertNotNull(res.get("armeabi-v7a module1"));
+        IConfiguration config = res.get("armeabi-v7a module1");
+
+        TestInject checker = (TestInject) config.getTests().get(0);
+        assertEquals("value1", checker.testAlias);
     }
 }
