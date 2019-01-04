@@ -28,7 +28,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -118,8 +120,35 @@ public class DynamicRemoteFileResolver {
                                 }
                             }
                         }
+                    } else if (value instanceof Map) {
+                        Map<Object, Object> m = (Map<Object, Object>) value;
+                        Map<Object, Object> copy = new LinkedHashMap<>(m);
+                        for (Entry<Object, Object> entry : copy.entrySet()) {
+                            Object key = entry.getKey();
+                            Object val = entry.getValue();
+
+                            Object finalKey = key;
+                            Object finalVal = val;
+                            if (key instanceof File) {
+                                key = resolveRemoteFiles((File) key, option);
+                                if (key != null) {
+                                    downloadedFiles.add((File) key);
+                                    finalKey = key;
+                                }
+                            }
+                            if (val instanceof File) {
+                                val = resolveRemoteFiles((File) val, option);
+                                if (val != null) {
+                                    downloadedFiles.add((File) val);
+                                    finalVal = val;
+                                }
+                            }
+
+                            m.remove(entry.getKey());
+                            m.put(finalKey, finalVal);
+                        }
                     }
-                    // TODO: Handle Map of files
+                    // TODO: add support for multimap
                 }
             }
         } catch (ConfigurationException e) {
