@@ -52,6 +52,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Retrieves Compatibility test module definitions from the repository. TODO: Add the expansion of
@@ -444,6 +446,13 @@ public class SuiteModuleLoader {
                         "Expected delimiter ':' between option name and values.");
             }
             String optionName = remainder.substring(0, optionNameSep);
+            Pattern pattern = Pattern.compile("\\{(.*)\\}(.*)");
+            Matcher match = pattern.matcher(optionName);
+            if (match.find()) {
+                String alias = match.group(1);
+                String name = match.group(2);
+                optionName = alias + ":" + name;
+            }
             String optionValueString = remainder.substring(optionNameSep + 1);
             // TODO: See if QuotationTokenizer can be improved for multi-character delimiter.
             // or change the delimiter to a single char.
