@@ -87,7 +87,7 @@ public class BaseTestSuite extends ITestSuite {
         name = MODULE_ARG_OPTION,
         description =
                 "the arguments to pass to a module. The expected format is"
-                        + "\"<module-name>:<arg-name>:[<arg-key>:=]<arg-value>\"",
+                        + "\"<module-name>:[{alias}]<arg-name>:[<arg-key>:=]<arg-value>\"",
         importance = Importance.ALWAYS
     )
     private List<String> mModuleArgs = new ArrayList<>();
