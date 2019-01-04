@@ -19,6 +19,7 @@ import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
@@ -44,6 +45,7 @@ import java.io.IOException;
  * usually be tight with {@link SemaphoreTokenTargetPreparer} to avoid other tests from running at
  * the same time.
  */
+@OptionClass(alias = "adb-stop-server-preparer")
 public class AdbStopServerPreparer extends BaseTargetPreparer implements ITargetCleaner {
 
     public static final String ADB_BINARY_KEY = "adb_path";
