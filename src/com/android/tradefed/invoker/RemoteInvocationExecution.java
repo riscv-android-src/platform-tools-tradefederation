@@ -282,6 +282,8 @@ public class RemoteInvocationExecution extends InvocationExecution {
                     new RuntimeException(resultRemoteExecution.getStderr()));
             return;
         }
+        // Sleep a bit to let the process start
+        RunUtil.getDefault().sleep(10000L);
 
         // Monitor the remote invocation to ensure it's completing
         long maxTimeout = config.getCommandOptions().getInvocationTimeout();
@@ -302,7 +304,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                             "-ef",
                             "| grep",
                             Console.class.getCanonicalName());
-            CLog.d("ps -ef: stdout: %s\nstderr:\n", psRes.getStdout(), psRes.getStderr());
+            CLog.d("ps -ef: stdout: %s\nstderr: %s\n", psRes.getStdout(), psRes.getStderr());
             stillRunning = psRes.getStdout().contains(configFile.getName());
             CLog.d("still running: %s", stillRunning);
             if (endTime != null && System.currentTimeMillis() > endTime) {
