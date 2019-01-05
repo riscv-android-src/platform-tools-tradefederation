@@ -15,6 +15,10 @@
  */
 package com.android.tradefed.invoker;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
@@ -35,6 +39,7 @@ import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
+import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceAllocationState;
@@ -82,12 +87,14 @@ import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SystemUtil.EnvVariable;
-
-import junit.framework.Test;
-import junit.framework.TestCase;
+import com.android.tradefed.util.keystore.StubKeyStoreFactory;
 
 import org.easymock.Capture;
 import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.io.File;
@@ -104,7 +111,8 @@ import java.util.Set;
 
 /** Unit tests for {@link TestInvocation}. */
 @SuppressWarnings("MustBeClosedChecker")
-public class TestInvocationTest extends TestCase {
+@RunWith(JUnit4.class)
+public class TestInvocationTest {
 
     private static final String SERIAL = "serial";
     private static final Map<String, String> EMPTY_MAP = Collections.emptyMap();
@@ -126,6 +134,7 @@ public class TestInvocationTest extends TestCase {
 
     private IConfiguration mStubConfiguration;
     private IConfiguration mStubMultiConfiguration;
+    private IGlobalConfiguration mGlobalConfiguration;
 
     private IInvocationContext mStubInvocationMetadata;
 
@@ -145,12 +154,13 @@ public class TestInvocationTest extends TestCase {
     private IRescheduler mockRescheduler;
     private DeviceDescriptor mFakeDescriptor;
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    @Before
+    public void setUp() throws Exception {
 
         mStubConfiguration = new Configuration("foo", "bar");
         mStubMultiConfiguration = new Configuration("foo", "bar");
+
+        mGlobalConfiguration = EasyMock.createMock(IGlobalConfiguration.class);
 
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mMockRecovery = EasyMock.createMock(IDeviceRecovery.class);
@@ -242,7 +252,12 @@ public class TestInvocationTest extends TestCase {
                         return new InvocationExecution() {
                             @Override
                             protected IShardHelper createShardHelper() {
-                                return new ShardHelper();
+                                return new ShardHelper() {
+                                    @Override
+                                    protected IGlobalConfiguration getGlobalConfiguration() {
+                                        return mGlobalConfiguration;
+                                    }
+                                };
                             }
                         };
                     }
@@ -260,17 +275,12 @@ public class TestInvocationTest extends TestCase {
                 };
     }
 
-    @Override
-    protected void tearDown() throws Exception {
-      super.tearDown();
-
-    }
-
     /**
      * Test the normal case invoke scenario with a {@link IRemoteTest}.
-     * <p/>
-     * Verifies that all external interfaces get notified as expected.
+     *
+     * <p>Verifies that all external interfaces get notified as expected.
      */
+    @Test
     public void testInvoke_RemoteTest() throws Throwable {
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         setupMockSuccessListeners();
@@ -285,9 +295,10 @@ public class TestInvocationTest extends TestCase {
 
     /**
      * Test the normal case for multi invoke scenario with a {@link IRemoteTest}.
-     * <p/>
-     * Verifies that all external interfaces get notified as expected.
+     *
+     * <p>Verifies that all external interfaces get notified as expected.
      */
+    @Test
     public void testInvokeMulti_RemoteTest() throws Throwable {
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         setupMockSuccessListeners();
@@ -301,11 +312,12 @@ public class TestInvocationTest extends TestCase {
     }
 
     /**
-     * Test the normal case invoke scenario with an {@link ITestSummaryListener} masquerading as
-     * an {@link ITestInvocationListener}.
-     * <p/>
-     * Verifies that all external interfaces get notified as expected.
+     * Test the normal case invoke scenario with an {@link ITestSummaryListener} masquerading as an
+     * {@link ITestInvocationListener}.
+     *
+     * <p>Verifies that all external interfaces get notified as expected.
      */
+    @Test
     public void testInvoke_twoSummary() throws Throwable {
 
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
@@ -321,10 +333,11 @@ public class TestInvocationTest extends TestCase {
 
     /**
      * Test the invoke scenario where build retrieve fails.
-     * <p/>
-     * An invocation will be started in this scenario.
+     *
+     * <p>An invocation will be started in this scenario.
      */
-    public void testInvoke_buildFailed() throws Throwable  {
+    @Test
+    public void testInvoke_buildFailed() throws Throwable {
         BuildRetrievalError exception = new BuildRetrievalError("error", null, mMockBuildInfo);
         EasyMock.expect(mMockBuildProvider.getBuild()).andThrow(exception);
         EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn(null);
@@ -353,10 +366,9 @@ public class TestInvocationTest extends TestCase {
         assertEquals(expectedTestTag, mStubInvocationMetadata.getTestTag());
     }
 
-    /**
-     * Test the invoke scenario where there is no build to test.
-     */
-    public void testInvoke_noBuild() throws Throwable  {
+    /** Test the invoke scenario where there is no build to test. */
+    @Test
+    public void testInvoke_noBuild() throws Throwable {
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(null);
         setupInvoke();
         setupMockFailureListenersAny(new BuildRetrievalError("No build found to test."), true);
@@ -381,10 +393,9 @@ public class TestInvocationTest extends TestCase {
         stubBuild.cleanUp();
     }
 
-    /**
-     * Test the invoke scenario where there is no build to test for a {@link IRetriableTest}.
-     */
-    public void testInvoke_noBuildRetry() throws Throwable  {
+    /** Test the invoke scenario where there is no build to test for a {@link IRetriableTest}. */
+    @Test
+    public void testInvoke_noBuildRetry() throws Throwable {
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(null);
 
         IRetriableTest test = EasyMock.createMock(IRetriableTest.class);
@@ -420,9 +431,9 @@ public class TestInvocationTest extends TestCase {
 
     /**
      * Test the{@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
-     * ITestInvocationListener[])} scenario
-     * where the test is a {@link IDeviceTest}
+     * ITestInvocationListener[])} scenario where the test is a {@link IDeviceTest}
      */
+    @Test
     public void testInvoke_deviceTest() throws Throwable {
          DeviceConfigTest mockDeviceTest = EasyMock.createMock(DeviceConfigTest.class);
          mStubConfiguration.setTest(mockDeviceTest);
@@ -441,6 +452,7 @@ public class TestInvocationTest extends TestCase {
      *
      * @throws Exception if unexpected error occurs
      */
+    @Test
     public void testInvoke_testFail() throws Throwable {
         IllegalArgumentException exception = new IllegalArgumentException();
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
@@ -465,6 +477,7 @@ public class TestInvocationTest extends TestCase {
      *
      * @throws Exception if unexpected error occurs
      */
+    @Test
     public void testInvoke_fatalError() throws Throwable {
         FatalHostError exception = new FatalHostError("error");
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
@@ -489,6 +502,7 @@ public class TestInvocationTest extends TestCase {
      *
      * @throws Exception if unexpected error occurs
      */
+    @Test
     public void testInvoke_deviceNotAvail() throws Throwable {
         DeviceNotAvailableException exception = new DeviceNotAvailableException("ERROR", SERIAL);
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
@@ -515,6 +529,7 @@ public class TestInvocationTest extends TestCase {
      *
      * @throws Exception if unexpected error occurs
      */
+    @Test
     public void testInvoke_buildError() throws Throwable {
         BuildError exception = new BuildError("error", mFakeDescriptor);
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
@@ -538,6 +553,7 @@ public class TestInvocationTest extends TestCase {
      *
      * @throws Exception if unexpected error occurs
      */
+    @Test
     public void testInvoke_resume() throws Throwable {
         IResumableTest resumableTest = EasyMock.createMock(IResumableTest.class);
         mStubConfiguration.setTest(resumableTest);
@@ -700,6 +716,7 @@ public class TestInvocationTest extends TestCase {
      *
      * @throws Exception if unexpected error occurs
      */
+    @Test
     public void testInvoke_retry() throws Throwable {
         AssertionError exception = new AssertionError();
         IRetriableTest test = EasyMock.createMock(IRetriableTest.class);
@@ -720,9 +737,9 @@ public class TestInvocationTest extends TestCase {
 
     /**
      * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
-     * ITestInvocationListener[])} scenario
-     * when a {@link ITargetCleaner} is part of the config.
+     * ITestInvocationListener[])} scenario when a {@link ITargetCleaner} is part of the config.
      */
+    @Test
     public void testInvoke_tearDown() throws Throwable {
          IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
          ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
@@ -741,10 +758,10 @@ public class TestInvocationTest extends TestCase {
 
     /**
      * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
-     * ITestInvocationListener[])} scenario
-     * when a {@link ITargetCleaner} is part of the config, and the test throws a
-     * {@link DeviceNotAvailableException}.
+     * ITestInvocationListener[])} scenario when a {@link ITargetCleaner} is part of the config, and
+     * the test throws a {@link DeviceNotAvailableException}.
      */
+    @Test
     public void testInvoke_tearDown_deviceNotAvail() throws Throwable {
         DeviceNotAvailableException exception = new DeviceNotAvailableException("ERROR", SERIAL);
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
@@ -776,10 +793,10 @@ public class TestInvocationTest extends TestCase {
 
     /**
      * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
-     * ITestInvocationListener[])} scenario
-     * when a {@link ITargetCleaner} is part of the config, and the test throws a
-     * {@link RuntimeException}.
+     * ITestInvocationListener[])} scenario when a {@link ITargetCleaner} is part of the config, and
+     * the test throws a {@link RuntimeException}.
      */
+    @Test
     public void testInvoke_tearDown_runtime() throws Throwable {
         RuntimeException exception = new RuntimeException();
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
@@ -808,10 +825,10 @@ public class TestInvocationTest extends TestCase {
 
     /**
      * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
-     * ITestInvocationListener[])} scenario
-     * when there is {@link ITestInvocationListener} which implements the {@link ILogSaverListener}
-     * interface.
+     * ITestInvocationListener[])} scenario when there is {@link ITestInvocationListener} which
+     * implements the {@link ILogSaverListener} interface.
      */
+    @Test
     public void testInvoke_logFileSaved() throws Throwable {
         List<ITestInvocationListener> listenerList =
                 mStubConfiguration.getTestInvocationListeners();
@@ -878,9 +895,8 @@ public class TestInvocationTest extends TestCase {
         assertEquals(2, mUriCapture.getValue().size());
     }
 
-    /**
-     * Test the test-tag is set when the IBuildInfo's test-tag is not.
-     */
+    /** Test the test-tag is set when the IBuildInfo's test-tag is not. */
+    @Test
     public void testInvoke_testtag() throws Throwable {
         String[] commandLine = {"run", "empty"};
         mStubConfiguration.setCommandLine(commandLine);
@@ -914,6 +930,7 @@ public class TestInvocationTest extends TestCase {
      * Test the test-tag of the IBuildInfo is not modified when the CommandOption default test-tag
      * is not modified.
      */
+    @Test
     public void testInvoke_testtag_notset() throws Throwable {
         String[] commandLine = {"run", "empty"};
         mStubConfiguration.setCommandLine(commandLine);
@@ -939,9 +956,10 @@ public class TestInvocationTest extends TestCase {
     }
 
     /**
-     * Test the test-tag of the IBuildInfo is not set and Command Option is not set either.
-     * A default 'stub' test-tag is set to ensure reporting is done.
+     * Test the test-tag of the IBuildInfo is not set and Command Option is not set either. A
+     * default 'stub' test-tag is set to ensure reporting is done.
      */
+    @Test
     public void testInvoke_notesttag() throws Throwable {
         String[] commandLine = {"run", "empty"};
         mStubConfiguration.setCommandLine(commandLine);
@@ -975,9 +993,10 @@ public class TestInvocationTest extends TestCase {
     }
 
     /**
-     * Test the injection of test-tag from TestInvocation to the build provider via the
-     * {@link IInvocationContextReceiver}.
+     * Test the injection of test-tag from TestInvocation to the build provider via the {@link
+     * IInvocationContextReceiver}.
      */
+    @Test
     public void testInvoke_buildProviderNeedTestTag() throws Throwable {
         final String testTag = "THISISTHETAG";
         String[] commandLine = {"run", "empty"};
@@ -1202,6 +1221,7 @@ public class TestInvocationTest extends TestCase {
      * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
      * ITestInvocationListener[])} scenario with {@link IShardableTest}.
      */
+    @Test
     public void testInvoke_shardableTest_legacy() throws Throwable {
         String command = "empty --test-tag t";
         String[] commandLine = {"empty", "--test-tag", "t"};
@@ -1216,18 +1236,23 @@ public class TestInvocationTest extends TestCase {
         mStubConfiguration.setTest(test);
         mStubConfiguration.setCommandLine(commandLine);
         mMockBuildProvider.cleanUp(mMockBuildInfo);
+        // The keystore is cloned for each shard.
+        EasyMock.expect(mGlobalConfiguration.getKeyStoreFactory())
+                .andReturn(new StubKeyStoreFactory())
+                .times(2);
         setupInvoke();
         setupNShardInvocation(shardCount, command);
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
-        replayMocks(test, mockRescheduler, shard1, shard2);
+        replayMocks(test, mockRescheduler, shard1, shard2, mGlobalConfiguration);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
-        verifyMocks(test, mockRescheduler, shard1, shard2);
+        verifyMocks(test, mockRescheduler, shard1, shard2, mGlobalConfiguration);
     }
 
     /**
      * Test that {@link TestInvocation#logDeviceBatteryLevel(IInvocationContext, String)} is not
      * adding battery information for placeholder device.
      */
+    @Test
     public void testLogDeviceBatteryLevel_placeholderDevice() {
         final String fakeEvent = "event";
         IInvocationContext context = new InvocationContext();
@@ -1244,6 +1269,7 @@ public class TestInvocationTest extends TestCase {
      * Test that {@link TestInvocation#logDeviceBatteryLevel(IInvocationContext, String)} is adding
      * battery information for physical real device.
      */
+    @Test
     public void testLogDeviceBatteryLevel_physicalDevice() {
         final String fakeEvent = "event";
         IInvocationContext context = new InvocationContext();
@@ -1268,6 +1294,7 @@ public class TestInvocationTest extends TestCase {
      * Test that {@link TestInvocation#logDeviceBatteryLevel(IInvocationContext, String)} is adding
      * battery information for multiple physical real device.
      */
+    @Test
     public void testLogDeviceBatteryLevel_physicalDevice_multi() {
         final String fakeEvent = "event";
         IInvocationContext context = new InvocationContext();
@@ -1306,6 +1333,7 @@ public class TestInvocationTest extends TestCase {
      * Test that {@link TestInvocation#logDeviceBatteryLevel(IInvocationContext, String)} is adding
      * battery information for multiple physical real device, and ignore stub device if any.
      */
+    @Test
     public void testLogDeviceBatteryLevel_physicalDevice_stub_multi() {
         final String fakeEvent = "event";
         IInvocationContext context = new InvocationContext();
@@ -1426,6 +1454,7 @@ public class TestInvocationTest extends TestCase {
      * Test {@link INativeDevice#preInvocationSetup(IBuildInfo, List)} is called when command option
      * skip-pre-device-setup is not set.
      */
+    @Test
     public void testNotSkipPreDeviceSetup() throws Throwable {
         IInvocationContext context = new InvocationContext();
         ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
@@ -1460,6 +1489,7 @@ public class TestInvocationTest extends TestCase {
      * Test {@link INativeDevice#preInvocationSetup(IBuildInfo info)} is not called when command
      * option skip-pre-device-setup is set.
      */
+    @Test
     public void testSkipPreDeviceSetup() throws Throwable {
         IInvocationContext context = new InvocationContext();
         ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
@@ -1494,6 +1524,7 @@ public class TestInvocationTest extends TestCase {
      * Test when a {@link IDeviceBuildInfo} is passing through we do not attempt to add any external
      * directories when there is none coming from environment.
      */
+    @Test
     public void testInvoke_deviceInfoBuild_noEnv() throws Throwable {
         mTestInvocation =
                 new TestInvocation() {
@@ -1562,6 +1593,7 @@ public class TestInvocationTest extends TestCase {
      * Test when a {@link IDeviceBuildInfo} is passing through we attempt to add the external
      * directories to it when they are available.
      */
+    @Test
     public void testInvoke_deviceInfoBuild_withEnv() throws Throwable {
         File tmpTestsDir = FileUtil.createTempDir("invocation-tests-dir");
         File tmpExternalTestsDir = FileUtil.createTempDir("external-tf-dir");
@@ -1651,6 +1683,7 @@ public class TestInvocationTest extends TestCase {
      * Test when a {@link IDeviceBuildInfo} is passing through we do not attempt to add the external
      * directories to it, since {@link BuildInfoProperties} is set to skip the linking.
      */
+    @Test
     public void testInvoke_deviceInfoBuild_withEnv_andSkipProperty() throws Throwable {
         File tmpTestsDir = FileUtil.createTempDir("invocation-tests-dir");
         File tmpExternalTestsDir = FileUtil.createTempDir("external-tf-dir");
@@ -1745,6 +1778,7 @@ public class TestInvocationTest extends TestCase {
      * Test that when {@link IMetricCollector} are used, they wrap and call in sequence the listener
      * so all metrics end up on the final receiver.
      */
+    @Test
     public void testMetricCollectionChain() throws Throwable {
         IConfiguration configuration = new Configuration("test", "description");
         StubTest test = new StubTest();
@@ -1785,6 +1819,7 @@ public class TestInvocationTest extends TestCase {
      * Test that when a device collector is disabled, it will not be part of the initialization and
      * the collector chain.
      */
+    @Test
     public void testMetricCollectionChain_disabled() throws Throwable {
         IConfiguration configuration = new Configuration("test", "description");
         StubTest test = new StubTest();
@@ -1843,6 +1878,7 @@ public class TestInvocationTest extends TestCase {
     }
 
     /** Ensure post processors are called in order. */
+    @Test
     public void testProcessorCollectionChain() throws Throwable {
         mMockTestListener = EasyMock.createMock(ITestInvocationListener.class);
         List<ITestInvocationListener> listenerList = new ArrayList<ITestInvocationListener>(1);
