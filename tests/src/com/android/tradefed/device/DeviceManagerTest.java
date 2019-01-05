@@ -16,6 +16,13 @@
 
 package com.android.tradefed.device;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import com.android.ddmlib.AndroidDebugBridge.IDeviceChangeListener;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
@@ -30,11 +37,13 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
-import junit.framework.TestCase;
-
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -44,10 +53,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 
-/**
- * Unit tests for {@link DeviceManager}.
- */
-public class DeviceManagerTest extends TestCase {
+/** Unit tests for {@link DeviceManager}. */
+@RunWith(JUnit4.class)
+public class DeviceManagerTest {
 
     private static final String DEVICE_SERIAL = "serial";
     private static final String MAC_ADDRESS = "FF:FF:FF:FF:FF:FF";
@@ -121,12 +129,8 @@ public class DeviceManagerTest extends TestCase {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    @Before
+    public void setUp() throws Exception {
         mMockAdbBridge = EasyMock.createNiceMock(IAndroidDebugBridge.class);
         mMockAdbBridge.addDeviceChangeListener((IDeviceChangeListener) EasyMock.anyObject());
         EasyMock.expectLastCall()
@@ -289,6 +293,7 @@ public class DeviceManagerTest extends TestCase {
      * Test @link DeviceManager#allocateDevice()} when a IDevice is present on DeviceManager
      * creation.
      */
+    @Test
     public void testAllocateDevice() {
         setCheckAvailableDeviceExpectations();
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))
@@ -303,6 +308,7 @@ public class DeviceManagerTest extends TestCase {
     /**
      * Test {@link DeviceManager#allocateDevice(IDeviceSelection, boolean)} when device is returned.
      */
+    @Test
     public void testAllocateDevice_match() {
         mDeviceSelections.addSerial(DEVICE_SERIAL);
         setCheckAvailableDeviceExpectations();
@@ -317,6 +323,7 @@ public class DeviceManagerTest extends TestCase {
     /**
      * Test that when allocating a fake device we create a placeholder then delete it at the end.
      */
+    @Test
     public void testAllocateDevice_match_temporary() {
         mDeviceSelections.setNullDeviceRequested(true);
         mDeviceSelections.addSerial(DEVICE_SERIAL);
@@ -353,8 +360,9 @@ public class DeviceManagerTest extends TestCase {
 
     /**
      * Test {@link DeviceManager#allocateDevice(IDeviceSelection, boolean)} when stub emulator is
-     * requested
+     * requested.
      */
+    @Test
     public void testAllocateDevice_stubEmulator() {
         mDeviceSelections.setStubEmulatorRequested(true);
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FORCE_AVAILABLE))
@@ -370,9 +378,8 @@ public class DeviceManagerTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Test freeing an emulator
-     */
+    /** Test freeing an emulator */
+    @Test
     public void testFreeDevice_emulator() {
         mDeviceSelections.setStubEmulatorRequested(true);
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FORCE_AVAILABLE))
@@ -408,6 +415,7 @@ public class DeviceManagerTest extends TestCase {
      * Test {@link DeviceManager#allocateDevice(IDeviceSelection, boolean)} when a null device is
      * requested.
      */
+    @Test
     public void testAllocateDevice_nullDevice() {
         mDeviceSelections.setNullDeviceRequested(true);
         EasyMock.expect(mMockIDevice.isEmulator()).andStubReturn(Boolean.FALSE);
@@ -429,6 +437,7 @@ public class DeviceManagerTest extends TestCase {
      * Test that DeviceManager will add devices on fastboot to available queue on startup, and that
      * they can be allocated.
      */
+    @Test
     public void testAllocateDevice_fastboot() {
         EasyMock.reset(mMockRunUtil);
         // mock 'fastboot help' call
@@ -455,9 +464,8 @@ public class DeviceManagerTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Test {@link DeviceManager#forceAllocateDevice(String)} when device is unknown
-     */
+    /** Test {@link DeviceManager#forceAllocateDevice(String)} when device is unknown */
+    @Test
     public void testForceAllocateDevice() {
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FORCE_ALLOCATE_REQUEST))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
@@ -467,9 +475,8 @@ public class DeviceManagerTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Test {@link DeviceManager#forceAllocateDevice(String)} when device is available
-     */
+    /** Test {@link DeviceManager#forceAllocateDevice(String)} when device is available */
+    @Test
     public void testForceAllocateDevice_available() {
         setCheckAvailableDeviceExpectations();
         EasyMock.expect(mMockTestDevice.getAllocationState())
@@ -482,9 +489,8 @@ public class DeviceManagerTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Test {@link DeviceManager#forceAllocateDevice(String)} when device is already allocated
-     */
+    /** Test {@link DeviceManager#forceAllocateDevice(String)} when device is already allocated */
+    @Test
     public void testForceAllocateDevice_alreadyAllocated() {
         setCheckAvailableDeviceExpectations();
         EasyMock.expect(mMockTestDevice.getAllocationState())
@@ -500,9 +506,8 @@ public class DeviceManagerTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Test method for {@link DeviceManager#freeDevice(ITestDevice, FreeDeviceState)}.
-     */
+    /** Test method for {@link DeviceManager#freeDevice(ITestDevice, FreeDeviceState)}. */
+    @Test
     public void testFreeDevice() {
         setCheckAvailableDeviceExpectations();
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))
@@ -519,9 +524,10 @@ public class DeviceManagerTest extends TestCase {
     }
 
     /**
-     * Verified that {@link DeviceManager#freeDevice(ITestDevice, FreeDeviceState)}
-     * ignores a call with a device that has not been allocated.
+     * Verified that {@link DeviceManager#freeDevice(ITestDevice, FreeDeviceState)} ignores a call
+     * with a device that has not been allocated.
      */
+    @Test
     public void testFreeDevice_noop() {
         setCheckAvailableDeviceExpectations();
         IManagedTestDevice testDevice = EasyMock.createNiceMock(IManagedTestDevice.class);
@@ -539,6 +545,7 @@ public class DeviceManagerTest extends TestCase {
      * Verified that {@link DeviceManager} calls {@link IManagedTestDevice#setIDevice(IDevice)} when
      * DDMS allocates a new IDevice on connection.
      */
+    @Test
     public void testSetIDevice() {
         setCheckAvailableDeviceExpectations();
         EasyMock.expect(mMockTestDevice.getAllocationState())
@@ -569,6 +576,7 @@ public class DeviceManagerTest extends TestCase {
      * Test {@link DeviceManager#allocateDevice()} when {@link DeviceManager#init()} has not been
      * called.
      */
+    @Test
     public void testAllocateDevice_noInit() {
         try {
             createDeviceManagerNoInit().allocateDevice(mDeviceSelections);
@@ -578,10 +586,8 @@ public class DeviceManagerTest extends TestCase {
         }
     }
 
-    /**
-     * Test {@link DeviceManager#init(IDeviceSelection, List)}
-     * with a global exclusion filter
-     */
+    /** Test {@link DeviceManager#init(IDeviceSelection, List)} with a global exclusion filter */
+    @Test
     public void testInit_excludeDevice() throws Exception {
         EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
         mMockTestDevice.setDeviceState(TestDeviceState.ONLINE);
@@ -605,9 +611,8 @@ public class DeviceManagerTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Test {@link DeviceManager#init(IDeviceSelection, List)} with a global inclusion filter
-     */
+    /** Test {@link DeviceManager#init(IDeviceSelection, List)} with a global inclusion filter */
+    @Test
     public void testInit_includeDevice() throws Exception {
         IDevice excludedDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(excludedDevice.getSerialNumber()).andStubReturn("excluded");
@@ -634,9 +639,8 @@ public class DeviceManagerTest extends TestCase {
         verifyMocks(excludedDevice);
     }
 
-    /**
-     * Verified that a disconnected device state gets updated
-     */
+    /** Verified that a disconnected device state gets updated */
+    @Test
     public void testSetState_disconnected() {
         setCheckAvailableDeviceExpectations();
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))
@@ -651,9 +655,8 @@ public class DeviceManagerTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Verified that a offline device state gets updated
-     */
+    /** Verified that a offline device state gets updated */
+    @Test
     public void testSetState_offline() {
         setCheckAvailableDeviceExpectations();
         EasyMock.expect(mMockTestDevice.getAllocationState())
@@ -676,9 +679,8 @@ public class DeviceManagerTest extends TestCase {
 
     // TODO: add test for fastboot state changes
 
-    /**
-     * Test normal success case for {@link DeviceManager#connectToTcpDevice(String)}
-     */
+    /** Test normal success case for {@link DeviceManager#connectToTcpDevice(String)} */
+    @Test
     public void testConnectToTcpDevice() throws Exception {
         final String ipAndPort = "ip:5555";
         setConnectToTcpDeviceExpectations(ipAndPort);
@@ -694,6 +696,7 @@ public class DeviceManagerTest extends TestCase {
      * Test a {@link DeviceManager#connectToTcpDevice(String)} call where device is already
      * allocated
      */
+    @Test
     public void testConnectToTcpDevice_alreadyAllocated() throws Exception {
         final String ipAndPort = "ip:5555";
         setConnectToTcpDeviceExpectations(ipAndPort);
@@ -711,9 +714,8 @@ public class DeviceManagerTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Test {@link DeviceManager#connectToTcpDevice(String)} where device does not appear on adb
-     */
+    /** Test {@link DeviceManager#connectToTcpDevice(String)} where device does not appear on adb */
+    @Test
     public void testConnectToTcpDevice_notOnline() throws Exception {
         final String ipAndPort = "ip:5555";
         setConnectToTcpDeviceExpectations(ipAndPort);
@@ -730,9 +732,8 @@ public class DeviceManagerTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Test {@link DeviceManager#connectToTcpDevice(String)} where the 'adb connect' call fails.
-     */
+    /** Test {@link DeviceManager#connectToTcpDevice(String)} where the 'adb connect' call fails. */
+    @Test
     public void testConnectToTcpDevice_connectFailed() throws Exception {
         final String ipAndPort = "ip:5555";
 
@@ -759,9 +760,8 @@ public class DeviceManagerTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Test normal success case for {@link DeviceManager#disconnectFromTcpDevice(ITestDevice)}
-     */
+    /** Test normal success case for {@link DeviceManager#disconnectFromTcpDevice(ITestDevice)} */
+    @Test
     public void testDisconnectFromTcpDevice() throws Exception {
         final String ipAndPort = "ip:5555";
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FREE_UNKNOWN)).andReturn(
@@ -779,9 +779,8 @@ public class DeviceManagerTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Test normal success case for {@link DeviceManager#reconnectDeviceToTcp(ITestDevice)}.
-     */
+    /** Test normal success case for {@link DeviceManager#reconnectDeviceToTcp(ITestDevice)}. */
+    @Test
     public void testReconnectDeviceToTcp() throws Exception {
         final String ipAndPort = "ip:5555";
         // use the mMockTestDevice as the initially connected to usb device
@@ -802,6 +801,7 @@ public class DeviceManagerTest extends TestCase {
      * Test {@link DeviceManager#reconnectDeviceToTcp(ITestDevice)} when tcp connected device does
      * not come online.
      */
+    @Test
     public void testReconnectDeviceToTcp_notOnline() throws Exception {
         final String ipAndPort = "ip:5555";
         // use the mMockTestDevice as the initially connected to usb device
@@ -826,9 +826,8 @@ public class DeviceManagerTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Basic test for {@link DeviceManager#sortDeviceList(List)}
-     */
+    /** Basic test for {@link DeviceManager#sortDeviceList(List)} */
+    @Test
     public void testSortDeviceList() {
         DeviceDescriptor availDevice1 = createDeviceDesc("aaa", DeviceAllocationState.Available);
         DeviceDescriptor availDevice2 = createDeviceDesc("bbb", DeviceAllocationState.Available);
@@ -916,9 +915,8 @@ public class DeviceManagerTest extends TestCase {
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Available, true));
     }
 
-    /**
-     * Test freeing a tcp device, it must return to an unavailable status
-     */
+    /** Test freeing a tcp device, it must return to an unavailable status */
+    @Test
     public void testFreeDevice_tcpDevice() {
         mDeviceSelections.setTcpDeviceRequested(true);
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FORCE_AVAILABLE))
@@ -955,6 +953,7 @@ public class DeviceManagerTest extends TestCase {
      * Test freeing a device that was unable but showing in adb devices. Device will become
      * Unavailable but still seen by the DeviceManager.
      */
+    @Test
     public void testFreeDevice_unavailable() {
         EasyMock.expect(mMockIDevice.isEmulator()).andStubReturn(Boolean.FALSE);
         EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
@@ -1018,6 +1017,7 @@ public class DeviceManagerTest extends TestCase {
      * Test that when freeing an Unavailable device that is not in 'adb devices' we correctly remove
      * it from our tracking list.
      */
+    @Test
     public void testFreeDevice_unknown() {
         EasyMock.expect(mMockIDevice.isEmulator()).andStubReturn(Boolean.FALSE);
         EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
@@ -1082,6 +1082,7 @@ public class DeviceManagerTest extends TestCase {
      * Test that when freeing an Unavailable device that is not in 'adb devices' we correctly remove
      * it from our tracking list even if its serial is a substring of another serial.
      */
+    @Test
     public void testFreeDevice_unknown_subName() {
         EasyMock.expect(mMockIDevice.isEmulator()).andStubReturn(Boolean.FALSE);
         EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
@@ -1165,9 +1166,8 @@ public class DeviceManagerTest extends TestCase {
         EasyMock.expect(mMockTestDevice.getDeviceDescriptor()).andReturn(descriptor);
     }
 
-    /**
-     * Test that {@link DeviceManager#listAllDevices()} returns a list with all devices.
-     */
+    /** Test that {@link DeviceManager#listAllDevices()} returns a list with all devices. */
+    @Test
     public void testListAllDevices() throws Exception {
         setCheckAvailableDeviceExpectations();
         setDeviceDescriptorExpectation();
@@ -1186,6 +1186,7 @@ public class DeviceManagerTest extends TestCase {
      * Test {@link DeviceManager#getDeviceDescriptor(String)} returns the device with the given
      * serial.
      */
+    @Test
     public void testGetDeviceDescriptor() throws Exception {
         setCheckAvailableDeviceExpectations();
         setDeviceDescriptorExpectation();
@@ -1203,6 +1204,7 @@ public class DeviceManagerTest extends TestCase {
      * Test that {@link DeviceManager#getDeviceDescriptor(String)} returns null if there are no
      * devices with the given serial.
      */
+    @Test
     public void testGetDeviceDescriptor_noMatch() throws Exception {
         setCheckAvailableDeviceExpectations();
         replayMocks();
@@ -1216,6 +1218,7 @@ public class DeviceManagerTest extends TestCase {
      * Test that {@link DeviceManager#displayDevicesInfo(PrintWriter, boolean)} properly print out
      * the device info.
      */
+    @Test
     public void testDisplayDevicesInfo() throws Exception {
         setCheckAvailableDeviceExpectations();
         setDeviceDescriptorExpectation();
@@ -1235,6 +1238,7 @@ public class DeviceManagerTest extends TestCase {
      * Test that {@link DeviceManager#shouldAdbBridgeBeRestarted()} properly reports the flag state
      * based on if it was requested or not.
      */
+    @Test
     public void testAdbBridgeFlag() throws Exception {
         setCheckAvailableDeviceExpectations();
         replayMocks();
@@ -1253,6 +1257,7 @@ public class DeviceManagerTest extends TestCase {
      * Test that when a {@link IDeviceMonitor} is available in {@link DeviceManager} it properly
      * goes through its life cycle.
      */
+    @Test
     public void testDeviceMonitorLifeCycle() throws Exception {
         IDeviceMonitor mockMonitor = EasyMock.createMock(IDeviceMonitor.class);
         List<IDeviceMonitor> monitors = new ArrayList<>();
@@ -1270,6 +1275,7 @@ public class DeviceManagerTest extends TestCase {
     }
 
     /** Ensure that restarting adb bridge doesn't restart {@link IDeviceMonitor}. */
+    @Test
     public void testDeviceMonitorLifeCycleWhenAdbRestarts() throws Exception {
         IDeviceMonitor mockMonitor = EasyMock.createMock(IDeviceMonitor.class);
         List<IDeviceMonitor> monitors = new ArrayList<>();
@@ -1289,6 +1295,7 @@ public class DeviceManagerTest extends TestCase {
     }
 
     /** Ensure that the flasher instance limiting machinery is working as expected. */
+    @Test
     public void testFlashLimit() throws Exception {
         setCheckAvailableDeviceExpectations();
         replayMocks();
@@ -1310,12 +1317,12 @@ public class DeviceManagerTest extends TestCase {
             assertFalse(manager.getConcurrentFlashLock().hasQueuedThreads());
 
             waiter.start();
-            RunUtil.getDefault().sleep(100);  // Thread start should take <100ms
+            RunUtil.getDefault().sleep(200); // Thread start should take <200ms
             assertTrue("Invalid state: waiter thread is not alive", waiter.isAlive());
             assertTrue("No queued threads", manager.getConcurrentFlashLock().hasQueuedThreads());
 
             manager.returnFlashingPermit();
-            RunUtil.getDefault().sleep(100);  // Thread start should take <100ms
+            RunUtil.getDefault().sleep(200); // Thread start should take <200ms
             assertFalse("Unexpected queued threads",
                     manager.getConcurrentFlashLock().hasQueuedThreads());
 
@@ -1328,6 +1335,7 @@ public class DeviceManagerTest extends TestCase {
     }
 
     /** Ensure that the flasher limiting respects {@link IHostOptions}. */
+    @Test
     public void testFlashLimit_withHostOptions() throws Exception {
         setCheckAvailableDeviceExpectations();
         replayMocks();
@@ -1366,6 +1374,7 @@ public class DeviceManagerTest extends TestCase {
     }
 
     /** Ensure that the flasher instance limiting machinery is working as expected. */
+    @Test
     public void testUnlimitedFlashLimit() throws Exception {
         setCheckAvailableDeviceExpectations();
         replayMocks();
