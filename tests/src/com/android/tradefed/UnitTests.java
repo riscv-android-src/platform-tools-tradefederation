@@ -79,6 +79,7 @@ import com.android.tradefed.device.cloud.RemoteFileUtilTest;
 import com.android.tradefed.device.helper.TelephonyHelperTest;
 import com.android.tradefed.device.metric.AtraceCollectorTest;
 import com.android.tradefed.device.metric.AtraceRunMetricCollectorTest;
+import com.android.tradefed.device.metric.AutoLogCollectorTest;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.BuddyInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.BugreportzMetricCollectorTest;
@@ -422,6 +423,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // device.metric
     AtraceCollectorTest.class,
     AtraceRunMetricCollectorTest.class,
+    AutoLogCollectorTest.class,
     BaseDeviceMetricCollectorTest.class,
     BuddyInfoMetricCollectorTest.class,
     BugreportzMetricCollectorTest.class,
