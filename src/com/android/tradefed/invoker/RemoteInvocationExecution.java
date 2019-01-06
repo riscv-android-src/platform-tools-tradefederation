@@ -113,7 +113,10 @@ public class RemoteInvocationExecution extends InvocationExecution {
             listener.invocationFailed(new RuntimeException("Failed to find $TF_JAR_DIR."));
             return;
         }
-        File currentTf = new File(tfPath + "/");
+        File currentTf = new File(tfPath).getAbsoluteFile();
+        if (tfPath.equals(".")) {
+            currentTf = new File("").getAbsoluteFile();
+        }
         mRemoteTradefedDir = mainRemoteDir + "tradefed/";
         CommandResult createRemoteDir =
                 GceManager.remoteSshCommandExecution(
@@ -138,6 +141,12 @@ public class RemoteInvocationExecution extends InvocationExecution {
             return;
         }
 
+        mRemoteTradefedDir = mRemoteTradefedDir + currentTf.getName() + "/";
+        CommandResult listRemoteDir =
+                GceManager.remoteSshCommandExecution(
+                        info, options, runUtil, 120000L, "ls", "-l", mRemoteTradefedDir);
+        CLog.d("stdout: %s", listRemoteDir.getStdout());
+        CLog.d("stderr: %s", listRemoteDir.getStderr());
         mRemoteFinalResult = mRemoteTradefedDir + PROTO_RESULT_NAME;
 
         // Setup the remote reporting to a proto file
@@ -273,6 +282,8 @@ public class RemoteInvocationExecution extends InvocationExecution {
                     new RuntimeException(resultRemoteExecution.getStderr()));
             return;
         }
+        // Sleep a bit to let the process start
+        RunUtil.getDefault().sleep(10000L);
 
         // Monitor the remote invocation to ensure it's completing
         long maxTimeout = config.getCommandOptions().getInvocationTimeout();
@@ -293,7 +304,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                             "-ef",
                             "| grep",
                             Console.class.getCanonicalName());
-            CLog.d("ps -ef: stdout: %s\nstderr:\n", psRes.getStdout(), psRes.getStderr());
+            CLog.d("ps -ef: stdout: %s\nstderr: %s\n", psRes.getStdout(), psRes.getStderr());
             stillRunning = psRes.getStdout().contains(configFile.getName());
             CLog.d("still running: %s", stillRunning);
             if (endTime != null && System.currentTimeMillis() > endTime) {

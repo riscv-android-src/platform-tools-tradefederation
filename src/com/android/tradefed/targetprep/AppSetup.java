@@ -61,14 +61,6 @@ public class AppSetup extends BaseTargetPreparer implements ITargetCleaner {
             "force retention of this package when --uninstall-all is set.")
     private Set<String> mSkipUninstallPkgs = new HashSet<String>();
 
-    /** @deprecated Use "install-arg" instead. */
-    @Deprecated
-    @Option(
-        name = "install-flag",
-        description = "optional flag(s) to provide when installing apks."
-    )
-    private ArrayList<String> mInstallFlags = new ArrayList<>();
-
     @Option(name = "install-arg", description = "optional flag(s) to provide when installing apks.")
     private ArrayList<String> mInstallArgs = new ArrayList<>();
 
@@ -128,7 +120,6 @@ public class AppSetup extends BaseTargetPreparer implements ITargetCleaner {
                     }
                 }
                 List<String> args = new ArrayList<>(mInstallArgs);
-                args.addAll(mInstallFlags);
                 String result =
                         device.installPackage(
                                 apkFile.getFile(), true, args.toArray(new String[args.size()]));
