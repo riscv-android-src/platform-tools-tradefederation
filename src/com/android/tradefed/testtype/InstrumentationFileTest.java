@@ -84,6 +84,7 @@ class InstrumentationFileTest implements IRemoteTest {
         mInstrumentationTest.setReRunUsingTestFile(true);
         // no need to rerun when executing tests one by one
         mInstrumentationTest.setRerunMode(false);
+        mInstrumentationTest.setIsRerun(true);
         // keep local copy of tests to be run
         mTests = testsToRun;
         mAttemps = 0;

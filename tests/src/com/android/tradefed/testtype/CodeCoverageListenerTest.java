@@ -16,6 +16,10 @@
 
 package com.android.tradefed.testtype;
 
+import static com.android.tradefed.testtype.CodeCoverageListener.MERGE_COVERAGE_MEASUREMENTS_TEST_NAME;
+
+import static com.google.common.truth.Truth.assertThat;
+
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -35,27 +39,37 @@ import com.android.tradefed.util.proto.TfMetricProtoUtil;
 import com.google.common.base.VerifyException;
 import com.google.protobuf.ByteString;
 
+import org.jacoco.core.tools.ExecFileLoader;
+import org.jacoco.core.data.ExecutionData;
+import org.jacoco.core.data.ExecutionDataStore;
+import org.jacoco.core.data.ExecutionDataWriter;
+import org.jacoco.core.internal.data.CRC64;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 /** Unit tests for {@link CodeCoverageListener}. */
 @RunWith(JUnit4.class)
 public class CodeCoverageListenerTest {
+
+    private static final int PROBE_COUNT = 10;
 
     private static final String RUN_NAME = "SomeTest";
     private static final int TEST_COUNT = 5;
@@ -78,7 +92,7 @@ public class CodeCoverageListenerTest {
     public void setUp() {
         MockitoAnnotations.initMocks(this);
 
-        mCodeCoverageListener = new CodeCoverageListener(mMockDevice, mFakeListener);
+        mCodeCoverageListener = new CodeCoverageListener(mMockDevice, false, mFakeListener);
     }
 
     @Test
@@ -137,6 +151,101 @@ public class CodeCoverageListenerTest {
                 .testLog(anyString(), eq(LogDataType.COVERAGE), any(InputStreamSource.class));
     }
 
+    @Test
+    public void testMerge_producesSingleMeasurement()
+            throws DeviceNotAvailableException, IOException {
+        // Setup mocks.
+        File coverageFile1 = folder.newFile("coverage1.ec");
+        try (OutputStream out = new FileOutputStream(coverageFile1)) {
+            ByteString measurement = measurement(fullyCovered(CodeCoverageListener.class));
+            measurement.writeTo(out);
+        }
+
+        File coverageFile2 = folder.newFile("coverage2.ec");
+        try (OutputStream out = new FileOutputStream(coverageFile2)) {
+            ByteString measurement =
+                    measurement(
+                            partiallyCovered(CodeCoverageListener.class),
+                            partiallyCovered(CodeCoverageListenerTest.class));
+            measurement.writeTo(out);
+        }
+
+        mCodeCoverageListener = new CodeCoverageListener(mMockDevice, true, mFakeListener);
+
+        Map<String, String> metric = new HashMap<>();
+        metric.put("coverageFilePath", DEVICE_PATH);
+
+        // Simulate a test run.
+        doReturn(coverageFile1).doReturn(coverageFile2).when(mMockDevice).pullFile(DEVICE_PATH);
+
+        mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
+        mCodeCoverageListener.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
+        mCodeCoverageListener.testRunStarted(RUN_NAME + "2", TEST_COUNT);
+        mCodeCoverageListener.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
+        mCodeCoverageListener.testRunStarted(MERGE_COVERAGE_MEASUREMENTS_TEST_NAME, TEST_COUNT);
+        mCodeCoverageListener.testRunEnded(ELAPSED_TIME, new HashMap<String, Metric>());
+
+        // Capture the merged coverage measurements that were passed to the fake listener.
+        ArgumentCaptor<ByteString> stream = ArgumentCaptor.forClass(ByteString.class);
+        verify(mFakeListener).testLog(anyString(), eq(LogDataType.COVERAGE), stream.capture());
+
+        // Check the contents of the merged file.
+        ExecFileLoader execLoader = new ExecFileLoader();
+        execLoader.load(stream.getValue().newInput());
+
+        ExecutionDataStore execData = execLoader.getExecutionDataStore();
+        boolean[] fullyCovered = new boolean[PROBE_COUNT];
+        Arrays.fill(fullyCovered, Boolean.TRUE);
+
+        assertThat(execData.contains(vmName(CodeCoverageListener.class))).isTrue();
+        assertThat(getProbes(CodeCoverageListener.class, execData)).isEqualTo(fullyCovered);
+
+        boolean[] partiallyCovered = new boolean[PROBE_COUNT];
+        partiallyCovered[0] = true;
+        assertThat(execData.contains(vmName(CodeCoverageListenerTest.class))).isTrue();
+        assertThat(getProbes(CodeCoverageListenerTest.class, execData)).isEqualTo(partiallyCovered);
+    }
+
+    private static <T> String vmName(Class<T> clazz) {
+        return clazz.getName().replace('.', '/');
+    }
+
+    private static <T> ExecutionData fullyCovered(Class<T> clazz) throws IOException {
+        boolean[] probes = new boolean[PROBE_COUNT];
+        Arrays.fill(probes, Boolean.TRUE);
+        return new ExecutionData(classId(clazz), vmName(clazz), probes);
+    }
+
+    private static <T> ExecutionData partiallyCovered(Class<T> clazz) throws IOException {
+        boolean[] probes = new boolean[PROBE_COUNT];
+        probes[0] = true;
+        return new ExecutionData(classId(clazz), vmName(clazz), probes);
+    }
+
+    private static <T> long classId(Class<T> clazz) throws IOException {
+        return Long.valueOf(CRC64.classId(classBytes(clazz).toByteArray()));
+    }
+
+    private static <T> ByteString classBytes(Class<T> clazz) throws IOException {
+        return ByteString.readFrom(
+                clazz.getClassLoader().getResourceAsStream(vmName(clazz) + ".class"));
+    }
+
+    private static ByteString measurement(ExecutionData... data) throws IOException {
+        ExecutionDataStore dataStore = new ExecutionDataStore();
+        Arrays.stream(data).forEach(dataStore::put);
+
+        try (ByteArrayOutputStream bytes = new ByteArrayOutputStream()) {
+            dataStore.accept(new ExecutionDataWriter(bytes));
+            return ByteString.copyFrom(bytes.toByteArray());
+        }
+    }
+
+    private static <T> boolean[] getProbes(Class<T> clazz, ExecutionDataStore execData)
+            throws IOException {
+        return execData.get(classId(clazz), vmName(clazz), PROBE_COUNT).getProbes();
+    }
+
     /** An {@link ITestInvocationListener} which reads test log data streams for verification. */
     private static class LogFileReader implements ITestInvocationListener {
         /**
@@ -156,3 +265,4 @@ public class CodeCoverageListenerTest {
         public void testLog(String dataName, LogDataType dataType, ByteString data) {}
     }
 }
+
