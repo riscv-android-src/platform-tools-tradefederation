@@ -43,7 +43,7 @@ import result_reporter
 import test_runner_handler
 from test_runners import regression_test_runner
 # TODO: Delete SEND_CC_LOG and try/except when no proto ImportError happened.
-SEND_CC_LOG = True
+SEND_CC_LOG = False
 try:
     from metrics import metrics
     from metrics import metrics_utils
