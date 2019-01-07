@@ -75,6 +75,7 @@ class InstrumentationSerialTest implements IRemoteTest {
         runner.setReRunUsingTestFile(false);
         // no need to rerun when executing tests one by one
         runner.setRerunMode(false);
+        runner.setIsRerun(true);
         return runner;
     }
 
