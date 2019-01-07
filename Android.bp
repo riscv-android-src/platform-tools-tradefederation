@@ -91,7 +91,6 @@ java_library_host {
         "google-api-services-compute",
         "gson-prebuilt-jar",
         "guice",
-        "jacoco-cli",
         "jline-1.0",
         "junit",
         "junit-params",
