@@ -31,6 +31,7 @@ import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.easymock.Capture;
@@ -40,6 +41,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.io.File;
 import java.util.HashMap;
 
 /** Unit tests for {@link ProtoResultParser}. */
@@ -377,7 +379,7 @@ public class ProtoResultParserTest {
      * process.
      */
     @Test
-    public void testEvents_subprocess() {
+    public void testEvents_subprocess() throws Exception {
         // In subprocess, we do not report invocationStart/end again
         mParser = new ProtoResultParser(mMockListener, false);
 
@@ -405,6 +407,14 @@ public class ProtoResultParserTest {
         mMockListener.testModuleEnded();
         mMockListener.logAssociation(
                 EasyMock.eq("subprocess-invocation_log1"), EasyMock.anyObject());
+        mMockListener.testLog(
+                EasyMock.eq("subprocess-host_log"),
+                EasyMock.eq(LogDataType.TEXT),
+                EasyMock.anyObject());
+        mMockListener.testLog(
+                EasyMock.eq("subprocess-host_log_zip"),
+                EasyMock.eq(LogDataType.ZIP),
+                EasyMock.anyObject());
 
         EasyMock.replay(mMockListener);
         // Invocation start
@@ -433,22 +443,36 @@ public class ProtoResultParserTest {
 
         mTestParser.logAssociation(
                 "invocation_log1", new LogFile("path", "url", false, LogDataType.LOGCAT, 5));
-        // Invocation ends
-        mTestParser.invocationEnded(500L);
-        EasyMock.verify(mMockListener);
+        File tmpLogFile = FileUtil.createTempFile("host_log", ".txt");
+        File tmpZipLogFile = FileUtil.createTempFile("zip_host_log", ".zip");
+        try {
+            mTestParser.logAssociation(
+                    "host_log",
+                    new LogFile(tmpLogFile.getAbsolutePath(), "", false, LogDataType.TEXT, 5));
+            mTestParser.logAssociation(
+                    "host_log_zip",
+                    new LogFile(tmpZipLogFile.getAbsolutePath(), "", false, LogDataType.TEXT, 5));
+            // Invocation ends
+            mTestParser.invocationEnded(500L);
+            EasyMock.verify(mMockListener);
 
-        // Check capture
-        LogFile capturedFile = capture.getValue();
-        assertEquals(logFile.getPath(), capturedFile.getPath());
-        assertEquals(logFile.getUrl(), capturedFile.getUrl());
-        assertEquals(logFile.getType(), capturedFile.getType());
-        assertEquals(logFile.getSize(), capturedFile.getSize());
+            // Check capture
+            LogFile capturedFile = capture.getValue();
+            assertEquals(logFile.getPath(), capturedFile.getPath());
+            assertEquals(logFile.getUrl(), capturedFile.getUrl());
+            assertEquals(logFile.getType(), capturedFile.getType());
+            assertEquals(logFile.getSize(), capturedFile.getSize());
 
-        // Check Context
-        assertNotNull(mParser.getInvocationContext());
-        IInvocationContext context = mParser.getInvocationContext();
-        assertEquals(
-                "build_value", context.getBuildInfos().get(0).getBuildAttributes().get(TEST_KEY));
+            // Check Context
+            assertNotNull(mParser.getInvocationContext());
+            IInvocationContext context = mParser.getInvocationContext();
+            assertEquals(
+                    "build_value",
+                    context.getBuildInfos().get(0).getBuildAttributes().get(TEST_KEY));
+        } finally {
+            FileUtil.deleteFile(tmpLogFile);
+            FileUtil.deleteFile(tmpZipLogFile);
+        }
     }
 
     /** Helper to create a module context. */
