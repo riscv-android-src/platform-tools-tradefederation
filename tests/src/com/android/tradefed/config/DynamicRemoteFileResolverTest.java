@@ -32,7 +32,9 @@ import org.junit.runners.JUnit4;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.Nonnull;
@@ -47,6 +49,9 @@ public class DynamicRemoteFileResolverTest {
 
         @Option(name = "remote-file-list")
         public Collection<File> remoteFileList = new ArrayList<>();
+
+        @Option(name = "remote-map")
+        public Map<File, File> remoteMap = new HashMap<>();
     }
 
     @OptionClass(alias = "option-class-alias", global_namespace = false)
@@ -195,6 +200,51 @@ public class DynamicRemoteFileResolverTest {
         } catch (ConfigurationException expected) {
             // Only when we reach failure/test it fails
             assertTrue(expected.getMessage().contains("retrieval error"));
+        }
+        EasyMock.verify(mMockResolver);
+    }
+
+    @Test
+    public void testResolve_remoteMap() throws Exception {
+        RemoteFileOption object = new RemoteFileOption();
+        OptionSetter setter =
+                new OptionSetter(object) {
+                    @Override
+                    DynamicRemoteFileResolver createResolver() {
+                        return mResolver;
+                    }
+                };
+
+        File fake = FileUtil.createTempFile("gs-option-setter-test", "txt");
+        File fake2 = FileUtil.createTempFile("gs-option-setter-test", "txt");
+
+        setter.setOptionValue("remote-map", "gs://fake/path", "value");
+        setter.setOptionValue("remote-map", "fake/file", "gs://fake/path2");
+        setter.setOptionValue("remote-map", "key", "val");
+        assertEquals(3, object.remoteMap.size());
+
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path")), EasyMock.anyObject()))
+                .andReturn(fake);
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path2")), EasyMock.anyObject()))
+                .andReturn(fake2);
+        EasyMock.replay(mMockResolver);
+
+        Set<File> downloadedFile = setter.validateRemoteFilePath();
+        try {
+            assertEquals(2, downloadedFile.size());
+            // The file has been replaced by the downloaded one.
+            assertEquals(3, object.remoteMap.size());
+            assertEquals(new File("value"), object.remoteMap.get(fake));
+            assertEquals(fake2, object.remoteMap.get(new File("fake/file")));
+            assertEquals(new File("val"), object.remoteMap.get(new File("key")));
+        } finally {
+            for (File f : downloadedFile) {
+                FileUtil.recursiveDelete(f);
+            }
         }
         EasyMock.verify(mMockResolver);
     }
