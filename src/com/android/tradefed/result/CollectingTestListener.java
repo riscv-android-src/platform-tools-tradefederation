@@ -65,6 +65,10 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
 
     // Tracks if mStatusCounts are accurate, or if they need to be recalculated
     private AtomicBoolean mIsCountDirty = new AtomicBoolean(true);
+    // Tracks if the expected count is accurate, or if it needs to be recalculated.
+    private AtomicBoolean mIsExpectedCountDirty = new AtomicBoolean(true);
+    private int mExpectedCount = 0;
+
     // Represents the merged test results. This should not be accessed directly since it's only
     // calculated when needed.
     private final List<TestRunResult> mMergedTestRunResults = new ArrayList<>();
@@ -161,6 +165,8 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     @Override
     public void testRunStarted(String name, int numTests, int attemptNumber) {
         setCountDirty();
+        // Only testRunStarted can affect the expected count.
+        mIsExpectedCountDirty.set(true);
 
         // Associate the run name with the current module context
         if (mCurrentModuleContext != null) {
@@ -307,13 +313,18 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
      * Returns the number of expected tests count. Could differ from {@link #getNumTotalTests()} if
      * some tests did not run.
      */
-    public int getExpectedTests() {
-        computeMergedResults();
-        int expected = 0;
-        for (TestRunResult result : getMergedTestRunResults()) {
-            expected += result.getExpectedTestCount();
+    public synchronized int getExpectedTests() {
+        // If expected count is not dirty, no need to do anything
+        if (!mIsExpectedCountDirty.compareAndSet(true, false)) {
+            return mExpectedCount;
         }
-        return expected;
+
+        computeMergedResults();
+        mExpectedCount = 0;
+        for (TestRunResult result : getMergedTestRunResults()) {
+            mExpectedCount += result.getExpectedTestCount();
+        }
+        return mExpectedCount;
     }
 
     /** Returns the number of tests in given state for this run. */
