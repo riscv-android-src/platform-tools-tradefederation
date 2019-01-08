@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.python;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -171,6 +172,13 @@ public class PythonBinaryHostTest
         }
 
         File updatedAdb = mBuildInfo.getFile(AdbStopServerPreparer.ADB_BINARY_KEY);
+        if (updatedAdb == null) {
+            String adbPath = getAdbPath();
+            updatedAdb = new File(adbPath);
+            if (!updatedAdb.exists()) {
+                updatedAdb = null;
+            }
+        }
         if (updatedAdb != null) {
             // If a special adb version is used, pass it to the PATH
             CommandResult pathResult =
@@ -242,6 +250,11 @@ public class PythonBinaryHostTest
             mRunUtil = new RunUtil();
         }
         return mRunUtil;
+    }
+
+    @VisibleForTesting
+    String getAdbPath() {
+        return GlobalConfiguration.getDeviceManagerInstance().getAdbPath();
     }
 
     /** Result forwarder to replace the run name by the binary name. */
