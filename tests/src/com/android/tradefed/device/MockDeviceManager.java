@@ -403,6 +403,11 @@ public class MockDeviceManager implements IDeviceManager {
     }
 
     @Override
+    public String getAdbPath() {
+        return "adb";
+    }
+
+    @Override
     public String getFastbootPath() {
         return "fastboot";
     }
