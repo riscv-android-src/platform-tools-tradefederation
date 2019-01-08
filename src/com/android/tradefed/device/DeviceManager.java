@@ -1356,6 +1356,11 @@ public class DeviceManager implements IDeviceManager {
     }
 
     @Override
+    public String getAdbPath() {
+        return mAdbPath;
+    }
+
+    @Override
     public String getFastbootPath() {
         return mFastbootPath;
     }
