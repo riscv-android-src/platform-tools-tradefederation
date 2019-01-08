@@ -401,6 +401,10 @@ public class TestRunResult {
             throw new IllegalArgumentException(
                     "TestRunResult#merge cannot be called with NO_MERGE strategy.");
         }
+        if (testRunResults.size() == 1) {
+            // No merging is needed in case of a single test run result.
+            return testRunResults.get(0);
+        }
         TestRunResult finalRunResult = new TestRunResult();
 
         String testRunName = testRunResults.get(0).getName();
