@@ -22,8 +22,10 @@ import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
@@ -31,10 +33,12 @@ import com.android.tradefed.result.proto.LogFileProto.LogFileInfo;
 import com.android.tradefed.result.proto.TestRecordProto.ChildReference;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 
+import com.google.common.base.Strings;
 import com.google.protobuf.Any;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Timestamp;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
@@ -333,8 +337,25 @@ public class ProtoResultParser {
                                 info.getIsCompressed(),
                                 LogDataType.valueOf(info.getLogType()),
                                 info.getSize());
-                log("Logging %s from subprocess", entry.getKey());
-                logger.logAssociation("subprocess-" + entry.getKey(), file);
+                if (file.getPath() == null) {
+                    CLog.e("Log '%s' was registered but without a path.", entry.getKey());
+                    return;
+                }
+                File path = new File(file.getPath());
+                if (Strings.isNullOrEmpty(file.getUrl()) && path.exists()) {
+                    try (InputStreamSource source = new FileInputStreamSource(path)) {
+                        LogDataType type = file.getType();
+                        // File might have already been compressed
+                        if (file.getPath().endsWith(LogDataType.ZIP.getFileExt())) {
+                            type = LogDataType.ZIP;
+                        }
+                        log("Logging %s from subprocess: %s ", entry.getKey(), file.getPath());
+                        logger.testLog("subprocess-" + entry.getKey(), type, source);
+                    }
+                } else {
+                    log("Logging %s from subprocess: %s", entry.getKey(), file.getUrl());
+                    logger.logAssociation("subprocess-" + entry.getKey(), file);
+                }
             } catch (InvalidProtocolBufferException e) {
                 CLog.e("Couldn't unpack %s as a LogFileInfo", entry.getKey());
                 CLog.e(e);
