@@ -127,10 +127,10 @@ public class TradefedSandbox implements ISandbox {
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
             failedStatus = true;
             result.setStderr(stderrText);
-            try (InputStreamSource configFile =
-                    new FileInputStreamSource(mSerializedConfiguration)) {
-                logger.testLog("sandbox-config", LogDataType.XML, configFile);
-            }
+        }
+        // Log the configuration used to run
+        try (InputStreamSource configFile = new FileInputStreamSource(mSerializedConfiguration)) {
+            logger.testLog("sandbox-config", LogDataType.XML, configFile);
         }
 
         boolean joinResult = false;
