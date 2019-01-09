@@ -31,6 +31,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -112,6 +113,10 @@ public class TradefedSandboxTest {
         mMockRunUtil.setEnvVariable(
                 EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), EasyMock.anyObject());
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
+        mMockListener.testLog(
+                EasyMock.eq("sandbox-global-config"),
+                EasyMock.eq(LogDataType.XML),
+                EasyMock.anyObject());
         CommandResult result = new CommandResult();
         result.setStatus(CommandStatus.SUCCESS);
         EasyMock.expect(
@@ -150,6 +155,10 @@ public class TradefedSandboxTest {
         mMockRunUtil.setEnvVariable(
                 EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), EasyMock.anyObject());
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
+        mMockListener.testLog(
+                EasyMock.eq("sandbox-global-config"),
+                EasyMock.eq(LogDataType.XML),
+                EasyMock.anyObject());
         CommandResult result = new CommandResult();
         result.setStatus(CommandStatus.FAILED);
         result.setStderr("Ouch I failed.");
