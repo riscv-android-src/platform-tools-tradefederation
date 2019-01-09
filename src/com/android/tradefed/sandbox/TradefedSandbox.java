@@ -277,6 +277,9 @@ public class TradefedSandbox implements ISandbox {
             }
             String[] args = QuotationAwareTokenizer.tokenizeLine(commandLine);
             mGlobalConfig = dumpGlobalConfig(config, new HashSet<>());
+            try (InputStreamSource source = new FileInputStreamSource(mGlobalConfig)) {
+                listener.testLog("sandbox-global-config", LogDataType.XML, source);
+            }
             DumpCmd mode = DumpCmd.RUN_CONFIG;
             if (config.getCommandOptions().shouldUseSandboxTestMode()) {
                 mode = DumpCmd.TEST_MODE;
