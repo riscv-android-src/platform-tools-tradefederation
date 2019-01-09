@@ -250,21 +250,19 @@ public class StrictShardHelper extends ShardHelper {
         // Generate approximate RuntimeHint for each shard
         int index = 0;
         List<SortShardObj> shardTimes = new ArrayList<>();
-        CLog.e("============================");
         for (List<IRemoteTest> shard : allShards) {
             long aggTime = 0l;
-            CLog.e("++++++++++++++++++ SHARD %s +++++++++++++++", index);
+            CLog.d("++++++++++++++++++ SHARD %s +++++++++++++++", index);
             for (IRemoteTest test : shard) {
                 if (test instanceof IRuntimeHintProvider) {
                     aggTime += ((IRuntimeHintProvider) test).getRuntimeHint();
                 }
             }
-            CLog.e("Shard %s approximate time: %s", index, TimeUtil.formatElapsedTime(aggTime));
+            CLog.d("Shard %s approximate time: %s", index, TimeUtil.formatElapsedTime(aggTime));
             shardTimes.add(new SortShardObj(index, aggTime));
             index++;
-            CLog.e("+++++++++++++++++++++++++++++++++++++++++++");
+            CLog.d("+++++++++++++++++++++++++++++++++++++++++++");
         }
-        CLog.e("============================");
 
         Collections.sort(shardTimes);
         if ((shardTimes.get(0).mAggTime - shardTimes.get(shardTimes.size() - 1).mAggTime)
@@ -274,14 +272,14 @@ public class StrictShardHelper extends ShardHelper {
 
         // take 30% top shard (10 shard = top 3 shards)
         for (int i = 0; i < (shardCount * 0.3); i++) {
-            CLog.e(
+            CLog.d(
                     "Top shard %s is index %s with %s",
                     i,
                     shardTimes.get(i).mIndex,
                     TimeUtil.formatElapsedTime(shardTimes.get(i).mAggTime));
             int give = shardTimes.get(i).mIndex;
             int receive = shardTimes.get(shardTimes.size() - 1 - i).mIndex;
-            CLog.e("Giving from shard %s to shard %s", give, receive);
+            CLog.d("Giving from shard %s to shard %s", give, receive);
             for (int j = 0; j < (allShards.get(give).size() * (0.2f / (i + 1))); j++) {
                 IRemoteTest givetest = allShards.get(give).remove(0);
                 allShards.get(receive).add(givetest);
