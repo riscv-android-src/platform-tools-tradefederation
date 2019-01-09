@@ -21,6 +21,7 @@ import com.android.tradefed.config.remote.GcsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.MultiMap;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -29,6 +30,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -147,8 +149,33 @@ public class DynamicRemoteFileResolver {
                             m.remove(entry.getKey());
                             m.put(finalKey, finalVal);
                         }
+                    } else if (value instanceof MultiMap) {
+                        MultiMap<Object, Object> m = (MultiMap<Object, Object>) value;
+                        MultiMap<Object, Object> copy = new MultiMap<>(m);
+                        for (Object key : copy.keySet()) {
+                            List<Object> mapValues = copy.get(key);
+
+                            m.remove(key);
+                            Object finalKey = key;
+                            if (key instanceof File) {
+                                key = resolveRemoteFiles((File) key, option);
+                                if (key != null) {
+                                    downloadedFiles.add((File) key);
+                                    finalKey = key;
+                                }
+                            }
+                            for (Object mapValue : mapValues) {
+                                if (mapValue instanceof File) {
+                                    File f = resolveRemoteFiles((File) mapValue, option);
+                                    if (f != null) {
+                                        downloadedFiles.add(f);
+                                        mapValue = f;
+                                    }
+                                }
+                                m.put(finalKey, mapValue);
+                            }
+                        }
                     }
-                    // TODO: add support for multimap
                 }
             }
         } catch (ConfigurationException e) {
