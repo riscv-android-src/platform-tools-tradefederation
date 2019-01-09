@@ -123,7 +123,7 @@ public class RemoteAndroidDevice extends TestDevice {
      * Return the hostname associated with the device. Extracted from the serial.
      */
     public String getHostName() {
-        if (!checkSerialFormatValid()) {
+        if (!checkSerialFormatValid(getSerialNumber())) {
             throw new RuntimeException(
                     String.format("Serial Format is unexpected: %s "
                             + "should look like <hostname>:<port>", getSerialNumber()));
@@ -135,7 +135,7 @@ public class RemoteAndroidDevice extends TestDevice {
      * Return the port number asociated with the device. Extracted from the serial.
      */
     public String getPortNum() {
-        if (!checkSerialFormatValid()) {
+        if (!checkSerialFormatValid(getSerialNumber())) {
             throw new RuntimeException(
                     String.format("Serial Format is unexpected: %s "
                             + "should look like <hostname>:<port>", getSerialNumber()));
@@ -145,10 +145,11 @@ public class RemoteAndroidDevice extends TestDevice {
 
     /**
      * Check if the format of the serial is as expected <hostname>:port
+     *
      * @return true if the format is valid, false otherwise.
      */
-    private boolean checkSerialFormatValid() {
-        String[] serial =  getSerialNumber().split(":");
+    public static boolean checkSerialFormatValid(String serialString) {
+        String[] serial = serialString.split(":");
         if (serial.length == 2) {
             // Check first part is an IP
             Matcher match = IP_PATTERN.matcher(serial[0]);
