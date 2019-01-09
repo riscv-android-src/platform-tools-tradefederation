@@ -31,7 +31,6 @@ import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.ListInstrumentationParser;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableSortedSet;
 import com.google.inject.Inject;
 
 import org.junit.runner.notification.RunListener;
@@ -41,7 +40,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -63,7 +61,7 @@ public class AndroidJUnitTest extends InstrumentationTest
     /** instrumentation test runner argument key used for including a package */
     private static final String INCLUDE_PACKAGE_INST_ARGS_KEY = "package";
     /** instrumentation test runner argument key used for excluding a package */
-    public static final String EXCLUDE_PACKAGE_INST_ARGS_KEY = "notPackage";
+    private static final String EXCLUDE_PACKAGE_INST_ARGS_KEY = "notPackage";
     /** instrumentation test runner argument key used for adding annotation filter */
     private static final String ANNOTATION_INST_ARGS_KEY = "annotation";
     /** instrumentation test runner argument key used for adding notAnnotation filter */
@@ -90,12 +88,6 @@ public class AndroidJUnitTest extends InstrumentationTest
     private static final String INCLUDE_FILE = "includes.txt";
     private static final String EXCLUDE_FILE = "excludes.txt";
 
-    /** Always exclude the AJUR internal packages, they should never run. */
-    private static final Set<String> EXCLUDED_AJUR_INTERNAL_PACKAGES =
-            ImmutableSortedSet.of(
-                    "androidx.test.internal.runner.junit3",
-                    "android.support.test.internal.runner.junit3");
-
     @Option(name = "runtime-hint",
             isTimeVal=true,
             description="The hint about the test's runtime.")
@@ -108,11 +100,10 @@ public class AndroidJUnitTest extends InstrumentationTest
     private Set<String> mIncludeFilters = new HashSet<>();
 
     @Option(
-        name = "exclude-filter",
-        description = "The exclude filters of the test name to run.",
-        requiredForRerun = true
-    )
-    private Set<String> mExcludeFilters = new LinkedHashSet<>();
+            name = "exclude-filter",
+            description = "The exclude filters of the test name to run.",
+            requiredForRerun = true)
+    private Set<String> mExcludeFilters = new HashSet<>();
 
     @Option(
             name = "include-annotation",
@@ -380,7 +371,6 @@ public class AndroidJUnitTest extends InstrumentationTest
                 packageArg.add(test);
             }
         }
-        mExcludeFilters.addAll(EXCLUDED_AJUR_INTERNAL_PACKAGES);
         for (String test : mExcludeFilters) {
             if (isClassOrMethod(test)) {
                 notClassArg.add(test);
