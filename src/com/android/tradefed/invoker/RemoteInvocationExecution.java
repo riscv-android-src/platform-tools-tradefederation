@@ -71,6 +71,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
     private String mRemoteTradefedDir = null;
     private String mRemoteFinalResult = null;
+    private String mRemoteAdbPath = null;
 
     @Override
     public boolean fetchBuild(
@@ -102,11 +103,13 @@ public class RemoteInvocationExecution extends InvocationExecution {
             throws Throwable {
         ManagedRemoteDevice device = (ManagedRemoteDevice) context.getDevices().get(0);
         GceAvdInfo info = device.getRemoteAvdInfo();
+
         // Run remote TF (new tests?)
         IRunUtil runUtil = new RunUtil();
 
         TestDeviceOptions options = device.getOptions();
         String mainRemoteDir = getRemoteMainDir(options);
+        mRemoteAdbPath = String.format("/home/%s/bin/adb", options.getInstanceUser());
 
         String tfPath = System.getProperty("TF_JAR_DIR");
         if (tfPath == null) {
@@ -258,20 +261,17 @@ public class RemoteInvocationExecution extends InvocationExecution {
         List<String> remoteTfCommand = new ArrayList<>();
         remoteTfCommand.add("pushd");
         remoteTfCommand.add(mRemoteTradefedDir + ";");
+        remoteTfCommand.add(String.format("PATH=%s:$PATH", new File(mRemoteAdbPath).getParent()));
+        remoteTfCommand.add("screen -dmSU tradefed sh -c");
 
-        remoteTfCommand.add("TF_GLOBAL_CONFIG=" + globalConfig.getName());
-        remoteTfCommand.add("nohup");
-        remoteTfCommand.add("./tradefed.sh");
-        remoteTfCommand.add("run");
-        remoteTfCommand.add("commandAndExit");
-        remoteTfCommand.add(mRemoteTradefedDir + configFile.getName());
+        String tfCommand = ("TF_GLOBAL_CONFIG=" + globalConfig.getName());
+        tfCommand +=
+                (" ./tradefed.sh run commandAndExit " + mRemoteTradefedDir + configFile.getName());
         if (config.getCommandOptions().shouldUseRemoteSandboxMode()) {
-            remoteTfCommand.add("--" + CommandOptions.USE_SANDBOX);
+            tfCommand += (" --" + CommandOptions.USE_SANDBOX);
         }
-        remoteTfCommand.add("> " + STDOUT_FILE);
-        remoteTfCommand.add("2> " + STDERR_FILE);
-        remoteTfCommand.add("&");
-
+        tfCommand += (" > " + STDOUT_FILE + " 2> " + STDERR_FILE);
+        remoteTfCommand.add("\"" + tfCommand + "\"");
         // Kick off the actual remote run
         CommandResult resultRemoteExecution =
                 GceManager.remoteSshCommandExecution(
@@ -315,7 +315,9 @@ public class RemoteInvocationExecution extends InvocationExecution {
                                         TimeUtil.formatElapsedTime(maxTimeout))));
                 break;
             }
-            RunUtil.getDefault().sleep(15000L);
+            if (stillRunning) {
+                RunUtil.getDefault().sleep(15000L);
+            }
         }
         File resultFile = null;
         if (!stillRunning) {
@@ -380,7 +382,14 @@ public class RemoteInvocationExecution extends InvocationExecution {
     private void resetAdb(GceAvdInfo info, TestDeviceOptions options, IRunUtil runUtil) {
         CommandResult probAdb =
                 GceManager.remoteSshCommandExecution(
-                        info, options, runUtil, 120000L, "adb", "devices");
+                        info, options, runUtil, 120000L, mRemoteAdbPath, "devices");
         CLog.d("remote adb prob: %s", probAdb.getStdout());
+        CLog.d("%s", probAdb.getStderr());
+
+        CommandResult versionAdb =
+                GceManager.remoteSshCommandExecution(
+                        info, options, runUtil, 120000L, mRemoteAdbPath, "version");
+        CLog.d("version adb: %s", versionAdb.getStdout());
+        CLog.d("%s", versionAdb.getStderr());
     }
 }
