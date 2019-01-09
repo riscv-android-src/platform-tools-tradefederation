@@ -64,8 +64,6 @@ public class AndroidJUnitTestTest {
     private static final String TEST_PACKAGE_VALUE = "com.foo";
     private static final TestIdentifier TEST1 = new TestIdentifier("Test", "test1");
     private static final TestIdentifier TEST2 = new TestIdentifier("Test", "test2");
-    private static final String EXCLUDED_AJUR =
-            "android.support.test.internal.runner.junit3,androidx.test.internal.runner.junit3";
 
     /** The {@link AndroidJUnitTest} under test, with all dependencies mocked out */
     private AndroidJUnitTest mAndroidJUnitTest;
@@ -126,8 +124,6 @@ public class AndroidJUnitTestTest {
     public void testRun_includeFilterClass() throws Exception {
         // expect this call
         mMockRemoteRunner.addInstrumentationArg("class", TEST1.toString());
-        mMockRemoteRunner.addInstrumentationArg(
-                AndroidJUnitTest.EXCLUDE_PACKAGE_INST_ARGS_KEY, EXCLUDED_AJUR);
         setRunTestExpectations();
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
         mAndroidJUnitTest.addIncludeFilter(TEST1.toString());
@@ -138,8 +134,6 @@ public class AndroidJUnitTestTest {
     /** Test list of tests to run is filtered by exclude filters. */
     @Test
     public void testRun_excludeFilterClass() throws Exception {
-        mMockRemoteRunner.addInstrumentationArg(
-                AndroidJUnitTest.EXCLUDE_PACKAGE_INST_ARGS_KEY, EXCLUDED_AJUR);
         // expect this call
         mMockRemoteRunner.addInstrumentationArg("notClass", TEST1.toString());
         setRunTestExpectations();
@@ -155,8 +149,6 @@ public class AndroidJUnitTestTest {
         // expect this call
         mMockRemoteRunner.addInstrumentationArg("class", TEST1.getClassName());
         mMockRemoteRunner.addInstrumentationArg("notClass", TEST2.toString());
-        mMockRemoteRunner.addInstrumentationArg(
-                AndroidJUnitTest.EXCLUDE_PACKAGE_INST_ARGS_KEY, EXCLUDED_AJUR);
         setRunTestExpectations();
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
         mAndroidJUnitTest.addIncludeFilter(TEST1.getClassName());
@@ -169,8 +161,6 @@ public class AndroidJUnitTestTest {
     @Test
     public void testRun_includeFilterPackage() throws Exception {
         // expect this call
-        mMockRemoteRunner.addInstrumentationArg(
-                AndroidJUnitTest.EXCLUDE_PACKAGE_INST_ARGS_KEY, EXCLUDED_AJUR);
         mMockRemoteRunner.addInstrumentationArg("package", "com.android.test");
         setRunTestExpectations();
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
@@ -183,7 +173,7 @@ public class AndroidJUnitTestTest {
     @Test
     public void testRun_excludeFilterPackage() throws Exception {
         // expect this call
-        mMockRemoteRunner.addInstrumentationArg("notPackage", "com.android.not," + EXCLUDED_AJUR);
+        mMockRemoteRunner.addInstrumentationArg("notPackage", "com.android.not");
         setRunTestExpectations();
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
         mAndroidJUnitTest.addExcludeFilter("com.android.not");
@@ -196,7 +186,7 @@ public class AndroidJUnitTestTest {
     public void testRun_includeAndExcludeFilterPackage() throws Exception {
         // expect this call
         mMockRemoteRunner.addInstrumentationArg("package", "com.android.test");
-        mMockRemoteRunner.addInstrumentationArg("notPackage", "com.android.not," + EXCLUDED_AJUR);
+        mMockRemoteRunner.addInstrumentationArg("notPackage", "com.android.not");
         setRunTestExpectations();
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
         mAndroidJUnitTest.addIncludeFilter("com.android.test");
@@ -212,7 +202,7 @@ public class AndroidJUnitTestTest {
         mMockRemoteRunner.addInstrumentationArg("class", TEST1.getClassName());
         mMockRemoteRunner.addInstrumentationArg("notClass", TEST2.toString());
         mMockRemoteRunner.addInstrumentationArg("package", "com.android.test");
-        mMockRemoteRunner.addInstrumentationArg("notPackage", "com.android.not," + EXCLUDED_AJUR);
+        mMockRemoteRunner.addInstrumentationArg("notPackage", "com.android.not");
         setRunTestExpectations();
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
         mAndroidJUnitTest.addIncludeFilter(TEST1.getClassName());
@@ -226,8 +216,6 @@ public class AndroidJUnitTestTest {
     /** Test list of tests to run is filtered by include file. */
     @Test
     public void testRun_includeFile() throws Exception {
-        mMockRemoteRunner.addInstrumentationArg(
-                AndroidJUnitTest.EXCLUDE_PACKAGE_INST_ARGS_KEY, EXCLUDED_AJUR);
         mMockRemoteRunner.addInstrumentationArg(
                 EasyMock.eq("testFile"), EasyMock.<String>anyObject());
         setRunTestExpectations();
@@ -253,8 +241,6 @@ public class AndroidJUnitTestTest {
     /** Test list of tests to run is filtered by exclude file. */
     @Test
     public void testRun_excludeFile() throws Exception {
-        mMockRemoteRunner.addInstrumentationArg(
-                AndroidJUnitTest.EXCLUDE_PACKAGE_INST_ARGS_KEY, EXCLUDED_AJUR);
         mMockRemoteRunner.addInstrumentationArg(
                 EasyMock.eq("notTestFile"), EasyMock.<String>anyObject());
         setRunTestExpectations();
@@ -286,8 +272,6 @@ public class AndroidJUnitTestTest {
                 EasyMock.eq("testFile"), EasyMock.<String>anyObject());
         mMockRemoteRunner.addInstrumentationArg(
                 EasyMock.eq("notTestFile"), EasyMock.<String>anyObject());
-        mMockRemoteRunner.addInstrumentationArg(
-                AndroidJUnitTest.EXCLUDE_PACKAGE_INST_ARGS_KEY, EXCLUDED_AJUR);
         mMockRemoteRunner.addInstrumentationArg("class", TEST1.getClassName());
         mMockRemoteRunner.addInstrumentationArg("notClass", TEST2.toString());
         setRunTestExpectations();
@@ -355,8 +339,6 @@ public class AndroidJUnitTestTest {
     /** Test that setting option for "test-file-filter" works as intended */
     @Test
     public void testRun_setTestFileOptions() throws Exception {
-        mMockRemoteRunner.addInstrumentationArg(
-                AndroidJUnitTest.EXCLUDE_PACKAGE_INST_ARGS_KEY, EXCLUDED_AJUR);
         mMockRemoteRunner.addInstrumentationArg(
                 EasyMock.eq("testFile"), EasyMock.<String>anyObject());
         mMockRemoteRunner.addInstrumentationArg(
@@ -492,8 +474,7 @@ public class AndroidJUnitTestTest {
         // default to no timeout for simplicity
         mAndroidJUnitTest.setTestTimeout(TEST_TIMEOUT);
         mAndroidJUnitTest.setShellTimeout(SHELL_TIMEOUT);
-        mMockRemoteRunner.addInstrumentationArg(
-                AndroidJUnitTest.EXCLUDE_PACKAGE_INST_ARGS_KEY, EXCLUDED_AJUR);
+
         // Seed the Guice Scope
         DeviceSideCollectorSpecification spec = new DeviceSideCollectorSpecification();
         OptionSetter setter = new OptionSetter(spec);
