@@ -22,6 +22,7 @@ import static org.junit.Assert.fail;
 import com.android.tradefed.config.remote.GcsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.MultiMap;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -52,6 +53,9 @@ public class DynamicRemoteFileResolverTest {
 
         @Option(name = "remote-map")
         public Map<File, File> remoteMap = new HashMap<>();
+
+        @Option(name = "remote-multi-map")
+        public MultiMap<File, File> remoteMultiMap = new MultiMap<>();
     }
 
     @OptionClass(alias = "option-class-alias", global_namespace = false)
@@ -241,6 +245,58 @@ public class DynamicRemoteFileResolverTest {
             assertEquals(new File("value"), object.remoteMap.get(fake));
             assertEquals(fake2, object.remoteMap.get(new File("fake/file")));
             assertEquals(new File("val"), object.remoteMap.get(new File("key")));
+        } finally {
+            for (File f : downloadedFile) {
+                FileUtil.recursiveDelete(f);
+            }
+        }
+        EasyMock.verify(mMockResolver);
+    }
+
+    @Test
+    public void testResolve_remoteMultiMap() throws Exception {
+        RemoteFileOption object = new RemoteFileOption();
+        OptionSetter setter =
+                new OptionSetter(object) {
+                    @Override
+                    DynamicRemoteFileResolver createResolver() {
+                        return mResolver;
+                    }
+                };
+
+        File fake = FileUtil.createTempFile("gs-option-setter-test", "txt");
+        File fake2 = FileUtil.createTempFile("gs-option-setter-test", "txt");
+        File fake3 = FileUtil.createTempFile("gs-option-setter-test", "txt");
+
+        setter.setOptionValue("remote-multi-map", "gs://fake/path", "value");
+        setter.setOptionValue("remote-multi-map", "fake/file", "gs://fake/path2");
+        setter.setOptionValue("remote-multi-map", "fake/file", "gs://fake/path3");
+        setter.setOptionValue("remote-multi-map", "key", "val");
+        assertEquals(3, object.remoteMultiMap.size());
+
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path")), EasyMock.anyObject()))
+                .andReturn(fake);
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path2")), EasyMock.anyObject()))
+                .andReturn(fake2);
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path3")), EasyMock.anyObject()))
+                .andReturn(fake3);
+        EasyMock.replay(mMockResolver);
+
+        Set<File> downloadedFile = setter.validateRemoteFilePath();
+        try {
+            assertEquals(3, downloadedFile.size());
+            // The file has been replaced by the downloaded one.
+            assertEquals(3, object.remoteMultiMap.size());
+            assertEquals(new File("value"), object.remoteMultiMap.get(fake).get(0));
+            assertEquals(fake2, object.remoteMultiMap.get(new File("fake/file")).get(0));
+            assertEquals(fake3, object.remoteMultiMap.get(new File("fake/file")).get(1));
+            assertEquals(new File("val"), object.remoteMultiMap.get(new File("key")).get(0));
         } finally {
             for (File f : downloadedFile) {
                 FileUtil.recursiveDelete(f);
