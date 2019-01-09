@@ -165,18 +165,23 @@ public class GlobalConfiguration implements IGlobalConfiguration {
                 ((GlobalConfiguration) sInstance).mOriginalArgs = arrayArgs;
             } else {
                 String currentHostConfig = globalConfigServer.getCurrentHostConfig();
-                IConfigurationFactory configFactory =
-                        GCSConfigurationFactory.getInstance(globalConfigServer);
+                GCSConfigurationFactory configFactory =
+                        (GCSConfigurationFactory)
+                                GCSConfigurationFactory.getInstance(globalConfigServer);
                 String[] arrayArgs =
                         ArrayUtil.buildArray(
                                 new String[] {currentHostConfig},
                                 nonConfigServerArgs.toArray(new String[0]));
                 sInstance =
                         configFactory.createGlobalConfigurationFromArgs(arrayArgs, nonGlobalArgs);
-                ((GlobalConfiguration) sInstance).mOriginalArgs = arrayArgs;
+                // Get the local configuration file and track it as the current local global config
+                File config = configFactory.getLatestDownloadedFile();
+                ((GlobalConfiguration) sInstance).mOriginalArgs =
+                        new String[] {config.getAbsolutePath()};
             }
             // Validate that madatory options have been set
             sInstance.validateOptions();
+
             return nonGlobalArgs;
         }
     }
