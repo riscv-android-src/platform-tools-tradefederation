@@ -33,6 +33,7 @@ import java.io.Writer;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 import java.util.Objects;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipOutputStream;
@@ -305,6 +306,22 @@ public class StreamUtil {
      * @throws IOException
      */
     public static String calculateMd5(InputStream inputSource) throws IOException {
+        return bytesToHexString(calculateMd5Digest(inputSource));
+    }
+
+    /**
+     * Helper method to calculate base64 md5 for a inputStream. The inputStream will be consumed and
+     * closed.
+     *
+     * @param inputSource used to create inputStream
+     * @return base64 md5 of the stream
+     * @throws IOException
+     */
+    public static String calculateBase64Md5(InputStream inputSource) throws IOException {
+        return Base64.getEncoder().encodeToString(calculateMd5Digest(inputSource));
+    }
+
+    private static byte[] calculateMd5Digest(InputStream inputSource) throws IOException {
         MessageDigest md = null;
         try {
             md = MessageDigest.getInstance("md5");
@@ -318,8 +335,7 @@ public class StreamUtil {
             // Read through the stream to update digest.
         }
         input.close();
-        String md5 = bytesToHexString(md.digest());
-        return md5;
+        return md.digest();
     }
 
     private static final char[] HEX_CHARS = {
