@@ -31,6 +31,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 
 import org.easymock.EasyMock;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -46,9 +47,11 @@ public class PythonBinaryHostTestTest {
     private IBuildInfo mMockBuildInfo;
     private ITestDevice mMockDevice;
     private ITestInvocationListener mMockListener;
+    private File mFakeAdb;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
+        mFakeAdb = FileUtil.createTempFile("adb-python-tests", "");
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
@@ -59,6 +62,11 @@ public class PythonBinaryHostTestTest {
                     IRunUtil getRunUtil() {
                         return mMockRunUtil;
                     }
+
+                    @Override
+                    String getAdbPath() {
+                        return mFakeAdb.getAbsolutePath();
+                    }
                 };
         EasyMock.expect(mMockBuildInfo.getFile(AdbStopServerPreparer.ADB_BINARY_KEY))
                 .andReturn(null);
@@ -68,6 +76,11 @@ public class PythonBinaryHostTestTest {
         mMockRunUtil.setEnvVariable(PythonBinaryHostTest.ANDROID_SERIAL_VAR, "SERIAL");
     }
 
+    @After
+    public void tearDown() throws Exception {
+        FileUtil.deleteFile(mFakeAdb);
+    }
+
     /** Test that when running a python binary the output is parsed to obtain results. */
     @Test
     public void testRun() throws Exception {
@@ -75,6 +88,9 @@ public class PythonBinaryHostTestTest {
         try {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("python-binaries", binary.getAbsolutePath());
+
+            expectedAdbPath(mFakeAdb);
+
             CommandResult res = new CommandResult();
             res.setStatus(CommandStatus.SUCCESS);
             res.setStderr("TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}");
@@ -113,25 +129,7 @@ public class PythonBinaryHostTestTest {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("python-binaries", binary.getAbsolutePath());
 
-            CommandResult pathRes = new CommandResult();
-            pathRes.setStatus(CommandStatus.SUCCESS);
-            pathRes.setStdout("bin/");
-            EasyMock.expect(
-                            mMockRunUtil.runTimedCmd(
-                                    PythonBinaryHostTest.PATH_TIMEOUT_MS,
-                                    "/bin/bash",
-                                    "-c",
-                                    "echo $PATH"))
-                    .andReturn(pathRes);
-            mMockRunUtil.setEnvVariable("PATH", "/test:bin/");
-
-            CommandResult versionRes = new CommandResult();
-            versionRes.setStatus(CommandStatus.SUCCESS);
-            versionRes.setStdout("bin/");
-            EasyMock.expect(
-                            mMockRunUtil.runTimedCmd(
-                                    PythonBinaryHostTest.PATH_TIMEOUT_MS, "adb", "version"))
-                    .andReturn(versionRes);
+            expectedAdbPath(new File("/test/adb"));
 
             CommandResult res = new CommandResult();
             res.setStatus(CommandStatus.SUCCESS);
@@ -165,6 +163,9 @@ public class PythonBinaryHostTestTest {
         try {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("python-binaries", binary.getAbsolutePath());
+
+            expectedAdbPath(mFakeAdb);
+
             CommandResult res = new CommandResult();
             res.setStatus(CommandStatus.EXCEPTION);
             res.setStderr("Could not execute.");
@@ -203,6 +204,9 @@ public class PythonBinaryHostTestTest {
         try {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("python-binaries", binary.getAbsolutePath());
+
+            expectedAdbPath(mFakeAdb);
+
             CommandResult res = new CommandResult();
             res.setStatus(CommandStatus.FAILED);
             res.setStderr("TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}");
@@ -222,5 +226,27 @@ public class PythonBinaryHostTestTest {
         } finally {
             FileUtil.deleteFile(binary);
         }
+    }
+
+    private void expectedAdbPath(File adbPath) {
+        CommandResult pathRes = new CommandResult();
+        pathRes.setStatus(CommandStatus.SUCCESS);
+        pathRes.setStdout("bin/");
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                PythonBinaryHostTest.PATH_TIMEOUT_MS,
+                                "/bin/bash",
+                                "-c",
+                                "echo $PATH"))
+                .andReturn(pathRes);
+        mMockRunUtil.setEnvVariable("PATH", String.format("%s:bin/", adbPath.getParent()));
+
+        CommandResult versionRes = new CommandResult();
+        versionRes.setStatus(CommandStatus.SUCCESS);
+        versionRes.setStdout("bin/");
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                PythonBinaryHostTest.PATH_TIMEOUT_MS, "adb", "version"))
+                .andReturn(versionRes);
     }
 }

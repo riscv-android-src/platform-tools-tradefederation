@@ -119,7 +119,7 @@ public class TestsPoolPollerTest {
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(numTests))
-                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         assertEquals(0, tracker.getCount());
     }
 
@@ -150,7 +150,7 @@ public class TestsPoolPollerTest {
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(numTests))
-                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         assertEquals(0, tracker.getCount());
     }
 
@@ -181,7 +181,7 @@ public class TestsPoolPollerTest {
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(numTests))
-                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         assertEquals(0, tracker.getCount());
     }
 
@@ -220,7 +220,7 @@ public class TestsPoolPollerTest {
         Mockito.verify(mListener, Mockito.times(0))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(0))
-                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, String>>any());
         assertEquals(0, tracker.getCount());
         Mockito.verify(mMockRegistry)
                 .logEvent(
@@ -270,7 +270,7 @@ public class TestsPoolPollerTest {
         Mockito.verify(mListener, Mockito.times(5))
                 .testRunFailed(IReportNotExecuted.NOT_EXECUTED_FAILURE);
         Mockito.verify(mListener, Mockito.times(5))
-                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         assertEquals(0, tracker.getCount());
         Mockito.verify(mMockRegistry)
                 .logEvent(
@@ -311,9 +311,9 @@ public class TestsPoolPollerTest {
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(numTests)).testStarted(Mockito.any());
         Mockito.verify(mListener, Mockito.times(numTests))
-                .testEnded(Mockito.any(), (HashMap<String, Metric>) Mockito.any());
+                .testEnded(Mockito.any(), Mockito.<HashMap<String, Metric>>any());
         Mockito.verify(mListener, Mockito.times(numTests))
-                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         Mockito.verify(mDevice).waitForDeviceAvailable(Mockito.anyLong());
         Mockito.verify(mDevice).reboot();
         assertEquals(2, tracker.getCount());
@@ -360,9 +360,9 @@ public class TestsPoolPollerTest {
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(0)).testStarted(Mockito.any());
         Mockito.verify(mListener, Mockito.times(0))
-                .testEnded(Mockito.any(), (HashMap<String, Metric>) Mockito.any());
+                .testEnded(Mockito.any(), Mockito.<HashMap<String, String>>any());
         Mockito.verify(mListener, Mockito.times(0))
-                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, String>>any());
         Mockito.verify(mDevice).waitForDeviceAvailable(Mockito.anyLong());
         Mockito.verify(mDevice, Mockito.times(0)).reboot();
         assertEquals(2, tracker.getCount());
@@ -395,11 +395,12 @@ public class TestsPoolPollerTest {
         CountDownLatch tracker = new CountDownLatch(1);
         TestsPoolPoller poller = new TestsPoolPoller(testsList, tokenList, tracker);
         poller.setMetricCollectors(mMetricCollectors);
+        poller.setDevice(mDevice);
         poller.run(mListener);
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(numTests))
-                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         assertEquals(0, tracker.getCount());
 
         // The two tokens test did not execute.

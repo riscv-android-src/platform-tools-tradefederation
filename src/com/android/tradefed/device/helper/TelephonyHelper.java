@@ -69,6 +69,8 @@ public class TelephonyHelper {
         }
     }
 
+    private TelephonyHelper() {}
+
     /**
      * Get the information related to sim card from a given device.
      *
