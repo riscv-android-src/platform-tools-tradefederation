@@ -16,8 +16,11 @@
 package com.android.tradefed.testtype.junit4;
 
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.result.ITestLifeCycleReceiver;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /** A builder class for options related to running device tests through BaseHostJUnit4Test. */
@@ -36,6 +39,7 @@ public class DeviceTestRunOptions {
     private boolean mDisableHiddenApiCheck = false; // optional
     private boolean mDisableIsolatedStorage = false; // optional
     private Map<String, String> mInstrumentationArgs = new LinkedHashMap<>(); // optional
+    private List<ITestLifeCycleReceiver> mExtraListeners = new ArrayList<>(); // optional
 
     public DeviceTestRunOptions(String packageName) {
         this.mPackageName = packageName;
@@ -187,6 +191,12 @@ public class DeviceTestRunOptions {
         return this;
     }
 
+    /** Add an extra listener to the instrumentation being run. */
+    public DeviceTestRunOptions addExtraListener(ITestLifeCycleReceiver listener) {
+        this.mExtraListeners.add(listener);
+        return this;
+    }
+
     /**
      * Clear all instrumentation arguments that have been set with {@link
      * #addInstrumentationArg(String, String)} previously.
@@ -197,5 +207,13 @@ public class DeviceTestRunOptions {
 
     public Map<String, String> getInstrumentationArgs() {
         return mInstrumentationArgs;
+    }
+
+    public List<ITestLifeCycleReceiver> getExtraListeners() {
+        return mExtraListeners;
+    }
+
+    public void clearExtraListeners() {
+        mExtraListeners.clear();
     }
 }
