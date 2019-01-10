@@ -127,10 +127,10 @@ public class TradefedSandbox implements ISandbox {
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
             failedStatus = true;
             result.setStderr(stderrText);
-            try (InputStreamSource configFile =
-                    new FileInputStreamSource(mSerializedConfiguration)) {
-                logger.testLog("sandbox-config", LogDataType.XML, configFile);
-            }
+        }
+        // Log the configuration used to run
+        try (InputStreamSource configFile = new FileInputStreamSource(mSerializedConfiguration)) {
+            logger.testLog("sandbox-config", LogDataType.XML, configFile);
         }
 
         boolean joinResult = false;
@@ -277,6 +277,9 @@ public class TradefedSandbox implements ISandbox {
             }
             String[] args = QuotationAwareTokenizer.tokenizeLine(commandLine);
             mGlobalConfig = dumpGlobalConfig(config, new HashSet<>());
+            try (InputStreamSource source = new FileInputStreamSource(mGlobalConfig)) {
+                listener.testLog("sandbox-global-config", LogDataType.XML, source);
+            }
             DumpCmd mode = DumpCmd.RUN_CONFIG;
             if (config.getCommandOptions().shouldUseSandboxTestMode()) {
                 mode = DumpCmd.TEST_MODE;
