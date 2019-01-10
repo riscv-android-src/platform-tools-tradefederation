@@ -46,6 +46,8 @@ public class TelephonyHelper {
 
     public static final String SIM_STATE_KEY = "sim_state";
     public static final String CARRIER_PRIVILEGES_KEY = "has_carried_privileges";
+    public static final String SECURED_ELEMENT_KEY = "has_secured_element";
+    public static final String SE_SERVICE_KEY = "has_se_service";
 
     public static final TestDescription SIM_TEST =
             new TestDescription(PACKAGE_NAME + CLASS_NAME, METHOD_NAME);
@@ -56,6 +58,8 @@ public class TelephonyHelper {
         public boolean mHasTelephonySupport;
         public String mSimState;
         public boolean mCarrierPrivileges;
+        public boolean mHasSecuredElement;
+        public boolean mHasSeService;
 
         @Override
         public String toString() {
@@ -65,6 +69,10 @@ public class TelephonyHelper {
                     + mSimState
                     + ", mCarrierPrivileges="
                     + mCarrierPrivileges
+                    + ", mHasSecuredElement="
+                    + mHasSecuredElement
+                    + ", mHasSeService="
+                    + mHasSeService
                     + "]";
         }
     }
@@ -117,6 +125,9 @@ public class TelephonyHelper {
             info.mSimState = testResult.getMetrics().get(SIM_STATE_KEY);
             info.mCarrierPrivileges =
                     stringToBool(testResult.getMetrics().get(CARRIER_PRIVILEGES_KEY));
+            info.mHasSecuredElement =
+                    stringToBool(testResult.getMetrics().get(SECURED_ELEMENT_KEY));
+            info.mHasSeService = stringToBool(testResult.getMetrics().get(SE_SERVICE_KEY));
             CLog.d("%s", info);
             return info;
         } finally {
