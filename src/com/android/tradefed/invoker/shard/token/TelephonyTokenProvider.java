@@ -54,6 +54,14 @@ public class TelephonyTokenProvider implements ITokenProvider {
                             "%s cannot run with token '%s' - Sim info: %s",
                             device.getSerialNumber(), token, info);
                     return false;
+                case SECURE_ELEMENT_SIM_CARD:
+                    if (info.mHasSecuredElement && info.mHasSeService) {
+                        return true;
+                    }
+                    CLog.w(
+                            "%s cannot run with token '%s' - Sim info: %s",
+                            device.getSerialNumber(), token, info);
+                    return false;
                 default:
                     CLog.w("Token '%s' doesn't match any TelephonyTokenProvider tokens.", token);
                     return false;

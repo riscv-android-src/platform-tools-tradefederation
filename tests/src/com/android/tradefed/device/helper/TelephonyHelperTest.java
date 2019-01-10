@@ -73,6 +73,8 @@ public class TelephonyHelperTest {
                                 HashMap<String, String> testMetrics = new HashMap<>();
                                 testMetrics.put(TelephonyHelper.SIM_STATE_KEY, "5");
                                 testMetrics.put(TelephonyHelper.CARRIER_PRIVILEGES_KEY, "true");
+                                testMetrics.put(TelephonyHelper.SECURED_ELEMENT_KEY, "false");
+                                testMetrics.put(TelephonyHelper.SE_SERVICE_KEY, "false");
                                 collector.testEnded(TelephonyHelper.SIM_TEST, testMetrics);
                                 collector.testRunEnded(500L, new HashMap<String, Metric>());
                                 return true;
@@ -82,6 +84,8 @@ public class TelephonyHelperTest {
         SimCardInformation info = TelephonyHelper.getSimInfo(mDevice);
         assertTrue(info.mCarrierPrivileges);
         assertTrue(info.mHasTelephonySupport);
+        assertFalse(info.mHasSecuredElement);
+        assertFalse(info.mHasSeService);
         assertEquals("5", info.mSimState);
         EasyMock.verify(mDevice, mMockIDevice);
     }
