@@ -545,7 +545,10 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         if ((emulatorRequested() || stubEmulatorRequested()) && !device.isEmulator()) {
             return false;
         }
-        if (deviceRequested() && device.isEmulator()) {
+        // If physical device is requested but device is emulator or remote ip device, skip
+        if (deviceRequested()
+                && (device.isEmulator()
+                        || RemoteAndroidDevice.checkSerialFormatValid(device.getSerialNumber()))) {
             return false;
         }
 
