@@ -1036,18 +1036,6 @@ public class FileUtil {
     }
 
     /**
-     * Helper method to calculate base64 md5 for a file.
-     *
-     * @param file
-     * @return md5 of the file
-     * @throws IOException
-     */
-    public static String calculateBase64Md5(File file) throws IOException {
-        FileInputStream inputSource = new FileInputStream(file);
-        return StreamUtil.calculateBase64Md5(inputSource);
-    }
-
-    /**
      * Converts an integer representing unix mode to a set of {@link PosixFilePermission}s
      */
     public static Set<PosixFilePermission> unixModeToPosix(int mode) {

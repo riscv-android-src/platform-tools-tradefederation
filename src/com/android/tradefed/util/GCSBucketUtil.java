@@ -32,9 +32,8 @@ import java.util.regex.Pattern;
 /**
  * File manager to download and upload files from Google Cloud Storage (GCS).
  *
- * <p>This class should NOT be used from the scope of a test (i.e., IRemoteTest).
+ * This class should NOT be used from the scope of a test (i.e., IRemoteTest).
  */
-@Deprecated
 public class GCSBucketUtil {
 
     // https://cloud.google.com/storage/docs/gsutil
