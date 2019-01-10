@@ -24,8 +24,12 @@ import com.android.tradefed.device.ITestDevice;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Target preparer that reboots the device. */
-@OptionClass(alias = "ramdump-disable-preparer")
+/**
+ * Target preparer that triggers fastboot and sends fastboot commands.
+ *
+ * <p>TODO(b/122592575): Add tests for this preparer.
+ */
+@OptionClass(alias = "fastboot-command-preparer")
 public class FastbootCommandPreparer extends BaseTargetPreparer {
     @Option(name = "command", description = "Fastboot commands to run.")
     private List<String> mFastbootCommands = new ArrayList<String>();
@@ -44,7 +48,6 @@ public class FastbootCommandPreparer extends BaseTargetPreparer {
             device.executeFastbootCommand(cmd.split("\\s+"));
         }
 
-        device.executeFastbootCommand("reboot");
-        device.waitForDeviceAvailable();
+        device.reboot();
     }
 }
