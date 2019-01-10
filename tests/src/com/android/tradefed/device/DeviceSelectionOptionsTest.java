@@ -328,10 +328,15 @@ public class DeviceSelectionOptionsTest {
     /** Test that a real device is matched when requested */
     @Test
     public void testMatches_device() {
+        IDevice mockIpDevice = EasyMock.createMock(IDevice.class);
+        EasyMock.expect(mockIpDevice.getSerialNumber()).andStubReturn("127.0.0.1:5555");
+        EasyMock.expect(mockIpDevice.isEmulator()).andStubReturn(Boolean.FALSE);
+
         mDeviceSelection.setDeviceRequested(true);
-        EasyMock.replay(mMockDevice, mMockEmulatorDevice);
+        EasyMock.replay(mMockDevice, mMockEmulatorDevice, mockIpDevice);
         assertTrue(mDeviceSelection.matches(mMockDevice));
         assertFalse(mDeviceSelection.matches(mMockEmulatorDevice));
+        assertFalse(mDeviceSelection.matches(mockIpDevice));
     }
 
     /** Test that a emulator is matched when requested */
