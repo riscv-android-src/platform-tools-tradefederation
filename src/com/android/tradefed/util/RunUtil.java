@@ -137,9 +137,9 @@ public class RunUtil implements IRunUtil {
     @Override
     public CommandResult runTimedCmd(final long timeout, OutputStream stdout,
             OutputStream stderr, final String... command) {
-        final CommandResult result = new CommandResult();
-        IRunUtil.IRunnableResult osRunnable = createRunnableResult(result, stdout, stderr, command);
+        RunnableResult osRunnable = createRunnableResult(stdout, stderr, command);
         CommandStatus status = runTimed(timeout, osRunnable, true);
+        CommandResult result = osRunnable.getResult();
         result.setStatus(status);
         return result;
     }
@@ -149,12 +149,9 @@ public class RunUtil implements IRunUtil {
      * command.
      */
     @VisibleForTesting
-    IRunUtil.IRunnableResult createRunnableResult(
-            CommandResult result,
-            OutputStream stdout,
-            OutputStream stderr,
-            String... command) {
-        return new RunnableResult(result, null, createProcessBuilder(command), stdout, stderr);
+    RunnableResult createRunnableResult(
+            OutputStream stdout, OutputStream stderr, String... command) {
+        return new RunnableResult(null, createProcessBuilder(command), stdout, stderr);
     }
 
     /** {@inheritDoc} */
@@ -220,10 +217,9 @@ public class RunUtil implements IRunUtil {
     @Override
     public CommandResult runTimedCmdWithInput(final long timeout, String input,
             final List<String> command) {
-        final CommandResult result = new CommandResult();
-        IRunUtil.IRunnableResult osRunnable = new RunnableResult(result, input,
-                createProcessBuilder(command));
+        RunnableResult osRunnable = new RunnableResult(input, createProcessBuilder(command));
         CommandStatus status = runTimed(timeout, osRunnable, true);
+        CommandResult result = osRunnable.getResult();
         result.setStatus(status);
         return result;
     }
@@ -233,10 +229,9 @@ public class RunUtil implements IRunUtil {
      */
     @Override
     public CommandResult runTimedCmdSilently(final long timeout, final String... command) {
-        final CommandResult result = new CommandResult();
-        IRunUtil.IRunnableResult osRunnable = new RunnableResult(result, null,
-                createProcessBuilder(command));
+        RunnableResult osRunnable = new RunnableResult(null, createProcessBuilder(command));
         CommandStatus status = runTimed(timeout, osRunnable, false);
+        CommandResult result = osRunnable.getResult();
         result.setStatus(status);
         return result;
     }
@@ -537,9 +532,8 @@ public class RunUtil implements IRunUtil {
         private final Object mLock = new Object();
         private boolean mCancelled = false;
 
-        RunnableResult(final CommandResult result, final String input,
-                final ProcessBuilder processBuilder) {
-            this(result, input, processBuilder, null, null);
+        RunnableResult(final String input, final ProcessBuilder processBuilder) {
+            this(input, processBuilder, null, null);
         }
 
         /**
@@ -548,14 +542,13 @@ public class RunUtil implements IRunUtil {
          * streams are null, default behavior of using a buffer will be used.
          */
         RunnableResult(
-                final CommandResult result,
                 final String input,
                 final ProcessBuilder processBuilder,
                 OutputStream stdoutStream,
                 OutputStream stderrStream) {
             mProcessBuilder = processBuilder;
             mInput = input;
-            mCommandResult = result;
+            mCommandResult = new CommandResult();
             // Ensure the outputs are never null
             mCommandResult.setStdout("");
             mCommandResult.setStderr("");
@@ -574,6 +567,10 @@ public class RunUtil implements IRunUtil {
                 stdErr = new ByteArrayOutputStream();
                 mCreatedStderrStream = true;
             }
+        }
+
+        public CommandResult getResult() {
+            return mCommandResult;
         }
 
         /** Start a {@link Process} based on the {@link ProcessBuilder}. */
@@ -624,7 +621,7 @@ public class RunUtil implements IRunUtil {
                 }
             }
             // Wait for process to complete.
-            int rc = Integer.MIN_VALUE;
+            Integer rc = null;
             try {
                 try {
                     rc = mProcess.waitFor();
@@ -638,25 +635,27 @@ public class RunUtil implements IRunUtil {
                         CLog.d("stderr read thread %s still alive.", stderrThread.toString());
                     }
                 } finally {
+                    mCommandResult.setExitCode(rc);
+
                     // Write out the streams to the result.
                     if (stdOut instanceof ByteArrayOutputStream) {
                         mCommandResult.setStdout(((ByteArrayOutputStream)stdOut).toString("UTF-8"));
                     } else {
-                        mCommandResult.setStdout("redirected to " +
-                                stdOut.getClass().getSimpleName());
+                        mCommandResult.setStdout(
+                                "redirected to " + stdOut.getClass().getSimpleName());
                     }
                     if (stdErr instanceof ByteArrayOutputStream) {
                         mCommandResult.setStderr(((ByteArrayOutputStream)stdErr).toString("UTF-8"));
                     } else {
-                        mCommandResult.setStderr("redirected to " +
-                                stdErr.getClass().getSimpleName());
+                        mCommandResult.setStderr(
+                                "redirected to " + stdErr.getClass().getSimpleName());
                     }
                 }
             } finally {
                 mCountDown.countDown();
             }
 
-            if (rc == 0) {
+            if (rc != null && rc == 0) {
                 return true;
             } else {
                 CLog.d("%s command failed. return code %d", mProcessBuilder.command(), rc);

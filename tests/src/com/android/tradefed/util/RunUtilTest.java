@@ -71,12 +71,9 @@ public class RunUtilTest extends TestCase {
         }
 
         @Override
-        IRunnableResult createRunnableResult(
-                CommandResult result,
-                OutputStream stdout,
-                OutputStream stderr,
-                String... command) {
-            IRunnableResult real = super.createRunnableResult(result, stdout, stderr, command);
+        RunnableResult createRunnableResult(
+                OutputStream stdout, OutputStream stderr, String... command) {
+            RunnableResult real = super.createRunnableResult(stdout, stderr, command);
             mMockRunnableResult = (RunnableResult) Mockito.spy(real);
             try {
                 if (mShouldThrow) {
@@ -482,6 +479,15 @@ public class RunUtilTest extends TestCase {
         assertNotNull(result.getStdout());
         // Variable should be set and returned.
         assertEquals(expected + "\n", result.getStdout());
+    }
+
+    public void testGotExitCodeFromCommand() {
+        RunUtil testRunUtil = new RunUtil();
+        CommandResult result =
+                testRunUtil.runTimedCmd(VERY_LONG_TIMEOUT_MS, "/bin/bash", "-c", "exit 2");
+        assertEquals("", result.getStdout());
+        assertEquals("", result.getStderr());
+        assertEquals(2, (int) result.getExitCode());
     }
 
     /**
