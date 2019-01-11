@@ -249,6 +249,12 @@ public class RemoteInvocationExecution extends InvocationExecution {
         // Skip
     }
 
+    @Override
+    String getAdbVersion() {
+        // Do not report the adb version from the parent, the remote child will remote its own.
+        return null;
+    }
+
     private void runRemote(
             ITestInvocationListener currentInvocationListener,
             File configFile,
