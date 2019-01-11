@@ -62,6 +62,8 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.sandbox.ISandbox;
 import com.android.tradefed.sandbox.TradefedSandbox;
+import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.suite.retry.RetryRescheduler;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
@@ -1127,9 +1129,17 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return false;
     }
 
-    /** Returns true if the configuration used is the retry one. */
-    private boolean isRetryCommand(String configName) {
-        return RetryConfigurationFactory.RETRY_CONFIG_NAME.equals(configName);
+    /** Returns true if the configuration used is a retry one. */
+    private boolean isRetryCommand(IConfiguration config) {
+        // If a configuration is made of the RetryRunner only, it is meant to run as a retry.
+        if (config.getTests().size() != 1) {
+            return false;
+        }
+        IRemoteTest rerunner = config.getTests().get(0);
+        if (rerunner instanceof RetryRescheduler) {
+            return true;
+        }
+        return false;
     }
 
     /** Create a {@link ISandbox} that the invocation will use to run. */
@@ -1145,11 +1155,12 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             return SandboxConfigurationFactory.getInstance()
                     .createConfigurationFromArgs(args, getKeyStoreClient(), sandbox, new RunUtil());
         }
-        if (isRetryCommand(args[0])) {
-            return RetryConfigurationFactory.getInstance()
-                    .createConfigurationFromArgs(args, null, getKeyStoreClient());
+        IConfiguration config =
+                getConfigFactory().createConfigurationFromArgs(args, null, getKeyStoreClient());
+        if (isRetryCommand(config)) {
+            return RetryConfigurationFactory.getInstance().createRetryConfiguration(config);
         }
-        return getConfigFactory().createConfigurationFromArgs(args, null, getKeyStoreClient());
+        return config;
     }
 
     private boolean internalAddCommand(String[] args, long totalExecTime, String cmdFilePath)
