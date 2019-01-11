@@ -33,6 +33,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.result.TextResultReporter;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.BaseTestSuite;
@@ -140,6 +141,8 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
                 ((FileLogger) originalLogger)
                         .setLogLevelDisplay(mConfiguration.getLogOutput().getLogLevel());
             }
+
+            handleExtraResultReporter(originalConfig, mConfiguration);
         } catch (ConfigurationException e) {
             throw new RuntimeException(e);
         }
@@ -334,5 +337,24 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
             forClass.put(entry.getKey(), entry.getValue());
         }
         return returnMap;
+    }
+
+    /**
+     * Fetch additional result_reporter from the retry configuration and add them to the original
+     * command. This is the only allowed modification of the original command: add more result
+     * end-points.
+     */
+    private void handleExtraResultReporter(
+            IConfiguration originalConfig, IConfiguration retryConfig) {
+        // Since we always have 1 default reporter, avoid carrying it for no reason. Only carry
+        // reporters if some actual ones were specified.
+        if (retryConfig.getTestInvocationListeners().size() == 1
+                && (mConfiguration.getTestInvocationListeners().get(0)
+                        instanceof TextResultReporter)) {
+            return;
+        }
+        List<ITestInvocationListener> listeners = originalConfig.getTestInvocationListeners();
+        listeners.addAll(retryConfig.getTestInvocationListeners());
+        originalConfig.setTestInvocationListeners(listeners);
     }
 }
