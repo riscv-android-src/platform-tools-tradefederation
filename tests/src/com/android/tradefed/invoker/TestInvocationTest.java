@@ -259,6 +259,11 @@ public class TestInvocationTest {
                                     }
                                 };
                             }
+
+                            @Override
+                            String getAdbVersion() {
+                                return null;
+                            }
                         };
                     }
 
@@ -1546,6 +1551,11 @@ public class TestInvocationTest {
                                 // Return empty list to ensure we do not have any environment loaded
                                 return null;
                             }
+
+                            @Override
+                            String getAdbVersion() {
+                                return null;
+                            }
                         };
                     }
 
@@ -1619,6 +1629,11 @@ public class TestInvocationTest {
                                     if (EnvVariable.ANDROID_TARGET_OUT_TESTCASES.equals(envVar)) {
                                         return tmpExternalTestsDir;
                                     }
+                                    return null;
+                                }
+
+                                @Override
+                                String getAdbVersion() {
                                     return null;
                                 }
                             };
@@ -1707,6 +1722,11 @@ public class TestInvocationTest {
                                 @Override
                                 File getExternalTestCasesDirs(EnvVariable envVar) {
                                     return tmpExternalTestsDir;
+                                }
+
+                                @Override
+                                String getAdbVersion() {
+                                    return null;
                                 }
                             };
                         }
