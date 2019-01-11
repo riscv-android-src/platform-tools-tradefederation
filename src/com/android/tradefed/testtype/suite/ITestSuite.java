@@ -128,6 +128,8 @@ public abstract class ITestSuite
     public static final String PRIMARY_ABI_RUN = "primary-abi-only";
     public static final String PARAMETER_KEY = "parameter";
     public static final String TOKEN_KEY = "token";
+    public static final String MODULE_METADATA_INCLUDE_FILTER = "module-metadata-include-filter";
+    public static final String MODULE_METADATA_EXCLUDE_FILTER = "module-metadata-exclude-filter";
 
     private static final String PRODUCT_CPU_ABI_KEY = "ro.product.cpu.abi";
 
@@ -215,7 +217,7 @@ public abstract class ITestSuite
     private boolean mPrimaryAbiRun = false;
 
     @Option(
-        name = "module-metadata-include-filter",
+        name = MODULE_METADATA_INCLUDE_FILTER,
         description =
                 "Include modules for execution based on matching of metadata fields: for any of "
                         + "the specified filter name and value, if a module has a metadata field "
@@ -227,7 +229,7 @@ public abstract class ITestSuite
     private MultiMap<String, String> mModuleMetadataIncludeFilter = new MultiMap<>();
 
     @Option(
-        name = "module-metadata-exclude-filter",
+        name = MODULE_METADATA_EXCLUDE_FILTER,
         description =
                 "Exclude modules for execution based on matching of metadata fields: for any of "
                         + "the specified filter name and value, if a module has a metadata field "
@@ -909,6 +911,14 @@ public abstract class ITestSuite
         }
     }
 
+    public void addModuleMetadataIncludeFilters(MultiMap<String, String> filters) {
+        mModuleMetadataIncludeFilter.putAll(filters);
+    }
+
+    public void addModuleMetadataExcludeFilters(MultiMap<String, String> filters) {
+        mModuleMetadataExcludeFilter.putAll(filters);
+    }
+
     /**
      * Returns the {@link ModuleDefinition} to be executed directly, or null if none yet (when the
      * ITestSuite has not been sharded yet).
@@ -916,7 +926,7 @@ public abstract class ITestSuite
     public ModuleDefinition getDirectModule() {
         return mDirectModule;
     }
-    
+
     @Override
     public Set<TokenProperty> getRequiredTokens() {
         if (mDirectModule == null) {
