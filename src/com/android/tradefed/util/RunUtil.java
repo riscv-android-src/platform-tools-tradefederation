@@ -55,6 +55,7 @@ public class RunUtil implements IRunUtil {
     private Map<String, String> mEnvVariables = new HashMap<String, String>();
     private Set<String> mUnsetEnvVariables = new HashSet<String>();
     private EnvPriority mEnvVariablePriority = EnvPriority.UNSET;
+    private boolean mRedirectStderr = false;
 
     private final CommandInterrupter mInterrupter;
 
@@ -123,12 +124,22 @@ public class RunUtil implements IRunUtil {
         mUnsetEnvVariables.add(key);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void setRedirectStderrToStdout(boolean redirect) {
+        if (this.equals(sDefaultInstance)) {
+            throw new UnsupportedOperationException(
+                    "Cannot setRedirectStderrToStdout on default RunUtil");
+        }
+        mRedirectStderr = redirect;
+    }
+
     /**
      * {@inheritDoc}
      */
     @Override
     public CommandResult runTimedCmd(final long timeout, final String... command) {
-        return runTimedCmd(timeout, null, null, true, command);
+        return runTimedCmd(timeout, null, null, command);
     }
 
     /**
@@ -137,20 +148,9 @@ public class RunUtil implements IRunUtil {
     @Override
     public CommandResult runTimedCmd(final long timeout, OutputStream stdout,
             OutputStream stderr, final String... command) {
-        return runTimedCmd(timeout, stdout, stderr, false, command);
-    }
-
-    /**
-     * Helper method to do a runTimeCmd call with or without outputStream specified.
-     *
-     * @return a {@CommandResult} containing results from command
-     */
-    private CommandResult runTimedCmd(final long timeout, OutputStream stdout,
-            OutputStream stderr, boolean closeStreamAfterRun, final String... command) {
-        final CommandResult result = new CommandResult();
-        IRunUtil.IRunnableResult osRunnable =
-                createRunnableResult(result, stdout, stderr, closeStreamAfterRun, command);
+        RunnableResult osRunnable = createRunnableResult(stdout, stderr, command);
         CommandStatus status = runTimed(timeout, osRunnable, true);
+        CommandResult result = osRunnable.getResult();
         result.setStatus(status);
         return result;
     }
@@ -160,14 +160,9 @@ public class RunUtil implements IRunUtil {
      * command.
      */
     @VisibleForTesting
-    IRunUtil.IRunnableResult createRunnableResult(
-            CommandResult result,
-            OutputStream stdout,
-            OutputStream stderr,
-            boolean closeStreamAfterRun,
-            String... command) {
-        return new RunnableResult(
-                result, null, createProcessBuilder(command), stdout, stderr, closeStreamAfterRun);
+    RunnableResult createRunnableResult(
+            OutputStream stdout, OutputStream stderr, String... command) {
+        return new RunnableResult(null, createProcessBuilder(command), stdout, stderr);
     }
 
     /** {@inheritDoc} */
@@ -215,6 +210,7 @@ public class RunUtil implements IRunUtil {
                 processBuilder.environment().putAll(mEnvVariables);
             }
         }
+        processBuilder.redirectErrorStream(mRedirectStderr);
         return processBuilder.command(commandList);
     }
 
@@ -233,10 +229,9 @@ public class RunUtil implements IRunUtil {
     @Override
     public CommandResult runTimedCmdWithInput(final long timeout, String input,
             final List<String> command) {
-        final CommandResult result = new CommandResult();
-        IRunUtil.IRunnableResult osRunnable = new RunnableResult(result, input,
-                createProcessBuilder(command));
+        RunnableResult osRunnable = new RunnableResult(input, createProcessBuilder(command));
         CommandStatus status = runTimed(timeout, osRunnable, true);
+        CommandResult result = osRunnable.getResult();
         result.setStatus(status);
         return result;
     }
@@ -246,10 +241,9 @@ public class RunUtil implements IRunUtil {
      */
     @Override
     public CommandResult runTimedCmdSilently(final long timeout, final String... command) {
-        final CommandResult result = new CommandResult();
-        IRunUtil.IRunnableResult osRunnable = new RunnableResult(result, null,
-                createProcessBuilder(command));
+        RunnableResult osRunnable = new RunnableResult(null, createProcessBuilder(command));
         CommandStatus status = runTimed(timeout, osRunnable, false);
+        CommandResult result = osRunnable.getResult();
         result.setStatus(status);
         return result;
     }
@@ -545,30 +539,28 @@ public class RunUtil implements IRunUtil {
         private Thread mExecutionThread;
         private OutputStream stdOut = null;
         private OutputStream stdErr = null;
-        private final boolean mCloseStreamAfterRun;
+        private boolean mCreatedStdoutStream = false;
+        private boolean mCreatedStderrStream = false;
         private final Object mLock = new Object();
         private boolean mCancelled = false;
 
-        RunnableResult(final CommandResult result, final String input,
-                final ProcessBuilder processBuilder) {
-            this(result, input, processBuilder, null, null, false);
-            stdOut = new ByteArrayOutputStream();
-            stdErr = new ByteArrayOutputStream();
+        RunnableResult(final String input, final ProcessBuilder processBuilder) {
+            this(input, processBuilder, null, null);
         }
 
         /**
-         * Alternative constructor that allows redirecting the output to any Outputstream.
-         * Stdout and stderr can be independently redirected to different Outputstream
-         * implementations.
-         * If streams are null, default behavior of using a buffer will be used.
+         * Alternative constructor that allows redirecting the output to any Outputstream. Stdout
+         * and stderr can be independently redirected to different Outputstream implementations. If
+         * streams are null, default behavior of using a buffer will be used.
          */
-        RunnableResult(final CommandResult result, final String input,
-                final ProcessBuilder processBuilder, OutputStream stdoutStream,
-                OutputStream stderrStream, boolean closeStreamAfterRun) {
-            mCloseStreamAfterRun = closeStreamAfterRun;
+        RunnableResult(
+                final String input,
+                final ProcessBuilder processBuilder,
+                OutputStream stdoutStream,
+                OutputStream stderrStream) {
             mProcessBuilder = processBuilder;
             mInput = input;
-            mCommandResult = result;
+            mCommandResult = new CommandResult();
             // Ensure the outputs are never null
             mCommandResult.setStdout("");
             mCommandResult.setStderr("");
@@ -579,12 +571,18 @@ public class RunUtil implements IRunUtil {
                 stdOut = stdoutStream;
             } else {
                 stdOut = new ByteArrayOutputStream();
+                mCreatedStdoutStream = true;
             }
             if (stderrStream != null) {
                 stdErr = stderrStream;
             } else {
                 stdErr = new ByteArrayOutputStream();
+                mCreatedStderrStream = true;
             }
+        }
+
+        public CommandResult getResult() {
+            return mCommandResult;
         }
 
         /** Start a {@link Process} based on the {@link ProcessBuilder}. */
@@ -624,9 +622,18 @@ public class RunUtil implements IRunUtil {
                                 mProcess.getErrorStream(),
                                 stdErr,
                                 String.format("inheritio-stderr-%s", mProcessBuilder.command()));
+
+                // Close the stdout/err streams if created by us. Streams provided by the caller
+                // should be closed by the caller.
+                if (mCreatedStdoutStream) {
+                    stdOut.close();
+                }
+                if (mCreatedStderrStream) {
+                    stdErr.close();
+                }
             }
             // Wait for process to complete.
-            int rc = Integer.MIN_VALUE;
+            Integer rc = null;
             try {
                 try {
                     rc = mProcess.waitFor();
@@ -639,32 +646,28 @@ public class RunUtil implements IRunUtil {
                     if (stderrThread.isAlive()) {
                         CLog.d("stderr read thread %s still alive.", stderrThread.toString());
                     }
-                    // close the buffer that holds stdout/err content if default stream
-                    // stream specified by caller should be handled by the caller.
-                    if (mCloseStreamAfterRun) {
-                        stdOut.close();
-                        stdErr.close();
-                    }
                 } finally {
+                    mCommandResult.setExitCode(rc);
+
                     // Write out the streams to the result.
                     if (stdOut instanceof ByteArrayOutputStream) {
                         mCommandResult.setStdout(((ByteArrayOutputStream)stdOut).toString("UTF-8"));
                     } else {
-                        mCommandResult.setStdout("redirected to " +
-                                stdOut.getClass().getSimpleName());
+                        mCommandResult.setStdout(
+                                "redirected to " + stdOut.getClass().getSimpleName());
                     }
                     if (stdErr instanceof ByteArrayOutputStream) {
                         mCommandResult.setStderr(((ByteArrayOutputStream)stdErr).toString("UTF-8"));
                     } else {
-                        mCommandResult.setStderr("redirected to " +
-                                stdErr.getClass().getSimpleName());
+                        mCommandResult.setStderr(
+                                "redirected to " + stdErr.getClass().getSimpleName());
                     }
                 }
             } finally {
                 mCountDown.countDown();
             }
 
-            if (rc == 0) {
+            if (rc != null && rc == 0) {
                 return true;
             } else {
                 CLog.d("%s command failed. return code %d", mProcessBuilder.command(), rc);
