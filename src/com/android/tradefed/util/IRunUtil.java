@@ -77,6 +77,15 @@ public interface IRunUtil {
     public void unsetEnvVariable(String key);
 
     /**
+     * Set the standard error stream to redirect to the standard output stream when running system
+     * commands. Initial value is false.
+     *
+     * @param redirect new value for whether or not to redirect
+     * @see ProcessBuilder#redirectErrorStream(boolean)
+     */
+    public void setRedirectStderrToStdout(boolean redirect);
+
+    /**
      * Helper method to execute a system command, and aborting if it takes longer than a specified
      * time.
      *
