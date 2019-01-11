@@ -19,13 +19,29 @@ This test runner will be short lived, once robolectric support v2 is in, then
 robolectric tests will be invoked through AtestTFTestRunner.
 """
 
+import json
 import logging
 import os
+import re
+import tempfile
+import time
+
+from functools import partial
 
 # pylint: disable=import-error
 import atest_utils
 import constants
+
+from event_handler import EventHandler
 from test_runners import test_runner_base
+
+POLL_FREQ_SECS = 0.1
+# A pattern to match event like below
+#TEST_FAILED {'className':'SomeClass', 'testName':'SomeTestName',
+#            'trace':'{"trace":"AssertionError: <true> is equal to <false>\n
+#               at FailureStrategy.fail(FailureStrategy.java:24)\n
+#               at FailureStrategy.fail(FailureStrategy.java:20)\n"}\n\n
+EVENT_RE = re.compile(r'^(?P<event_name>[A-Z_]+) (?P<json_data>{(.\r*|\n)*})(?:\n|$)')
 
 
 class RobolectricTestRunner(test_runner_base.TestRunnerBase):
@@ -40,9 +56,25 @@ class RobolectricTestRunner(test_runner_base.TestRunnerBase):
     def __init__(self, results_dir, **kwargs):
         """Init stuff for robolectric runner class."""
         super(RobolectricTestRunner, self).__init__(results_dir, **kwargs)
+        self.is_verbose = logging.getLogger().isEnabledFor(logging.DEBUG)
 
     def run_tests(self, test_infos, extra_args, reporter):
-        """Run the list of test_infos.
+        """Run the list of test_infos. See base class for more.
+
+        Args:
+            test_infos: A list of TestInfos.
+            extra_args: Dict of extra args to add to test run.
+            reporter: An instance of result_report.ResultReporter.
+
+        Returns:
+            0 if tests succeed, non-zero otherwise.
+        """
+        if os.getenv(test_runner_base.OLD_OUTPUT_ENV_VAR):
+            return self.run_tests_raw(test_infos, extra_args, reporter)
+        return self.run_tests_pretty(test_infos, extra_args, reporter)
+
+    def run_tests_raw(self, test_infos, extra_args, reporter):
+        """Run the list of test_infos with raw output.
 
         Args:
             test_infos: List of TestInfo.
@@ -53,17 +85,105 @@ class RobolectricTestRunner(test_runner_base.TestRunnerBase):
             0 if tests succeed, non-zero otherwise.
         """
         reporter.register_unsupported_runner(self.NAME)
-        rob_build_ret = True
+        ret_code = constants.EXIT_CODE_SUCCESS
         for test_info in test_infos:
-            env_vars = self.generate_env_vars(test_info, extra_args)
-            rob_build_ret &= atest_utils.build(
-                set([test_info.test_name]), verbose=True, env_vars=env_vars)
-        if rob_build_ret:
-            return constants.EXIT_CODE_SUCCESS
-        return constants.EXIT_CODE_TEST_FAILURE
+            full_env_vars = self._get_full_build_environ(test_info,
+                                                         extra_args)
+            run_cmd = self.generate_run_commands([test_info], extra_args)[0]
+            subproc = self.run(run_cmd,
+                               output_to_stdout=self.is_verbose,
+                               env_vars=full_env_vars)
+            ret_code |= self.wait_for_subprocess(subproc)
+        return ret_code
+
+    def run_tests_pretty(self, test_infos, extra_args, reporter):
+        """Run the list of test_infos with pretty output mode.
+
+        Args:
+            test_infos: List of TestInfo.
+            extra_args: Dict of extra args to add to test run.
+            reporter: A ResultReporter Instance.
+
+        Returns:
+            0 if tests succeed, non-zero otherwise.
+        """
+        ret_code = constants.EXIT_CODE_SUCCESS
+        for test_info in test_infos:
+            # Create a temp communication file.
+            with tempfile.NamedTemporaryFile(mode='w+r',
+                                             dir=self.results_dir) as event_file:
+                # Prepare build environment parameter.
+                full_env_vars = self._get_full_build_environ(test_info,
+                                                             extra_args,
+                                                             event_file)
+                run_cmd = self.generate_run_commands([test_info], extra_args)[0]
+                subproc = self.run(run_cmd,
+                                   output_to_stdout=self.is_verbose,
+                                   env_vars=full_env_vars)
+                event_handler = EventHandler(reporter, self.NAME)
+                # Start polling.
+                self.handle_subprocess(subproc, partial(self._exec_with_robo_polling,
+                                                        event_file,
+                                                        subproc,
+                                                        event_handler))
+                ret_code |= self.wait_for_subprocess(subproc)
+        return ret_code
+
+    def _get_full_build_environ(self, test_info=None, extra_args=None, event_file=None):
+        """Helper to get full build environment.
+
+       Args:
+           test_info: TestInfo object.
+           extra_args: Dict of extra args to add to test run.
+           event_file: A file-like object that can be used as a temporary storage area.
+       """
+        full_env_vars = os.environ.copy()
+        env_vars = self.generate_env_vars(test_info,
+                                          extra_args,
+                                          event_file)
+        full_env_vars.update(env_vars)
+        return full_env_vars
+
+    def _exec_with_robo_polling(self, communication_file, robo_proc, event_handler):
+        """Polling data from communication file
+
+        Polling data from communication file. Exit when communication file
+        is empty and subprocess ended.
+
+        Args:
+            communication_file: A monitored communication file.
+            robo_proc: The build process.
+            event_handler: A file-like object storing the events of robolectric tests.
+        """
+        buf = ''
+        while True:
+            data = communication_file.read()
+            buf += data
+            reg = re.compile(r'(.|\n)*}\n\n')
+            if not reg.match(buf) or data == '':
+                if robo_proc.poll() is not None:
+                    logging.debug('Build process exited early')
+                    return
+                time.sleep(POLL_FREQ_SECS)
+            else:
+                # Read all new data and handle it at one time.
+                for event in re.split(r'\n\n', buf):
+                    match = EVENT_RE.match(event)
+                    if match:
+                        try:
+                            event_data = json.loads(match.group('json_data'),
+                                                    strict=False)
+                        except ValueError:
+                            # Parse event fail, continue to parse next one.
+                            logging.debug('"%s" is not valid json format.',
+                                          match.group('json_data'))
+                            continue
+                        event_name = match.group('event_name')
+                        event_handler.process_event(event_name, event_data)
+                buf = ''
 
     @staticmethod
-    def generate_env_vars(test_info, extra_args):
+    def generate_env_vars(test_info, extra_args, event_file=None):
         """Turn the args into env vars.
 
         Robolectric tests specify args through env vars, so look for class
@@ -72,6 +192,7 @@ class RobolectricTestRunner(test_runner_base.TestRunnerBase):
         Args:
             test_info: TestInfo class that holds the class filter info.
             extra_args: Dict of extra args to apply for test run.
+            event_file: A file-like object storing the events of robolectric tests.
 
         Returns:
             Dict of env vars to pass into invocation.
@@ -88,6 +209,8 @@ class RobolectricTestRunner(test_runner_base.TestRunnerBase):
             if robo_filter.methods:
                 logging.debug('method filtering not supported for robolectric '
                               'tests yet.')
+        if event_file:
+            env_var['EVENT_FILE_ROBOLECTRIC'] = event_file.name
         return env_var
 
     def host_env_check(self):
@@ -123,7 +246,9 @@ class RobolectricTestRunner(test_runner_base.TestRunnerBase):
         run_cmds = []
         for test_info in test_infos:
             robo_command = atest_utils.BUILD_CMD + [str(test_info.test_name)]
-            run_cmd = ' '.join(x for x in robo_command).replace(
-                os.environ.get(constants.ANDROID_BUILD_TOP) + os.sep, '')
+            run_cmd = ' '.join(x for x in robo_command)
+            if constants.DRY_RUN in extra_args:
+                run_cmd = run_cmd.replace(
+                    os.environ.get(constants.ANDROID_BUILD_TOP) + os.sep, '')
             run_cmds.append(run_cmd)
         return run_cmds
