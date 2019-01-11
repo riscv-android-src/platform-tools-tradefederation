@@ -21,6 +21,8 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Host options holder class.
@@ -56,6 +58,13 @@ public class HostOptions implements IHostOptions {
     @Option(name = "use-sso-client", description = "Use a SingleSignOn client for HTTP requests.")
     private Boolean mUseSsoClient = true;
 
+    @Option(
+        name = "service-account-json-key-file",
+        description =
+                "Specify a service account json key file, and a String key name to identify it."
+    )
+    private Map<String, File> mJsonServiceAccountMap = new HashMap<>();
+
     /**
      * {@inheritDoc}
      */
@@ -86,6 +95,12 @@ public class HostOptions implements IHostOptions {
     @Override
     public Boolean shouldUseSsoClient() {
         return mUseSsoClient;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Map<String, File> getServiceAccountJsonKeyFiles() {
+        return new HashMap<>(mJsonServiceAccountMap);
     }
 
     /** {@inheritDoc} */

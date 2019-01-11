@@ -21,6 +21,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.targetprep.DeviceFlashPreparer;
 
 import java.io.File;
+import java.util.Map;
 
 /**
  * Host options holder interface.
@@ -49,6 +50,9 @@ public interface IHostOptions {
 
     /** Check if it should use the SingleSignOn client or not. */
     Boolean shouldUseSsoClient();
+
+    /** Returns a Map of service account json key files. */
+    Map<String, File> getServiceAccountJsonKeyFiles();
 
     /** Validate that the options set on {@link IHostOptions} are valid. */
     void validateOptions() throws ConfigurationException;
