@@ -75,6 +75,8 @@ import java.util.stream.Collectors;
  */
 public class InvocationExecution implements IInvocationExecution {
 
+    public static final String ADB_VERSION_KEY = "adb_version";
+
     @Override
     public boolean fetchBuild(
             IInvocationContext context,
@@ -132,6 +134,7 @@ public class InvocationExecution implements IInvocationExecution {
             throw e;
         }
         createSharedResources(context);
+        setAdbVersion(context);
         return true;
     }
 
@@ -685,9 +688,21 @@ public class InvocationExecution implements IInvocationExecution {
         }
     }
 
+    private void setAdbVersion(IInvocationContext context) {
+        String version = getAdbVersion();
+        if (version != null) {
+            context.addInvocationAttribute(ADB_VERSION_KEY, version);
+        }
+    }
+
     /** Returns the external directory coming from the environment. */
     @VisibleForTesting
     File getExternalTestCasesDirs(EnvVariable envVar) {
         return SystemUtil.getExternalTestCasesDir(envVar);
+    }
+
+    /** Returns the adb version in use for the invocation. */
+    String getAdbVersion() {
+        return GlobalConfiguration.getDeviceManagerInstance().getAdbVersion();
     }
 }
