@@ -57,4 +57,19 @@ public class ResultAndLogForwarder extends ResultForwarder implements ILogSaverL
             }
         }
     }
+
+    @Override
+    public void setLogSaver(ILogSaver logSaver) {
+        for (ITestInvocationListener listener : getListeners()) {
+            try {
+                // Forward the setLogSaver call
+                if (listener instanceof ILogSaverListener) {
+                    ((ILogSaverListener) listener).setLogSaver(logSaver);
+                }
+            } catch (RuntimeException e) {
+                CLog.e("Failed to setLogSaver");
+                CLog.e(e);
+            }
+        }
+    }
 }
