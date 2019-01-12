@@ -21,7 +21,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
-import com.android.tradefed.util.StreamUtil;
 
 /** Collector that will capture and log a screenshot when a test case fails. */
 public class ScreenshotOnFailureCollector extends BaseDeviceMetricCollector {
@@ -29,13 +28,11 @@ public class ScreenshotOnFailureCollector extends BaseDeviceMetricCollector {
     @Override
     public void onTestFail(DeviceMetricData testData, TestDescription test) {
         for (ITestDevice device : getDevices()) {
-            try {
-                InputStreamSource screenSource = device.getScreenshot();
+            try (InputStreamSource screenSource = device.getScreenshot()) {
                 super.testLog(
                         String.format("screenshot-%s_%s", test.getClassName(), test.getTestName()),
                         LogDataType.PNG,
                         screenSource);
-                StreamUtil.cancel(screenSource);
             } catch (DeviceNotAvailableException e) {
                 CLog.e(
                         "Device %s became unavailable while capturing screenshot, %s",
