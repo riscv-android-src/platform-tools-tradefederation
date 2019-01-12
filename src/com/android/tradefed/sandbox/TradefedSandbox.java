@@ -268,7 +268,7 @@ public class TradefedSandbox implements ISandbox {
             // TODO: switch reporting of parent and subprocess to proto
             String commandLine = config.getCommandLine();
             if (getSandboxOptions(config).shouldUseProtoReporter()) {
-                mProtoReceiver = new StreamProtoReceiver(listener, false, false);
+                mProtoReceiver = new StreamProtoReceiver(listener, false, false, "sandbox-");
                 // Force the child to the same mode as the parent.
                 commandLine = commandLine + " --" + SandboxOptions.USE_PROTO_REPORTER;
             } else {
