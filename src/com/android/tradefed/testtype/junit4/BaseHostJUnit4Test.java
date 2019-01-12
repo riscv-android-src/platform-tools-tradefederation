@@ -28,6 +28,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
@@ -45,6 +46,7 @@ import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget
 import org.junit.After;
 import org.junit.Assume;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -471,7 +473,8 @@ public abstract class BaseHostJUnit4Test
                 options.shouldCheckResults(),
                 options.isHiddenApiCheckDisabled(),
                 options.isIsolatedStorageDisabled(),
-                options.getInstrumentationArgs());
+                options.getInstrumentationArgs(),
+                options.getExtraListeners());
     }
 
     /**
@@ -518,7 +521,8 @@ public abstract class BaseHostJUnit4Test
                 checkResults,
                 isHiddenApiCheckDisabled,
                 false,
-                instrumentationArgs);
+                instrumentationArgs,
+                new ArrayList<>());
     }
 
     /**
@@ -552,7 +556,8 @@ public abstract class BaseHostJUnit4Test
             boolean checkResults,
             boolean isHiddenApiCheckDisabled,
             boolean isIsolatedStorageDisabled,
-            Map<String, String> instrumentationArgs)
+            Map<String, String> instrumentationArgs,
+            List<ITestLifeCycleReceiver> extraListeners)
             throws DeviceNotAvailableException {
         TestRunResult runResult =
                 doRunTests(
@@ -567,7 +572,8 @@ public abstract class BaseHostJUnit4Test
                         maxInstrumentationTimeoutMs,
                         isHiddenApiCheckDisabled,
                         isIsolatedStorageDisabled,
-                        instrumentationArgs);
+                        instrumentationArgs,
+                        extraListeners);
         mLatestInstruRes = runResult;
         printTestResult(runResult);
         if (checkResults) {
@@ -623,7 +629,8 @@ public abstract class BaseHostJUnit4Test
             Long maxInstrumentationTimeoutMs,
             boolean isHiddenApiCheckDisabled,
             boolean isIsolatedStorageDisabled,
-            Map<String, String> instrumentationArgs)
+            Map<String, String> instrumentationArgs,
+            List<ITestLifeCycleReceiver> extraListeners)
             throws DeviceNotAvailableException {
         RemoteAndroidTestRunner testRunner = createTestRunner(pkgName, runner, device);
         String runOptions = "";
@@ -668,10 +675,13 @@ public abstract class BaseHostJUnit4Test
         }
 
         CollectingTestListener listener = createListener();
+        List<ITestLifeCycleReceiver> allReceiver = new ArrayList<>();
+        allReceiver.add(listener);
+        allReceiver.addAll(extraListeners);
         if (userId == null) {
-            assertTrue(device.runInstrumentationTests(testRunner, listener));
+            assertTrue(device.runInstrumentationTests(testRunner, allReceiver));
         } else {
-            assertTrue(device.runInstrumentationTestsAsUser(testRunner, userId, listener));
+            assertTrue(device.runInstrumentationTestsAsUser(testRunner, userId, allReceiver));
         }
         return listener.getCurrentRunResults();
     }
