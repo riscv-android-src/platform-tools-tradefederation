@@ -567,6 +567,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // sandbox
     SandboxConfigDumpTest.class,
     SandboxConfigUtilTest.class,
+    SandboxedInvocationExecutionTest.class,
     SandboxInvocationRunnerTest.class,
     TradefedSandboxTest.class,
 

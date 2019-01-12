@@ -60,6 +60,7 @@ import com.android.tradefed.util.SystemUtil.EnvVariable;
 import com.android.tradefed.util.TimeUtil;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 
 import java.io.File;
 import java.io.IOException;
@@ -551,6 +552,21 @@ public class InvocationExecution implements IInvocationExecution {
         return testTag;
     }
 
+    /** Handle setting the test tag on the build info. */
+    protected void setTestTag(IBuildInfo info, IConfiguration config) {
+        // When CommandOption is set, it overrides any test-tag from build_providers
+        if (!"stub".equals(config.getCommandOptions().getTestTag())) {
+            info.setTestTag(getTestTag(config));
+        } else if (Strings.isNullOrEmpty(info.getTestTag())) {
+            // We ensure that that a default test-tag is always available.
+            info.setTestTag("stub");
+        } else {
+            CLog.w(
+                    "Using the test-tag from the build_provider. Consider updating your config to"
+                            + " have no alias/namespace in front of test-tag.");
+        }
+    }
+
     /**
      * Update the {@link IBuildInfo} with additional info from the {@link IConfiguration}.
      *
@@ -570,19 +586,7 @@ public class InvocationExecution implements IInvocationExecution {
             info.addBuildAttribute(
                     "shard_index", config.getCommandOptions().getShardIndex().toString());
         }
-        // TODO: update all the configs to only use test-tag from CommandOption and not build
-        // providers.
-        // When CommandOption is set, it overrides any test-tag from build_providers
-        if (!"stub".equals(config.getCommandOptions().getTestTag())) {
-            info.setTestTag(getTestTag(config));
-        } else if (info.getTestTag() == null || info.getTestTag().isEmpty()) {
-            // We ensure that that a default test-tag is always available.
-            info.setTestTag("stub");
-        } else {
-            CLog.w(
-                    "Using the test-tag from the build_provider. Consider updating your config to"
-                            + " have no alias/namespace in front of test-tag.");
-        }
+        setTestTag(info, config);
 
         if (info.getProperties().contains(BuildInfoProperties.DO_NOT_LINK_TESTS_DIR)) {
             CLog.d("Skip linking external directory as FileProperty was set.");

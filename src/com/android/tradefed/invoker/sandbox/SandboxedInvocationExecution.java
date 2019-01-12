@@ -16,6 +16,7 @@
 package com.android.tradefed.invoker.sandbox;
 
 import com.android.tradefed.build.BuildRetrievalError;
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -43,6 +44,10 @@ public class SandboxedInvocationExecution extends InvocationExecution {
         if (!config.getConfigurationDescription().shouldUseSandbox()) {
             throw new RuntimeException(
                     "We should only skip download if we are a sandbox. Something went very wrong.");
+        }
+        // Still set the test-tag on build infos for proper reporting
+        for (IBuildInfo info : context.getBuildInfos()) {
+            setTestTag(info, config);
         }
         return true;
     }
