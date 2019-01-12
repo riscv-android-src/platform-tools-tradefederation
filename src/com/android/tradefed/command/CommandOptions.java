@@ -18,10 +18,14 @@ package com.android.tradefed.command;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
+import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionUpdateRule;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.UniqueMultiMap;
+
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * Implementation of {@link ICommandOptions}.
@@ -164,6 +168,14 @@ public class CommandOptions implements ICommandOptions {
         description = "Whether or not to trigger --use-sandbox in the remote invocation."
     )
     private boolean mUseRemoteSandbox = false;
+
+    @Option(
+        name = "auto-collect",
+        description =
+                "Specify a set of collectors that will be automatically managed by the harness "
+                        + "to collect logs."
+    )
+    private Set<AutoLogCollector> mAutoCollectors = new LinkedHashSet<>();
 
     /**
      * Set the help mode for the config.
@@ -457,5 +469,17 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean shouldUseRemoteSandboxMode() {
         return mUseRemoteSandbox;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<AutoLogCollector> getAutoLogCollectors() {
+        return mAutoCollectors;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setAutoLogCollectors(Set<AutoLogCollector> autoLogCollectors) {
+        mAutoCollectors = autoLogCollectors;
     }
 }

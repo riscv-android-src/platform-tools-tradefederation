@@ -16,7 +16,10 @@
 
 package com.android.tradefed.command;
 
+import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.util.UniqueMultiMap;
+
+import java.util.Set;
 
 /**
  *  Container for execution options for commands.
@@ -175,4 +178,10 @@ public interface ICommandOptions {
 
     /** Whether or not to use sandbox mode in remote invocation. */
     public boolean shouldUseRemoteSandboxMode();
+
+    /** Returns the set of auto log collectors to be added for an invocation */
+    public Set<AutoLogCollector> getAutoLogCollectors();
+
+    /** Sets the set of auto log collectors that should be added to an invocation. */
+    public void setAutoLogCollectors(Set<AutoLogCollector> autoLogCollectors);
 }
