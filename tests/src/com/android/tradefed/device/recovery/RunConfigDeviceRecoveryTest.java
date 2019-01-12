@@ -18,7 +18,6 @@ package com.android.tradefed.device.recovery;
 import static org.junit.Assert.assertEquals;
 
 import com.android.ddmlib.IDevice;
-import com.android.ddmlib.IDevice.DeviceState;
 import com.android.tradefed.command.ICommandScheduler;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceAllocationState;
@@ -57,12 +56,12 @@ public class RunConfigDeviceRecoveryTest {
         mRecoverer =
                 new RunConfigDeviceRecovery() {
                     @Override
-                    IDeviceManager getDeviceManager() {
+                    protected IDeviceManager getDeviceManager() {
                         return mMockDeviceManager;
                     }
 
                     @Override
-                    ICommandScheduler getCommandScheduler() {
+                    protected ICommandScheduler getCommandScheduler() {
                         return mMockScheduler;
                     }
                 };
@@ -82,12 +81,16 @@ public class RunConfigDeviceRecoveryTest {
     }
 
     @Test
-    public void testRecoverDevice_offline() {
+    public void testRecoverDevice_offline() throws Exception {
         List<IManagedTestDevice> devices = new ArrayList<>();
         devices.add(mMockTestDevice);
         EasyMock.expect(mMockTestDevice.getAllocationState())
                 .andReturn(DeviceAllocationState.Available);
-        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.OFFLINE);
+        ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mMockDeviceManager.forceAllocateDevice("serial")).andReturn(device);
+
+        mMockScheduler.execCommand(EasyMock.anyObject(), EasyMock.eq(device), EasyMock.anyObject());
+
         replay();
         mRecoverer.recoverDevices(devices);
         verify();
@@ -99,7 +102,6 @@ public class RunConfigDeviceRecoveryTest {
         devices.add(mMockTestDevice);
         EasyMock.expect(mMockTestDevice.getAllocationState())
                 .andReturn(DeviceAllocationState.Available);
-        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
 
         ITestDevice device = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDeviceManager.forceAllocateDevice("serial")).andReturn(device);
