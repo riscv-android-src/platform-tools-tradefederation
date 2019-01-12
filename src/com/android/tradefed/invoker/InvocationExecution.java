@@ -32,6 +32,7 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.TestInvocation.Stage;
@@ -435,7 +436,14 @@ public class InvocationExecution implements IInvocationExecution {
             }
 
             // We clone the collectors for each IRemoteTest to ensure no state conflicts.
-            List<IMetricCollector> clonedCollectors = cloneCollectors(config.getMetricCollectors());
+            List<IMetricCollector> clonedCollectors = new ArrayList<>();
+            // Add automated collectors
+            for (AutoLogCollector auto : config.getCommandOptions().getAutoLogCollectors()) {
+                clonedCollectors.add(auto.getInstanceForValue());
+            }
+
+            // Add the collector from the configuration
+            clonedCollectors.addAll(cloneCollectors(config.getMetricCollectors()));
             if (test instanceof IMetricCollectorReceiver) {
                 ((IMetricCollectorReceiver) test).setMetricCollectors(clonedCollectors);
                 // If test can receive collectors then let it handle the how to set them up
