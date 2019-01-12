@@ -226,7 +226,9 @@ public abstract class BasePostProcessor implements IPostProcessor {
 
     @Override
     public final void setLogSaver(ILogSaver logSaver) {
-        // ignored
+        if (mForwarder instanceof ILogSaverListener) {
+            ((ILogSaverListener) mForwarder).setLogSaver(logSaver);
+        }
     }
 
     @Override
