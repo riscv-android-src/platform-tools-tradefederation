@@ -259,6 +259,11 @@ public class TestInvocationTest {
                                     }
                                 };
                             }
+
+                            @Override
+                            String getAdbVersion() {
+                                return null;
+                            }
                         };
                     }
 
@@ -1546,6 +1551,11 @@ public class TestInvocationTest {
                                 // Return empty list to ensure we do not have any environment loaded
                                 return null;
                             }
+
+                            @Override
+                            String getAdbVersion() {
+                                return null;
+                            }
                         };
                     }
 
@@ -1619,6 +1629,11 @@ public class TestInvocationTest {
                                     if (EnvVariable.ANDROID_TARGET_OUT_TESTCASES.equals(envVar)) {
                                         return tmpExternalTestsDir;
                                     }
+                                    return null;
+                                }
+
+                                @Override
+                                String getAdbVersion() {
                                     return null;
                                 }
                             };
@@ -1707,6 +1722,11 @@ public class TestInvocationTest {
                                 @Override
                                 File getExternalTestCasesDirs(EnvVariable envVar) {
                                     return tmpExternalTestsDir;
+                                }
+
+                                @Override
+                                String getAdbVersion() {
+                                    return null;
                                 }
                             };
                         }
@@ -1925,5 +1945,69 @@ public class TestInvocationTest {
         assertEquals("processor3", listKeys.get(1));
         assertEquals("processor2", listKeys.get(2));
         assertEquals("processor1", listKeys.get(3));
+    }
+
+    /** Ensure post processors are called in order and that ILogSaver is set properly */
+    @Test
+    public void testProcessorCollectionChain_logSaver() throws Throwable {
+        TestLogSaverListener mockLogSaverListener = new TestLogSaverListener();
+        mMockTestListener = EasyMock.createMock(ITestInvocationListener.class);
+        List<ITestInvocationListener> listenerList = new ArrayList<ITestInvocationListener>(1);
+        listenerList.add(mMockTestListener);
+        listenerList.add(mockLogSaverListener);
+        mStubConfiguration.setTestInvocationListeners(listenerList);
+
+        List<IPostProcessor> processors = new ArrayList<>();
+        processors.add(new TestableProcessor("processor1"));
+        processors.add(new TestableProcessor("processor2"));
+        processors.add(new TestableProcessor("processor3"));
+        processors.add(new TestableProcessor("processor4"));
+        mStubConfiguration.setPostProcessors(processors);
+
+        mMockTestListener.testRunStarted("TestStub", 1);
+        TestDescription testId = new TestDescription("StubTest", "StubMethod");
+        mMockTestListener.testStarted(EasyMock.eq(testId), EasyMock.anyLong());
+        mMockTestListener.testEnded(
+                EasyMock.eq(testId),
+                EasyMock.anyLong(),
+                EasyMock.eq(new HashMap<String, Metric>()));
+        Capture<HashMap<String, Metric>> captured = new Capture<>();
+        mMockTestListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(captured));
+
+        setupMockSuccessListeners();
+        setupInvokeWithBuild();
+        StubTest test = new StubTest();
+        OptionSetter setter = new OptionSetter(test);
+        setter.setOptionValue("run-a-test", "true");
+        mStubConfiguration.setTest(test);
+        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
+
+        mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.reset(mMockSummaryListener);
+        replayMocks();
+        EasyMock.replay(mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
+        verifyMocks(mockRescheduler);
+
+        // The post processors are called in sequence
+        List<String> listKeys = new ArrayList<>(captured.getValue().keySet());
+        assertEquals(4, listKeys.size());
+        assertEquals("processor4", listKeys.get(0));
+        assertEquals("processor3", listKeys.get(1));
+        assertEquals("processor2", listKeys.get(2));
+        assertEquals("processor1", listKeys.get(3));
+
+        assertTrue(mockLogSaverListener.mWasLoggerSet);
+    }
+
+    private class TestLogSaverListener implements ILogSaverListener {
+
+        public boolean mWasLoggerSet = false;
+
+        @Override
+        public void setLogSaver(ILogSaver logSaver) {
+            mWasLoggerSet = true;
+        }
     }
 }

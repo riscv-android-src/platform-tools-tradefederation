@@ -15,7 +15,8 @@
  */
 package com.android.tradefed.config;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -26,7 +27,6 @@ import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.testtype.suite.retry.ITestSuiteResultLoader;
 import com.android.tradefed.testtype.suite.retry.RetryRescheduler;
 import com.android.tradefed.util.FileUtil;
-import com.android.tradefed.util.keystore.IKeyStoreClient;
 import com.android.tradefed.util.keystore.StubKeyStoreClient;
 
 import org.easymock.EasyMock;
@@ -38,7 +38,6 @@ import org.junit.runners.JUnit4;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.List;
 
 /** Unit tests for {@link RetryConfigurationFactory}. */
 @RunWith(JUnit4.class)
@@ -77,25 +76,7 @@ public class RetryConfigurationFactoryTest {
     @Test
     public void testLoadRescheduler() throws Exception {
         populateFakeResults();
-        mFactory =
-                new RetryConfigurationFactory() {
-                    @Override
-                    IConfiguration createConfiguration(
-                            String[] arrayArgs,
-                            List<String> unconsumedArgs,
-                            IKeyStoreClient keyStoreClient)
-                            throws ConfigurationException {
-                        IConfiguration config =
-                                super.createConfiguration(
-                                        arrayArgs, unconsumedArgs, keyStoreClient);
-                        config.setConfigurationObject(
-                                RetryRescheduler.PREVIOUS_LOADER_NAME, mMockLoader);
-                        return config;
-                    }
-                };
-        FileUtil.writeToFile(
-                "<configuration><test class=\"com.android.tradefed.testtype.suite.retry.RetryRescheduler\" /></configuration>",
-                mConfig);
+        mFactory = new RetryConfigurationFactory();
 
         mMockLoader.init();
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("suite/apct");
@@ -103,12 +84,12 @@ public class RetryConfigurationFactoryTest {
         mMockLoader.customizeConfiguration(EasyMock.anyObject());
         mMockLoader.cleanUp();
 
+        IConfiguration retryConfig = new Configuration("retry", "retry");
+        retryConfig.setConfigurationObject(RetryRescheduler.PREVIOUS_LOADER_NAME, mMockLoader);
+        retryConfig.setTest(new RetryRescheduler());
+
         EasyMock.replay(mMockLoader);
-        IConfiguration config =
-                mFactory.createConfigurationFromArgs(
-                        new String[] {mConfig.getAbsolutePath()},
-                        new ArrayList<>(),
-                        new StubKeyStoreClient());
+        IConfiguration config = mFactory.createRetryConfiguration(retryConfig);
         EasyMock.verify(mMockLoader);
 
         // It's not our original config anymore

@@ -33,6 +33,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
@@ -55,7 +56,9 @@ import org.mockito.Mockito;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Unit tests for {@link InvocationExecution}. Tests for each individual interface of
@@ -77,6 +80,9 @@ public class InvocationExecutionTest {
         mConfig = new Configuration("test", "test");
         mMockListener = mock(ITestInvocationListener.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
+        // Reset the counters
+        TestBaseMetricCollector.sTotalInit = 0;
+        RemoteTestCollector.sTotalInit = 0;
     }
 
     /** Test class for a target preparer class that also do host cleaner. */
@@ -146,6 +152,7 @@ public class InvocationExecutionTest {
     private static class RemoteTestCollector implements IRemoteTest, IMetricCollectorReceiver {
 
         private List<IMetricCollector> mCollectors;
+        private static int sTotalInit = 0;
 
         @Override
         public void setMetricCollectors(List<IMetricCollector> collectors) {
@@ -156,6 +163,7 @@ public class InvocationExecutionTest {
         public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
             for (IMetricCollector collector : mCollectors) {
                 collector.init(new InvocationContext(), new ITestInvocationListener() {});
+                sTotalInit++;
             }
         }
     }
@@ -200,6 +208,26 @@ public class InvocationExecutionTest {
         mExec.runTests(mContext, mConfig, mMockListener);
         // Init was called twice in total on the class, but only once per instance.
         assertEquals(2, TestBaseMetricCollector.sTotalInit);
+    }
+
+    /** Test that auto collectors are properly added. */
+    @Test
+    public void testRun_metricCollectors_auto() throws Throwable {
+        List<IRemoteTest> tests = new ArrayList<>();
+        // First add an IMetricCollectorReceiver
+        RemoteTestCollector remoteTest = new RemoteTestCollector();
+        tests.add(remoteTest);
+        mConfig.setTests(tests);
+        List<IMetricCollector> collectors = new ArrayList<>();
+        mConfig.setDeviceMetricCollectors(collectors);
+
+        Set<AutoLogCollector> specialCollectors = new HashSet<>();
+        specialCollectors.add(AutoLogCollector.SCREENSHOT_ON_FAILURE);
+        mConfig.getCommandOptions().setAutoLogCollectors(specialCollectors);
+
+        mExec.runTests(mContext, mConfig, mMockListener);
+        // Init was called twice in total on the class, but only once per instance.
+        assertEquals(1, RemoteTestCollector.sTotalInit);
     }
 
     /**

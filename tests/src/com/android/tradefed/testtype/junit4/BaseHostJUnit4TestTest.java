@@ -33,6 +33,7 @@ import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.suite.SuiteApkInstaller;
@@ -52,6 +53,7 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -151,7 +153,7 @@ public class BaseHostJUnit4TestTest {
         mMockListener.testStarted(tid);
         mMockListener.testEnded(tid, new HashMap<String, Metric>());
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.replay(mMockListener, mMockBuild, mMockDevice);
         mHostTest.run(mMockListener);
         EasyMock.verify(mMockListener, mMockBuild, mMockDevice);
@@ -173,7 +175,7 @@ public class BaseHostJUnit4TestTest {
         EasyMock.expect(
                         mMockDevice.runInstrumentationTests(
                                 (IRemoteAndroidTestRunner) EasyMock.anyObject(),
-                                (ITestInvocationListener) EasyMock.anyObject()))
+                                EasyMock.<Collection<ITestLifeCycleReceiver>>anyObject()))
                 .andReturn(true);
         EasyMock.replay(mMockBuild, mMockDevice);
         try {
@@ -204,7 +206,7 @@ public class BaseHostJUnit4TestTest {
         EasyMock.expect(
                         mMockDevice.runInstrumentationTests(
                                 (IRemoteAndroidTestRunner) EasyMock.anyObject(),
-                                (ITestInvocationListener) EasyMock.anyObject()))
+                                EasyMock.<Collection<ITestLifeCycleReceiver>>anyObject()))
                 .andReturn(true);
         EasyMock.replay(mMockBuild, mMockDevice);
         try {
@@ -235,7 +237,7 @@ public class BaseHostJUnit4TestTest {
                         mMockDevice.runInstrumentationTestsAsUser(
                                 (IRemoteAndroidTestRunner) EasyMock.anyObject(),
                                 EasyMock.eq(0),
-                                (ITestInvocationListener) EasyMock.anyObject()))
+                                EasyMock.<Collection<ITestLifeCycleReceiver>>anyObject()))
                 .andReturn(true);
         EasyMock.replay(mMockBuild, mMockDevice);
         try {
@@ -269,7 +271,7 @@ public class BaseHostJUnit4TestTest {
         EasyMock.expect(
                         mMockDevice.runInstrumentationTests(
                                 (IRemoteAndroidTestRunner) EasyMock.anyObject(),
-                                (ITestInvocationListener) EasyMock.anyObject()))
+                                EasyMock.<Collection<ITestLifeCycleReceiver>>anyObject()))
                 .andReturn(true);
         EasyMock.replay(mMockBuild, mMockDevice);
         try {
@@ -304,7 +306,7 @@ public class BaseHostJUnit4TestTest {
         EasyMock.expect(
                         mMockDevice.runInstrumentationTests(
                                 (IRemoteAndroidTestRunner) EasyMock.anyObject(),
-                                (ITestInvocationListener) EasyMock.anyObject()))
+                                EasyMock.<Collection<ITestLifeCycleReceiver>>anyObject()))
                 .andReturn(true);
         EasyMock.replay(mMockBuild, mMockDevice);
         try {
@@ -374,7 +376,7 @@ public class BaseHostJUnit4TestTest {
             EasyMock.expect(mMockDevice.uninstallPackage("fakepackage")).andReturn(null);
             mMockListener.testEnded(description, new HashMap<String, Metric>());
             mMockListener.testRunEnded(
-                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                    EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
             EasyMock.replay(mMockBuild, mMockDevice, mMockListener);
             test.run(mMockListener);

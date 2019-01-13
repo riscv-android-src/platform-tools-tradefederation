@@ -32,6 +32,7 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.TestInvocation.Stage;
@@ -74,6 +75,8 @@ import java.util.stream.Collectors;
  * {@link TestInvocation}.
  */
 public class InvocationExecution implements IInvocationExecution {
+
+    public static final String ADB_VERSION_KEY = "adb_version";
 
     @Override
     public boolean fetchBuild(
@@ -132,6 +135,7 @@ public class InvocationExecution implements IInvocationExecution {
             throw e;
         }
         createSharedResources(context);
+        setAdbVersion(context);
         return true;
     }
 
@@ -432,7 +436,14 @@ public class InvocationExecution implements IInvocationExecution {
             }
 
             // We clone the collectors for each IRemoteTest to ensure no state conflicts.
-            List<IMetricCollector> clonedCollectors = cloneCollectors(config.getMetricCollectors());
+            List<IMetricCollector> clonedCollectors = new ArrayList<>();
+            // Add automated collectors
+            for (AutoLogCollector auto : config.getCommandOptions().getAutoLogCollectors()) {
+                clonedCollectors.add(auto.getInstanceForValue());
+            }
+
+            // Add the collector from the configuration
+            clonedCollectors.addAll(cloneCollectors(config.getMetricCollectors()));
             if (test instanceof IMetricCollectorReceiver) {
                 ((IMetricCollectorReceiver) test).setMetricCollectors(clonedCollectors);
                 // If test can receive collectors then let it handle the how to set them up
@@ -685,9 +696,21 @@ public class InvocationExecution implements IInvocationExecution {
         }
     }
 
+    private void setAdbVersion(IInvocationContext context) {
+        String version = getAdbVersion();
+        if (version != null) {
+            context.addInvocationAttribute(ADB_VERSION_KEY, version);
+        }
+    }
+
     /** Returns the external directory coming from the environment. */
     @VisibleForTesting
     File getExternalTestCasesDirs(EnvVariable envVar) {
         return SystemUtil.getExternalTestCasesDir(envVar);
+    }
+
+    /** Returns the adb version in use for the invocation. */
+    String getAdbVersion() {
+        return GlobalConfiguration.getDeviceManagerInstance().getAdbVersion();
     }
 }

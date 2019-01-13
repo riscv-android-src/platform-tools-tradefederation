@@ -79,6 +79,7 @@ import com.android.tradefed.device.cloud.RemoteFileUtilTest;
 import com.android.tradefed.device.helper.TelephonyHelperTest;
 import com.android.tradefed.device.metric.AtraceCollectorTest;
 import com.android.tradefed.device.metric.AtraceRunMetricCollectorTest;
+import com.android.tradefed.device.metric.AutoLogCollectorTest;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.BuddyInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.BugreportzMetricCollectorTest;
@@ -89,6 +90,7 @@ import com.android.tradefed.device.metric.FilePullerLogCollectorTest;
 import com.android.tradefed.device.metric.GraphicsStatsMetricCollectorTest;
 import com.android.tradefed.device.metric.IncidentReportCollectorTest;
 import com.android.tradefed.device.metric.IonHeapInfoMetricCollectorTest;
+import com.android.tradefed.device.metric.LogcatOnFailureCollectorTest;
 import com.android.tradefed.device.metric.MemInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.PagetypeInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.PerfettoPullerMetricCollectorTest;
@@ -422,6 +424,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // device.metric
     AtraceCollectorTest.class,
     AtraceRunMetricCollectorTest.class,
+    AutoLogCollectorTest.class,
     BaseDeviceMetricCollectorTest.class,
     BuddyInfoMetricCollectorTest.class,
     BugreportzMetricCollectorTest.class,
@@ -432,6 +435,7 @@ import org.junit.runners.Suite.SuiteClasses;
     GraphicsStatsMetricCollectorTest.class,
     IncidentReportCollectorTest.class,
     IonHeapInfoMetricCollectorTest.class,
+    LogcatOnFailureCollectorTest.class,
     MemInfoMetricCollectorTest.class,
     PagetypeInfoMetricCollectorTest.class,
     PerfettoPullerMetricCollectorTest.class,

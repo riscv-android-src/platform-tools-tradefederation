@@ -91,6 +91,7 @@ java_library_host {
         "google-api-services-compute",
         "gson-prebuilt-jar",
         "guice",
+        "jacoco-cli",
         "jline-1.0",
         "junit",
         "junit-params",
@@ -143,6 +144,14 @@ java_library_host {
    ]
 }
 
+// Turn off various doclava warnings when generating
+// the docs. These are the same warnings that are
+// turned off in frameworks/base, plus error 101
+// which is necessary here because tradefed is
+// referencing bootclasspath classes that are not
+// feed to metalava when generating the stubs.
+tradefed_docs_only_args = " -hide 101 -hide 111 -hide 113 -hide 125 -hide 126 -hide 127 -hide 128 "
+
 droidstubs_host {
     name: "tradefed-doc-stubs",
     srcs: [
@@ -153,7 +162,7 @@ droidstubs_host {
         "tradefed",
         "tools-common-prebuilt",
     ],
-    args: "--package",
+    args: tradefed_docs_only_args + "--package",
     create_doc_stubs: true,
 }
 
@@ -161,6 +170,11 @@ droiddoc_host {
     name: "tradefed-docs",
     srcs: [
         ":tradefed-doc-stubs",
+    ],
+    libs: [
+        "loganalysis",
+        "tradefed",
+        "tools-common-prebuilt",
     ],
     custom_template: "droiddoc-templates-sdk",
     hdf: [
@@ -171,7 +185,8 @@ droiddoc_host {
         "book.root toc",
         "book.path /_book.yaml",
     ],
-    args: "-yaml _book.yaml " +
+    args: tradefed_docs_only_args +
+          "-yaml _book.yaml " +
           "-apidocsdir reference/tradefed/ " +
           "-werror " +
           "-package " +
