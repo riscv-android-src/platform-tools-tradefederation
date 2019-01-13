@@ -177,6 +177,17 @@ public class CommandOptions implements ICommandOptions {
     )
     private Set<AutoLogCollector> mAutoCollectors = new LinkedHashSet<>();
 
+    @Deprecated
+    @Option(
+        name = "logcat-on-failure",
+        description = "take a logcat snapshot on every test failure."
+    )
+    private boolean mLogcatOnFailure = false;
+
+    @Deprecated
+    @Option(name = "screenshot-on-failure", description = "Take a screenshot on every test failure")
+    private boolean mScreenshotOnFailure = false;
+
     /**
      * Set the help mode for the config.
      * <p/>
@@ -481,5 +492,17 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public void setAutoLogCollectors(Set<AutoLogCollector> autoLogCollectors) {
         mAutoCollectors = autoLogCollectors;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean captureScreenshotOnFailure() {
+        return mScreenshotOnFailure;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean captureLogcatOnFailure() {
+        return mLogcatOnFailure;
     }
 }
