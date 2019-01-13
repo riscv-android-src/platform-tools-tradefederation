@@ -51,6 +51,7 @@ public class ScreenshotOnFailureCollectorTest {
         mContext = new InvocationContext();
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
         mTestListener = mCollector.init(mContext, mMockListener);
+        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("serial");
     }
 
     @Test
@@ -66,7 +67,7 @@ public class ScreenshotOnFailureCollectorTest {
         EasyMock.expect(mMockDevice.getScreenshot())
                 .andReturn(new ByteArrayInputStreamSource("".getBytes()));
         mMockListener.testLog(
-                EasyMock.eq("screenshot-class_test"),
+                EasyMock.eq("screenshot-on-failure-serial-class#test"),
                 EasyMock.eq(LogDataType.PNG),
                 EasyMock.anyObject());
 

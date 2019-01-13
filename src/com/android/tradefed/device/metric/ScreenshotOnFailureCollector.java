@@ -30,7 +30,9 @@ public class ScreenshotOnFailureCollector extends BaseDeviceMetricCollector {
         for (ITestDevice device : getDevices()) {
             try (InputStreamSource screenSource = device.getScreenshot()) {
                 super.testLog(
-                        String.format("screenshot-%s_%s", test.getClassName(), test.getTestName()),
+                        String.format(
+                                "screenshot-on-failure-%s-%s#%s",
+                                device.getSerialNumber(), test.getClassName(), test.getTestName()),
                         LogDataType.PNG,
                         screenSource);
             } catch (DeviceNotAvailableException e) {

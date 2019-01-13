@@ -435,6 +435,8 @@ public class InvocationExecution implements IInvocationExecution {
                 ((IInvocationContextReceiver) test).setInvocationContext(context);
             }
 
+            updateAutoCollectors(config);
+
             // We clone the collectors for each IRemoteTest to ensure no state conflicts.
             List<IMetricCollector> clonedCollectors = new ArrayList<>();
             // Add automated collectors
@@ -700,6 +702,20 @@ public class InvocationExecution implements IInvocationExecution {
         String version = getAdbVersion();
         if (version != null) {
             context.addInvocationAttribute(ADB_VERSION_KEY, version);
+        }
+    }
+
+    /** Convert the legacy *-on-failure options to the new auto-collect. */
+    private void updateAutoCollectors(IConfiguration config) {
+        if (config.getCommandOptions().captureScreenshotOnFailure()) {
+            config.getCommandOptions()
+                    .getAutoLogCollectors()
+                    .add(AutoLogCollector.SCREENSHOT_ON_FAILURE);
+        }
+        if (config.getCommandOptions().captureLogcatOnFailure()) {
+            config.getCommandOptions()
+                    .getAutoLogCollectors()
+                    .add(AutoLogCollector.LOGCAT_ON_FAILURE);
         }
     }
 

@@ -818,57 +818,6 @@ public class InstrumentationTestTest {
     }
 
     @Test
-    public void testAddScreenshotListener_enabled() {
-        mInstrumentationTest.setScreenshotOnFailure(true);
-
-        ITestInvocationListener listener =
-                mInstrumentationTest.addScreenshotListenerIfEnabled(mMockListener);
-        assertThat(listener).isInstanceOf(InstrumentationTest.FailedTestScreenshotGenerator.class);
-    }
-
-    @Test
-    public void testAddScreenshotListener_disabled() {
-        mInstrumentationTest.setScreenshotOnFailure(false);
-
-        ITestInvocationListener listener =
-                mInstrumentationTest.addScreenshotListenerIfEnabled(mMockListener);
-        assertThat(listener).isSameAs(mMockListener);
-    }
-
-    @Test
-    public void testAddLogcatListener_enabled() {
-        mInstrumentationTest.setLogcatOnFailure(true);
-
-        ITestInvocationListener listener =
-                mInstrumentationTest.addLogcatListenerIfEnabled(mMockListener);
-        assertThat(listener).isInstanceOf(InstrumentationTest.FailedTestLogcatGenerator.class);
-    }
-
-    @Test
-    public void testAddLogcatListener_setMaxSize() {
-        int maxSize = 1234;
-        mInstrumentationTest.setLogcatOnFailure(true);
-        mInstrumentationTest.setLogcatOnFailureSize(maxSize);
-
-        ITestInvocationListener listener =
-                mInstrumentationTest.addLogcatListenerIfEnabled(mMockListener);
-        assertThat(listener).isInstanceOf(InstrumentationTest.FailedTestLogcatGenerator.class);
-
-        InstrumentationTest.FailedTestLogcatGenerator logcatGenerator =
-                (InstrumentationTest.FailedTestLogcatGenerator) listener;
-        assertThat(logcatGenerator.getMaxSize()).isEqualTo(maxSize);
-    }
-
-    @Test
-    public void testAddLogcatListener_disabled() {
-        mInstrumentationTest.setLogcatOnFailure(false);
-
-        ITestInvocationListener listener =
-                mInstrumentationTest.addLogcatListenerIfEnabled(mMockListener);
-        assertThat(listener).isSameAs(mMockListener);
-    }
-
-    @Test
     public void testAddCoverageListener_enabled() {
         mInstrumentationTest.setCoverage(true);
 
