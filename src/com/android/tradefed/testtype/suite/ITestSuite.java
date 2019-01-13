@@ -140,19 +140,6 @@ public abstract class ITestSuite
     )
     private boolean mBugReportOnFailure = false;
 
-    @Option(name = "logcat-on-failure",
-            description = "Take a logcat snapshot on every test failure.")
-    private boolean mLogcatOnFailure = false;
-
-    @Option(name = "logcat-on-failure-size",
-            description = "The max number of logcat data in bytes to capture when "
-            + "--logcat-on-failure is on. Should be an amount that can comfortably fit in memory.")
-    private int mMaxLogcatBytes = 500 * 1024; // 500K
-
-    @Option(name = "screenshot-on-failure",
-            description = "Take a screenshot on every test failure.")
-    private boolean mScreenshotOnFailure = false;
-
     @Option(name = "reboot-on-failure",
             description = "Reboot the device after every test failure.")
     private boolean mRebootOnFailure = false;
@@ -480,12 +467,7 @@ public abstract class ITestSuite
         /** Setup a special listener to take actions on test failures. */
         TestFailureListener failureListener =
                 new TestFailureListener(
-                        mContext.getDevices(),
-                        mBugReportOnFailure,
-                        mLogcatOnFailure,
-                        mScreenshotOnFailure,
-                        mRebootOnFailure,
-                        mMaxLogcatBytes);
+                        mContext.getDevices(), mBugReportOnFailure, mRebootOnFailure);
         /** Create the list of listeners applicable at the module level. */
         List<ITestInvocationListener> moduleListeners = createModuleListeners();
 

@@ -895,14 +895,13 @@ public class ModuleDefinitionTest {
         List<ITestDevice> listDevice = new ArrayList<>();
         listDevice.add(mMockDevice);
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("Serial");
-        TestFailureListener failureListener =
-                new TestFailureListener(listDevice, false, true, true, false, 5);
+        TestFailureListener failureListener = new TestFailureListener(listDevice, true, false);
         failureListener.setLogger(mMockListener);
         IConfiguration config = new Configuration("", "");
         TestFailureModuleController moduleConfig = new TestFailureModuleController();
         OptionSetter setter = new OptionSetter(moduleConfig);
         // Module option should override the logcat on failure
-        setter.setOptionValue("logcat-on-failure", "false");
+        setter.setOptionValue("bugreportz-on-failure", "false");
         config.setConfigurationObject(ModuleDefinition.MODULE_CONTROLLER, moduleConfig);
         List<IRemoteTest> testList = new ArrayList<>();
         testList.add(
@@ -926,17 +925,6 @@ public class ModuleDefinitionTest {
         mMockListener.testRunStarted("fakeName", 0);
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        // Only screenshot is captured
-        EasyMock.expect(mMockDevice.getScreenshot())
-                .andReturn(new ByteArrayInputStreamSource("".getBytes()));
-        // Only a screenshot is capture, logcat for that module was disabled.
-        LogFile loggedFile = new LogFile("path", "url", LogDataType.PNG);
-        EasyMock.expect(
-                        mMockLogSaver.saveLogData(
-                                EasyMock.eq("failedclass#failedmethod-Serial-screenshot"),
-                                EasyMock.eq(LogDataType.PNG),
-                                EasyMock.anyObject()))
-                .andReturn(loggedFile);
         replayMocks();
         mModule.run(mMockListener, null, failureListener);
         verifyMocks();

@@ -31,15 +31,15 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.device.metric.IMetricCollectorReceiver;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.InputStreamSource;
-import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogcatCrashResultForwarder;
-import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.ddmlib.DefaultRemoteAndroidTestRunner;
@@ -47,7 +47,6 @@ import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
-import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.StringEscapeUtils;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -59,16 +58,20 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-/**
- * A Test that runs an instrumentation test package on given device.
- */
+/** A Test that runs an instrumentation test package on given device. */
 @OptionClass(alias = "instrumentation")
-public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCollector,
-        IAbiReceiver {
+public class InstrumentationTest
+        implements IDeviceTest,
+                IResumableTest,
+                ITestCollector,
+                IAbiReceiver,
+                IInvocationContextReceiver,
+                IMetricCollectorReceiver {
 
     private static final String LOG_TAG = "InstrumentationTest";
 
@@ -191,18 +194,6 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     )
     private boolean mBugreportOnRunFailure = false;
 
-    @Option(name = "screenshot-on-failure", description = "Take a screenshot on every test failure")
-    private boolean mScreenshotOnFailure = false;
-
-    @Option(name = "logcat-on-failure", description =
-            "take a logcat snapshot on every test failure.")
-    private boolean mLogcatOnFailure = false;
-
-    @Option(name = "logcat-on-failure-size", description =
-            "The max number of logcat data in bytes to capture when --logcat-on-failure is on. " +
-            "Should be an amount that can comfortably fit in memory.")
-    private int mMaxLogcatBytes = 500 * 1024; // 500K
-
     @Option(
         name = "rerun-from-file",
         description =
@@ -310,6 +301,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     private Set<String> mExtraDeviceListener = new HashSet<>();
 
     private boolean mIsRerun = false;
+
+    private IInvocationContext mContext;
+    private List<IMetricCollector> mCollectors = new ArrayList<>();
 
     /**
      * {@inheritDoc}
@@ -608,21 +602,6 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         return mForceAbi;
     }
 
-    /** Sets the --screenshot-on-failure option. */
-    public void setScreenshotOnFailure(boolean screenshotOnFailure) {
-        mScreenshotOnFailure = screenshotOnFailure;
-    }
-
-    /** Sets the --logcat-on-failure option. */
-    public void setLogcatOnFailure(boolean logcatOnFailure) {
-        mLogcatOnFailure = logcatOnFailure;
-    }
-
-    /** Sets the --logcat-on-failure-size option. */
-    public void setLogcatOnFailureSize(int logcatOnFailureSize) {
-        mMaxLogcatBytes = logcatOnFailureSize;
-    }
-
     /** Sets the --coverage option for testing. */
     @VisibleForTesting
     void setCoverage(boolean coverageEnabled) {
@@ -861,9 +840,12 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         // Reruns do not create new listeners.
         if (!mIsRerun) {
             listener = addBugreportListenerIfEnabled(listener);
-            listener = addLogcatListenerIfEnabled(listener);
-            listener = addScreenshotListenerIfEnabled(listener);
             listener = addCoverageListenerIfEnabled(listener);
+
+            // TODO: Convert to device-side collectors when possible.
+            for (IMetricCollector collector : mCollectors) {
+                listener = collector.init(mContext, collector);
+            }
         }
 
         // Add the extra listeners only to the actual run and not the --collect-test-only one
@@ -902,28 +884,6 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
             BugreportCollector collector = new BugreportCollector(listener, getDevice());
             collector.addPredicate(pred);
             listener = collector;
-        }
-        return listener;
-    }
-
-    /**
-     * Returns a listener that will collect screenshots, or the original {@code listener} if this
-     * feature is disabled.
-     */
-    ITestInvocationListener addScreenshotListenerIfEnabled(ITestInvocationListener listener) {
-        if (mScreenshotOnFailure) {
-            listener = new FailedTestScreenshotGenerator(listener, getDevice());
-        }
-        return listener;
-    }
-
-    /**
-     * Returns a listener that will collect logcat logs, or the original {@code listener} if this
-     * feature is disabled.
-     */
-    ITestInvocationListener addLogcatListenerIfEnabled(ITestInvocationListener listener) {
-        if (mLogcatOnFailure) {
-            listener = new FailedTestLogcatGenerator(listener, getDevice(), mMaxLogcatBytes);
         }
         return listener;
     }
@@ -1124,102 +1084,6 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         return null;
     }
 
-    /** A {@link ResultForwarder} that will forward a screenshot on test failures. */
-    @VisibleForTesting
-    static class FailedTestScreenshotGenerator extends ResultForwarder {
-        private ITestDevice mDevice;
-
-        public FailedTestScreenshotGenerator(ITestInvocationListener listener,
-                ITestDevice device) {
-            super(listener);
-            mDevice = device;
-        }
-
-        @Override
-        public void testFailed(TestDescription test, String trace) {
-            try {
-                InputStreamSource screenSource = mDevice.getScreenshot();
-                super.testLog(String.format("screenshot-%s_%s", test.getClassName(),
-                        test.getTestName()), LogDataType.PNG, screenSource);
-                StreamUtil.cancel(screenSource);
-            } catch (DeviceNotAvailableException e) {
-                // TODO: rethrow this somehow
-                CLog.e("Device %s became unavailable while capturing screenshot, %s",
-                        mDevice.getSerialNumber(), e.toString());
-            }
-
-            super.testFailed(test, trace);
-        }
-    }
-
-    /** A {@link ResultForwarder} that will forward a logcat snapshot on each failed test. */
-    @VisibleForTesting
-    static class FailedTestLogcatGenerator extends ResultForwarder {
-        private ITestDevice mDevice;
-        private int mNumLogcatBytes;
-        private Map<TestDescription, Long> mMapStartTime = new HashMap<TestDescription, Long>();
-
-        public FailedTestLogcatGenerator(ITestInvocationListener listener, ITestDevice device,
-                int maxLogcatBytes) {
-            super(listener);
-            mDevice = device;
-            mNumLogcatBytes = maxLogcatBytes;
-        }
-
-        int getMaxSize() {
-            return mNumLogcatBytes;
-        }
-
-        @Override
-        public void testStarted(TestDescription test) {
-            super.testStarted(test);
-            // capture the starting date of the tests.
-            try {
-                mMapStartTime.put(test, mDevice.getDeviceDate());
-            } catch (DeviceNotAvailableException e) {
-                // For convenience of interface we catch here, test will mostlikely throw it again
-                // and it will be properly handle (recovery, etc.)
-                CLog.e(e);
-                mMapStartTime.put(test, 0l);
-            }
-        }
-
-        @Override
-        public void testFailed(TestDescription test, String trace) {
-            super.testFailed(test, trace);
-            captureLog(test);
-        }
-
-        @Override
-        public void testAssumptionFailure(TestDescription test, String trace) {
-            super.testAssumptionFailure(test, trace);
-            captureLog(test);
-        }
-
-        private void captureLog(TestDescription test) {
-            // if we can, capture starting the beginning of the test only to be more precise
-            long startTime = 0;
-            if (mMapStartTime.containsKey(test)) {
-                startTime = mMapStartTime.remove(test);
-            }
-            if (startTime != 0) {
-                try (InputStreamSource logSource = mDevice.getLogcatSince(startTime)) {
-                    super.testLog(
-                            String.format("logcat-%s_%s", test.getClassName(), test.getTestName()),
-                            LogDataType.TEXT,
-                            logSource);
-                }
-            } else {
-                try (InputStreamSource logSource = mDevice.getLogcat(mNumLogcatBytes)) {
-                    super.testLog(
-                            String.format("logcat-%s_%s", test.getClassName(), test.getTestName()),
-                            LogDataType.TEXT,
-                            logSource);
-                }
-            }
-        }
-    }
-
     /**
      * {@inheritDoc}
      */
@@ -1236,6 +1100,16 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     @Override
     public IAbi getAbi() {
         return mAbi;
+    }
+
+    @Override
+    public void setInvocationContext(IInvocationContext invocationContext) {
+        mContext = invocationContext;
+    }
+
+    @Override
+    public void setMetricCollectors(List<IMetricCollector> collectors) {
+        mCollectors = collectors;
     }
 
     /** Set True if we enforce the AJUR output format of instrumentation. */
