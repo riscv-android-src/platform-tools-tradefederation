@@ -24,6 +24,8 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.device.metric.LogcatOnFailureCollector;
+import com.android.tradefed.device.metric.ScreenshotOnFailureCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.shard.token.TokenProperty;
@@ -117,7 +119,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private IBuildInfo mBuild;
     private ITestDevice mDevice;
     private Map<ITestDevice, IBuildInfo> mDeviceInfos;
-    private List<IMetricCollector> mRunMetricCollectors;
+    private List<IMetricCollector> mRunMetricCollectors = new ArrayList<>();
     private boolean mCollectTestsOnly = false;
 
     private List<TestRunResult> mTestsResults = new ArrayList<>();
@@ -266,7 +268,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     /** Inject the List of {@link IMetricCollector} to be used by the module. */
     public void setMetricCollectors(List<IMetricCollector> collectors) {
-        mRunMetricCollectors = collectors;
+        if (collectors == null) {
+            return;
+        }
+        mRunMetricCollectors.addAll(collectors);
     }
 
     /** Pass the invocation log saver to the module so it can use it if necessary. */
@@ -896,10 +901,13 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             BaseModuleController controller = (BaseModuleController) ctrlObject;
             // module_controller can also control the log collection for the one module
             if (failureListener != null) {
-                failureListener.applyModuleConfiguration(
-                        controller.shouldCaptureBugreport(),
-                        controller.shouldCaptureLogcat(),
-                        controller.shouldCaptureScreenshot());
+                failureListener.applyModuleConfiguration(controller.shouldCaptureBugreport());
+            }
+            if (!controller.shouldCaptureLogcat()) {
+                mRunMetricCollectors.removeIf(c -> (c instanceof LogcatOnFailureCollector));
+            }
+            if (!controller.shouldCaptureScreenshot()) {
+                mRunMetricCollectors.removeIf(c -> (c instanceof ScreenshotOnFailureCollector));
             }
             return controller.shouldRunModule(mModuleInvocationContext);
         }
