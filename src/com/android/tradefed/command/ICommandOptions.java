@@ -184,4 +184,10 @@ public interface ICommandOptions {
 
     /** Sets the set of auto log collectors that should be added to an invocation. */
     public void setAutoLogCollectors(Set<AutoLogCollector> autoLogCollectors);
+
+    /** Whether or not to capture a screenshot on test case failure */
+    public boolean captureScreenshotOnFailure();
+
+    /** Whether or not to capture a logcat on test case failure */
+    public boolean captureLogcatOnFailure();
 }
