@@ -29,6 +29,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NullDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -593,7 +594,7 @@ public abstract class ITestSuite
             module.setCollectTestsOnly(mCollectTestsOnly);
         }
         // Pass the run defined collectors to be used.
-        module.setMetricCollectors(mMetricCollectors);
+        module.setMetricCollectors(CollectorHelper.cloneCollectors(mMetricCollectors));
         // Pass the main invocation logSaver
         module.setLogSaver(mMainConfiguration.getLogSaver());
         // Pass the retry strategy to the module
