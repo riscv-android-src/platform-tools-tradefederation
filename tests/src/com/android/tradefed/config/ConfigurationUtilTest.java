@@ -20,8 +20,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.CommandScheduler;
 import com.android.tradefed.device.DeviceManager;
+import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.targetprep.BuildError;
+import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.FileUtil;
 
 import org.junit.Test;
@@ -41,8 +47,8 @@ public class ConfigurationUtilTest {
     private static final String DEVICE_MANAGER_TYPE_NAME = "device_manager";
 
     /**
-     * Test {@link ConfigurationUtil#dumpClassToXml(KXmlSerializer, String, Object, List)} to create
-     * a dump of a configuration.
+     * Test {@link ConfigurationUtil#dumpClassToXml(KXmlSerializer, String, Object, List, boolean)}
+     * to create a dump of a configuration.
      */
     @Test
     public void testDumpClassToXml() throws Throwable {
@@ -57,7 +63,11 @@ public class ConfigurationUtilTest {
 
             DeviceManager deviceManager = new DeviceManager();
             ConfigurationUtil.dumpClassToXml(
-                    serializer, DEVICE_MANAGER_TYPE_NAME, deviceManager, new ArrayList<String>());
+                    serializer,
+                    DEVICE_MANAGER_TYPE_NAME,
+                    deviceManager,
+                    new ArrayList<String>(),
+                    true);
 
             serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
             serializer.endDocument();
@@ -77,8 +87,8 @@ public class ConfigurationUtilTest {
     }
 
     /**
-     * Test {@link ConfigurationUtil#dumpClassToXml(KXmlSerializer, String, Object, List)} to create
-     * a dump of a configuration with filters
+     * Test {@link ConfigurationUtil#dumpClassToXml(KXmlSerializer, String, Object, List, boolean)}
+     * to create a dump of a configuration with filters
      */
     @Test
     public void testDumpClassToXml_filtered() throws Throwable {
@@ -96,12 +106,14 @@ public class ConfigurationUtilTest {
                     serializer,
                     GlobalConfiguration.DEVICE_MANAGER_TYPE_NAME,
                     deviceManager,
-                    Arrays.asList("com.android.tradefed.device.DeviceManager"));
+                    Arrays.asList("com.android.tradefed.device.DeviceManager"),
+                    true);
             ConfigurationUtil.dumpClassToXml(
                     serializer,
                     GlobalConfiguration.SCHEDULER_TYPE_NAME,
                     new CommandScheduler(),
-                    Arrays.asList("com.android.tradefed.device.DeviceManager"));
+                    Arrays.asList("com.android.tradefed.device.DeviceManager"),
+                    true);
 
             serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
             serializer.endDocument();
@@ -234,6 +246,62 @@ public class ConfigurationUtilTest {
 
         } finally {
             FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
+    private class TestTargetPreparer implements ITargetPreparer {
+
+        @Option(name = "real-option")
+        private boolean mReal;
+
+        @Deprecated
+        @Option(name = "deprecated-option")
+        private boolean mDeprecated;
+
+        @Override
+        public void setUp(ITestDevice device, IBuildInfo buildInfo)
+                throws TargetSetupError, BuildError, DeviceNotAvailableException {
+            // Should never be called
+            assertTrue(false);
+        }
+    }
+
+    /** Test that an option annotated with deprecated is properly filtered. */
+    @Test
+    public void testDumpClassToXml_filterDeprecated() throws Throwable {
+        File tmpXml = FileUtil.createTempFile("global_config", ".xml");
+        try {
+            PrintWriter output = new PrintWriter(tmpXml);
+            KXmlSerializer serializer = new KXmlSerializer();
+            serializer.setOutput(output);
+            serializer.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
+            serializer.startDocument("UTF-8", null);
+            serializer.startTag(null, ConfigurationUtil.CONFIGURATION_NAME);
+
+            ITargetPreparer preparer = new TestTargetPreparer();
+            ConfigurationUtil.dumpClassToXml(
+                    serializer,
+                    Configuration.TARGET_PREPARER_TYPE_NAME,
+                    preparer,
+                    new ArrayList<String>(),
+                    false);
+
+            serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
+            serializer.endDocument();
+
+            // Read the dump XML file, make sure configurations can be loaded.
+            String content = FileUtil.readStringFromFile(tmpXml);
+            assertTrue(content.length() > 100);
+            assertTrue(content.contains("<configuration>"));
+            assertTrue(content.contains("<option name=\"real-option\" value=\"false\" />"));
+            // Does not contain any trace of the deprecated option
+            assertFalse(content.contains("deprecated-option"));
+            assertTrue(
+                    content.contains(
+                            "<target_preparer class=\"com.android.tradefed.config."
+                                    + "ConfigurationUtilTest$TestTargetPreparer\">"));
+        } finally {
+            FileUtil.deleteFile(tmpXml);
         }
     }
 }
