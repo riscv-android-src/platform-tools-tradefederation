@@ -259,6 +259,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
         try {
             CLog.d("Starting intra-module retry.");
             for (int attemptNumber = 1; attemptNumber < mMaxRunLimit; attemptNumber++) {
+                CLog.d("Retry attempt number %s", attemptNumber);
                 // Reset the filters to original.
                 if (mTest instanceof ITestFilterReceiver) {
                     ((ITestFilterReceiver) mTest).clearIncludeFilters();
