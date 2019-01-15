@@ -48,7 +48,6 @@ public class FastbootCommandPreparer extends BaseTargetPreparer {
             device.executeFastbootCommand(cmd.split("\\s+"));
         }
 
-        device.executeFastbootCommand("reboot");
-        device.waitForDeviceAvailable();
+        device.reboot();
     }
 }
