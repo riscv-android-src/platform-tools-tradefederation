@@ -49,6 +49,7 @@ import com.android.tradefed.util.ZipUtil2;
 
 import junit.framework.TestCase;
 
+import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
 import org.easymock.IExpectationSetters;
@@ -1718,6 +1719,194 @@ public class TestDeviceTest extends TestCase {
         EasyMock.expectLastCall();
         replayMocks();
         assertNull(mTestDevice.installPackage(new File(apexFile), true));
+    }
+
+    /**
+     * Test default installPackagse on device without runtime permission support list of args
+     *
+     * @throws Exception
+     */
+    public void testInstallPackages_default_runtimePermissionNotSupported() throws Exception {
+        List<File> mLocalApks = new ArrayList<File>();
+        for (int i = 0; i < 3; i++) {
+            File apkFile = File.createTempFile("test", ".apk");
+            mLocalApks.add(apkFile);
+        }
+        Capture<List<File>> filesCapture = new Capture<List<File>>();
+        Capture<List<String>> optionsCapture = new Capture<List<String>>();
+        setMockIDeviceRuntimePermissionNotSupported();
+        mMockIDevice.installPackages(
+                EasyMock.capture(filesCapture),
+                EasyMock.eq(true),
+                EasyMock.capture(optionsCapture),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES));
+        EasyMock.expectLastCall();
+        replayMocks();
+        assertNull(mTestDevice.installPackages(mLocalApks, true));
+        assertTrue(optionsCapture.getValue().size() == 0);
+        verifyMocks();
+        for (File apkFile : mLocalApks) {
+            assertTrue(filesCapture.getValue().contains(apkFile));
+            apkFile.delete();
+        }
+    }
+
+    /**
+     * Test default installPackages on device with runtime permission support list of args
+     *
+     * @throws Exception
+     */
+    public void testInstallPackages_default_runtimePermissionSupported() throws Exception {
+        List<File> mLocalApks = new ArrayList<File>();
+        for (int i = 0; i < 3; i++) {
+            File apkFile = File.createTempFile("test", ".apk");
+            mLocalApks.add(apkFile);
+        }
+        Capture<List<File>> filesCapture = new Capture<List<File>>();
+        Capture<List<String>> optionsCapture = new Capture<List<String>>();
+        setMockIDeviceRuntimePermissionSupported();
+        setMockIDeviceRuntimePermissionSupported();
+
+        mMockIDevice.installPackages(
+                EasyMock.capture(filesCapture),
+                EasyMock.eq(true),
+                EasyMock.capture(optionsCapture),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES));
+        EasyMock.expectLastCall();
+        replayMocks();
+        assertNull(mTestDevice.installPackages(mLocalApks, true));
+        assertTrue(optionsCapture.getValue().contains("-g"));
+        verifyMocks();
+        for (File apkFile : mLocalApks) {
+            assertTrue(filesCapture.getValue().contains(apkFile));
+            apkFile.delete();
+        }
+    }
+
+    /**
+     * Test installPackages timeout on device with runtime permission support list of args
+     *
+     * @throws Exception
+     */
+    public void testInstallPackages_default_timeout() throws Exception {
+        List<File> mLocalApks = new ArrayList<File>();
+        for (int i = 0; i < 3; i++) {
+            File apkFile = File.createTempFile("test", ".apk");
+            mLocalApks.add(apkFile);
+        }
+        Capture<List<File>> filesCapture = new Capture<List<File>>();
+        Capture<List<String>> optionsCapture = new Capture<List<String>>();
+        setMockIDeviceRuntimePermissionSupported();
+        setMockIDeviceRuntimePermissionSupported();
+
+        mMockIDevice.installPackages(
+                EasyMock.capture(filesCapture),
+                EasyMock.eq(true),
+                EasyMock.capture(optionsCapture),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES));
+        EasyMock.expectLastCall().andThrow(new InstallException(new TimeoutException()));
+        replayMocks();
+        assertTrue(mTestDevice.installPackages(mLocalApks, true).contains("InstallException"));
+        assertTrue(optionsCapture.getValue().contains("-g"));
+        verifyMocks();
+        for (File apkFile : mLocalApks) {
+            assertTrue(filesCapture.getValue().contains(apkFile));
+            apkFile.delete();
+        }
+    }
+
+    /**
+     * Test default installRemotePackagses on device without runtime permission support list of args
+     *
+     * @throws Exception
+     */
+    public void testInstallRemotePackages_default_runtimePermissionNotSupported() throws Exception {
+        List<String> mRemoteApkPaths = new ArrayList<String>();
+        mRemoteApkPaths.add("/data/local/tmp/foo.apk");
+        mRemoteApkPaths.add("/data/local/tmp/foo.dm");
+        Capture<List<String>> filePathsCapture = new Capture<List<String>>();
+        Capture<List<String>> optionsCapture = new Capture<List<String>>();
+        setMockIDeviceRuntimePermissionNotSupported();
+        mMockIDevice.installRemotePackages(
+                EasyMock.capture(filePathsCapture),
+                EasyMock.eq(true),
+                EasyMock.capture(optionsCapture),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES));
+        EasyMock.expectLastCall();
+        replayMocks();
+        assertNull(mTestDevice.installRemotePackages(mRemoteApkPaths, true));
+        assertTrue(optionsCapture.getValue().size() == 0);
+        verifyMocks();
+        for (String apkPath : mRemoteApkPaths) {
+            assertTrue(filePathsCapture.getValue().contains(apkPath));
+        }
+    }
+
+    /**
+     * Test default installRemotePackages on device with runtime permission support list of args
+     *
+     * @throws Exception
+     */
+    public void testInstallRemotePackages_default_runtimePermissionSupported() throws Exception {
+        List<String> mRemoteApkPaths = new ArrayList<String>();
+        mRemoteApkPaths.add("/data/local/tmp/foo.apk");
+        mRemoteApkPaths.add("/data/local/tmp/foo.dm");
+        Capture<List<String>> filePathsCapture = new Capture<List<String>>();
+        Capture<List<String>> optionsCapture = new Capture<List<String>>();
+        setMockIDeviceRuntimePermissionSupported();
+        setMockIDeviceRuntimePermissionSupported();
+
+        mMockIDevice.installRemotePackages(
+                EasyMock.capture(filePathsCapture),
+                EasyMock.eq(true),
+                EasyMock.capture(optionsCapture),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES));
+        EasyMock.expectLastCall();
+        replayMocks();
+        assertNull(mTestDevice.installRemotePackages(mRemoteApkPaths, true));
+        assertTrue(optionsCapture.getValue().contains("-g"));
+        verifyMocks();
+        for (String apkPath : mRemoteApkPaths) {
+            assertTrue(filePathsCapture.getValue().contains(apkPath));
+        }
+    }
+
+    /**
+     * Test installRemotePackages timeout on device with runtime permission support list of args
+     *
+     * @throws Exception
+     */
+    public void testInstallRemotePackages_default_timeout() throws Exception {
+        List<String> mRemoteApkPaths = new ArrayList<String>();
+        mRemoteApkPaths.add("/data/local/tmp/foo.apk");
+        mRemoteApkPaths.add("/data/local/tmp/foo.dm");
+        Capture<List<String>> filePathsCapture = new Capture<List<String>>();
+        Capture<List<String>> optionsCapture = new Capture<List<String>>();
+        setMockIDeviceRuntimePermissionSupported();
+        setMockIDeviceRuntimePermissionSupported();
+
+        mMockIDevice.installRemotePackages(
+                EasyMock.capture(filePathsCapture),
+                EasyMock.eq(true),
+                EasyMock.capture(optionsCapture),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES));
+        EasyMock.expectLastCall().andThrow(new InstallException(new TimeoutException()));
+        replayMocks();
+        assertTrue(
+                mTestDevice
+                        .installRemotePackages(mRemoteApkPaths, true)
+                        .contains("InstallException during package installation."));
+        assertTrue(optionsCapture.getValue().contains("-g"));
+        verifyMocks();
+        for (String apkPath : mRemoteApkPaths) {
+            assertTrue(filePathsCapture.getValue().contains(apkPath));
+        }
     }
 
     /**
