@@ -398,7 +398,8 @@ public class TradefedSandbox implements ISandbox {
             File tmpParentConfig =
                     FileUtil.createTempFile("parent-config", ".xml", mSandboxTmpFolder);
             PrintWriter pw = new PrintWriter(tmpParentConfig);
-            parentConfig.dumpXml(pw);
+            // Do not print deprecated options to avoid compatibility issues
+            parentConfig.dumpXml(pw, new ArrayList<>(), false);
             return tmpParentConfig;
         } catch (ConfigurationException | IOException e) {
             CLog.e("Parent doesn't understand the command either:");
