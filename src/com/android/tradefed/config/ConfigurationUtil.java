@@ -71,14 +71,17 @@ public class ConfigurationUtil {
      * @param excludeClassFilter list of object configuration type or fully qualified class names to
      *     be excluded from the dump. for example: {@link Configuration#TARGET_PREPARER_TYPE_NAME}.
      *     com.android.tradefed.testtype.StubTest
+     * @param printDeprecatedOptions whether or not to print deprecated options
      */
     static void dumpClassToXml(
             KXmlSerializer serializer,
             String classTypeName,
             Object obj,
-            List<String> excludeClassFilter)
+            List<String> excludeClassFilter,
+            boolean printDeprecatedOptions)
             throws IOException {
-        dumpClassToXml(serializer, classTypeName, obj, false, excludeClassFilter);
+        dumpClassToXml(
+                serializer, classTypeName, obj, false, excludeClassFilter, printDeprecatedOptions);
     }
 
     /**
@@ -91,13 +94,15 @@ public class ConfigurationUtil {
      * @param excludeClassFilter list of object configuration type or fully qualified class names to
      *     be excluded from the dump. for example: {@link Configuration#TARGET_PREPARER_TYPE_NAME}.
      *     com.android.tradefed.testtype.StubTest
+     * @param printDeprecatedOptions whether or not to print deprecated options
      */
     static void dumpClassToXml(
             KXmlSerializer serializer,
             String classTypeName,
             Object obj,
             boolean isGenericObject,
-            List<String> excludeClassFilter)
+            List<String> excludeClassFilter,
+            boolean printDeprecatedOptions)
             throws IOException {
         if (excludeClassFilter.contains(classTypeName)) {
             return;
@@ -109,12 +114,12 @@ public class ConfigurationUtil {
             serializer.startTag(null, "object");
             serializer.attribute(null, "type", classTypeName);
             serializer.attribute(null, CLASS_NAME, obj.getClass().getName());
-            dumpOptionsToXml(serializer, obj);
+            dumpOptionsToXml(serializer, obj, printDeprecatedOptions);
             serializer.endTag(null, "object");
         } else {
             serializer.startTag(null, classTypeName);
             serializer.attribute(null, CLASS_NAME, obj.getClass().getName());
-            dumpOptionsToXml(serializer, obj);
+            dumpOptionsToXml(serializer, obj, printDeprecatedOptions);
             serializer.endTag(null, classTypeName);
         }
     }
@@ -124,11 +129,19 @@ public class ConfigurationUtil {
      *
      * @param serializer a {@link KXmlSerializer} to create the XML dump
      * @param obj {@link Object} to be added to the XML dump
+     * @param printDeprecatedOptions whether or not to skip the deprecated options
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private static void dumpOptionsToXml(KXmlSerializer serializer, Object obj) throws IOException {
+    private static void dumpOptionsToXml(
+            KXmlSerializer serializer, Object obj, boolean printDeprecatedOptions)
+            throws IOException {
         for (Field field : OptionSetter.getOptionFieldsForClass(obj.getClass())) {
             Option option = field.getAnnotation(Option.class);
+            Deprecated deprecatedAnnotation = field.getAnnotation(Deprecated.class);
+            // If enabled, skip @Deprecated options
+            if (!printDeprecatedOptions && deprecatedAnnotation != null) {
+                continue;
+            }
             Object fieldVal = OptionSetter.getFieldValue(field, obj);
             if (fieldVal == null) {
                 continue;
