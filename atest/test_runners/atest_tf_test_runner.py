@@ -54,7 +54,8 @@ EVENT_NAMES = {'module_started': 'TEST_MODULE_STARTED',
                # Last two failures are runner-level, not test-level.
                # Invocation failure is broader than run failure.
                'run_failed': 'TEST_RUN_FAILED',
-               'invocation_failed': 'INVOCATION_FAILED'}
+               'invocation_failed': 'INVOCATION_FAILED',
+               'test_ignored': 'TEST_IGNORED'}
 EVENT_PAIRS = {EVENT_NAMES['module_started']: EVENT_NAMES['module_ended'],
                EVENT_NAMES['run_started']: EVENT_NAMES['run_ended'],
                EVENT_NAMES['test_started']: EVENT_NAMES['test_ended']}
@@ -66,6 +67,7 @@ EXEC_DEPENDENCIES = ('adb', 'aapt')
 CONNECTION_STATE = {
     'current_test': None,
     'last_failed': None,
+    'last_ignored': None,
     'current_group': None,
     'current_group_total': None,
     'test_count': 0,
@@ -362,6 +364,10 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 event_data['className'],
                 event_data['testName']),
                                     'trace': event_data['trace']}
+        elif event_name == EVENT_NAMES['test_ignored']:
+            name = TEST_NAME_TEMPLATE % (event_data['className'],
+                                         event_data['testName'])
+            state['last_ignored'] = name
         elif event_name == EVENT_NAMES['run_failed']:
             # Module and Test Run probably started, but failure occurred.
             reporter.process_test_result(test_runner_base.TestResult(
@@ -398,6 +404,10 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 status = test_runner_base.FAILED_STATUS
                 trace = state['last_failed']['trace']
                 state['last_failed'] = None
+            elif state['last_ignored'] and name == state['last_ignored']:
+                status = test_runner_base.IGNORED_STATUS
+                state['last_ignored'] = None
+                trace = None
             else:
                 status = test_runner_base.PASSED_STATUS
                 trace = None

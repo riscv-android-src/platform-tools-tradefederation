@@ -68,18 +68,20 @@ FAILURE_FLAG = 'RUNNER_FAILURE'
 class RunStat(object):
     """Class for storing stats of a test run."""
 
-    def __init__(self, passed=0, failed=0, run_errors=False):
+    def __init__(self, passed=0, failed=0, ignored=0, run_errors=False):
         """Initialize a new instance of RunStat class.
 
         Args:
-            passed: An int of the number of passing tests.
-            failed: An int of the number of failed tests.
+            passed: Count of passing tests.
+            failed: Count of failed tests.
+            ignored: Count of ignored tests.
             run_errors: A boolean if there were run errors
         """
         # TODO(b/109822985): Track group and run estimated totals for updating
         # summary line
         self.passed = passed
         self.failed = failed
+        self.ignored = ignored
         # Run errors are not for particular tests, they are runner errors.
         self.run_errors = run_errors
 
@@ -261,6 +263,7 @@ class ResultReporter(object):
         """
         passed_label = 'Passed'
         failed_label = 'Failed'
+        ignored_label = 'Ignored'
         error_label = ''
         if stats.failed > 0:
             failed_label = au.colorize(failed_label, constants.RED)
@@ -268,12 +271,14 @@ class ResultReporter(object):
             error_label = au.colorize('(Completed With ERRORS)', constants.RED)
         elif stats.failed == 0:
             passed_label = au.colorize(passed_label, constants.GREEN)
-        summary = '%s: %s: %s, %s: %s %s' % (name,
-                                             passed_label,
-                                             stats.passed,
-                                             failed_label,
-                                             stats.failed,
-                                             error_label)
+        summary = '%s: %s: %s, %s: %s, %s: %s %s' % (name,
+                                                     passed_label,
+                                                     stats.passed,
+                                                     failed_label,
+                                                     stats.failed,
+                                                     ignored_label,
+                                                     stats.ignored,
+                                                     error_label)
         return summary
 
     def _update_stats(self, test, group):
@@ -288,6 +293,9 @@ class ResultReporter(object):
         if test.status == test_runner_base.PASSED_STATUS:
             self.run_stats.passed += 1
             group.passed += 1
+        elif test.status == test_runner_base.IGNORED_STATUS:
+            self.run_stats.ignored += 1
+            group.ignored += 1
         elif test.status == test_runner_base.FAILED_STATUS:
             self.run_stats.failed += 1
             self.failed_tests.append(test.test_name)
@@ -331,14 +339,18 @@ class ResultReporter(object):
             if test.status == test_runner_base.PASSED_STATUS:
                 # Example of output:
                 # [78/92] test_name: PASSED (92ms)
-                # TODO(117399100): Adjust the test time to output in
-                # minutes/second/millisecond.
                 print('[%s/%s] %s: %s %s' % (test.test_count, test.group_total,
                                              test.test_name, au.colorize(
                                                  test.status, constants.GREEN),
                                              test.test_time))
+            elif test.status == test_runner_base.IGNORED_STATUS:
+                # Example: [33/92] test_name: IGNORED (12ms)
+                print('[%s/%s] %s: %s %s' % (test.test_count, test.group_total,
+                                             test.test_name, au.colorize(
+                                                 test.status, constants.MAGENTA),
+                                             test.test_time))
             else:
-                # [26/92] test_name: FAILED (32ms)
+                # Example: [26/92] test_name: FAILED (32ms)
                 print('[%s/%s] %s: %s %s' % (test.test_count, test.group_total,
                                              test.test_name, au.colorize(
                                                  test.status, constants.RED),

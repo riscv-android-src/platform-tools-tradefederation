@@ -156,6 +156,25 @@ EVENTS_NOT_BALANCED_BEFORE_RAISE = [
                      'trace': 'someTrace'}),
 ]
 
+EVENTS_IGNORE = [
+    ('TEST_MODULE_STARTED', {
+        'moduleContextFileName':'serial-util1146216{974}2772610436.ser',
+        'moduleName':'someTestModule'}),
+    ('TEST_RUN_STARTED', {'testCount': 2}),
+    ('TEST_STARTED', {'start_time':8, 'className':'someClassName',
+                      'testName':'someTestName'}),
+    ('TEST_ENDED', {'end_time':18, 'className':'someClassName',
+                    'testName':'someTestName'}),
+    ('TEST_STARTED', {'start_time':28, 'className':'someClassName2',
+                      'testName':'someTestName2'}),
+    ('TEST_IGNORED', {'className':'someClassName2', 'testName':'someTestName2',
+                      'trace': 'someTrace'}),
+    ('TEST_ENDED', {'end_time':90, 'className':'someClassName2',
+                    'testName':'someTestName2'}),
+    ('TEST_RUN_ENDED', {}),
+    ('TEST_MODULE_ENDED', {'foo': 'bar'}),
+]
+
 class AtestTradefedTestRunnerUnittests(unittest.TestCase):
     """Unit tests for atest_tf_test_runner.py"""
 
@@ -384,6 +403,37 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         self.assertRaises(atf_tr.TradeFedExitError,
                           self.tr._check_events_are_balanced,
                           name, mock_reporter, state, stack)
+
+    def test_process_event_ignore(self):
+        """Test _process_event method for normal test results."""
+        mock_reporter = mock.Mock()
+        state = atf_tr.CONNECTION_STATE.copy()
+        stack = []
+        for name, data in EVENTS_IGNORE:
+            self.tr._process_event(name, data, mock_reporter, state, stack)
+        call1 = mock.call(test_runner_base.TestResult(
+            runner_name=self.tr.NAME,
+            group_name='someTestModule',
+            test_name='someClassName#someTestName',
+            status=test_runner_base.PASSED_STATUS,
+            details=None,
+            test_count=1,
+            test_time='(10ms)',
+            runner_total=None,
+            group_total=2
+        ))
+        call2 = mock.call(test_runner_base.TestResult(
+            runner_name=self.tr.NAME,
+            group_name='someTestModule',
+            test_name='someClassName2#someTestName2',
+            status=test_runner_base.IGNORED_STATUS,
+            details=None,
+            test_count=2,
+            test_time='(62ms)',
+            runner_total=None,
+            group_total=2
+        ))
+        mock_reporter.process_test_result.assert_has_calls([call1, call2])
 
 
     @mock.patch.object(atf_tr.AtestTradefedTestRunner, '_generate_metrics_folder')
