@@ -94,6 +94,18 @@ RESULT_INVOCATION_FAILURE = test_runner_base.TestResult(
     group_total=None
 )
 
+RESULT_IGNORED_TEST = test_runner_base.TestResult(
+    runner_name='someTestRunner',
+    group_name='someTestModule',
+    test_name='someClassName#sostName',
+    status=test_runner_base.IGNORED_STATUS,
+    details=None,
+    test_count=1,
+    test_time='(10ms)',
+    runner_total=None,
+    group_total=2
+)
+
 #pylint: disable=protected-access
 #pylint: disable=invalid-name
 class ResultReporterUnittests(unittest.TestCase):
@@ -143,7 +155,7 @@ class ResultReporterUnittests(unittest.TestCase):
         self.assertIsNotNone(runner)
         self.assertEquals(runner, result_reporter.UNSUPPORTED_FLAG)
 
-    def test_update_stats(self):
+    def test_update_stats_passed(self):
         """Test _update_stats method."""
         # Passed Test
         group = result_reporter.RunStat()
@@ -154,6 +166,7 @@ class ResultReporterUnittests(unittest.TestCase):
         self.assertEquals(self.rr.failed_tests, [])
         self.assertEquals(group.passed, 1)
         self.assertEquals(group.failed, 0)
+        self.assertEquals(group.ignored, 0)
         self.assertEquals(group.run_errors, False)
         # Passed Test New Group
         group2 = result_reporter.RunStat()
@@ -164,7 +177,17 @@ class ResultReporterUnittests(unittest.TestCase):
         self.assertEquals(self.rr.failed_tests, [])
         self.assertEquals(group2.passed, 1)
         self.assertEquals(group2.failed, 0)
+        self.assertEquals(group.ignored, 0)
         self.assertEquals(group2.run_errors, False)
+
+    def test_update_stats_failed(self):
+        """Test _update_stats method."""
+        # Passed Test
+        group = result_reporter.RunStat()
+        self.rr._update_stats(RESULT_PASSED_TEST, group)
+        # Passed Test New Group
+        group2 = result_reporter.RunStat()
+        self.rr._update_stats(RESULT_PASSED_TEST_MODULE_2, group2)
         # Failed Test Old Group
         self.rr._update_stats(RESULT_FAILED_TEST, group)
         self.assertEquals(self.rr.run_stats.passed, 2)
@@ -173,6 +196,7 @@ class ResultReporterUnittests(unittest.TestCase):
         self.assertEquals(self.rr.failed_tests, [RESULT_FAILED_TEST.test_name])
         self.assertEquals(group.passed, 1)
         self.assertEquals(group.failed, 1)
+        self.assertEquals(group.ignored, 0)
         self.assertEquals(group.total, 2)
         self.assertEquals(group2.total, 1)
         self.assertEquals(group.run_errors, False)
@@ -184,6 +208,7 @@ class ResultReporterUnittests(unittest.TestCase):
         self.assertEquals(self.rr.failed_tests, [RESULT_FAILED_TEST.test_name])
         self.assertEquals(group.passed, 1)
         self.assertEquals(group.failed, 1)
+        self.assertEquals(group.ignored, 0)
         self.assertEquals(group.run_errors, True)
         self.assertEquals(group2.run_errors, False)
         # Invocation Failure
@@ -194,6 +219,42 @@ class ResultReporterUnittests(unittest.TestCase):
         self.assertEquals(self.rr.failed_tests, [RESULT_FAILED_TEST.test_name])
         self.assertEquals(group.passed, 1)
         self.assertEquals(group.failed, 1)
+        self.assertEquals(group.ignored, 0)
+        self.assertEquals(group.run_errors, True)
+
+    def test_update_stats_ignored(self):
+        """Test _update_stats method."""
+        # Passed Test
+        group = result_reporter.RunStat()
+        self.rr._update_stats(RESULT_PASSED_TEST, group)
+        # Passed Test New Group
+        group2 = result_reporter.RunStat()
+        self.rr._update_stats(RESULT_PASSED_TEST_MODULE_2, group2)
+        # Failed Test Old Group
+        self.rr._update_stats(RESULT_FAILED_TEST, group)
+        # Test Run Failure
+        self.rr._update_stats(RESULT_RUN_FAILURE, group)
+        # Invocation Failure
+        self.rr._update_stats(RESULT_INVOCATION_FAILURE, group)
+        # Ignored Test
+        self.rr._update_stats(RESULT_IGNORED_TEST, group)
+        self.assertEquals(self.rr.run_stats.passed, 2)
+        self.assertEquals(self.rr.run_stats.failed, 1)
+        self.assertEquals(self.rr.run_stats.run_errors, True)
+        self.assertEquals(self.rr.failed_tests, [RESULT_FAILED_TEST.test_name])
+        self.assertEquals(group.passed, 1)
+        self.assertEquals(group.failed, 1)
+        self.assertEquals(group.ignored, 1)
+        self.assertEquals(group.run_errors, True)
+        # 2nd Ignored Test
+        self.rr._update_stats(RESULT_IGNORED_TEST, group)
+        self.assertEquals(self.rr.run_stats.passed, 2)
+        self.assertEquals(self.rr.run_stats.failed, 1)
+        self.assertEquals(self.rr.run_stats.run_errors, True)
+        self.assertEquals(self.rr.failed_tests, [RESULT_FAILED_TEST.test_name])
+        self.assertEquals(group.passed, 1)
+        self.assertEquals(group.failed, 1)
+        self.assertEquals(group.ignored, 2)
         self.assertEquals(group.run_errors, True)
 
     def test_print_summary_ret_val(self):
