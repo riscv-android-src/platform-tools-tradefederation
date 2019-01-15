@@ -16,6 +16,7 @@
 
 package com.android.tradefed.util;
 
+import com.android.annotations.Nullable;
 import com.android.tradefed.command.CommandScheduler;
 
 import java.io.File;
@@ -170,9 +171,22 @@ public interface IRunUtil {
     CommandResult runTimedCmdWithInput(long timeout, String input, List<String> command);
 
     /**
+     * Helper method to execute a system command that requires redirecting Stdin from a file, and
+     * aborting if it takes longer than a specified time.
+     *
+     * @param timeout maximum time to wait in ms
+     * @param inputRedirect the {@link File} to redirect as standard input using {@link
+     *     ProcessBuilder#redirectInput()}. If null, stdin won't be redirected.
+     * @param command the specified system command and optionally arguments to exec
+     * @return a {@link CommandResult} containing result from command run
+     */
+    CommandResult runTimedCmdWithInputRedirect(
+            long timeout, @Nullable File inputRedirect, String... command);
+
+    /**
      * Helper method to execute a system command asynchronously.
-     * <p/>
-     * Will return immediately after launching command.
+     *
+     * <p>Will return immediately after launching command.
      *
      * @param command the specified system command and optionally arguments to exec
      * @return the {@link Process} of the executed command

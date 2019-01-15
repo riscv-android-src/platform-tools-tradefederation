@@ -107,12 +107,10 @@ public class RunUtilTest extends TestCase {
                 mRunUtil.runTimed(SHORT_TIMEOUT_MS, mockRunnable, true));
     }
 
-    /**
-     * Test failure case for {@link RunUtil#runTimed(long, IRunnableResult, boolean)}.
-     */
+    /** Test failure case for {@link RunUtil#runTimed(long, IRunnableResult, boolean)}. */
     public void testRunTimed_failed() throws Exception {
-        IRunUtil.IRunnableResult mockRunnable = EasyMock.createStrictMock(
-                IRunUtil.IRunnableResult.class);
+        IRunUtil.IRunnableResult mockRunnable =
+                EasyMock.createStrictMock(IRunUtil.IRunnableResult.class);
         EasyMock.expect(mockRunnable.run()).andReturn(Boolean.FALSE);
         mockRunnable.cancel(); // always ensure execution is cancelled
         EasyMock.replay(mockRunnable);
@@ -120,12 +118,10 @@ public class RunUtilTest extends TestCase {
                 mRunUtil.runTimed(SHORT_TIMEOUT_MS, mockRunnable, true));
     }
 
-    /**
-     * Test exception case for {@link RunUtil#runTimed(long, IRunnableResult, boolean)}.
-     */
+    /** Test exception case for {@link RunUtil#runTimed(long, IRunnableResult, boolean)}. */
     public void testRunTimed_exception() throws Exception {
-        IRunUtil.IRunnableResult mockRunnable = EasyMock.createStrictMock(
-                IRunUtil.IRunnableResult.class);
+        IRunUtil.IRunnableResult mockRunnable =
+                EasyMock.createStrictMock(IRunUtil.IRunnableResult.class);
         EasyMock.expect(mockRunnable.run()).andThrow(new RuntimeException());
         mockRunnable.cancel(); // cancel due to exception
         mockRunnable.cancel(); // always ensure execution is cancelled
@@ -325,10 +321,10 @@ public class RunUtilTest extends TestCase {
         CommandResult result =
                 spyUtil.runTimedCmd(LONG_TIMEOUT_MS, stdoutStream, stderrStream, command);
         assertEquals(CommandStatus.SUCCESS, result.getStatus());
-        assertEquals(result.getStdout(),
-                "redirected to " + stdoutStream.getClass().getSimpleName());
-        assertEquals(result.getStderr(),
-                "redirected to " + stderrStream.getClass().getSimpleName());
+        assertEquals(
+                result.getStdout(), "redirected to " + stdoutStream.getClass().getSimpleName());
+        assertEquals(
+                result.getStderr(), "redirected to " + stderrStream.getClass().getSimpleName());
         assertTrue(stdout.exists());
         assertTrue(stderr.exists());
         try {
@@ -380,17 +376,13 @@ public class RunUtilTest extends TestCase {
         CommandResult result =
                 spyUtil.runTimedCmd(SHORT_TIMEOUT_MS, stdoutStream, stderrStream, command);
         assertEquals(CommandStatus.SUCCESS, result.getStatus());
-        assertEquals(result.getStdout(),
-                "redirected to " + stdoutStream.getClass().getSimpleName());
-        assertEquals(result.getStderr(),
-                "redirected to " + stderrStream.getClass().getSimpleName());
+        assertEquals(
+                result.getStdout(), "redirected to " + stdoutStream.getClass().getSimpleName());
+        assertEquals(
+                result.getStderr(), "redirected to " + stderrStream.getClass().getSimpleName());
         assertTrue(stdout.exists());
         assertTrue(stderr.exists());
         try {
-// <<<<<<< HEAD
-//             assertEquals("TEST\n", FileUtil.readStringFromFile(stdout));
-//             assertEquals("", FileUtil.readStringFromFile(stderr));
-// =======
             assertEquals(CommandStatus.SUCCESS, result.getStatus());
             assertEquals(
                     result.getStdout(), "redirected to " + stdoutStream.getClass().getSimpleName());
@@ -400,7 +392,6 @@ public class RunUtilTest extends TestCase {
             assertTrue(stderr.exists());
             assertEquals("TEST STDOUT\n", FileUtil.readStringFromFile(stdout));
             assertEquals("TEST STDERR\n", FileUtil.readStringFromFile(stderr));
-// >>>>>>> 7f6b1bf55... HostGTest: Merge stdout and stderr output and send to result parser
         } catch (IOException e) {
             fail(e.getMessage());
         } finally {
@@ -444,9 +435,7 @@ public class RunUtilTest extends TestCase {
         assertTrue(success);
     }
 
-    /**
-     * Test whether a {@link RunUtil#setInterruptibleInFuture} has not change the state yet.
-     */
+    /** Test whether a {@link RunUtil#setInterruptibleInFuture} has not change the state yet. */
     public void testSetInterruptibleInFuture_beforeTimeout() {
         mRunUtil.allowInterrupt(false);
         assertFalse(mRunUtil.isInterruptAllowed());
@@ -459,9 +448,7 @@ public class RunUtilTest extends TestCase {
         assertTrue(mRunUtil.isInterruptAllowed());
     }
 
-    /**
-     * Test {@link RunUtil#setEnvVariablePriority(EnvPriority)} properly prioritize unset.
-     */
+    /** Test {@link RunUtil#setEnvVariablePriority(EnvPriority)} properly prioritize unset. */
     public void testUnsetPriority() {
         final String ENV_NAME = "TF_GLO";
         RunUtil testRunUtil = new RunUtil();
