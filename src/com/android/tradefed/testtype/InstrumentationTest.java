@@ -847,6 +847,9 @@ public class InstrumentationTest
                 if (collector.isDisabled()) {
                     CLog.d("%s has been disabled. Skipping.", collector);
                 } else {
+                    CLog.d(
+                            "Initializing %s for instrumentation.",
+                            collector.getClass().getCanonicalName());
                     listener = collector.init(mContext, listener);
                 }
             }
