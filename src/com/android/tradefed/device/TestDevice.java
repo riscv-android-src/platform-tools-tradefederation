@@ -340,6 +340,160 @@ public class TestDevice extends NativeDevice {
         return response[0];
     }
 
+    /**
+     * Core implementation for installing application with split apk files {@link
+     * IDevice#installPackages(String, boolean, String...)}
+     * See "https://developer.android.com/studio/build/configure-apk-splits" on how to split
+     * apk to several files.
+     *
+     * @param packageFiles the local apk files
+     * @param reinstall <code>true</code> if a reinstall should be performed
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
+     *     available options.
+     * @return the response from the installation <code>null</code> if installation succeeds.
+     * @throws DeviceNotAvailableException
+     */
+    private String internalInstallPackages(
+            final List<File> packageFiles, final boolean reinstall, final List<String> extraArgs)
+            throws DeviceNotAvailableException {
+        // use array to store response, so it can be returned to caller
+        final String[] response = new String[1];
+        DeviceAction installAction =
+                new DeviceAction() {
+                    @Override
+                    public boolean run() throws InstallException {
+                        try {
+                            getIDevice()
+                                    .installPackages(
+                                            packageFiles,
+                                            reinstall,
+                                            new ArrayList(extraArgs),
+                                            INSTALL_TIMEOUT_MINUTES,
+                                            TimeUnit.MINUTES);
+                            response[0] = null;
+                            return true;
+                        } catch (InstallException e) {
+                            response[0] = e.getMessage();
+                            if (response[0] == null) {
+                                response[0] =
+                                        String.format(
+                                                "InstallException: %s",
+                                                StreamUtil.getStackTrace(e));
+                            }
+                            return false;
+                        }
+                    }
+                };
+        performDeviceAction(
+                String.format("install %s", packageFiles.toString()),
+                installAction,
+                MAX_RETRY_ATTEMPTS);
+        return response[0];
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String installPackages(
+            final List<File> packageFiles, final boolean reinstall, final String... extraArgs)
+            throws DeviceNotAvailableException {
+        // Grant all permissions by default if feature is supported
+        return installPackages(packageFiles, reinstall, isRuntimePermissionSupported(), extraArgs);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String installPackages(
+            List<File> packageFiles,
+            boolean reinstall,
+            boolean grantPermissions,
+            String... extraArgs)
+            throws DeviceNotAvailableException {
+        List<String> args = new ArrayList<>(Arrays.asList(extraArgs));
+        if (grantPermissions) {
+            ensureRuntimePermissionSupported();
+            args.add("-g");
+        }
+        return internalInstallPackages(packageFiles, reinstall, args);
+    }
+
+    /**
+     * Core implementation for split apk remote installation {@link IDevice#installPackage(String,
+     * boolean, String...)}
+     * See "https://developer.android.com/studio/build/configure-apk-splits" on how to split
+     * apk to several files.
+     *
+     * @param packageFiles the remote apk file paths
+     * @param reinstall <code>true</code> if a reinstall should be performed
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
+     *     available options.
+     * @return the response from the installation <code>null</code> if installation succeeds.
+     * @throws DeviceNotAvailableException
+     */
+    private String internalInstallRemotePackages(
+            final List<String> remoteApkPaths,
+            final boolean reinstall,
+            final List<String> extraArgs)
+            throws DeviceNotAvailableException {
+        // use array to store response, so it can be returned to caller
+        final String[] response = new String[1];
+        DeviceAction installAction =
+                new DeviceAction() {
+                    @Override
+                    public boolean run() throws InstallException {
+                        try {
+                            getIDevice()
+                                    .installRemotePackages(
+                                            remoteApkPaths,
+                                            reinstall,
+                                            new ArrayList(extraArgs),
+                                            INSTALL_TIMEOUT_MINUTES,
+                                            TimeUnit.MINUTES);
+                            response[0] = null;
+                            return true;
+                        } catch (InstallException e) {
+                            response[0] = e.getMessage();
+                            if (response[0] == null) {
+                                response[0] = String.format(
+                                    "InstallException during package installation. cause: %s",
+                                    StreamUtil.getStackTrace(e));
+                            }
+                            return false;
+                        }
+                    }
+                };
+        performDeviceAction(
+                String.format("install %s", remoteApkPaths.toString()),
+                installAction,
+                MAX_RETRY_ATTEMPTS);
+        return response[0];
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String installRemotePackages(
+            final List<String> remoteApkPaths, final boolean reinstall, final String... extraArgs)
+            throws DeviceNotAvailableException {
+        // Grant all permissions by default if feature is supported
+        return installRemotePackages(
+                remoteApkPaths, reinstall, isRuntimePermissionSupported(), extraArgs);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String installRemotePackages(
+            List<String> remoteApkPaths,
+            boolean reinstall,
+            boolean grantPermissions,
+            String... extraArgs)
+            throws DeviceNotAvailableException {
+        List<String> args = new ArrayList<>(Arrays.asList(extraArgs));
+        if (grantPermissions) {
+            ensureRuntimePermissionSupported();
+            args.add("-g");
+        }
+        return internalInstallRemotePackages(remoteApkPaths, reinstall, args);
+    }
+
     /** {@inheritDoc} */
     @Override
     public InputStreamSource getScreenshot() throws DeviceNotAvailableException {
