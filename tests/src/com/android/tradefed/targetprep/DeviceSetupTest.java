@@ -1109,13 +1109,52 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_rootDisabled() throws Exception {
-        doSetupExpectations(true /* screenOn */, false /* root enabled */,
-                false /* root response */, DEFAULT_API_LEVEL, new Capture<>());
+    public void testSetup_rootDisabled_withoutChangeSystemProp() throws Exception {
+        doSetupExpectations(
+                true /* screenOn */,
+                false /* root enabled */,
+                false /* root response */,
+                DEFAULT_API_LEVEL,
+                new Capture<>());
         doCheckExternalStoreSpaceExpectations();
         EasyMock.replay(mMockDevice);
+        mDeviceSetup.setDisableDialing(false);
+        mDeviceSetup.setDisableAudio(false);
+        mDeviceSetup.setTestHarness(false);
         mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
         EasyMock.verify(mMockDevice);
+    }
+
+    public void testSetup_rootDisabled_withSkipChangeSystemProp() throws Exception {
+        doSetupExpectations(
+                true /* screenOn */,
+                false /* root enabled */,
+                false /* root response */,
+                DEFAULT_API_LEVEL,
+                new Capture<>());
+        doCheckExternalStoreSpaceExpectations();
+        EasyMock.replay(mMockDevice);
+        mDeviceSetup.setForceSkipSystemProps(true);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testSetup_rootDisabled_withChangeSystemProp() throws Exception {
+        doSetupExpectations(
+                true /* screenOn */,
+                false /* root enabled */,
+                false /* root response */,
+                DEFAULT_API_LEVEL,
+                new Capture<>());
+        doCheckExternalStoreSpaceExpectations();
+        EasyMock.replay(mMockDevice);
+        mDeviceSetup.setProperty("key", "value");
+        try {
+            mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+            fail("TargetSetupError expected");
+        } catch (TargetSetupError e) {
+            // Expected
+        }
     }
 
     public void testSetup_rootFailed() throws Exception {
@@ -1161,18 +1200,26 @@ public class DeviceSetupTest extends TestCase {
         TestDeviceOptions options = new TestDeviceOptions();
         OptionSetter setter = new OptionSetter(options);
         setter.setOptionValue("enable-root", Boolean.toString(adbRootEnabled));
-        EasyMock.expect(mMockDevice.getOptions()).andReturn(options).once();
+        EasyMock.expect(mMockDevice.getOptions()).andReturn(options).atLeastOnce();
         if (adbRootEnabled) {
             EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(adbRootResponse);
         }
+
         EasyMock.expect(mMockDevice.clearErrorDialogs()).andReturn(Boolean.TRUE);
         EasyMock.expect(mMockDevice.getApiLevel()).andReturn(apiLevel);
-        // expect push of local.prop file to change system properties
-        EasyMock.expect(mMockDevice.pushString(EasyMock.capture(setPropCapture),
-                EasyMock.contains("local.prop"))).andReturn(Boolean.TRUE);
-        EasyMock.expect(mMockDevice.executeShellCommand(
-                EasyMock.matches("chmod 644 .*local.prop"))).andReturn("");
-        mMockDevice.reboot();
+        if (adbRootResponse) {
+            // expect push of local.prop file to change system properties
+            EasyMock.expect(
+                            mMockDevice.pushString(
+                                    EasyMock.capture(setPropCapture),
+                                    EasyMock.contains("local.prop")))
+                    .andReturn(Boolean.TRUE);
+            EasyMock.expect(
+                            mMockDevice.executeShellCommand(
+                                    EasyMock.matches("chmod 644 .*local.prop")))
+                    .andReturn("");
+            mMockDevice.reboot();
+        }
         if (screenOn) {
             EasyMock.expect(mMockDevice.executeShellCommand("svc power stayon true")).andReturn("");
             EasyMock.expect(mMockDevice.executeShellCommand("input keyevent 82")).andReturn("");

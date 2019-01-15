@@ -77,6 +77,7 @@ public class AdbStopServerPreparerTest {
         mFakeAdbFile = FileUtil.createTempFile("adb", "");
         mMockBuild.setFile("adb", mFakeAdbFile, "v1");
 
+        mMockRunUtil.sleep(2000);
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
     }
 
@@ -95,7 +96,6 @@ public class AdbStopServerPreparerTest {
                         mMockRunUtil.runTimedCmd(
                                 EasyMock.anyLong(), EasyMock.eq("adb"), EasyMock.eq("kill-server")))
                 .andReturn(result);
-        mMockRunUtil.setEnvVariable(EasyMock.eq("PATH"), EasyMock.anyObject());
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
                                 EasyMock.anyLong(),
@@ -120,7 +120,6 @@ public class AdbStopServerPreparerTest {
                         mMockRunUtil.runTimedCmd(
                                 EasyMock.anyLong(), EasyMock.eq("adb"), EasyMock.eq("kill-server")))
                 .andReturn(result);
-        mMockRunUtil.setEnvVariable(EasyMock.eq("PATH"), EasyMock.anyObject());
 
         CommandResult failedResult = new CommandResult(CommandStatus.FAILED);
         EasyMock.expect(
@@ -190,8 +189,6 @@ public class AdbStopServerPreparerTest {
                                     EasyMock.eq("adb"),
                                     EasyMock.eq("kill-server")))
                     .andReturn(result);
-            mMockRunUtil.setEnvVariable(
-                    EasyMock.eq("PATH"), EasyMock.eq(fakeAdb.getAbsolutePath()));
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
                                     EasyMock.anyLong(),

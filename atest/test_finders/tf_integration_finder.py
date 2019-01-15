@@ -25,9 +25,9 @@ import xml.etree.ElementTree as ElementTree
 # pylint: disable=import-error
 import atest_error
 import constants
-import test_info
-import test_finder_base
-import test_finder_utils
+from test_finders import test_info
+from test_finders import test_finder_base
+from test_finders import test_finder_utils
 from test_runners import atest_tf_test_runner
 
 # Find integration name based on file path of integration config xml file.
@@ -35,6 +35,8 @@ from test_runners import atest_tf_test_runner
 _INT_NAME_RE = re.compile(r'^.*\/res\/config\/(?P<int_name>.*).xml$')
 _TF_TARGETS = frozenset(['tradefed', 'tradefed-contrib'])
 _GTF_TARGETS = frozenset(['google-tradefed', 'google-tradefed-contrib'])
+_CONTRIB_TARGETS = frozenset(['tradefed-contrib', 'google-tradefed-contrib'])
+_TF_RES_DIR = '../res/config'
 
 
 class TFIntegrationFinder(test_finder_base.TestFinderBase):
@@ -54,6 +56,11 @@ class TFIntegrationFinder(test_finder_base.TestFinderBase):
     def _get_mod_paths(self, module_name):
         """Return the paths of the given module name."""
         if self.module_info:
+            # Since aosp/801774 merged, the path of test configs have been
+            # changed to ../res/config.
+            if module_name in _CONTRIB_TARGETS:
+                mod_paths = self.module_info.get_paths(module_name)
+                return [os.path.join(path, _TF_RES_DIR) for path in mod_paths]
             return self.module_info.get_paths(module_name)
         return []
 
@@ -210,23 +217,9 @@ class TFIntegrationFinder(test_finder_base.TestFinderBase):
         path = os.path.realpath(path)
         if not os.path.exists(path):
             return None
-        dir_path, file_name = test_finder_utils.get_dir_path_and_filename(path)
-
-        int_dir = None
-        for possible_dir in self.integration_dirs:
-            abs_int_dir = os.path.join(self.root_dir, possible_dir)
-            if test_finder_utils.is_equal_or_sub_dir(dir_path, abs_int_dir):
-                int_dir = abs_int_dir
-                break
+        int_dir = test_finder_utils.get_int_dir_from_path(path,
+                                                          self.integration_dirs)
         if int_dir:
-            if not file_name:
-                logging.warn('Found dir (%s) matching input (%s).'
-                             ' Referencing an entire Integration/Suite dir'
-                             ' is not supported. If you are trying to reference'
-                             ' a test by its path, please input the path to'
-                             ' the integration/suite config file itself.',
-                             int_dir, path)
-                return None
             rel_config = os.path.relpath(path, self.root_dir)
             match = _INT_NAME_RE.match(rel_config)
             if not match:

@@ -158,7 +158,7 @@ def _get_test_reference_types(ref):
         # foo.java#method, so let ref_end be the first part of splitting '#'.
         if "#" in ref_end:
             ref_end = ref_end.split('#')[0]
-        if ref_end in ('java', 'bp', 'mk', 'cc', 'cpp'):
+        if ref_end in ('java', 'kt', 'bp', 'mk', 'cc', 'cpp'):
             return [_REFERENCE_TYPE.MODULE_FILE_PATH]
         if ref_end == 'xml':
             return [_REFERENCE_TYPE.INTEGRATION_FILE_PATH,
@@ -197,7 +197,7 @@ def _get_registered_find_methods(module_info):
         finder_instance = finder_instance_dict[finder.NAME]
         for find_method_info in finder_instance.get_all_find_methods():
             find_methods.append(test_finder_base.Finder(
-                finder_instance, find_method_info.find_method))
+                finder_instance, find_method_info.find_method, finder.NAME))
     return find_methods
 
 
@@ -220,8 +220,10 @@ def _get_default_find_methods(module_info, test):
     for test_ref_type in test_ref_types:
         find_method = _REF_TYPE_TO_FUNC_MAP[test_ref_type]
         finder_instance = finder_instance_dict[find_method.im_class.NAME]
+        finder_info = _REFERENCE_TYPE[test_ref_type]
         find_methods.append(test_finder_base.Finder(finder_instance,
-                                                    find_method))
+                                                    find_method,
+                                                    finder_info))
     return find_methods
 
 

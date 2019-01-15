@@ -1176,6 +1176,15 @@ public interface INativeDevice {
             throws TargetSetupError, DeviceNotAvailableException;
 
     /**
+     * Extra steps for device specific required setup that will be executed on the device prior to
+     * the invocation flow.
+     */
+    public default void preInvocationSetup(IBuildInfo info, List<IBuildInfo> testResourceBuildInfos)
+            throws TargetSetupError, DeviceNotAvailableException {
+        preInvocationSetup(info);
+    }
+
+    /**
      * Extra steps for device specific required clean up that will be executed after the invocation
      * is done.
      */
@@ -1223,4 +1232,7 @@ public interface INativeDevice {
 
     /** Returns total physical memory size in bytes or -1 in case of internal error */
     public long getTotalMemory();
+
+    /** Returns the current battery level of a device or Null if battery level unavailable. */
+    public Integer getBattery();
 }

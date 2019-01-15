@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.python;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -29,6 +30,7 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.targetprep.adb.AdbStopServerPreparer;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
@@ -55,6 +57,8 @@ public class PythonBinaryHostTest
 
     protected static final String PYTHON_OUTPUT = "python-output";
     protected static final String ANDROID_SERIAL_VAR = "ANDROID_SERIAL";
+    protected static final String PATH_VAR = "PATH";
+    protected static final long PATH_TIMEOUT_MS = 60000L;
 
     @Option(name = "par-file-name", description = "The binary names inside the build info to run.")
     private Set<String> mBinaryNames = new HashSet<>();
@@ -81,6 +85,12 @@ public class PythonBinaryHostTest
             name = "inject-android-serial",
             description = "Whether or not to pass a ANDROID_SERIAL variable to the process.")
     private boolean mInjectAndroidSerialVar = true;
+
+    @Option(
+        name = "python-options",
+        description = "Option string to be passed to the binary when running"
+    )
+    private List<String> mTestOptions = new ArrayList<>();
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
@@ -161,6 +171,43 @@ public class PythonBinaryHostTest
             getRunUtil().setEnvVariable(ANDROID_SERIAL_VAR, getDevice().getSerialNumber());
         }
 
+        File updatedAdb = mBuildInfo.getFile(AdbStopServerPreparer.ADB_BINARY_KEY);
+        if (updatedAdb == null) {
+            String adbPath = getAdbPath();
+            updatedAdb = new File(adbPath);
+            if (!updatedAdb.exists()) {
+                updatedAdb = null;
+            }
+        }
+        if (updatedAdb != null) {
+            // If a special adb version is used, pass it to the PATH
+            CommandResult pathResult =
+                    getRunUtil()
+                            .runTimedCmd(PATH_TIMEOUT_MS, "/bin/bash", "-c", "echo $" + PATH_VAR);
+            if (!CommandStatus.SUCCESS.equals(pathResult.getStatus())) {
+                throw new RuntimeException(
+                        String.format(
+                                "Failed to get the $PATH. status: %s, stdout: %s, stderr: %s",
+                                pathResult.getStatus(),
+                                pathResult.getStdout(),
+                                pathResult.getStderr()));
+            }
+            // Include the directory of the adb on the PATH to be used.
+            String path =
+                    String.format(
+                            "%s:%s",
+                            updatedAdb.getParentFile().getAbsolutePath(),
+                            pathResult.getStdout().trim());
+            CLog.d("Using $PATH with updated adb: %s", path);
+            getRunUtil().setEnvVariable(PATH_VAR, path);
+            // Log the version of adb seen
+            CommandResult versionRes = getRunUtil().runTimedCmd(PATH_TIMEOUT_MS, "adb", "version");
+            CLog.d("%s", versionRes.getStdout());
+            CLog.d("%s", versionRes.getStderr());
+        }
+        // Add all the other options
+        commandLine.addAll(mTestOptions);
+
         CommandResult result =
                 getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
         PythonForwarder forwarder = new PythonForwarder(listener, pyFile.getName());
@@ -203,6 +250,11 @@ public class PythonBinaryHostTest
             mRunUtil = new RunUtil();
         }
         return mRunUtil;
+    }
+
+    @VisibleForTesting
+    String getAdbPath() {
+        return GlobalConfiguration.getDeviceManagerInstance().getAdbPath();
     }
 
     /** Result forwarder to replace the run name by the binary name. */

@@ -28,7 +28,7 @@ import java.util.Map;
 public class LocalHostResourceManager implements IHostResourceManager {
 
     @Option(
-        name = "host-resources",
+        name = "host-resource",
         description = "The host resources to download for the current host."
     )
     private Map<String, String> mHostResources = new HashMap<>();

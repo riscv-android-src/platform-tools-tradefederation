@@ -19,11 +19,16 @@ import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
 import com.android.tradefed.log.ITestLogger;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
@@ -44,10 +49,13 @@ import com.android.tradefed.util.keystore.IKeyStoreClient;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Sandbox container that can run a Trade Federation invocation. TODO: Allow Options to be passed to
@@ -55,8 +63,6 @@ import java.util.List;
  */
 public class TradefedSandbox implements ISandbox {
 
-    /** The variable holding TF specific environment */
-    public static final String TF_GLOBAL_CONFIG = "TF_GLOBAL_CONFIG";
     /** Timeout to wait for the events received from subprocess to finish being processed. */
     private static final long EVENT_THREAD_JOIN_TIMEOUT_MS = 30 * 1000;
 
@@ -100,6 +106,7 @@ public class TradefedSandbox implements ISandbox {
         }
 
         long timeout = config.getCommandOptions().getInvocationTimeout();
+        mRunUtil.allowInterrupt(false);
         CommandResult result =
                 mRunUtil.runTimedCmd(timeout, mStdout, mStderr, mCmdArgs.toArray(new String[0]));
         // Log stdout and stderr
@@ -120,10 +127,10 @@ public class TradefedSandbox implements ISandbox {
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
             failedStatus = true;
             result.setStderr(stderrText);
-            try (InputStreamSource configFile =
-                    new FileInputStreamSource(mSerializedConfiguration)) {
-                logger.testLog("sandbox-config", LogDataType.XML, configFile);
-            }
+        }
+        // Log the configuration used to run
+        try (InputStreamSource configFile = new FileInputStreamSource(mSerializedConfiguration)) {
+            logger.testLog("sandbox-config", LogDataType.XML, configFile);
         }
 
         boolean joinResult = false;
@@ -160,7 +167,8 @@ public class TradefedSandbox implements ISandbox {
         }
         // Unset the current global environment
         mRunUtil = createRunUtil();
-        mRunUtil.unsetEnvVariable(TF_GLOBAL_CONFIG);
+        mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         // TODO: add handling of setting and creating the subprocess global configuration
 
         try {
@@ -258,21 +266,55 @@ public class TradefedSandbox implements ISandbox {
             IInvocationContext context, IConfiguration config, ITestInvocationListener listener) {
         try {
             // TODO: switch reporting of parent and subprocess to proto
+            String commandLine = config.getCommandLine();
             if (getSandboxOptions(config).shouldUseProtoReporter()) {
-                mProtoReceiver = new StreamProtoReceiver(listener, false);
+                mProtoReceiver = new StreamProtoReceiver(listener, false, false);
+                // Force the child to the same mode as the parent.
+                commandLine = commandLine + " --" + SandboxOptions.USE_PROTO_REPORTER;
             } else {
                 mEventParser = new SubprocessTestResultsParser(listener, true, context);
+                commandLine = commandLine + " --no-" + SandboxOptions.USE_PROTO_REPORTER;
             }
-            String[] args = QuotationAwareTokenizer.tokenizeLine(config.getCommandLine());
-            mGlobalConfig = SandboxConfigUtil.dumpFilteredGlobalConfig();
+            String[] args = QuotationAwareTokenizer.tokenizeLine(commandLine);
+            mGlobalConfig = dumpGlobalConfig(config, new HashSet<>());
+            try (InputStreamSource source = new FileInputStreamSource(mGlobalConfig)) {
+                listener.testLog("sandbox-global-config", LogDataType.XML, source);
+            }
             DumpCmd mode = DumpCmd.RUN_CONFIG;
             if (config.getCommandOptions().shouldUseSandboxTestMode()) {
                 mode = DumpCmd.TEST_MODE;
             }
-            mSerializedConfiguration =
-                    SandboxConfigUtil.dumpConfigForVersion(
-                            createClasspath(mRootFolder), mRunUtil, args, mode, mGlobalConfig);
-        } catch (Exception e) {
+
+            try {
+                mSerializedConfiguration =
+                        SandboxConfigUtil.dumpConfigForVersion(
+                                createClasspath(mRootFolder), mRunUtil, args, mode, mGlobalConfig);
+            } catch (SandboxConfigurationException e) {
+                // TODO: Improve our detection of that scenario
+                if (e.getMessage().contains(String.format("Can not find local config %s", args[0]))
+                        || e.getMessage()
+                                .contains(
+                                        String.format(
+                                                "Could not find configuration '%s'", args[0]))) {
+                    File parentConfig = handleChildMissingConfig(args);
+                    if (parentConfig != null) {
+                        try {
+                            mSerializedConfiguration =
+                                    SandboxConfigUtil.dumpConfigForVersion(
+                                            createClasspath(mRootFolder),
+                                            mRunUtil,
+                                            new String[] {parentConfig.getAbsolutePath()},
+                                            mode,
+                                            mGlobalConfig);
+                        } finally {
+                            FileUtil.deleteFile(parentConfig);
+                        }
+                        return null;
+                    }
+                }
+                throw e;
+            }
+        } catch (IOException | ConfigurationException e) {
             StreamUtil.close(mEventParser);
             StreamUtil.close(mProtoReceiver);
             return e;
@@ -318,6 +360,23 @@ public class TradefedSandbox implements ISandbox {
         return protoFile;
     }
 
+    /** Dump the global configuration filtered from some objects. */
+    protected File dumpGlobalConfig(IConfiguration config, Set<String> exclusionPatterns)
+            throws IOException, ConfigurationException {
+        SandboxOptions options = getSandboxOptions(config);
+        if (options.getChildGlobalConfig() != null) {
+            IConfigurationFactory factory = ConfigurationFactory.getInstance();
+            IGlobalConfiguration globalConfig =
+                    factory.createGlobalConfigurationFromArgs(
+                            new String[] {options.getChildGlobalConfig()}, new ArrayList<>());
+            CLog.d(
+                    "Using %s directly as global config without filtering",
+                    options.getChildGlobalConfig());
+            return globalConfig.cloneConfigWithFilter();
+        }
+        return SandboxConfigUtil.dumpFilteredGlobalConfig(exclusionPatterns);
+    }
+
     /** {@inheritDoc} */
     @Override
     public IConfiguration createThinLauncherConfig(
@@ -330,5 +389,21 @@ public class TradefedSandbox implements ISandbox {
     private SandboxOptions getSandboxOptions(IConfiguration config) {
         return (SandboxOptions)
                 config.getConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME);
+    }
+
+    private File handleChildMissingConfig(String[] args) {
+        IConfiguration parentConfig = null;
+        try {
+            parentConfig = ConfigurationFactory.getInstance().createConfigurationFromArgs(args);
+            File tmpParentConfig =
+                    FileUtil.createTempFile("parent-config", ".xml", mSandboxTmpFolder);
+            PrintWriter pw = new PrintWriter(tmpParentConfig);
+            parentConfig.dumpXml(pw);
+            return tmpParentConfig;
+        } catch (ConfigurationException | IOException e) {
+            CLog.e("Parent doesn't understand the command either:");
+            CLog.e(e);
+            return null;
+        }
     }
 }

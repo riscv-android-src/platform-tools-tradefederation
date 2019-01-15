@@ -429,6 +429,7 @@ public class DeviceSetup extends BaseTargetPreparer implements ITargetCleaner {
         processDeprecatedOptions(device);
         // Convert options into settings and run commands
         processOptions(device);
+
         // Change system props (will reboot device)
         changeSystemProps(device);
         // Handle screen always on setting
@@ -696,6 +697,15 @@ public class DeviceSetup extends BaseTargetPreparer implements ITargetCleaner {
         if (mForceSkipSystemProps) {
             CLog.d("Skipping system props due to force-skip-system-props");
             return;
+        }
+
+        if (mSetProps.size() > 0 && !device.getOptions().isEnableAdbRoot()) {
+            throw new TargetSetupError(
+                    String.format(
+                            "Cannot set system props %s on %s without adb root. Setting "
+                                    + "'force-skip-system-props' or 'enable-root' to avoid error",
+                            mSetProps.toString(), device.getSerialNumber()),
+                    device.getDeviceDescriptor());
         }
 
         StringBuilder sb = new StringBuilder();
@@ -990,6 +1000,11 @@ public class DeviceSetup extends BaseTargetPreparer implements ITargetCleaner {
                 // Do nothing
                 break;
         }
+    }
+
+    /** Exposed for unit testing */
+    protected void setForceSkipSystemProps(boolean force) {
+        mForceSkipSystemProps = force;
     }
 
     /**

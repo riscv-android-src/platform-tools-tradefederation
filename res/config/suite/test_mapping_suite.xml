@@ -19,7 +19,6 @@
     <system_checker class="com.android.tradefed.suite.checker.DeviceSettingChecker" />
     <system_checker class="com.android.tradefed.suite.checker.SystemServerStatusChecker" />
     <system_checker class="com.android.tradefed.suite.checker.SystemServerFileDescriptorChecker" />
-    <option name="reboot-per-module" value="true" />
 
     <test class="com.android.tradefed.testtype.suite.TestMappingSuiteRunner"/>
 </configuration>

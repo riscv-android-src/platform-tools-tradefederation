@@ -17,6 +17,8 @@
 Command Line Translator for atest.
 """
 
+from __future__ import print_function
+
 import fnmatch
 import json
 import logging
@@ -74,23 +76,42 @@ class CLITranslator(object):
             test_mapping_test_details = [None] * len(tests)
         for test, tm_test_detail in zip(tests, test_mapping_test_details):
             test_found = False
+            find_test_err_msg = None
             for finder in test_finder_handler.get_find_methods_for_test(
                     self.mod_info, test):
                 # For tests in TEST_MAPPING, find method is only related to
                 # test name, so the details can be set after test_info object
                 # is created.
-                test_info = finder.find_method(finder.test_finder_instance,
-                                               test)
+                try:
+                    test_info = finder.find_method(finder.test_finder_instance,
+                                                   test)
+                except atest_error.TestDiscoveryException as e:
+                    find_test_err_msg = e
                 if test_info:
                     if tm_test_detail:
                         test_info.data[constants.TI_MODULE_ARG] = (
                             tm_test_detail.options)
+                        test_info.from_test_mapping = True
+                        test_info.host = tm_test_detail.host
                     test_infos.add(test_info)
                     test_found = True
+                    finder_info = finder.finder_info
+                    print("Found '%s' as %s" % (
+                        atest_utils.colorize(test, constants.GREEN),
+                        finder_info))
                     break
             if not test_found:
-                raise atest_error.NoTestFoundError('No test found for: %s' %
-                                                   test)
+                print('No test found for: %s' %
+                      atest_utils.colorize(test, constants.RED))
+                if find_test_err_msg:
+                    print('%s\n' % (atest_utils.colorize(
+                        find_test_err_msg, constants.MAGENTA)))
+                else:
+                    print('(This can happen after a repo sync or if the test'
+                          ' is new. Running: with "%s" may resolve the issue.)'
+                          '\n' % (atest_utils.colorize(
+                              constants.REBUILD_MODULE_INFO_FLAG,
+                              constants.RED)))
         return test_infos
 
     def _read_tests_in_test_mapping(self, test_mapping_file):
@@ -118,8 +139,30 @@ class CLITranslator(object):
                         test_mapping.Import(test_mapping_file, import_detail))
             else:
                 grouped_tests = all_tests.setdefault(test_group_name, set())
-                grouped_tests.update(
-                    [test_mapping.TestDetail(test) for test in test_list])
+                tests = []
+                for test in test_list:
+                    test_mod_info = self.mod_info.name_to_module_info.get(
+                        test['name'])
+                    if not test_mod_info:
+                        print('WARNING: %s is not a valid build target and '
+                              'may not be discoverable by TreeHugger. If you '
+                              'want to specify a class or test-package, '
+                              'please set \'name\' to the test module and use '
+                              '\'options\' to specify the right tests via '
+                              '\'include-filter\'.\nNote: this can also occur '
+                              'if the test module is not built for your '
+                              'current lunch target.\n' %
+                              atest_utils.colorize(test['name'], constants.RED))
+                    elif not any(x in test_mod_info['compatibility_suites'] for
+                                 x in constants.TEST_MAPPING_SUITES):
+                        print('WARNING: Please add %s to either suite: %s for '
+                              'this TEST_MAPPING file to work with TreeHugger.' %
+                              (atest_utils.colorize(test['name'],
+                                                    constants.RED),
+                               atest_utils.colorize(constants.TEST_MAPPING_SUITES,
+                                                    constants.GREEN)))
+                    tests.append(test_mapping.TestDetail(test))
+                grouped_tests.update(tests)
         return all_tests, imports
 
     def _find_files(self, path, file_name=TEST_MAPPING):
@@ -300,7 +343,7 @@ class CLITranslator(object):
                     tests)
             sys.exit(constants.EXIT_CODE_TEST_NOT_FOUND)
 
-        logging.info(
+        logging.debug(
             'Test details:\n%s',
             '\n'.join([str(detail) for detail in test_details_list]))
         test_names = [detail.name for detail in test_details_list]
@@ -321,7 +364,8 @@ class CLITranslator(object):
         test_details_list = None
         if atest_utils.is_test_mapping(args):
             tests, test_details_list = self._get_test_mapping_tests(args)
-        logging.info('Finding tests: %s', tests)
+        atest_utils.colorful_print("\nFinding Tests...", constants.CYAN)
+        logging.debug('Finding Tests: %s', tests)
         start = time.time()
         test_infos = self._get_test_infos(tests, test_details_list)
         logging.debug('Found tests in %ss', time.time() - start)

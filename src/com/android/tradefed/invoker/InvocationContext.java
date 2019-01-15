@@ -77,6 +77,12 @@ public class InvocationContext implements IInvocationContext {
         mShardSerials = new LinkedHashMap<Integer, List<String>>();
     }
 
+    @Override
+    public String getInvocationId() {
+        List<String> values = mInvocationAttributes.get(INVOCATION_ID);
+        return values == null || values.isEmpty() ? null : values.get(0);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -263,6 +269,18 @@ public class InvocationContext implements IInvocationContext {
         CLog.d(
                 "Device with serial '%s' doesn't match a name in the metadata",
                 device.getSerialNumber());
+        return null;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String getBuildInfoName(IBuildInfo info) {
+        for (String name : mNameAndBuildinfoMap.keySet()) {
+            if (info.equals(getBuildInfo(name))) {
+                return name;
+            }
+        }
+        CLog.d("Build info doesn't match a name in the metadata");
         return null;
     }
 

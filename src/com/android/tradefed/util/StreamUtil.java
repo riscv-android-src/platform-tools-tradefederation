@@ -159,6 +159,22 @@ public class StreamUtil {
      */
     public static void copyStreams(InputStream inStream, OutputStream outStream)
             throws IOException {
+        copyStreams(inStream, outStream, 0);
+    }
+
+    /**
+     * Copies contents of origStream to destStream.
+     *
+     * <p>Recommended to provide a buffered stream for input and output
+     *
+     * @param inStream the {@link InputStream}
+     * @param outStream the {@link OutputStream}
+     * @param offset The offset of when to start copying the data.
+     * @throws IOException
+     */
+    public static void copyStreams(InputStream inStream, OutputStream outStream, int offset)
+            throws IOException {
+        inStream.skip(offset);
         byte[] buf = new byte[BUF_SIZE];
         int size = -1;
         while ((size = inStream.read(buf)) != -1) {

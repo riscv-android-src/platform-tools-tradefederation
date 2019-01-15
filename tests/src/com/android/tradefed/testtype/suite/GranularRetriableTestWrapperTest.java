@@ -18,11 +18,14 @@ package com.android.tradefed.testtype.suite;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
+import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
+import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -34,6 +37,7 @@ import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.suite.ITestSuite.RetryStrategy;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -41,30 +45,29 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Unit tests for {@link com.android.tradefed.testtype.suite.GranularRetriableTestWrapper}.
- *
- * <p>TODO: Needs to be completed with multiple runs per runner tests.
- */
+/** Unit tests for {@link GranularRetriableTestWrapper}. */
 @RunWith(JUnit4.class)
 public class GranularRetriableTestWrapperTest {
 
     private static final String RUN_NAME = "test run";
+    private static final String RUN_NAME_2 = "test run 2";
 
     private class BasicFakeTest implements IRemoteTest {
 
         protected ArrayList<TestDescription> mTestCases;
         protected Set<String> mShouldRun = new HashSet<>();
-
-        private Map<TestDescription, Integer> mBecomePass = new HashMap<>();
-        private Map<TestDescription, Boolean> mShouldFail;
-        private int mAttempts = 0;
+        protected Map<TestDescription, Integer> mBecomePass = new HashMap<>();
+        protected Map<TestDescription, Boolean> mShouldFail;
+        private String mRunFailure = null;
+        private Integer mClearRunFailureAttempt = null;
+        protected int mAttempts = 0;
 
         public BasicFakeTest() {
             mTestCases = new ArrayList<>();
@@ -91,6 +94,14 @@ public class GranularRetriableTestWrapperTest {
             mBecomePass.put(testCase, attempt);
         }
 
+        public void setRunFailure(String message) {
+            mRunFailure = message;
+        }
+
+        public void setClearRunFailure(Integer clearRunFailure) {
+            mClearRunFailureAttempt = clearRunFailure;
+        }
+
         @Override
         public void run(ITestInvocationListener listener) throws DeviceUnresponsiveException {
             listener.testRunStarted(RUN_NAME, mTestCases.size());
@@ -109,6 +120,14 @@ public class GranularRetriableTestWrapperTest {
                     }
                 }
                 listener.testEnded(td, new HashMap<String, Metric>());
+
+                if (mRunFailure != null) {
+                    listener.testRunFailed(mRunFailure);
+                    if (mClearRunFailureAttempt != null
+                            && mClearRunFailureAttempt == mAttempts + 1) {
+                        mRunFailure = null;
+                    }
+                }
             }
             listener.testRunEnded(0, new HashMap<String, Metric>());
             mAttempts++;
@@ -158,13 +177,80 @@ public class GranularRetriableTestWrapperTest {
         public void clearExcludeFilters() {}
     }
 
+    private class MultiTestOneRunFakeTest extends FakeTest {
+
+        private Map<String, List<TestDescription>> mRunTestsMap;
+        private Integer mMaxTestCount;
+
+        public MultiTestOneRunFakeTest() {
+            mRunTestsMap = new HashMap<String, List<TestDescription>>();
+            mMaxTestCount = 0;
+            mAttempts = 0;
+        }
+
+        public void setTestCasesByRun(String runName, List<TestDescription> testCases) {
+            mRunTestsMap.put(runName, testCases);
+            for (TestDescription testCase : testCases) {
+                mShouldFail.put(testCase, false);
+            }
+            mMaxTestCount = Math.max(mMaxTestCount, testCases.size());
+        }
+
+        @Override
+        public void run(ITestInvocationListener listener) throws DeviceUnresponsiveException {
+            Set<String> testRuns = mRunTestsMap.keySet();
+            for (int idx = 0; idx < mMaxTestCount; idx++) {
+                // Tests in different runs are called alternatively. This example describes the risk
+                // condition that a single IRemoteTest has two run names (RUN_NAME, RUN_NAME_2).
+                // The test cases in those two runs are called alternatively.
+                for (String runName : testRuns) {
+                    List<TestDescription> testCases = mRunTestsMap.get(runName);
+                    if (idx >= testCases.size()) {
+                        continue;
+                    }
+                    TestDescription td = testCases.get(idx);
+                    if (!mShouldRun.isEmpty() && !mShouldRun.contains(td.toString())) {
+                        continue;
+                    }
+                    listener.testRunStarted(runName, testCases.size());
+                    listener.testStarted(td);
+                    int passAttempt = -1;
+                    if (mBecomePass.get(td) != null) {
+                        passAttempt = mBecomePass.get(td);
+                    }
+                    if (mShouldFail.get(td)) {
+                        if (passAttempt == -1 || mAttempts < passAttempt) {
+                            listener.testFailed(
+                                    td, String.format("Fake failure %s", td.toString()));
+                        }
+                    }
+                    listener.testEnded(td, new HashMap<String, Metric>());
+                    listener.testRunEnded(0, new HashMap<String, Metric>());
+                }
+            }
+            mAttempts++;
+        }
+    }
+
     private GranularRetriableTestWrapper createGranularTestWrapper(
             IRemoteTest test, int maxRunCount) {
+        return createGranularTestWrapper(test, maxRunCount, new ArrayList<>());
+    }
+
+    private GranularRetriableTestWrapper createGranularTestWrapper(
+            IRemoteTest test, int maxRunCount, List<IMetricCollector> collectors) {
         GranularRetriableTestWrapper granularTestWrapper =
-                new GranularRetriableTestWrapper(test, null, null, maxRunCount);
+                new GranularRetriableTestWrapper(test, null, null, null, maxRunCount) {
+                    @Override
+                    List<IMetricCollector> cloneCollectors(
+                            List<IMetricCollector> originalCollectors) {
+                        // For testing purpose, avoid cloning.
+                        return originalCollectors;
+                    }
+                };
         granularTestWrapper.setModuleId("test module");
         granularTestWrapper.setMarkTestsSkipped(false);
-        granularTestWrapper.setMetricCollectors(new ArrayList<IMetricCollector>());
+        granularTestWrapper.setMetricCollectors(collectors);
         // Setup InvocationContext.
         granularTestWrapper.setInvocationContext(new InvocationContext());
         // Setup logsaver.
@@ -175,42 +261,25 @@ public class GranularRetriableTestWrapperTest {
     }
 
     /**
-     * Test the intra module "run" triggers IRemoteTest run method with a dedicated ModuleListener.
+     * Test that the intra module retry does not inhibit DeviceNotAvailableException. They are
+     * bubbled up to the top.
      */
     @Test
-    public void testIntraModuleRun_pass() throws Exception {
-        TestDescription fakeTestCase = new TestDescription("ClassFoo", "TestFoo");
-
-        GranularRetriableTestWrapper granularTestWrapper =
-                createGranularTestWrapper(new FakeTest(), 99);
-        assertEquals(0, granularTestWrapper.getTestRunResultCollected().size());
-        granularTestWrapper.intraModuleRun();
-        assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
-        assertEquals(1, granularTestWrapper.getFinalTestRunResults().size());
-        Set<TestDescription> completedTests =
-                granularTestWrapper.getFinalTestRunResults().get(0).getCompletedTests();
-        assertEquals(1, completedTests.size());
-        assertTrue(completedTests.contains(fakeTestCase));
-
-        // No retried run because all tests passed
-        assertEquals(0, granularTestWrapper.getRetrySuccess());
-        assertEquals(0, granularTestWrapper.getRetryFailed());
-        assertEquals(0, granularTestWrapper.getRetryTime());
-    }
-
-    /**
-     * Test that the intra module "run" method catches DeviceNotAvailableException and raises it
-     * after record the tests.
-     */
-    @Test(expected = DeviceNotAvailableException.class)
     public void testIntraModuleRun_catchDeviceNotAvailableException() throws Exception {
         IRemoteTest mockTest = Mockito.mock(IRemoteTest.class);
         Mockito.doThrow(new DeviceNotAvailableException("fake message", "serial"))
                 .when(mockTest)
                 .run(Mockito.any(ITestInvocationListener.class));
+
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(mockTest, 1);
-        // Verify.
-        granularTestWrapper.intraModuleRun();
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_CASE_FAILURE);
+        try {
+            granularTestWrapper.run(new CollectingTestListener());
+            fail("Should have thrown an exception.");
+        } catch (DeviceNotAvailableException expected) {
+            // Expected
+            assertEquals("fake message", expected.getMessage());
+        }
     }
 
     /**
@@ -229,7 +298,7 @@ public class GranularRetriableTestWrapperTest {
                     }
                 };
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 1);
-        granularTestWrapper.intraModuleRun();
+        granularTestWrapper.run(new CollectingTestListener());
         TestRunResult attempResults =
                 granularTestWrapper.getTestRunResultCollected().get(RUN_NAME).get(0);
         assertTrue(attempResults.isRunFailure());
@@ -255,6 +324,7 @@ public class GranularRetriableTestWrapperTest {
         int maxRunCount = 5;
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_CASE_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
         // Verify the test runs several times but under the same run name
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
@@ -313,6 +383,7 @@ public class GranularRetriableTestWrapperTest {
         int maxRunCount = 5;
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_CASE_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
         // Verify the test runs several times but under the same run name
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
@@ -372,6 +443,7 @@ public class GranularRetriableTestWrapperTest {
         int maxRunCount = 5;
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_CASE_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
         // Verify the test runs several times but under the same run name
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
@@ -440,8 +512,8 @@ public class GranularRetriableTestWrapperTest {
     }
 
     /**
-     * Test that if IRemoteTest doesn't implement ITestFilterReceiver, the "run" method will retry
-     * all test cases.
+     * Test that if IRemoteTest doesn't implement ITestFilterReceiver, the "run" method will not
+     * retry.
      */
     @Test
     public void testRun_retryAllTestCasesIfNotSupportTestFilterReceiver() throws Exception {
@@ -457,6 +529,7 @@ public class GranularRetriableTestWrapperTest {
         int maxRunCount = 3;
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_CASE_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
 
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
@@ -471,6 +544,289 @@ public class GranularRetriableTestWrapperTest {
                     TestStatus.FAILURE, runResult.getTestResults().get(fakeTestCase1).getStatus());
             assertEquals(
                     TestStatus.PASSED, runResult.getTestResults().get(fakeTestCase2).getStatus());
+        }
+    }
+
+    /**
+     * Test that if one run attempt includes multiple runs (IRemoteTest has multiple run names), the
+     * GranularRetriableWrapper retries all the failed testcases from each run in the next attempt.
+     */
+    @Test
+    public void testRun_retryMultiTestsForOneRun() throws Exception {
+        MultiTestOneRunFakeTest test = new MultiTestOneRunFakeTest();
+        TestDescription fakeTestCase1 = new TestDescription("Class1", "Test1");
+        TestDescription fakeTestCase2 = new TestDescription("Class2", "Test2");
+        TestDescription fakeTestCase3 = new TestDescription("Class3", "Test3");
+        TestDescription fakeTestCase4 = new TestDescription("Class4", "Test4");
+        List<TestDescription> testCasesForRun1 = Arrays.asList(fakeTestCase1, fakeTestCase2);
+        List<TestDescription> testCasesForRun2 = Arrays.asList(fakeTestCase3, fakeTestCase4);
+        test.setTestCasesByRun(RUN_NAME, testCasesForRun1);
+        test.setTestCasesByRun(RUN_NAME_2, testCasesForRun2);
+        test.addFailedTestCase(fakeTestCase1);
+        test.addFailedTestCase(fakeTestCase3);
+        test.addTestBecomePass(fakeTestCase1, 1);
+        int maxRunCount = 5;
+
+        GranularRetriableTestWrapper granularTestWrapper =
+                createGranularTestWrapper(test, maxRunCount);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_CASE_FAILURE);
+        granularTestWrapper.run(new CollectingTestListener());
+        // Two runs.
+        assertEquals(2, granularTestWrapper.getTestRunResultCollected().size());
+        List<TestRunResult> resultCollector1 =
+                granularTestWrapper.getTestRunResultCollected().get(RUN_NAME);
+        // 1st test run passes after one retry.
+        assertEquals(2, resultCollector1.size());
+        List<TestRunResult> resultCollector2 =
+                granularTestWrapper.getTestRunResultCollected().get(RUN_NAME_2);
+        // 2nd test run doesn't pass after all retries.
+        assertEquals(maxRunCount, resultCollector2.size());
+
+        List<TestRunResult> finalResult = granularTestWrapper.getFinalTestRunResults();
+        assertEquals(2, finalResult.size());
+        TestRunResult runResult1 = finalResult.get(0);
+        TestRunResult runResult2 = finalResult.get(1);
+
+        // Verify the final result includes two completed test runs. The failed test in the 1st run
+        // passes after one retry, and the second test run retried maxRunCount times and stil has
+        // failed test cases.
+        assertEquals(RUN_NAME, runResult1.getName());
+        assertEquals(RUN_NAME_2, runResult2.getName());
+        assertEquals(TestStatus.PASSED, runResult1.getTestResults().get(fakeTestCase1).getStatus());
+        assertEquals(TestStatus.PASSED, runResult1.getTestResults().get(fakeTestCase2).getStatus());
+        assertEquals(
+                TestStatus.FAILURE, runResult2.getTestResults().get(fakeTestCase3).getStatus());
+        assertEquals(TestStatus.PASSED, runResult2.getTestResults().get(fakeTestCase4).getStatus());
+    }
+
+    /** Test the retry for Run level. */
+    @Test
+    public void testIntraModuleRun_runRetry() throws Exception {
+        ArrayList<TestDescription> testCases = new ArrayList<>();
+        TestDescription fakeTestCase1 = new TestDescription("Class1", "Test1");
+        TestDescription fakeTestCase2 = new TestDescription("Class2", "Test2");
+        testCases.add(fakeTestCase1);
+        testCases.add(fakeTestCase2);
+        FakeTest test = new FakeTest(testCases);
+        test.setRunFailure("I failed!");
+        GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_RUN_FAILURE);
+        granularTestWrapper.run(new CollectingTestListener());
+
+        assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
+        List<TestRunResult> allResults =
+                granularTestWrapper.getTestRunResultCollected().get(RUN_NAME);
+        assertEquals(3, allResults.size());
+        for (int i = 0; i < 3; i++) {
+            TestRunResult res = allResults.get(i);
+            // All attempts are run failures
+            assertTrue(res.isRunFailure());
+            // All tests cases are rerun each time.
+            assertEquals(2, res.getNumCompleteTests());
+        }
+
+        // No Test cases tracking since it was a run retry.
+        assertEquals(0, granularTestWrapper.getRetrySuccess());
+        assertEquals(0, granularTestWrapper.getRetryFailed());
+    }
+
+    /**
+     * Test the retry for Run level when the failure eventually clears. We stop retrying when no
+     * more failure.
+     */
+    @Test
+    public void testIntraModuleRun_runRetry_clear() throws Exception {
+        ArrayList<TestDescription> testCases = new ArrayList<>();
+        TestDescription fakeTestCase1 = new TestDescription("Class1", "Test1");
+        TestDescription fakeTestCase2 = new TestDescription("Class2", "Test2");
+        testCases.add(fakeTestCase1);
+        testCases.add(fakeTestCase2);
+        FakeTest test = new FakeTest(testCases);
+        test.setRunFailure("I failed!");
+        test.setClearRunFailure(3);
+        // Failed test cases do not affect retry of runs
+        test.addFailedTestCase(fakeTestCase1);
+        GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 7);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_RUN_FAILURE);
+        granularTestWrapper.run(new CollectingTestListener());
+
+        assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
+        List<TestRunResult> allResults =
+                granularTestWrapper.getTestRunResultCollected().get(RUN_NAME);
+        assertEquals(4, allResults.size());
+        for (int i = 0; i < 3; i++) {
+            TestRunResult res = allResults.get(i);
+            // All attempts are run failures until now
+            assertTrue(res.isRunFailure());
+            // All tests cases are rerun each time.
+            assertEquals(2, res.getNumCompleteTests());
+        }
+        TestRunResult lastRes = allResults.get(3);
+        assertFalse(lastRes.isRunFailure());
+        // All tests cases are rerun each time.
+        assertEquals(2, lastRes.getNumCompleteTests());
+
+        // No Test cases tracking since it was a run retry.
+        assertEquals(0, granularTestWrapper.getRetrySuccess());
+        assertEquals(0, granularTestWrapper.getRetryFailed());
+    }
+
+    /** Test the retry with iterations, it doesn't require any failure to rerun. */
+    @Test
+    public void testIntraModuleRun_iterations() throws Exception {
+        ArrayList<TestDescription> testCases = new ArrayList<>();
+        TestDescription fakeTestCase1 = new TestDescription("Class1", "Test1");
+        TestDescription fakeTestCase2 = new TestDescription("Class2", "Test2");
+        testCases.add(fakeTestCase1);
+        testCases.add(fakeTestCase2);
+        FakeTest test = new FakeTest(testCases);
+        GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.ITERATIONS);
+        granularTestWrapper.run(new CollectingTestListener());
+
+        assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
+        List<TestRunResult> allResults =
+                granularTestWrapper.getTestRunResultCollected().get(RUN_NAME);
+        assertEquals(3, allResults.size());
+        for (int i = 0; i < 3; i++) {
+            TestRunResult res = allResults.get(i);
+            // All attempts are not failure
+            assertFalse(res.isRunFailure());
+            // All tests cases are rerun each time.
+            assertEquals(2, res.getNumCompleteTests());
+        }
+
+        // No Test cases tracking since it was a run retry.
+        assertEquals(0, granularTestWrapper.getRetrySuccess());
+        assertEquals(0, granularTestWrapper.getRetryFailed());
+    }
+
+    /** When re-running until failure, stop when failure is encountered. */
+    @Test
+    public void testIntraModuleRun_untilFailure() throws Exception {
+        ArrayList<TestDescription> testCases = new ArrayList<>();
+        TestDescription fakeTestCase1 = new TestDescription("Class1", "Test1");
+        TestDescription fakeTestCase2 = new TestDescription("Class2", "Test2");
+        testCases.add(fakeTestCase1);
+        testCases.add(fakeTestCase2);
+        FakeTest test = new FakeTest(testCases);
+        test.addFailedTestCase(fakeTestCase2);
+        GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RERUN_UNTIL_FAILURE);
+        granularTestWrapper.run(new CollectingTestListener());
+
+        assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
+        List<TestRunResult> allResults =
+                granularTestWrapper.getTestRunResultCollected().get(RUN_NAME);
+        // We didn't run all attempts because test case failed.
+        assertEquals(1, allResults.size());
+
+        TestRunResult res = allResults.get(0);
+        // All attempts are not failure
+        assertFalse(res.isRunFailure());
+        // All tests cases are rerun each time.
+        assertEquals(2, res.getNumCompleteTests());
+
+        // No Test cases tracking since it was a run retry.
+        assertEquals(0, granularTestWrapper.getRetrySuccess());
+        assertEquals(0, granularTestWrapper.getRetryFailed());
+    }
+
+    /**
+     * Test to run with retrying on any failure when a run failure and test case failure exists.
+     * First we retry like a run until cleared, then retry for use cases until clear.
+     */
+    @Test
+    public void testIntraModuleRun_runAnyFailure() throws Exception {
+        List<IMetricCollector> collectors = new ArrayList<>();
+        // Add a disabled collector to ensure it's never called
+        CalledMetricCollector notCalledCollector = new CalledMetricCollector();
+        notCalledCollector.setDisable(true);
+        collectors.add(notCalledCollector);
+        CalledMetricCollector calledCollector = new CalledMetricCollector();
+        collectors.add(calledCollector);
+
+        ArrayList<TestDescription> testCases = new ArrayList<>();
+        TestDescription fakeTestCase1 = new TestDescription("Class1", "Test1");
+        TestDescription fakeTestCase2 = new TestDescription("Class2", "Test2");
+        testCases.add(fakeTestCase1);
+        testCases.add(fakeTestCase2);
+        FakeTest test = new FakeTest(testCases);
+        test.setRunFailure("I failed!");
+        test.setClearRunFailure(3);
+        // Failed test cases do not affect retry of runs
+        test.addFailedTestCase(fakeTestCase1);
+        test.addTestBecomePass(fakeTestCase1, 5);
+        GranularRetriableTestWrapper granularTestWrapper =
+                createGranularTestWrapper(test, 7, collectors);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
+        granularTestWrapper.run(new CollectingTestListener());
+
+        assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
+        List<TestRunResult> allResults =
+                granularTestWrapper.getTestRunResultCollected().get(RUN_NAME);
+        assertEquals(6, allResults.size());
+        for (int i = 0; i < 3; i++) {
+            TestRunResult res = allResults.get(i);
+            // All attempts are run failures until now
+            assertTrue(res.isRunFailure());
+            // All tests cases are rerun each time.
+            assertEquals(2, res.getNumCompleteTests());
+        }
+        // At attempt 4 the run become pass but we continue retrying because of test case failure.
+        TestRunResult lastRes = allResults.get(3);
+        assertFalse(lastRes.isRunFailure());
+        // All tests cases are rerun each time.
+        assertEquals(2, lastRes.getNumCompleteTests());
+        assertEquals(1, lastRes.getFailedTests().size());
+
+        lastRes = allResults.get(4);
+        assertFalse(lastRes.isRunFailure());
+        // The passed test does not rerun now that there is no run failure.
+        assertEquals(1, lastRes.getNumCompleteTests());
+        assertEquals(1, lastRes.getFailedTests().size());
+
+        lastRes = allResults.get(5);
+        assertFalse(lastRes.isRunFailure());
+        // All tests cases are rerun each time.
+        assertEquals(1, lastRes.getNumCompleteTests());
+        // The failed test final pass
+        assertEquals(0, lastRes.getFailedTests().size());
+
+        // No Test cases tracking since it was a run retry.
+        assertEquals(1, granularTestWrapper.getRetrySuccess());
+        assertEquals(0, granularTestWrapper.getRetryFailed());
+
+        // Ensure that the disabled collector was not called, and enabled one was called
+        assertFalse(notCalledCollector.wasCalled);
+        assertTrue(calledCollector.wasCalled);
+    }
+
+    /** Collector that track if it was called or not */
+    public static class CalledMetricCollector extends BaseDeviceMetricCollector {
+
+        boolean wasCalled = false;
+
+        @Override
+        public void onTestRunStart(DeviceMetricData runData) {
+            wasCalled = true;
+        }
+
+        @Override
+        public void onTestRunEnd(
+                DeviceMetricData runData, final Map<String, Metric> currentRunMetrics) {
+            wasCalled = true;
+        }
+
+        @Override
+        public void onTestStart(DeviceMetricData testData) {
+            wasCalled = true;
+        }
+
+        @Override
+        public void onTestEnd(
+                DeviceMetricData testData, final Map<String, Metric> currentTestCaseMetrics) {
+            wasCalled = true;
         }
     }
 }

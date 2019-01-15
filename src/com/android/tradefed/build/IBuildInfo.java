@@ -136,6 +136,13 @@ public interface IBuildInfo extends Serializable {
     public void addBuildAttribute(String attributeName, String attributeValue);
 
     /**
+     * Add build attributes
+     *
+     * @param buildAttributes Map of attributes to be added
+     */
+    public default void addBuildAttributes(Map<String, String> buildAttributes) {}
+
+    /**
      * Set the {@link BuildInfoProperties} for the {@link IBuildInfo} instance. Override any
      * existing properties set before.
      *
@@ -259,4 +266,12 @@ public interface IBuildInfo extends Serializable {
         // Default implementation for project that don't extends BuildInfo class.
         return null;
     }
+
+    /** Check if this build is a test resource build or not. */
+    public default boolean isTestResourceBuild() {
+        return false;
+    }
+
+    /** Set the build as test resource build. */
+    public default void setTestResourceBuild(boolean testResourceBuild) {}
 }

@@ -24,7 +24,7 @@ source "${shdir}/script_help.sh"
 # installation.
 # Include any host-side dependency jars.
 if [ ! -z "${ANDROID_HOST_OUT}" ]; then
-    deps="compatibility-host-util.jar hosttestlib.jar cts-tradefed.jar vts-tradefed.jar host-libprotobuf-java-full.jar"
+    deps="compatibility-host-util.jar hosttestlib.jar cts-tradefed.jar vts-tradefed.jar host-libprotobuf-java-full.jar cts-dalvik-host-test-runner.jar"
     for dep in $deps; do
         if [ -f "${ANDROID_HOST_OUT}"/framework/$dep ]; then
             TF_PATH=${TF_PATH}:"${ANDROID_HOST_OUT}"/framework/$dep

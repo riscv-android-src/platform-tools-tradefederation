@@ -45,7 +45,7 @@ public class GTestListTestParser extends MultiLineReceiver {
     // example: <line start>  emptyPlayback<line end>
     // example parameterized: <line start>  emptyPlayback/0 # GetParam() = (object 1)<line end>
     private static final Pattern TEST_METHOD =
-            Pattern.compile("\\s+([a-zA-Z]+[\\S]*)(.*)?(\\s+.*)?$");
+            Pattern.compile("\\s+([a-zA-Z_]+[\\S]*)(.*)?(\\s+.*)?$");
 
     // exposed for unit testing
     protected List<TestDescription> mTests = new ArrayList<>();

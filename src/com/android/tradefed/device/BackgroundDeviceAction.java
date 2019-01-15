@@ -41,6 +41,7 @@ import java.util.concurrent.TimeUnit;
  * </ul>
  */
 public class BackgroundDeviceAction extends Thread {
+    public static final String BACKGROUND_DEVICE_ACTION = "BackgroundDeviceAction";
     private static final long ONLINE_POLL_INTERVAL_MS = 10 * 1000;
     private IShellOutputReceiver mReceiver;
     private ITestDevice mTestDevice;
@@ -60,7 +61,7 @@ public class BackgroundDeviceAction extends Thread {
      */
     public BackgroundDeviceAction(String command, String descriptor, ITestDevice device,
             IShellOutputReceiver receiver, int startDelay) {
-        super("BackgroundDeviceAction-" + command);
+        super(BACKGROUND_DEVICE_ACTION + "-" + command);
         mCommand = command;
         mDescriptor = descriptor;
         mTestDevice = device;

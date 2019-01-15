@@ -27,7 +27,6 @@ import static org.mockito.Mockito.doThrow;
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.FileListingService.FileEntry;
 import com.android.ddmlib.IDevice;
-import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.SyncException;
@@ -51,8 +50,6 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.StreamUtil;
-
-import com.google.common.util.concurrent.SettableFuture;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -235,6 +232,17 @@ public class NativeDeviceTest {
             return;
         }
         fail("getInstalledPackageNames should have thrown an exception");
+    }
+
+    /** Unit test for {@link NativeDevice#getActiveApexes()}. */
+    @Test
+    public void testGetActiveApexes_exception() throws Exception {
+        try {
+            mTestDevice.getActiveApexes();
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("getActiveApexes should have thrown an exception");
     }
 
     /** Unit test for {@link NativeDevice#getScreenshot()}. */
@@ -2187,6 +2195,23 @@ public class NativeDeviceTest {
                 receiver.addOutput(address.getBytes(), 0, address.length());
             }
         };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public void recoverDevice() throws DeviceNotAvailableException {
+                        // ignore
+                    }
+
+                    @Override
+                    public IDevice getIDevice() {
+                        return device;
+                    }
+
+                    @Override
+                    IWifiHelper createWifiHelper() {
+                        return mMockWifi;
+                    }
+                };
         mTestDevice.setIDevice(device);
         assertNull(mTestDevice.getMacAddress());
     }
@@ -2195,9 +2220,10 @@ public class NativeDeviceTest {
     @Test
     public void testGetSimState_unavailableDevice() {
         mMockIDevice = EasyMock.createMock(IDevice.class);
-        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.UNAUTHORIZED);
-        EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn("serial");
+        mMockStateMonitor.setState(TestDeviceState.NOT_AVAILABLE);
+        EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn("serial").times(2);
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        mTestDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
         assertNull(mTestDevice.getSimState());
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
@@ -2206,9 +2232,10 @@ public class NativeDeviceTest {
     @Test
     public void testGetSimOperator_unavailableDevice() {
         mMockIDevice = EasyMock.createMock(IDevice.class);
-        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.UNAUTHORIZED);
-        EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn("serial");
+        mMockStateMonitor.setState(TestDeviceState.NOT_AVAILABLE);
+        EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn("serial").times(2);
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        mTestDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
         assertNull(mTestDevice.getSimOperator());
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
@@ -2280,10 +2307,7 @@ public class NativeDeviceTest {
     @Test
     public void testGetLogcatSince() throws Exception {
         long date = 1512990942000L; // 2017-12-11 03:15:42.015
-        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
-        SettableFuture<String> value = SettableFuture.create();
-        value.set("23");
-        EasyMock.expect(mMockIDevice.getSystemProperty("ro.build.version.sdk")).andReturn(value);
+        EasyMock.expect(mMockIDevice.getProperty("ro.build.version.sdk")).andReturn("23");
         mMockIDevice.executeShellCommand(
                 EasyMock.eq("logcat -v threadtime -t '12-11 03:15:42.015'"), EasyMock.anyObject());
         EasyMock.replay(mMockIDevice);
@@ -2301,6 +2325,24 @@ public class NativeDeviceTest {
     }
 
     @Test
+    public void testGetProductVariant_legacyOmr1() throws Exception {
+        TestableAndroidNativeDevice testDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    protected String internalGetProperty(
+                            String propName, String fastbootVar, String description)
+                            throws DeviceNotAvailableException, UnsupportedOperationException {
+                        if (DeviceProperties.VARIANT_LEGACY_O_MR1.equals(propName)) {
+                            return "legacy_omr1";
+                        }
+                        return null;
+                    }
+                };
+
+        assertEquals("legacy_omr1", testDevice.getProductVariant());
+    }
+
+    @Test
     public void testGetProductVariant_legacy() throws Exception {
         TestableAndroidNativeDevice testDevice =
                 new TestableAndroidNativeDevice() {
@@ -2308,7 +2350,7 @@ public class NativeDeviceTest {
                     protected String internalGetProperty(
                             String propName, String fastbootVar, String description)
                             throws DeviceNotAvailableException, UnsupportedOperationException {
-                        if (DeviceProperties.VARIANT_LEGACY.equals(propName)) {
+                        if (DeviceProperties.VARIANT_LEGACY_LESS_EQUAL_O.equals(propName)) {
                             return "legacy";
                         }
                         return null;

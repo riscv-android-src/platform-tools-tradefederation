@@ -18,6 +18,8 @@ package com.android.tradefed.targetprep.adb;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
@@ -43,9 +45,17 @@ import java.io.IOException;
  * usually be tight with {@link SemaphoreTokenTargetPreparer} to avoid other tests from running at
  * the same time.
  */
+@OptionClass(alias = "adb-stop-server-preparer")
 public class AdbStopServerPreparer extends BaseTargetPreparer implements ITargetCleaner {
 
-    private static final String PATH = "PATH";
+    public static final String ADB_BINARY_KEY = "adb_path";
+
+    @Option(
+        name = "restart-new-adb-version",
+        description = "Whether or not to restart adb with the new version after stopping it."
+    )
+    private boolean mRestartNewVersion = true;
+
     private static final long CMD_TIMEOUT = 60000L;
     private static final String ANDROID_HOST_OUT = "ANDROID_HOST_OUT";
 
@@ -61,6 +71,13 @@ public class AdbStopServerPreparer extends BaseTargetPreparer implements ITarget
 
         // Kill the default adb server
         getRunUtil().runTimedCmd(CMD_TIMEOUT, "adb", "kill-server");
+        // Let the adb process finish
+        getRunUtil().sleep(2000);
+
+        if (!mRestartNewVersion) {
+            CLog.d("Skipping restarting of new adb version.");
+            return;
+        }
 
         File adb = null;
         if (getEnvironment(ANDROID_HOST_OUT) != null) {
@@ -76,17 +93,21 @@ public class AdbStopServerPreparer extends BaseTargetPreparer implements ITarget
         if (adb == null && buildInfo.getFile("adb") != null) {
             adb = buildInfo.getFile("adb");
             adb = renameAdbBinary(adb);
+            // Track the updated adb file.
+            buildInfo.setFile(ADB_BINARY_KEY, adb, "adb");
         }
 
         if (adb != null) {
             CLog.d("Restarting adb from %s", adb.getAbsolutePath());
             IRunUtil restartAdb = createRunUtil();
-            restartAdb.setEnvVariable(PATH, adb.getAbsolutePath());
             CommandResult result =
                     restartAdb.runTimedCmd(CMD_TIMEOUT, adb.getAbsolutePath(), "start-server");
             if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
                 throw new TargetSetupError(
-                        "Failed to restart adb with the build info one.",
+                        String.format(
+                                "Failed to restart adb with the build info one. stdout: %s.\n"
+                                        + "sterr: %s",
+                                result.getStdout(), result.getStderr()),
                         device.getDeviceDescriptor());
             }
         } else {
@@ -104,7 +125,8 @@ public class AdbStopServerPreparer extends BaseTargetPreparer implements ITarget
         // Kill the test adb server
         getRunUtil().runTimedCmd(CMD_TIMEOUT, "adb", "kill-server");
         // Restart the one from the parent PATH (original one)
-        getRunUtil().runTimedCmd(CMD_TIMEOUT, "adb", "start-server");
+        CommandResult restart = getRunUtil().runTimedCmd(CMD_TIMEOUT, "adb", "start-server");
+        CLog.d("Restart adb -  stdout: %s\nstderr: %s", restart.getStdout(), restart.getStderr());
         // Restart device manager monitor
         getDeviceManager().restartAdbBridge();
     }

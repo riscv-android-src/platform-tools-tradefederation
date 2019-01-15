@@ -29,9 +29,12 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NullDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.shard.token.ITokenRequest;
+import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -90,7 +93,31 @@ public abstract class ITestSuite
                 IRuntimeHintProvider,
                 IMetricCollectorReceiver,
                 IConfigurationReceiver,
-                IReportNotExecuted {
+                IReportNotExecuted,
+                ITokenRequest {
+
+    /** The Retry Strategy to be used when re-running some tests. */
+    public enum RetryStrategy {
+        /** Rerun all the tests for the number of attempts specified. */
+        ITERATIONS,
+        /**
+         * Rerun all the tests until the max count is reached or a failure occurs whichever come
+         * first.
+         */
+        RERUN_UNTIL_FAILURE,
+        /**
+         * Rerun all the test case failures until passed or the max number of attempts specified.
+         */
+        RETRY_TEST_CASE_FAILURE,
+        /** Rerun all the test run failures until passed or the max number of attempts specified. */
+        RETRY_TEST_RUN_FAILURE,
+        /**
+         * Rerun all the test run and test cases failures until passed or the max number of attempts
+         * specified. Test run failures are rerun in priority (a.k.a. if a run failure and a test
+         * case failure occur, the run failure is rerun).
+         */
+        RETRY_ANY_FAILURE,
+    }
 
     public static final String SKIP_SYSTEM_STATUS_CHECKER = "skip-system-status-check";
     public static final String RUNNER_WHITELIST = "runner-whitelist";
@@ -101,6 +128,9 @@ public abstract class ITestSuite
     public static final String SKIP_HOST_ARCH_CHECK = "skip-host-arch-check";
     public static final String PRIMARY_ABI_RUN = "primary-abi-only";
     public static final String PARAMETER_KEY = "parameter";
+    public static final String TOKEN_KEY = "token";
+    public static final String MODULE_METADATA_INCLUDE_FILTER = "module-metadata-include-filter";
+    public static final String MODULE_METADATA_EXCLUDE_FILTER = "module-metadata-exclude-filter";
 
     private static final String PRODUCT_CPU_ABI_KEY = "ro.product.cpu.abi";
 
@@ -113,17 +143,27 @@ public abstract class ITestSuite
     )
     private boolean mBugReportOnFailure = false;
 
-    @Option(name = "logcat-on-failure",
-            description = "Take a logcat snapshot on every test failure.")
+    @Deprecated
+    @Option(
+        name = "logcat-on-failure",
+        description = "Take a logcat snapshot on every test failure."
+    )
     private boolean mLogcatOnFailure = false;
 
-    @Option(name = "logcat-on-failure-size",
-            description = "The max number of logcat data in bytes to capture when "
-            + "--logcat-on-failure is on. Should be an amount that can comfortably fit in memory.")
+    @Deprecated
+    @Option(
+        name = "logcat-on-failure-size",
+        description =
+                "The max number of logcat data in bytes to capture when "
+                        + "--logcat-on-failure is on. Should be an amount that can comfortably fit in memory."
+    )
     private int mMaxLogcatBytes = 500 * 1024; // 500K
 
-    @Option(name = "screenshot-on-failure",
-            description = "Take a screenshot on every test failure.")
+    @Deprecated
+    @Option(
+        name = "screenshot-on-failure",
+        description = "Take a screenshot on every test failure."
+    )
     private boolean mScreenshotOnFailure = false;
 
     @Option(name = "reboot-on-failure",
@@ -188,7 +228,7 @@ public abstract class ITestSuite
     private boolean mPrimaryAbiRun = false;
 
     @Option(
-        name = "module-metadata-include-filter",
+        name = MODULE_METADATA_INCLUDE_FILTER,
         description =
                 "Include modules for execution based on matching of metadata fields: for any of "
                         + "the specified filter name and value, if a module has a metadata field "
@@ -200,7 +240,7 @@ public abstract class ITestSuite
     private MultiMap<String, String> mModuleMetadataIncludeFilter = new MultiMap<>();
 
     @Option(
-        name = "module-metadata-exclude-filter",
+        name = MODULE_METADATA_EXCLUDE_FILTER,
         description =
                 "Exclude modules for execution based on matching of metadata fields: for any of "
                         + "the specified filter name and value, if a module has a metadata field "
@@ -226,6 +266,7 @@ public abstract class ITestSuite
     )
     private boolean mRebootBeforeTest = false;
 
+    // [Options relate to module retry and intra-module retry][
     @Option(
         name = "max-testcase-run-count",
         description =
@@ -233,6 +274,21 @@ public abstract class ITestSuite
                         + "the max number of runs for each testcase."
     )
     private int mMaxRunLimit = 1;
+
+    @Option(
+        name = "retry-strategy",
+        description =
+                "The retry strategy to be used when re-running some tests with "
+                        + "--max-testcase-run-count"
+    )
+    private RetryStrategy mRetryStrategy = RetryStrategy.RETRY_TEST_CASE_FAILURE;
+
+    @Option(
+        name = "merge-attempts",
+        description = "Whether or not to use the merge the results of the different attempts."
+    )
+    private boolean mMergeAttempts = true;
+    // end [Options relate to module retry and intra-module retry]
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
@@ -437,12 +493,7 @@ public abstract class ITestSuite
         /** Setup a special listener to take actions on test failures. */
         TestFailureListener failureListener =
                 new TestFailureListener(
-                        mContext.getDevices(),
-                        mBugReportOnFailure,
-                        mLogcatOnFailure,
-                        mScreenshotOnFailure,
-                        mRebootOnFailure,
-                        mMaxLogcatBytes);
+                        mContext.getDevices(), mBugReportOnFailure, mRebootOnFailure);
         /** Create the list of listeners applicable at the module level. */
         List<ITestInvocationListener> moduleListeners = createModuleListeners();
 
@@ -545,9 +596,11 @@ public abstract class ITestSuite
             module.setCollectTestsOnly(mCollectTestsOnly);
         }
         // Pass the run defined collectors to be used.
-        module.setMetricCollectors(mMetricCollectors);
+        module.setMetricCollectors(CollectorHelper.cloneCollectors(mMetricCollectors));
         // Pass the main invocation logSaver
         module.setLogSaver(mMainConfiguration.getLogSaver());
+        // Pass the retry strategy to the module
+        module.setRetryStrategy(mRetryStrategy, mMergeAttempts);
 
         // Actually run the module
         module.run(listener, moduleListeners, failureListener, mMaxRunLimit);
@@ -819,6 +872,11 @@ public abstract class ITestSuite
         mContext = invocationContext;
     }
 
+    /** Set the max number of run attempt for each module. */
+    public final void setMaxRunLimit(int maxRunLimit) {
+        mMaxRunLimit = maxRunLimit;
+    }
+
     /** {@inheritDoc} */
     @Override
     public long getRuntimeHint() {
@@ -841,16 +899,30 @@ public abstract class ITestSuite
     /** {@inheritDoc} */
     @Override
     public void reportNotExecuted(ITestInvocationListener listener) {
+        reportNotExecuted(listener, IReportNotExecuted.NOT_EXECUTED_FAILURE);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void reportNotExecuted(ITestInvocationListener listener, String message) {
         List<ModuleDefinition> runModules = createExecutionList();
 
         while (!runModules.isEmpty()) {
             ModuleDefinition module = runModules.remove(0);
             listener.testModuleStarted(module.getModuleInvocationContext());
             listener.testRunStarted(module.getId(), 0);
-            listener.testRunFailed(IReportNotExecuted.NOT_EXECUTED_FAILURE);
+            listener.testRunFailed(message);
             listener.testRunEnded(0, new HashMap<String, Metric>());
             listener.testModuleEnded();
         }
+    }
+
+    public void addModuleMetadataIncludeFilters(MultiMap<String, String> filters) {
+        mModuleMetadataIncludeFilter.putAll(filters);
+    }
+
+    public void addModuleMetadataExcludeFilters(MultiMap<String, String> filters) {
+        mModuleMetadataExcludeFilter.putAll(filters);
     }
 
     /**
@@ -859,6 +931,14 @@ public abstract class ITestSuite
      */
     public ModuleDefinition getDirectModule() {
         return mDirectModule;
+    }
+
+    @Override
+    public Set<TokenProperty> getRequiredTokens() {
+        if (mDirectModule == null) {
+            return null;
+        }
+        return mDirectModule.getRequiredTokens();
     }
 
     /**
@@ -948,7 +1028,11 @@ public abstract class ITestSuite
     @VisibleForTesting
     protected Set<String> getAbisForBuildTargetArch() {
         // If TestSuiteInfo does not exists, the stub arch will be replaced by all possible abis.
-        return AbiUtils.getAbisForArch(TestSuiteInfo.getInstance().getTargetArch());
+        Set<String> abis = new LinkedHashSet<>();
+        for (String arch : TestSuiteInfo.getInstance().getTargetArchs()) {
+            abis.addAll(AbiUtils.getAbisForArch(arch));
+        }
+        return abis;
     }
 
     /** Returns the host machine abis. */

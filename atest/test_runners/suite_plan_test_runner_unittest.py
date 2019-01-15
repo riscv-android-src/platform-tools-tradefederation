@@ -60,7 +60,7 @@ class SuitePlanTestRunnerUnittests(unittest.TestCase):
         mock_resultargs.return_value = []
         unittest_utils.assert_strict_equal(
             self,
-            self.suite_tr._generate_run_commands(test_infos, ''),
+            self.suite_tr.generate_run_commands(test_infos, ''),
             run_cmd)
 
         # Run cmd with --serial LG123456789.
@@ -71,7 +71,7 @@ class SuitePlanTestRunnerUnittests(unittest.TestCase):
             args='--serial LG123456789'))
         unittest_utils.assert_strict_equal(
             self,
-            self.suite_tr._generate_run_commands(test_infos, {'SERIAL':'LG123456789'}),
+            self.suite_tr.generate_run_commands(test_infos, {'SERIAL':'LG123456789'}),
             run_cmd)
 
         test_infos = set()
@@ -93,7 +93,7 @@ class SuitePlanTestRunnerUnittests(unittest.TestCase):
         mock_resultargs.return_value = []
         unittest_utils.assert_strict_equal(
             self,
-            self.suite_tr._generate_run_commands(test_infos, ''),
+            self.suite_tr.generate_run_commands(test_infos, ''),
             run_cmd)
 
         # Run cmd with --serial LG123456789.
@@ -104,9 +104,30 @@ class SuitePlanTestRunnerUnittests(unittest.TestCase):
             args='--serial LG123456789'))
         unittest_utils.assert_strict_equal(
             self,
-            self.suite_tr._generate_run_commands(test_infos, {'SERIAL':'LG123456789'}),
+            self.suite_tr.generate_run_commands(test_infos, {'SERIAL':'LG123456789'}),
             run_cmd)
 
+    @mock.patch('subprocess.Popen')
+    @mock.patch.object(suite_plan_test_runner.SuitePlanTestRunner, 'run')
+    @mock.patch.object(suite_plan_test_runner.SuitePlanTestRunner,
+                       'generate_run_commands')
+    def test_run_tests(self, _mock_gen_cmd, _mock_run, _mock_popen):
+        """Test run_tests method."""
+        test_infos = []
+        extra_args = []
+        mock_reporter = mock.Mock()
+        _mock_gen_cmd.return_value = ["cmd1", "cmd2"]
+        # Test Build Pass
+        _mock_popen.return_value.returncode = 0
+        self.assertEqual(
+            0,
+            self.suite_tr.run_tests(test_infos, extra_args, mock_reporter))
+
+        # Test Build Pass
+        _mock_popen.return_value.returncode = 1
+        self.assertNotEqual(
+            0,
+            self.suite_tr.run_tests(test_infos, extra_args, mock_reporter))
 
 if __name__ == '__main__':
     unittest.main()

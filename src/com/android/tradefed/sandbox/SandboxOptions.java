@@ -27,6 +27,8 @@ public final class SandboxOptions {
     public static final String TF_LOCATION = "tf-location";
     public static final String SANDBOX_BUILD_ID = "sandbox-build-id";
     public static final String USE_PROTO_REPORTER = "use-proto-reporter";
+    public static final String CHILD_GLOBAL_CONFIG = "sub-global-config";
+    public static final String PARENT_PREPARER_CONFIG = "parent-preparer-config";
 
     @Option(
         name = TF_LOCATION,
@@ -46,7 +48,21 @@ public final class SandboxOptions {
         name = USE_PROTO_REPORTER,
         description = "Whether or not to use protobuf format reporting between processes."
     )
-    private boolean mUseProtoReporter = false;
+    private boolean mUseProtoReporter = true;
+
+    @Option(
+            name = CHILD_GLOBAL_CONFIG,
+            description =
+                    "Force a particular configuration to be used as global configuration for the"
+                            + " sandbox.")
+    private String mChildGlobalConfig = null;
+
+    @Option(
+        name = PARENT_PREPARER_CONFIG,
+        description =
+                "A configuration which target_preparers will be run in the parent of the sandbox."
+    )
+    private String mParentPreparerConfig = null;
 
     /**
      * Returns the provided directories containing the Trade Federation version to use for
@@ -64,5 +80,18 @@ public final class SandboxOptions {
     /** Returns whether or not protobuf reporting should be used. */
     public boolean shouldUseProtoReporter() {
         return mUseProtoReporter;
+    }
+
+    /**
+     * Returns the configuration to be used for the child sandbox. Or null if the parent one should
+     * be used.
+     */
+    public String getChildGlobalConfig() {
+        return mChildGlobalConfig;
+    }
+
+    /** Returns the configuration which preparer should run in the parent process of the sandbox. */
+    public String getParentPreparerConfig() {
+        return mParentPreparerConfig;
     }
 }

@@ -1,6 +1,15 @@
 {
   "presubmit": [
     {
+      "name": "test1",
+      "host": true,
+      "options": [
+        {
+          "include-filter": "some-filter"
+        }
+      ]
+    },
+    {
       "name": "suite/stub1"
     }
   ],
@@ -10,7 +19,10 @@
       "options": [
         {
           "test-suite-tag": "just_a_name"
-        }
+        },
+	{
+	  "include-filter": "filter.com"
+	}
       ]
     }
   ]

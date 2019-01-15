@@ -19,7 +19,6 @@ import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.FileListingService.FileEntry;
 import com.android.ddmlib.IDevice;
-import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.InstallException;
 import com.android.ddmlib.Log.LogLevel;
@@ -84,6 +83,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
@@ -282,6 +282,22 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
+    /** {@link DeviceAction} for rebooting a device. */
+    protected class RebootDeviceAction implements DeviceAction {
+
+        private final String mInto;
+
+        RebootDeviceAction(String into) {
+            mInto = into;
+        }
+
+        @Override
+        public boolean run() throws TimeoutException, IOException, AdbCommandRejectedException {
+            getIDevice().reboot(mInto);
+            return true;
+        }
+    }
+
     /**
      * Creates a {@link TestDevice}.
      *
@@ -398,9 +414,10 @@ public class NativeDevice implements IManagedTestDevice {
                     getSerialNumber());
             return getFastbootVariable(fastbootVar);
         } else {
-            CLog.d("property collection for device %s is null, re-querying for prop %s",
-                    getSerialNumber(), description);
-            return getProperty(propName);
+            CLog.d(
+                    "property collection '%s' for device %s is null.",
+                    description, getSerialNumber());
+            return null;
         }
     }
 
@@ -412,42 +429,12 @@ public class NativeDevice implements IManagedTestDevice {
         if (getIDevice() instanceof StubDevice) {
             return null;
         }
-        if (!DeviceState.ONLINE.equals(getIDevice().getState())) {
+        if (!TestDeviceState.ONLINE.equals(getDeviceState())) {
+            // Only query property for online device
             CLog.d("Device %s is not online cannot get property %s.", getSerialNumber(), name);
             return null;
         }
-        final String[] result = new String[1];
-        DeviceAction propAction = new DeviceAction() {
-
-            @Override
-            public boolean run() throws IOException, TimeoutException, AdbCommandRejectedException,
-                    ShellCommandUnresponsiveException, InstallException, SyncException {
-                try {
-                    result[0] = getIDevice().getSystemProperty(name).get();
-                } catch (InterruptedException | ExecutionException e) {
-                    // getProperty will stash the original exception inside
-                    // ExecutionException.getCause
-                    // throw the specific original exception if available in case TF ever does
-                    // specific handling for different exceptions
-                    if (e.getCause() instanceof IOException) {
-                        throw (IOException)e.getCause();
-                    } else if (e.getCause() instanceof TimeoutException) {
-                        throw (TimeoutException)e.getCause();
-                    } else if (e.getCause() instanceof AdbCommandRejectedException) {
-                        throw (AdbCommandRejectedException)e.getCause();
-                    } else if (e.getCause() instanceof ShellCommandUnresponsiveException) {
-                        throw (ShellCommandUnresponsiveException)e.getCause();
-                    }
-                    else {
-                        throw new IOException(e);
-                    }
-                }
-                return true;
-            }
-
-        };
-        performDeviceAction("getprop", propAction, MAX_RETRY_ATTEMPTS);
-        return result[0];
+        return getIDevice().getProperty(name);
     }
 
     /** {@inheritDoc} */
@@ -541,7 +528,14 @@ public class NativeDevice implements IManagedTestDevice {
         if (prop == null) {
             prop =
                     internalGetProperty(
-                            DeviceProperties.VARIANT_LEGACY, "variant", "Product variant");
+                            DeviceProperties.VARIANT_LEGACY_O_MR1, "variant", "Product variant");
+        }
+        if (prop == null) {
+            prop =
+                    internalGetProperty(
+                            DeviceProperties.VARIANT_LEGACY_LESS_EQUAL_O,
+                            "variant",
+                            "Product variant");
         }
         if (prop != null) {
             prop = prop.toLowerCase();
@@ -785,7 +779,9 @@ public class NativeDevice implements IManagedTestDevice {
         if (runner instanceof RemoteAndroidTestRunner) {
             String original = ((RemoteAndroidTestRunner) runner).getRunOptions();
             String userRunTimeOption = String.format("--user %s", Integer.toString(userId));
-            ((RemoteAndroidTestRunner) runner).setRunOptions(userRunTimeOption);
+            String updated = (original != null) ? (original + " " + userRunTimeOption)
+                    : userRunTimeOption;
+            ((RemoteAndroidTestRunner) runner).setRunOptions(updated);
             return original;
         } else {
             throw new IllegalStateException(String.format("%s runner does not support multi-user",
@@ -2781,6 +2777,12 @@ public class NativeDevice implements IManagedTestDevice {
         doReboot();
     }
 
+    /**
+     * Trigger a reboot of the device, offers no guarantee of the device state after the call.
+     *
+     * @throws DeviceNotAvailableException
+     * @throws UnsupportedOperationException
+     */
     @VisibleForTesting
     void doReboot() throws DeviceNotAvailableException, UnsupportedOperationException {
         if (TestDeviceState.FASTBOOT == getDeviceState()) {
@@ -2793,8 +2795,25 @@ public class NativeDevice implements IManagedTestDevice {
             }
             CLog.i("Rebooting device %s", getSerialNumber());
             doAdbReboot(null);
-            waitForDeviceNotAvailable("reboot", DEFAULT_UNAVAILABLE_TIMEOUT);
+            // Check if device shows as unavailable (as expected after reboot).
+            boolean notAvailable = waitForDeviceNotAvailable(DEFAULT_UNAVAILABLE_TIMEOUT);
+            if (notAvailable) {
+                postAdbReboot();
+            } else {
+                CLog.w(
+                        "Did not detect device %s becoming unavailable after reboot",
+                        getSerialNumber());
+            }
         }
+    }
+
+    /**
+     * Possible extra actions that can be taken after a reboot.
+     *
+     * @throws DeviceNotAvailableException
+     */
+    protected void postAdbReboot() throws DeviceNotAvailableException {
+        // Default implementation empty on purpose.
     }
 
     /**
@@ -2805,16 +2824,19 @@ public class NativeDevice implements IManagedTestDevice {
      * @throws DeviceNotAvailableException
      */
     protected void doAdbReboot(final String into) throws DeviceNotAvailableException {
-        DeviceAction rebootAction = new DeviceAction() {
-            @Override
-            public boolean run() throws TimeoutException, IOException,
-                    AdbCommandRejectedException {
-                getIDevice().reboot(into);
-                return true;
-            }
-        };
+        DeviceAction rebootAction = createRebootDeviceAction(into);
         performDeviceAction("reboot", rebootAction, MAX_RETRY_ATTEMPTS);
+    }
 
+    /**
+     * Create a {@link RebootDeviceAction} to be used when performing a reboot action.
+     *
+     * @param into the bootloader name to reboot into, or <code>null</code> to just reboot the
+     *     device.
+     * @return the created {@link RebootDeviceAction}.
+     */
+    protected RebootDeviceAction createRebootDeviceAction(final String into) {
+        return new RebootDeviceAction(into);
     }
 
     protected void waitForDeviceNotAvailable(String operationDesc, long time) {
@@ -3425,6 +3447,12 @@ public class NativeDevice implements IManagedTestDevice {
         throw new UnsupportedOperationException("No support for Package's feature");
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Set<ApexInfo> getActiveApexes() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Package's feature");
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -3913,19 +3941,27 @@ public class NativeDevice implements IManagedTestDevice {
     public DeviceDescriptor getDeviceDescriptor() {
         IDeviceSelection selector = new DeviceSelectionOptions();
         IDevice idevice = getIDevice();
-        return new DeviceDescriptor(
-                idevice.getSerialNumber(),
-                idevice instanceof StubDevice,
-                getAllocationState(),
-                getDisplayString(selector.getDeviceProductType(idevice)),
-                getDisplayString(selector.getDeviceProductVariant(idevice)),
-                getDisplayString(idevice.getProperty("ro.build.version.sdk")),
-                getDisplayString(idevice.getProperty("ro.build.id")),
-                getDisplayString(selector.getBatteryLevel(idevice)),
-                getDeviceClass(),
-                getDisplayString(getMacAddress()),
-                getDisplayString(getSimState()),
-                getDisplayString(getSimOperator()));
+        try {
+            return new DeviceDescriptor(
+                    idevice.getSerialNumber(),
+                    idevice instanceof StubDevice,
+                    idevice.getState(),
+                    getAllocationState(),
+                    getDisplayString(selector.getDeviceProductType(idevice)),
+                    getDisplayString(selector.getDeviceProductVariant(idevice)),
+                    getDisplayString(idevice.getProperty("ro.build.version.sdk")),
+                    getDisplayString(idevice.getProperty("ro.build.id")),
+                    getDisplayString(getBattery()),
+                    getDeviceClass(),
+                    getDisplayString(getMacAddress()),
+                    getDisplayString(getSimState()),
+                    getDisplayString(getSimOperator()),
+                    idevice);
+        } catch (RuntimeException e) {
+            CLog.e("Exception while building device '%s' description:", getSerialNumber());
+            CLog.e(e);
+        }
+        return null;
     }
 
     /**
@@ -3974,7 +4010,7 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public String getMacAddress() {
-        if (mIDevice instanceof StubDevice) {
+        if (getIDevice() instanceof StubDevice) {
             // Do not query MAC addresses from stub devices.
             return null;
         }
@@ -4094,6 +4130,27 @@ public class NativeDevice implements IManagedTestDevice {
             return -1;
         }
         return totalMemory * 1024;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Integer getBattery() {
+        if (getIDevice() instanceof StubDevice) {
+            return null;
+        }
+        try {
+            // Use default 5 minutes freshness
+            Future<Integer> batteryFuture = getIDevice().getBattery();
+            // Get cached value or wait up to 500ms for battery level query
+            return batteryFuture.get(500, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException
+                | ExecutionException
+                | java.util.concurrent.TimeoutException e) {
+            CLog.w(
+                    "Failed to query battery level for %s: %s",
+                    getIDevice().getSerialNumber(), e.toString());
+        }
+        return null;
     }
 
     /** Validate that pid is an integer and not empty. */

@@ -82,7 +82,8 @@ class TestFinderHandlerUnittests(unittest.TestCase):
         mock.patch('test_finder_handler._get_default_find_methods',
                    lambda x, y: [test_finder_base.Finder(
                        _FINDER_INSTANCES[_EXAMPLE_FINDER_A],
-                       ExampleFinderA.unregistered_find_method_from_example_finder)]).start()
+                       ExampleFinderA.unregistered_find_method_from_example_finder,
+                       _EXAMPLE_FINDER_A)]).start()
 
     def tearDown(self):
         """Tear down."""
@@ -124,6 +125,10 @@ class TestFinderHandlerUnittests(unittest.TestCase):
         )
         self.assertEqual(
             test_finder_handler._get_test_reference_types('SomeClass.java'),
+            [REF_TYPE.MODULE_FILE_PATH]
+        )
+        self.assertEqual(
+            test_finder_handler._get_test_reference_types('SomeClass.kt'),
             [REF_TYPE.MODULE_FILE_PATH]
         )
         self.assertEqual(
@@ -211,11 +216,13 @@ class TestFinderHandlerUnittests(unittest.TestCase):
         should_equal = [
             test_finder_base.Finder(
                 example_finder_a_instance,
-                ExampleFinderA.registered_find_method_from_example_finder)]
+                ExampleFinderA.registered_find_method_from_example_finder,
+                _EXAMPLE_FINDER_A)]
         should_not_equal = [
             test_finder_base.Finder(
                 example_finder_a_instance,
-                ExampleFinderA.unregistered_find_method_from_example_finder)]
+                ExampleFinderA.unregistered_find_method_from_example_finder,
+                _EXAMPLE_FINDER_A)]
         # Let's make sure we see the registered method.
         self.assertEqual(
             should_equal,
@@ -235,11 +242,13 @@ class TestFinderHandlerUnittests(unittest.TestCase):
         registered_find_methods = [
             test_finder_base.Finder(
                 _FINDER_INSTANCES[_EXAMPLE_FINDER_A],
-                ExampleFinderA.registered_find_method_from_example_finder)]
+                ExampleFinderA.registered_find_method_from_example_finder,
+                _EXAMPLE_FINDER_A)]
         default_find_methods = [
             test_finder_base.Finder(
                 _FINDER_INSTANCES[_EXAMPLE_FINDER_A],
-                ExampleFinderA.unregistered_find_method_from_example_finder)]
+                ExampleFinderA.unregistered_find_method_from_example_finder,
+                _EXAMPLE_FINDER_A)]
         should_equal = registered_find_methods + default_find_methods
         self.assertEqual(
             should_equal,

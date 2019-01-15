@@ -76,12 +76,14 @@ public class LocalRunInstructionBuilder {
         StringBuilder instruction = new StringBuilder();
         instruction.append("Run following command to try the test in a local setup:\n");
         StringBuilder testName = new StringBuilder(configDescriptor.getModuleName());
+        boolean testMethodAdded = false;
         if (testId != null) {
             testName.append(String.format(":%s", testId.getClassName()));
             // Atest doesn't support test parameter, so ignore the method filter if parameter is
             // set.
             if (testId.getTestName().equals(testId.getTestNameWithoutParams())) {
                 testName.append(String.format("#%s", testId.getTestName()));
+                testMethodAdded = true;
             }
         }
 
@@ -89,18 +91,20 @@ public class LocalRunInstructionBuilder {
         if (configDescriptor.getAbi() != null) {
             instruction.append(String.format(" --abi %s", configDescriptor.getAbi().getName()));
         }
-        for (OptionDef optionDef : configDescriptor.getRerunOptions()) {
-            StringBuilder option =
-                    new StringBuilder(
-                            String.format(
-                                    "--module-arg %s:%s:",
-                                    configDescriptor.getModuleName(), optionDef.name));
-            if (optionDef.key == null) {
-                option.append(String.format("%s", optionDef.value));
-            } else {
-                option.append(String.format("%s:=%s", optionDef.key, optionDef.value));
+        if (!testMethodAdded) {
+            for (OptionDef optionDef : configDescriptor.getRerunOptions()) {
+                StringBuilder option =
+                        new StringBuilder(
+                                String.format(
+                                        "--module-arg %s:%s:",
+                                        configDescriptor.getModuleName(), optionDef.name));
+                if (optionDef.key == null) {
+                    option.append(String.format("%s", optionDef.value));
+                } else {
+                    option.append(String.format("%s:=%s", optionDef.key, optionDef.value));
+                }
+                instruction.append(" " + option);
             }
-            instruction.append(" " + option);
         }
         return instruction.toString();
     }

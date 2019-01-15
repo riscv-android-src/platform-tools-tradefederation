@@ -141,13 +141,13 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
      *
      * &#064;Test
      * public void testFoo() {
-     *     metrics.put("key", "value");
-     *     metrics.put("key2", "value2");
+     *     metrics.addTestMetric("key", "value");
+     *     metrics.addTestMetric("key2", "value2");
      * }
      *
      * &#064;Test
      * public void testFoo2() {
-     *     metrics.put("key3", "value3");
+     *     metrics.addTestMetric("key3", "value3");
      * }
      * </pre>
      */

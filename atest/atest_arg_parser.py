@@ -40,7 +40,11 @@ class AtestArgParser(argparse.ArgumentParser):
                           const=constants.BUILD_STEP, help='Run a build.')
         self.add_argument('-i', '--install', action='append_const', dest='steps',
                           const=constants.INSTALL_STEP, help='Install an APK.')
-        self.add_argument('--info', action='store_true', help='Show module information.')
+        self.add_argument('--info', action='store_true',
+                          help='Show module information.')
+        self.add_argument('--dry-run', action='store_true',
+                          help='Dry run atest without building, installing and running '
+                               'tests in real.')
         self.add_argument('-t', '--test', action='append_const', dest='steps',
                           const=constants.TEST_STEP,
                           help='Run the tests. WARNING: Many test configs force cleanup '

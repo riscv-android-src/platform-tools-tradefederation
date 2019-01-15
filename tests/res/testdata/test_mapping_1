@@ -1,7 +1,11 @@
 {
   "presubmit": [
     {
-      "name": "test1"
+      "name": "test1",
+      "host": true
+    },
+    {
+      "name": "suite/stub1"
     }
   ],
   "postsubmit": [

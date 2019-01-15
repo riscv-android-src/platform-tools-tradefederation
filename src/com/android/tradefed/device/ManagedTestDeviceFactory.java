@@ -21,6 +21,9 @@ import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.device.DeviceManager.FastbootDevice;
+import com.android.tradefed.device.cloud.ManagedRemoteDevice;
+import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
+import com.android.tradefed.device.cloud.VmRemoteDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
@@ -35,11 +38,11 @@ import java.util.regex.Pattern;
  */
 public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
 
-    private static final String IPADDRESS_PATTERN =
-            "((^([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\." +
-            "([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\." +
-            "([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\." +
-            "([01]?\\d\\d?|2[0-4]\\d|25[0-5]))|(localhost)){1}";
+    public static final String IPADDRESS_PATTERN =
+            "((^([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\."
+                    + "([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\."
+                    + "([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\."
+                    + "([01]?\\d\\d?|2[0-4]\\d|25[0-5]))|(localhost)){1}";
 
     protected boolean mFastbootEnabled;
     protected IDeviceManager mDeviceManager;
@@ -63,17 +66,33 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
     @Override
     public IManagedTestDevice createDevice(IDevice idevice) {
         IManagedTestDevice testDevice = null;
-        if (idevice instanceof TcpDevice || isTcpDeviceSerial(idevice.getSerialNumber())) {
+        if (idevice instanceof VmRemoteDevice) {
+            testDevice =
+                    new ManagedRemoteDevice(
+                            idevice,
+                            new DeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
+                            mAllocationMonitor);
+            testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+        } else if (idevice instanceof RemoteAvdIDevice) {
+            testDevice =
+                    new RemoteAndroidVirtualDevice(
+                            idevice,
+                            new DeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
+                            mAllocationMonitor);
+            testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+        } else if (idevice instanceof TcpDevice || isTcpDeviceSerial(idevice.getSerialNumber())) {
             // Special device for Tcp device for custom handling.
             testDevice = new RemoteAndroidDevice(idevice,
                     new DeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
                     mAllocationMonitor);
             testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
         } else if (!checkFrameworkSupport(idevice)) {
-            // Brillo device instance tier 1 (no framework support)
-            testDevice = new NativeDevice(idevice,
-                    new NativeDeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
-                    mAllocationMonitor);
+            // Iot device instance tier 1 (no framework support)
+            testDevice =
+                    new NativeDevice(
+                            idevice,
+                            new NativeDeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
+                            mAllocationMonitor);
         } else {
             // Default to-go device is Android full stack device.
             testDevice = new TestDevice(idevice,

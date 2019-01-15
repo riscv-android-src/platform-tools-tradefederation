@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.suite;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
@@ -30,6 +31,7 @@ import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.testmapping.TestMapping;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -41,8 +43,10 @@ import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Paths;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 
 /** Unit tests for {@link TestMappingSuiteRunner}. */
@@ -68,6 +72,7 @@ public class TestMappingSuiteRunnerTest {
         mRunner.setBuild(mBuildInfo);
         mRunner.setDevice(mMockDevice);
 
+        EasyMock.expect(mBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null);
         EasyMock.expect(mBuildInfo.getTestsDir()).andReturn(new File(NON_EXISTING_DIR));
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn(ABI_1);
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn(ABI_2);
@@ -131,6 +136,8 @@ public class TestMappingSuiteRunnerTest {
             ZipUtil.createZip(srcDir, zipFile);
 
             IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
+                    .andReturn(null);
             EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(new File("non-existing-dir"));
             EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
 
@@ -141,11 +148,11 @@ public class TestMappingSuiteRunnerTest {
 
             // Test configs in test_mapping_1 doesn't exist, but should be listed in
             // include-filters.
-            assertTrue(mRunner.getIncludeFilter().contains("test1"));
             assertTrue(mRunner.getIncludeFilter().contains("test2"));
             assertTrue(mRunner.getIncludeFilter().contains("instrument"));
             assertTrue(mRunner.getIncludeFilter().contains("suite/stub1"));
-            assertTrue(mRunner.getIncludeFilter().contains("suite/stub2"));
+            // Filters are applied directly
+            assertTrue(mRunner.getIncludeFilter().contains("suite/stub2 filter.com"));
 
             // Check module-arg work as expected.
             InstrumentationTest test =
@@ -159,6 +166,70 @@ public class TestMappingSuiteRunnerTest {
             assertTrue(configMap.containsKey(ABI_2 + " instrument"));
             assertTrue(configMap.containsKey(ABI_2 + " suite/stub1"));
             assertTrue(configMap.containsKey(ABI_2 + " suite/stub2"));
+
+            // Confirm test sources are stored in test's ConfigurationDescription.
+            Map<String, Integer> testSouceCount = new HashMap<>();
+            testSouceCount.put("suite/stub1", 2);
+            testSouceCount.put("suite/stub2", 1);
+            testSouceCount.put("instrument", 1);
+
+            assertEquals(6, configMap.size());
+            for (IConfiguration config : configMap.values()) {
+                assertTrue(testSouceCount.containsKey(config.getName()));
+                assertEquals(
+                        testSouceCount.get(config.getName()).intValue(),
+                        config.getConfigurationDescription()
+                                .getMetaData(TestMapping.TEST_SOURCES)
+                                .size());
+            }
+
+            EasyMock.verify(mockBuildInfo);
+        } finally {
+            FileUtil.recursiveDelete(tempDir);
+        }
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#loadTests()} for loading host tests from
+     * test_mappings.zip.
+     */
+    @Test
+    public void testLoadTests_testMappingsZipHostTests() throws Exception {
+        File tempDir = null;
+        try {
+            OptionSetter setter = new OptionSetter(mRunner);
+            setter.setOptionValue("test-mapping-test-group", "postsubmit");
+
+            tempDir = FileUtil.createTempDir("test_mapping");
+
+            File srcDir = FileUtil.createTempDir("src", tempDir);
+            String srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_1";
+            InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, srcDir, TEST_MAPPING);
+            File subDir = FileUtil.createTempDir("sub_dir", srcDir);
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_2";
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, subDir, TEST_MAPPING);
+
+            File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
+            ZipUtil.createZip(srcDir, zipFile);
+
+            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.HOST_LINKED_DIR))
+                    .andReturn(null);
+            EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(new File("non-existing-dir"));
+            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+
+            mRunner.setBuild(mockBuildInfo);
+            EasyMock.replay(mockBuildInfo);
+
+            mRunner.setPrioritizeHostConfig(true);
+            LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+
+            // Test configs in test_mapping_1 doesn't exist, but should be listed in
+            // include-filters.
+            assertTrue(mRunner.getIncludeFilter().contains("test1"));
+            assertEquals(1, mRunner.getIncludeFilter().size());
 
             EasyMock.verify(mockBuildInfo);
         } finally {
@@ -192,6 +263,8 @@ public class TestMappingSuiteRunnerTest {
             ZipUtil.createZip(srcDir, zipFile);
 
             IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
+                    .andReturn(null);
             EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(new File("non-existing-dir"));
             EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
 
@@ -199,6 +272,7 @@ public class TestMappingSuiteRunnerTest {
             EasyMock.replay(mockBuildInfo);
 
             Collection<IRemoteTest> tests = mRunner.split(2);
+            assertEquals(6, tests.size());
             EasyMock.verify(mockBuildInfo);
         } finally {
             FileUtil.recursiveDelete(tempDir);

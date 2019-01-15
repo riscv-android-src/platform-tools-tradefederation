@@ -22,9 +22,9 @@ import re
 
 # pylint: disable=import-error
 import constants
-import test_finder_base
-import test_finder_utils
-import test_info
+from test_finders import test_finder_base
+from test_finders import test_finder_utils
+from test_finders import test_info
 from test_runners import suite_plan_test_runner
 
 _SUITE_PLAN_NAME_RE = re.compile(r'^.*\/(?P<suite>.*)-tradefed\/res\/config\/'

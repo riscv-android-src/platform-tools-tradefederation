@@ -15,20 +15,30 @@
  */
 package com.android.tradefed.testtype.suite.retry;
 
-import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
-
-import java.util.List;
 
 /** Interface describing an helper to load previous results in a way that can be re-run. */
 public interface ITestSuiteResultLoader {
 
     /** Initialization of the loader. */
-    public void init(List<ITestDevice> devices);
+    public void init();
 
     /** Retrieve the original command line from the previous run. */
     public String getCommandLine();
 
     /** Load the previous results in a {@link TestRecord} format. */
     public TestRecord loadPreviousRecord();
+
+    /**
+     * Allow the specialized loader to customize the configuration before it is re-run.
+     * Customization usually involves adding some objects to the original configuration in order to
+     * make it do some extra things.
+     *
+     * @param config The {@link IConfiguration} that will be re-run.
+     */
+    public default void customizeConfiguration(IConfiguration config) {}
+
+    /** Clean up any internal states. */
+    public default void cleanUp() {}
 }

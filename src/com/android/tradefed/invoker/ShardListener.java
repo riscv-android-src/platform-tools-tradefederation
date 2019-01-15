@@ -152,7 +152,8 @@ public class ShardListener extends CollectingTestListener {
                     mMasterListener.testModuleStarted(moduleContext);
                 }
 
-                mMasterListener.testRunStarted(runResult.getName(), runResult.getNumTests());
+                mMasterListener.testRunStarted(
+                        runResult.getName(), runResult.getExpectedTestCount());
                 forwardTestResults(runResult.getTestResults());
                 if (runResult.isRunFailure()) {
                     mMasterListener.testRunFailed(runResult.getRunFailureMessage());

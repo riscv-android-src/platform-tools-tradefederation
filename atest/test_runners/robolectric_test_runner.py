@@ -20,11 +20,12 @@ robolectric tests will be invoked through AtestTFTestRunner.
 """
 
 import logging
+import os
 
 # pylint: disable=import-error
 import atest_utils
 import constants
-import test_runner_base
+from test_runners import test_runner_base
 
 
 class RobolectricTestRunner(test_runner_base.TestRunnerBase):
@@ -35,9 +36,10 @@ class RobolectricTestRunner(test_runner_base.TestRunnerBase):
     # class will raise an exception.
     EXECUTABLE = 'make'
 
+    # pylint: disable=useless-super-delegation
     def __init__(self, results_dir, **kwargs):
         """Init stuff for robolectric runner class."""
-        super(RobolectricTestRunner, self).__init__(results_dir)
+        super(RobolectricTestRunner, self).__init__(results_dir, **kwargs)
 
     def run_tests(self, test_infos, extra_args, reporter):
         """Run the list of test_infos.
@@ -46,12 +48,19 @@ class RobolectricTestRunner(test_runner_base.TestRunnerBase):
             test_infos: List of TestInfo.
             extra_args: Dict of extra args to add to test run.
             reporter: A ResultReporter Instance.
+
+        Returns:
+            0 if tests succeed, non-zero otherwise.
         """
         reporter.register_unsupported_runner(self.NAME)
+        rob_build_ret = True
         for test_info in test_infos:
             env_vars = self.generate_env_vars(test_info, extra_args)
-            atest_utils.build(set([test_info.test_name]), verbose=True,
-                              env_vars=env_vars)
+            rob_build_ret &= atest_utils.build(
+                set([test_info.test_name]), verbose=True, env_vars=env_vars)
+        if rob_build_ret:
+            return constants.EXIT_CODE_SUCCESS
+        return constants.EXIT_CODE_TEST_FAILURE
 
     @staticmethod
     def generate_env_vars(test_info, extra_args):
@@ -97,3 +106,24 @@ class RobolectricTestRunner(test_runner_base.TestRunnerBase):
             Set of build targets.
         """
         return set()
+
+    # pylint: disable=unused-argument
+    def generate_run_commands(self, test_infos, extra_args, port=None):
+        """Generate a list of run commands from TestInfos.
+
+        Args:
+            test_infos: A set of TestInfo instances.
+            extra_args: A Dict of extra args to append.
+            port: Optional. An int of the port number to send events to.
+                  Subprocess reporter in TF won't try to connect if it's None.
+
+        Returns:
+            A list of run commands to run the tests.
+        """
+        run_cmds = []
+        for test_info in test_infos:
+            robo_command = atest_utils.BUILD_CMD + [str(test_info.test_name)]
+            run_cmd = ' '.join(x for x in robo_command).replace(
+                os.environ.get(constants.ANDROID_BUILD_TOP) + os.sep, '')
+            run_cmds.append(run_cmd)
+        return run_cmds

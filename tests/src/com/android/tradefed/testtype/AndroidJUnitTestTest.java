@@ -49,6 +49,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -226,6 +227,7 @@ public class AndroidJUnitTestTest {
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFile = FileUtil.createTempFile("testFile", ".txt");
+        FileUtil.writeToFile(TEST1.toString(), tmpFile);
         try {
             mAndroidJUnitTest.setIncludeTestFile(tmpFile);
             mAndroidJUnitTest.run(mMockListener);
@@ -250,6 +252,7 @@ public class AndroidJUnitTestTest {
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFile = FileUtil.createTempFile("notTestFile", ".txt");
+        FileUtil.writeToFile(TEST1.toString(), tmpFile);
         try {
             mAndroidJUnitTest.setExcludeTestFile(tmpFile);
             mAndroidJUnitTest.run(mMockListener);
@@ -276,11 +279,13 @@ public class AndroidJUnitTestTest {
                 EasyMock.<String>anyObject())).andReturn(Boolean.TRUE).times(2);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
                 .andReturn("")
-                .times(4);
+                .times(3);
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
+        FileUtil.writeToFile(TEST1.toString(), tmpFileInclude);
         File tmpFileExclude = FileUtil.createTempFile("excludeFile", ".txt");
+        FileUtil.writeToFile(TEST2.toString(), tmpFileExclude);
         try {
             mAndroidJUnitTest.addIncludeFilter(TEST1.getClassName());
             mAndroidJUnitTest.addExcludeFilter(TEST2.toString());
@@ -312,7 +317,9 @@ public class AndroidJUnitTestTest {
 
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice, mMockListener);
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
+        FileUtil.writeToFile(TEST1.toString(), tmpFileInclude);
         File tmpFileExclude = FileUtil.createTempFile("excludeFile", ".txt");
+        FileUtil.writeToFile(TEST2.toString(), tmpFileExclude);
         try {
             mAndroidJUnitTest.addIncludeFilter(TEST1.getClassName());
             mAndroidJUnitTest.addExcludeFilter(TEST2.toString());
@@ -344,11 +351,13 @@ public class AndroidJUnitTestTest {
                 .times(2);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
                 .andReturn("")
-                .times(4);
+                .times(3);
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
+        FileUtil.writeToFile(TEST1.toString(), tmpFileInclude);
         File tmpFileExclude = FileUtil.createTempFile("excludeFile", ".txt");
+        FileUtil.writeToFile(TEST2.toString(), tmpFileExclude);
         try {
             OptionSetter setter = new OptionSetter(mAndroidJUnitTest);
             setter.setOptionValue("test-file-include-filter", tmpFileInclude.getAbsolutePath());
@@ -393,6 +402,17 @@ public class AndroidJUnitTestTest {
     public void testSplit_noShardRequested() {
         assertEquals(AJUR, mAndroidJUnitTest.getRunnerName());
         assertNull(mAndroidJUnitTest.split());
+    }
+
+    /** Test that {@link AndroidJUnitTest#split()} returns the split if no runner specified. */
+    @Test
+    public void testSplit_noRunner() {
+        AndroidJUnitTest test = new AndroidJUnitTest();
+        test.setRunnerName(null);
+        assertNull(test.getRunnerName());
+        Collection<IRemoteTest> listTests = test.split(4);
+        assertNotNull(listTests);
+        assertEquals(4, listTests.size());
     }
 
     /** Test that {@link AndroidJUnitTest#split(int)} returns 3 shards when requested to do so. */

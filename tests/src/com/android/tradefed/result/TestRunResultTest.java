@@ -149,7 +149,7 @@ public class TestRunResultTest {
         result.testEnded(test2, new HashMap<String, Metric>());
         result.testRunEnded(0, new HashMap<String, Metric>());
         // Verify rerun.
-        assertEquals(2, result.getExpectedTestCount());
+        assertEquals(3, result.getExpectedTestCount());
         assertTrue(result.isRunFailure());
         assertEquals("failure", result.getRunFailureMessage());
         assertTrue(result.isRunComplete());
@@ -291,8 +291,8 @@ public class TestRunResultTest {
         assertEquals(TestStatus.FAILURE, test3Result.getStatus());
 
         assertEquals(null, test1Result.getStackTrace());
-        assertEquals("flaky 1\nflaky 2", test2Result.getStackTrace());
-        assertEquals("bad_code1\nbad_code2\nbad_code3", test3Result.getStackTrace());
+        assertEquals("flaky 1\n\nflaky 2", test2Result.getStackTrace());
+        assertEquals("bad_code1\n\nbad_code2\n\nbad_code3", test3Result.getStackTrace());
     }
 
     /** Ensure that the merging logic among multiple testRunResults for the same test is correct. */
@@ -340,9 +340,9 @@ public class TestRunResultTest {
         Map<TestDescription, TestResult> testRunResult = result.getTestResults();
         assertTrue(testRunResult.containsKey(testcase));
         TestResult testResult = testRunResult.get(testcase);
-        assertEquals(TestStatus.FAILURE, testResult.getStatus());
+        assertEquals(TestStatus.PASSED, testResult.getStatus());
 
-        assertEquals("Second run failed.\nFourth run failed.", testResult.getStackTrace());
+        assertEquals("Second run failed.\n\nFourth run failed.", testResult.getStackTrace());
     }
 
     /** Ensure that merge will raise exceptions if merge TestRunResult for different test. */
@@ -452,7 +452,7 @@ public class TestRunResultTest {
         assertEquals("fake run", result.getName());
         assertTrue(result.isRunFailure());
         assertTrue(result.isRunComplete());
-        assertEquals("Second run failed.\nThird run failed.", result.getRunFailureMessage());
+        assertEquals("Second run failed.\n\nThird run failed.", result.getRunFailureMessage());
     }
 
     /** Ensure that the merging logic among multiple testRunResults for one incomplete run. */
@@ -547,5 +547,59 @@ public class TestRunResultTest {
         List<TestRunResult> testResultList = new ArrayList<>(Arrays.asList(result1, result2));
         TestRunResult result = TestRunResult.merge(testResultList);
         assertEquals(5, result.getExpectedTestCount());
+    }
+
+    /**
+     * Ensure that the merging logic among multiple testRunResults for the same test is correct no
+     * matter the order of test cases failures (we should not keep last seen status but follow the
+     * merging strategy).
+     */
+    @Test
+    public void testMergeRetriedRunResults_testCaseStatus() {
+        // Test Setup.
+        TestDescription testcase = new TestDescription("Foo", "foo");
+        TestRunResult result1 = new TestRunResult();
+        TestRunResult result2 = new TestRunResult();
+        TestRunResult result3 = new TestRunResult();
+        TestRunResult result4 = new TestRunResult();
+        // Mimic the ModuleDefinition run.
+        result1.testRunStarted("fake run", 1);
+        result1.testStarted(testcase);
+        result1.testEnded(testcase, new HashMap<String, Metric>());
+        result1.testRunEnded(0, new HashMap<String, Metric>());
+
+        result2.testRunStarted("fake run", 1);
+        result2.testStarted(testcase);
+        result2.testFailed(testcase, "Second run failed.");
+        result2.testEnded(testcase, new HashMap<String, Metric>());
+        result2.testRunEnded(0, new HashMap<String, Metric>());
+
+        result3.testRunStarted("fake run", 1);
+        result3.testStarted(testcase);
+        result3.testFailed(testcase, "third run failed.");
+        result3.testEnded(testcase, new HashMap<String, Metric>());
+        result3.testRunEnded(0, new HashMap<String, Metric>());
+
+        result4.testRunStarted("fake run", 1);
+        result4.testStarted(testcase);
+        result4.testEnded(testcase, new HashMap<String, Metric>());
+        result4.testRunEnded(0, new HashMap<String, Metric>());
+
+        List<TestRunResult> testResultList =
+                new ArrayList<>(Arrays.asList(result1, result2, result3, result4));
+        TestRunResult result = TestRunResult.merge(testResultList);
+
+        // Verify result.
+        assertEquals(result1.getExpectedTestCount(), 1);
+        assertEquals(result2.getExpectedTestCount(), 1);
+        assertEquals(result3.getExpectedTestCount(), 1);
+        assertEquals(result4.getExpectedTestCount(), 1);
+        assertEquals("fake run", result.getName());
+        Map<TestDescription, TestResult> testRunResult = result.getTestResults();
+        assertTrue(testRunResult.containsKey(testcase));
+        TestResult testResult = testRunResult.get(testcase);
+        assertEquals(TestStatus.PASSED, testResult.getStatus());
+
+        assertEquals("Second run failed.\n\nthird run failed.", testResult.getStackTrace());
     }
 }

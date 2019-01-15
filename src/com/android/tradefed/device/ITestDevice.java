@@ -86,6 +86,32 @@ public interface ITestDevice extends INativeDevice {
         }
     }
 
+    /** A simple struct class to store information about a single APEX */
+    public static class ApexInfo {
+        public final String name;
+        public final long versionCode;
+
+        public ApexInfo(String name, long versionCode) {
+            this.name = name;
+            this.versionCode = versionCode;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (other != null && other instanceof ApexInfo) {
+                ApexInfo ai = (ApexInfo) other;
+                return name.equals(ai.name) && versionCode == ai.versionCode;
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            // no need to consider versionCode here.
+            return name.hashCode();
+        }
+    }
+
     /**
      * Install an Android package on device.
      *
@@ -162,6 +188,107 @@ public interface ITestDevice extends INativeDevice {
      *             recovered.
      */
     public String uninstallPackage(String packageName) throws DeviceNotAvailableException;
+
+    /**
+     * Install an Android application made of several APK files (one main and extra split packages).
+     * See "https://developer.android.com/studio/build/configure-apk-splits" on how to split
+     * apk to several files.
+     *
+     * @param packageFiles the local apk files
+     * @param reinstall <code>true</code> if a reinstall should be performed
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
+     *     available options.
+     * @return a {@link String} with an error code, or <code>null</code> if success.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     * @throws UnsupportedOperationException if runtime permission is not supported by the platform
+     *     on device.
+     */
+    public default String installPackages(
+            List<File> packageFiles, boolean reinstall, String... extraArgs)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Package Manager's features");
+    }
+
+    /**
+     * Install an Android application made of several APK files (one main and extra split packages)
+     * that are sitting on the android device.
+     * See "https://developer.android.com/studio/build/configure-apk-splits" on how to split
+     * apk to several files.
+     *
+     * <p>Note: Only use cases that requires explicit control of granting runtime permission at
+     * install time should call this function.
+     *
+     * @param remoteApkPaths the remote apk file paths
+     * @param reinstall <code>true</code> if a reinstall should be performed
+     * @param grantPermissions if all runtime permissions should be granted at install time
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
+     *     available options.
+     * @return a {@link String} with an error code, or <code>null</code> if success.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     * @throws UnsupportedOperationException if runtime permission is not supported by the platform
+     *     on device.
+     */
+    public default String installRemotePackages(
+            List<String> remoteApkPaths,
+            boolean reinstall,
+            boolean grantPermissions,
+            String... extraArgs)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Package Manager's features");
+    }
+
+    /**
+     * Install an Android application made of several APK files (one main and extra split packages)
+     * that are sitting on the android device.
+     * See "https://developer.android.com/studio/build/configure-apk-splits" on how to split
+     * apk to several files.
+     *
+     * @param remoteApkPaths the remote apk file paths
+     * @param reinstall <code>true</code> if a reinstall should be performed
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
+     *     available options.
+     * @return a {@link String} with an error code, or <code>null</code> if success.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     * @throws UnsupportedOperationException if runtime permission is not supported by the platform
+     *     on device.
+     */
+    public default String installRemotePackages(
+            List<String> remoteApkPaths, boolean reinstall, String... extraArgs)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Package Manager's features");
+    }
+
+    /**
+     * Install an Android application made of several APK files (one main and extra split packages)
+     * that are sitting on the android device.
+     * See "https://developer.android.com/studio/build/configure-apk-splits" on how to split
+     * apk to several files.
+     *
+     * <p>Note: Only use cases that requires explicit control of granting runtime permission at
+     * install time should call this function.
+     *
+     * @param packageFiles the remote apk file paths to install
+     * @param reinstall <code>true</code> if a reinstall should be performed
+     * @param grantPermissions if all runtime permissions should be granted at install time
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
+     *     available options.
+     * @return a {@link String} with an error code, or <code>null</code> if success.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     * @throws UnsupportedOperationException if runtime permission is not supported by the platform
+     *     on device.
+     */
+    public default String installPackages(
+            List<File> packageFiles,
+            boolean reinstall,
+            boolean grantPermissions,
+            String... extraArgs)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Package Manager's features");
+    }
 
     /**
      * Grabs a screenshot from the device.
@@ -362,6 +489,14 @@ public interface ITestDevice extends INativeDevice {
      * @throws DeviceNotAvailableException
      */
     public Set<String> getInstalledPackageNames() throws DeviceNotAvailableException;
+
+    /**
+     * Fetch the information about APEXes activated on the device.
+     *
+     * @return {@link Set} of {@link ApexInfo} currently activated on the device
+     * @throws DeviceNotAvailableException
+     */
+    public Set<ApexInfo> getActiveApexes() throws DeviceNotAvailableException;
 
     /**
      * Fetch the application package names that can be uninstalled. This is presently defined as

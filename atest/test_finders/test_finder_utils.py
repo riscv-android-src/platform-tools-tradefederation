@@ -35,17 +35,17 @@ import constants
 _APK_RE = re.compile(r'^[^/]+\.apk$', re.I)
 # RE for check if TEST or TEST_F is in a cc file or not.
 _CC_CLASS_RE = re.compile(r'TEST(_F)?\(', re.I)
-# Parse package name from the package declaration line of a java file.
-# Group matches "foo.bar" of line "package foo.bar;"
-_PACKAGE_RE = re.compile(r'\s*package\s+(?P<package>[^;]+)\s*;\s*', re.I)
+# Parse package name from the package declaration line of a java or a kotlin file.
+# Group matches "foo.bar" of line "package foo.bar;" or "package foo.bar"
+_PACKAGE_RE = re.compile(r'\s*package\s+(?P<package>[^(;|\s)]+)\s*', re.I)
 # Matches install paths in module_info to install location(host or device).
 _HOST_PATH_RE = re.compile(r'.*\/host\/.*', re.I)
 _DEVICE_PATH_RE = re.compile(r'.*\/target\/.*', re.I)
 
 # Explanation of FIND_REFERENCE_TYPEs:
 # ----------------------------------
-# 0. CLASS: Name of a java class, usually file is named the same (HostTest lives
-#           in HostTest.java)
+# 0. CLASS: Name of a java/kotlin class, usually file is named the same (HostTest lives
+#           in HostTest.java or HostTest.kt)
 # 1. QUALIFIED_CLASS: Like CLASS but also contains the package in front like
 #.                    com.android.tradefed.testtype.HostTest.
 # 2. PACKAGE: Name of a java package.
@@ -58,17 +58,18 @@ FIND_REFERENCE_TYPE = atest_enum.AtestEnum(['CLASS', 'QUALIFIED_CLASS',
 # Unix find commands for searching for test files based on test type input.
 # Note: Find (unlike grep) exits with status 0 if nothing found.
 FIND_CMDS = {
-    FIND_REFERENCE_TYPE.CLASS : r"find %s -type d %s -prune -o -type f -name "
-                                r"'%s.java' -print",
-    FIND_REFERENCE_TYPE.QUALIFIED_CLASS: r"find %s -type d %s -prune -o "
-                                         r"-wholename '*%s.java' -print",
-    FIND_REFERENCE_TYPE.PACKAGE: r"find %s -type d %s -prune -o -wholename "
-                                 r"'*%s' -type d -print",
-    FIND_REFERENCE_TYPE.INTEGRATION: r"find %s -type d %s -prune -o -wholename "
-                                     r"'*%s.xml' -print",
-    FIND_REFERENCE_TYPE.CC_CLASS: r"find %s -type d %s -prune -o -type f "
+    FIND_REFERENCE_TYPE.CLASS: r"find {0} -type d {1} -prune -o -type f "
+                               r"\( -name '*{2}.java' -o -name '*{2}.kt' \) -print",
+    FIND_REFERENCE_TYPE.QUALIFIED_CLASS: r"find {0} -type d {1} -prune -o "
+                                         r"\( -wholename '*{2}.java' "
+                                         r"-o -wholename '*{2}.kt' \) -print",
+    FIND_REFERENCE_TYPE.PACKAGE: r"find {0} -type d {1} -prune -o -wholename "
+                                 r"'*{2}' -type d -print",
+    FIND_REFERENCE_TYPE.INTEGRATION: r"find {0} -type d {1} -prune -o -wholename "
+                                     r"'*{2}.xml' -print",
+    FIND_REFERENCE_TYPE.CC_CLASS: r"find {0} -type d {1} -prune -o -type f "
                                   r"\( -name '*.cpp' -o -name '*.cc' \)"
-                                  r" -exec grep -E 'TEST(_F)?\(%s,' {} + || true"
+                                  r" -exec grep -H -E 'TEST(_F)?\({2},' {{}} + || true"
 }
 
 # XML parsing related constants.
@@ -98,8 +99,11 @@ _VTS_BITNESS = 'append-bitness'
 _VTS_BITNESS_TRUE = 'true'
 _VTS_BITNESS_32 = '32'
 _VTS_BITNESS_64 = '64'
+_VTS_TEST_FILE = 'test-file-name'
+_VTS_APK = 'apk'
 # Matches 'DATA/target' in '_32bit::DATA/target'
 _VTS_BINARY_SRC_DELIM_RE = re.compile(r'.*::(?P<target>.*)$')
+_VTS_OUT_DATA_APP_PATH = 'DATA/app'
 
 # pylint: disable=inconsistent-return-statements
 def split_methods(user_input):
@@ -156,7 +160,9 @@ def get_fully_qualified_class_name(test_path):
                 package = match.group('package')
                 cls = os.path.splitext(os.path.split(test_path)[1])[0]
                 return '%s.%s' % (package, cls)
-    raise atest_error.MissingPackageNameError(test_path)
+    raise atest_error.MissingPackageNameError('%s: Test class java file'
+                                              'does not contain a package'
+                                              'name.'% test_path)
 
 
 def has_cc_class(test_path):
@@ -217,8 +223,8 @@ def extract_test_path(output, is_native_test=False):
 def extract_test_from_tests(tests):
     """Extract the test path from the tests.
 
-    Example of find output for CLASS find cmd:
-    /<some_root>/cts/tests/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java
+    Return the test to run from tests. If more than one option, prompt the user
+    to select one.
 
     Args:
         tests: A string list which contains multiple test paths.
@@ -233,7 +239,7 @@ def extract_test_from_tests(tests):
     elif count > 1:
         numbered_list = ['%s: %s' % (i, t) for i, t in enumerate(tests)]
         print 'Multiple tests found:\n%s' % '\n'.join(numbered_list)
-        test_index = int(raw_input('Please enter number of test to use:'))
+        test_index = int(raw_input('Please enter number of test to use: '))
     return tests[test_index]
 
 
@@ -318,7 +324,7 @@ def run_find_cmd(ref_type, search_dir, target):
         A string of the path to the target.
     """
     prune_cond = _get_prune_cond_of_ignored_dirs()
-    find_cmd = FIND_CMDS[ref_type] % (search_dir, prune_cond, target)
+    find_cmd = FIND_CMDS[ref_type].format(search_dir, prune_cond, target)
     start = time.time()
     ref_name = FIND_REFERENCE_TYPE[ref_type]
     logging.debug('Executing %s find cmd: %s', ref_name, find_cmd)
@@ -400,41 +406,35 @@ def find_parent_module_dir(root_dir, start_dir, module_info):
 
     Returns:
         A string of the module dir relative to root, None if no Module Dir
-        found.
+        found. There may be multiple testable modules at this level.
 
     Exceptions:
         ValueError: Raised if cur_dir not dir or not subdir of root dir.
     """
     if not is_equal_or_sub_dir(start_dir, root_dir):
         raise ValueError('%s not in repo %s' % (start_dir, root_dir))
-    module_dir = None
+    auto_gen_dir = None
     current_dir = start_dir
     while current_dir != root_dir:
-        # If we find an AndroidTest.xml, we know we found the right directory.
+        # TODO (b/112904944) - migrate module_finder functions to here and
+        # reuse them.
+        rel_dir = os.path.relpath(current_dir, root_dir)
+        # Check if actual config file here
         if os.path.isfile(os.path.join(current_dir, constants.MODULE_CONFIG)):
-            module_dir = os.path.relpath(current_dir, root_dir)
-            break
-        # If we haven't found a possible auto-generated config location, check
-        # now.
-        if not module_dir:
-            rel_dir = os.path.relpath(current_dir, root_dir)
-            module_list = module_info.path_to_module_info.get(rel_dir, [])
-            # Verify only one module at this level has an auto_test_config.
-            if len([x for x in module_list if x.get('auto_test_config')]) == 1:
-                # We found a single test module!
-                module_dir = rel_dir
-                # But keep searching in case there's an AndroidTest.xml in a
-                # parent folder. Example: a class belongs to an test apk that's
-                # part of a hostside test setup (common in cts).
-            # Check if a robolectric module lives here.
-            for mod in module_list:
-                if is_robolectric_module(mod):
-                    module_dir = rel_dir
-                    break
+            return rel_dir
+        # Check module_info if auto_gen config or robo (non-config) here
+        for mod in module_info.path_to_module_info.get(rel_dir, []):
+            if is_robolectric_module(mod):
+                return rel_dir
+            for test_config in mod.get(constants.MODULE_TEST_CONFIG, []):
+                if os.path.isfile(os.path.join(root_dir, test_config)):
+                    return rel_dir
+            if mod.get('auto_test_config'):
+                auto_gen_dir = rel_dir
+                # Don't return for auto_gen, keep checking for real config, because
+                # common in cts for class in apk that's in hostside test setup.
         current_dir = os.path.dirname(current_dir)
-    if not module_dir:
-        return None
-    return module_dir
+    return auto_gen_dir
 
 
 def get_targets_from_xml(xml_file, module_info):
@@ -619,17 +619,50 @@ def _get_vts_binary_src_target(value, rel_out_dir):
     return target
 
 
+def get_plans_from_vts_xml(xml_file):
+    """Get configs which are included by xml_file.
+
+    We're looking for option(include) to get all dependency plan configs.
+
+    Args:
+        xml_file: Absolute path to xml file.
+
+    Returns:
+        A set of plan config paths which are depended by xml_file.
+    """
+    if not os.path.exists(xml_file):
+        raise atest_error.XmlNotExistError('%s: The xml file does'
+                                           'not exist' % xml_file)
+    plans = set()
+    xml_root = ET.parse(xml_file).getroot()
+    plans.add(xml_file)
+    option_tags = xml_root.findall('.//include')
+    if not option_tags:
+        return plans
+    # Currently, all vts xmls live in the same dir :
+    # https://android.googlesource.com/platform/test/vts/+/master/tools/vts-tradefed/res/config/
+    # If the vts plans start using folders to organize the plans, the logic here
+    # should be changed.
+    xml_dir = os.path.dirname(xml_file)
+    for tag in option_tags:
+        name = tag.attrib[_XML_NAME].strip()
+        plans |= get_plans_from_vts_xml(os.path.join(xml_dir, name + ".xml"))
+    return plans
+
+
 def get_targets_from_vts_xml(xml_file, rel_out_dir, module_info):
     """Parse a vts xml for test dependencies we need to build.
 
     We have a separate vts parsing function because we make a big assumption
     on the targets (the way they're formatted and what they represent) and we
     also create these build targets in a very special manner as well.
-    The 4 options we're looking for are:
+    The 6 options we're looking for are:
       - binary-test-source
       - push-group
       - push
       - test-module-name
+      - test-file-name
+      - apk
 
     Args:
         module_info: ModuleInfo class used to verify targets are valid modules.
@@ -667,6 +700,23 @@ def get_targets_from_vts_xml(xml_file, rel_out_dir, module_info):
                 targets.add(os.path.join(rel_out_dir, push_target + _VTS_BITNESS_64))
             else:
                 targets.add(os.path.join(rel_out_dir, push_target))
+        elif name == _VTS_TEST_FILE:
+            # The _VTS_TEST_FILE values can be set in 2 possible ways:
+            #   1. test_file.apk
+            #   2. DATA/app/test_file/test_file.apk
+            # We'll assume that test_file.apk (#1) is in an expected path (but
+            # that is not true, see b/76158619) and create the full path for it
+            # and then append the _VTS_TEST_FILE value to targets to build.
+            target = os.path.join(rel_out_dir, value)
+            # If value is just an APK, specify the path that we expect it to be in
+            # e.g. out/host/linux-x86/vts/android-vts/testcases/DATA/app/test_file/test_file.apk
+            head, _ = os.path.split(value)
+            if not head:
+                target = os.path.join(rel_out_dir, _VTS_OUT_DATA_APP_PATH,
+                                      _get_apk_target(value), value)
+            targets.add(target)
+        elif name == _VTS_APK:
+            targets.add(os.path.join(rel_out_dir, value))
     logging.debug('Targets found in config file: %s', targets)
     return targets
 

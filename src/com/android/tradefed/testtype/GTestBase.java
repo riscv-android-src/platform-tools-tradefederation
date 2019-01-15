@@ -28,7 +28,7 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -38,8 +38,7 @@ public abstract class GTestBase
                 ITestFilterReceiver,
                 IRuntimeHintProvider,
                 ITestCollector,
-                IShardableTest,
-                IStrictShardableTest {
+                IShardableTest {
 
     private static final List<String> DEFAULT_FILE_EXCLUDE_FILTERS = new ArrayList<>();
 
@@ -70,14 +69,16 @@ public abstract class GTestBase
     private String mTestNameNegativeFilter = null;
 
     @Option(
-            name = "include-filter",
-            description = "The GTest-based positive filter of the test names to run.")
-    private Set<String> mIncludeFilters = new HashSet<>();
+        name = "include-filter",
+        description = "The GTest-based positive filter of the test names to run."
+    )
+    private Set<String> mIncludeFilters = new LinkedHashSet<>();
 
     @Option(
-            name = "exclude-filter",
-            description = "The GTest-based negative filter of the test names to run.")
-    private Set<String> mExcludeFilters = new HashSet<>();
+        name = "exclude-filter",
+        description = "The GTest-based negative filter of the test names to run."
+    )
+    private Set<String> mExcludeFilters = new LinkedHashSet<>();
 
     @Option(
             name = "native-test-timeout",
@@ -225,6 +226,11 @@ public abstract class GTestBase
         mShardCount = shardCount;
     }
 
+    /** Returns the current shard-count. */
+    public int getShardCount() {
+        return mShardCount;
+    }
+
     /** {@inheritDoc} */
     @Override
     public long getRuntimeHint() {
@@ -234,6 +240,12 @@ public abstract class GTestBase
     /** {@inheritDoc} */
     @Override
     public void addIncludeFilter(String filter) {
+        if (mShardCount > 0) {
+            // If we explicitly start giving filters to GTest, reset the shard-count. GTest first
+            // applies filters then GTEST_TOTAL_SHARDS so it will probably end up not running
+            // anything
+            mShardCount = 0;
+        }
         mIncludeFilters.add(cleanFilter(filter));
     }
 
@@ -342,27 +354,6 @@ public abstract class GTestBase
      * @return filter string.
      */
     protected abstract String loadFilter(String path) throws DeviceNotAvailableException;
-
-    @Override
-    public IRemoteTest getTestShard(int shardCount, int shardIndex) {
-        GTestBase shard = null;
-        try {
-            shard = this.getClass().newInstance();
-            OptionCopier.copyOptionsNoThrow(this, shard);
-            shard.mShardIndex = shardIndex;
-            shard.mShardCount = shardCount;
-            shard.mIsSharded = true;
-            // We approximate the runtime of each shard to be equal since we can't know.
-            shard.mRuntimeHint = mRuntimeHint / shardCount;
-        } catch (InstantiationException | IllegalAccessException e) {
-            // This cannot happen because the class was already created once at that point.
-            throw new RuntimeException(
-                    String.format(
-                            "%s (%s) when attempting to create shard object",
-                            e.getClass().getSimpleName(), getExceptionMessage(e)));
-        }
-        return shard;
-    }
 
     /**
      * Helper to get the g-test filter of test to run.
@@ -490,15 +481,6 @@ public abstract class GTestBase
         if (mLdLibraryPath != null) {
             gTestCmdLine.append(String.format("LD_LIBRARY_PATH=%s ", mLdLibraryPath));
         }
-        if (mShardCount > 0) {
-            if (mCollectTestsOnly) {
-                CLog.w(
-                        "--collect-tests-only option ignores sharding parameters, and will cause "
-                                + "each shard to collect all tests.");
-            }
-            gTestCmdLine.append(String.format("GTEST_SHARD_INDEX=%s ", mShardIndex));
-            gTestCmdLine.append(String.format("GTEST_TOTAL_SHARDS=%s ", mShardCount));
-        }
 
         // su to requested user
         if (mRunTestAs != null) {
@@ -550,5 +532,25 @@ public abstract class GTestBase
             }
         }
         return msgBuilder.toString();
+    }
+
+    private IRemoteTest getTestShard(int shardCount, int shardIndex) {
+        GTestBase shard = null;
+        try {
+            shard = this.getClass().newInstance();
+            OptionCopier.copyOptionsNoThrow(this, shard);
+            shard.mShardIndex = shardIndex;
+            shard.mShardCount = shardCount;
+            shard.mIsSharded = true;
+            // We approximate the runtime of each shard to be equal since we can't know.
+            shard.mRuntimeHint = mRuntimeHint / shardCount;
+        } catch (InstantiationException | IllegalAccessException e) {
+            // This cannot happen because the class was already created once at that point.
+            throw new RuntimeException(
+                    String.format(
+                            "%s (%s) when attempting to create shard object",
+                            e.getClass().getSimpleName(), getExceptionMessage(e)));
+        }
+        return shard;
     }
 }

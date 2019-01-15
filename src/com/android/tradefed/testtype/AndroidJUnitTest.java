@@ -47,9 +47,12 @@ import java.util.Set;
  * A Test that runs an instrumentation test package on given device using the
  * android.support.test.runner.AndroidJUnitRunner.
  */
-public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHintProvider,
-        ITestFileFilterReceiver, ITestFilterReceiver, ITestAnnotationFilterReceiver,
-        IShardableTest, IStrictShardableTest {
+public class AndroidJUnitTest extends InstrumentationTest
+        implements IRuntimeHintProvider,
+                ITestFileFilterReceiver,
+                ITestFilterReceiver,
+                ITestAnnotationFilterReceiver,
+                IShardableTest {
 
     /** instrumentation test runner argument key used for including a class/test */
     private static final String INCLUDE_CLASS_INST_ARGS_KEY = "class";
@@ -313,16 +316,19 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
         if (getDevice() == null) {
             throw new IllegalArgumentException("Device has not been set");
         }
+        boolean pushedFile = false;
         // if mIncludeTestFile is set, perform filtering with this file
-        if (mIncludeTestFile != null) {
+        if (mIncludeTestFile != null && mIncludeTestFile.length() > 0) {
             mDeviceIncludeFile = mTestFilterDir.replaceAll("/$", "") + "/" + INCLUDE_FILE;
             pushTestFile(mIncludeTestFile, mDeviceIncludeFile, listener);
+            pushedFile = true;
         }
 
         // if mExcludeTestFile is set, perform filtering with this file
-        if (mExcludeTestFile != null) {
+        if (mExcludeTestFile != null && mExcludeTestFile.length() > 0) {
             mDeviceExcludeFile = mTestFilterDir.replaceAll("/$", "") + "/" + EXCLUDE_FILE;
             pushTestFile(mExcludeTestFile, mDeviceExcludeFile, listener);
+            pushedFile = true;
         }
         if (mTotalShards > 0 && !isShardable() && mShardIndex != 0) {
             // If not shardable, only first shard can run.
@@ -330,11 +336,9 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
             return;
         }
         super.run(listener);
-        if (mIncludeTestFile != null) {
-            removeTestFile(mDeviceIncludeFile);
-        }
-        if (mExcludeTestFile != null) {
-            removeTestFile(mDeviceExcludeFile);
+        if (pushedFile) {
+            // Remove the directory where the files where pushed
+            removeTestFilterDir();
         }
     }
 
@@ -447,6 +451,7 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
         }
         ITestDevice device = getDevice();
         try {
+            CLog.d("Attempting to push filters to %s", destination);
             if (!device.pushFile(testFile, destination)) {
                 String message =
                         String.format(
@@ -463,9 +468,9 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
         }
     }
 
-    private void removeTestFile(String deviceTestFile) throws DeviceNotAvailableException {
+    private void removeTestFilterDir() throws DeviceNotAvailableException {
         ITestDevice device = getDevice();
-        device.executeShellCommand(String.format("rm %s", deviceTestFile));
+        device.executeShellCommand(String.format("rm -r %s", mTestFilterDir));
     }
 
     private void reportEarlyFailure(ITestInvocationListener listener, String errorMessage) {
@@ -497,6 +502,11 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
      * Helper to return if the runner is one that support sharding.
      */
     private boolean isShardable() {
+        // Edge toward shardable if no explicit runner specified. The runner will be determined
+        // later and if not shardable only the first shard will run.
+        if (getRunnerName() == null) {
+            return true;
+        }
         return ListInstrumentationParser.SHARDABLE_RUNNERS.contains(getRunnerName());
     }
 
@@ -520,11 +530,7 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
         return null;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public IRemoteTest getTestShard(int shardCount, int shardIndex) {
+    private IRemoteTest getTestShard(int shardCount, int shardIndex) {
         AndroidJUnitTest shard;
         // ensure we handle runners that extend AndroidJUnitRunner
         try {

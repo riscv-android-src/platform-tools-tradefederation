@@ -29,6 +29,7 @@ import com.android.tradefed.result.proto.TestRecordProto.DebugInfo;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.result.proto.TestRecordProto.TestStatus;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
+import com.android.tradefed.util.StreamUtil;
 
 import com.google.protobuf.Any;
 import com.google.protobuf.Timestamp;
@@ -48,6 +49,9 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
     private Stack<TestRecord.Builder> mLatestChild;
     private TestRecord.Builder mInvocationRecordBuilder;
     private long mInvocationStartTime;
+    private IInvocationContext mContext;
+
+    private Throwable mInvocationFailure = null;
 
     /**
      * Handling of the partial invocation test record proto after {@link
@@ -128,6 +132,8 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
         mInvocationRecordBuilder.setStartTime(startTime);
         mInvocationRecordBuilder.setDescription(Any.pack(context.toProto()));
 
+        mContext = context;
+
         // Put the invocation record at the bottom of the stack
         mLatestChild.add(mInvocationRecordBuilder);
 
@@ -143,10 +149,24 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
     }
 
     @Override
+    public void invocationFailed(Throwable cause) {
+        mInvocationFailure = cause;
+    }
+
+    @Override
     public final void invocationEnded(long elapsedTime) {
         // Populate end time of invocation
         Timestamp endTime = createTimeStamp(mInvocationStartTime + elapsedTime);
         mInvocationRecordBuilder.setEndTime(endTime);
+        // Update the context in case it changed
+        mInvocationRecordBuilder.setDescription(Any.pack(mContext.toProto()));
+
+        if (mInvocationFailure != null) {
+            DebugInfo.Builder debugBuilder = DebugInfo.newBuilder();
+            debugBuilder.setErrorMessage(mInvocationFailure.getMessage());
+            debugBuilder.setTrace(StreamUtil.getStackTrace(mInvocationFailure));
+            mInvocationRecordBuilder.setDebugInfo(debugBuilder);
+        }
 
         // Finalize the protobuf handling: where to put the results.
         TestRecord record = mInvocationRecordBuilder.build();

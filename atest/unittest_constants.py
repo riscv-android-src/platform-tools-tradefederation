@@ -41,6 +41,7 @@ FIND_PKG = ROOT + 'foo/bar/jank/src/android/jank/cts/ui\n'
 INT_NAME = 'example/reboot'
 GTF_INT_NAME = 'some/gtf_int_test'
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'unittest_data')
+TEST_CONFIG_DATA_DIR = os.path.join(TEST_DATA_DIR, 'test_config')
 
 INT_DIR = 'tf/contrib/res/config'
 GTF_INT_DIR = 'gtf/core/res/config'
@@ -117,7 +118,7 @@ GTF_INT_INFO = test_info.TestInfo(
           constants.TI_REL_CONFIG: GTF_INT_CONFIG})
 
 # Sample test configurations in TEST_MAPPING file.
-TEST_MAPPING_TEST = {'name': MODULE_NAME}
+TEST_MAPPING_TEST = {'name': MODULE_NAME, 'host': True}
 TEST_MAPPING_TEST_WITH_OPTION = {
     'name': CLASS_NAME,
     'options': [
@@ -138,6 +139,10 @@ TEST_MAPPING_TEST_WITH_BAD_OPTION = {
             'arg2': ''
         }
     ]
+}
+TEST_MAPPING_TEST_WITH_BAD_HOST_VALUE = {
+    'name': CLASS_NAME,
+    'host': 'true'
 }
 # Constrants of cc test unittest
 FIND_CC_ONE = ROOT + 'foo/bt/hci/test/pf_test.cc\n'
@@ -197,3 +202,9 @@ CC_PATH_INFO2 = test_info.TestInfo(CC_MODULE_NAME,
                                    atf_tr.AtestTradefedTestRunner.NAME,
                                    CLASS_BUILD_TARGETS, CC_PATH_DATA2)
 CTS_INT_DIR = 'test/suite_harness/tools/cts-tradefed/res/config'
+# Constrants of java, kt, cc, cpp test_find_class_file() unittest
+FIND_PATH_TESTCASE_JAVA = 'hello_world_test'
+FIND_PATH_FILENAME_CC = 'hello_world_test'
+FIND_PATH_TESTCASE_CC = 'HelloWorldTest'
+FIND_PATH_FOLDER = 'class_file_path_testing'
+FIND_PATH = os.path.join(TEST_DATA_DIR, FIND_PATH_FOLDER)

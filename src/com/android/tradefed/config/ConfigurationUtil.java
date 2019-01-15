@@ -16,7 +16,6 @@
 
 package com.android.tradefed.config;
 
-import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
@@ -29,8 +28,9 @@ import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -78,16 +78,45 @@ public class ConfigurationUtil {
             Object obj,
             List<String> excludeClassFilter)
             throws IOException {
+        dumpClassToXml(serializer, classTypeName, obj, false, excludeClassFilter);
+    }
+
+    /**
+     * Add a class to the configuration XML dump.
+     *
+     * @param serializer a {@link KXmlSerializer} to create the XML dump
+     * @param classTypeName a {@link String} of the class type's name
+     * @param obj {@link Object} to be added to the XML dump
+     * @param isGenericObject Whether or not the object is specified as <object> in the xml
+     * @param excludeClassFilter list of object configuration type or fully qualified class names to
+     *     be excluded from the dump. for example: {@link Configuration#TARGET_PREPARER_TYPE_NAME}.
+     *     com.android.tradefed.testtype.StubTest
+     */
+    static void dumpClassToXml(
+            KXmlSerializer serializer,
+            String classTypeName,
+            Object obj,
+            boolean isGenericObject,
+            List<String> excludeClassFilter)
+            throws IOException {
         if (excludeClassFilter.contains(classTypeName)) {
             return;
         }
         if (excludeClassFilter.contains(obj.getClass().getName())) {
             return;
         }
-        serializer.startTag(null, classTypeName);
-        serializer.attribute(null, CLASS_NAME, obj.getClass().getName());
-        dumpOptionsToXml(serializer, obj);
-        serializer.endTag(null, classTypeName);
+        if (isGenericObject) {
+            serializer.startTag(null, "object");
+            serializer.attribute(null, "type", classTypeName);
+            serializer.attribute(null, CLASS_NAME, obj.getClass().getName());
+            dumpOptionsToXml(serializer, obj);
+            serializer.endTag(null, "object");
+        } else {
+            serializer.startTag(null, classTypeName);
+            serializer.attribute(null, CLASS_NAME, obj.getClass().getName());
+            dumpOptionsToXml(serializer, obj);
+            serializer.endTag(null, classTypeName);
+        }
     }
 
     /**
@@ -175,9 +204,9 @@ public class ConfigurationUtil {
      */
     public static Set<File> getConfigNamesFileFromDirs(String subPath, List<File> dirs) {
         List<String> patterns = new ArrayList<>();
-        patterns.add(".*.config");
-        patterns.add(".*.xml");
-        return getConfigNamesFileFromDirs(subPath, dirs, patterns, false);
+        patterns.add(".*\\.config$");
+        patterns.add(".*\\.xml$");
+        return getConfigNamesFileFromDirs(subPath, dirs, patterns);
     }
 
     /**
@@ -186,15 +215,11 @@ public class ConfigurationUtil {
      * @param subPath The location where to look for configuration. Can be null.
      * @param dirs A list of {@link File} of extra directories to search for test configs
      * @param configNamePatterns the list of patterns for files to be found.
-     * @param prioritizeHostConfig If multiple copies of a config exists, utilize the host version.
      * @return the set of {@link File} that were found.
      */
     public static Set<File> getConfigNamesFileFromDirs(
-            String subPath,
-            List<File> dirs,
-            List<String> configNamePatterns,
-            boolean prioritizeHostConfig) {
-        Set<File> configNames = new HashSet<>();
+            String subPath, List<File> dirs, List<String> configNamePatterns) {
+        Set<File> configNames = new LinkedHashSet<>();
         for (File dir : dirs) {
             if (subPath != null) {
                 dir = new File(dir, subPath);
@@ -211,43 +236,21 @@ public class ConfigurationUtil {
                 CLog.w("Failed to get test config files from directory %s", dir.getAbsolutePath());
             }
         }
-        return dedupFiles(configNames, prioritizeHostConfig);
-    }
-
-    /**
-     * Search a particular pattern of in the given directories.
-     *
-     * @param subPath The location where to look for configuration. Can be null.
-     * @param dirs A list of {@link File} of extra directories to search for test configs
-     * @param configNamePatterns the list of patterns for files to be found.
-     * @return the set of {@link File} that were found.
-     */
-    public static Set<File> getConfigNamesFileFromDirs(
-            String subPath, List<File> dirs, List<String> configNamePatterns) {
-        return getConfigNamesFileFromDirs(subPath, dirs, configNamePatterns, false);
+        return dedupFiles(configNames);
     }
 
     /**
      * From a same tests dir we only expect a single instance of each names, so we dedup the files
      * if that happens.
      */
-    private static Set<File> dedupFiles(Set<File> origSet, boolean prioritizeHostConfig) {
-        Map<String, File> newMap = new HashMap<>();
+    private static Set<File> dedupFiles(Set<File> origSet) {
+        Map<String, File> newMap = new LinkedHashMap<>();
         for (File f : origSet) {
+            // Always keep the first found
             if (!newMap.keySet().contains(f.getName())) {
                 newMap.put(f.getName(), f);
-            } else {
-                if (prioritizeHostConfig
-                        && f.getAbsolutePath()
-                                .contains(BuildInfoFileKey.HOST_LINKED_DIR.toString())) {
-                    newMap.put(f.getName(), f);
-                } else if (!prioritizeHostConfig
-                        && f.getAbsolutePath()
-                                .contains(BuildInfoFileKey.TARGET_LINKED_DIR.toString())) {
-                    newMap.put(f.getName(), f);
-                }
             }
         }
-        return new HashSet<>(newMap.values());
+        return new LinkedHashSet<>(newMap.values());
     }
 }

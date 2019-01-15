@@ -19,16 +19,21 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
 import com.google.common.annotations.VisibleForTesting;
+
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A {@link ITestInvocationListener} that will collect all test results.
@@ -52,19 +57,31 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     private IBuildInfo mBuildInfo;
     private Map<String, IInvocationContext> mModuleContextMap = new HashMap<>();
     // Use LinkedHashMap to provide consistent iterations over the keys.
-    private Map<String, List<TestRunResult>> mTestRunResultMap = new LinkedHashMap<>();
+    private Map<String, List<TestRunResult>> mTestRunResultMap =
+            Collections.synchronizedMap(new LinkedHashMap<>());
 
     private IInvocationContext mCurrentModuleContext = null;
     private TestRunResult mCurrentTestRunResult = new TestRunResult();
 
     // Tracks if mStatusCounts are accurate, or if they need to be recalculated
-    private boolean mIsCountDirty = true;
+    private AtomicBoolean mIsCountDirty = new AtomicBoolean(true);
+    // Tracks if the expected count is accurate, or if it needs to be recalculated.
+    private AtomicBoolean mIsExpectedCountDirty = new AtomicBoolean(true);
+    private int mExpectedCount = 0;
+
     // Represents the merged test results. This should not be accessed directly since it's only
     // calculated when needed.
-    private List<TestRunResult> mMergedTestRunResults = new ArrayList<>();
+    private final List<TestRunResult> mMergedTestRunResults = new ArrayList<>();
     // Represents the number of tests in each TestStatus state of the merged test results. Indexed
     // by TestStatus.ordinal()
     private int[] mStatusCounts = new int[TestStatus.values().length];
+
+    private MergeStrategy mStrategy = MergeStrategy.ONE_TESTCASE_PASS_IS_PASS;
+
+    /** Sets the {@link MergeStrategy} to use when merging results. */
+    public void setMergeStrategy(MergeStrategy strategy) {
+        mStrategy = strategy;
+    }
 
     /**
      * Return the primary build info that was reported via {@link
@@ -147,7 +164,9 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     /** {@inheritDoc} */
     @Override
     public void testRunStarted(String name, int numTests, int attemptNumber) {
-        mIsCountDirty = true;
+        setCountDirty();
+        // Only testRunStarted can affect the expected count.
+        mIsExpectedCountDirty.set(true);
 
         // Associate the run name with the current module context
         if (mCurrentModuleContext != null) {
@@ -172,10 +191,23 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
             result.setAggregateMetrics(mIsAggregateMetrics);
             results.add(result);
         } else {
-            throw new IllegalArgumentException(
-                    String.format(
-                            "The attempt number cannot contain gaps. Expected [0-%d] and got %d",
-                            results.size(), attemptNumber));
+            int size = results.size();
+            for (int i = size; i < attemptNumber; i++) {
+                TestRunResult result = new TestRunResult();
+                result.setAggregateMetrics(mIsAggregateMetrics);
+                result.testRunStarted(name, numTests);
+                String errorMessage =
+                        String.format(
+                                "Run attempt %s of %s did not exists, but got attempt %s. This is a placeholder for the missing attempt.",
+                                i, name, attemptNumber);
+                result.testRunFailed(errorMessage);
+                result.testRunEnded(0L, new HashMap<String, Metric>());
+                results.add(result);
+            }
+            // New current run
+            TestRunResult newResult = new TestRunResult();
+            newResult.setAggregateMetrics(mIsAggregateMetrics);
+            results.add(newResult);
         }
         mCurrentTestRunResult = results.get(attemptNumber);
 
@@ -185,21 +217,21 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     /** {@inheritDoc} */
     @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
-        mIsCountDirty = true;
+        setCountDirty();
         mCurrentTestRunResult.testRunEnded(elapsedTime, runMetrics);
     }
 
     /** {@inheritDoc} */
     @Override
     public void testRunFailed(String errorMessage) {
-        mIsCountDirty = true;
+        setCountDirty();
         mCurrentTestRunResult.testRunFailed(errorMessage);
     }
 
     /** {@inheritDoc} */
     @Override
     public void testRunStopped(long elapsedTime) {
-        mIsCountDirty = true;
+        setCountDirty();
         mCurrentTestRunResult.testRunStopped(elapsedTime);
     }
 
@@ -212,7 +244,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     /** {@inheritDoc} */
     @Override
     public void testStarted(TestDescription test, long startTime) {
-        mIsCountDirty = true;
+        setCountDirty();
         mCurrentTestRunResult.testStarted(test, startTime);
     }
 
@@ -225,26 +257,26 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     /** {@inheritDoc} */
     @Override
     public void testEnded(TestDescription test, long endTime, HashMap<String, Metric> testMetrics) {
-        mIsCountDirty = true;
+        setCountDirty();
         mCurrentTestRunResult.testEnded(test, endTime, testMetrics);
     }
 
     /** {@inheritDoc} */
     @Override
     public void testFailed(TestDescription test, String trace) {
-        mIsCountDirty = true;
+        setCountDirty();
         mCurrentTestRunResult.testFailed(test, trace);
     }
 
     @Override
     public void testAssumptionFailure(TestDescription test, String trace) {
-        mIsCountDirty = true;
+        setCountDirty();
         mCurrentTestRunResult.testAssumptionFailure(test, trace);
     }
 
     @Override
     public void testIgnored(TestDescription test) {
-        mIsCountDirty = true;
+        setCountDirty();
         mCurrentTestRunResult.testIgnored(test);
     }
 
@@ -275,6 +307,24 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
             total += mStatusCounts[s.ordinal()];
         }
         return total;
+    }
+
+    /**
+     * Returns the number of expected tests count. Could differ from {@link #getNumTotalTests()} if
+     * some tests did not run.
+     */
+    public synchronized int getExpectedTests() {
+        // If expected count is not dirty, no need to do anything
+        if (!mIsExpectedCountDirty.compareAndSet(true, false)) {
+            return mExpectedCount;
+        }
+
+        computeMergedResults();
+        mExpectedCount = 0;
+        for (TestRunResult result : getMergedTestRunResults()) {
+            mExpectedCount += result.getExpectedTestCount();
+        }
+        return mExpectedCount;
     }
 
     /** Returns the number of tests in given state for this run. */
@@ -318,7 +368,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
      */
     public List<TestRunResult> getMergedTestRunResults() {
         computeMergedResults();
-        return mMergedTestRunResults;
+        return new ArrayList<>(mMergedTestRunResults);
     }
 
     /**
@@ -335,17 +385,30 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
      * Computes and stores the merged results and the total status counts since both operations are
      * expensive.
      */
-    private void computeMergedResults() {
-        if (!mIsCountDirty) {
+    private synchronized void computeMergedResults() {
+        // If not dirty, nothing to be done
+        if (!mIsCountDirty.compareAndSet(true, false)) {
             return;
         }
 
+        mMergedTestRunResults.clear();
         // Merge results
-        mMergedTestRunResults = new ArrayList<>(mTestRunResultMap.size());
-        for (List<TestRunResult> results : mTestRunResultMap.values()) {
-            mMergedTestRunResults.add(TestRunResult.merge(results));
+        if (mTestRunResultMap.isEmpty() && mCurrentTestRunResult.isRunFailure()) {
+            // In case of early failure that is a bit untracked, still add it to the list to
+            // not loose it.
+            CLog.e("Early failure resulting in no testRunStart. Results might be inconsistent.");
+            mMergedTestRunResults.add(mCurrentTestRunResult);
+        } else {
+            for (Entry<String, List<TestRunResult>> results : mTestRunResultMap.entrySet()) {
+                TestRunResult res = TestRunResult.merge(results.getValue(), mStrategy);
+                if (res == null) {
+                    // Merge can return null in case of results being empty.
+                    CLog.w("No results for %s", results.getKey());
+                } else {
+                    mMergedTestRunResults.add(res);
+                }
+            }
         }
-
         // Reset counts
         for (TestStatus s : TestStatus.values()) {
             mStatusCounts[s.ordinal()] = 0;
@@ -357,8 +420,14 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
                 mStatusCounts[s.ordinal()] += result.getNumTestsInState(s);
             }
         }
+    }
 
-        mIsCountDirty = false;
+    /**
+     * Keep dirty count as AtomicBoolean to ensure when accessed from another thread the state is
+     * consistent.
+     */
+    private void setCountDirty() {
+        mIsCountDirty.set(true);
     }
 
     /**

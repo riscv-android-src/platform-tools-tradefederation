@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.invoker;
 
-import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
@@ -28,7 +27,9 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceState;
+import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.guice.InvocationScope;
+import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecution;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.invoker.shard.ShardBuildCloner;
 import com.android.tradefed.log.BaseLeveledLogOutput;
@@ -36,12 +37,13 @@ import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.postprocessor.IPostProcessor;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogSaverResultForwarder;
+import com.android.tradefed.result.ResultAndLogForwarder;
 import com.android.tradefed.result.ResultForwarder;
-import com.android.tradefed.sandbox.SandboxInvocationRunner;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.DeviceFailedToBootError;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -60,8 +62,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Default implementation of {@link ITestInvocation}.
@@ -107,6 +107,14 @@ public class TestInvocation implements ITestInvocation {
         public String getName() {
             return mName;
         }
+    }
+
+    /** The different mode an invocation can run into. */
+    public enum RunMode {
+        REGULAR,
+        PARENT_SANDBOX,
+        SANDBOX,
+        REMOTE_INVOCATION,
     }
 
     private String mStatus = "(not invoked)";
@@ -204,7 +212,9 @@ public class TestInvocation implements ITestInvocation {
             logDeviceBatteryLevel(context, "initial");
             // Run the preInvocationSetup on devices.
             if (!devicePreSetupDone) {
-                invocationPath.runDevicePreInvocationSetup(context, config, listener);
+                if (!config.getCommandOptions().shouldUseSandboxing()) {
+                    invocationPath.runDevicePreInvocationSetup(context, config, listener);
+                }
             }
             // Then run the regular setup and run
             prepareAndRun(config, context, invocationPath, listener);
@@ -291,41 +301,29 @@ public class TestInvocation implements ITestInvocation {
                 }
             }
             mStatus = "tearing down";
-            // TODO: extract in new TestInvocation type the sandbox handling
-            // If we are the parent invocation of the sandbox, setUp has been skipped since it's
-            // done in the sandbox, so tearDown should be skipped.
-            if (!config.getCommandOptions().shouldUseSandboxing()) {
-                try {
-                    invocationPath.doTeardown(context, config, exception);
-                } catch (Throwable e) {
-                    tearDownException = e;
-                    CLog.e(
-                            "Exception when tearing down invocation: %s",
-                            tearDownException.toString());
-                    CLog.e(tearDownException);
-                    if (exception == null) {
-                        // only report when the exception is new during tear down
-                        reportFailure(
-                                tearDownException,
-                                listener,
-                                config,
-                                context,
-                                rescheduler,
-                                invocationPath);
-                    }
+            try {
+                invocationPath.doTeardown(context, config, exception);
+            } catch (Throwable e) {
+                tearDownException = e;
+                CLog.e("Exception when tearing down invocation: %s", tearDownException.toString());
+                CLog.e(tearDownException);
+                if (exception == null) {
+                    // only report when the exception is new during tear down
+                    reportFailure(
+                            tearDownException,
+                            listener,
+                            config,
+                            context,
+                            rescheduler,
+                            invocationPath);
                 }
             }
             mStatus = "done running tests";
             try {
-                // TODO: extract in new TestInvocation type the sandbox handling
-                // Similarly to tearDown, in a sandbox invocation, these calls are done by the
-                // sandbox and not the parent.
-                if (!config.getCommandOptions().shouldUseSandboxing()) {
-                    // Clean up host.
-                    invocationPath.doCleanUp(context, config, exception);
-                    for (ITestDevice device : context.getDevices()) {
-                        reportLogs(device, listener, Stage.TEARDOWN);
-                    }
+                // Clean up host.
+                invocationPath.doCleanUp(context, config, exception);
+                for (ITestDevice device : context.getDevices()) {
+                    reportLogs(device, listener, Stage.TEARDOWN);
                 }
                 if (mStopRequested) {
                     CLog.e(
@@ -362,12 +360,6 @@ public class TestInvocation implements ITestInvocation {
             IInvocationExecution invocationPath,
             ITestInvocationListener listener)
             throws Throwable {
-        if (config.getCommandOptions().shouldUseSandboxing()) {
-            // TODO: extract in new TestInvocation type.
-            // If the invocation is sandboxed run as a sandbox instead.
-            SandboxInvocationRunner.prepareAndRun(config, context, listener);
-            return;
-        }
         getRunUtil().allowInterrupt(true);
         logDeviceBatteryLevel(context, "initial -> setup");
         invocationPath.doSetup(context, config, listener);
@@ -544,26 +536,22 @@ public class TestInvocation implements ITestInvocation {
             if (testDevice == null) {
                 continue;
             }
-            IDevice device = testDevice.getIDevice();
-            if (device == null || device instanceof StubDevice) {
+            if (testDevice.getIDevice() instanceof StubDevice) {
                 continue;
             }
-            try {
-                Integer batteryLevel = device.getBattery(500, TimeUnit.MILLISECONDS).get();
-                CLog.v("%s - %s - %d%%", BATT_TAG, event, batteryLevel);
-                context.getBuildInfo(testDevice)
-                        .addBuildAttribute(
-                                String.format(
-                                        BATTERY_ATTRIBUTE_FORMAT_KEY,
-                                        testDevice.getSerialNumber(),
-                                        event),
-                                batteryLevel.toString());
+            Integer batteryLevel = testDevice.getBattery();
+            if (batteryLevel == null) {
+                CLog.v("Failed to get battery level for %s", testDevice.getSerialNumber());
                 continue;
-            } catch (InterruptedException | ExecutionException e) {
-                // fall through
             }
-
-            CLog.v("Failed to get battery level for %s", testDevice.getSerialNumber());
+            CLog.v("%s - %s - %d%%", BATT_TAG, event, batteryLevel);
+            context.getBuildInfo(testDevice)
+                    .addBuildAttribute(
+                            String.format(
+                                    BATTERY_ATTRIBUTE_FORMAT_KEY,
+                                    testDevice.getSerialNumber(),
+                                    event),
+                            batteryLevel.toString());
         }
     }
 
@@ -628,10 +616,33 @@ public class TestInvocation implements ITestInvocation {
                 new ArrayList<>(config.getTestInvocationListeners().size() + extraListeners.length);
         allListeners.addAll(config.getTestInvocationListeners());
         allListeners.addAll(Arrays.asList(extraListeners));
-        ITestInvocationListener listener =
-                new LogSaverResultForwarder(config.getLogSaver(), allListeners);
-        IInvocationExecution invocationPath =
-                createInvocationExec(config.getConfigurationDescription().shouldUseSandbox());
+        ITestInvocationListener listener = null;
+        if (!config.getPostProcessors().isEmpty()) {
+            ITestInvocationListener forwarder = new ResultAndLogForwarder(allListeners);
+            // Post-processors are the first layer around the final reporters.
+            for (IPostProcessor postProcessor : config.getPostProcessors()) {
+                if (postProcessor.isDisabled()) {
+                    CLog.d("%s has been disabled. skipping.", postProcessor);
+                } else {
+                    forwarder = postProcessor.init(forwarder);
+                }
+            }
+            listener = new LogSaverResultForwarder(config.getLogSaver(), Arrays.asList(forwarder));
+        } else {
+            listener = new LogSaverResultForwarder(config.getLogSaver(), allListeners);
+        }
+
+        RunMode mode = RunMode.REGULAR;
+        if (config.getConfigurationDescription().shouldUseSandbox()) {
+            mode = RunMode.SANDBOX;
+        }
+        if (config.getCommandOptions().shouldUseSandboxing()) {
+            mode = RunMode.PARENT_SANDBOX;
+        }
+        if (context.getDevices().get(0) instanceof ManagedRemoteDevice) {
+            mode = RunMode.REMOTE_INVOCATION;
+        }
+        IInvocationExecution invocationPath = createInvocationExec(mode);
 
         // Create the Guice scope
         InvocationScope scope = getInvocationScope();
@@ -701,6 +712,11 @@ public class TestInvocation implements ITestInvocation {
                             invocationPath.runDevicePostInvocationTearDown(context, config);
                         } finally {
                             listener.invocationFailed(e);
+                            // Reports the logs
+                            for (ITestDevice device : context.getDevices()) {
+                                reportLogs(device, listener, Stage.ERROR);
+                            }
+                            reportHostLog(listener, config.getLogOutput());
                             listener.invocationEnded(0L);
                         }
                         return;
@@ -749,6 +765,7 @@ public class TestInvocation implements ITestInvocation {
             // Ensure log is unregistered and closed
             getLogRegistry().unregisterLogger();
             config.getLogOutput().closeLog();
+            config.cleanDynamicOptionFiles();
         }
     }
 
@@ -782,14 +799,19 @@ public class TestInvocation implements ITestInvocation {
     /**
      * Create the invocation path that should be followed.
      *
-     * @param isSandboxed If we are currently running in the sandbox, then a special path is
-     *     applied.
+     * @param mode The mode we are currently running as.
      * @return The {@link IInvocationExecution} describing the invocation.
      */
-    public IInvocationExecution createInvocationExec(boolean isSandboxed) {
-        if (isSandboxed) {
-            return new SandboxedInvocationExecution();
+    public IInvocationExecution createInvocationExec(RunMode mode) {
+        switch (mode) {
+            case PARENT_SANDBOX:
+                return new ParentSandboxInvocationExecution();
+            case SANDBOX:
+                return new SandboxedInvocationExecution();
+            case REMOTE_INVOCATION:
+                return new RemoteInvocationExecution();
+            default:
+                return new InvocationExecution();
         }
-        return new InvocationExecution();
     }
 }

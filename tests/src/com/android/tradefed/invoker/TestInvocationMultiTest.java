@@ -15,7 +15,7 @@
  */
 package com.android.tradefed.invoker;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
@@ -33,6 +33,7 @@ import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
+import com.android.tradefed.postprocessor.IPostProcessor;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -67,10 +68,15 @@ public class TestInvocationMultiTest {
     private IBuildProvider mProvider1;
     private IBuildProvider mProvider2;
 
+    private List<IPostProcessor> mPostProcessors;
+
     @Before
     public void setUp() {
         mContext = new InvocationContext();
+        mPostProcessors = new ArrayList<>();
+
         mMockConfig = EasyMock.createMock(IConfiguration.class);
+        EasyMock.expect(mMockConfig.getPostProcessors()).andReturn(mPostProcessors);
         mMockRescheduler = EasyMock.createMock(IRescheduler.class);
         mMockTestListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
@@ -85,7 +91,7 @@ public class TestInvocationMultiTest {
                     }
 
                     @Override
-                    public IInvocationExecution createInvocationExec(boolean isSandboxed) {
+                    public IInvocationExecution createInvocationExec(RunMode mode) {
                         return new InvocationExecution() {
                             @Override
                             protected IShardHelper createShardHelper() {
@@ -116,6 +122,7 @@ public class TestInvocationMultiTest {
         mProvider1 = EasyMock.createMock(IBuildProvider.class);
         holder1.addSpecificConfig(mProvider1);
         EasyMock.expect(mMockConfig.getDeviceConfigByName("device1")).andStubReturn(holder1);
+        EasyMock.expect(mMockConfig.isDeviceConfiguredFake("device1")).andReturn(false);
         mDevice1.setOptions(EasyMock.anyObject());
         mDevice1.setRecovery(EasyMock.anyObject());
 
@@ -163,6 +170,7 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
         EasyMock.expect(mMockConfig.getTests()).andStubReturn(new ArrayList<>());
+        mMockConfig.cleanDynamicOptionFiles();
         IBuildInfo build1 = new BuildInfo();
         EasyMock.expect(mProvider1.getBuild()).andReturn(build1);
         // Second build is not found
@@ -241,6 +249,7 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
         EasyMock.expect(mMockConfig.getTests()).andStubReturn(new ArrayList<>());
+        mMockConfig.cleanDynamicOptionFiles();
 
         mMockTestListener.invocationStarted(mContext);
         mMockLogSaver.invocationStarted(mContext);
@@ -319,6 +328,7 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
         EasyMock.expect(mMockConfig.getTests()).andStubReturn(new ArrayList<>());
+        mMockConfig.cleanDynamicOptionFiles();
 
         mMockTestListener.invocationStarted(mContext);
         mMockLogSaver.invocationStarted(mContext);

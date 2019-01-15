@@ -52,7 +52,7 @@ public class LocalHostResourceManagerTest {
         File localFile = FileUtil.createTempFile("filename", "apk", mLocalRoot);
         OptionSetter optionSetter = new OptionSetter(mHostResourceManager);
         optionSetter.setOptionValue(
-                "local-hrm:host-resources", "filename-key", localFile.getAbsolutePath());
+                "local-hrm:host-resource", "filename-key", localFile.getAbsolutePath());
         mHostResourceManager.setup();
 
         File fileResource = mHostResourceManager.getFile("filename-key");
@@ -63,7 +63,7 @@ public class LocalHostResourceManagerTest {
     public void testSetupHostResource_fileDoesNotExist() throws Exception {
         OptionSetter optionSetter = new OptionSetter(mHostResourceManager);
         optionSetter.setOptionValue(
-                "local-hrm:host-resources", "filename-key", "/non/exist/path/filename.apk");
+                "local-hrm:host-resource", "filename-key", "/non/exist/path/filename.apk");
         try {
             mHostResourceManager.setup();
             Assert.assertFalse("Should throw Exception.", true);

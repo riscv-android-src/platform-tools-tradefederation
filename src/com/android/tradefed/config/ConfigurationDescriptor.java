@@ -36,7 +36,7 @@ import java.util.List;
  * xml.
  */
 @OptionClass(alias = "config-descriptor")
-public class ConfigurationDescriptor implements Serializable {
+public class ConfigurationDescriptor implements Serializable, Cloneable {
 
     /** Enum used to indicate local test runner. */
     public enum LocalTestRunner {
@@ -104,12 +104,28 @@ public class ConfigurationDescriptor implements Serializable {
 
     /** Get the named metadata entries */
     public List<String> getMetaData(String name) {
-        return mMetaData.get(name);
+        List<String> entry = mMetaData.get(name);
+        if (entry == null) {
+            return null;
+        }
+        return new ArrayList<>(entry);
     }
 
     @VisibleForTesting
     public void setMetaData(MultiMap<String, String> metadata) {
         mMetaData = metadata;
+    }
+
+    /**
+     * Add more values of a given key to the metadata entries.
+     *
+     * @param key {@link String} of the key to add values to.
+     * @param values a list of {@link String} of the additional values.
+     */
+    public void addMetaData(String key, List<String> values) {
+        for (String source : values) {
+            mMetaData.put(key, source);
+        }
     }
 
     /** Returns if the configuration is shardable or not as part of a suite */
@@ -223,5 +239,11 @@ public class ConfigurationDescriptor implements Serializable {
             configDescriptor.mAbi = Abi.fromProto(protoDescriptor.getAbi());
         }
         return configDescriptor;
+    }
+
+    /** Return a deep-copy of the {@link ConfigurationDescriptor} object. */
+    @Override
+    public ConfigurationDescriptor clone() {
+        return fromProto(this.toProto());
     }
 }

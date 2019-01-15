@@ -16,8 +16,11 @@
 package com.android.tradefed.testtype.junit4;
 
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.result.ITestLifeCycleReceiver;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /** A builder class for options related to running device tests through BaseHostJUnit4Test. */
@@ -34,7 +37,9 @@ public class DeviceTestRunOptions {
     private Long mMaxInstrumentationTimeoutMs; // optional
     private boolean mCheckResults = true; // optional
     private boolean mDisableHiddenApiCheck = false; // optional
+    private boolean mDisableIsolatedStorage = false; // optional
     private Map<String, String> mInstrumentationArgs = new LinkedHashMap<>(); // optional
+    private List<ITestLifeCycleReceiver> mExtraListeners = new ArrayList<>(); // optional
 
     public DeviceTestRunOptions(String packageName) {
         this.mPackageName = packageName;
@@ -167,9 +172,28 @@ public class DeviceTestRunOptions {
         return mDisableHiddenApiCheck;
     }
 
+    /**
+     * sets whether or not to add the --no-isolated-storage to the 'am instrument' used from the
+     * host side.
+     */
+    public DeviceTestRunOptions setDisableIsolatedStorage(boolean disableIsolatedStorage) {
+        this.mDisableIsolatedStorage = disableIsolatedStorage;
+        return this;
+    }
+
+    public boolean isIsolatedStorageDisabled() {
+        return mDisableIsolatedStorage;
+    }
+
     /** Add an argument that will be passed to the instrumentation. */
     public DeviceTestRunOptions addInstrumentationArg(String key, String value) {
         this.mInstrumentationArgs.put(key, value);
+        return this;
+    }
+
+    /** Add an extra listener to the instrumentation being run. */
+    public DeviceTestRunOptions addExtraListener(ITestLifeCycleReceiver listener) {
+        this.mExtraListeners.add(listener);
         return this;
     }
 
@@ -183,5 +207,13 @@ public class DeviceTestRunOptions {
 
     public Map<String, String> getInstrumentationArgs() {
         return mInstrumentationArgs;
+    }
+
+    public List<ITestLifeCycleReceiver> getExtraListeners() {
+        return mExtraListeners;
+    }
+
+    public void clearExtraListeners() {
+        mExtraListeners.clear();
     }
 }

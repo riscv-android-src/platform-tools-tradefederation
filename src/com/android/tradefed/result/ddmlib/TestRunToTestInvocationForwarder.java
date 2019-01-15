@@ -35,13 +35,15 @@ import java.util.Map;
 public class TestRunToTestInvocationForwarder implements ITestRunListener {
 
     private Collection<ITestLifeCycleReceiver> mListeners;
+    private Long mStartTime;
 
     public TestRunToTestInvocationForwarder(Collection<ITestLifeCycleReceiver> listeners) {
         mListeners = listeners;
+        mStartTime = null;
     }
 
     public TestRunToTestInvocationForwarder(ITestLifeCycleReceiver listener) {
-        mListeners = Arrays.asList(listener);
+        this(Arrays.asList(listener));
     }
 
     @Override
@@ -150,6 +152,9 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
 
     @Override
     public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
+        if (mStartTime != null) {
+            elapsedTime = System.currentTimeMillis() - mStartTime;
+        }
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
                 listener.testRunEnded(elapsedTime, TfMetricProtoUtil.upgradeConvert(runMetrics));
@@ -178,6 +183,7 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
 
     @Override
     public void testRunStarted(String runName, int testCount) {
+        mStartTime = System.currentTimeMillis();
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
                 listener.testRunStarted(runName, testCount);

@@ -39,6 +39,7 @@ import java.util.Set;
  * <p>Not thread safe! The test* callbacks must be called in order
  */
 public class TestRunResult {
+
     private String mTestRunName;
     // Uses a LinkedHashMap to have predictable iteration order
     private Map<TestDescription, TestResult> mTestResults =
@@ -205,7 +206,11 @@ public class TestRunResult {
         if (mExpectedTestCount == 0) {
             mExpectedTestCount = testCount;
         } else {
-            CLog.w("%s calls testRunStarted more than once", runName);
+            CLog.w(
+                    "%s calls testRunStarted more than once. Previous expected count: %s. "
+                            + "New Expected count: %s",
+                    runName, mExpectedTestCount, mExpectedTestCount + testCount);
+            mExpectedTestCount += testCount;
         }
         mTestRunName = runName;
         mIsRunComplete = false;
@@ -373,6 +378,10 @@ public class TestRunResult {
         return new LinkedHashMap<>(mRunLoggedFiles);
     }
 
+    /** @see #merge(List, MergeStrategy) */
+    public static TestRunResult merge(List<TestRunResult> testRunResults) {
+        return merge(testRunResults, MergeStrategy.ONE_TESTCASE_PASS_IS_PASS);
+    }
 
     /**
      * Merge multiple TestRunResults of the same testRunName. If a testcase shows up in multiple
@@ -381,11 +390,20 @@ public class TestRunResult {
      * run result for status, metrics, log files, start/end time.
      *
      * @param testRunResults A list of TestRunResult to merge.
+     * @param strategy the merging strategy adopted for merging results.
      * @return the final TestRunResult containing the merged data from the testRunResults.
      */
-    public static TestRunResult merge(List<TestRunResult> testRunResults) {
+    public static TestRunResult merge(List<TestRunResult> testRunResults, MergeStrategy strategy) {
         if (testRunResults.isEmpty()) {
             return null;
+        }
+        if (MergeStrategy.NO_MERGE.equals(strategy)) {
+            throw new IllegalArgumentException(
+                    "TestRunResult#merge cannot be called with NO_MERGE strategy.");
+        }
+        if (testRunResults.size() == 1) {
+            // No merging is needed in case of a single test run result.
+            return testRunResults.get(0);
         }
         TestRunResult finalRunResult = new TestRunResult();
 
@@ -393,15 +411,19 @@ public class TestRunResult {
         Map<String, String> finalRunMetrics = new HashMap<>();
         HashMap<String, Metric> finalRunProtoMetrics = new HashMap<>();
         Map<String, LogFile> finalRunLoggedFiles = new HashMap<>();
-        Map<TestDescription, TestResult> finalTestResults = new LinkedHashMap<>();
-        // Keep track of if one of the run attempt failed.
-        boolean isFailed = false;
-        List<String> runErrors = new ArrayList<>();
+        Map<TestDescription, List<TestResult>> testResultsAttempts = new LinkedHashMap<>();
+
         // Keep track of if one of the run is not complete
-        boolean isComplete = true;
+        boolean isAtLeastOneCompleted = false;
+        boolean areAllCompleted = true;
+        // Keep track of whether we have run failure or not
+        List<String> runErrors = new ArrayList<>();
+        boolean atLeastOneFailure = false;
+        boolean allFailure = true;
         // Keep track of elapsed time
         long elapsedTime = 0L;
         int maxExpectedTestCount = 0;
+
         for (TestRunResult eachRunResult : testRunResults) {
             // Check all mTestRunNames are the same.
             if (!testRunName.equals(eachRunResult.getName())) {
@@ -412,14 +434,20 @@ public class TestRunResult {
                                 testRunName, eachRunResult.getName()));
             }
             elapsedTime += eachRunResult.getElapsedTime();
+            // Evaluate the run failures
             if (eachRunResult.isRunFailure()) {
-                // if one of the run fail for now consider the aggregate a failure.
+                atLeastOneFailure = true;
                 runErrors.add(eachRunResult.getRunFailureMessage());
-                isFailed = true;
+            } else {
+                allFailure = false;
             }
-            if (!eachRunResult.isRunComplete()) {
-                isComplete = false;
+            // Evaluate the run completion
+            if (eachRunResult.isRunComplete()) {
+                isAtLeastOneCompleted = true;
+            } else {
+                areAllCompleted = false;
             }
+
             // A run may start multiple times. Normally the first run shows the expected count
             // (max value).
             maxExpectedTestCount =
@@ -435,53 +463,73 @@ public class TestRunResult {
             // from the TestRunResult log files). Need to improve in the future.
             for (Map.Entry<TestDescription, TestResult> testResultEntry :
                     eachRunResult.getTestResults().entrySet()) {
-                if (!finalTestResults.containsKey(testResultEntry.getKey())) {
-                    TestResult newResult = TestResult.clone(testResultEntry.getValue());
-                    finalTestResults.put(testResultEntry.getKey(), newResult);
-                } else {
-                    /**
-                     * Merge the same testcase's TestResults. - Test status is the final run's
-                     * status, - Test stack trace is the concatenation of each TestResult's stack
-                     * traces. - Test start time is the first TestResult's start time. - Test end
-                     * time is the last TestResult's end time. - Test metrics is the first
-                     * TestResult's metrics.
-                     */
-                    TestResult existingResult = finalTestResults.get(testResultEntry.getKey());
-                    // If the test passes, then it doesn't have stack trace.
-                    if (testResultEntry.getValue().getStackTrace() != null) {
-                        if (existingResult.getStackTrace() != null) {
-                            String stackTrace =
-                                    String.format(
-                                            "%s\n%s",
-                                            existingResult.getStackTrace(),
-                                            testResultEntry.getValue().getStackTrace());
-                            existingResult.setStackTrace(stackTrace);
-                        } else {
-                            existingResult.setStackTrace(
-                                    testResultEntry.getValue().getStackTrace());
-                        }
-                    }
-                    existingResult.setStatus(testResultEntry.getValue().getStatus());
-                    existingResult.setEndTime(testResultEntry.getValue().getEndTime());
-                    finalTestResults.put(testResultEntry.getKey(), existingResult);
+                if (!testResultsAttempts.containsKey(testResultEntry.getKey())) {
+                    testResultsAttempts.put(testResultEntry.getKey(), new ArrayList<>());
                 }
+                List<TestResult> results = testResultsAttempts.get(testResultEntry.getKey());
+                results.add(testResultEntry.getValue());
             }
         }
+
+        // Evaluate test cases based on strategy
+        finalRunResult.mTestResults = evaluateTestCases(testResultsAttempts, strategy);
+        // Evaluate the run error status based on strategy
+        boolean isRunFailure = isRunFailed(atLeastOneFailure, allFailure, strategy);
+        if (isRunFailure) {
+            finalRunResult.mRunFailureError = Joiner.on("\n\n").join(runErrors);
+        }
+        // Evaluate run completion from all the attempts based on strategy
+        finalRunResult.mIsRunComplete =
+                isRunComplete(isAtLeastOneCompleted, areAllCompleted, strategy);
+
         finalRunResult.mTestRunName = testRunName;
         finalRunResult.mRunMetrics = finalRunMetrics;
         finalRunResult.mRunProtoMetrics = finalRunProtoMetrics;
         finalRunResult.mRunLoggedFiles = finalRunLoggedFiles;
-        finalRunResult.mTestResults = finalTestResults;
-        // Report completion status
-        if (isFailed) {
-            finalRunResult.mRunFailureError = Joiner.on("\n").join(runErrors);
-        } else {
-            finalRunResult.mRunFailureError = null;
-        }
-        finalRunResult.mIsRunComplete = isComplete;
+
         finalRunResult.mExpectedTestCount = maxExpectedTestCount;
         // Report total elapsed times
         finalRunResult.mElapsedTime = elapsedTime;
         return finalRunResult;
+    }
+
+    /** Merge the different test cases attempts based on the strategy. */
+    private static Map<TestDescription, TestResult> evaluateTestCases(
+            Map<TestDescription, List<TestResult>> results, MergeStrategy strategy) {
+        Map<TestDescription, TestResult> finalTestResults = new LinkedHashMap<>();
+        for (TestDescription description : results.keySet()) {
+            List<TestResult> attemptRes = results.get(description);
+            TestResult aggResult = TestResult.merge(attemptRes, strategy);
+            finalTestResults.put(description, aggResult);
+        }
+        return finalTestResults;
+    }
+
+    /** Decides whether or not considering an aggregation of runs a pass or fail. */
+    private static boolean isRunFailed(
+            boolean atLeastOneFailure, boolean allFailures, MergeStrategy strategy) {
+        switch (strategy) {
+            case ANY_PASS_IS_PASS:
+            case ONE_TESTRUN_PASS_IS_PASS:
+                return allFailures;
+            case ONE_TESTCASE_PASS_IS_PASS:
+            case ANY_FAIL_IS_FAIL:
+            default:
+                return atLeastOneFailure;
+        }
+    }
+
+    /** Decides whether or not considering an aggregation of runs completed or not. */
+    private static boolean isRunComplete(
+            boolean isAtLeastOneCompleted, boolean areAllCompleted, MergeStrategy strategy) {
+        switch (strategy) {
+            case ANY_PASS_IS_PASS:
+            case ONE_TESTRUN_PASS_IS_PASS:
+                return isAtLeastOneCompleted;
+            case ONE_TESTCASE_PASS_IS_PASS:
+            case ANY_FAIL_IS_FAIL:
+            default:
+                return areAllCompleted;
+        }
     }
 }

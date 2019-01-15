@@ -17,46 +17,47 @@ Result Reporter
 The result reporter formats and prints test results.
 
 ----
-
 Example Output for command to run following tests:
-CtsAnimationTestCases:EvaluatorTest, ScreenDecorWindowTests#testFlagChange and
-HelloWorldTests
+CtsAnimationTestCases:EvaluatorTest, HelloWorldTests, and WmTests
 
 Running Tests ...
 
 CtsAnimationTestCases (7 Tests)
 ------------------------------
-android.animation.cts.EvaluatorTest#testRectEvaluator: PASSED
-android.animation.cts.EvaluatorTest#testIntArrayEvaluator: PASSED
-android.animation.cts.EvaluatorTest#testIntEvaluator: PASSED
-android.animation.cts.EvaluatorTest#testFloatArrayEvaluator: PASSED
-android.animation.cts.EvaluatorTest#testPointFEvaluator: PASSED
-android.animation.cts.EvaluatorTest#testArgbEvaluator: PASSED
-android.animation.cts.EvaluatorTest#testFloatEvaluator: PASSED
+[1/7] android.animation.cts.EvaluatorTest#testRectEvaluator: PASSED (153ms)
+[2/7] android.animation.cts.EvaluatorTest#testIntArrayEvaluator: PASSED (0ms)
+[3/7] android.animation.cts.EvaluatorTest#testIntEvaluator: PASSED (0ms)
+[4/7] android.animation.cts.EvaluatorTest#testFloatArrayEvaluator: PASSED (1ms)
+[5/7] android.animation.cts.EvaluatorTest#testPointFEvaluator: PASSED (1ms)
+[6/7] android.animation.cts.EvaluatorTest#testArgbEvaluator: PASSED (0ms)
+[7/7] android.animation.cts.EvaluatorTest#testFloatEvaluator: PASSED (1ms)
 
-FrameworksServicesTests (1 Test)
--------------------------------
-com.android.server.wm.ScreenDecorWindowTests#testFlagChange: PASSED
+HelloWorldTests (2 Tests)
+------------------------
+[1/2] android.test.example.helloworld.HelloWorldTest#testHalloWelt: PASSED (0ms)
+[2/2] android.test.example.helloworld.HelloWorldTest#testHelloWorld: PASSED (1ms)
 
-HelloWorldTests
+WmTests (1 Test)
 ---------------
-ERROR EXECUTING TEST RUN: Instrumentation run failed due to 'Process crashed.'
+RUNNER ERROR: com.android.tradefed.targetprep.TargetSetupError:
+Failed to install WmTests.apk on 127.0.0.1:54373. Reason:
+    error message ...
 
-SUMMARY
+
+Summary
 -------
 CtsAnimationTestCases: Passed: 7, Failed: 0
-FrameworksServicesTests: Passed: 1, Failed: 0
-HelloWorldTests: Passed: 0, Failed: 0
-(Errors occurred during above test run. Counts may be inaccurate.)
+HelloWorldTests: Passed: 2, Failed: 0
+WmTests: Passed: 0, Failed: 0 (Completed With ERRORS)
 
-Total: 8, Passed: 8, Failed: 0
-WARNING: Errors occurred during test run. Counts may be inaccurate.
-
-TODO(b/79699032): Update reporter to add color and implement final formatting.
+1 test failed
 """
 
 from __future__ import print_function
 from collections import OrderedDict
+
+import constants
+import atest_utils as au
 
 from test_runners import test_runner_base
 
@@ -67,18 +68,20 @@ FAILURE_FLAG = 'RUNNER_FAILURE'
 class RunStat(object):
     """Class for storing stats of a test run."""
 
-    def __init__(self, passed=0, failed=0, run_errors=False):
+    def __init__(self, passed=0, failed=0, ignored=0, run_errors=False):
         """Initialize a new instance of RunStat class.
 
         Args:
-            passed: An int of the number of passing tests.
-            failed: An int of the number of failed tests.
+            passed: Count of passing tests.
+            failed: Count of failed tests.
+            ignored: Count of ignored tests.
             run_errors: A boolean if there were run errors
         """
         # TODO(b/109822985): Track group and run estimated totals for updating
         # summary line
         self.passed = passed
         self.failed = failed
+        self.ignored = ignored
         # Run errors are not for particular tests, they are runner errors.
         self.run_errors = run_errors
 
@@ -132,6 +135,7 @@ class ResultReporter(object):
     def __init__(self):
         self.run_stats = RunStat()
         self.runners = OrderedDict()
+        self.failed_tests = []
 
     def process_test_result(self, test):
         """Given the results of a single test, update stats and print results.
@@ -188,32 +192,94 @@ class ResultReporter(object):
 
     def print_starting_text(self):
         """Print starting text for running tests."""
-        print('Running Tests ...')
+        print(au.colorize('\nRunning Tests...', constants.CYAN))
 
     def print_summary(self):
-        """Print summary of all test runs."""
-        print('\nSUMMARY')
+        """Print summary of all test runs.
+
+        Returns:
+            0 if all tests pass, non-zero otherwise.
+
+        """
+        tests_ret = constants.EXIT_CODE_SUCCESS
+        if not self.runners:
+            return tests_ret
+        print('\n%s' % au.colorize('Summary', constants.CYAN))
         print('-------')
+        failed_sum = len(self.failed_tests)
         for runner_name, groups in self.runners.items():
             if groups == UNSUPPORTED_FLAG:
                 print(runner_name, 'Unsupported. See raw output above.')
                 continue
             if groups == FAILURE_FLAG:
+                tests_ret = constants.EXIT_CODE_TEST_FAILURE
                 print(runner_name, 'Crashed. No results to report.')
+                failed_sum += 1
                 continue
             for group_name, stats in groups.items():
                 name = group_name if group_name else runner_name
-                print('%s: Passed: %s, Failed: %s' % (name, stats.passed,
-                                                      stats.failed))
+                summary = self.process_summary(name, stats)
+                if stats.failed > 0:
+                    tests_ret = constants.EXIT_CODE_TEST_FAILURE
                 if stats.run_errors:
-                    print('(Errors occurred during above test run. '
-                          'Counts may be inaccurate.)')
-        print('\nTotal: %s, Passed: %s, Failed: %s' % (
-            self.run_stats.total, self.run_stats.passed, self.run_stats.failed))
-        if self.run_stats.run_errors:
-            print('WARNING: Errors occurred during test run. '
-                  'Counts may be inaccurate.')
+                    tests_ret = constants.EXIT_CODE_TEST_FAILURE
+                    failed_sum += 1 if not stats.failed else 0
+                print(summary)
         print()
+        if tests_ret == constants.EXIT_CODE_SUCCESS:
+            print(au.colorize('All tests passed!', constants.GREEN))
+        else:
+            message = '%d %s failed' % (failed_sum,
+                                        'tests' if failed_sum > 1 else 'test')
+            print(au.colorize(message, constants.RED))
+            print('-'*len(message))
+            self.print_failed_tests()
+        return tests_ret
+
+    def print_failed_tests(self):
+        """Print the failed tests if existed."""
+        if self.failed_tests:
+            for test_name in self.failed_tests:
+                print('%s' % test_name)
+
+    def process_summary(self, name, stats):
+        """Process the summary line.
+
+        Strategy:
+            Error status happens ->
+                SomeTests: Passed: 2, Failed: 0 <red>(Completed With ERRORS)</red>
+                SomeTests: Passed: 2, <red>Failed</red>: 2 <red>(Completed With ERRORS)</red>
+            More than 1 test fails ->
+                SomeTests: Passed: 2, <red>Failed</red>: 5
+            No test fails ->
+                SomeTests: <green>Passed</green>: 2, Failed: 0
+
+        Args:
+            name: A string of test name.
+            stats: A RunStat instance for a test group.
+
+        Returns:
+            A summary of the test result.
+        """
+        passed_label = 'Passed'
+        failed_label = 'Failed'
+        ignored_label = 'Ignored'
+        error_label = ''
+        if stats.failed > 0:
+            failed_label = au.colorize(failed_label, constants.RED)
+        if stats.run_errors:
+            error_label = au.colorize('(Completed With ERRORS)', constants.RED)
+        elif stats.failed == 0:
+            passed_label = au.colorize(passed_label, constants.GREEN)
+        summary = '%s: %s: %s, %s: %s, %s: %s %s' % (name,
+                                                     passed_label,
+                                                     stats.passed,
+                                                     failed_label,
+                                                     stats.failed,
+                                                     ignored_label,
+                                                     stats.ignored,
+                                                     error_label)
+        return summary
 
     def _update_stats(self, test, group):
         """Given the results of a single test, update test run stats.
@@ -227,8 +293,12 @@ class ResultReporter(object):
         if test.status == test_runner_base.PASSED_STATUS:
             self.run_stats.passed += 1
             group.passed += 1
+        elif test.status == test_runner_base.IGNORED_STATUS:
+            self.run_stats.ignored += 1
+            group.ignored += 1
         elif test.status == test_runner_base.FAILED_STATUS:
             self.run_stats.failed += 1
+            self.failed_tests.append(test.test_name)
             group.failed += 1
         elif test.status == test_runner_base.ERROR_STATUS:
             self.run_stats.run_errors = True
@@ -262,9 +332,28 @@ class ResultReporter(object):
         Args:
             test: a TestResult namedtuple.
         """
+        if test.status == test_runner_base.ERROR_STATUS:
+            print('RUNNER ERROR: %s\n' % test.details)
+            return
         if test.test_name:
-            print('%s: %s' % (test.test_name, test.status))
+            if test.status == test_runner_base.PASSED_STATUS:
+                # Example of output:
+                # [78/92] test_name: PASSED (92ms)
+                print('[%s/%s] %s: %s %s' % (test.test_count, test.group_total,
+                                             test.test_name, au.colorize(
+                                                 test.status, constants.GREEN),
+                                             test.test_time))
+            elif test.status == test_runner_base.IGNORED_STATUS:
+                # Example: [33/92] test_name: IGNORED (12ms)
+                print('[%s/%s] %s: %s %s' % (test.test_count, test.group_total,
+                                             test.test_name, au.colorize(
+                                                 test.status, constants.MAGENTA),
+                                             test.test_time))
+            else:
+                # Example: [26/92] test_name: FAILED (32ms)
+                print('[%s/%s] %s: %s %s' % (test.test_count, test.group_total,
+                                             test.test_name, au.colorize(
+                                                 test.status, constants.RED),
+                                             test.test_time))
         if test.status == test_runner_base.FAILED_STATUS:
             print('\nSTACKTRACE:\n%s' % test.details)
-        elif test.status == test_runner_base.ERROR_STATUS:
-            print('ERROR EXECUTING TEST RUN:', test.details)

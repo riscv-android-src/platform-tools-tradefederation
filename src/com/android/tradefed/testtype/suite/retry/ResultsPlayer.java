@@ -17,6 +17,7 @@ package com.android.tradefed.testtype.suite.retry;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogFile;
@@ -25,6 +26,7 @@ import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.TimeUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -51,6 +53,8 @@ public final class ResultsPlayer implements IRemoteTest, IInvocationContextRecei
 
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        long startReplay = System.currentTimeMillis();
+        CLog.d("Start replaying the previous results.");
         for (TestRunResult module : mModuleResult.keySet()) {
             ReplayModuleHolder holder = mModuleResult.get(module);
 
@@ -74,7 +78,16 @@ public final class ResultsPlayer implements IRemoteTest, IInvocationContextRecei
             if (moduleContext != null) {
                 listener.testModuleEnded();
             }
+
+            // Clean up the memory: IRemoteTest object are kept in memory until the command finish
+            // So we need to clean up the entries when we are done with them to free up the
+            // memory early
+            holder.mResults.clear();
         }
+        CLog.d(
+                "Done replaying results in %s",
+                TimeUtil.formatElapsedTime(System.currentTimeMillis() - startReplay));
+        mModuleResult.clear();
     }
 
     /**

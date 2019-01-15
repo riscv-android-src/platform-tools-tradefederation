@@ -21,7 +21,6 @@ import os
 import re
 import mock
 
-import atest_error
 import cli_translator as cli_t
 import constants
 import test_finder_handler
@@ -33,7 +32,7 @@ from test_finders import test_finder_base
 # TEST_MAPPING related consts
 TEST_MAPPING_TOP_DIR = os.path.join(uc.TEST_DATA_DIR, 'test_mapping')
 TEST_MAPPING_DIR = os.path.join(TEST_MAPPING_TOP_DIR, 'folder1')
-TEST_1 = test_mapping.TestDetail({'name': 'test1'})
+TEST_1 = test_mapping.TestDetail({'name': 'test1', 'host': True})
 TEST_2 = test_mapping.TestDetail({'name': 'test2'})
 TEST_3 = test_mapping.TestDetail({'name': 'test3'})
 TEST_4 = test_mapping.TestDetail({'name': 'test4'})
@@ -74,6 +73,12 @@ class CLITranslatorUnittests(unittest.TestCase):
         # Test mapping related args
         self.args.test_mapping = False
         self.args.include_subdirs = False
+        self.ctr.mod_info = mock.Mock
+        self.ctr.mod_info.name_to_module_info = {}
+
+    def tearDown(self):
+        """Run after execution of every test"""
+        reload(uc)
 
     @mock.patch.object(test_finder_handler, 'get_find_methods_for_test')
     def test_get_test_infos(self, mock_getfindmethods):
@@ -91,29 +96,32 @@ class CLITranslatorUnittests(unittest.TestCase):
         # Let's make sure we return what we expect.
         expected_test_infos = {uc.MODULE_INFO}
         mock_getfindmethods.return_value = [
-            test_finder_base.Finder(None, find_method_return_module_info)]
+            test_finder_base.Finder(None, find_method_return_module_info, None)]
         unittest_utils.assert_strict_equal(
             self, ctr._get_test_infos(one_test), expected_test_infos)
 
         # Check we receive multiple test infos.
         expected_test_infos = {uc.MODULE_INFO, uc.CLASS_INFO}
         mock_getfindmethods.return_value = [
-            test_finder_base.Finder(None, find_method_return_module_class_info)]
+            test_finder_base.Finder(None, find_method_return_module_class_info,
+                                    None)]
         unittest_utils.assert_strict_equal(
             self, ctr._get_test_infos(mult_test), expected_test_infos)
 
-        # Let's make sure we raise an error when we have no tests found.
+        # Check return null set when we have no tests found.
         mock_getfindmethods.return_value = [
-            test_finder_base.Finder(None, find_method_return_nothing)]
-        self.assertRaises(atest_error.NoTestFoundError, ctr._get_test_infos,
-                          one_test)
+            test_finder_base.Finder(None, find_method_return_nothing, None)]
+        null_test_info = set()
+        self.assertEqual(null_test_info, ctr._get_test_infos(one_test))
+        self.assertEqual(null_test_info, ctr._get_test_infos(mult_test))
 
         # Check the method works for test mapping.
         test_detail1 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST)
         test_detail2 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST_WITH_OPTION)
         expected_test_infos = {uc.MODULE_INFO, uc.CLASS_INFO}
         mock_getfindmethods.return_value = [
-            test_finder_base.Finder(None, find_method_return_module_class_info)]
+            test_finder_base.Finder(None, find_method_return_module_class_info,
+                                    None)]
         test_infos = ctr._get_test_infos(
             mult_test, [test_detail1, test_detail2])
         unittest_utils.assert_strict_equal(

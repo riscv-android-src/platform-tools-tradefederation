@@ -16,8 +16,8 @@
 
 package com.android.tradefed.testtype.junit4;
 
-import android.longevity.core.LongevitySuite;
-import android.longevity.core.listener.TimeoutTerminator;
+import android.host.test.longevity.LongevitySuite;
+import android.host.test.longevity.listener.TimeoutTerminator;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
