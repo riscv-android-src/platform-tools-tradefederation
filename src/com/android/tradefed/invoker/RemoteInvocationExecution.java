@@ -63,11 +63,12 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
     public static final long PUSH_TF_TIMEOUT = 120000L;
     public static final long PULL_RESULT_TIMEOUT = 180000L;
+    public static final long REMOTE_PROCESS_RUNNING_WAIT = 15000L;
 
     public static final String REMOTE_USER_DIR = "/home/{$USER}/";
     public static final String PROTO_RESULT_NAME = "output.pb";
-    public static final String STDOUT_FILE = "stdout.txt";
-    public static final String STDERR_FILE = "stderr.txt";
+    public static final String STDOUT_FILE = "remote-tradefed-stdout.txt";
+    public static final String STDERR_FILE = "remote-tradefed-stderr.txt";
 
     private String mRemoteTradefedDir = null;
     private String mRemoteFinalResult = null;
@@ -322,7 +323,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 break;
             }
             if (stillRunning) {
-                RunUtil.getDefault().sleep(15000L);
+                RunUtil.getDefault().sleep(REMOTE_PROCESS_RUNNING_WAIT);
             }
         }
         File resultFile = null;
@@ -371,7 +372,8 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
         if (resultFile != null) {
             // Report result to listener.
-            ProtoResultParser parser = new ProtoResultParser(currentInvocationListener, false);
+            ProtoResultParser parser =
+                    new ProtoResultParser(currentInvocationListener, false, "remote-");
             parser.processFinalizedProto(TestRecordProtoUtil.readFromFile(resultFile));
         }
     }
