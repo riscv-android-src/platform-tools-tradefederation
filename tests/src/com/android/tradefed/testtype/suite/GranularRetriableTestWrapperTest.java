@@ -240,7 +240,14 @@ public class GranularRetriableTestWrapperTest {
     private GranularRetriableTestWrapper createGranularTestWrapper(
             IRemoteTest test, int maxRunCount, List<IMetricCollector> collectors) {
         GranularRetriableTestWrapper granularTestWrapper =
-                new GranularRetriableTestWrapper(test, null, null, null, maxRunCount);
+                new GranularRetriableTestWrapper(test, null, null, null, maxRunCount) {
+                    @Override
+                    List<IMetricCollector> cloneCollectors(
+                            List<IMetricCollector> originalCollectors) {
+                        // For testing purpose, avoid cloning.
+                        return originalCollectors;
+                    }
+                };
         granularTestWrapper.setModuleId("test module");
         granularTestWrapper.setMarkTestsSkipped(false);
         granularTestWrapper.setMetricCollectors(collectors);
@@ -796,7 +803,7 @@ public class GranularRetriableTestWrapperTest {
     }
 
     /** Collector that track if it was called or not */
-    class CalledMetricCollector extends BaseDeviceMetricCollector {
+    public static class CalledMetricCollector extends BaseDeviceMetricCollector {
 
         boolean wasCalled = false;
 

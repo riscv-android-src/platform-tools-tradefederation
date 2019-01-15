@@ -838,7 +838,6 @@ public class InstrumentationTestTest {
     private static class FakeTestRunner extends RemoteAndroidTestRunner {
 
         private Map<String, String> mArgs = new HashMap<>();
-        private String mRunOptions;
 
         FakeTestRunner(String packageName, String runnerName) {
             super(packageName, runnerName, null);
