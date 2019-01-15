@@ -70,6 +70,8 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
     @Override
     public void onTestFail(DeviceMetricData testData, TestDescription test) {
         for (ITestDevice device : getDevices()) {
+            // Delay slightly for the error to get in the logcat
+            getRunUtil().sleep(100);
             try (InputStreamSource logcatSource =
                     mLogcatReceivers
                             .get(device)
@@ -90,6 +92,8 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
             receiver.stop();
             receiver.clear();
         }
+        mLogcatReceivers.clear();
+        mOffset.clear();
     }
 
     @VisibleForTesting
