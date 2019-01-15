@@ -140,6 +140,29 @@ public abstract class ITestSuite
     )
     private boolean mBugReportOnFailure = false;
 
+    @Deprecated
+    @Option(
+        name = "logcat-on-failure",
+        description = "Take a logcat snapshot on every test failure."
+    )
+    private boolean mLogcatOnFailure = false;
+
+    @Deprecated
+    @Option(
+        name = "logcat-on-failure-size",
+        description =
+                "The max number of logcat data in bytes to capture when "
+                        + "--logcat-on-failure is on. Should be an amount that can comfortably fit in memory."
+    )
+    private int mMaxLogcatBytes = 500 * 1024; // 500K
+
+    @Deprecated
+    @Option(
+        name = "screenshot-on-failure",
+        description = "Take a screenshot on every test failure."
+    )
+    private boolean mScreenshotOnFailure = false;
+
     @Option(name = "reboot-on-failure",
             description = "Reboot the device after every test failure.")
     private boolean mRebootOnFailure = false;
