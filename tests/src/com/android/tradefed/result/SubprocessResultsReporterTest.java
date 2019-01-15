@@ -40,6 +40,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @RunWith(JUnit4.class)
 public class SubprocessResultsReporterTest {
 
+    private static final long LONG_TIMEOUT_MS = 20000L;
     private SubprocessResultsReporter mReporter;
 
     @Before
@@ -124,7 +125,7 @@ public class SubprocessResultsReporterTest {
             mReporter.testRunFailed("no reason");
             mReporter.invocationFailed(new Throwable());
             mReporter.close();
-            receiver.joinReceiver(500);
+            receiver.joinReceiver(LONG_TIMEOUT_MS);
             EasyMock.verify(mMockListener);
         } finally {
             receiver.close();
@@ -135,24 +136,27 @@ public class SubprocessResultsReporterTest {
     public void testTestLog() throws ConfigurationException, IOException {
         byte[] logData = new byte[1024];
         InputStreamSource logStreamSource = new ByteArrayInputStreamSource(logData);
-        ITestInvocationListener mMockListener = EasyMock.createMock(ITestInvocationListener.class);
+        AtomicBoolean testLogCalled = new AtomicBoolean(false);
+        ITestInvocationListener mMockListener =
+                new CollectingTestListener() {
+                    @Override
+                    public void testLog(
+                            String dataName, LogDataType dataType, InputStreamSource dataStream) {
+                        testLogCalled.set(true);
+                    }
+                };
         try (SubprocessTestResultsParser receiver =
                 new SubprocessTestResultsParser(mMockListener, true, new InvocationContext())) {
             OptionSetter setter = new OptionSetter(mReporter);
             setter.setOptionValue(
                     "subprocess-report-port", Integer.toString(receiver.getSocketServerPort()));
             setter.setOptionValue("output-test-log", "true");
-            mMockListener.testLog(
-                    EasyMock.eq("subprocess-foo"),
-                    EasyMock.eq(LogDataType.TEXT),
-                    EasyMock.anyObject());
-            EasyMock.replay(mMockListener);
 
             mReporter.testLog("foo", LogDataType.TEXT, logStreamSource);
             mReporter.close();
-            receiver.joinReceiver(500);
+            receiver.joinReceiver(LONG_TIMEOUT_MS);
 
-            EasyMock.verify(mMockListener);
+            assertTrue(testLogCalled.get());
         }
     }
 
