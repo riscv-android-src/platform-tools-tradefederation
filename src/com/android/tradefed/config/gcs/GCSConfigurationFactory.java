@@ -21,9 +21,13 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IConfigurationServer;
+import com.android.tradefed.util.FileUtil;
 
 import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 
@@ -31,6 +35,8 @@ import java.util.Map;
 public class GCSConfigurationFactory extends ConfigurationFactory {
     private static IConfigurationFactory sInstance = null;
     private IConfigurationServer mConfigServer;
+    /** Keep track of the latest downloaded config file so we can use it */
+    private File mConfigDownloaded = null;
 
     GCSConfigurationFactory(IConfigurationServer configServer) {
         mConfigServer = configServer;
@@ -61,9 +67,23 @@ public class GCSConfigurationFactory extends ConfigurationFactory {
                 throw new ConfigurationException(
                         String.format("Could not find configuration '%s'", name));
             }
+            // Create a local copy of the configuration
+            try {
+                mConfigDownloaded = FileUtil.createTempFile("gcs-downloaded-global-config", ".xml");
+                mConfigDownloaded.deleteOnExit();
+                FileUtil.writeToFile(configStream, mConfigDownloaded);
+                // Reset the stream to be available from the start again.
+                configStream.reset();
+            } catch (IOException e) {
+                throw new ConfigurationException(e.getMessage());
+            }
         }
         // buffer input for performance - just in case config file is large
         return new BufferedInputStream(configStream);
+    }
+
+    public File getLatestDownloadedFile() {
+        return mConfigDownloaded;
     }
 
     /** {@inheritDoc} */
@@ -75,8 +95,9 @@ public class GCSConfigurationFactory extends ConfigurationFactory {
     }
 
     /**
-     * Extension of {@link ConfigLoader} that loads config from GCS, tracks the included
-     * configurations from one root config, and throws an exception on circular includes.
+     * Extension of {@link com.android.tradefed.config.ConfigurationFactory.ConfigLoader} that loads
+     * config from GCS, tracks the included configurations from one root config, and throws an
+     * exception on circular includes.
      */
     protected class GCSConfigLoader extends ConfigLoader {
 
@@ -106,7 +127,11 @@ public class GCSConfigurationFactory extends ConfigurationFactory {
          * @return normalized path
          */
         String getPath(String parent, String filename) {
-            return Paths.get(parent).getParent().resolve(filename).normalize().toString();
+            Path parentPath = Paths.get(parent).getParent();
+            if (parentPath == null) {
+                return filename;
+            }
+            return parentPath.resolve(filename).normalize().toString();
         }
 
         /** {@inheritDoc} */

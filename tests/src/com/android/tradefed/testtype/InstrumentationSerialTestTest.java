@@ -57,7 +57,7 @@ public class InstrumentationSerialTestTest {
     @Test
     public void testRun() throws DeviceNotAvailableException, ConfigurationException {
         final String packageName = "com.foo";
-        final TestDescription test = new TestDescription("FooTest", "testFoo");
+        final TestDescription test = new TestDescription("FooTest", "testFoo[param]");
         final Collection<TestDescription> testList = new ArrayList<TestDescription>(1);
         testList.add(test);
         final InstrumentationTest mockITest =
@@ -83,7 +83,7 @@ public class InstrumentationSerialTestTest {
                         return mockITest;
                     }
                 };
-        mMockListener.testRunStarted(packageName, 1);
+        mMockListener.testRunStarted(packageName, 0, 1);
         mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
         mMockListener.testEnded(
                 EasyMock.eq(test), EasyMock.eq(10l), EasyMock.eq(new HashMap<String, Metric>()));
@@ -93,7 +93,7 @@ public class InstrumentationSerialTestTest {
         mInstrumentationSerialTest.run(mMockListener);
         assertEquals(mMockTestDevice, mockITest.getDevice());
         assertEquals(test.getClassName(), mockITest.getClassName());
-        assertEquals(test.getTestName(), mockITest.getMethodName());
+        assertEquals(test.getTestNameWithoutParams(), mockITest.getMethodName());
         EasyMock.verify(mMockListener, mMockTestDevice);
     }
 
@@ -129,8 +129,12 @@ public class InstrumentationSerialTestTest {
         };
         // expect two attempts, plus 1 additional run to mark the test as failed
         int expectedAttempts = InstrumentationSerialTest.FAILED_RUN_TEST_ATTEMPTS+1;
-        mMockListener.testRunStarted(packageName, 1);
-        EasyMock.expectLastCall().times(expectedAttempts);
+        mMockListener.testRunStarted(packageName, 0);
+        EasyMock.expectLastCall().times(1);
+        mMockListener.testRunStarted(packageName, 0, 1);
+        EasyMock.expectLastCall().times(1);
+        mMockListener.testRunStarted(packageName, 0, 2);
+        EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed(runFailureMsg);
         EasyMock.expectLastCall().times(expectedAttempts);
         mMockListener.testRunEnded(0, new HashMap<String, Metric>());
@@ -199,7 +203,7 @@ public class InstrumentationSerialTestTest {
                         return mockITest;
                     }
                 };
-        mMockListener.testRunStarted(packageName, 1);
+        mMockListener.testRunStarted(packageName, 0, 1);
         mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
         mMockListener.testEnded(
                 EasyMock.eq(test), EasyMock.eq(10l), EasyMock.eq(new HashMap<String, Metric>()));

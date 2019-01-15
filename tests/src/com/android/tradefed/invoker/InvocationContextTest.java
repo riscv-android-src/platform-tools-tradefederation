@@ -52,6 +52,17 @@ public class InvocationContextTest {
         mContext = new InvocationContext();
     }
 
+    /** Test setting and getting invocation ID. */
+    @Test
+    public void testGetInvocationID() {
+        // initially null
+        assertNull(mContext.getInvocationId());
+
+        // non-null after adding the ID as an attribute
+        mContext.addInvocationAttribute(IInvocationContext.INVOCATION_ID, "TEST_ID");
+        assertEquals("TEST_ID", mContext.getInvocationId());
+    }
+
     /** Test the reverse look up of the device name in the configuration for an ITestDevice */
     @Test
     public void testGetDeviceName() {
@@ -62,6 +73,18 @@ public class InvocationContextTest {
         mContext.addAllocatedDevice("test1", device1);
         assertEquals("test1", mContext.getDeviceName(device1));
         assertNull(mContext.getDeviceName(device2));
+    }
+
+    /** Test the reverse look up of the device name in the configuration for an IBuildInfo */
+    @Test
+    public void testGetBuildInfoName() {
+        IBuildInfo build1 = EasyMock.createMock(IBuildInfo.class);
+        IBuildInfo build2 = EasyMock.createMock(IBuildInfo.class);
+        // assert that at init, map is empty.
+        assertNull(mContext.getBuildInfoName(build1));
+        mContext.addDeviceBuildInfo("test1", build1);
+        assertEquals("test1", mContext.getBuildInfoName(build1));
+        assertNull(mContext.getBuildInfoName(build2));
     }
 
     /**

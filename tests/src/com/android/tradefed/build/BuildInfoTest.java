@@ -28,12 +28,14 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SerializationUtil;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -194,5 +196,29 @@ public class BuildInfoTest {
         // Build flavor was not set, so it's null
         assertNull(deserialized.getBuildFlavor());
         assertNotNull(deserialized.getVersionedFile(FILE_KEY));
+    }
+
+    /** Test {@link BuildInfo#getTestResource(List, String)} */
+    @Test
+    public void testGetTestResource() {
+        List<IBuildInfo> buildInfos = new ArrayList<IBuildInfo>();
+        BuildInfo testResourceBuild = new BuildInfo();
+        testResourceBuild.setTestResourceBuild(true);
+        File testResourceFile = new File("test-resource1");
+        testResourceBuild.setFile("test-resource1", testResourceFile, "");
+        buildInfos.add(testResourceBuild);
+        File file = BuildInfo.getTestResource(buildInfos, "test-resource1");
+        Assert.assertEquals(testResourceFile, file);
+    }
+
+    /** Test {@link BuildInfo#getTestResource(List, String)} */
+    @Test
+    public void testGetTestResource_notExist() {
+        List<IBuildInfo> buildInfos = new ArrayList<IBuildInfo>();
+        BuildInfo testResourceBuild = new BuildInfo();
+        testResourceBuild.setTestResourceBuild(true);
+        buildInfos.add(testResourceBuild);
+        File file = BuildInfo.getTestResource(buildInfos, "test-resource1");
+        Assert.assertNull(file);
     }
 }

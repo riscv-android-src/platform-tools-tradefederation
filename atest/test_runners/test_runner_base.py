@@ -19,7 +19,9 @@ Class that other test runners will instantiate for test runners.
 """
 
 import logging
+import signal
 import subprocess
+import tempfile
 import os
 from collections import namedtuple
 
@@ -29,9 +31,11 @@ import atest_error
 # TestResult contains information of individual tests during a test run.
 TestResult = namedtuple('TestResult', ['runner_name', 'group_name',
                                        'test_name', 'status', 'details',
+                                       'test_count', 'test_time',
                                        'runner_total', 'group_total'])
 FAILED_STATUS = 'FAILED'
 PASSED_STATUS = 'PASSED'
+IGNORED_STATUS = 'IGNORED'
 ERROR_STATUS = 'ERROR'
 
 class TestRunnerBase(object):
@@ -42,16 +46,16 @@ class TestRunnerBase(object):
     def __init__(self, results_dir, **kwargs):
         """Init stuff for base class."""
         self.results_dir = results_dir
+        self.test_log_file = None
         if not self.NAME:
             raise atest_error.NoTestRunnerName('Class var NAME is not defined.')
         if not self.EXECUTABLE:
             raise atest_error.NoTestRunnerExecutable('Class var EXECUTABLE is '
                                                      'not defined.')
         if kwargs:
-            logging.info('ignoring the following args: %s', kwargs)
+            logging.debug('ignoring the following args: %s', kwargs)
 
-    @staticmethod
-    def run(cmd, output_to_stdout=False):
+    def run(self, cmd, output_to_stdout=False):
         """Shell out and execute command.
 
         Args:
@@ -65,11 +69,54 @@ class TestRunnerBase(object):
                               Set to True to see the output of the cmd. This
                               would be appropriate for verbose runs.
         """
+        if not output_to_stdout:
+            self.test_log_file = tempfile.NamedTemporaryFile(mode='w',
+                                                             dir=self.results_dir,
+                                                             delete=True)
         logging.debug('Executing command: %s', cmd)
-        out = None if output_to_stdout else open(os.devnull, 'w')
         return subprocess.Popen(cmd, preexec_fn=os.setsid, shell=True,
-                                stderr=subprocess.STDOUT, stdout=out)
+                                stderr=subprocess.STDOUT, stdout=self.test_log_file)
 
+    def wait_for_subprocess(self, proc):
+        """Check the process status. Interrupt the TF subporcess if user
+        hits Ctrl-C.
+
+        Args:
+            proc: The tradefed subprocess.
+
+        Returns:
+            Return code of the subprocess for running tests.
+        """
+        try:
+            logging.debug('Runner Name: %s, Process ID: %s', self.NAME, proc.pid)
+            signal.signal(signal.SIGINT, self._signal_passer(proc))
+            proc.wait()
+            return proc.returncode
+        except:
+            # If atest crashes, kill TF subproc group as well.
+            os.killpg(os.getpgid(proc.pid), signal.SIGINT)
+            raise
+
+    def _signal_passer(self, proc):
+        """Return the signal_handler func bound to proc.
+
+        Args:
+            proc: The tradefed subprocess.
+
+        Returns:
+            signal_handler function.
+        """
+        def signal_handler(_signal_number, _frame):
+            """Pass SIGINT to proc.
+
+            If user hits ctrl-c during atest run, the TradeFed subprocess
+            won't stop unless we also send it a SIGINT. The TradeFed process
+            is started in a process group, so this SIGINT is sufficient to
+            kill all the child processes TradeFed spawns as well.
+            """
+            logging.info('Ctrl-C received. Killing Tradefed subprocess group')
+            os.killpg(os.getpgid(proc.pid), signal.SIGINT)
+        return signal_handler
 
     def run_tests(self, test_infos, extra_args, reporter):
         """Run the list of test_infos.
@@ -91,4 +138,18 @@ class TestRunnerBase(object):
 
     def get_test_runner_build_reqs(self):
         """Returns a list of build targets required by the test runner."""
+        raise NotImplementedError
+
+    def generate_run_commands(self, test_infos, extra_args, port=None):
+        """Generate a list of run commands from TestInfos.
+
+        Args:
+            test_infos: A set of TestInfo instances.
+            extra_args: A Dict of extra args to append.
+            port: Optional. An int of the port number to send events to.
+                  Subprocess reporter in TF won't try to connect if it's None.
+
+        Returns:
+            A list of run commands to run the tests.
+        """
         raise NotImplementedError

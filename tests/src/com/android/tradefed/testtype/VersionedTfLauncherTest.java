@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.android.ddmlib.IDevice;
@@ -45,7 +46,9 @@ import org.junit.runners.JUnit4;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 /** Unit tests for {@link VersionedTfLauncher}. */
@@ -109,6 +112,8 @@ public class VersionedTfLauncherTest {
 
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(SubprocessTfLauncher.ANDROID_SERIAL_VAR);
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
         mMockRunUtil.setEnvVariable(
                 EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE),
@@ -174,6 +179,8 @@ public class VersionedTfLauncherTest {
 
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(SubprocessTfLauncher.ANDROID_SERIAL_VAR);
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
         mMockRunUtil.setEnvVariable(
                 EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE),
@@ -230,6 +237,8 @@ public class VersionedTfLauncherTest {
     public void testRun_DeviceNoPreSetup() {
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(SubprocessTfLauncher.ANDROID_SERIAL_VAR);
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
         mMockRunUtil.setEnvVariable(
                 EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE),
@@ -291,10 +300,15 @@ public class VersionedTfLauncherTest {
      */
     @Test
     public void testGetTestShard() {
-        IRemoteTest test = mVersionedTfLauncher.getTestShard(2, 1);
-        assertTrue(test instanceof VersionedTfLauncher);
+        Collection<IRemoteTest> tests = mVersionedTfLauncher.split(2);
+        assertEquals(2, tests.size());
+        Iterator<IRemoteTest> ite = tests.iterator();
+        IRemoteTest firstTest = ite.next();
+        assertTrue(firstTest instanceof VersionedTfLauncher);
+        IRemoteTest secondTest = ite.next();
+        assertTrue(secondTest instanceof VersionedTfLauncher);
 
-        VersionedTfLauncher shardedTest = (VersionedTfLauncher) test;
+        VersionedTfLauncher shardedTest = (VersionedTfLauncher) secondTest;
 
         shardedTest.setRunUtil(mMockRunUtil);
         shardedTest.setBuild(mMockBuildInfo);
@@ -305,6 +319,8 @@ public class VersionedTfLauncherTest {
 
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(SubprocessTfLauncher.ANDROID_SERIAL_VAR);
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
         mMockRunUtil.setEnvVariable(
                 EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE),

@@ -90,6 +90,8 @@ def isfile_side_effect(value):
         return True
     if value.endswith('.java'):
         return True
+    if value.endswith('.kt'):
+        return True
     if value.endswith(uc.INT_NAME + '.xml'):
         return True
     if value.endswith(uc.GTF_INT_NAME + '.xml'):

@@ -388,6 +388,12 @@ class ModuleFinderUnittests(unittest.TestCase):
 
         # Happy path testing.
         mock_dir.return_value = uc.MODULE_DIR
+
+        class_path = '%s.kt' % uc.CLASS_NAME
+        mock_build.return_value = uc.CLASS_BUILD_TARGETS
+        unittest_utils.assert_equal_testinfos(
+            self, uc.CLASS_INFO, self.mod_finder.find_test_by_path(class_path))
+
         class_path = '%s.java' % uc.CLASS_NAME
         mock_build.return_value = uc.CLASS_BUILD_TARGETS
         unittest_utils.assert_equal_testinfos(
@@ -526,6 +532,10 @@ class ModuleFinderUnittests(unittest.TestCase):
         mock_is_auto_gen.return_value = False
         self.assertTrue(self.mod_finder._has_test_config(mod_info))
         self.assertFalse(self.mod_finder._has_test_config({}))
+        # Validate the case with MODULE_TEST_CONFIG be set
+        mod_info2 = {constants.MODULE_PATH:[uc.TEST_CONFIG_DATA_DIR],
+                     constants.MODULE_TEST_CONFIG:[os.path.join(uc.TEST_CONFIG_DATA_DIR, "a.xml")]}
+        self.assertTrue(self.mod_finder._has_test_config(mod_info2))
 
     @mock.patch.object(module_finder.ModuleFinder, '_has_test_config',
                        return_value=True)

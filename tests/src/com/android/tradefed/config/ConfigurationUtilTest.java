@@ -20,7 +20,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.command.CommandScheduler;
 import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.util.FileUtil;
@@ -184,37 +183,43 @@ public class ConfigurationUtilTest {
     }
 
     /**
-     * Test {@link ConfigurationUtil#getConfigNamesFileFromDirs(String, List, List, boolean)} can
-     * search for file in directories based on patterns and chooses the right duplicate based on
-     * prioritizeHostConfig.
+     * Test {@link ConfigurationUtil#getConfigNamesFileFromDirs(String, List, List)} can search for
+     * file in directories based on patterns and chooses the right duplicate based on the order of
+     * the configuration.
      */
     @Test
     public void testGetConfigNamesFromDirs_prioritizeHostConfig() throws Exception {
         File tmpDir = null;
         try {
             tmpDir = FileUtil.createTempDir("tests_dir");
-            File targetDir =
-                    new File(tmpDir.getAbsolutePath() + "/" + BuildInfoFileKey.TARGET_LINKED_DIR);
+            File targetDir = new File(tmpDir.getAbsolutePath() + "/target/testcases/");
             targetDir.mkdirs();
             File targetConfig = new File(targetDir, "test.config");
             new FileOutputStream(targetConfig).close();
-            File hostDir =
-                    new File(tmpDir.getAbsolutePath() + "/" + BuildInfoFileKey.HOST_LINKED_DIR);
+            File hostDir = new File(tmpDir.getAbsolutePath() + "/host/testcases/");
             hostDir.mkdirs();
             File hostConfig = new File(hostDir, "test.config");
             new FileOutputStream(hostConfig).close();
             List<String> patterns = new ArrayList<>();
             patterns.add(".*.config.*");
+
+            List<File> targetFirst = new ArrayList<>();
+            targetFirst.add(targetDir);
+            targetFirst.add(hostDir);
+            targetFirst.add(tmpDir);
+
+            List<File> hostFirst = new ArrayList<>();
+            hostFirst.add(hostDir);
+            hostFirst.add(targetDir);
+            hostFirst.add(tmpDir);
+
             // Do not prioritize the host config.
             Set<File> configs =
-                    ConfigurationUtil.getConfigNamesFileFromDirs(
-                            null, Arrays.asList(tmpDir), patterns, false);
+                    ConfigurationUtil.getConfigNamesFileFromDirs(null, targetFirst, patterns);
             assertEquals(1, configs.size());
             assertTrue(configs.contains(targetConfig));
             // Prioritize the host config.
-            configs =
-                    ConfigurationUtil.getConfigNamesFileFromDirs(
-                            null, Arrays.asList(tmpDir), patterns, true);
+            configs = ConfigurationUtil.getConfigNamesFileFromDirs(null, hostFirst, patterns);
             assertEquals(1, configs.size());
             assertTrue(configs.contains(hostConfig));
 
@@ -223,7 +228,7 @@ public class ConfigurationUtilTest {
             FileUtil.recursiveDelete(hostDir);
             configs =
                     ConfigurationUtil.getConfigNamesFileFromDirs(
-                            null, Arrays.asList(tmpDir), patterns, true);
+                            null, Arrays.asList(tmpDir), patterns);
             assertEquals(1, configs.size());
             assertTrue(configs.contains(targetConfig));
 

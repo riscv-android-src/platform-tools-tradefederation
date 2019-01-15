@@ -31,5 +31,16 @@ public interface IReportNotExecuted {
      *
      * @param listener the main listener where to report the non-executed results.
      */
-    public void reportNotExecuted(ITestInvocationListener listener);
+    public default void reportNotExecuted(ITestInvocationListener listener) {}
+
+    /**
+     * Report the non-executed tests to the main listener provided. They should be reported as
+     * failed with the {@link #NOT_EXECUTED_FAILURE} message.
+     *
+     * @param listener the main listener where to report the non-executed results.
+     * @param message the message to be associated with the non-executed failure.
+     */
+    public default void reportNotExecuted(ITestInvocationListener listener, String message) {
+        reportNotExecuted(listener);
+    }
 }

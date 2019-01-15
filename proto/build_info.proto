@@ -52,4 +52,6 @@ message BuildInfo {
   // The type of the IBuildInfo instance.
   // For example: com.android.tradefed.build.BuildInfo
   string build_info_class = 6;
+  // Whether or not the build info represents a test resource.
+  bool is_test_resource = 7;
 }

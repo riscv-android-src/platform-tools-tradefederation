@@ -16,8 +16,12 @@
 package com.android.tradefed.result.proto;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
+import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationDescriptor;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -27,6 +31,7 @@ import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.easymock.Capture;
@@ -36,11 +41,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.io.File;
 import java.util.HashMap;
 
 /** Unit tests for {@link ProtoResultParser}. */
 @RunWith(JUnit4.class)
 public class ProtoResultParserTest {
+
+    private static final String TEST_KEY = "late-attribute";
 
     private ProtoResultParser mParser;
     private ILogSaverListener mMockListener;
@@ -54,6 +62,8 @@ public class ProtoResultParserTest {
         public void processStartInvocation(
                 TestRecord invocationStartRecord, IInvocationContext context) {
             mParser.processNewProto(invocationStartRecord);
+            // After context was proto-ified once add an attribute
+            context.getBuildInfos().get(0).addBuildAttribute(TEST_KEY, "build_value");
         }
 
         @Override
@@ -107,6 +117,10 @@ public class ProtoResultParserTest {
         mFinalTestParser = new FinalTestProtoParser();
         mInvocationContext = new InvocationContext();
         mInvocationContext.setConfigurationDescriptor(new ConfigurationDescriptor());
+        BuildInfo info = new BuildInfo();
+        mInvocationContext.addAllocatedDevice(
+                ConfigurationDef.DEFAULT_DEVICE_NAME, EasyMock.createMock(ITestDevice.class));
+        mInvocationContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, info);
     }
 
     @Test
@@ -116,6 +130,7 @@ public class ProtoResultParserTest {
         HashMap<String, Metric> metrics = new HashMap<String, Metric>();
         metrics.put("metric1", TfMetricProtoUtil.stringToMetric("value1"));
         LogFile logFile = new LogFile("path", "url", false, LogDataType.TEXT, 5);
+        Throwable failure = new RuntimeException("invoc failure");
         Capture<LogFile> capture = new Capture<>();
 
         // Verify Mocks
@@ -128,13 +143,17 @@ public class ProtoResultParserTest {
 
         mMockListener.testStarted(test2, 11L);
         mMockListener.testFailed(test2, "I failed");
-        mMockListener.logAssociation(EasyMock.eq("log1"), EasyMock.capture(capture));
+        mMockListener.logAssociation(EasyMock.eq("subprocess-log1"), EasyMock.capture(capture));
         mMockListener.testEnded(test2, 60L, metrics);
-        mMockListener.logAssociation(EasyMock.eq("run_log1"), EasyMock.anyObject());
+        mMockListener.logAssociation(EasyMock.eq("subprocess-run_log1"), EasyMock.anyObject());
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.logAssociation(EasyMock.eq("subprocess-module_log1"), EasyMock.anyObject());
         mMockListener.testModuleEnded();
-
+        mMockListener.logAssociation(
+                EasyMock.eq("subprocess-invocation_log1"), EasyMock.anyObject());
+        // Invocation failure is replayed
+        mMockListener.invocationFailed(EasyMock.anyObject());
         mMockListener.invocationEnded(500L);
 
         EasyMock.replay(mMockListener);
@@ -153,13 +172,19 @@ public class ProtoResultParserTest {
         mTestParser.logAssociation("log1", logFile);
 
         mTestParser.testEnded(test2, 60L, metrics);
+
+        mTestParser.invocationFailed(failure);
         // run log
         mTestParser.logAssociation(
                 "run_log1", new LogFile("path", "url", false, LogDataType.LOGCAT, 5));
         mTestParser.testRunEnded(50L, new HashMap<String, Metric>());
 
+        mTestParser.logAssociation(
+                "module_log1", new LogFile("path", "url", false, LogDataType.LOGCAT, 5));
         mTestParser.testModuleEnded();
 
+        mTestParser.logAssociation(
+                "invocation_log1", new LogFile("path", "url", false, LogDataType.LOGCAT, 5));
         // Invocation ends
         mTestParser.invocationEnded(500L);
         EasyMock.verify(mMockListener);
@@ -170,6 +195,12 @@ public class ProtoResultParserTest {
         assertEquals(logFile.getUrl(), capturedFile.getUrl());
         assertEquals(logFile.getType(), capturedFile.getType());
         assertEquals(logFile.getSize(), capturedFile.getSize());
+
+        // Check Context
+        assertNotNull(mParser.getInvocationContext());
+        IInvocationContext context = mParser.getInvocationContext();
+        assertEquals(
+                "build_value", context.getBuildInfos().get(0).getBuildAttributes().get(TEST_KEY));
     }
 
     /** Test that a run failure occurring inside a test case pair is handled properly. */
@@ -186,7 +217,7 @@ public class ProtoResultParserTest {
 
         mMockListener.testRunFailed("run failure");
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         mMockListener.invocationEnded(500L);
 
@@ -225,11 +256,11 @@ public class ProtoResultParserTest {
 
         mMockListener.testStarted(test2, 11L);
         mMockListener.testFailed(test2, "I failed");
-        mMockListener.logAssociation(EasyMock.eq("log1"), EasyMock.anyObject());
+        mMockListener.logAssociation(EasyMock.eq("subprocess-log1"), EasyMock.anyObject());
         mMockListener.testEnded(test2, 60L, metrics);
-        mMockListener.logAssociation(EasyMock.eq("run_log1"), EasyMock.anyObject());
+        mMockListener.logAssociation(EasyMock.eq("subprocess-run_log1"), EasyMock.anyObject());
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         mMockListener.testModuleEnded();
 
         mMockListener.invocationEnded(500L);
@@ -276,7 +307,7 @@ public class ProtoResultParserTest {
 
         mMockListener.testRunFailed("run failure");
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         mMockListener.invocationEnded(500L);
 
@@ -314,13 +345,13 @@ public class ProtoResultParserTest {
 
         mMockListener.testRunFailed("run failure");
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         mMockListener.testRunStarted("run1", 1, 1);
         mMockListener.testStarted(test1, 5L);
         mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         mMockListener.invocationEnded(500L);
 
@@ -341,6 +372,107 @@ public class ProtoResultParserTest {
         // Invocation ends
         mTestParser.invocationEnded(500L);
         EasyMock.verify(mMockListener);
+    }
+
+    /**
+     * Test a subprocess situation where invocation start/end is not called again in the parent
+     * process.
+     */
+    @Test
+    public void testEvents_subprocess() throws Exception {
+        // In subprocess, we do not report invocationStart/end again
+        mParser = new ProtoResultParser(mMockListener, false);
+
+        TestDescription test1 = new TestDescription("class1", "test1");
+        TestDescription test2 = new TestDescription("class1", "test2");
+        HashMap<String, Metric> metrics = new HashMap<String, Metric>();
+        metrics.put("metric1", TfMetricProtoUtil.stringToMetric("value1"));
+        LogFile logFile = new LogFile("path", "url", false, LogDataType.TEXT, 5);
+        Capture<LogFile> capture = new Capture<>();
+
+        // Verify Mocks - No Invocation Start and End
+        mMockListener.testModuleStarted(EasyMock.anyObject());
+        mMockListener.testRunStarted("run1", 2);
+        mMockListener.testStarted(test1, 5L);
+        mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
+
+        mMockListener.testStarted(test2, 11L);
+        mMockListener.testFailed(test2, "I failed");
+        mMockListener.logAssociation(EasyMock.eq("subprocess-log1"), EasyMock.capture(capture));
+        mMockListener.testEnded(test2, 60L, metrics);
+        mMockListener.logAssociation(EasyMock.eq("subprocess-run_log1"), EasyMock.anyObject());
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.logAssociation(EasyMock.eq("subprocess-module_log1"), EasyMock.anyObject());
+        mMockListener.testModuleEnded();
+        mMockListener.logAssociation(
+                EasyMock.eq("subprocess-invocation_log1"), EasyMock.anyObject());
+        mMockListener.testLog(
+                EasyMock.eq("subprocess-host_log"),
+                EasyMock.eq(LogDataType.TEXT),
+                EasyMock.anyObject());
+        mMockListener.testLog(
+                EasyMock.eq("subprocess-host_log_zip"),
+                EasyMock.eq(LogDataType.ZIP),
+                EasyMock.anyObject());
+
+        EasyMock.replay(mMockListener);
+        // Invocation start
+        mTestParser.invocationStarted(mInvocationContext);
+        // Run modules
+        mTestParser.testModuleStarted(createModuleContext("arm64 module1"));
+        mTestParser.testRunStarted("run1", 2);
+
+        mTestParser.testStarted(test1, 5L);
+        mTestParser.testEnded(test1, 10L, new HashMap<String, Metric>());
+
+        mTestParser.testStarted(test2, 11L);
+        mTestParser.testFailed(test2, "I failed");
+        // test log
+        mTestParser.logAssociation("log1", logFile);
+
+        mTestParser.testEnded(test2, 60L, metrics);
+        // run log
+        mTestParser.logAssociation(
+                "run_log1", new LogFile("path", "url", false, LogDataType.LOGCAT, 5));
+        mTestParser.testRunEnded(50L, new HashMap<String, Metric>());
+
+        mTestParser.logAssociation(
+                "module_log1", new LogFile("path", "url", false, LogDataType.LOGCAT, 5));
+        mTestParser.testModuleEnded();
+
+        mTestParser.logAssociation(
+                "invocation_log1", new LogFile("path", "url", false, LogDataType.LOGCAT, 5));
+        File tmpLogFile = FileUtil.createTempFile("host_log", ".txt");
+        File tmpZipLogFile = FileUtil.createTempFile("zip_host_log", ".zip");
+        try {
+            mTestParser.logAssociation(
+                    "host_log",
+                    new LogFile(tmpLogFile.getAbsolutePath(), "", false, LogDataType.TEXT, 5));
+            mTestParser.logAssociation(
+                    "host_log_zip",
+                    new LogFile(tmpZipLogFile.getAbsolutePath(), "", false, LogDataType.TEXT, 5));
+            // Invocation ends
+            mTestParser.invocationEnded(500L);
+            EasyMock.verify(mMockListener);
+
+            // Check capture
+            LogFile capturedFile = capture.getValue();
+            assertEquals(logFile.getPath(), capturedFile.getPath());
+            assertEquals(logFile.getUrl(), capturedFile.getUrl());
+            assertEquals(logFile.getType(), capturedFile.getType());
+            assertEquals(logFile.getSize(), capturedFile.getSize());
+
+            // Check Context
+            assertNotNull(mParser.getInvocationContext());
+            IInvocationContext context = mParser.getInvocationContext();
+            assertEquals(
+                    "build_value",
+                    context.getBuildInfos().get(0).getBuildAttributes().get(TEST_KEY));
+        } finally {
+            FileUtil.deleteFile(tmpLogFile);
+            FileUtil.deleteFile(tmpZipLogFile);
+        }
     }
 
     /** Helper to create a module context. */

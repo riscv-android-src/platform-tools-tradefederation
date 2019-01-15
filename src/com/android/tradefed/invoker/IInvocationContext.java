@@ -34,10 +34,16 @@ import java.util.Map;
  */
 public interface IInvocationContext extends Serializable {
 
+    /** Key used for storing associated invocation ID. */
+    public static final String INVOCATION_ID = "invocation-id";
+
     public enum TimingEvent {
         FETCH_BUILD,
         SETUP;
     }
+
+    /** @return associated invocation ID or {@code null} if not linked to an invocation */
+    public String getInvocationId();
 
     /**
      * Return the number of devices allocated for the invocation.
@@ -102,6 +108,12 @@ public interface IInvocationContext extends Serializable {
      * Returns null, if ITestDevice cannot be matched.
      */
     public String getDeviceName(ITestDevice device);
+
+    /**
+     * Returns the name of device set in the xml configuration from the {@link IBuildInfo}. Returns
+     * null if the IBuildInfo cannot be matched
+     */
+    public String getBuildInfoName(IBuildInfo info);
 
     /**
      * Return the {@link IBuildInfo} associated with the device configuration name provided. Returns

@@ -209,6 +209,23 @@ public class GTest extends GTestBase implements IDeviceTest {
         testDevice.executeShellCommand(String.format("rm %s", tmpFileDevice));
     }
 
+    @Override
+    protected String getGTestCmdLine(String fullPath, String flags) {
+        StringBuilder sb = new StringBuilder();
+        // When sharding a device GTest, add args to the command line
+        if (getShardCount() > 0) {
+            if (isCollectTestsOnly()) {
+                CLog.w(
+                        "--collect-tests-only option ignores sharding parameters, and will cause "
+                                + "each shard to collect all tests.");
+            }
+            sb.append(String.format("GTEST_SHARD_INDEX=%s ", getShardIndex()));
+            sb.append(String.format("GTEST_TOTAL_SHARDS=%s ", getShardCount()));
+        }
+        sb.append(super.getGTestCmdLine(fullPath, flags));
+        return sb.toString();
+    }
+
     /**
      * Run the given gtest binary
      *
@@ -226,7 +243,7 @@ public class GTest extends GTestBase implements IDeviceTest {
                 testDevice.executeShellCommand(cmd);
             }
 
-            if (mRebootBeforeTest) {
+            if (mRebootBeforeTest && !isCollectTestsOnly()) {
                 CLog.d("Rebooting device before test starts as requested.");
                 testDevice.reboot();
             }

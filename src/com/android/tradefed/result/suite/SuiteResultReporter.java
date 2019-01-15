@@ -66,7 +66,6 @@ public class SuiteResultReporter extends CollectingTestListener {
     private long mTotalRetryTime = 0L;
     private Map<String, Long> mModuleRetryTime = new LinkedHashMap<>();
 
-    private Map<String, Integer> mModuleExpectedTests = new HashMap<>();
     private Map<String, String> mFailedModule = new HashMap<>();
     // Map holding the preparation time for each Module.
     private Map<String, ModulePrepTimes> mPreparationMap = new HashMap<>();
@@ -100,17 +99,6 @@ public class SuiteResultReporter extends CollectingTestListener {
         }
     }
 
-    @Override
-    public void testRunStarted(String name, int numTests) {
-        super.testRunStarted(name, numTests);
-        // TODO: When TestRunResult Track expected number of tests, use it instead.
-        if (mModuleExpectedTests.get(name) == null) {
-            mModuleExpectedTests.put(name, numTests);
-        } else if (mModuleExpectedTests.get(name) == 0L) {
-            mModuleExpectedTests.put(name, mModuleExpectedTests.get(name) + numTests);
-        }
-    }
-
     /** Helper to remove the module checker results from the final list of real module results. */
     private List<TestRunResult> extractModuleCheckers(Collection<TestRunResult> results) {
         List<TestRunResult> moduleCheckers = new ArrayList<TestRunResult>();
@@ -141,7 +129,7 @@ public class SuiteResultReporter extends CollectingTestListener {
             } else {
                 mFailedModule.put(moduleResult.getName(), moduleResult.getRunFailureMessage());
             }
-            mTotalTests += mModuleExpectedTests.get(moduleResult.getName());
+            mTotalTests += moduleResult.getExpectedTestCount();
             mPassedTests += moduleResult.getNumTestsInState(TestStatus.PASSED);
             mFailedTests += moduleResult.getNumAllFailedTests();
             mSkippedTests += moduleResult.getNumTestsInState(TestStatus.IGNORED);

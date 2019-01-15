@@ -31,34 +31,58 @@ fi
 fetch_testable_modules() {
     [ -z $ANDROID_PRODUCT_OUT ] && { exit 0; }
     $PYTHON - << END
+import hashlib
 import json
 import os
+import pickle
 import sys
 
 modules = set()
 module_info = os.path.join(os.environ["ANDROID_PRODUCT_OUT"] ,"module-info.json")
 
-if os.path.isfile(module_info):
-    json_data = json.load(open(module_info, 'r'))
+def get_serialised_filename(mod_info):
+    """Determine the serialised filename used for reading testable modules.
 
+    mod_info: the path of module-info.json.
+
+    Returns: a path string hashed with md5 of module-info.json.
+            /dev/shm/atest_e89e37a2e8e45be71567520b8579ffb8 (Linux)
+            /tmp/atest_e89e37a2e8e45be71567520b8579ffb8     (MacOSX)
+    """
+    serial_filename = "/tmp/atest_" if sys.platform == "darwin" else "/dev/shm/atest_"
+    with open(mod_info, 'r') as mod_info_obj:
+        serial_filename += hashlib.md5(mod_info_obj.read().encode('utf-8')).hexdigest()
+    return serial_filename
+
+def create_json_data(mod_info):
+    with open(mod_info, 'r') as mod_info_obj:
+        return json.load(mod_info_obj)
+
+def create_serialised_file(serial_file):
+    # TODO: logic below will be abandoned and utilise test_finder_utils.py
+    # after aosp/736172 merged (b/112904944).
     '''
-    Testable module names can be found via either condition:
-    1. auto_test_config == True
-    2. AndroidTest.xml in the "path"
+    Testable module names can be found by fulfilling both conditions:
+    1. module_name == value['module_name']
+    2. test_config has value OR auto_test_config has value
     '''
-    for module_name, value in json_data.items():
-        if value['auto_test_config']:
+    for module_name, value in create_json_data(module_info).items():
+        if module_name != value.get("module_name", ""):
+            continue
+        elif value.get("auto_test_config") or value.get("test_config"):
             modules.add(module_name)
-        else:
-           for path in value['path']:
-               test_xml = os.path.join(os.environ["ANDROID_BUILD_TOP"], path, "AndroidTest.xml")
-               if os.path.isfile(test_xml):
-                   modules.add(module_name)
-                   break
+    print("\n".join(modules))
+    with open(serial_file, 'wb') as serial_file_obj:
+        pickle.dump(modules, serial_file_obj, protocol=2)
 
-    for module in modules:
-        print(module)
-
+if os.path.isfile(module_info):
+    latest_serial_file = get_serialised_filename(module_info)
+    # When module-info.json changes, recreate a serialisation file.
+    if not os.path.exists(latest_serial_file):
+        create_serialised_file(latest_serial_file)
+    else:
+        with open(latest_serial_file, 'rb') as serial_file_obj:
+            print("\n".join(pickle.load(serial_file_obj)))
 else:
     print("")
 END
@@ -79,8 +103,7 @@ import atest_arg_parser
 
 parser = atest_arg_parser.AtestArgParser()
 parser.add_atest_args()
-for arg in parser.get_args():
-    print(arg)
+print("\n".join(parser.get_args()))
 END
 }
 
@@ -94,6 +117,8 @@ _atest() {
         -*)
             COMPREPLY=($(compgen -W "$(fetch_atest_args)" -- $current_word))
             ;;
+        */*)
+            ;;
         *)
             local candidate_args=$(ls; fetch_testable_modules)
             COMPREPLY=($(compgen -W "$candidate_args" -- $current_word))
@@ -102,4 +127,9 @@ _atest() {
     return 0
 }
 
+# Complete file/dir name first by using option "nosort".
+# BASH version <= 4.3 doesn't have nosort option.
+# Note that nosort has no effect for zsh.
+comp_options="-o default -o nosort"
+complete -F _atest $comp_options atest 2>/dev/null || \
 complete -F _atest -o default atest

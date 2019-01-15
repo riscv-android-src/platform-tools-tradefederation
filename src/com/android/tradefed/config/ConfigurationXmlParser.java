@@ -70,6 +70,7 @@ class ConfigurationXmlParser {
 
         // State-holding members
         private String mCurrentConfigObject;
+        private String mCurrentObjectType;
         private String mCurrentDeviceObject;
         private List<String> mListDevice = new ArrayList<String>();
         private List<String> mOutsideTag = new ArrayList<String>();
@@ -135,6 +136,7 @@ class ConfigurationXmlParser {
                 mCurrentDeviceObject = deviceName;
                 addObject(localName, attributes);
             } else if (Configuration.isBuiltInObjType(localName)) {
+                mCurrentObjectType = localName;
                 // tag is a built in local config object
                 if (isLocalConfig == null) {
                     isLocalConfig = true;
@@ -142,6 +144,13 @@ class ConfigurationXmlParser {
                     throwException(String.format(
                             "Attempted to specify local object '%s' for global config!",
                             localName));
+                }
+                // Prevent a TF object from being inside another one
+                if (mCurrentConfigObject != null) {
+                    throwException(
+                            String.format(
+                                    "Declared '%s' object inside %s is not valid.",
+                                    localName, mCurrentConfigObject));
                 }
 
                 if (mCurrentDeviceObject == null &&
@@ -195,7 +204,8 @@ class ConfigurationXmlParser {
                     // preprend the device name in extra if inside a device config object.
                     optionName = String.format("{%s}%s", mCurrentDeviceObject, optionName);
                 }
-                mConfigDef.addOptionDef(optionName, optionKey, optionValue, mName);
+                mConfigDef.addOptionDef(
+                        optionName, optionKey, optionValue, mName, mCurrentObjectType);
             } else if (CONFIG_TAG.equals(localName)) {
                 String description = attributes.getValue("description");
                 if (description != null) {
@@ -268,6 +278,9 @@ class ConfigurationXmlParser {
             if (DEVICE_TAG.equals(localName) && !mInsideParentDeviceTag) {
                 // Only unset if it was not the parent device tag.
                 mCurrentDeviceObject = null;
+            }
+            if (mCurrentObjectType != null && mCurrentObjectType.equals(localName)) {
+                mCurrentObjectType = null;
             }
         }
 
@@ -390,7 +403,7 @@ class ConfigurationXmlParser {
                         .stream()
                         .filter(value -> (value == true))
                         .collect(Collectors.counting());
-        if (numNonDut > 0 && numDut == 1) {
+        if (numNonDut > 0 && numDut <= 1) {
             // If we only have one DUT device and the rest are non-DUT devices. We need to consider
             // this has an hybrid use case since there is technically only one device. So we cannot
             // validate yet if objects are allowed to be outside <device> tags, it will be validated

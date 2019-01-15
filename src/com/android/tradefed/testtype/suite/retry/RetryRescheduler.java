@@ -22,17 +22,19 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
+import com.android.tradefed.log.FileLogger;
+import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.result.TextResultReporter;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
-import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.BaseTestSuite;
 import com.android.tradefed.testtype.suite.SuiteTestFilter;
@@ -43,7 +45,10 @@ import com.google.inject.Inject;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -54,8 +59,7 @@ import java.util.Set;
  * <p>TODO: Ensure a configuration should not have several of that runner. Consider having this
  * configuration built-in TF.
  */
-public final class RetryRescheduler
-        implements IRemoteTest, IConfigurationReceiver, IInvocationContextReceiver {
+public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiver {
 
     /** The types of the tests that can be retried. */
     public enum RetryType {
@@ -70,13 +74,25 @@ public final class RetryRescheduler
                             + "and \"not_executed\".")
     private RetryType mRetryType = null;
 
+    /**
+     * It's possible to add extra exclusion from the rerun. But these tests will not change their
+     * state.
+     */
+    @Option(
+        name = BaseTestSuite.EXCLUDE_FILTER_OPTION,
+        description = "the exclude module filters to apply.",
+        importance = Importance.ALWAYS
+    )
+    private Set<String> mExcludeFilters = new HashSet<>();
+
     public static final String PREVIOUS_LOADER_NAME = "previous_loader";
 
     private IConfiguration mConfiguration;
-    private IInvocationContext mContext;
     private IRescheduler mRescheduler;
 
     private IConfigurationFactory mFactory;
+
+    private IConfiguration mRescheduledConfiguration;
 
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
@@ -95,12 +111,10 @@ public final class RetryRescheduler
                             loader.getClass().getCanonicalName(),
                             ITestSuiteResultLoader.class.getCanonicalName()));
         }
-        if (mRescheduler == null) {
-            throw new RuntimeException("Failed to find the injected Rescheduler.");
-        }
+
         ITestSuiteResultLoader previousLoader = (ITestSuiteResultLoader) loader;
         // First init the reloader.
-        previousLoader.init(mContext.getDevices());
+        previousLoader.init();
         // Then get the command line of the previous run
         String commandLine = previousLoader.getCommandLine();
         IConfiguration originalConfig;
@@ -109,9 +123,26 @@ public final class RetryRescheduler
                     getFactory()
                             .createConfigurationFromArgs(
                                     QuotationAwareTokenizer.tokenizeLine(commandLine));
-            // Unset the sharding options for the original command.
-            originalConfig.getCommandOptions().setShardCount(null);
-            originalConfig.getCommandOptions().setShardIndex(null);
+            // Transfer the sharding options from the original command.
+            originalConfig
+                    .getCommandOptions()
+                    .setShardCount(mConfiguration.getCommandOptions().getShardCount());
+            originalConfig
+                    .getCommandOptions()
+                    .setShardIndex(mConfiguration.getCommandOptions().getShardIndex());
+            // TODO: Use serial from parent config
+            List<String> serials = mConfiguration.getDeviceRequirements().getSerials();
+            originalConfig.getDeviceRequirements().setSerial(serials.toArray(new String[0]));
+
+            // Transfer log level from retry to subconfig
+            ILeveledLogOutput originalLogger = originalConfig.getLogOutput();
+            originalLogger.setLogLevel(mConfiguration.getLogOutput().getLogLevel());
+            if (originalLogger instanceof FileLogger) {
+                ((FileLogger) originalLogger)
+                        .setLogLevelDisplay(mConfiguration.getLogOutput().getLogLevel());
+            }
+
+            handleExtraResultReporter(originalConfig, mConfiguration);
         } catch (ConfigurationException e) {
             throw new RuntimeException(e);
         }
@@ -119,6 +150,9 @@ public final class RetryRescheduler
         TestRecord previousRecord = previousLoader.loadPreviousRecord();
         CollectingTestListener collectedTests =
                 TestRecordInterpreter.interpreteRecord(previousRecord);
+
+        previousLoader.cleanUp();
+        previousRecord = null;
 
         // Appropriately update the configuration
         IRemoteTest test = originalConfig.getTests().get(0);
@@ -129,19 +163,19 @@ public final class RetryRescheduler
         BaseTestSuite suite = (BaseTestSuite) test;
         ResultsPlayer replayer = new ResultsPlayer();
         updateRunner(suite, collectedTests, replayer);
+        collectedTests = null;
         updateConfiguration(originalConfig, replayer);
-        // FIXME: This ensure that the retry rescheduler is run against the same device as the
-        // rescheduled invocation. This does not work for multi-devices.
-        originalConfig
-                .getDeviceRequirements()
-                .setSerial(mContext.getSerials().toArray(new String[0]));
+        // Do the customization of the configuration for specialized use cases.
+        customizeConfig(previousLoader, originalConfig);
 
-        // At the end, reschedule
-        // TODO(b/110265525): The rescheduling will be done inside the same invocation to avoid
-        // tracking issue from higher level components.
-        boolean res = mRescheduler.scheduleConfig(originalConfig);
-        if (!res) {
-            CLog.e("Something went wrong, failed to kick off the retry run.");
+        mRescheduledConfiguration = originalConfig;
+
+        if (mRescheduler != null) {
+            // At the end, reschedule if requested
+            boolean res = mRescheduler.scheduleConfig(originalConfig);
+            if (!res) {
+                CLog.e("Something went wrong, failed to kick off the retry run.");
+            }
         }
     }
 
@@ -155,11 +189,6 @@ public final class RetryRescheduler
         mConfiguration = configuration;
     }
 
-    @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
-    }
-
     private IConfigurationFactory getFactory() {
         if (mFactory != null) {
             return mFactory;
@@ -170,6 +199,11 @@ public final class RetryRescheduler
     @VisibleForTesting
     void setConfigurationFactory(IConfigurationFactory factory) {
         mFactory = factory;
+    }
+
+    /** Returns the {@link IConfiguration} that should be retried. */
+    public final IConfiguration getRetryConfiguration() {
+        return mRescheduledConfiguration;
     }
 
     /**
@@ -190,19 +224,56 @@ public final class RetryRescheduler
         }
         // Prepare exclusion filters
         for (TestRunResult moduleResult : results.getMergedTestRunResults()) {
-            if (RetryResultHelper.shouldRunModule(moduleResult, types)) {
+            // If the module is explicitly excluded from retries, preserve the original results.
+            if (!mExcludeFilters.contains(moduleResult.getName())
+                    && RetryResultHelper.shouldRunModule(moduleResult, types)) {
+                if (types.contains(RetryType.NOT_EXECUTED)) {
+                    // Clear the run failure since we are attempting to rerun all non-executed
+                    moduleResult.testRunFailed(null);
+                }
+
+                Map<TestDescription, TestResult> parameterizedMethods = new LinkedHashMap<>();
+
                 for (Entry<TestDescription, TestResult> result :
                         moduleResult.getTestResults().entrySet()) {
-                    if (types.contains(RetryType.NOT_EXECUTED)) {
-                        // Clear the run failure since we are attempting to rerun all non-executed
-                        moduleResult.testRunFailed(null);
+                    // Put aside all parameterized methods
+                    if (isParameterized(result.getKey())) {
+                        parameterizedMethods.put(result.getKey(), result.getValue());
+                        continue;
                     }
                     if (!RetryResultHelper.shouldRunTest(result.getValue(), types)) {
-                        addExcludeToConfig(suite, moduleResult, result.getKey());
+                        addExcludeToConfig(suite, moduleResult, result.getKey().toString());
                         replayer.addToReplay(
                                 results.getModuleContextForRunResult(moduleResult.getName()),
                                 moduleResult,
                                 result);
+                    }
+                }
+
+                // Handle parameterized methods
+                for (Entry<String, Map<TestDescription, TestResult>> subMap :
+                        sortMethodToClass(parameterizedMethods).entrySet()) {
+                    boolean shouldNotrerunAnything =
+                            subMap.getValue()
+                                    .entrySet()
+                                    .stream()
+                                    .noneMatch(
+                                            (v) ->
+                                                    RetryResultHelper.shouldRunTest(
+                                                                    v.getValue(), types)
+                                                            == true);
+                    // If None of the base method need to be rerun exclude it
+                    if (shouldNotrerunAnything) {
+                        // Exclude the base method
+                        addExcludeToConfig(suite, moduleResult, subMap.getKey());
+                        // Replay all test cases
+                        for (Entry<TestDescription, TestResult> result :
+                                subMap.getValue().entrySet()) {
+                            replayer.addToReplay(
+                                    results.getModuleContextForRunResult(moduleResult.getName()),
+                                    moduleResult,
+                                    result);
+                        }
                     }
                 }
             } else {
@@ -226,16 +297,64 @@ public final class RetryRescheduler
         config.setTests(newList);
     }
 
+    /** Allow the specialized loader to customize the config before re-running it. */
+    private void customizeConfig(ITestSuiteResultLoader loader, IConfiguration originalConfig) {
+        loader.customizeConfiguration(originalConfig);
+    }
+
     /** Add the filter to the suite. */
     private void addExcludeToConfig(
-            BaseTestSuite suite, TestRunResult moduleResult, TestDescription testDescription) {
+            BaseTestSuite suite, TestRunResult moduleResult, String testDescription) {
         String filter = moduleResult.getName();
         if (testDescription != null) {
-            filter = String.format("%s %s", filter, testDescription.toString());
+            filter = String.format("%s %s", filter, testDescription);
         }
         SuiteTestFilter testFilter = SuiteTestFilter.createFrom(filter);
-        Set<String> excludeFilter = new HashSet<>();
+        Set<String> excludeFilter = new LinkedHashSet<>();
         excludeFilter.add(testFilter.toString());
         suite.setExcludeFilter(excludeFilter);
+    }
+
+    /** Returns True if a test case is a parameterized one. */
+    private boolean isParameterized(TestDescription description) {
+        return !description.getTestName().equals(description.getTestNameWithoutParams());
+    }
+
+    private Map<String, Map<TestDescription, TestResult>> sortMethodToClass(
+            Map<TestDescription, TestResult> paramMethods) {
+        Map<String, Map<TestDescription, TestResult>> returnMap = new LinkedHashMap<>();
+        for (Entry<TestDescription, TestResult> entry : paramMethods.entrySet()) {
+            String noParamName =
+                    String.format(
+                            "%s#%s",
+                            entry.getKey().getClassName(),
+                            entry.getKey().getTestNameWithoutParams());
+            Map<TestDescription, TestResult> forClass = returnMap.get(noParamName);
+            if (forClass == null) {
+                forClass = new LinkedHashMap<>();
+                returnMap.put(noParamName, forClass);
+            }
+            forClass.put(entry.getKey(), entry.getValue());
+        }
+        return returnMap;
+    }
+
+    /**
+     * Fetch additional result_reporter from the retry configuration and add them to the original
+     * command. This is the only allowed modification of the original command: add more result
+     * end-points.
+     */
+    private void handleExtraResultReporter(
+            IConfiguration originalConfig, IConfiguration retryConfig) {
+        // Since we always have 1 default reporter, avoid carrying it for no reason. Only carry
+        // reporters if some actual ones were specified.
+        if (retryConfig.getTestInvocationListeners().size() == 1
+                && (mConfiguration.getTestInvocationListeners().get(0)
+                        instanceof TextResultReporter)) {
+            return;
+        }
+        List<ITestInvocationListener> listeners = originalConfig.getTestInvocationListeners();
+        listeners.addAll(retryConfig.getTestInvocationListeners());
+        originalConfig.setTestInvocationListeners(listeners);
     }
 }

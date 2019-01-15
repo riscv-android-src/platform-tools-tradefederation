@@ -91,11 +91,9 @@ public class HostTest
                 IBuildReceiver,
                 IAbiReceiver,
                 IShardableTest,
-                IStrictShardableTest,
                 IRuntimeHintProvider,
                 IMultiDeviceTest,
                 IInvocationContextReceiver {
-
 
     @Option(name = "class", description = "The JUnit test classes to run, in the format "
             + "<package>.<class>. eg. \"com.android.foo.Bar\". This field can be repeated.",
@@ -120,7 +118,9 @@ public class HostTest
                     + "separated by colon \":\"; for example, if class under test supports "
                     + "\"--iteration 1\" from a command line, it should be passed in as"
                     + " \"--set-option iteration:1\" or \"--set-option iteration:key=value\" for "
-                    + "passing options to map; escaping of \":\" \"=\" is currently not supported";
+                    + "passing options to map; escaping of \":\" \"=\" is currently not supported."
+                    + "A particular class can be targetted by specifying it. "
+                    + "\" --set-option <fully qualified class>:<option name>:<option value>\"";
 
     @Option(name = SET_OPTION_NAME, description = SET_OPTION_DESC)
     private List<String> mKeyValueOptions = new ArrayList<>();
@@ -256,6 +256,8 @@ public class HostTest
      */
     @Override
     public void addIncludeFilter(String filter) {
+        // If filters change, reset test count so we recompute it next time it's requested.
+        mNumTestCases = -1;
         mFilterHelper.addIncludeFilter(filter);
     }
 
@@ -264,12 +266,14 @@ public class HostTest
      */
     @Override
     public void addAllIncludeFilters(Set<String> filters) {
+        mNumTestCases = -1;
         mFilterHelper.addAllIncludeFilters(filters);
     }
 
     /** {@inheritDoc} */
     @Override
     public void clearIncludeFilters() {
+        mNumTestCases = -1;
         mFilterHelper.clearIncludeFilters();
     }
 
@@ -278,19 +282,20 @@ public class HostTest
      */
     @Override
     public void addExcludeFilter(String filter) {
+        mNumTestCases = -1;
         mFilterHelper.addExcludeFilter(filter);
     }
 
     /** {@inheritDoc} */
     @Override
     public Set<String> getIncludeFilters() {
-        return mIncludeAnnotations;
+        return mFilterHelper.getIncludeFilters();
     }
 
     /** {@inheritDoc} */
     @Override
     public Set<String> getExcludeFilters() {
-        return mExcludeAnnotations;
+        return mFilterHelper.getExcludeFilters();
     }
 
     /**
@@ -298,12 +303,14 @@ public class HostTest
      */
     @Override
     public void addAllExcludeFilters(Set<String> filters) {
+        mNumTestCases = -1;
         mFilterHelper.addAllExcludeFilters(filters);
     }
 
     /** {@inheritDoc} */
     @Override
     public void clearExcludeFilters() {
+        mNumTestCases = -1;
         mFilterHelper.clearExcludeFilters();
     }
 
@@ -777,10 +784,16 @@ public class HostTest
     }
 
     protected final List<Class<?>> getClasses() throws IllegalArgumentException {
+        // Use a set to avoid repeat between filters and jar search
+        Set<String> classNames = new HashSet<>();
         List<Class<?>> classes = new ArrayList<>();
         for (String className : mClasses) {
+            if (classNames.contains(className)) {
+                continue;
+            }
             try {
                 classes.add(Class.forName(className, true, getClassLoader()));
+                classNames.add(className);
             } catch (ClassNotFoundException e) {
                 throw new IllegalArgumentException(String.format("Could not load Test class %s",
                         className), e);
@@ -804,6 +817,9 @@ public class HostTest
                         continue;
                     }
                     String className = getClassName(je.getName());
+                    if (classNames.contains(className)) {
+                        continue;
+                    }
                     try {
                         Class<?> cls = cl.loadClass(className);
                         int modifiers = cls.getModifiers();
@@ -816,6 +832,7 @@ public class HostTest
                                 && !Modifier.isInterface(modifiers)
                                 && !Modifier.isAbstract(modifiers)) {
                             classes.add(cls);
+                            classNames.add(className);
                         }
                     } catch (ClassNotFoundException cnfe) {
                         throw new IllegalArgumentException(
@@ -894,28 +911,45 @@ public class HostTest
                 OptionSetter setter = new OptionSetter(testObj);
                 for (String item : keyValueOptions) {
                     String[] fields = item.split(":");
-                    if (fields.length == 2) {
-                        if (fields[1].contains("=")) {
-                            String[] values = fields[1].split("=");
-                            if (values.length != 2) {
-                                throw new RuntimeException(
-                                        String.format(
-                                                "set-option provided '%s' format is invalid. Only one "
-                                                        + "'=' is allowed",
-                                                item));
-                            }
-                            setter.setOptionValue(fields[0], values[0], values[1]);
+                    if (fields.length == 3) {
+                        String target = fields[0];
+                        if (testObj.getClass().getName().equals(target)) {
+                            injectOption(setter, item, fields[1], fields[2]);
                         } else {
-                            setter.setOptionValue(fields[0], fields[1]);
+                            // TODO: We should track that all targeted option end up assigned
+                            // eventually.
+                            CLog.d(
+                                    "Targeted option %s is not applicable to %s",
+                                    item, testObj.getClass().getName());
                         }
+                    } else if (fields.length == 2) {
+                        injectOption(setter, item, fields[0], fields[1]);
                     } else {
                         throw new RuntimeException(
                                 String.format("invalid option spec \"%s\"", item));
                     }
                 }
             } catch (ConfigurationException ce) {
+                CLog.e(ce);
                 throw new RuntimeException("error passing options down to test class", ce);
             }
+        }
+    }
+
+    private static void injectOption(OptionSetter setter, String origItem, String key, String value)
+            throws ConfigurationException {
+        if (value.contains("=")) {
+            String[] values = value.split("=");
+            if (values.length != 2) {
+                throw new RuntimeException(
+                        String.format(
+                                "set-option provided '%s' format is invalid. Only one "
+                                        + "'=' is allowed",
+                                origItem));
+            }
+            setter.setOptionValue(key, values[0], values[1]);
+        } else {
+            setter.setOptionValue(key, value);
         }
     }
 
@@ -1081,66 +1115,6 @@ public class HostTest
         test.mJars = new HashSet<>();
         // Copy the abi if available
         test.setAbi(mAbi);
-        return test;
-    }
-
-    @Override
-    public IRemoteTest getTestShard(int shardCount, int shardIndex) {
-        List<Class<?>> classes = getClasses();
-        if (classes.isEmpty()) {
-            throw new IllegalArgumentException("Missing Test class name");
-        }
-        if (mMethodName != null && classes.size() > 1) {
-            throw new IllegalArgumentException("Method name given with multiple test classes");
-        }
-        HostTest test = createTestShard(shardCount, shardIndex);
-        // In case we don't have enough classes to shard, we return a Stub.
-        if (test == null) {
-            test = createHostTest(null);
-            test.mSkipTestClassCheck = true;
-            test.mClasses.clear();
-            test.mRuntimeHint = 0l;
-        } else {
-            int newCount = test.countTestCases();
-            int numTotalTestCases = countTestCases();
-            // In case of counting inconsistency we raise the issue. Should not happen if we are
-            // counting properly. Here as a security.
-            if (newCount > numTotalTestCases) {
-                throw new RuntimeException(
-                        "Tests count number after sharding is higher than initial count.");
-            }
-            // update the runtime hint on pro-rate of number of tests.
-            if (newCount == 0) {
-                // In case there is not tests left.
-                test.mRuntimeHint = 0L;
-            } else {
-                test.mRuntimeHint = (mRuntimeHint * newCount) / numTotalTestCases;
-            }
-        }
-        return test;
-    }
-
-    private HostTest createTestShard(int shardCount, int shardIndex) {
-        int i = 0;
-        HostTest test = null;
-        List<? extends Object> tests = shardUnitIsMethod() ? getTestMethods() : getClasses();
-        for (Object testObj : tests) {
-            Class<?> classObj = Class.class.isInstance(testObj) ? (Class<?>)testObj : null;
-            if (i % shardCount == shardIndex) {
-                if (test == null) {
-                    test = createHostTest(classObj);
-                }
-                if (classObj != null) {
-                    test.addClassName(classObj.getName());
-                } else {
-                    test.addTestMethod(testObj);
-                }
-                // Carry over non-annotation filters to shards.
-                test.addAllExcludeFilters(mFilterHelper.getExcludeFilters());
-                test.addAllIncludeFilters(mFilterHelper.getIncludeFilters());
-            }
-            i++;
-        }
         return test;
     }
 

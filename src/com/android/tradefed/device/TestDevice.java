@@ -80,6 +80,9 @@ public class TestDevice extends NativeDevice {
     static final String LIST_PACKAGES_CMD = "pm list packages -f";
     private static final Pattern PACKAGE_REGEX = Pattern.compile("package:(.*)=(.*)");
 
+    static final String LIST_APEXES_CMD = "pm list packages --apex-only --show-versioncode";
+    private static final Pattern APEXES_REGEX = Pattern.compile("package:(.*) versionCode:(.*)");
+
     private static final int FLAG_PRIMARY = 1; // From the UserInfo class
 
     private static final String[] SETTINGS_NAMESPACE = {"system", "secure", "global"};
@@ -103,6 +106,9 @@ public class TestDevice extends NativeDevice {
 
     private boolean mWasWifiHelperInstalled = false;
 
+    private static final String APEX_SUFFIX = ".apex";
+    private static final String APEX_ARG = "--apex";
+
     /**
      * @param device
      * @param stateMonitor
@@ -125,6 +131,10 @@ public class TestDevice extends NativeDevice {
     private String internalInstallPackage(
             final File packageFile, final boolean reinstall, final List<String> extraArgs)
                     throws DeviceNotAvailableException {
+        List<String> args = new ArrayList<>(extraArgs);
+        if (packageFile.getName().endsWith(APEX_SUFFIX)) {
+            args.add(APEX_ARG);
+        }
         // use array to store response, so it can be returned to caller
         final String[] response = new String[1];
         DeviceAction installAction =
@@ -141,7 +151,7 @@ public class TestDevice extends NativeDevice {
                                             INSTALL_TIMEOUT_MINUTES,
                                             INSTALL_TIMEOUT_TO_OUTPUT_MINUTES,
                                             TimeUnit.MINUTES,
-                                            extraArgs.toArray(new String[] {}));
+                                            args.toArray(new String[] {}));
                             if (receiver.isSuccessfullyCompleted()) {
                                 response[0] = null;
                             } else if (receiver.getErrorMessage() == null) {
@@ -153,7 +163,15 @@ public class TestDevice extends NativeDevice {
                                 response[0] = receiver.getErrorMessage();
                             }
                         } catch (InstallException e) {
-                            response[0] = e.getMessage();
+                            String message = e.getMessage();
+                            if (message == null) {
+                                message =
+                                        String.format(
+                                                "InstallException during package installation. "
+                                                        + "cause: %s",
+                                                StreamUtil.getStackTrace(e));
+                            }
+                            response[0] = message;
                         }
                         return response[0] == null;
                     }
@@ -280,7 +298,15 @@ public class TestDevice extends NativeDevice {
                                 response[0] = receiver.getErrorMessage();
                             }
                         } catch (InstallException e) {
-                            response[0] = e.getMessage();
+                            String message = e.getMessage();
+                            if (message == null) {
+                                message =
+                                        String.format(
+                                                "InstallException during package installation. "
+                                                        + "cause: %s",
+                                                StreamUtil.getStackTrace(e));
+                            }
+                            response[0] = message;
                         } finally {
                             getIDevice().removeRemotePackage(remotePackagePath);
                             getIDevice().removeRemotePackage(remoteCertPath);
@@ -312,6 +338,160 @@ public class TestDevice extends NativeDevice {
         performDeviceAction(String.format("uninstall %s", packageName), uninstallAction,
                 MAX_RETRY_ATTEMPTS);
         return response[0];
+    }
+
+    /**
+     * Core implementation for installing application with split apk files {@link
+     * IDevice#installPackages(String, boolean, String...)}
+     * See "https://developer.android.com/studio/build/configure-apk-splits" on how to split
+     * apk to several files.
+     *
+     * @param packageFiles the local apk files
+     * @param reinstall <code>true</code> if a reinstall should be performed
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
+     *     available options.
+     * @return the response from the installation <code>null</code> if installation succeeds.
+     * @throws DeviceNotAvailableException
+     */
+    private String internalInstallPackages(
+            final List<File> packageFiles, final boolean reinstall, final List<String> extraArgs)
+            throws DeviceNotAvailableException {
+        // use array to store response, so it can be returned to caller
+        final String[] response = new String[1];
+        DeviceAction installAction =
+                new DeviceAction() {
+                    @Override
+                    public boolean run() throws InstallException {
+                        try {
+                            getIDevice()
+                                    .installPackages(
+                                            packageFiles,
+                                            reinstall,
+                                            new ArrayList(extraArgs),
+                                            INSTALL_TIMEOUT_MINUTES,
+                                            TimeUnit.MINUTES);
+                            response[0] = null;
+                            return true;
+                        } catch (InstallException e) {
+                            response[0] = e.getMessage();
+                            if (response[0] == null) {
+                                response[0] =
+                                        String.format(
+                                                "InstallException: %s",
+                                                StreamUtil.getStackTrace(e));
+                            }
+                            return false;
+                        }
+                    }
+                };
+        performDeviceAction(
+                String.format("install %s", packageFiles.toString()),
+                installAction,
+                MAX_RETRY_ATTEMPTS);
+        return response[0];
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String installPackages(
+            final List<File> packageFiles, final boolean reinstall, final String... extraArgs)
+            throws DeviceNotAvailableException {
+        // Grant all permissions by default if feature is supported
+        return installPackages(packageFiles, reinstall, isRuntimePermissionSupported(), extraArgs);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String installPackages(
+            List<File> packageFiles,
+            boolean reinstall,
+            boolean grantPermissions,
+            String... extraArgs)
+            throws DeviceNotAvailableException {
+        List<String> args = new ArrayList<>(Arrays.asList(extraArgs));
+        if (grantPermissions) {
+            ensureRuntimePermissionSupported();
+            args.add("-g");
+        }
+        return internalInstallPackages(packageFiles, reinstall, args);
+    }
+
+    /**
+     * Core implementation for split apk remote installation {@link IDevice#installPackage(String,
+     * boolean, String...)}
+     * See "https://developer.android.com/studio/build/configure-apk-splits" on how to split
+     * apk to several files.
+     *
+     * @param packageFiles the remote apk file paths
+     * @param reinstall <code>true</code> if a reinstall should be performed
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
+     *     available options.
+     * @return the response from the installation <code>null</code> if installation succeeds.
+     * @throws DeviceNotAvailableException
+     */
+    private String internalInstallRemotePackages(
+            final List<String> remoteApkPaths,
+            final boolean reinstall,
+            final List<String> extraArgs)
+            throws DeviceNotAvailableException {
+        // use array to store response, so it can be returned to caller
+        final String[] response = new String[1];
+        DeviceAction installAction =
+                new DeviceAction() {
+                    @Override
+                    public boolean run() throws InstallException {
+                        try {
+                            getIDevice()
+                                    .installRemotePackages(
+                                            remoteApkPaths,
+                                            reinstall,
+                                            new ArrayList(extraArgs),
+                                            INSTALL_TIMEOUT_MINUTES,
+                                            TimeUnit.MINUTES);
+                            response[0] = null;
+                            return true;
+                        } catch (InstallException e) {
+                            response[0] = e.getMessage();
+                            if (response[0] == null) {
+                                response[0] = String.format(
+                                    "InstallException during package installation. cause: %s",
+                                    StreamUtil.getStackTrace(e));
+                            }
+                            return false;
+                        }
+                    }
+                };
+        performDeviceAction(
+                String.format("install %s", remoteApkPaths.toString()),
+                installAction,
+                MAX_RETRY_ATTEMPTS);
+        return response[0];
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String installRemotePackages(
+            final List<String> remoteApkPaths, final boolean reinstall, final String... extraArgs)
+            throws DeviceNotAvailableException {
+        // Grant all permissions by default if feature is supported
+        return installRemotePackages(
+                remoteApkPaths, reinstall, isRuntimePermissionSupported(), extraArgs);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String installRemotePackages(
+            List<String> remoteApkPaths,
+            boolean reinstall,
+            boolean grantPermissions,
+            String... extraArgs)
+            throws DeviceNotAvailableException {
+        List<String> args = new ArrayList<>(Arrays.asList(extraArgs));
+        if (grantPermissions) {
+            ensureRuntimePermissionSupported();
+            args.add("-g");
+        }
+        return internalInstallRemotePackages(remoteApkPaths, reinstall, args);
     }
 
     /** {@inheritDoc} */
@@ -642,7 +822,11 @@ public class TestDevice extends NativeDevice {
                 CLog.v("framework reboot: device unresponsive to shell command, using fallback");
                 return false;
             }
-            return waitForDeviceNotAvailable(30 * 1000);
+            boolean notAvailable = waitForDeviceNotAvailable(30 * 1000);
+            if (notAvailable) {
+                postAdbReboot();
+            }
+            return notAvailable;
         } else {
             CLog.v("framework reboot: not supported");
             return false;
@@ -659,15 +843,7 @@ public class TestDevice extends NativeDevice {
     @Override
     protected void doAdbReboot(final String into) throws DeviceNotAvailableException {
         if (!doAdbFrameworkReboot(into)) {
-            DeviceAction rebootAction = new DeviceAction() {
-                @Override
-                public boolean run() throws TimeoutException, IOException,
-                        AdbCommandRejectedException {
-                    getIDevice().reboot(into);
-                    return true;
-                }
-            };
-            performDeviceAction("reboot", rebootAction, MAX_RETRY_ATTEMPTS);
+            super.doAdbReboot(into);
         }
     }
 
@@ -682,6 +858,22 @@ public class TestDevice extends NativeDevice {
                 return true;
             }
         });
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<ApexInfo> getActiveApexes() throws DeviceNotAvailableException {
+        Set<ApexInfo> ret = new HashSet<>();
+        String output = executeShellCommand(LIST_APEXES_CMD);
+        if (output != null) {
+            Matcher m = APEXES_REGEX.matcher(output);
+            while (m.find()) {
+                String name = m.group(1);
+                long version = Long.valueOf(m.group(2));
+                ret.add(new ApexInfo(name, version));
+            }
+        }
+        return ret;
     }
 
     /**
@@ -1312,7 +1504,8 @@ public class TestDevice extends NativeDevice {
                 // Line is "Profile owner (User <id>):
                 String[] tokens = line.split("\\(|\\)| ");
                 int userId = Integer.parseInt(tokens[4]);
-                i++;
+
+                i = moveToNextIndexMatchingRegex(".*admin=.*", lines, i);
                 line = lines[i].trim();
                 // Line is admin=ComponentInfo{<component>}
                 tokens = line.split("\\{|\\}");
@@ -1320,13 +1513,14 @@ public class TestDevice extends NativeDevice {
                 CLog.d("Cleaning up profile owner " + userId + " " + componentName);
                 removeAdmin(componentName, userId);
             } else if (line.contains("Device Owner:")) {
-                i++;
+                i = moveToNextIndexMatchingRegex(".*admin=.*", lines, i);
                 line = lines[i].trim();
                 // Line is admin=ComponentInfo{<component>}
                 String[] tokens = line.split("\\{|\\}");
                 String componentName = tokens[1];
+
                 // Skip to user id line.
-                i += 3;
+                i = moveToNextIndexMatchingRegex(".*User ID:.*", lines, i);
                 line = lines[i].trim();
                 // Line is User ID: <N>
                 tokens = line.split(":");
@@ -1335,6 +1529,30 @@ public class TestDevice extends NativeDevice {
                 removeAdmin(componentName, userId);
             }
         }
+    }
+
+    /**
+     * Search forward from the current index to find a string matching the given regex.
+     *
+     * @param regex The regex to match each line against.
+     * @param lines An array of strings to be searched.
+     * @param currentIndex the index to start searching from.
+     * @return The index of a string beginning with the regex.
+     * @throws IllegalStateException if the line cannot be found.
+     */
+    private int moveToNextIndexMatchingRegex(String regex, String[] lines, int currentIndex) {
+        while (currentIndex < lines.length && !lines[currentIndex].matches(regex)) {
+            currentIndex++;
+        }
+
+        if (currentIndex >= lines.length) {
+            throw new IllegalStateException(
+                    "The output of 'dumpsys device_policy' was not as expected. Owners have not "
+                            + "been removed. This will leave the device in an unstable state and "
+                            + "will lead to further test failures.");
+        }
+
+        return currentIndex;
     }
 
     /**

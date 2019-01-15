@@ -18,10 +18,14 @@ package com.android.tradefed.command;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
+import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionUpdateRule;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.UniqueMultiMap;
+
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * Implementation of {@link ICommandOptions}.
@@ -112,6 +116,12 @@ public class CommandOptions implements ICommandOptions {
     private Integer mShardIndex;
 
     @Option(
+        name = "enable-token-sharding",
+        description = "Whether or not to allow sharding with the token support enabled."
+    )
+    private boolean mTokenSharding = false;
+
+    @Option(
         name = "skip-pre-device-setup",
         description =
                 "allow TestInvocation to skip calling device.preInvocationSetup. This is for "
@@ -136,14 +146,9 @@ public class CommandOptions implements ICommandOptions {
                             + "invocation context.")
     private UniqueMultiMap<String, String> mInvocationData = new UniqueMultiMap<>();
 
-    @Option(
-        name = "disable-strict-sharding",
-        description = "Temporary option to disable the new sharding logic while being tested."
-    )
-    private boolean mUseTfSharding = false;
-
     public static final String USE_SANDBOX = "use-sandbox";
     public static final String ENABLE_SANDBOX_TEST_MODE = "sandbox-test-mode";
+    public static final String USE_REMOTE_SANDBOX = "use-remote-sandbox";
 
     @Option(
         name = USE_SANDBOX,
@@ -157,6 +162,31 @@ public class CommandOptions implements ICommandOptions {
                     "Sandbox test mode where the sandbox will use itself to generate another layer "
                             + "of sandboxing. This is used for the sandbox to validate itself.")
     private boolean mSandboxTestMode = false;
+
+    @Option(
+        name = USE_REMOTE_SANDBOX,
+        description = "Whether or not to trigger --use-sandbox in the remote invocation."
+    )
+    private boolean mUseRemoteSandbox = false;
+
+    @Option(
+        name = "auto-collect",
+        description =
+                "Specify a set of collectors that will be automatically managed by the harness "
+                        + "to collect logs."
+    )
+    private Set<AutoLogCollector> mAutoCollectors = new LinkedHashSet<>();
+
+    @Deprecated
+    @Option(
+        name = "logcat-on-failure",
+        description = "take a logcat snapshot on every test failure."
+    )
+    private boolean mLogcatOnFailure = false;
+
+    @Deprecated
+    @Option(name = "screenshot-on-failure", description = "Take a screenshot on every test failure")
+    private boolean mScreenshotOnFailure = false;
 
     /**
      * Set the help mode for the config.
@@ -373,6 +403,12 @@ public class CommandOptions implements ICommandOptions {
         mShardIndex = shardIndex;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldUseTokenSharding() {
+        return mTokenSharding;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -418,12 +454,6 @@ public class CommandOptions implements ICommandOptions {
 
     /** {@inheritDoc} */
     @Override
-    public boolean shouldUseTfSharding() {
-        return mUseTfSharding;
-    }
-
-    /** {@inheritDoc} */
-    @Override
     public boolean shouldUseSandboxing() {
         return mUseSandbox;
     }
@@ -444,5 +474,35 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public void setUseSandboxTestMode(boolean use) {
         mSandboxTestMode = use;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldUseRemoteSandboxMode() {
+        return mUseRemoteSandbox;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<AutoLogCollector> getAutoLogCollectors() {
+        return mAutoCollectors;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setAutoLogCollectors(Set<AutoLogCollector> autoLogCollectors) {
+        mAutoCollectors = autoLogCollectors;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean captureScreenshotOnFailure() {
+        return mScreenshotOnFailure;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean captureLogcatOnFailure() {
+        return mLogcatOnFailure;
     }
 }

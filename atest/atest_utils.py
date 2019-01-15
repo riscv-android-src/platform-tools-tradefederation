@@ -24,13 +24,17 @@ import os
 import re
 import subprocess
 import sys
-import urllib2
+try:
+    # If PYTHON2
+    from urllib2 import urlopen
+except ImportError:
+    from urllib.request import urlopen
 
 import constants
 
 _MAKE_CMD = '%s/build/soong/soong_ui.bash' % os.environ.get(
     constants.ANDROID_BUILD_TOP)
-_BUILD_CMD = [_MAKE_CMD, '--make-mode']
+BUILD_CMD = [_MAKE_CMD, '--make-mode']
 _BASH_RESET_CODE = '\033[0m\n'
 # Arbitrary number to limit stdout for failed runs in _run_limited_output.
 # Reason for its use is that the make command itself has its own carriage
@@ -90,7 +94,7 @@ def _run_limited_output(cmd, env_vars=None):
         # Readline will often return empty strings.
         if not line:
             continue
-        full_output.append(line)
+        full_output.append(line.decode('utf-8'))
         # Trim the line to the width of the terminal.
         # Note: Does not handle terminal resizing, which is probably not worth
         #       checking the width every loop.
@@ -135,8 +139,10 @@ def build(build_targets, verbose=False, env_vars=None):
     full_env_vars = os.environ.copy()
     if env_vars:
         full_env_vars.update(env_vars)
-    logging.info('Building targets: %s', ' '.join(build_targets))
-    cmd = _BUILD_CMD + list(build_targets)
+    print('\n%s\n%s' % (colorize("Building Dependencies...", constants.CYAN),
+                        ', '.join(build_targets)))
+    logging.debug('Building Dependencies: %s', ' '.join(build_targets))
+    cmd = BUILD_CMD + list(build_targets)
     logging.debug('Executing command: %s', cmd)
     try:
         if verbose:
@@ -155,12 +161,12 @@ def build(build_targets, verbose=False, env_vars=None):
 
 
 def _can_upload_to_result_server():
-    """Return Boolean if we can talk to result server."""
+    """Return True if we can talk to result server."""
     # TODO: Also check if we have a slow connection to result server.
     if constants.RESULT_SERVER:
         try:
-            urllib2.urlopen(constants.RESULT_SERVER,
-                            timeout=constants.RESULT_SERVER_TIMEOUT).close()
+            urlopen(constants.RESULT_SERVER,
+                    timeout=constants.RESULT_SERVER_TIMEOUT).close()
             return True
         # pylint: disable=broad-except
         except Exception as err:
@@ -230,6 +236,32 @@ def _has_colors(stream):
         return False
 
 
+def colorize(text, color, highlight=False):
+    """ Convert to coloful string with ANSI escape code.
+
+    Args:
+        text: A string to print.
+        color: ANSI code shift for colorful print. They are defined
+               in constants_default.py.
+        highlight: True to print with highlight.
+
+    Returns:
+        Coloful string with ANSI escape code.
+    """
+    clr_pref = '\033[1;'
+    clr_suff = '\033[0m'
+    has_colors = _has_colors(sys.stdout)
+    if has_colors:
+        if highlight:
+            ansi_shift = 40 + color
+        else:
+            ansi_shift = 30 + color
+        clr_str = "%s%dm%s%s" % (clr_pref, ansi_shift, text, clr_suff)
+    else:
+        clr_str = text
+    return clr_str
+
+
 def colorful_print(text, color, highlight=False, auto_wrap=True):
     """Print out the text with color.
 
@@ -240,18 +272,23 @@ def colorful_print(text, color, highlight=False, auto_wrap=True):
         highlight: True to print with highlight.
         auto_wrap: If True, Text wraps while print.
     """
-    clr_pref = '\033[1;'
-    clr_suff = '\033[0m'
-    has_colors = _has_colors(sys.stdout)
-    if has_colors:
-        if highlight:
-            ansi_shift = 40 + color
-        else:
-            ansi_shift = 30 + color
-        output = "%s%dm%s%s" % (clr_pref, ansi_shift, text, clr_suff)
-    else:
-        output = text
+    output = colorize(text, color, highlight)
     if auto_wrap:
         print(output)
     else:
         print(output, end="")
+
+
+def is_external_run():
+    """Check is external run or not.
+
+    Returns:
+        True if this is an external run, False otherwise.
+    """
+    try:
+        output = subprocess.check_output(['git', 'config', '--get', 'user.email'])
+        if output and output.strip().endswith(constants.INTERNAL_EMAIL):
+            return False
+    except subprocess.CalledProcessError:
+        return True
+    return True

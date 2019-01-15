@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.IConfiguration;
@@ -25,7 +26,10 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.suite.params.ModuleParameters;
 import com.android.tradefed.util.ArrayUtil;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -47,6 +51,7 @@ public class BaseTestSuite extends ITestSuite {
     public static final String TEST_ARG_OPTION = "test-arg";
     public static final String TEST_OPTION = "test";
     public static final char TEST_OPTION_SHORT_NAME = 't';
+    public static final String CONFIG_PATTERNS_OPTION = "config-patterns";
     private static final String MODULE_ARG_OPTION = "module-arg";
 
     @Option(
@@ -83,7 +88,7 @@ public class BaseTestSuite extends ITestSuite {
         name = MODULE_ARG_OPTION,
         description =
                 "the arguments to pass to a module. The expected format is"
-                        + "\"<module-name>:<arg-name>:[<arg-key>:=]<arg-value>\"",
+                        + "\"<module-name>:[{alias}]<arg-name>:[<arg-key>:=]<arg-value>\"",
         importance = Importance.ALWAYS
     )
     private List<String> mModuleArgs = new ArrayList<>();
@@ -126,7 +131,7 @@ public class BaseTestSuite extends ITestSuite {
     private boolean mSkipJarLoading = false;
 
     @Option(
-        name = "config-patterns",
+        name = CONFIG_PATTERNS_OPTION,
         description =
                 "The pattern(s) of the configurations that should be loaded from a directory."
                         + " If none is explicitly specified, .*.xml and .*.config will be used."
@@ -141,6 +146,15 @@ public class BaseTestSuite extends ITestSuite {
                         + "in development."
     )
     private boolean mEnableParameter = false;
+
+    @Option(
+        name = "module-parameter",
+        description =
+                "Allows to run only one module parameter type instead of all the combinations. "
+                        + "For example: 'instant_app' would only run the instant_app version of "
+                        + "modules"
+    )
+    private ModuleParameters mForceParameter = null;
 
     private SuiteModuleLoader mModuleRepo;
     private Map<String, List<SuiteTestFilter>> mIncludeFiltersParsed = new HashMap<>();
@@ -166,8 +180,28 @@ public class BaseTestSuite extends ITestSuite {
                     createModuleLoader(
                             mIncludeFiltersParsed, mExcludeFiltersParsed, mTestArgs, mModuleArgs);
             mModuleRepo.setParameterizedModules(mEnableParameter);
+            mModuleRepo.setModuleParameter(mForceParameter);
+
+            List<File> testsDirectories = new ArrayList<>();
+
+            // Include host or target first in the search if it exists, we have to this in
+            // BaseTestSuite because it's the only one with the BuildInfo knowledge of linked files
+            if (mPrioritizeHostConfig) {
+                File hostSubDir = getBuildInfo().getFile(BuildInfoFileKey.HOST_LINKED_DIR);
+                if (hostSubDir != null && hostSubDir.exists()) {
+                    testsDirectories.add(hostSubDir);
+                }
+            } else {
+                File targetSubDir = getBuildInfo().getFile(BuildInfoFileKey.TARGET_LINKED_DIR);
+                if (targetSubDir != null && targetSubDir.exists()) {
+                    testsDirectories.add(targetSubDir);
+                }
+            }
+
+            // Finally add the full test cases directory in case there is no special sub-dir.
+            testsDirectories.add(testsDir);
             // Actual loading of the configurations.
-            return loadingStrategy(abis, testsDir, mSuitePrefix, mSuiteTag);
+            return loadingStrategy(abis, testsDirectories, mSuitePrefix, mSuiteTag);
         } catch (DeviceNotAvailableException | FileNotFoundException e) {
             throw new RuntimeException(e);
         }
@@ -178,13 +212,13 @@ public class BaseTestSuite extends ITestSuite {
      * extended or replaced.
      *
      * @param abis The set of abis to run against.
-     * @param testsDir The tests directory.
+     * @param testsDirs The tests directory.
      * @param suitePrefix A prefix to filter the resource directory.
      * @param suiteTag The suite tag a module should have to be included. Can be null.
      * @return A list of loaded configuration for the suite.
      */
     public LinkedHashMap<String, IConfiguration> loadingStrategy(
-            Set<IAbi> abis, File testsDir, String suitePrefix, String suiteTag) {
+            Set<IAbi> abis, List<File> testsDirs, String suitePrefix, String suiteTag) {
         LinkedHashMap<String, IConfiguration> loadedConfigs = new LinkedHashMap<>();
         // Load configs that are part of the resources
         if (!mSkipJarLoading) {
@@ -195,19 +229,14 @@ public class BaseTestSuite extends ITestSuite {
         // Load the configs that are part of the tests dir
         if (mConfigPatterns.isEmpty()) {
             // If no special pattern was configured, use the default configuration patterns we know
-            mConfigPatterns.add(".*\\.config");
-            mConfigPatterns.add(".*\\.xml");
+            mConfigPatterns.add(".*\\.config$");
+            mConfigPatterns.add(".*\\.xml$");
         }
 
         loadedConfigs.putAll(
                 getModuleLoader()
                         .loadConfigsFromDirectory(
-                                testsDir,
-                                abis,
-                                suitePrefix,
-                                suiteTag,
-                                mConfigPatterns,
-                                mPrioritizeHostConfig));
+                                testsDirs, abis, suitePrefix, suiteTag, mConfigPatterns));
         return loadedConfigs;
     }
 
@@ -251,6 +280,11 @@ public class BaseTestSuite extends ITestSuite {
         mModuleArgs.addAll(moduleArgs);
     }
 
+    /** Add config patterns */
+    public void addConfigPatterns(List<String> patterns) {
+        mConfigPatterns.addAll(patterns);
+    }
+
     /**
      * Create the {@link SuiteModuleLoader} responsible to load the {@link IConfiguration} and
      * assign them some of the options.
@@ -280,7 +314,7 @@ public class BaseTestSuite extends ITestSuite {
             // If this option (-m / --module) is set only the matching unique module should run.
             Set<File> modules =
                     SuiteModuleLoader.getModuleNamesMatching(
-                            testsDir, mSuitePrefix, String.format("%s.*.config", mModuleName));
+                            testsDir, mSuitePrefix, String.format(".*%s.*.config", mModuleName));
             // If multiple modules match, do exact match.
             if (modules.size() > 1) {
                 Set<File> newModules = new HashSet<>();
@@ -337,5 +371,20 @@ public class BaseTestSuite extends ITestSuite {
         }
         filters.clear();
         filters.addAll(cleanedFilters);
+    }
+
+    /* Return a {@link boolean} for the setting of prioritize-host-config.*/
+    boolean getPrioritizeHostConfig() {
+        return mPrioritizeHostConfig;
+    }
+
+    /**
+     * Set option prioritize-host-config.
+     *
+     * @param prioritizeHostConfig true to prioritize host config, i.e., run host test if possible.
+     */
+    @VisibleForTesting
+    protected void setPrioritizeHostConfig(boolean prioritizeHostConfig) {
+        mPrioritizeHostConfig = prioritizeHostConfig;
     }
 }

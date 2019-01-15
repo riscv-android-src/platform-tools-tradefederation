@@ -116,14 +116,14 @@ class AtestUnittests(unittest.TestCase):
             atest._print_module_info_from_module_name(mod_info, mod_one_name))
         # Assign sys.stdout back to default.
         sys.stdout = sys.__stdout__
-        correct_output = ('\x1b[1;42mmod1\x1b[0m\n'
-                          '\x1b[1;44m\tCompatibility suite\x1b[0m\n'
-                          '\x1b[1;34m\t\tdevice_test_mod1\x1b[0m\n'
-                          '\x1b[1;34m\t\tnative_test_mod1\x1b[0m\n'
-                          '\x1b[1;44m\tSource code path\x1b[0m\n'
-                          '\x1b[1;34m\t\tsrc/path/mod1\x1b[0m\n'
-                          '\x1b[1;44m\tInstalled path\x1b[0m\n'
-                          '\x1b[1;34m\t\tinstalled/path/mod1\x1b[0m\n')
+        correct_output = ('\x1b[1;32mmod1\x1b[0m\n'
+                          '\x1b[1;36m\tCompatibility suite\x1b[0m\n'
+                          '\t\tdevice_test_mod1\n'
+                          '\t\tnative_test_mod1\n'
+                          '\x1b[1;36m\tSource code path\x1b[0m\n'
+                          '\t\tsrc/path/mod1\n'
+                          '\x1b[1;36m\tInstalled path\x1b[0m\n'
+                          '\t\tinstalled/path/mod1\n')
         # Check the function correctly printed module_info in color to stdout
         self.assertEqual(capture_output.getvalue(), correct_output)
 
@@ -187,30 +187,30 @@ class AtestUnittests(unittest.TestCase):
         atest._print_test_info(mod_info, test_infos)
         # Assign sys.stdout back to default.
         sys.stdout = sys.__stdout__
-        correct_output = ("\x1b[1;42mmod1\x1b[0m\n"
-                          "\x1b[1;44m\tCompatibility suite\x1b[0m\n"
-                          "\x1b[1;34m\t\tsuite_mod1\x1b[0m\n"
-                          "\x1b[1;44m\tSource code path\x1b[0m\n"
-                          "\x1b[1;34m\t\tpath/mod1\x1b[0m\n"
-                          "\x1b[1;44m\tInstalled path\x1b[0m\n"
-                          "\x1b[1;34m\t\tinstalled/mod1\x1b[0m\n"
-                          "\x1b[1;45m\tRelated build targets\x1b[0m\n"
-                          "\x1b[1;33m\t\tset(['mod1', 'mod2', 'mod3'])\x1b[0m\n"
-                          "\x1b[1;42mmod2\x1b[0m\n"
-                          "\x1b[1;44m\tCompatibility suite\x1b[0m\n"
-                          "\x1b[1;34m\t\tsuite_mod2\x1b[0m\n"
-                          "\x1b[1;44m\tSource code path\x1b[0m\n"
-                          "\x1b[1;34m\t\tpath/mod2\x1b[0m\n"
-                          "\x1b[1;44m\tInstalled path\x1b[0m\n"
-                          "\x1b[1;34m\t\tinstalled/mod2\x1b[0m\n"
-                          "\x1b[1;42mmod3\x1b[0m\n"
-                          "\x1b[1;44m\tCompatibility suite\x1b[0m\n"
-                          "\x1b[1;34m\t\tsuite_mod3\x1b[0m\n"
-                          "\x1b[1;44m\tSource code path\x1b[0m\n"
-                          "\x1b[1;34m\t\tpath/mod3\x1b[0m\n"
-                          "\x1b[1;44m\tInstalled path\x1b[0m\n"
-                          "\x1b[1;34m\t\tinstalled/mod3\x1b[0m\n"
-                          "\x1b[1;37m\x1b[0m\n")
+        correct_output = ('\x1b[1;32mmod1\x1b[0m\n'
+                          '\x1b[1;36m\tCompatibility suite\x1b[0m\n'
+                          '\t\tsuite_mod1\n'
+                          '\x1b[1;36m\tSource code path\x1b[0m\n'
+                          '\t\tpath/mod1\n'
+                          '\x1b[1;36m\tInstalled path\x1b[0m\n'
+                          '\t\tinstalled/mod1\n'
+                          '\x1b[1;35m\tRelated build targets\x1b[0m\n'
+                          '\t\tmod1, mod2, mod3\n'
+                          '\x1b[1;32mmod2\x1b[0m\n'
+                          '\x1b[1;36m\tCompatibility suite\x1b[0m\n'
+                          '\t\tsuite_mod2\n'
+                          '\x1b[1;36m\tSource code path\x1b[0m\n'
+                          '\t\tpath/mod2\n'
+                          '\x1b[1;36m\tInstalled path\x1b[0m\n'
+                          '\t\tinstalled/mod2\n'
+                          '\x1b[1;32mmod3\x1b[0m\n'
+                          '\x1b[1;36m\tCompatibility suite\x1b[0m\n'
+                          '\t\tsuite_mod3\n'
+                          '\x1b[1;36m\tSource code path\x1b[0m\n'
+                          '\t\tpath/mod3\n'
+                          '\x1b[1;36m\tInstalled path\x1b[0m\n'
+                          '\t\tinstalled/mod3\n'
+                          '\x1b[1;37m\x1b[0m\n')
         self.assertEqual(capture_output.getvalue(), correct_output)
 
     def test_validate_exec_mode(self):
@@ -231,44 +231,59 @@ class AtestUnittests(unittest.TestCase):
             install_locations=set(['host', 'device']))
 
         # $atest <host-only>
-        test_infos = []
-        test_infos.append(host_test_info)
-        updated_args = atest._validate_exec_mode(parsed_args, test_infos)
-        self.assertTrue(updated_args.host)
+        test_infos = [host_test_info]
+        atest._validate_exec_mode(parsed_args, test_infos)
+        self.assertTrue(parsed_args.host)
+
+        # $atest <host-only> with host_tests set to True
+        parsed_args = atest._parse_args([])
+        test_infos = [host_test_info]
+        atest._validate_exec_mode(parsed_args, test_infos, host_tests=True)
+        # Make sure the host option is not set.
+        self.assertFalse(parsed_args.host)
+
+        # $atest <host-only> with host_tests set to False
+        parsed_args = atest._parse_args([])
+        test_infos = [host_test_info]
+        self.assertRaises(SystemExit, atest._validate_exec_mode,
+                          parsed_args, test_infos, host_tests=False)
+
+        # $atest <device-only> with host_tests set to False
+        parsed_args = atest._parse_args([])
+        test_infos = [device_test_info]
+        atest._validate_exec_mode(parsed_args, test_infos, host_tests=False)
+        # Make sure the host option is not set.
+        self.assertFalse(parsed_args.host)
+
+        # $atest <device-only> with host_tests set to True
+        parsed_args = atest._parse_args([])
+        test_infos = [device_test_info]
+        self.assertRaises(SystemExit, atest._validate_exec_mode,
+                          parsed_args, test_infos, host_tests=True)
 
         # $atest <Both-support>
-        args = []
-        parsed_args = atest._parse_args(args)
-        test_infos = []
-        test_infos.append(both_test_info)
-        updated_args = atest._validate_exec_mode(parsed_args, test_infos)
-        self.assertFalse(updated_args.host)
+        parsed_args = atest._parse_args([])
+        test_infos = [both_test_info]
+        atest._validate_exec_mode(parsed_args, test_infos)
+        self.assertFalse(parsed_args.host)
 
         # $atest <host-only> <both-support>
-        args = []
-        parsed_args = atest._parse_args(args)
-        test_infos = []
-        test_infos.append(both_test_info)
-        test_infos.append(host_test_info)
-        updated_args = atest._validate_exec_mode(parsed_args, test_infos)
-        self.assertTrue(updated_args.host)
+        parsed_args = atest._parse_args([])
+        test_infos = [both_test_info, host_test_info]
+        atest._validate_exec_mode(parsed_args, test_infos)
+        self.assertTrue(parsed_args.host)
 
         # $atest <device-only> <host-only>
-        args = []
-        parsed_args = atest._parse_args(args)
-        test_infos = []
-        test_infos.append(device_test_info)
-        test_infos.append(host_test_info)
+        parsed_args = atest._parse_args([])
+        test_infos = [device_test_info, host_test_info]
         self.assertRaises(SystemExit, atest._validate_exec_mode,
                           parsed_args, test_infos)
 
         # $atest <no_install_test_info>
-        args = []
-        parsed_args = atest._parse_args(args)
-        test_infos = []
-        test_infos.append(no_install_test_info)
-        updated_args = atest._validate_exec_mode(parsed_args, test_infos)
-        self.assertFalse(updated_args.host)
+        parsed_args = atest._parse_args([])
+        test_infos = [no_install_test_info]
+        atest._validate_exec_mode(parsed_args, test_infos)
+        self.assertFalse(parsed_args.host)
 
 if __name__ == '__main__':
     unittest.main()

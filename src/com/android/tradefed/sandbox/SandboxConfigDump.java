@@ -18,10 +18,11 @@ package com.android.tradefed.sandbox;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
-import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.config.IDeviceConfiguration;
+import com.android.tradefed.config.SandboxConfigurationFactory;
+import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.log.FileLogger;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -34,7 +35,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Runner class that creates a {@link IConfiguration} based on a command line and dump it to a file.
@@ -57,11 +60,12 @@ public class SandboxConfigDump {
      * We do not output the versioned elements to avoid causing the parent process to have issues
      * with them when trying to resolve them
      */
-    private static final List<String> VERSIONED_ELEMENTS = new ArrayList<>();
+    public static final Set<String> VERSIONED_ELEMENTS = new HashSet<>();
 
     static {
         VERSIONED_ELEMENTS.add(Configuration.SYSTEM_STATUS_CHECKER_TYPE_NAME);
         VERSIONED_ELEMENTS.add(Configuration.DEVICE_METRICS_COLLECTOR_TYPE_NAME);
+        VERSIONED_ELEMENTS.add(Configuration.MULTI_PRE_TARGET_PREPARER_TYPE_NAME);
         VERSIONED_ELEMENTS.add(Configuration.MULTI_PREPARER_TYPE_NAME);
         VERSIONED_ELEMENTS.add(Configuration.TARGET_PREPARER_TYPE_NAME);
         VERSIONED_ELEMENTS.add(Configuration.TEST_TYPE_NAME);
@@ -75,12 +79,13 @@ public class SandboxConfigDump {
         List<String> argList = new ArrayList<>(Arrays.asList(args));
         DumpCmd cmd = DumpCmd.valueOf(argList.remove(0));
         File resFile = new File(argList.remove(0));
-        IConfigurationFactory factory = ConfigurationFactory.getInstance();
+        SandboxConfigurationFactory factory = SandboxConfigurationFactory.getInstance();
         PrintWriter pw = null;
         try {
             // TODO: Handle keystore
             IConfiguration config =
-                    factory.createConfigurationFromArgs(argList.toArray(new String[0]));
+                    factory.createConfigurationFromArgs(argList.toArray(new String[0]), cmd);
+            //factory.createConfigurationFromArgs(argList.toArray(new String[0]), cmd);
             if (DumpCmd.RUN_CONFIG.equals(cmd) || DumpCmd.TEST_MODE.equals(cmd)) {
                 config.getCommandOptions().setShouldUseSandboxing(false);
                 config.getConfigurationDescription().setSandboxed(true);
@@ -104,6 +109,9 @@ public class SandboxConfigDump {
                 // parent.
                 config.getCommandOptions().setBugreportOnInvocationEnded(false);
                 config.getCommandOptions().setBugreportzOnInvocationEnded(false);
+
+                // Ensure in special conditions (placeholder devices) we can still allocate.
+                secureDeviceAllocation(config);
             }
             if (DumpCmd.TEST_MODE.equals(cmd)) {
                 // We allow one more layer of sandbox to be generated
@@ -115,7 +123,7 @@ public class SandboxConfigDump {
             pw = new PrintWriter(resFile);
             if (DumpCmd.NON_VERSIONED_CONFIG.equals(cmd)) {
                 // Remove elements that are versioned.
-                config.dumpXml(pw, VERSIONED_ELEMENTS);
+                config.dumpXml(pw, new ArrayList<>(VERSIONED_ELEMENTS));
             } else {
                 // FULL_XML in that case.
                 config.dumpXml(pw);
@@ -144,5 +152,17 @@ public class SandboxConfigDump {
     private SandboxOptions getSandboxOptions(IConfiguration config) {
         return (SandboxOptions)
                 config.getConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME);
+    }
+
+    private void secureDeviceAllocation(IConfiguration config) {
+        for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
+            IDeviceSelection requirements = deviceConfig.getDeviceRequirements();
+            if (requirements.nullDeviceRequested()
+                    || requirements.tcpDeviceRequested()
+                    || requirements.gceDeviceRequested()) {
+                // Reset serials, ensure any null/tcp/gce-device can be selected.
+                requirements.setSerial();
+            }
+        }
     }
 }

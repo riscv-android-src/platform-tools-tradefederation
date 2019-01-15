@@ -84,7 +84,7 @@ public class BaseTestSuiteTest {
         }
     }
 
-    /** Test for {@#link BaseTestSuite#setupFilters()} implementation, no modules match. */
+    /** Test for {@link BaseTestSuite#setupFilters(File)} implementation, no modules match. */
     @Test
     public void testSetupFilters_noMatch() throws Exception {
         File tmpDir = FileUtil.createTempDir(TEST_MODULE);
@@ -102,7 +102,31 @@ public class BaseTestSuiteTest {
         }
     }
 
-    /** Test for {@#link BaseTestSuite#setupFilters()} implementation, only one module matches. */
+    /** Test that a partial name anywhere in the module name can be matched. */
+    @Test
+    public void testSetupFilters_match() throws Exception {
+        File tmpDir = FileUtil.createTempDir(TEST_MODULE);
+        File moduleConfig = new File(tmpDir, "CtsGestureTestCases.config");
+        moduleConfig.createNewFile();
+        try {
+            OptionSetter setter = new OptionSetter(mRunner);
+            setter.setOptionValue("module", "Gesture");
+            mRunner.setupFilters(tmpDir);
+            assertEquals(1, mRunner.getIncludeFilter().size());
+            assertThat(
+                    mRunner.getIncludeFilter(),
+                    hasItem(
+                            new SuiteTestFilter(
+                                            mRunner.getRequestedAbi(), "CtsGestureTestCases", null)
+                                    .toString()));
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
+    /**
+     * Test for {@link BaseTestSuite#setupFilters(File)} implementation, only one module matches.
+     */
     @Test
     public void testSetupFilters_oneMatch() throws Exception {
         File tmpDir = FileUtil.createTempDir(TEST_MODULE);
@@ -126,8 +150,8 @@ public class BaseTestSuiteTest {
     }
 
     /**
-     * Test for {@#link BaseTestSuite#setupFilters()} implementation, multi modules match prefix but
-     * don't exact match.
+     * Test for {@link BaseTestSuite#setupFilters(File)} implementation, multi modules match prefix
+     * but don't exact match.
      */
     @Test
     public void testSetupFilters_multiMatchNoExactMatch() throws Exception {
@@ -151,8 +175,8 @@ public class BaseTestSuiteTest {
     }
 
     /**
-     * Test for {@#link BaseTestSuite#setupFilters()} implementation, multi modules match prefix and
-     * one matches exactly.
+     * Test for {@link BaseTestSuite#setupFilters(File)} implementation, multi modules match prefix
+     * and one matches exactly.
      */
     @Test
     public void testSetupFilters_multiMatchOneExactMatch() throws Exception {
@@ -269,9 +293,11 @@ public class BaseTestSuiteTest {
                         + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
         EasyMock.replay(mockDevice);
         LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
-        assertEquals(2, configMap.size());
+        // We only create the primary abi of the parameterized module version.
+        assertEquals(3, configMap.size());
         assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized"));
         assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized[instant]"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/stub-parameterized"));
         EasyMock.verify(mockDevice);
 
         TestSuiteStub testSuiteStub =
@@ -313,13 +339,132 @@ public class BaseTestSuiteTest {
         EasyMock.replay(mockDevice);
         LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
         assertEquals(5, configMap.size());
-        // stub-parameterized-abi2 is not parameterized so only its primary abi version is created.
+        // stub-parameterized-abi2 is not parameterized so by default both abi are created.
         assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi2"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/stub-parameterized-abi2"));
         // stub-parameterized-abi is parameterized and multi_abi so it creates all the combinations.
         assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi"));
         assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi[instant]"));
         assertTrue(configMap.containsKey("armeabi-v7a suite/stub-parameterized-abi"));
-        assertTrue(configMap.containsKey("armeabi-v7a suite/stub-parameterized-abi[instant]"));
+        EasyMock.verify(mockDevice);
+    }
+
+    /**
+     * Test when a config supports multi_abi and is forced to run one parameter. In this case only
+     * the parameter is run.
+     */
+    @Test
+    public void testLoadTests_parameterizedModule_multiAbi_forced() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite-parameters-abi");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue("module-parameter", "INSTANT_APP");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.testtype.suite.TestSuiteStub:"
+                        + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(1, configMap.size());
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi[instant]"));
+        EasyMock.verify(mockDevice);
+    }
+
+    @Test
+    public void testLoadTests_parameterizedModule_only_instant() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite-parameters-abi-alone");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue("module-parameter", "INSTANT_APP");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.testtype.suite.TestSuiteStub:"
+                        + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(0, configMap.size());
+        EasyMock.verify(mockDevice);
+    }
+
+    /**
+     * Test when the config supports multi_abi and is run with a parameter to ignore its
+     * parameterization. In this case all standard abi are created and not parameter.
+     */
+    @Test
+    public void testLoadTests_parameterizedModule_multiAbi_forcedNotInstant() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite-parameters-abi");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue("module-parameter", "NOT_INSTANT_APP");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.testtype.suite.TestSuiteStub:"
+                        + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(4, configMap.size());
+        // stub-parameterized-abi2 is not parameterized so by default both abi are created.
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi2"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/stub-parameterized-abi2"));
+        // stub-parameterized-abi is parameterized and multi_abi so it creates all the combinations.
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi"));
+        //assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi[instant]"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/stub-parameterized-abi"));
+        EasyMock.verify(mockDevice);
+    }
+
+    /**
+     * Test loading a parameterized config with a not_multi_abi specification. In this case, only
+     * the primary abi is created.
+     */
+    @Test
+    public void testLoadTests_parameterizedModule_notMultiAbi() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite-parameters-not-multi");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.testtype.suite.TestSuiteStub:"
+                        + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(2, configMap.size());
+        // stub-parameterized-abi is parameterized and not multi_abi so it creates only one abi
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi4"));
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi4[instant]"));
+        EasyMock.verify(mockDevice);
+    }
+
+    @Test
+    public void testLoadTests_parameterizedModule_forced() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite-parameters-not-multi");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue("module-parameter", "INSTANT_APP");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.testtype.suite.TestSuiteStub:"
+                        + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(1, configMap.size());
+        // stub-parameterized-abi is parameterized and not multi_abi so it creates only one abi
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi4[instant]"));
         EasyMock.verify(mockDevice);
     }
 

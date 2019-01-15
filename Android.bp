@@ -84,19 +84,26 @@ java_library_host {
         ],
     },
     static_libs: [
+        "aoa-helper",
+        "commons-compress-prebuilt",
+        "error_prone_annotations-2.0.18",
+        "google-api-java-client-min-repackaged",
+        "google-api-services-compute",
+        "gson-prebuilt-jar",
+        "guice",
+        "jacoco-cli",
+        "jline-1.0",
         "junit",
         "junit-params",
         "kxml2-2.3.0",
-        "jline-1.0",
-        "tf-remote-client",
-        "commons-compress-prebuilt",
         "libprotobuf-java-full",
-        "tradefed-protos",
-        "error_prone_annotations-2.0.18",
         "longevity-host-lib",
-        "gson-prebuilt-jar",
-        "guice",
+        "perfetto_config-full",
         "platform-test-annotations",
+        "test-composers",
+        "tf-remote-client",
+        "tradefed-grpc-lib-1.0.1",
+        "tradefed-protos",
     ],
     libs: [
         "loganalysis",
@@ -105,10 +112,64 @@ java_library_host {
     manifest: "MANIFEST.mf",
 }
 
+// Use 1.0.1 version of GRPC to be compatible of current guava version
+java_library_host {
+   name: "tradefed-grpc-lib-1.0.1",
+   srcs: [
+        "proto-gen/**/*.java",
+   ],
+   libs: [
+       "tradefed-protos",
+       "guava",
+   ],
+   openjdk9: {
+       javacflags: [
+           "--add-modules=java.xml.ws.annotation",
+       ],
+   },
+   static_libs: [
+       "grpc-java-context-1.0.1",
+       "grpc-java-core-1.0.1",
+       "grpc-java-netty-1.0.1",
+       "grpc-java-protobuf-1.0.1",
+       "grpc-java-protobuf-lite-1.0.1",
+       "grpc-java-stub-1.0.1",
+       "netty-buffer-java-4.1.3.Final",
+       "netty-codec-java-4.1.3.Final",
+       "netty-codec-http2-java-4.1.3.Final",
+       "netty-common-java-4.1.3.Final",
+       "netty-handler-java-4.1.3.Final",
+       "netty-resolver-java-4.1.3.Final",
+       "netty-transport-java-4.1.3.Final",
+   ]
+}
+
+// Turn off various doclava warnings when generating
+// the docs. These are the same warnings that are
+// turned off in frameworks/base, plus error 101
+// which is necessary here because tradefed is
+// referencing bootclasspath classes that are not
+// feed to metalava when generating the stubs.
+tradefed_docs_only_args = " -hide 101 -hide 111 -hide 113 -hide 125 -hide 126 -hide 127 -hide 128 "
+
+droidstubs_host {
+    name: "tradefed-doc-stubs",
+    srcs: [
+        "src/**/*.java",
+    ],
+    libs: [
+        "loganalysis",
+        "tradefed",
+        "tools-common-prebuilt",
+    ],
+    args: tradefed_docs_only_args + "--package",
+    create_doc_stubs: true,
+}
+
 droiddoc_host {
     name: "tradefed-docs",
     srcs: [
-        "src/**/*.java",
+        ":tradefed-doc-stubs",
     ],
     libs: [
         "loganalysis",
@@ -124,7 +185,8 @@ droiddoc_host {
         "book.root toc",
         "book.path /_book.yaml",
     ],
-    args: "-yaml _book.yaml " +
+    args: tradefed_docs_only_args +
+          "-yaml _book.yaml " +
           "-apidocsdir reference/tradefed/ " +
           "-werror " +
           "-package " +

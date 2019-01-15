@@ -50,25 +50,15 @@ public interface ITestFilterReceiver {
      */
     void addAllExcludeFilters(Set<String> filters);
 
-    // TODO: All following interfaces default implementation should be removed when all runner have
-    // been updated.
     /** Returns the current {@link Set} of include filters. */
-    default Set<String> getIncludeFilters() {
-        throw new IllegalArgumentException("getIncludeFilters has not been implemented.");
-    }
+    Set<String> getIncludeFilters();
 
     /** Returns the current {@link Set} of exclude filters. */
-    default Set<String> getExcludeFilters() {
-        throw new IllegalArgumentException("getExcludeFilters has not been implemented.");
-    }
+    Set<String> getExcludeFilters();
 
     /** Delete all the include filters currently tracked. */
-    default void clearIncludeFilters() {
-        throw new IllegalArgumentException("clearIncludeFilters has not been implemented.");
-    }
+    void clearIncludeFilters();
 
     /** Delete all the exclude filters currently tracked. */
-    default void clearExcludeFilters() {
-        throw new IllegalArgumentException("clearExcludeFilters has not been implemented.");
-    }
+    void clearExcludeFilters();
 }

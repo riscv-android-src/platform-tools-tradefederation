@@ -29,6 +29,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.IDeviceMonitor.DeviceLister;
 import com.android.tradefed.device.IManagedTestDevice.DeviceEventResponse;
+import com.android.tradefed.device.cloud.VmRemoteDevice;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.LogRegistry;
@@ -58,6 +59,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -90,6 +92,8 @@ public class DeviceManager implements IDeviceManager {
     private static final String NULL_DEVICE_SERIAL_PREFIX = "null-device";
     private static final String EMULATOR_SERIAL_PREFIX = "emulator";
     private static final String TCP_DEVICE_SERIAL_PREFIX = "tcp-device";
+    private static final String GCE_DEVICE_SERIAL_PREFIX = "gce-device";
+    private static final String REMOTE_DEVICE_SERIAL_PREFIX = "remote-device";
 
     /**
      * Pattern for a device listed by 'adb devices':
@@ -125,6 +129,7 @@ public class DeviceManager implements IDeviceManager {
     private FastbootMonitor mFastbootMonitor;
     private boolean mIsTerminated = false;
     private IDeviceSelection mGlobalDeviceFilter;
+    private IDeviceSelection mDeviceSelectionOptions;
 
     @Option(name = "max-emulators",
             description = "the maximum number of emulators that can be allocated at one time")
@@ -135,6 +140,18 @@ public class DeviceManager implements IDeviceManager {
     @Option(name = "max-tcp-devices",
             description = "the maximum number of tcp devices that can be allocated at one time")
     private int mNumTcpDevicesSupported = 1;
+
+    @Option(
+        name = "max-gce-devices",
+        description = "the maximum number of remote gce devices that can be allocated at one time"
+    )
+    private int mNumGceDevicesSupported = 1;
+
+    @Option(
+        name = "max-remote-devices",
+        description = "the maximum number of remote devices that can be allocated at one time"
+    )
+    private int mNumRemoteDevicesSupported = 1;
 
     private boolean mSynchronousMode = false;
 
@@ -248,12 +265,18 @@ public class DeviceManager implements IDeviceManager {
         // condition when detecting devices.
         mAdbBridge.addDeviceChangeListener(mManagedDeviceListener);
         if (mDvcMon != null && !mDvcMonRunning) {
-            mDvcMon.setDeviceLister(new DeviceLister() {
-                @Override
-                public List<DeviceDescriptor> listDevices() {
-                    return listAllDevices();
-                }
-            });
+            mDvcMon.setDeviceLister(
+                    new DeviceLister() {
+                        @Override
+                        public List<DeviceDescriptor> listDevices() {
+                            return listAllDevices();
+                        }
+
+                        @Override
+                        public DeviceDescriptor getDeviceDescriptor(String serial) {
+                            return DeviceManager.this.getDeviceDescriptor(serial);
+                        }
+                    });
             mDvcMon.run();
             mDvcMonRunning = true;
         }
@@ -262,6 +285,8 @@ public class DeviceManager implements IDeviceManager {
         addEmulators();
         addNullDevices();
         addTcpDevices();
+        addGceDevices();
+        addRemoteDevices();
 
         List<IMultiDeviceRecovery> recoverers = getGlobalConfig().getMultiDeviceRecoveryHandlers();
         if (recoverers != null) {
@@ -445,6 +470,22 @@ public class DeviceManager implements IDeviceManager {
         }
     }
 
+    /** Add placeholder objects for the max number of gce devices that can be connected */
+    private void addGceDevices() {
+        for (int i = 0; i < mNumGceDevicesSupported; i++) {
+            addAvailableDevice(
+                    new RemoteAvdIDevice(String.format("%s-%d", GCE_DEVICE_SERIAL_PREFIX, i)));
+        }
+    }
+
+    /** Add placeholder objects for the max number of remote devices that can be managed */
+    private void addRemoteDevices() {
+        for (int i = 0; i < mNumRemoteDevicesSupported; i++) {
+            addAvailableDevice(
+                    new VmRemoteDevice(String.format("%s-%s", REMOTE_DEVICE_SERIAL_PREFIX, i)));
+        }
+    }
+
     public void addAvailableDevice(IDevice stubDevice) {
         IManagedTestDevice d = mManagedDeviceList.findOrCreate(stubDevice);
         if (d != null) {
@@ -485,7 +526,7 @@ public class DeviceManager implements IDeviceManager {
      */
     @Override
     public ITestDevice allocateDevice() {
-        return allocateDevice(ANY_DEVICE_OPTIONS);
+        return allocateDevice(ANY_DEVICE_OPTIONS, false);
     }
 
     /**
@@ -493,7 +534,19 @@ public class DeviceManager implements IDeviceManager {
      */
     @Override
     public ITestDevice allocateDevice(IDeviceSelection options) {
+        return allocateDevice(options, false);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public ITestDevice allocateDevice(IDeviceSelection options, boolean isTemporary) {
         checkInit();
+        if (isTemporary) {
+            String rand = UUID.randomUUID().toString();
+            String serial = String.format("%s-temp-%s", NULL_DEVICE_SERIAL_PREFIX, rand);
+            addAvailableDevice(new NullDevice(serial, true));
+            options.setSerial(serial);
+        }
         return mManagedDeviceList.allocate(options);
     }
 
@@ -533,6 +586,18 @@ public class DeviceManager implements IDeviceManager {
         // force stop capturing logcat just to be sure
         managedDevice.stopLogcat();
         IDevice ideviceToReturn = device.getIDevice();
+        if (ideviceToReturn instanceof NullDevice) {
+            NullDevice nullDevice = (NullDevice) ideviceToReturn;
+            if (nullDevice.isTemporary()) {
+                DeviceEventResponse r =
+                        mManagedDeviceList.handleDeviceEvent(
+                                managedDevice, DeviceEvent.FREE_UNKNOWN);
+                CLog.d(
+                        "Temporary device '%s' final allocation state: '%s'",
+                        device.getSerialNumber(), r.allocationState.toString());
+                return;
+            }
+        }
         // don't kill emulator if it wasn't launched by launchEmulator (ie emulatorProcess is null).
         if (ideviceToReturn.isEmulator() && managedDevice.getEmulatorProcess() != null) {
             try {
@@ -907,44 +972,45 @@ public class DeviceManager implements IDeviceManager {
         }
     }
 
-
     /**
      * {@inheritDoc}
      */
     @Override
     public List<DeviceDescriptor> listAllDevices() {
         final List<DeviceDescriptor> serialStates = new ArrayList<DeviceDescriptor>();
-        IDeviceSelection selector = getDeviceSelectionOptions();
+        if (mAdbBridgeNeedRestart) {
+            return serialStates;
+        }
         for (IManagedTestDevice d : mManagedDeviceList) {
-            IDevice idevice = d.getIDevice();
-            serialStates.add(
-                    new DeviceDescriptor(
-                            idevice.getSerialNumber(),
-                            idevice instanceof StubDevice,
-                            idevice.getState(),
-                            d.getAllocationState(),
-                            getDisplay(selector.getDeviceProductType(idevice)),
-                            getDisplay(selector.getDeviceProductVariant(idevice)),
-                            getDisplay(idevice.getProperty("ro.build.version.sdk")),
-                            getDisplay(idevice.getProperty("ro.build.id")),
-                            getDisplay(selector.getBatteryLevel(idevice)),
-                            d.getDeviceClass(),
-                            getDisplay(d.getMacAddress()),
-                            getDisplay(d.getSimState()),
-                            getDisplay(d.getSimOperator()),
-                            idevice));
+            if (d == null) {
+                continue;
+            }
+            DeviceDescriptor desc = d.getDeviceDescriptor();
+            if (desc != null) {
+                serialStates.add(desc);
+            }
         }
         return serialStates;
     }
 
+    /** {@inheritDoc} */
     @Override
-    public void displayDevicesInfo(PrintWriter stream) {
+    public DeviceDescriptor getDeviceDescriptor(String serial) {
+        IManagedTestDevice device = mManagedDeviceList.find(serial);
+        if (device == null) {
+            return null;
+        }
+        return device.getDeviceDescriptor();
+    }
+
+    @Override
+    public void displayDevicesInfo(PrintWriter stream, boolean includeStub) {
         ArrayList<List<String>> displayRows = new ArrayList<List<String>>();
         displayRows.add(Arrays.asList("Serial", "State", "Allocation", "Product", "Variant",
                 "Build", "Battery"));
         List<DeviceDescriptor> deviceList = listAllDevices();
         sortDeviceList(deviceList);
-        addDevicesInfo(displayRows, deviceList);
+        addDevicesInfo(displayRows, deviceList, includeStub);
         new TableFormatter().displayTable(displayRows, stream);
     }
 
@@ -974,20 +1040,26 @@ public class DeviceManager implements IDeviceManager {
 
     /**
      * Get the {@link IDeviceSelection} to use to display device info
-     * <p/>
-     * Exposed for unit testing.
+     *
+     * <p>Exposed for unit testing.
      */
     IDeviceSelection getDeviceSelectionOptions() {
-        return new DeviceSelectionOptions();
+        if (mDeviceSelectionOptions == null) {
+            mDeviceSelectionOptions = new DeviceSelectionOptions();
+        }
+        return mDeviceSelectionOptions;
     }
 
-    private void addDevicesInfo(List<List<String>> displayRows,
-            List<DeviceDescriptor> sortedDeviceList) {
+    private void addDevicesInfo(
+            List<List<String>> displayRows,
+            List<DeviceDescriptor> sortedDeviceList,
+            boolean includeStub) {
         for (DeviceDescriptor desc : sortedDeviceList) {
-            if (desc.isStubDevice() &&
-                    desc.getState() != DeviceAllocationState.Allocated) {
-                // don't add placeholder devices
-                continue;
+            if (!includeStub) {
+                if (desc.isStubDevice() && desc.getState() != DeviceAllocationState.Allocated) {
+                    // don't add placeholder devices
+                    continue;
+                }
             }
             displayRows.add(Arrays.asList(
                     desc.getSerial(),
@@ -999,13 +1071,6 @@ public class DeviceManager implements IDeviceManager {
                     desc.getBatteryLevel())
                     );
         }
-    }
-
-    /**
-     * Return the displayable string for given object
-     */
-    private String getDisplay(Object o) {
-        return o == null ? UNKNOWN_DISPLAY_STRING : o.toString();
     }
 
     /**
@@ -1114,7 +1179,6 @@ public class DeviceManager implements IDeviceManager {
         }
     }
 
-    /** Helper to log the device events. */
     @VisibleForTesting
     void logDeviceEvent(EventType event, String serial) {
         Map<String, String> args = new HashMap<>();
@@ -1261,6 +1325,16 @@ public class DeviceManager implements IDeviceManager {
         mNumTcpDevicesSupported = tcpDevices;
     }
 
+    @VisibleForTesting
+    void setMaxGceDevices(int gceDevices) {
+        mNumGceDevicesSupported = gceDevices;
+    }
+
+    @VisibleForTesting
+    void setMaxRemoteDevices(int remoteDevices) {
+        mNumRemoteDevicesSupported = remoteDevices;
+    }
+
     @Override
     public boolean isNullDevice(String serial) {
         return serial.startsWith(NULL_DEVICE_SERIAL_PREFIX);
@@ -1279,6 +1353,11 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public void removeDeviceMonitor(IDeviceMonitor mon) {
         mDvcMon.removeMonitor(mon);
+    }
+
+    @Override
+    public String getAdbPath() {
+        return mAdbPath;
     }
 
     @Override

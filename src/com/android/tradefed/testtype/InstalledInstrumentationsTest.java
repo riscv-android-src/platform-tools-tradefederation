@@ -39,12 +39,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Runs all instrumentation found on current device.
- */
+/** Runs all instrumentation found on current device. */
 @OptionClass(alias = "installed-instrumentation")
-public class InstalledInstrumentationsTest
-        implements IDeviceTest, IResumableTest, IShardableTest, IStrictShardableTest {
+public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTest, IShardableTest {
 
     /** the metric key name for the test coverage target value */
     // TODO: move this to a more generic location
@@ -129,26 +126,28 @@ public class InstalledInstrumentationsTest
             description = "Additional instrumentation arguments to provide.")
     private Map<String, String> mInstrArgMap = new HashMap<String, String>();
 
-    @Option(name = "rerun-from-file", description =
-            "Use test file instead of separate adb commands for each test " +
-            "when re-running instrumentations for tests that failed to run in previous attempts. ")
-    private boolean mReRunUsingTestFile = false;
+    @Option(
+        name = "rerun-from-file",
+        description =
+                "Use test file instead of separate adb commands for each test "
+                        + "when re-running instrumentations for tests that failed to run in "
+                        + "previous attempts. "
+    )
+    private boolean mReRunUsingTestFile = true;
 
     @Option(name = "rerun-from-file-attempts", description =
             "Max attempts to rerun tests from file. -1 means rerun from file infinitely.")
     private int mReRunUsingTestFileAttempts = -1;
 
-    @Option(name = "fallback-to-serial-rerun", description =
-            "Rerun tests serially after rerun from file failed.")
-    private boolean mFallbackToSerialRerun = true;
+    @Option(
+        name = "fallback-to-serial-rerun",
+        description = "Rerun tests serially after rerun from file failed."
+    )
+    private boolean mFallbackToSerialRerun = false;
 
     @Option(name = "reboot-before-rerun", description =
             "Reboot a device before re-running instrumentations.")
     private boolean mRebootBeforeReRun = false;
-
-    @Option(name = "shards", description =
-            "Split test run into this many parallel shards")
-    private int mShards = 0;
 
     @Option(name = "disable", description =
             "Disable the test by setting this flag to true.")
@@ -169,6 +168,14 @@ public class InstalledInstrumentationsTest
                         + "instrument command. Only works for P or later."
     )
     private boolean mHiddenApiChecks = true;
+
+    @Option(
+        name = "isolated-storage",
+        description =
+                "If set to false, the '--no-isolated-storage' flag will be passed to the am "
+                        + "instrument command. Only works for Q or later."
+    )
+    private boolean mIsolatedStorage = true;
 
     private int mTotalShards = 0;
     private int mShardIndex = 0;
@@ -391,33 +398,26 @@ public class InstalledInstrumentationsTest
         return mIsResumeMode;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public Collection<IRemoteTest> split() {
-        if (mShards > 1) {
-            Collection<IRemoteTest> shards = new ArrayList<>(mShards);
-            for (int index = 0; index < mShards; index++) {
-                shards.add(getTestShard(mShards, index));
+    public Collection<IRemoteTest> split(int shardCountHint) {
+        if (shardCountHint > 1) {
+            Collection<IRemoteTest> shards = new ArrayList<>(shardCountHint);
+            for (int index = 0; index < shardCountHint; index++) {
+                shards.add(getTestShard(shardCountHint, index));
             }
             return shards;
         }
         return null;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public IRemoteTest getTestShard(int shardCount, int shardIndex) {
+    private IRemoteTest getTestShard(int shardCount, int shardIndex) {
         InstalledInstrumentationsTest shard = new InstalledInstrumentationsTest();
         try {
             OptionCopier.copyOptions(this, shard);
         } catch (ConfigurationException e) {
             CLog.e("failed to copy instrumentation options: %s", e.getMessage());
         }
-        shard.mShards = 0;
         shard.mShardIndex = shardIndex;
         shard.mTotalShards = shardCount;
         return shard;

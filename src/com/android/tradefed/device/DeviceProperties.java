@@ -24,8 +24,10 @@ public class DeviceProperties {
     public static final String BOARD = "ro.product.board";
     /** proprty name to indicate device variant (e.g. flo vs dev) */
     public static final String VARIANT = "ro.product.vendor.device";
+    /** Legacy O-MR1 property name to indicate device variant (e.g. flo vs dev) */
+    public static final String VARIANT_LEGACY_O_MR1 = "ro.vendor.product.device";
     /** Legacy property name to indicate device variant (e.g. flo vs dev) */
-    public static final String VARIANT_LEGACY = "ro.product.device";
+    public static final String VARIANT_LEGACY_LESS_EQUAL_O = "ro.product.device";
     /** proprty name to indicate SDK version */
     public static final String SDK_VERSION = "ro.build.version.sdk";
 }

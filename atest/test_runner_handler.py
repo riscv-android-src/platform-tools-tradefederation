@@ -17,8 +17,10 @@ Aggregates test runners, groups tests by test runners and kicks off tests.
 """
 
 import itertools
+import traceback
 
 import atest_error
+import constants
 import result_reporter
 
 from test_runners import atest_tf_test_runner
@@ -55,7 +57,7 @@ def _get_test_runners():
     return test_runners_dict
 
 
-def _group_tests_by_test_runners(test_infos):
+def group_tests_by_test_runners(test_infos):
     """Group the test_infos by test runners
 
     Args:
@@ -91,27 +93,36 @@ def get_test_runner_reqs(module_info, test_infos):
     """
     dummy_result_dir = ''
     test_runner_build_req = set()
-    for test_runner, _ in _group_tests_by_test_runners(test_infos):
+    for test_runner, _ in group_tests_by_test_runners(test_infos):
         test_runner_build_req |= test_runner(
             dummy_result_dir,
             module_info=module_info).get_test_runner_build_reqs()
     return test_runner_build_req
 
 
-def run_all_tests(results_dir, test_infos, extra_args):
+def run_all_tests(results_dir, test_infos, extra_args,
+                  delay_print_summary=False):
     """Run the given tests.
 
     Args:
+        results_dir: String directory to store atest results.
         test_infos: List of TestInfo.
         extra_args: Dict of extra args for test runners to use.
+
+    Returns:
+        0 if tests succeed, non-zero otherwise.
     """
     reporter = result_reporter.ResultReporter()
     reporter.print_starting_text()
-    for test_runner, tests in _group_tests_by_test_runners(test_infos):
+    tests_ret_code = constants.EXIT_CODE_SUCCESS
+    for test_runner, tests in group_tests_by_test_runners(test_infos):
         try:
             test_runner = test_runner(results_dir)
-            test_runner.run_tests(tests, extra_args, reporter)
+            tests_ret_code |= test_runner.run_tests(tests, extra_args, reporter)
         # pylint: disable=broad-except
-        except Exception as error:
-            reporter.runner_failure(test_runner.NAME, error.message)
-    reporter.print_summary()
+        except Exception:
+            reporter.runner_failure(test_runner.NAME, traceback.format_exc())
+            tests_ret_code = constants.EXIT_CODE_TEST_FAILURE
+    if delay_print_summary:
+        return tests_ret_code, reporter
+    return reporter.print_summary() or tests_ret_code, reporter

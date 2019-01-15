@@ -16,7 +16,10 @@
 package com.android.tradefed.result;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assert.fail;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.build.BuildInfo;
@@ -29,8 +32,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 /** Unit tests for {@link CollectingTestListener}. */
@@ -178,12 +183,12 @@ public final class CollectingTestListenerTest {
     @Test
     public void testRun_invalidAttempts() {
         injectTestRun("run", "testFoo1", METRIC_VALUE, 0);
-        try {
-            injectTestRun("run", "testFoo1", METRIC_VALUE, 2);
-            fail("Expected InvalidArgumentException");
-        } catch (IllegalArgumentException e) {
-            // Expected
-        }
+        injectTestRun("run", "testFoo1", METRIC_VALUE, 2);
+        List<TestRunResult> results = mCollectingTestListener.getTestRunAttempts("run");
+        assertEquals(3, results.size());
+        assertFalse(results.get(0).isRunFailure());
+        assertTrue(results.get(1).isRunFailure()); // Missing run is failed
+        assertFalse(results.get(2).isRunFailure());
     }
 
     /** Test run with incomplete tests */
@@ -269,6 +274,90 @@ public final class CollectingTestListenerTest {
         injectTestRun("run", "testFoo3", "1", 0, true);
         total = mCollectingTestListener.getNumTotalTests();
         assertThat(total).isEqualTo(3);
+    }
+
+    @Test
+    public void testEarlyFailure() {
+        CollectingTestListener listener = new CollectingTestListener();
+        listener.testRunFailed("early failure!");
+        List<TestRunResult> results = listener.getMergedTestRunResults();
+        assertThat(results.size()).isEqualTo(1);
+        TestRunResult res = results.get(0);
+        // We are in an odd state, but we should not loose the failure.
+        assertThat(res.isRunFailure()).isTrue();
+        assertThat(res.getName()).isEqualTo("not started");
+    }
+
+    /** Test the listener under a single normal test run that gets sharded */
+    @Test
+    public void testSingleRun_multi() {
+        mCollectingTestListener.testRunStarted("run1", 1);
+        final TestDescription test = new TestDescription("FooTest", "testName1");
+        mCollectingTestListener.testStarted(test);
+        mCollectingTestListener.testEnded(test, new HashMap<String, Metric>());
+        mCollectingTestListener.testRunEnded(0, new HashMap<String, Metric>());
+
+        mCollectingTestListener.testRunStarted("run1", 3);
+        final TestDescription test2 = new TestDescription("FooTest", "testName2");
+        mCollectingTestListener.testStarted(test2);
+        mCollectingTestListener.testEnded(test2, new HashMap<String, Metric>());
+        mCollectingTestListener.testRunFailed("missing tests");
+        mCollectingTestListener.testRunEnded(0, new HashMap<String, Metric>());
+
+        TestRunResult runResult = mCollectingTestListener.getCurrentRunResults();
+
+        assertThat(runResult.isRunComplete()).isTrue();
+        assertThat(runResult.isRunFailure()).isTrue();
+        assertThat(mCollectingTestListener.getNumTotalTests()).isEqualTo(2);
+        assertThat(mCollectingTestListener.getExpectedTests()).isEqualTo(4);
+    }
+
+    /** Test the listener under a single normal test run that gets sharded */
+    @Test
+    public void testSingleRun_multi_failureRunFirst() {
+        mCollectingTestListener.testRunStarted("run1", 3);
+        final TestDescription test2 = new TestDescription("FooTest", "testName2");
+        mCollectingTestListener.testStarted(test2);
+        mCollectingTestListener.testEnded(test2, new HashMap<String, Metric>());
+        mCollectingTestListener.testRunFailed("missing tests");
+        mCollectingTestListener.testRunEnded(0, new HashMap<String, Metric>());
+
+        mCollectingTestListener.testRunStarted("run1", 1);
+        final TestDescription test = new TestDescription("FooTest", "testName1");
+        mCollectingTestListener.testStarted(test);
+        mCollectingTestListener.testEnded(test, new HashMap<String, Metric>());
+        mCollectingTestListener.testRunEnded(0, new HashMap<String, Metric>());
+
+        TestRunResult runResult = mCollectingTestListener.getCurrentRunResults();
+
+        assertThat(runResult.isRunComplete()).isTrue();
+        assertThat(runResult.isRunFailure()).isTrue();
+        assertThat(mCollectingTestListener.getNumTotalTests()).isEqualTo(2);
+        assertThat(mCollectingTestListener.getExpectedTests()).isEqualTo(4);
+    }
+
+    @Test
+    public void testSingleRun_multi_failureRunFirst_attempts() {
+        mCollectingTestListener.testRunStarted("run1", 3);
+        final TestDescription test2 = new TestDescription("FooTest", "testName2");
+        mCollectingTestListener.testStarted(test2);
+        mCollectingTestListener.testEnded(test2, new HashMap<String, Metric>());
+        mCollectingTestListener.testRunFailed("missing tests");
+        mCollectingTestListener.testRunEnded(0, new HashMap<String, Metric>());
+
+        mCollectingTestListener.testRunStarted("run1", 1, 1);
+        final TestDescription test = new TestDescription("FooTest", "testName1");
+        mCollectingTestListener.testStarted(test);
+        mCollectingTestListener.testEnded(test, new HashMap<String, Metric>());
+        mCollectingTestListener.testRunEnded(0, new HashMap<String, Metric>());
+
+        TestRunResult runResult = mCollectingTestListener.getMergedTestRunResults().get(0);
+
+        assertThat(runResult.isRunComplete()).isTrue();
+        assertThat(runResult.isRunFailure()).isTrue();
+        assertThat(mCollectingTestListener.getNumTotalTests()).isEqualTo(2);
+        // Accross attempt we do not increment the total expected test
+        assertThat(mCollectingTestListener.getExpectedTests()).isEqualTo(3);
     }
 
     /**

@@ -23,19 +23,15 @@ import re
 # pylint: disable=import-error
 import atest_error
 import constants
-import test_info
-import test_finder_base
-import test_finder_utils
+from test_finders import test_info
+from test_finders import test_finder_base
+from test_finders import test_finder_utils
 from test_runners import atest_tf_test_runner
 from test_runners import robolectric_test_runner
 from test_runners import vts_tf_test_runner
 
 _CC_EXT_RE = re.compile(r'.*(\.cc|\.cpp)$', re.I)
-_JAVA_EXT = '.java'
-
-# Parse package name from the package declaration line of a java file.
-# Group matches "foo.bar" of line "package foo.bar;"
-_PACKAGE_RE = re.compile(r'\s*package\s+(?P<package>[^;]+)\s*;\s*', re.I)
+_JAVA_EXT_RE = re.compile(r'.*(\.java|\.kt)$', re.I)
 
 _MODULES_IN = 'MODULES-IN-%s'
 _ANDROID_MK = 'Android.mk'
@@ -43,7 +39,6 @@ _ANDROID_MK = 'Android.mk'
 # These are suites in LOCAL_COMPATIBILITY_SUITE that aren't really suites so
 # we can ignore them.
 _SUITES_TO_IGNORE = frozenset({'general-tests', 'device-tests', 'tests'})
-
 
 class ModuleFinder(test_finder_base.TestFinderBase):
     """Module finder class."""
@@ -62,6 +57,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
 
         A module can have a test config in the following manner:
           - AndroidTest.xml at the module path.
+          - test_config be set in module-info.json.
           - Auto-generated config via the auto_test_config key in module-info.json.
 
         Args:
@@ -70,12 +66,15 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         Returns:
             True if this module has a test config, False otherwise.
         """
+        # Check if test_config in module-info is set.
+        for test_config in mod_info.get(constants.MODULE_TEST_CONFIG, []):
+            if os.path.isfile(os.path.join(self.root_dir, test_config)):
+                return True
         # Check for AndroidTest.xml at the module path.
         for path in mod_info.get(constants.MODULE_PATH, []):
             if os.path.isfile(os.path.join(self.root_dir, path,
                                            constants.MODULE_CONFIG)):
                 return True
-
         # Check if the module has an auto-generated config.
         return self._is_auto_gen_test_config(mod_info.get(constants.MODULE_NAME))
 
@@ -100,20 +99,29 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             return True
         return False
 
-    def _get_first_testable_module(self, path):
-        """Returns first testable module given module path.
+    def _determine_testable_module(self, path):
+        """Determine which module the user is trying to test.
+
+        Returns the module to test. If there are multiple possibilities, will
+        ask the user. Otherwise will return the only module found.
 
         Args:
             path: String path of module to look for.
 
         Returns:
-            String of first installed module name.
+            String of the module name.
         """
+        testable_modules = []
         for mod in self.module_info.get_module_names(path):
             mod_info = self.module_info.get_module_info(mod)
+            # Robolectric tests always exist in pairs of 2, one module to build
+            # the test and another to run it. For now, we are assuming they are
+            # isolated in their own folders and will return if we find one.
+            if self._is_robolectric_test(mod):
+                return mod
             if self._is_testable_module(mod_info):
-                return mod_info.get(constants.MODULE_NAME)
-        return None
+                testable_modules.append(mod_info.get(constants.MODULE_NAME))
+        return test_finder_utils.extract_test_from_tests(testable_modules)
 
     def _is_vts_module(self, module_name):
         """Returns True if the module is a vts module, else False."""
@@ -148,10 +156,17 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         if custom_out_dir is None or not os.path.isabs(custom_out_dir):
             out_dir = os.path.relpath(out_dir, self.root_dir)
         vts_out_dir = os.path.join(out_dir, 'vts', 'android-vts', 'testcases')
+        # Parse dependency of default staging plans.
 
-        # Add in vts test build targets.
-        test.build_targets = test_finder_utils.get_targets_from_vts_xml(
-            config_file, vts_out_dir, self.module_info)
+        xml_path = test_finder_utils.search_integration_dirs(
+            constants.VTS_STAGING_PLAN,
+            self.module_info.get_paths(constants.VTS_TF_MODULE))
+        vts_xmls = test_finder_utils.get_plans_from_vts_xml(xml_path)
+        vts_xmls.add(config_file)
+        for config_file in vts_xmls:
+            # Add in vts test build targets.
+            test.build_targets |= test_finder_utils.get_targets_from_vts_xml(
+                config_file, vts_out_dir, self.module_info)
         test.build_targets.add('vts-test-core')
         test.build_targets.add(test.test_name)
         return test
@@ -223,10 +238,13 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             test: TestInfo that has been filled out by a find method.
 
         Return:
-            TestInfo that has been modified as needed.
+            TestInfo that has been modified as needed and retrurn None if
+            this module can't be found in the module_info.
         """
         module_name = test.test_name
         mod_info = self.module_info.get_module_info(module_name)
+        if not mod_info:
+            return None
         test.module_class = mod_info['class']
         test.install_locations = test_finder_utils.get_install_locations(
             mod_info['installed'])
@@ -269,9 +287,35 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             config_file = os.path.join(self.root_dir, rel_config)
             targets = test_finder_utils.get_targets_from_xml(config_file,
                                                              self.module_info)
-        mod_dir = os.path.dirname(rel_config).replace('/', '-')
-        targets.add(_MODULES_IN % mod_dir)
+        for module_path in self.module_info.get_paths(module_name):
+            mod_dir = module_path.replace('/', '-')
+            targets.add(_MODULES_IN % mod_dir)
         return targets
+
+    def _get_module_test_config(self, module_name, rel_config=None):
+        """Get the value of test_config in module_info.
+
+        Get the value of 'test_config' in module_info if its
+        auto_test_config is not true.
+        In this case, the test_config is specified by user.
+        If not, return rel_config.
+
+        Args:
+            module_name: A string of the test's module name.
+            rel_config: XML for the given test.
+
+        Returns:
+            A string of test_config path if found, else return rel_config.
+        """
+        mod_info = self.module_info.get_module_info(module_name)
+        if mod_info:
+            test_config = ''
+            test_config_list = mod_info.get(constants.MODULE_TEST_CONFIG, [])
+            if test_config_list:
+                test_config = test_config_list[0]
+            if not self._is_auto_gen_test_config(module_name) and test_config != '':
+                return test_config
+        return rel_config
 
     def find_test_by_module_name(self, module_name):
         """Find test for the given module name.
@@ -287,6 +331,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             # path is a list with only 1 element.
             rel_config = os.path.join(mod_info['path'][0],
                                       constants.MODULE_CONFIG)
+            rel_config = self._get_module_test_config(module_name, rel_config=rel_config)
             return self._process_test_info(test_info.TestInfo(
                 test_name=module_name,
                 test_runner=self._TEST_RUNNER,
@@ -344,8 +389,10 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                 return None
             rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
         if not module_name:
-            module_name = self._get_first_testable_module(os.path.dirname(
+            module_name = self._determine_testable_module(os.path.dirname(
                 rel_config))
+        # The real test config might be record in module-info.
+        rel_config = self._get_module_test_config(module_name, rel_config=rel_config)
         return self._process_test_info(test_info.TestInfo(
             test_name=module_name,
             test_runner=self._TEST_RUNNER,
@@ -393,8 +440,9 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         """
         _, methods = test_finder_utils.split_methods(package)
         if methods:
-            raise atest_error.MethodWithoutClassError('Method filtering '
-                                                      'requires class')
+            raise atest_error.MethodWithoutClassError('%s: Method filtering '
+                                                      'requires class' % (
+                                                          methods))
         # Confirm that packages exists and get user input for multiples.
         if rel_config:
             search_dir = os.path.join(self.root_dir,
@@ -415,8 +463,10 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                 return None
             rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
         if not module_name:
-            module_name = self._get_first_testable_module(
+            module_name = self._determine_testable_module(
                 os.path.dirname(rel_config))
+        # The real test config might be record in module-info.
+        rel_config = self._get_module_test_config(module_name, rel_config=rel_config)
         return self._process_test_info(test_info.TestInfo(
             test_name=module_name,
             test_runner=self._TEST_RUNNER,
@@ -471,12 +521,14 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             self.root_dir, dir_path, self.module_info)
         if not rel_module_dir:
             return None
-        module_name = self._get_first_testable_module(rel_module_dir)
+        module_name = self._determine_testable_module(rel_module_dir)
         rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
+        # The real test config might be record in module-info.
+        rel_config = self._get_module_test_config(module_name, rel_config=rel_config)
         data = {constants.TI_REL_CONFIG: rel_config,
                 constants.TI_FILTER: frozenset()}
         # Path is to java file.
-        if file_name and file_name.endswith(_JAVA_EXT):
+        if file_name and _JAVA_EXT_RE.match(file_name):
             full_class_name = test_finder_utils.get_fully_qualified_class_name(
                 path)
             data[constants.TI_FILTER] = frozenset(
@@ -484,7 +536,8 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         # Path is to cc file.
         elif file_name and _CC_EXT_RE.match(file_name):
             if not test_finder_utils.has_cc_class(path):
-                raise atest_error.MissingCCTestCaseError(path)
+                raise atest_error.MissingCCTestCaseError(
+                    "Can't find CC class in %s" % path)
             if methods:
                 data[constants.TI_FILTER] = frozenset(
                     [test_info.TestFilter(test_finder_utils.get_cc_filter(
@@ -494,12 +547,14 @@ class ModuleFinder(test_finder_base.TestFinderBase):
               and rel_module_dir != os.path.relpath(path, self.root_dir)):
             dir_items = [os.path.join(path, f) for f in os.listdir(path)]
             for dir_item in dir_items:
-                if dir_item.endswith(_JAVA_EXT):
+                if _JAVA_EXT_RE.match(dir_item):
                     package_name = test_finder_utils.get_package_name(dir_item)
                     if package_name:
                         # methods should be empty frozenset for package.
                         if methods:
-                            raise atest_error.MethodWithoutClassError()
+                            raise atest_error.MethodWithoutClassError(
+                                '%s: Method filtering requires class'
+                                % str(methods))
                         data[constants.TI_FILTER] = frozenset(
                             [test_info.TestFilter(package_name, methods)])
                         break

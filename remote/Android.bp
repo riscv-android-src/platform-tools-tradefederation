@@ -22,7 +22,7 @@ java_library_host {
     "json-prebuilt",
     "jsr305",
     "sdklib-prebuilt",
-    "guava-18.0-prebuilt",
+    "guava",
     "ddmlib-prebuilt",
     "devtools-annotations-prebuilt",
   ],

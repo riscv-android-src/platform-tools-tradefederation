@@ -62,6 +62,8 @@ public abstract class SubprocessTfLauncher
     public static final String SUBPROCESS_TAG_NAME = "subprocess";
 
     public static final String PARENT_PROC_TAG_NAME = "parentprocess";
+    /** Env. variable that affects adb selection. */
+    public static final String ANDROID_SERIAL_VAR = "ANDROID_SERIAL";
 
     @Option(name = "max-run-time", description =
             "The maximum time to allow for a TF test run.", isTimeVal = true)
@@ -175,19 +177,15 @@ public abstract class SubprocessTfLauncher
 
         // clear the TF_GLOBAL_CONFIG env, so another tradefed will not reuse the global config file
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
+        mRunUtil.unsetEnvVariable(ANDROID_SERIAL_VAR);
+
         if (mGlobalConfig == null) {
             // If the global configuration is not set in option, create a filtered global
             // configuration for subprocess to use.
             try {
-                String[] configs =
-                        new String[] {
-                            GlobalConfiguration.DEVICE_MANAGER_TYPE_NAME,
-                            GlobalConfiguration.KEY_STORE_TYPE_NAME
-                        };
                 File filteredGlobalConfig =
-                        FileUtil.createTempFile("filtered_global_config", ".config");
-                GlobalConfiguration.getInstance()
-                        .cloneConfigWithFilter(filteredGlobalConfig, configs);
+                        GlobalConfiguration.getInstance().cloneConfigWithFilter();
                 mFilteredGlobalConfig = filteredGlobalConfig.getAbsolutePath();
                 mGlobalConfig = mFilteredGlobalConfig;
             } catch (IOException e) {

@@ -15,8 +15,12 @@
  */
 package com.android.tradefed.result.suite;
 
+import com.android.tradefed.log.LogUtil.CLog;
+
 /** Reporter that allows to generate reports in a particular format. TODO: fix logged file */
 public abstract class FormattedGeneratorReporter extends SuiteResultReporter {
+
+    private boolean mInvocationFailed = false;
 
     /** {@inheritDoc} */
     @Override
@@ -24,11 +28,20 @@ public abstract class FormattedGeneratorReporter extends SuiteResultReporter {
         // Let the parent create the results structures
         super.invocationEnded(elapsedTime);
 
-        SuiteResultHolder holder = generateResultHolder();
+        // If invocation failed and did not see any tests
+        if (mInvocationFailed && getNumTotalTests() == 0) {
+            CLog.e("Invocation failed, skip generating the formatted report.");
+        } else {
+            SuiteResultHolder holder = generateResultHolder();
+            IFormatterGenerator generator = createFormatter();
+            finalizeResults(generator, holder);
+        }
+    }
 
-        IFormatterGenerator generator = createFormatter();
-
-        finalizeResults(generator, holder);
+    @Override
+    public void invocationFailed(Throwable cause) {
+        mInvocationFailed = true;
+        super.invocationFailed(cause);
     }
 
     /**

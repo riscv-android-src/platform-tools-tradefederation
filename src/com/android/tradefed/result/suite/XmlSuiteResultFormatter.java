@@ -34,6 +34,7 @@ import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
+import com.google.common.xml.XmlEscapers;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -88,6 +89,8 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
     private static final String LOGCAT_TAG = "Logcat";
 
     private static final String METRIC_TAG = "Metric";
+    private static final String METRIC_KEY = "key";
+
     private static final String MESSAGE_ATTR = "message";
     private static final String MODULE_TAG = "Module";
     private static final String MODULES_DONE_ATTR = "modules_done";
@@ -304,7 +307,8 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
                 for (Entry<String, String> metric :
                         individualResult.getValue().getMetrics().entrySet()) {
                     serializer.startTag(NS, METRIC_TAG);
-                    serializer.attribute(NS, metric.getKey(), metric.getValue());
+                    serializer.attribute(NS, METRIC_KEY, metric.getKey());
+                    serializer.text(sanitizeXmlContent(metric.getValue()));
                     serializer.endTag(NS, METRIC_TAG);
                 }
                 serializer.endTag(NS, TEST_TAG);
@@ -326,9 +330,10 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
             }
             serializer.startTag(NS, FAILURE_TAG);
 
-            serializer.attribute(NS, MESSAGE_ATTR, message);
+            serializer.attribute(NS, MESSAGE_ATTR, sanitizeXmlContent(message));
             serializer.startTag(NS, STACK_TAG);
-            serializer.text(fullStack);
+
+            serializer.text(sanitizeXmlContent(fullStack));
             serializer.endTag(NS, STACK_TAG);
 
             serializer.endTag(NS, FAILURE_TAG);
@@ -584,14 +589,18 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
             throws XmlPullParserException, IOException {
         HashMap<String, Metric> metrics = new HashMap<>();
         if (parser.getName().equals(METRIC_TAG)) {
+            parser.require(XmlPullParser.START_TAG, NS, METRIC_TAG);
             for (int index = 0; index < parser.getAttributeCount(); index++) {
-                String key = parser.getAttributeName(index);
-                String value = parser.getAttributeValue(NS, key);
+                String key = parser.getAttributeValue(index);
+                String value = parser.nextText();
                 metrics.put(key, TfMetricProtoUtil.stringToMetric(value));
             }
-            parser.nextTag();
             parser.require(XmlPullParser.END_TAG, NS, METRIC_TAG);
         }
         return metrics;
+    }
+
+    private static String sanitizeXmlContent(String s) {
+        return XmlEscapers.xmlContentEscaper().escape(s);
     }
 }

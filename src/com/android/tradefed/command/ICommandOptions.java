@@ -16,7 +16,10 @@
 
 package com.android.tradefed.command;
 
+import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.util.UniqueMultiMap;
+
+import java.util.Set;
 
 /**
  *  Container for execution options for commands.
@@ -149,6 +152,9 @@ public interface ICommandOptions {
      */
     public void setShardIndex(Integer shardIndex);
 
+    /** Whether or not sharding should use the token support. */
+    public boolean shouldUseTokenSharding();
+
     /** Return true if the test should skip device setup during TestInvocation setup. */
     public boolean shouldSkipPreDeviceSetup();
 
@@ -157,9 +163,6 @@ public interface ICommandOptions {
 
     /** Returns the data passed to the invocation to describe it */
     public UniqueMultiMap<String, String> getInvocationData();
-
-    /** Returns true if we should use Tf new sharding logic */
-    public boolean shouldUseTfSharding();
 
     /** Returns true if we should use Tf containers to run the invocation */
     public boolean shouldUseSandboxing();
@@ -172,4 +175,19 @@ public interface ICommandOptions {
 
     /** Sets whether or not we should use the TF sandbox test mode. */
     public void setUseSandboxTestMode(boolean use);
+
+    /** Whether or not to use sandbox mode in remote invocation. */
+    public boolean shouldUseRemoteSandboxMode();
+
+    /** Returns the set of auto log collectors to be added for an invocation */
+    public Set<AutoLogCollector> getAutoLogCollectors();
+
+    /** Sets the set of auto log collectors that should be added to an invocation. */
+    public void setAutoLogCollectors(Set<AutoLogCollector> autoLogCollectors);
+
+    /** Whether or not to capture a screenshot on test case failure */
+    public boolean captureScreenshotOnFailure();
+
+    /** Whether or not to capture a logcat on test case failure */
+    public boolean captureLogcatOnFailure();
 }

@@ -75,8 +75,8 @@ class ModuleInfo(object):
                 os.environ.get('ANDROID_PRODUCT_OUT'), _MODULE_INFO)
             module_info_target = module_file_path
         if not os.path.isfile(module_file_path) or force_build:
-            logging.info('Generating %s - this is required for '
-                         'initial runs.', _MODULE_INFO)
+            logging.debug('Generating %s - this is required for '
+                          'initial runs.', _MODULE_INFO)
             atest_utils.build([module_info_target],
                               logging.getLogger().isEnabledFor(logging.DEBUG))
         return module_info_target, module_file_path
@@ -114,10 +114,10 @@ class ModuleInfo(object):
             Dict of module path to module info dict.
         """
         path_to_module_info = {}
-        for mod_name, mod_info in name_to_module_info.iteritems():
+        for mod_name, mod_info in name_to_module_info.items():
             # Cross-compiled and multi-arch modules actually all belong to
             # a single target so filter out these extra modules.
-            if mod_name != mod_info.get(constants.MODULE_NAME, [''])[0]:
+            if mod_name != mod_info.get(constants.MODULE_NAME, ''):
                 continue
             for path in mod_info.get(constants.MODULE_PATH, []):
                 mod_info[constants.MODULE_NAME] = mod_name

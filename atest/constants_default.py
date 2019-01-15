@@ -16,12 +16,15 @@
 Various globals used by atest.
 """
 
+
 MODE = 'DEFAULT'
 
 # Result server constants for atest_utils.
 RESULT_SERVER = ''
 RESULT_SERVER_ARGS = []
 RESULT_SERVER_TIMEOUT = 5
+# Result arguments if tests are configured in TEST_MAPPING.
+TEST_MAPPING_RESULT_SERVER_ARGS = []
 
 # Arg constants.
 WAIT_FOR_DEBUGGER = 'WAIT_FOR_DEBUGGER'
@@ -35,6 +38,7 @@ SERIAL = 'SERIAL'
 ALL_ABI = 'ALL_ABI'
 HOST = 'HOST'
 CUSTOM_ARGS = 'CUSTOM_ARGS'
+DRY_RUN = 'DRY_RUN'
 
 # Application exit codes.
 EXIT_CODE_SUCCESS = 0
@@ -42,6 +46,7 @@ EXIT_CODE_ENV_NOT_SETUP = 1
 EXIT_CODE_BUILD_FAILURE = 2
 EXIT_CODE_ERROR = 3
 EXIT_CODE_TEST_NOT_FOUND = 4
+EXIT_CODE_TEST_FAILURE = 5
 
 # Test finder constants.
 MODULE_CONFIG = 'AndroidTest.xml'
@@ -53,6 +58,7 @@ MODULE_INSTALLED = 'installed'
 MODULE_CLASS_ROBOLECTRIC = 'ROBOLECTRIC'
 MODULE_CLASS_NATIVE_TESTS = 'NATIVE_TESTS'
 MODULE_CLASS_JAVA_LIBRARIES = 'JAVA_LIBRARIES'
+MODULE_TEST_CONFIG = 'test_config'
 
 # Env constants
 ANDROID_BUILD_TOP = 'ANDROID_BUILD_TOP'
@@ -80,11 +86,15 @@ TEST_GROUP_ALL = 'all'
 TEST_MAPPING_IMPORTS = 'imports'
 
 # TradeFed command line args
+TF_INCLUDE_FILTER_OPTION = 'include-filter'
+TF_EXCLUDE_FILTER_OPTION = 'exclude-filter'
 TF_INCLUDE_FILTER = '--include-filter'
+TF_EXCLUDE_FILTER = '--exclude-filter'
 TF_ATEST_INCLUDE_FILTER = '--atest-include-filter'
 TF_ATEST_INCLUDE_FILTER_VALUE_FMT = '{test_name}:{test_filter}'
 TF_MODULE_ARG = '--module-arg'
 TF_MODULE_ARG_VALUE_FMT = '{test_name}:{option_name}:{option_value}'
+TF_SUITE_FILTER_ARG_VALUE_FMT = '"{test_name} {option_value}"'
 
 # Suite Plans
 SUITE_PLANS = frozenset(['cts'])
@@ -104,3 +114,18 @@ BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
 DEVICELESS_TEST = 'host'
 DEVICE_TEST = 'device'
 BOTH_TEST = 'both'
+
+# Metrics
+METRICS_URL = 'http://asuite-218222.appspot.com/atest/metrics'
+EXTERNAL = 'EXTERNAL_RUN'
+INTERNAL = 'INTERNAL_RUN'
+INTERNAL_EMAIL = '@google.com'
+
+# VTS plans
+VTS_STAGING_PLAN = 'vts-staging-default'
+
+# TreeHugger TEST_MAPPING SUITE_PLANS
+TEST_MAPPING_SUITES = ['device-tests', 'general-tests']
+
+# VTS TF
+VTS_TF_MODULE = 'vts-tradefed'

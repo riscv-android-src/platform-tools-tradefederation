@@ -77,8 +77,8 @@ public class GCSHostResourceManagerTest {
                 };
 
         OptionSetter setter = new OptionSetter(mHostResourceManager);
-        setter.setOptionValue("host-resources", "key1", HOST_RESOURCE1);
-        setter.setOptionValue("host-resources", "key2", HOST_RESOURCE2);
+        setter.setOptionValue("host-resource", "key1", HOST_RESOURCE1);
+        setter.setOptionValue("host-resource", "key2", HOST_RESOURCE2);
     }
 
     @After

@@ -131,7 +131,7 @@ public class InstrumentationFileTestTest extends TestCase {
         mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
         mMockListener.testEnded(
                 EasyMock.eq(test), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(0, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);
@@ -217,7 +217,7 @@ public class InstrumentationFileTestTest extends TestCase {
         mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
         mMockListener.testEnded(
                 EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         // expect test2 to start but never finish
         mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
         // Second run:
@@ -226,12 +226,12 @@ public class InstrumentationFileTestTest extends TestCase {
         mMockListener.testStarted(EasyMock.eq(test3), EasyMock.anyLong());
         mMockListener.testEnded(
                 EasyMock.eq(test3), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         // expect to rerun test2 successfully
         mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
         mMockListener.testEnded(
                 EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);
@@ -331,14 +331,14 @@ public class InstrumentationFileTestTest extends TestCase {
         mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
         mMockListener.testEnded(
                 EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         // first serial re-run:
-        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 1);
+        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 0, 1);
         // expect test2 to start and finish successfully
         mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
         mMockListener.testEnded(
                 EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);
@@ -512,7 +512,7 @@ public class InstrumentationFileTestTest extends TestCase {
         mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
         mMockListener.testEnded(
                 EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
 
         // Second run:
@@ -520,7 +520,7 @@ public class InstrumentationFileTestTest extends TestCase {
         mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
         mMockListener.testEnded(
                 EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         mMockListener.testStarted(EasyMock.eq(test3), EasyMock.anyLong());
 
         // Third run:
@@ -528,7 +528,7 @@ public class InstrumentationFileTestTest extends TestCase {
         mMockListener.testStarted(EasyMock.eq(test3), EasyMock.anyLong());
         mMockListener.testEnded(
                 EasyMock.eq(test3), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         mMockListener.testStarted(EasyMock.eq(test4), EasyMock.anyLong());
 
         // MAX_ATTEMPTS is 3, so there will be no forth run.
@@ -617,7 +617,7 @@ public class InstrumentationFileTestTest extends TestCase {
         mMockListener.testEnded(
                 EasyMock.eq(test), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mMockListener.testRunEnded(0, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
 
         // Second run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 2);
@@ -627,7 +627,7 @@ public class InstrumentationFileTestTest extends TestCase {
         mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
         mMockListener.testEnded(
                 EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);

@@ -17,7 +17,7 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.IShellOutputReceiver;
-import com.android.tradefed.build.BuildInfoKey;
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionClass;
@@ -27,6 +27,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
 import org.json.JSONException;
@@ -40,9 +41,11 @@ import java.util.List;
 /** A Test that runs a native test package. */
 @OptionClass(alias = "hostgtest")
 public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver {
+    private static final long DEFAULT_HOST_COMMAND_TIMEOUT_MS = 2 * 60 * 1000;
 
     private IBuildInfo mBuildInfo = null;
     private IAbi mAbi = null;
+    private IRunUtil mRunUtil = null;
 
     @Override
     public void setAbi(IAbi abi) {
@@ -64,28 +67,50 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
      * @return the {@link CommandResult} of command
      */
     public CommandResult executeHostCommand(String cmd) {
-        String[] cmds = cmd.split("\\s+");
-        long maxTestTimeMs = getMaxTestTimeMs();
-        CommandResult cmdResult = RunUtil.getDefault().runTimedCmd(maxTestTimeMs, cmds);
-        if (!CommandStatus.SUCCESS.equals(cmdResult.getStatus())) {
-            throw new RuntimeException(
-                    String.format("Command run fail cause by %s.", cmdResult.getStderr()));
-        }
-        return cmdResult;
+        return executeHostCommand(cmd, DEFAULT_HOST_COMMAND_TIMEOUT_MS);
     }
 
     /**
      * @param cmd command that want to execute in host
-     * @param receiver the result parser
+     * @param timeoutMs timeout for command in milliseconds
+     * @return the {@link CommandResult} of command
      */
-    public void executeHostCommand(String cmd, IShellOutputReceiver receiver)
-            throws RuntimeException {
+    public CommandResult executeHostCommand(String cmd, long timeoutMs) {
+        String[] cmds = cmd.split("\\s+");
+        return RunUtil.getDefault().runTimedCmd(timeoutMs, cmds);
+    }
+
+    /**
+     * @param cmd command that want to execute in host
+     * @param timeoutMs timeout for command in milliseconds
+     * @param receiver the result parser
+     * @return the {@link CommandResult} of command
+     */
+    public CommandResult executeHostGTestCommand(
+            String cmd, long timeoutMs, IShellOutputReceiver receiver) {
+        RunUtil runUtil = new RunUtil();
+        String[] cmds = cmd.split("\\s+");
+
+        if (getShardCount() > 0) {
+            if (isCollectTestsOnly()) {
+                CLog.w(
+                        "--collect-tests-only option ignores sharding parameters, and will cause "
+                                + "each shard to collect all tests.");
+            }
+            runUtil.setEnvVariable("GTEST_SHARD_INDEX", Integer.toString(getShardIndex()));
+            runUtil.setEnvVariable("GTEST_TOTAL_SHARDS", Integer.toString(getShardCount()));
+        }
+
+        // Set the RunUtil to combine stderr with stdout so that they are interleaved correctly.
+        runUtil.setRedirectStderrToStdout(true);
+
         // TODO Redirect stdout stream, so we could get results as they come.
-        CommandResult result = executeHostCommand(cmd);
-        if (null != result && CommandStatus.SUCCESS.equals(result.getStatus())) {
+        CommandResult result = runUtil.runTimedCmd(timeoutMs, cmds);
+        if (result != null && receiver != null) {
             byte[] resultStdout = result.getStdout().getBytes();
             receiver.addOutput(resultStdout, 0, resultStdout.length);
         }
+        return result;
     }
 
     /** {@inheritDoc} */
@@ -126,14 +151,40 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
             final IShellOutputReceiver resultParser, final String fullPath, final String flags) {
         try {
             for (String cmd : getBeforeTestCmd()) {
-                executeHostCommand(cmd);
+                CommandResult result = executeHostCommand(cmd);
+                if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
+                    throw new RuntimeException(
+                            "'Before test' command failed: " + result.getStderr());
+                }
             }
+
+            long maxTestTimeMs = getMaxTestTimeMs();
             String cmd = getGTestCmdLine(fullPath, flags);
-            executeHostCommand(cmd, resultParser);
+            CommandResult testResult = executeHostGTestCommand(cmd, maxTestTimeMs, resultParser);
+            switch (testResult.getStatus()) {
+                case FAILED:
+                    // Check the command exit code. If it's 1, then this is just a red herring;
+                    // gtest returns 1 when a test fails.
+                    final Integer exitCode = testResult.getExitCode();
+                    if (exitCode == null || exitCode != 1) {
+                        throw new RuntimeException(
+                                String.format("Command run failed with exit code %s", exitCode));
+                    }
+                    break;
+                case TIMED_OUT:
+                    throw new RuntimeException(
+                            String.format("Command run timed out after %d ms", maxTestTimeMs));
+                case EXCEPTION:
+                    throw new RuntimeException("Command run failed with exception");
+            }
         } finally {
             resultParser.flush();
             for (String cmd : getAfterTestCmd()) {
-                executeHostCommand(cmd);
+                CommandResult result = executeHostCommand(cmd);
+                if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
+                    throw new RuntimeException(
+                            "'After test' command failed: " + result.getStderr());
+                }
             }
         }
     }
@@ -146,7 +197,7 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
         // If the directory is null, then get testcase directory from getTestDir() since *TS will
         // invoke setTestDir().
         List<File> scanDirs = new ArrayList<>();
-        File hostLinkedDir = mBuildInfo.getFile(BuildInfoKey.BuildInfoFileKey.HOST_LINKED_DIR);
+        File hostLinkedDir = mBuildInfo.getFile(BuildInfoFileKey.HOST_LINKED_DIR);
         if (hostLinkedDir != null) {
             scanDirs.add(hostLinkedDir);
         }
@@ -163,6 +214,20 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
             throw new RuntimeException(e);
         }
 
+        if (gTestFile == null || gTestFile.isDirectory()) {
+            // If we ended up here we most likely failed to find the proper file as is, so we
+            // search for it with a potential suffix (which is allowed).
+            try {
+                File byBaseName =
+                        FileUtil.findFile(moduleName + ".*", mAbi, scanDirs.toArray(new File[] {}));
+                if (byBaseName != null && byBaseName.isFile()) {
+                    gTestFile = byBaseName;
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
         if (gTestFile == null) {
             throw new RuntimeException(
                     String.format(
@@ -173,7 +238,6 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
             throw new RuntimeException(
                     String.format("%s is not executable!", gTestFile.getAbsolutePath()));
         }
-
         IShellOutputReceiver resultParser = createResultParser(gTestFile.getName(), listener);
         String flags = getAllGTestFlags(gTestFile.getName());
         CLog.i("Running gtest %s %s", gTestFile.getName(), flags);
