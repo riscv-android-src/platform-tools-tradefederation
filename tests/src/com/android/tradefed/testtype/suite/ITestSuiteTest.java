@@ -29,6 +29,7 @@ import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
@@ -259,36 +260,38 @@ public class ITestSuiteTest {
         mContext = new InvocationContext();
         mTestSuite.setInvocationContext(mContext);
         mListCollectors = new ArrayList<>();
-        mListCollectors.add(
-                new BaseDeviceMetricCollector() {
-                    @Override
-                    public void onTestRunStart(DeviceMetricData runData) {
-                        runData.addMetric(
-                                "metric1",
-                                Metric.newBuilder()
-                                        .setMeasurements(
-                                                Measurements.newBuilder()
-                                                        .setSingleString("value1")));
-                    }
-                });
-        mListCollectors.add(
-                new BaseDeviceMetricCollector() {
-                    @Override
-                    public void onTestRunStart(DeviceMetricData runData) {
-                        runData.addMetric(
-                                "metric2",
-                                Metric.newBuilder()
-                                        .setMeasurements(
-                                                Measurements.newBuilder()
-                                                        .setSingleString("value2")));
-                    }
-                });
+        mListCollectors.add(new TestMetricCollector("metric1", "value1"));
+        mListCollectors.add(new TestMetricCollector("metric2", "value2"));
     }
 
     @After
     public void tearDown() {
         // Always exit the scope at the end.
         mScope.exit();
+    }
+
+    public static class TestMetricCollector extends BaseDeviceMetricCollector {
+
+        @Option(name = "metric-name")
+        private String mName;
+
+        @Option(name = "metric-value")
+        private String mValue;
+
+        public TestMetricCollector() {}
+
+        TestMetricCollector(String name, String value) {
+            mName = name;
+            mValue = value;
+        }
+
+        @Override
+        public void onTestRunStart(DeviceMetricData runData) {
+            runData.addMetric(
+                    mName,
+                    Metric.newBuilder()
+                            .setMeasurements(Measurements.newBuilder().setSingleString(mValue)));
+        }
     }
 
     /**
