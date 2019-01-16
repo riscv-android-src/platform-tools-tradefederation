@@ -658,10 +658,23 @@ public class RemoteAndroidVirtualDeviceTest {
                     .when(mGceHandler)
                     .startGce();
 
-            CommandResult result = new CommandResult(CommandStatus.FAILED);
+            CommandResult bugreportzResult = new CommandResult(CommandStatus.SUCCESS);
+            bugreportzResult.setStdout("OK: bugreportz-file");
+            doReturn(bugreportzResult)
+                    .when(mockRunUtil)
+                    .runTimedCmd(Mockito.anyLong(), Mockito.any(), Mockito.any(), Mockito.any());
+
+            // Pulling of the file
+            CommandResult result = new CommandResult(CommandStatus.SUCCESS);
             result.setStderr("");
             result.setStdout("");
             doReturn(result).when(mockRunUtil).runTimedCmd(Mockito.anyLong(), Mockito.any());
+
+            // The bugreportz is logged
+            mTestLogger.testLog(
+                    EasyMock.eq("bugreportz-ssh"),
+                    EasyMock.eq(LogDataType.BUGREPORTZ),
+                    EasyMock.anyObject());
 
             // Each invocation bellow will dump a logcat before the shutdown.
             mMockIDevice.executeShellCommand(
