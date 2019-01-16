@@ -51,6 +51,7 @@ public class BaseTestSuite extends ITestSuite {
     public static final String TEST_ARG_OPTION = "test-arg";
     public static final String TEST_OPTION = "test";
     public static final char TEST_OPTION_SHORT_NAME = 't';
+    public static final String CONFIG_PATTERNS_OPTION = "config-patterns";
     private static final String MODULE_ARG_OPTION = "module-arg";
 
     @Option(
@@ -130,7 +131,7 @@ public class BaseTestSuite extends ITestSuite {
     private boolean mSkipJarLoading = false;
 
     @Option(
-        name = "config-patterns",
+        name = CONFIG_PATTERNS_OPTION,
         description =
                 "The pattern(s) of the configurations that should be loaded from a directory."
                         + " If none is explicitly specified, .*.xml and .*.config will be used."
@@ -277,6 +278,11 @@ public class BaseTestSuite extends ITestSuite {
     /** Adds module args */
     public void addModuleArgs(Set<String> moduleArgs) {
         mModuleArgs.addAll(moduleArgs);
+    }
+
+    /** Add config patterns */
+    public void addConfigPatterns(List<String> patterns) {
+        mConfigPatterns.addAll(patterns);
     }
 
     /**

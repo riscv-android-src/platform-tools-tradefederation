@@ -421,12 +421,40 @@ public class GceManager {
             IRunUtil runUtil,
             String remoteFilePath,
             LogDataType type) {
+        logNestedRemoteFile(logger, gceAvd, options, runUtil, remoteFilePath, type, null);
+    }
+
+    /**
+     * Fetch a remote file from a nested instance and log it.
+     *
+     * @param logger The {@link ITestLogger} where to log the file.
+     * @param gceAvd The {@link GceAvdInfo} that describe the device.
+     * @param options a {@link TestDeviceOptions} describing the device options to be used for the
+     *     GCE device.
+     * @param runUtil a {@link IRunUtil} to execute commands.
+     * @param remoteFilePath The remote path where to find the file.
+     * @param type the {@link LogDataType} of the logged file.
+     * @param baseName The base name to use to log the file. If null the actual file name will be
+     *     used.
+     */
+    public static void logNestedRemoteFile(
+            ITestLogger logger,
+            GceAvdInfo gceAvd,
+            TestDeviceOptions options,
+            IRunUtil runUtil,
+            String remoteFilePath,
+            LogDataType type,
+            String baseName) {
         File remoteFile =
                 RemoteFileUtil.fetchRemoteFile(
                         gceAvd, options, runUtil, REMOTE_FILE_OP_TIMEOUT, remoteFilePath);
         if (remoteFile != null) {
             try (InputStreamSource remoteFileStream = new FileInputStreamSource(remoteFile, true)) {
-                logger.testLog(remoteFile.getName(), type, remoteFileStream);
+                String name = baseName;
+                if (name == null) {
+                    name = remoteFile.getName();
+                }
+                logger.testLog(name, type, remoteFileStream);
             }
         }
     }

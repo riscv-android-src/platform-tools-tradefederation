@@ -19,7 +19,9 @@ package com.android.tradefed.testtype.suite;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
+import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaver;
@@ -193,18 +195,6 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             currentTestListener.add(mFailureListener);
         }
 
-        if (mRunMetricCollectors != null) {
-            // Module only init the collectors here to avoid triggering the collectors when
-            // replaying the cached events at the end. This ensure metrics are capture at
-            // the proper time in the invocation.
-            for (IMetricCollector collector : mRunMetricCollectors) {
-                if (collector.isDisabled()) {
-                    CLog.d("%s has been disabled. Skipping.", collector);
-                } else {
-                    runListener = collector.init(mModuleInvocationContext, runListener);
-                }
-            }
-        }
         // The module collectors itself are added: this list will be very limited.
         for (IMetricCollector collector : mModuleConfiguration.getMetricCollectors()) {
             if (collector.isDisabled()) {
@@ -269,6 +259,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
         try {
             CLog.d("Starting intra-module retry.");
             for (int attemptNumber = 1; attemptNumber < mMaxRunLimit; attemptNumber++) {
+                CLog.d("Retry attempt number %s", attemptNumber);
                 // Reset the filters to original.
                 if (mTest instanceof ITestFilterReceiver) {
                     ((ITestFilterReceiver) mTest).clearIncludeFilters();
@@ -386,7 +377,24 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
     private final void intraModuleRun(ITestInvocationListener runListener)
             throws DeviceNotAvailableException {
         try {
-            mTest.run(runListener);
+            List<IMetricCollector> clonedCollectors = cloneCollectors(mRunMetricCollectors);
+            if (mTest instanceof IMetricCollectorReceiver) {
+                ((IMetricCollectorReceiver) mTest).setMetricCollectors(clonedCollectors);
+                // If test can receive collectors then let it handle how to set them up
+                mTest.run(runListener);
+            } else {
+                // Module only init the collectors here to avoid triggering the collectors when
+                // replaying the cached events at the end. This ensures metrics are capture at
+                // the proper time in the invocation.
+                for (IMetricCollector collector : clonedCollectors) {
+                    if (collector.isDisabled()) {
+                        CLog.d("%s has been disabled. Skipping.", collector);
+                    } else {
+                        runListener = collector.init(mModuleInvocationContext, runListener);
+                    }
+                }
+                mTest.run(runListener);
+            }
         } catch (RuntimeException re) {
             CLog.e("Module '%s' - test '%s' threw exception:", mModuleId, mTest.getClass());
             CLog.e(re);
@@ -439,6 +447,11 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             runResultMap.put(runName, mMainGranularRunListener.getTestRunAttempts(runName));
         }
         return runResultMap;
+    }
+
+    @VisibleForTesting
+    List<IMetricCollector> cloneCollectors(List<IMetricCollector> originalCollectors) {
+        return CollectorHelper.cloneCollectors(originalCollectors);
     }
 
     /** Check if any testRunResult has ever failed. This check is used for bug report only. */

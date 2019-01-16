@@ -35,6 +35,11 @@ import java.util.Map;
 public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
 
     private static final int MAX_LOGAT_SIZE_BYTES = 4 * 1024 * 1024;
+    /** Always include a bit of prior data to capture what happened before */
+    private static final int OFFSET_CORRECTION = 20000;
+
+    private static final String NAME_FORMAT = "logcat-on-failure-%s-%s#%s";
+
     private Map<ITestDevice, ILogcatReceiver> mLogcatReceivers = new HashMap<>();
     private Map<ITestDevice, Integer> mOffset = new HashMap<>();
 
@@ -47,7 +52,7 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
             mLogcatReceivers.put(device, receiver);
             receiver.start();
         }
-        getRunUtil().sleep(200);
+        getRunUtil().sleep(100);
         for (ITestDevice device : getDevices()) {
             mLogcatReceivers.get(device).clear();
         }
@@ -58,7 +63,11 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
     public void onTestRunStart(DeviceMetricData runData) {
         for (ITestDevice device : getDevices()) {
             // Get the current offset of the buffer to be able to query later
-            mOffset.put(device, (int) mLogcatReceivers.get(device).getLogcatData().size());
+            int offset = (int) mLogcatReceivers.get(device).getLogcatData().size();
+            if (offset > OFFSET_CORRECTION) {
+                offset -= OFFSET_CORRECTION;
+            }
+            mOffset.put(device, offset);
         }
     }
 
@@ -70,16 +79,19 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
     @Override
     public void onTestFail(DeviceMetricData testData, TestDescription test) {
         for (ITestDevice device : getDevices()) {
+            // Delay slightly for the error to get in the logcat
+            getRunUtil().sleep(100);
             try (InputStreamSource logcatSource =
                     mLogcatReceivers
                             .get(device)
                             .getLogcatData(MAX_LOGAT_SIZE_BYTES, mOffset.get(device))) {
-                super.testLog(
+                String name =
                         String.format(
-                                "logcat-on-failure-%s-%s#%s",
-                                device.getSerialNumber(), test.getClassName(), test.getTestName()),
-                        LogDataType.LOGCAT,
-                        logcatSource);
+                                NAME_FORMAT,
+                                device.getSerialNumber(),
+                                test.getClassName(),
+                                test.getTestName());
+                super.testLog(name, LogDataType.LOGCAT, logcatSource);
             }
         }
     }
@@ -90,6 +102,8 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
             receiver.stop();
             receiver.clear();
         }
+        mLogcatReceivers.clear();
+        mOffset.clear();
     }
 
     @VisibleForTesting

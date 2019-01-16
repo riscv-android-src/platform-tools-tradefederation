@@ -266,14 +266,6 @@ public class OptionSetterTest extends TestCase {
         private final String mFinal= "foo";
     }
 
-    private static class RemoteFileOption {
-        @Option(name = "remote-file")
-        public File remoteFile = null;
-
-        @Option(name = "remote-file-list")
-        public Collection<File> remoteFileList = new ArrayList<>();
-    }
-
     /**
      * Test creating an {@link OptionSetter} for a source with invalid option type.
      */

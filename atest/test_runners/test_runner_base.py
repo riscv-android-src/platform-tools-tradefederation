@@ -35,6 +35,7 @@ TestResult = namedtuple('TestResult', ['runner_name', 'group_name',
                                        'runner_total', 'group_total'])
 FAILED_STATUS = 'FAILED'
 PASSED_STATUS = 'PASSED'
+IGNORED_STATUS = 'IGNORED'
 ERROR_STATUS = 'ERROR'
 
 class TestRunnerBase(object):

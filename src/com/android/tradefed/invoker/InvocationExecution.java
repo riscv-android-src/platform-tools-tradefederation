@@ -28,11 +28,11 @@ import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
-import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.AutoLogCollector;
+import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.TestInvocation.Stage;
@@ -61,6 +61,7 @@ import com.android.tradefed.util.SystemUtil.EnvVariable;
 import com.android.tradefed.util.TimeUtil;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 
 import java.io.File;
 import java.io.IOException;
@@ -445,7 +446,7 @@ public class InvocationExecution implements IInvocationExecution {
             }
 
             // Add the collector from the configuration
-            clonedCollectors.addAll(cloneCollectors(config.getMetricCollectors()));
+            clonedCollectors.addAll(CollectorHelper.cloneCollectors(config.getMetricCollectors()));
             if (test instanceof IMetricCollectorReceiver) {
                 ((IMetricCollectorReceiver) test).setMetricCollectors(clonedCollectors);
                 // If test can receive collectors then let it handle the how to set them up
@@ -481,25 +482,6 @@ public class InvocationExecution implements IInvocationExecution {
             return true;
         }
         return false;
-    }
-
-    /**
-     * Helper to clone {@link IMetricCollector}s in order for each {@link IRemoteTest} to get a
-     * different instance, and avoid internal state and multi-init issues.
-     */
-    private List<IMetricCollector> cloneCollectors(List<IMetricCollector> originalCollectors) {
-        List<IMetricCollector> cloneList = new ArrayList<>();
-        for (IMetricCollector collector : originalCollectors) {
-            try {
-                // TF object should all have a constructore with no args, so this should be safe.
-                IMetricCollector clone = collector.getClass().newInstance();
-                OptionCopier.copyOptionsNoThrow(collector, clone);
-                cloneList.add(clone);
-            } catch (InstantiationException | IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return cloneList;
     }
 
     private void reportLogs(ITestDevice device, ITestInvocationListener listener, Stage stage) {
@@ -561,6 +543,21 @@ public class InvocationExecution implements IInvocationExecution {
         return testTag;
     }
 
+    /** Handle setting the test tag on the build info. */
+    protected void setTestTag(IBuildInfo info, IConfiguration config) {
+        // When CommandOption is set, it overrides any test-tag from build_providers
+        if (!"stub".equals(config.getCommandOptions().getTestTag())) {
+            info.setTestTag(getTestTag(config));
+        } else if (Strings.isNullOrEmpty(info.getTestTag())) {
+            // We ensure that that a default test-tag is always available.
+            info.setTestTag("stub");
+        } else {
+            CLog.w(
+                    "Using the test-tag from the build_provider. Consider updating your config to"
+                            + " have no alias/namespace in front of test-tag.");
+        }
+    }
+
     /**
      * Update the {@link IBuildInfo} with additional info from the {@link IConfiguration}.
      *
@@ -580,19 +577,7 @@ public class InvocationExecution implements IInvocationExecution {
             info.addBuildAttribute(
                     "shard_index", config.getCommandOptions().getShardIndex().toString());
         }
-        // TODO: update all the configs to only use test-tag from CommandOption and not build
-        // providers.
-        // When CommandOption is set, it overrides any test-tag from build_providers
-        if (!"stub".equals(config.getCommandOptions().getTestTag())) {
-            info.setTestTag(getTestTag(config));
-        } else if (info.getTestTag() == null || info.getTestTag().isEmpty()) {
-            // We ensure that that a default test-tag is always available.
-            info.setTestTag("stub");
-        } else {
-            CLog.w(
-                    "Using the test-tag from the build_provider. Consider updating your config to"
-                            + " have no alias/namespace in front of test-tag.");
-        }
+        setTestTag(info, config);
 
         if (info.getProperties().contains(BuildInfoProperties.DO_NOT_LINK_TESTS_DIR)) {
             CLog.d("Skip linking external directory as FileProperty was set.");

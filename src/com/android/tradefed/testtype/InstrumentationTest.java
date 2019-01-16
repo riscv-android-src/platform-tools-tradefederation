@@ -844,7 +844,14 @@ public class InstrumentationTest
 
             // TODO: Convert to device-side collectors when possible.
             for (IMetricCollector collector : mCollectors) {
-                listener = collector.init(mContext, collector);
+                if (collector.isDisabled()) {
+                    CLog.d("%s has been disabled. Skipping.", collector);
+                } else {
+                    CLog.d(
+                            "Initializing %s for instrumentation.",
+                            collector.getClass().getCanonicalName());
+                    listener = collector.init(mContext, listener);
+                }
             }
         }
 
