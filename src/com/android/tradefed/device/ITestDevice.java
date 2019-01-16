@@ -217,9 +217,90 @@ public interface ITestDevice extends INativeDevice {
 
     /**
      * Install an Android application made of several APK files (one main and extra split packages)
-     * that are sitting on the android device.
-     * See "https://developer.android.com/studio/build/configure-apk-splits" on how to split
-     * apk to several files.
+     * that are sitting on the android device. See
+     * "https://developer.android.com/studio/build/configure-apk-splits" on how to split apk to
+     * several files.
+     *
+     * <p>Note: Only use cases that requires explicit control of granting runtime permission at
+     * install time should call this function.
+     *
+     * @param packageFiles the remote apk file paths to install
+     * @param reinstall <code>true</code> if a reinstall should be performed
+     * @param grantPermissions if all runtime permissions should be granted at install time
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
+     *     available options.
+     * @return a {@link String} with an error code, or <code>null</code> if success.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     * @throws UnsupportedOperationException if runtime permission is not supported by the platform
+     *     on device.
+     */
+    public default String installPackages(
+            List<File> packageFiles,
+            boolean reinstall,
+            boolean grantPermissions,
+            String... extraArgs)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Package Manager's features");
+    }
+
+    /**
+     * Install an Android application made of several APK files (one main and extra split packages)
+     * for a given user. See "https://developer.android.com/studio/build/configure-apk-splits" on
+     * how to split apk to several files.
+     *
+     * @param packageFiles the local apk files
+     * @param reinstall <code>true</code> if a reinstall should be performed
+     * @param userId the integer user id to install for.
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
+     *     available options.
+     * @return a {@link String} with an error code, or <code>null</code> if success.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     * @throws UnsupportedOperationException if runtime permission is not supported by the platform
+     *     on device.
+     */
+    public default String installPackagesForUser(
+            List<File> packageFiles, boolean reinstall, int userId, String... extraArgs)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Package Manager's features");
+    }
+
+    /**
+     * Install an Android application made of several APK files (one main and extra split packages)
+     * for a given user. See "https://developer.android.com/studio/build/configure-apk-splits" on
+     * how to split apk to several files.
+     *
+     * <p>Note: Only use cases that requires explicit control of granting runtime permission at
+     * install time should call this function.
+     *
+     * @param packageFiles the local apk files
+     * @param reinstall <code>true</code> if a reinstall should be performed
+     * @param grantPermissions if all runtime permissions should be granted at install time
+     * @param userId the integer user id to install for.
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
+     *     available options.
+     * @return a {@link String} with an error code, or <code>null</code> if success.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     * @throws UnsupportedOperationException if runtime permission is not supported by the platform
+     *     on device.
+     */
+    public default String installPackagesForUser(
+            List<File> packageFiles,
+            boolean reinstall,
+            boolean grantPermissions,
+            int userId,
+            String... extraArgs)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Package Manager's features");
+    }
+
+    /**
+     * Install an Android application made of several APK files (one main and extra split packages)
+     * that are sitting on the android device. See
+     * "https://developer.android.com/studio/build/configure-apk-splits" on how to split apk to
+     * several files.
      *
      * <p>Note: Only use cases that requires explicit control of granting runtime permission at
      * install time should call this function.
@@ -246,9 +327,9 @@ public interface ITestDevice extends INativeDevice {
 
     /**
      * Install an Android application made of several APK files (one main and extra split packages)
-     * that are sitting on the android device.
-     * See "https://developer.android.com/studio/build/configure-apk-splits" on how to split
-     * apk to several files.
+     * that are sitting on the android device. See
+     * "https://developer.android.com/studio/build/configure-apk-splits" on how to split apk to
+     * several files.
      *
      * @param remoteApkPaths the remote apk file paths
      * @param reinstall <code>true</code> if a reinstall should be performed
@@ -266,34 +347,6 @@ public interface ITestDevice extends INativeDevice {
         throw new UnsupportedOperationException("No support for Package Manager's features");
     }
 
-    /**
-     * Install an Android application made of several APK files (one main and extra split packages)
-     * that are sitting on the android device.
-     * See "https://developer.android.com/studio/build/configure-apk-splits" on how to split
-     * apk to several files.
-     *
-     * <p>Note: Only use cases that requires explicit control of granting runtime permission at
-     * install time should call this function.
-     *
-     * @param packageFiles the remote apk file paths to install
-     * @param reinstall <code>true</code> if a reinstall should be performed
-     * @param grantPermissions if all runtime permissions should be granted at install time
-     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
-     *     available options.
-     * @return a {@link String} with an error code, or <code>null</code> if success.
-     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
-     *     recovered.
-     * @throws UnsupportedOperationException if runtime permission is not supported by the platform
-     *     on device.
-     */
-    public default String installPackages(
-            List<File> packageFiles,
-            boolean reinstall,
-            boolean grantPermissions,
-            String... extraArgs)
-            throws DeviceNotAvailableException {
-        throw new UnsupportedOperationException("No support for Package Manager's features");
-    }
 
     /**
      * Grabs a screenshot from the device.
