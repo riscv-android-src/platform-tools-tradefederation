@@ -465,11 +465,8 @@ public class SubprocessTestResultsParser implements Closeable {
         public void handleEvent(String eventJson) throws JSONException {
             TestLogEventInfo logInfo = new TestLogEventInfo(new JSONObject(eventJson));
             String name = String.format("subprocess-%s", logInfo.mDataName);
-            try {
-                InputStreamSource data = new FileInputStreamSource(logInfo.mDataFile);
+            try (InputStreamSource data = new FileInputStreamSource(logInfo.mDataFile, true)) {
                 mListener.testLog(name, logInfo.mLogType, data);
-            } finally {
-                FileUtil.deleteFile(logInfo.mDataFile);
             }
         }
     }
