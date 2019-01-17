@@ -95,6 +95,7 @@ public class StreamProtoReceiver implements Closeable {
 
         public EventReceiverThread() throws IOException {
             super("ProtoEventReceiverThread");
+            setDaemon(true);
             mSocket = new ServerSocket(DEFAULT_AVAILABLE_PORT);
             mCountDown = new CountDownLatch(1);
         }
@@ -160,6 +161,7 @@ public class StreamProtoReceiver implements Closeable {
                 CLog.i("Waiting for events to finish being processed.");
                 if (!mEventReceiver.getCountDown().await(millis, TimeUnit.MILLISECONDS)) {
                     CLog.e("Event receiver thread did not complete. Some events may be missing.");
+                    mEventReceiver.interrupt();
                     return false;
                 }
             } catch (InterruptedException e) {
