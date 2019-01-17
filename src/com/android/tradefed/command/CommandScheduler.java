@@ -185,6 +185,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             + " when Invocation become interruptible. (Default behavior).", isTimeVal = true)
     private long mShutdownTimeout = 0;
 
+    private HostState mHostState = HostState.UNKNOWN;
+
     private enum CommandState {
         WAITING_FOR_DEVICE("Wait_for_device"),
         EXECUTING("Executing"),
@@ -199,6 +201,22 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         public String getDisplayName() {
             return mDisplayName;
         }
+    }
+
+    /** Enums of different status of host */
+    public enum HostState {
+        UNKNOWN,
+        RUNNING,
+        QUITTING,
+        KILLING;
+    }
+
+    private void setHostState(HostState state) {
+        mHostState = state;
+    }
+
+    public HostState getHostState() {
+        return mHostState;
     }
 
     /**
@@ -845,6 +863,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             mStarted = true;
         }
         super.start();
+        setHostState(HostState.RUNNING);
     }
 
     /**
@@ -1564,6 +1583,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      */
     @Override
     public synchronized void shutdown() {
+        setHostState(HostState.QUITTING);
+        doShutdown();
+    }
+
+    private synchronized void doShutdown() {
         assertStarted();
         if (!isShuttingDown()) {
             CLog.d("initiating shutdown");
@@ -1584,6 +1608,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     @Override
     public synchronized void shutdownOnEmpty() {
         assertStarted();
+        setHostState(HostState.QUITTING);
         if (!isShuttingDown()) {
             CLog.d("initiating shutdown on empty");
             mShutdownOnEmpty = true;
@@ -1715,8 +1740,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      */
     @Override
     public synchronized void shutdownHard() {
-        shutdown();
-
+        setHostState(HostState.KILLING);
+        doShutdown();
         CLog.logAndDisplay(LogLevel.WARN, "Stopping invocation threads...");
         for (InvocationThread thread : mInvocationThreadMap.values()) {
             thread.disableReporters();
