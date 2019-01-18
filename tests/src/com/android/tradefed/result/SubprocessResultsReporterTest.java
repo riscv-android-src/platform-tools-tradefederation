@@ -89,7 +89,9 @@ public class SubprocessResultsReporterTest {
         OptionSetter setter = new OptionSetter(mReporter);
         File tmpReportFile = FileUtil.createTempFile("subprocess-reporter", "unittest");
         try {
-            tmpReportFile.setWritable(false);
+            // Delete the file to make it non-writable. (do not use setWritable as a root tradefed
+            // process would still be able to write it)
+            tmpReportFile.delete();
             setter.setOptionValue("subprocess-report-file", tmpReportFile.getAbsolutePath());
             mReporter.testRunStarted("TEST", 5);
             fail("Should have thrown an exception.");
