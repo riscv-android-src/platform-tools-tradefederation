@@ -110,6 +110,11 @@ public interface ITestDevice extends INativeDevice {
             // no need to consider versionCode here.
             return name.hashCode();
         }
+
+        @Override
+        public String toString() {
+            return "packageName: " + name + ", versionCode: " + versionCode;
+        }
     }
 
     /**
