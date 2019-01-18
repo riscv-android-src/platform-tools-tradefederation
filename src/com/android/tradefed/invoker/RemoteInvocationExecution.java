@@ -271,14 +271,15 @@ public class RemoteInvocationExecution extends InvocationExecution {
         remoteTfCommand.add(String.format("PATH=%s:$PATH", new File(mRemoteAdbPath).getParent()));
         remoteTfCommand.add("screen -dmSU tradefed sh -c");
 
-        String tfCommand = ("TF_GLOBAL_CONFIG=" + globalConfig.getName());
-        tfCommand +=
-                (" ./tradefed.sh run commandAndExit " + mRemoteTradefedDir + configFile.getName());
+        StringBuilder tfCmdBuilder =
+                new StringBuilder("TF_GLOBAL_CONFIG=" + globalConfig.getName());
+        tfCmdBuilder.append(" ENTRY_CLASS=com.android.tradefed.command.CommandRunner");
+        tfCmdBuilder.append(" ./tradefed.sh " + mRemoteTradefedDir + configFile.getName());
         if (config.getCommandOptions().shouldUseRemoteSandboxMode()) {
-            tfCommand += (" --" + CommandOptions.USE_SANDBOX);
+            tfCmdBuilder.append(" --" + CommandOptions.USE_SANDBOX);
         }
-        tfCommand += (" > " + STDOUT_FILE + " 2> " + STDERR_FILE);
-        remoteTfCommand.add("\"" + tfCommand + "\"");
+        tfCmdBuilder.append(" > " + STDOUT_FILE + " 2> " + STDERR_FILE);
+        remoteTfCommand.add("\"" + tfCmdBuilder.toString() + "\"");
         // Kick off the actual remote run
         CommandResult resultRemoteExecution =
                 GceManager.remoteSshCommandExecution(
@@ -352,11 +353,10 @@ public class RemoteInvocationExecution extends InvocationExecution {
                         mRemoteTradefedDir + STDOUT_FILE);
         if (stdoutFile != null) {
             try (InputStreamSource source = new FileInputStreamSource(stdoutFile, true)) {
-                currentInvocationListener.testLog("stdout", LogDataType.TEXT, source);
+                currentInvocationListener.testLog(STDOUT_FILE, LogDataType.TEXT, source);
             }
         }
 
-        // TODO: extract potential exception from stderr
         File stderrFile =
                 RemoteFileUtil.fetchRemoteFile(
                         info,
@@ -366,7 +366,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                         mRemoteTradefedDir + STDERR_FILE);
         if (stderrFile != null) {
             try (InputStreamSource source = new FileInputStreamSource(stderrFile, true)) {
-                currentInvocationListener.testLog("stderr", LogDataType.TEXT, source);
+                currentInvocationListener.testLog(STDERR_FILE, LogDataType.TEXT, source);
             }
         }
 
