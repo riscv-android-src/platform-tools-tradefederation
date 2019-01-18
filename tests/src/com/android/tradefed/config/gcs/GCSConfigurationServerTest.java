@@ -59,7 +59,8 @@ public class GCSConfigurationServerTest {
         mConfigServer =
                 new GCSConfigurationServer() {
                     @Override
-                    InputStream downloadFile(String name) throws ConfigurationException {
+                    InputStream downloadFileToInputStream(String name)
+                            throws ConfigurationException {
                         String content = null;
                         if (name.equals("host-config.xml")) {
                             content = CONFIG;
