@@ -15,13 +15,11 @@
  */
 package com.android.tradefed.testtype.python;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.targetprep.adb.AdbStopServerPreparer;
@@ -38,6 +36,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.File;
+import java.util.HashMap;
 
 /** Unit tests for {@link PythonBinaryHostTest}. */
 @RunWith(JUnit4.class)
@@ -100,7 +99,7 @@ public class PythonBinaryHostTestTest {
                     .andReturn(res);
             mMockListener.testRunStarted(binary.getName(), 5);
             mMockListener.testLog(
-                    EasyMock.eq(PythonBinaryHostTest.PYTHON_OUTPUT),
+                    EasyMock.eq(binary.getName() + "-stderr"),
                     EasyMock.eq(LogDataType.TEXT),
                     EasyMock.anyObject());
             EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
@@ -140,7 +139,7 @@ public class PythonBinaryHostTestTest {
                     .andReturn(res);
             mMockListener.testRunStarted(binary.getName(), 5);
             mMockListener.testLog(
-                    EasyMock.eq(PythonBinaryHostTest.PYTHON_OUTPUT),
+                    EasyMock.eq(binary.getName() + "-stderr"),
                     EasyMock.eq(LogDataType.TEXT),
                     EasyMock.anyObject());
             EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
@@ -176,18 +175,17 @@ public class PythonBinaryHostTestTest {
             EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
 
             mMockListener.testLog(
-                    EasyMock.eq("python-output"),
+                    EasyMock.eq(binary.getName() + "-stderr"),
                     EasyMock.eq(LogDataType.TEXT),
                     EasyMock.anyObject());
+            // Report a failure if we cannot parse the logs
+            mMockListener.testRunStarted(binary.getName(), 0);
+            mMockListener.testRunFailed(EasyMock.anyObject());
+            mMockListener.testRunEnded(
+                    EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
             EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
-            try {
-                mTest.run(mMockListener);
-                fail("Should have thrown an exception.");
-            } catch (RuntimeException expected) {
-                // expected
-                assertEquals("Failed to parse Python unittest result", expected.getMessage());
-            }
+            mTest.run(mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
         } finally {
             FileUtil.deleteFile(binary);
@@ -216,7 +214,7 @@ public class PythonBinaryHostTestTest {
                     .andReturn(res);
             mMockListener.testRunStarted(binary.getName(), 5);
             mMockListener.testLog(
-                    EasyMock.eq(PythonBinaryHostTest.PYTHON_OUTPUT),
+                    EasyMock.eq(binary.getName() + "-stderr"),
                     EasyMock.eq(LogDataType.TEXT),
                     EasyMock.anyObject());
             EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
