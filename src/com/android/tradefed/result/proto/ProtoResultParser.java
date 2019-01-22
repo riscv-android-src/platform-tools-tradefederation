@@ -145,7 +145,7 @@ public class ProtoResultParser {
                 evalProto(childProto.getChildrenList(), inRun);
                 if (childProto.hasDescription()) {
                     // Module end
-                    mListener.testModuleEnded();
+                    handleModuleProto(childProto);
                 } else {
                     // run end
                     handleTestRunEnd(childProto);
@@ -222,9 +222,7 @@ public class ProtoResultParser {
     /** Handles module level of the invocation: They have a Description for the module context. */
     private void handleModuleProto(TestRecord moduleProto) {
         if (moduleProto.hasEndTime()) {
-            handleLogs(moduleProto);
-            log("Test module ended proto");
-            mListener.testModuleEnded();
+            handleModuleEnded(moduleProto);
         } else {
             handleModuleStart(moduleProto);
         }
@@ -243,6 +241,12 @@ public class ProtoResultParser {
         } catch (InvalidProtocolBufferException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private void handleModuleEnded(TestRecord moduleProto) {
+        handleLogs(moduleProto);
+        log("Test module ended proto");
+        mListener.testModuleEnded();
     }
 
     /** Handles the test run level of the invocation. */
