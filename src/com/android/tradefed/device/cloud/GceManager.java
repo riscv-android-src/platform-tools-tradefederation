@@ -217,6 +217,13 @@ public class GceManager {
                         getTestDeviceOptions().getInstanceType()));
         // Handle the build id related params
         List<String> gceDriverParams = getTestDeviceOptions().getGceDriverParams();
+
+        if (TestDeviceOptions.InstanceType.CHEEPS.equals(
+                getTestDeviceOptions().getInstanceType())) {
+            gceArgs.add("--avd-type");
+            gceArgs.add("cheeps");
+        }
+
         // If args passed by gce-driver-param do not contain build_id or branch,
         // use build_id and branch from device BuildInfo
         if (!gceDriverParams.contains("--build_id") && !gceDriverParams.contains("--branch")) {
