@@ -84,6 +84,7 @@ import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.BuddyInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.BugreportzMetricCollectorTest;
 import com.android.tradefed.device.metric.BugreportzOnFailureCollectorTest;
+import com.android.tradefed.device.metric.DebugHostLogOnFailureCollectorTest;
 import com.android.tradefed.device.metric.DeviceMetricDataTest;
 import com.android.tradefed.device.metric.DumpHeapCollectorTest;
 import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
@@ -429,6 +430,7 @@ import org.junit.runners.Suite.SuiteClasses;
     BuddyInfoMetricCollectorTest.class,
     BugreportzMetricCollectorTest.class,
     BugreportzOnFailureCollectorTest.class,
+    DebugHostLogOnFailureCollectorTest.class,
     DeviceMetricDataTest.class,
     DumpHeapCollectorTest.class,
     FilePullerDeviceMetricCollectorTest.class,
