@@ -61,7 +61,7 @@ public class GCSFileDownloaderTest {
         try {
             localFile = mGCSFileDownloader.downloadFile("gs://bucket/this/is/a/file.txt");
             String content = FileUtil.readStringFromFile(localFile);
-            Assert.assertEquals("bucket\n/this/is/a/file.txt", content);
+            Assert.assertEquals("bucket\nthis/is/a/file.txt", content);
         } finally {
             FileUtil.deleteFile(localFile);
         }
@@ -91,7 +91,7 @@ public class GCSFileDownloaderTest {
     public void testParseGcsPath() throws Exception {
         String[] parts = mGCSFileDownloader.parseGcsPath("gs://bucketname/path/to/file");
         Assert.assertEquals("bucketname", parts[0]);
-        Assert.assertEquals("/path/to/file", parts[1]);
+        Assert.assertEquals("path/to/file", parts[1]);
     }
 
     @Test
@@ -100,7 +100,7 @@ public class GCSFileDownloaderTest {
         String gcsPath = "gs:/bucketName/path/to/file";
         String[] parts = mGCSFileDownloader.parseGcsPath(gcsPath);
         Assert.assertEquals("bucketName", parts[0]);
-        Assert.assertEquals("/path/to/file", parts[1]);
+        Assert.assertEquals("path/to/file", parts[1]);
     }
 
     @Test
