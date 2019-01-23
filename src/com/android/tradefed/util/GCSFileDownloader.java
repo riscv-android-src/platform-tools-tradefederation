@@ -19,17 +19,30 @@ package com.android.tradefed.util;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IFileDownloader;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.util.GCSBucketUtil.GCSFileMetadata;
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
+import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.services.storage.Storage;
+import com.google.api.services.storage.model.Objects;
+import com.google.api.services.storage.model.StorageObject;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -39,11 +52,21 @@ public class GCSFileDownloader implements IFileDownloader {
     public static final String GCS_PREFIX = "gs://";
     public static final String GCS_APPROX_PREFIX = "gs:/";
 
-    private static final long TIMEOUT = 10 * 60 * 1000; // 10minutes
-    private static final long RETRY_INTERVAL = 1000; // 1s
-    private static final int ATTETMPTS = 3;
-    private static final Pattern GCS_PATH_PATTERN = Pattern.compile("gs://([^/]*)(/.*)");
+    private static final Pattern GCS_PATH_PATTERN = Pattern.compile("gs://([^/]*)/(.*)");
     private static final String PATH_SEP = "/";
+    private static final Collection<String> SCOPES =
+            Collections.singleton("https://www.googleapis.com/auth/devstorage.read_only");
+    private static final int DEFAULT_TIMEOUT = 10 * 60 * 1000; // 10minutes
+    private static final long LIST_BATCH_SIZE = 100;
+
+    private File mJsonKeyFile = null;
+    private Storage mStorage;
+
+    public GCSFileDownloader(File jsonKeyFile) {
+        mJsonKeyFile = jsonKeyFile;
+    }
+
+    public GCSFileDownloader() {}
 
     /**
      * Download a file from a GCS bucket file.
@@ -53,10 +76,78 @@ public class GCSFileDownloader implements IFileDownloader {
      * @return {@link InputStream} with the file content.
      */
     public InputStream downloadFile(String bucketName, String filename) throws IOException {
-        GCSBucketUtil bucket = getGCSBucketUtil(bucketName);
-        Path path = Paths.get(filename);
-        String contents = bucket.pullContents(path);
-        return new ByteArrayInputStream(contents.getBytes());
+        InputStream remoteInput = null;
+        ByteArrayOutputStream tmpStream = null;
+        try {
+            remoteInput =
+                    getStorage().objects().get(bucketName, filename).executeMediaAsInputStream();
+            // The input stream from api call can not be reset. Change it to ByteArrayInputStream.
+            tmpStream = new ByteArrayOutputStream();
+            StreamUtil.copyStreams(remoteInput, tmpStream);
+            return new ByteArrayInputStream(tmpStream.toByteArray());
+        } finally {
+            StreamUtil.close(remoteInput);
+            StreamUtil.close(tmpStream);
+        }
+    }
+
+    @VisibleForTesting
+    Storage getStorage(Collection<String> scopes) throws IOException {
+        GoogleCredential credential = null;
+        try {
+            if (mStorage == null) {
+                if (mJsonKeyFile != null && mJsonKeyFile.exists()) {
+                    CLog.d("Using json key file %s.", mJsonKeyFile);
+                    credential =
+                            GoogleApiClientUtil.createCredentialFromJsonKeyFile(
+                                    mJsonKeyFile, scopes);
+                } else {
+                    CLog.d("Using local authentication.");
+                    try {
+                        credential = GoogleCredential.getApplicationDefault().createScoped(scopes);
+                    } catch (IOException e) {
+                        CLog.e(e.getMessage());
+                        CLog.e(
+                                "Try 'gcloud auth application-default login' to login for "
+                                        + "personal account; Or 'export "
+                                        + "GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json' "
+                                        + "for service account.");
+                        throw e;
+                    }
+                }
+                mStorage =
+                        new Storage.Builder(
+                                        GoogleNetHttpTransport.newTrustedTransport(),
+                                        JacksonFactory.getDefaultInstance(),
+                                        GoogleApiClientUtil.configureRetryStrategy(
+                                                GoogleApiClientUtil.setHttpTimeout(
+                                                        credential,
+                                                        DEFAULT_TIMEOUT,
+                                                        DEFAULT_TIMEOUT)))
+                                .setApplicationName(GoogleApiClientUtil.APP_NAME)
+                                .build();
+            }
+            return mStorage;
+        } catch (GeneralSecurityException e) {
+            throw new IOException(e);
+        }
+    }
+
+    private Storage getStorage() throws IOException {
+        return getStorage(SCOPES);
+    }
+
+    @VisibleForTesting
+    StorageObject getRemoteFileMetaData(String bucketName, String remoteFilename)
+            throws IOException {
+        try {
+            return getStorage().objects().get(bucketName, remoteFilename).execute();
+        } catch (GoogleJsonResponseException e) {
+            if (e.getStatusCode() == 404) {
+                return null;
+            }
+            throw e;
+        }
     }
 
     /**
@@ -86,13 +177,103 @@ public class GCSFileDownloader implements IFileDownloader {
         downloadFile(pathParts[0], pathParts[1], destFile);
     }
 
+    private boolean isFileFresh(File localFile, StorageObject remoteFile) throws IOException {
+        if (localFile == null && remoteFile == null) {
+            return true;
+        }
+        if (localFile == null || remoteFile == null) {
+            return false;
+        }
+        if (!localFile.exists()) {
+            return false;
+        }
+        return remoteFile.getMd5Hash().equals(FileUtil.calculateBase64Md5(localFile));
+    }
+
     @Override
     public boolean isFresh(File localFile, String remotePath) throws BuildRetrievalError {
         String[] pathParts = parseGcsPath(remotePath);
+        String bucketName = pathParts[0];
+        String remoteFilename = pathParts[1];
         try {
-            return recursiveCheckFreshness(localFile, pathParts[0], Paths.get(pathParts[1]));
+            StorageObject remoteFileMeta = getRemoteFileMetaData(bucketName, remoteFilename);
+            if (localFile == null || !localFile.exists()) {
+                if (!isRemoteFolder(bucketName, remoteFilename) && remoteFileMeta == null) {
+                    // The local doesn't exist and the remote filename is not a folder or a file.
+                    return true;
+                }
+                return false;
+            }
+            if (!localFile.isDirectory()) {
+                return isFileFresh(localFile, remoteFileMeta);
+            }
+            remoteFilename = sanitizeDirectoryName(remoteFilename);
+            return recursiveCheckFolderFreshness(bucketName, remoteFilename, localFile);
         } catch (IOException e) {
             throw new BuildRetrievalError(e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Check if remote folder is the same as local folder, recursively. The remoteFolderName must
+     * end with "/".
+     *
+     * @param bucketName is the gcs bucket name.
+     * @param remoteFolderName is the relative path to the bucket.
+     * @param localFolder is the local folder
+     * @return true if local file is the same as remote file, otherwise false.
+     * @throws IOException
+     */
+    private boolean recursiveCheckFolderFreshness(
+            String bucketName, String remoteFolderName, File localFolder) throws IOException {
+        Set<String> subFilenames = new HashSet<>(Arrays.asList(localFolder.list()));
+        List<String> subRemoteFolders = new ArrayList<>();
+        List<StorageObject> subRemoteFiles = new ArrayList<>();
+        listRemoteFilesUnderFolder(bucketName, remoteFolderName, subRemoteFiles, subRemoteFolders);
+        for (StorageObject subRemoteFile : subRemoteFiles) {
+            String subFilename = Paths.get(subRemoteFile.getName()).getFileName().toString();
+            if (!isFileFresh(new File(localFolder, subFilename), subRemoteFile)) {
+                return false;
+            }
+            subFilenames.remove(subFilename);
+        }
+        for (String subRemoteFolder : subRemoteFolders) {
+            String subFolderName = Paths.get(subRemoteFolder).getFileName().toString();
+            if (!recursiveCheckFolderFreshness(
+                    bucketName, subRemoteFolder, new File(localFolder, subFolderName))) {
+                return false;
+            }
+            subFilenames.remove(subFolderName);
+        }
+        return subFilenames.isEmpty();
+    }
+
+    void listRemoteFilesUnderFolder(
+            String bucketName, String folder, List<StorageObject> subFiles, List<String> subFolders)
+            throws IOException {
+        String pageToken = null;
+        while (true) {
+            com.google.api.services.storage.Storage.Objects.List listOperation =
+                    getStorage()
+                            .objects()
+                            .list(bucketName)
+                            .setPrefix(folder)
+                            .setDelimiter(PATH_SEP)
+                            .setMaxResults(LIST_BATCH_SIZE);
+            if (pageToken != null) {
+                listOperation.setPageToken(pageToken);
+            }
+            Objects objects = listOperation.execute();
+            if (objects.getItems() != null && !objects.getItems().isEmpty()) {
+                subFiles.addAll(objects.getItems());
+            }
+            if (objects.getPrefixes() != null && !objects.getPrefixes().isEmpty()) {
+                subFolders.addAll(objects.getPrefixes());
+            }
+            pageToken = objects.getNextPageToken();
+            if (pageToken == null) {
+                return;
+            }
         }
     }
 
@@ -109,98 +290,92 @@ public class GCSFileDownloader implements IFileDownloader {
         return new String[] {m.group(1), m.group(2)};
     }
 
-    /**
-     * For GCS, if it's a file, we use file content's md5 hash to check if the local file is the
-     * same as the remote file. If it's a folder, we will check all the files in the folder are the
-     * same and all the sub-folders also have the same files.
-     *
-     * @param localFile is the local file
-     * @param bucketName is the remote file's GCS bucket name
-     * @param remotePath is the relative path to the bucket.
-     * @return true if local file is the same as remote file, otherwise false.
-     * @throws IOException
-     */
-    private boolean recursiveCheckFreshness(File localFile, String bucketName, Path remotePath)
-            throws IOException {
-        GCSBucketUtil bucketUtil = getGCSBucketUtil(bucketName);
-        if (localFile.isFile()) {
-            GCSFileMetadata fileInfo = bucketUtil.stat(remotePath);
-            boolean isFileFresh = fileInfo.mMd5Hash.equals(bucketUtil.md5Hash(localFile));
-            if (!isFileFresh) {
-                CLog.d("Local file for %s is not fresh.", remotePath);
-            }
-            return isFileFresh;
-        } else if (localFile.isDirectory()) {
-            Set<String> remoteUriSets = new HashSet<String>(bucketUtil.ls(remotePath));
-            String remoteUri = sanitizeDirectoryName(bucketUtil.getUriForGcsPath(remotePath));
-            // If the folder has files inside it, "ls" will include the folder itself.
-            // If the folder only has folders or has nothing inside it, "ls" will not include the
-            // folder itself. That said depends on folder's content, "ls" may or may not list the
-            // current folder. Since the current folder should always exists (otherwise the "ls"
-            // already throws exception), we don't bother to check it is in the "ls" result or not.
-            remoteUriSets.remove(remoteUri);
-
-            for (File subFile : localFile.listFiles()) {
-                Path remoteSubPath = remotePath.resolve(subFile.getName());
-                String remoteSubUri = bucketUtil.getUriForGcsPath(remoteSubPath);
-                if (subFile.isDirectory()) {
-                    remoteSubUri = sanitizeDirectoryName(remoteSubUri);
-                }
-                if (!remoteUriSets.contains(remoteSubUri)) {
-                    CLog.d("GCS doesn't have %s.", remoteSubUri);
-                    return false;
-                }
-                remoteUriSets.remove(remoteSubUri);
-            }
-            if (!remoteUriSets.isEmpty()) {
-                CLog.d("GCS has these files but local doesn't: %s", remoteUriSets);
-                return false;
-            }
-            for (File subFile : localFile.listFiles()) {
-                if (!recursiveCheckFreshness(
-                        subFile, bucketName, remotePath.resolve(subFile.getName()))) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return false;
-    }
-
-    /** Folder name should end with "/" */
     String sanitizeDirectoryName(String name) {
+        /** Folder name should end with "/" */
         if (!name.endsWith(PATH_SEP)) {
             name += PATH_SEP;
         }
         return name;
     }
 
+    /** check given filename is a folder or not. */
     @VisibleForTesting
-    void downloadFile(String bucketName, String filename, File localFile)
-            throws BuildRetrievalError {
-        CLog.i("Downloading %s %s to %s", bucketName, filename, localFile.getAbsolutePath());
+    boolean isRemoteFolder(String bucketName, String filename) throws IOException {
+        filename = sanitizeDirectoryName(filename);
+        Objects objects =
+                getStorage()
+                        .objects()
+                        .list(bucketName)
+                        .setPrefix(filename)
+                        .setDelimiter(PATH_SEP)
+                        .setMaxResults(1l)
+                        .execute();
+        if (objects.getItems() != null && !objects.getItems().isEmpty()) {
+            return true;
+        }
+        if (objects.getPrefixes() != null && !objects.getPrefixes().isEmpty()) {
+            return true;
+        }
+        return false;
+    }
 
-        GCSBucketUtil bucketUtil = getGCSBucketUtil(bucketName);
+    @VisibleForTesting
+    void downloadFile(String bucketName, String remoteFilename, File localFile)
+            throws BuildRetrievalError {
         try {
-            if (!bucketUtil.isFile(filename)) {
-                filename = sanitizeDirectoryName(filename);
-                filename += "*";
-                localFile.mkdirs();
-                bucketUtil.setRecursive(true);
+            if (!isRemoteFolder(bucketName, remoteFilename)) {
+                fetchRemoteFile(bucketName, remoteFilename, localFile);
+                return;
             }
-            bucketUtil.pull(Paths.get(filename), localFile);
+            remoteFilename = sanitizeDirectoryName(remoteFilename);
+            recursiveDownloadFolder(bucketName, remoteFilename, localFile);
         } catch (IOException e) {
-            CLog.e("Failed to download %s, clean up.", localFile.getAbsoluteFile());
+            CLog.e("Failed to download gs://%s/%s, clean up.", bucketName, remoteFilename);
             throw new BuildRetrievalError(e.getMessage(), e);
         }
     }
 
-    private GCSBucketUtil getGCSBucketUtil(String bucketName) {
-        GCSBucketUtil bucketUtil = new GCSBucketUtil(bucketName);
-        bucketUtil.setTimeoutMs(TIMEOUT);
-        bucketUtil.setRetryInterval(RETRY_INTERVAL);
-        bucketUtil.setAttempts(ATTETMPTS);
-        return bucketUtil;
+    private void fetchRemoteFile(String bucketName, String remoteFilename, File localFile)
+            throws IOException {
+        getStorage()
+                .objects()
+                .get(bucketName, remoteFilename)
+                .executeMediaAndDownloadTo(new FileOutputStream(localFile));
+    }
+
+    /**
+     * Recursively download remote folder to local folder.
+     *
+     * @param bucketName the gcs bucket name
+     * @param remoteFolderName remote folder name, must end with "/"
+     * @param localFolder local folder
+     * @throws IOException
+     */
+    private void recursiveDownloadFolder(
+            String bucketName, String remoteFolderName, File localFolder) throws IOException {
+        CLog.d("Downloading folder gs://%s/%s.", bucketName, remoteFolderName);
+        if (!localFolder.exists()) {
+            FileUtil.mkdirsRWX(localFolder);
+        }
+        Set<String> subFilenames = new HashSet<>(Arrays.asList(localFolder.list()));
+        List<String> subRemoteFolders = new ArrayList<>();
+        List<StorageObject> subRemoteFiles = new ArrayList<>();
+        listRemoteFilesUnderFolder(bucketName, remoteFolderName, subRemoteFiles, subRemoteFolders);
+        for (StorageObject subRemoteFile : subRemoteFiles) {
+            String subFilename = Paths.get(subRemoteFile.getName()).getFileName().toString();
+            fetchRemoteFile(
+                    bucketName, subRemoteFile.getName(), new File(localFolder, subFilename));
+            subFilenames.remove(subFilename);
+        }
+        for (String subRemoteFolder : subRemoteFolders) {
+            String subFolderName = Paths.get(subRemoteFolder).getFileName().toString();
+            recursiveDownloadFolder(
+                    bucketName, subRemoteFolder, new File(localFolder, subFolderName));
+            subFilenames.remove(subFolderName);
+        }
+        for (String subFilename : subFilenames) {
+            FileUtil.recursiveDelete(new File(localFolder, subFilename));
+        }
     }
 
     /**
