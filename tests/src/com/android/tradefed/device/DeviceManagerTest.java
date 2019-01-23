@@ -1162,6 +1162,7 @@ public class DeviceManagerTest {
                         MAC_ADDRESS,
                         SIM_STATE,
                         SIM_OPERATOR,
+                        false,
                         null);
         EasyMock.expect(mMockTestDevice.getDeviceDescriptor()).andReturn(descriptor);
     }

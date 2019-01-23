@@ -89,7 +89,7 @@ public class DeviceManager implements IDeviceManager {
 
     /** a {@link DeviceSelectionOptions} that matches any device. Visible for testing. */
     static final IDeviceSelection ANY_DEVICE_OPTIONS = new DeviceSelectionOptions();
-    private static final String NULL_DEVICE_SERIAL_PREFIX = "null-device";
+    static final String NULL_DEVICE_SERIAL_PREFIX = "null-device";
     private static final String EMULATOR_SERIAL_PREFIX = "emulator";
     private static final String TCP_DEVICE_SERIAL_PREFIX = "tcp-device";
     private static final String GCE_DEVICE_SERIAL_PREFIX = "gce-device";
@@ -543,7 +543,7 @@ public class DeviceManager implements IDeviceManager {
         checkInit();
         if (isTemporary) {
             String rand = UUID.randomUUID().toString();
-            String serial = String.format("%s-temp-%s", NULL_DEVICE_SERIAL_PREFIX, rand);
+            String serial = String.format("%s%s", NullDevice.TEMP_NULL_DEVICE_PREFIX, rand);
             addAvailableDevice(new NullDevice(serial, true));
             options.setSerial(serial);
         }
