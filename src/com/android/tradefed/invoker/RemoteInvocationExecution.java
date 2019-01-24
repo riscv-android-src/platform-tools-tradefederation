@@ -19,7 +19,7 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.command.CommandOptions;
-import com.android.tradefed.command.Console;
+import com.android.tradefed.command.CommandRunner;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
@@ -273,7 +273,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
         StringBuilder tfCmdBuilder =
                 new StringBuilder("TF_GLOBAL_CONFIG=" + globalConfig.getName());
-        tfCmdBuilder.append(" ENTRY_CLASS=com.android.tradefed.command.CommandRunner");
+        tfCmdBuilder.append(" ENTRY_CLASS=" + CommandRunner.class.getCanonicalName());
         tfCmdBuilder.append(" ./tradefed.sh " + mRemoteTradefedDir + configFile.getName());
         if (config.getCommandOptions().shouldUseRemoteSandboxMode()) {
             tfCmdBuilder.append(" --" + CommandOptions.USE_SANDBOX);
@@ -311,7 +311,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                             "ps",
                             "-ef",
                             "| grep",
-                            Console.class.getCanonicalName());
+                            CommandRunner.class.getCanonicalName());
             CLog.d("ps -ef: stdout: %s\nstderr: %s\n", psRes.getStdout(), psRes.getStderr());
             stillRunning = psRes.getStdout().contains(configFile.getName());
             CLog.d("still running: %s", stillRunning);
