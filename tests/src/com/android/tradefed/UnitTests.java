@@ -68,6 +68,7 @@ import com.android.tradefed.device.ReconnectingRecoveryTest;
 import com.android.tradefed.device.RemoteAndroidDeviceTest;
 import com.android.tradefed.device.TestDeviceTest;
 import com.android.tradefed.device.TopHelperTest;
+import com.android.tradefed.device.recovery.UsbResetMultiDeviceRecoveryTest;
 import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
 import com.android.tradefed.device.cloud.AcloudConfigParserTest;
@@ -451,6 +452,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // device.recovery
     BatteryUnavailableDeviceRecoveryTest.class,
     RunConfigDeviceRecoveryTest.class,
+    UsbResetMultiDeviceRecoveryTest.class,
 
     // Guice
     InvocationScopeTest.class,
