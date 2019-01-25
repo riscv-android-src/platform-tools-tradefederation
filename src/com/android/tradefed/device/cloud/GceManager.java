@@ -67,8 +67,6 @@ public class GceManager {
     private TestDeviceOptions mDeviceOptions;
     private IBuildInfo mBuildInfo;
     private List<IBuildInfo> mTestResourceBuildInfos;
-    private File mGceBootFailureLogCat = null;
-    private File mGceBootFailureSerialLog = null;
 
     private String mGceInstanceName = null;
     private String mGceHost = null;
@@ -265,13 +263,7 @@ public class GceManager {
             gceArgs.add("--email");
             gceArgs.add(getTestDeviceOptions().getGceAccount());
         }
-        // Add flags to collect logcat and serial logs in case of boot failures.
-        mGceBootFailureLogCat = FileUtil.createTempFile("gce_logcat_boot", ".tar.gz");
-        gceArgs.add("--logcat_file");
-        gceArgs.add(mGceBootFailureLogCat.getAbsolutePath());
-        mGceBootFailureSerialLog = FileUtil.createTempFile("gce_serial_boot", ".tar.gz");
-        gceArgs.add("--serial_log_file");
-        gceArgs.add(mGceBootFailureSerialLog.getAbsolutePath());
+        // Do not pass flags --logcat_file and --serial_log_file to collect logcat and serial logs.
 
         // Add additional args passed in.
         gceArgs.addAll(getTestDeviceOptions().getGceDriverParams());
@@ -552,8 +544,6 @@ public class GceManager {
 
     public void cleanUp() {
         // Clean up logs file if any was created.
-        FileUtil.deleteFile(mGceBootFailureLogCat);
-        FileUtil.deleteFile(mGceBootFailureSerialLog);
     }
 
     /** Returns the instance of the {@link IRunUtil}. */
@@ -591,16 +581,6 @@ public class GceManager {
      */
     private TestDeviceOptions getTestDeviceOptions() {
         return mDeviceOptions;
-    }
-
-    /** Returns the boot logcat of the gce instance. */
-    public File getGceBootLogcatLog() {
-        return mGceBootFailureLogCat;
-    }
-
-    /** Returns the boot serial log of the gce instance. */
-    public File getGceBootSerialLog() {
-        return mGceBootFailureSerialLog;
     }
 
     @VisibleForTesting
