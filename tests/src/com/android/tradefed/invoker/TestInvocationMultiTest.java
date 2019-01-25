@@ -182,6 +182,7 @@ public class TestInvocationMultiTest {
         mProvider2.cleanUp(EasyMock.capture(captured));
 
         mMockTestListener.invocationStarted(mContext);
+        EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
         mMockTestListener.invocationFailed(EasyMock.anyObject());
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
@@ -252,6 +253,7 @@ public class TestInvocationMultiTest {
         mMockConfig.cleanDynamicOptionFiles();
 
         mMockTestListener.invocationStarted(mContext);
+        EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
         mMockTestListener.invocationFailed(EasyMock.anyObject());
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
@@ -331,6 +333,7 @@ public class TestInvocationMultiTest {
         mMockConfig.cleanDynamicOptionFiles();
 
         mMockTestListener.invocationStarted(mContext);
+        EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
         mMockTestListener.invocationFailed(EasyMock.anyObject());
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
