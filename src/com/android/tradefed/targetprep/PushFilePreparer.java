@@ -233,10 +233,6 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
             ITestDevice device, IBuildInfo buildInfo, File src, String remotePath)
             throws TargetSetupError, DeviceNotAvailableException {
         String localPath = src.getPath();
-        // If we attempt to push to an existing directory
-        if (device.isDirectory(remotePath)) {
-            remotePath = remotePath + "/" + src.getName();
-        }
         if (!src.isAbsolute()) {
             src = resolveRelativeFilePath(buildInfo, localPath);
         }
@@ -245,12 +241,25 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
             return;
         }
         if (src.isDirectory()) {
+            boolean deleteContentOnly = true;
+            if (!device.doesFileExist(remotePath)) {
+                device.executeShellCommand(String.format("mkdir -p \"%s\"", remotePath));
+                deleteContentOnly = false;
+            } else if (!device.isDirectory(remotePath)) {
+                // File exists and is not a directory
+                throw new TargetSetupError(
+                        String.format(
+                                "Attempting to push dir '%s' to an existing device file '%s'",
+                                src.getAbsolutePath(), remotePath),
+                        device.getDeviceDescriptor());
+            }
             Set<String> filter = new HashSet<>();
             if (mAbi != null) {
                 String currentArch = AbiUtils.getArchForAbi(mAbi.getName());
                 filter.addAll(AbiUtils.getArchSupported());
                 filter.remove(currentArch);
             }
+            // TODO: Look into using syncFiles but that requires improving sync to work for unroot
             if (!device.pushDir(src, remotePath, filter)) {
                 fail(
                         String.format(
@@ -258,6 +267,9 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
                         device);
                 return;
             } else {
+                if (deleteContentOnly) {
+                    remotePath += "/*";
+                }
                 addPushedFile(device, remotePath);
             }
         } else {
