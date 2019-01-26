@@ -27,8 +27,8 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
-import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.ShellOutputReceiverStream;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -45,7 +45,6 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
 
     private IBuildInfo mBuildInfo = null;
     private IAbi mAbi = null;
-    private IRunUtil mRunUtil = null;
 
     @Override
     public void setAbi(IAbi abi) {
@@ -104,11 +103,15 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
         // Set the RunUtil to combine stderr with stdout so that they are interleaved correctly.
         runUtil.setRedirectStderrToStdout(true);
 
-        // TODO Redirect stdout stream, so we could get results as they come.
-        CommandResult result = runUtil.runTimedCmd(timeoutMs, cmds);
-        if (result != null && receiver != null) {
-            byte[] resultStdout = result.getStdout().getBytes();
-            receiver.addOutput(resultStdout, 0, resultStdout.length);
+        // If there's a shell output receiver to pass results along to, then
+        // ShellOutputReceiverStream will write that into the IShellOutputReceiver. If not, the
+        // command output will just be ignored.
+        CommandResult result;
+        try (ShellOutputReceiverStream stream = new ShellOutputReceiverStream(receiver)) {
+            result = runUtil.runTimedCmd(timeoutMs, stream, null, cmds);
+        } catch (IOException e) {
+            throw new RuntimeException(
+                    "Should never happen, ShellOutputReceiverStream.close is a no-op");
         }
         return result;
     }
@@ -161,6 +164,7 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
             long maxTestTimeMs = getMaxTestTimeMs();
             String cmd = getGTestCmdLine(fullPath, flags);
             CommandResult testResult = executeHostGTestCommand(cmd, maxTestTimeMs, resultParser);
+            // TODO: Switch throwing exceptions to use ITestInvocation.testRunFailed
             switch (testResult.getStatus()) {
                 case FAILED:
                     // Check the command exit code. If it's 1, then this is just a red herring;
@@ -238,6 +242,8 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
             throw new RuntimeException(
                     String.format("%s is not executable!", gTestFile.getAbsolutePath()));
         }
+
+        // TODO: Need to support XML test output based on isEnableXmlOutput
         IShellOutputReceiver resultParser = createResultParser(gTestFile.getName(), listener);
         String flags = getAllGTestFlags(gTestFile.getName());
         CLog.i("Running gtest %s %s", gTestFile.getName(), flags);
