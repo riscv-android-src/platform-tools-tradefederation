@@ -296,6 +296,7 @@ import com.android.tradefed.util.QuotationAwareTokenizerTest;
 import com.android.tradefed.util.RegexTrieTest;
 import com.android.tradefed.util.RunUtilTest;
 import com.android.tradefed.util.SerializationUtilTest;
+import com.android.tradefed.util.ShellOutputReceiverStreamTest;
 import com.android.tradefed.util.SimplePerfStatResultParserTest;
 import com.android.tradefed.util.SimplePerfUtilTest;
 import com.android.tradefed.util.SimpleStatsTest;
@@ -704,6 +705,7 @@ import org.junit.runners.Suite.SuiteClasses;
     RegexTrieTest.class,
     RunUtilTest.class,
     SerializationUtilTest.class,
+    ShellOutputReceiverStreamTest.class,
     SimplePerfStatResultParserTest.class,
     SimplePerfUtilTest.class,
     SimpleStatsTest.class,
