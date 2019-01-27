@@ -37,7 +37,6 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
-import com.android.tradefed.util.TarUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.net.HostAndPort;
@@ -145,9 +144,6 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
             enableAdbRoot();
         } catch (DeviceNotAvailableException | TargetSetupError e) {
             throw e;
-        } finally {
-            // always log the gce boot up logs
-            logGceBootupLogs(mTestLogger);
         }
         // make sure we start logcat directly, device is up.
         setLogStartDelay(0);
@@ -324,25 +320,6 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
     @Override
     public void setTestLogger(ITestLogger testLogger) {
         mTestLogger = testLogger;
-    }
-
-    /** Recover logs from the preparer and add them to the reporting if a failure occured. */
-    private void logGceBootupLogs(ITestLogger listener) {
-        File tmpLogcat = getGceHandler().getGceBootLogcatLog();
-        try {
-            if (tmpLogcat != null && tmpLogcat.canRead()) {
-                TarUtil.extractAndLog(listener, tmpLogcat, "gce_logcat_bootup");
-            }
-            File tmpSerialLog = getGceHandler().getGceBootSerialLog();
-            if (tmpSerialLog != null && tmpSerialLog.canRead()) {
-                TarUtil.extractAndLog(listener, tmpSerialLog, "gce_serial_bootup");
-            }
-        } catch (SecurityException se) {
-            CLog.e("Could not read the gce boot logs: %s", se);
-        } catch (IOException io) {
-            CLog.e("Issue when untarring the file: %s", io);
-            CLog.e(io);
-        }
     }
 
     /** {@inherit} */

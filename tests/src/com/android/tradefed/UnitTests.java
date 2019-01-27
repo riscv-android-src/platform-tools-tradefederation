@@ -68,6 +68,7 @@ import com.android.tradefed.device.ReconnectingRecoveryTest;
 import com.android.tradefed.device.RemoteAndroidDeviceTest;
 import com.android.tradefed.device.TestDeviceTest;
 import com.android.tradefed.device.TopHelperTest;
+import com.android.tradefed.device.recovery.UsbResetMultiDeviceRecoveryTest;
 import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
 import com.android.tradefed.device.cloud.AcloudConfigParserTest;
@@ -76,6 +77,7 @@ import com.android.tradefed.device.cloud.GceManagerTest;
 import com.android.tradefed.device.cloud.GceRemoteCmdFormatterTest;
 import com.android.tradefed.device.cloud.GceSshTunnelMonitorTest;
 import com.android.tradefed.device.cloud.RemoteFileUtilTest;
+import com.android.tradefed.device.contentprovider.ContentProviderHandlerTest;
 import com.android.tradefed.device.helper.TelephonyHelperTest;
 import com.android.tradefed.device.metric.AtraceCollectorTest;
 import com.android.tradefed.device.metric.AtraceRunMetricCollectorTest;
@@ -294,6 +296,7 @@ import com.android.tradefed.util.QuotationAwareTokenizerTest;
 import com.android.tradefed.util.RegexTrieTest;
 import com.android.tradefed.util.RunUtilTest;
 import com.android.tradefed.util.SerializationUtilTest;
+import com.android.tradefed.util.ShellOutputReceiverStreamTest;
 import com.android.tradefed.util.SimplePerfStatResultParserTest;
 import com.android.tradefed.util.SimplePerfUtilTest;
 import com.android.tradefed.util.SimpleStatsTest;
@@ -419,6 +422,9 @@ import org.junit.runners.Suite.SuiteClasses;
     RemoteAndroidDeviceTest.class,
     RemoteFileUtilTest.class,
 
+    // device.contentprovider
+    ContentProviderHandlerTest.class,
+
     // device.helper
     TelephonyHelperTest.class,
 
@@ -451,6 +457,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // device.recovery
     BatteryUnavailableDeviceRecoveryTest.class,
     RunConfigDeviceRecoveryTest.class,
+    UsbResetMultiDeviceRecoveryTest.class,
 
     // Guice
     InvocationScopeTest.class,
@@ -698,6 +705,7 @@ import org.junit.runners.Suite.SuiteClasses;
     RegexTrieTest.class,
     RunUtilTest.class,
     SerializationUtilTest.class,
+    ShellOutputReceiverStreamTest.class,
     SimplePerfStatResultParserTest.class,
     SimplePerfUtilTest.class,
     SimpleStatsTest.class,

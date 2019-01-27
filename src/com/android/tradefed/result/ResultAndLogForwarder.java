@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.result;
 
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.util.List;
@@ -25,6 +26,16 @@ public class ResultAndLogForwarder extends ResultForwarder implements ILogSaverL
     /** Ctor */
     public ResultAndLogForwarder(List<ITestInvocationListener> listeners) {
         super(listeners);
+    }
+
+    @Override
+    public void invocationStarted(IInvocationContext context) {
+        InvocationSummaryHelper.reportInvocationStarted(getListeners(), context);
+    }
+
+    @Override
+    public void invocationEnded(long elapsedTime) {
+        InvocationSummaryHelper.reportInvocationEnded(getListeners(), elapsedTime);
     }
 
     @Override
