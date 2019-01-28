@@ -21,6 +21,8 @@ import static org.junit.Assert.fail;
 import com.android.tradefed.config.ArgsOptionParser;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
+import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 
@@ -145,6 +147,41 @@ public class InstalledInstrumentationsTestTest {
         assertEquals(shardableTestPkg, mMockInstrumentationTests.get(1).getPackageName());
         assertEquals("1", mMockInstrumentationTests.get(1).getInstrumentationArg("shardIndex"));
         assertEquals("2", mMockInstrumentationTests.get(1).getInstrumentationArg("numShards"));
+
+        EasyMock.verify(mMockListener, mMockTestDevice);
+    }
+
+    @Test
+    public void testRun_withCollectors() throws Exception {
+        injectShellResponse(
+                String.format(INSTR_OUTPUT_FORMAT, TEST_PKG, TEST_RUNNER, TEST_COVERAGE_TARGET), 1);
+
+        mMockListener.testRunStarted(TEST_PKG, 0);
+        Capture<HashMap<String, Metric>> captureMetrics = new Capture<>();
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(captureMetrics));
+        ArgsOptionParser p = new ArgsOptionParser(mInstalledInstrTest);
+        p.parse("--size", "small", "--force-abi", ABI);
+        mInstalledInstrTest.setSendCoverage(true);
+        List<IMetricCollector> collectors = new ArrayList<>();
+        collectors.add(new BaseDeviceMetricCollector());
+        mInstalledInstrTest.setMetricCollectors(collectors);
+        EasyMock.replay(mMockTestDevice, mMockListener);
+        mInstalledInstrTest.run(mMockListener);
+        assertEquals(1, mMockInstrumentationTests.size());
+        MockInstrumentationTest mockInstrumentationTest = mMockInstrumentationTests.get(0);
+        assertEquals(mMockListener, mockInstrumentationTest.getListener());
+        assertEquals(TEST_PKG, mockInstrumentationTest.getPackageName());
+        assertEquals(TEST_RUNNER, mockInstrumentationTest.getRunnerName());
+        assertEquals(
+                TEST_COVERAGE_TARGET,
+                captureMetrics
+                        .getValue()
+                        .get(InstalledInstrumentationsTest.COVERAGE_TARGET_KEY)
+                        .getMeasurements()
+                        .getSingleString());
+        assertEquals("small", mockInstrumentationTest.getTestSize());
+        assertEquals(ABI, mockInstrumentationTest.getForceAbi());
+        assertEquals(1, mockInstrumentationTest.getCollectors().size());
 
         EasyMock.verify(mMockListener, mMockTestDevice);
     }
