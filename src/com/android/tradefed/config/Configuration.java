@@ -1288,8 +1288,12 @@ public class Configuration implements IConfiguration {
                         || options.getShardIndex() >= options.getShardCount())) {
             throw new ConfigurationException("a shard index must be in range [0, shard count)");
         }
+        // Parent invocation for local sharding should not resolved the dynamic @option yet.
+        if (options.getShardCount() != null && options.getShardIndex() == null) {
+            download = false;
+            CLog.w("Skipping download due to local sharding detected.");
+        }
         if (download) {
-            // TODO: Ensure that it works during sharding and we don't leak files
             CLog.d("Resolve and download remote files from @Option");
             // Setup and validate the GCS File paths
             mRemoteFiles.addAll(argsParser.validateRemoteFilePath());

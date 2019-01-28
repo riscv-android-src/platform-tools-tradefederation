@@ -253,7 +253,7 @@ public interface IConfiguration {
     public void injectOptionValues(List<OptionDef> optionDefs) throws ConfigurationException;
 
     /**
-     * Create a copy of this object.
+     * Create a shallow copy of this object.
      *
      * @return a {link IConfiguration} copy
      */

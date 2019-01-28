@@ -1397,7 +1397,6 @@ public class TestInvocationTest {
         EasyMock.expectLastCall();
         mMockSummaryListener.invocationStarted((IInvocationContext)EasyMock.anyObject());
         EasyMock.expectLastCall();
-        EasyMock.expect(mMockLogger.clone()).andReturn(mMockLogger).times(numShard);
         EasyMock.expect(mMockBuildInfo.clone()).andReturn(mMockBuildInfo).times(numShard);
         EasyMock.expect(mockRescheduler.scheduleConfig(EasyMock.anyObject()))
                 .andReturn(true).times(numShard);

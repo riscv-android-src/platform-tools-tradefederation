@@ -93,6 +93,12 @@ public class ShardHelperTest {
                             throw new RuntimeException(e);
                         }
                     }
+
+                    @Override
+                    protected void validateOptions(IConfiguration config)
+                            throws ConfigurationException {
+                        // Skip to avoid call to global configuration
+                    }
                 };
         mConfig = new Configuration("fake_sharding_config", "desc");
         mContext = new InvocationContext();
@@ -329,6 +335,12 @@ public class ShardHelperTest {
                         } catch (ConfigurationException e) {
                             throw new RuntimeException(e);
                         }
+                    }
+
+                    @Override
+                    protected void validateOptions(IConfiguration config)
+                            throws ConfigurationException {
+                        // Skip to avoid call to global configuration
                     }
                 };
         CommandOptions options = new CommandOptions();
