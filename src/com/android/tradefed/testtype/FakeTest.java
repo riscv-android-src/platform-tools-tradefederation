@@ -36,12 +36,19 @@ import java.util.regex.Pattern;
 @OptionClass(alias = "faketest")
 public class FakeTest implements IDeviceTest, IRemoteTest {
 
-    @Option(name = "run", description = "Specify a new run to include.  " +
-            "The key should be the unique name of the TestRun (which may be a Java class name).  " +
-            "The value should specify the sequence of test results, using the characters P[ass], " +
-            "or F[ail].  You may use run-length encoding to specify repeats, and you " +
-            "may use parentheses for grouping.  So \"(PF)4\" and \"((PF)2)2\" will both expand " +
-            "to \"PFPFPFPF\".", importance = Importance.IF_UNSET)
+    @Option(
+        name = "run",
+        description =
+                "Specify a new run to include.  "
+                        + "The key should be the unique name of the TestRun "
+                        + "(which may be a Java class name).  "
+                        + "The value should specify the sequence of test results, "
+                        + "using the characters P[ass], F[ail], A[ssumption failure] or I[gnored].  "
+                        + "You may use run-length encoding to specify repeats, and you "
+                        + "may use parentheses for grouping.  So \"(PF)4\" and \"((PF)2)2\" "
+                        + "will both expand to \"PFPFPFPF\".",
+        importance = Importance.IF_UNSET
+    )
     private Map<String, String> mRuns = new LinkedHashMap<String, String>();
 
     @Option(name = "fail-invocation-with-cause", description = "If set, the invocation will be " +
@@ -54,7 +61,7 @@ public class FakeTest implements IDeviceTest, IRemoteTest {
             "(.*?)   \\(([^()]*)\\)   (\\d+)?   (.*?)", Pattern.COMMENTS);
 
     /** A pattern to identify a run-length-encoded character specification */
-    private static final Pattern RLE_SEGMENT = Pattern.compile("^(([PFE])(\\d+)?)");
+    private static final Pattern RLE_SEGMENT = Pattern.compile("^(([PFAI])(\\d+)?)");
 
     static final HashMap<String, Metric> EMPTY_MAP = new HashMap<String, Metric>();
 
@@ -156,22 +163,21 @@ public class FakeTest implements IDeviceTest, IRemoteTest {
         return decodeRle(work);
     }
 
-
     /**
      * Turn a given test specification into a series of test Run, Failure, and Error outputs
      *
      * @param listener The test listener to use to report results
      * @param runName The test run name to use
-     * @param spec A string consisting solely of the characters "P"(ass), "F"(ail), or "E"(rror).
-     *     Each character will map to a testcase in the output. Method names will be of the format
-     *     "testMethod%d".
+     * @param spec A string consisting solely of the characters "P"(ass), "F"(ail), A(ssumption
+     *     failure) or I(gnored). Each character will map to a testcase in the output. Method names
+     *     will be of the format "testMethod%d".
      */
     void executeTestRun(ITestInvocationListener listener, String runName, String spec)
             throws IllegalArgumentException {
         listener.testRunStarted(runName, spec.length());
         int i = 0;
         for (char c : spec.toCharArray()) {
-            if (c != 'P' && c != 'F') {
+            if (c != 'P' && c != 'F' && c != 'A' && c != 'I') {
                 throw new IllegalArgumentException(String.format(
                         "Received unexpected test spec character '%c' in spec \"%s\"", c, spec));
             }
@@ -188,6 +194,13 @@ public class FakeTest implements IDeviceTest, IRemoteTest {
                 case 'F':
                     listener.testFailed(test,
                             String.format("Test %s had a predictable boo-boo.", testName));
+                    break;
+                case 'A':
+                    listener.testAssumptionFailure(
+                            test, String.format("Test %s had an assumption failure", testName));
+                    break;
+                case 'I':
+                    listener.testIgnored(test);
                     break;
             }
             listener.testEnded(test, EMPTY_MAP);
@@ -212,4 +225,3 @@ public class FakeTest implements IDeviceTest, IRemoteTest {
         }
     }
 }
-
