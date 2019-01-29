@@ -279,7 +279,7 @@ public class TestInvocation implements ITestInvocation {
             throw t;
         } finally {
             for (ITestDevice device : context.getDevices()) {
-                reportLogs(device, listener, Stage.TEST);
+                invocationPath.reportLogs(device, listener, Stage.TEST);
             }
             getRunUtil().allowInterrupt(false);
             if (config.getCommandOptions().takeBugreportOnInvocationEnded() ||
@@ -323,7 +323,7 @@ public class TestInvocation implements ITestInvocation {
                 // Clean up host.
                 invocationPath.doCleanUp(context, config, exception);
                 for (ITestDevice device : context.getDevices()) {
-                    reportLogs(device, listener, Stage.TEARDOWN);
+                    invocationPath.reportLogs(device, listener, Stage.TEARDOWN);
                 }
                 if (mStopRequested) {
                     CLog.e(
@@ -450,30 +450,6 @@ public class TestInvocation implements ITestInvocation {
         }
     }
 
-    private void reportLogs(ITestDevice device, ITestInvocationListener listener, Stage stage) {
-        if (device == null) {
-            return;
-        }
-        // non stub device
-        if (!(device.getIDevice() instanceof StubDevice)) {
-            try (InputStreamSource logcatSource = device.getLogcat()) {
-                device.clearLogcat();
-                String name =
-                        String.format("%s_%s", getDeviceLogName(stage), device.getSerialNumber());
-                listener.testLog(name, LogDataType.LOGCAT, logcatSource);
-            }
-        }
-        // emulator logs
-        if (device.getIDevice() != null && device.getIDevice().isEmulator()) {
-            try (InputStreamSource emulatorOutput = device.getEmulatorOutput()) {
-                // TODO: Clear the emulator log
-                String name = getEmulatorLogName(stage);
-                listener.testLog(name, LogDataType.TEXT, emulatorOutput);
-            }
-
-        }
-    }
-
     private void reportHostLog(ITestInvocationListener listener, ILeveledLogOutput logger) {
         try (InputStreamSource globalLogSource = logger.getLog()) {
             listener.testLog(TRADEFED_LOG_NAME, LogDataType.TEXT, globalLogSource);
@@ -597,7 +573,7 @@ public class TestInvocation implements ITestInvocation {
         // Don't want to use #reportFailure, since that will call buildNotTested
         listener.invocationFailed(buildException);
         for (ITestDevice device : context.getDevices()) {
-            reportLogs(device, listener, Stage.ERROR);
+            invocationPath.reportLogs(device, listener, Stage.ERROR);
         }
         reportHostLog(listener, config.getLogOutput());
         listener.invocationEnded(0L);
@@ -714,7 +690,7 @@ public class TestInvocation implements ITestInvocation {
                             listener.invocationFailed(e);
                             // Reports the logs
                             for (ITestDevice device : context.getDevices()) {
-                                reportLogs(device, listener, Stage.ERROR);
+                                invocationPath.reportLogs(device, listener, Stage.ERROR);
                             }
                             reportHostLog(listener, config.getLogOutput());
                             listener.invocationEnded(0L);
