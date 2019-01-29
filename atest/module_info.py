@@ -60,19 +60,20 @@ class ModuleInfo(object):
         """
         module_info_target = None
         root_dir = os.environ.get(constants.ANDROID_BUILD_TOP, '/')
-        out_dir = os.environ.get(constants.ANDROID_OUT, root_dir)
+        out_dir = os.environ.get(constants.ANDROID_PRODUCT_OUT, root_dir)
         module_file_path = os.path.join(out_dir, _MODULE_INFO)
 
-        # Check for custom out dir.
-        out_dir_base = os.environ.get(constants.ANDROID_OUT_DIR)
-        if out_dir_base is None or not os.path.isabs(out_dir_base):
+        # Check if the user set a custom out directory by comparing the out_dir
+        # to the root_dir.
+        if out_dir.find(root_dir) == 0:
             # Make target is simply file path relative to root
             module_info_target = os.path.relpath(module_file_path, root_dir)
         else:
-            # Chances are a custom absolute out dir is used, use
-            # ANDROID_PRODUCT_OUT instead.
+            # If the user has set a custom out directory, generate an absolute
+            # path for module info targets.
+            logging.debug('User customized out dir!')
             module_file_path = os.path.join(
-                os.environ.get('ANDROID_PRODUCT_OUT'), _MODULE_INFO)
+                os.environ.get(constants.ANDROID_PRODUCT_OUT), _MODULE_INFO)
             module_info_target = module_file_path
         if not os.path.isfile(module_file_path) or force_build:
             logging.debug('Generating %s - this is required for '
