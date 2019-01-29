@@ -48,9 +48,7 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
             IInvocationContext context, ITestInvocationListener listener) {
         ITestInvocationListener init = super.init(context, listener);
         for (ITestDevice device : getDevices()) {
-            ILogcatReceiver receiver = createLogcatReceiver(device);
-            mLogcatReceivers.put(device, receiver);
-            receiver.start();
+            initReceiver(device);
         }
         getRunUtil().sleep(100);
         for (ITestDevice device : getDevices()) {
@@ -62,6 +60,8 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
     @Override
     public void onTestRunStart(DeviceMetricData runData) {
         for (ITestDevice device : getDevices()) {
+            // In case of multiple runs for the same test runner, re-init the receiver.
+            initReceiver(device);
             // Get the current offset of the buffer to be able to query later
             int offset = (int) mLogcatReceivers.get(device).getLogcatData().size();
             if (offset > OFFSET_CORRECTION) {
@@ -114,5 +114,13 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
     @VisibleForTesting
     IRunUtil getRunUtil() {
         return RunUtil.getDefault();
+    }
+
+    private void initReceiver(ITestDevice device) {
+        if (mLogcatReceivers.get(device) == null) {
+            ILogcatReceiver receiver = createLogcatReceiver(device);
+            mLogcatReceivers.put(device, receiver);
+            receiver.start();
+        }
     }
 }
