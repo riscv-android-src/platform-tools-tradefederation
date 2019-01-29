@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.invoker;
 
+import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildInfoKey;
@@ -484,12 +485,14 @@ public class InvocationExecution implements IInvocationExecution {
         return false;
     }
 
-    private void reportLogs(ITestDevice device, ITestInvocationListener listener, Stage stage) {
+    @Override
+    public void reportLogs(ITestDevice device, ITestInvocationListener listener, Stage stage) {
         if (device == null) {
             return;
         }
+        IDevice idevice = device.getIDevice();
         // non stub device
-        if (!(device.getIDevice() instanceof StubDevice)) {
+        if (!(idevice instanceof StubDevice)) {
             try (InputStreamSource logcatSource = device.getLogcat()) {
                 device.clearLogcat();
                 String name =
@@ -500,7 +503,7 @@ public class InvocationExecution implements IInvocationExecution {
             }
         }
         // emulator logs
-        if (device.getIDevice() != null && device.getIDevice().isEmulator()) {
+        if (idevice != null && idevice.isEmulator()) {
             try (InputStreamSource emulatorOutput = device.getEmulatorOutput()) {
                 // TODO: Clear the emulator log
                 String name = TestInvocation.getEmulatorLogName(stage);
