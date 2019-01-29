@@ -125,6 +125,8 @@ public class CommandSchedulerFuncTest {
                 .andStubReturn(new ConfigurationDescriptor());
         EasyMock.expect(mFastConfig.getConfigurationDescription())
                 .andStubReturn(new ConfigurationDescriptor());
+        EasyMock.expect(mFastConfig.getTests()).andStubReturn(new ArrayList<>());
+        EasyMock.expect(mSlowConfig.getTests()).andStubReturn(new ArrayList<>());
 
         mCommandScheduler =
                 new CommandScheduler() {
