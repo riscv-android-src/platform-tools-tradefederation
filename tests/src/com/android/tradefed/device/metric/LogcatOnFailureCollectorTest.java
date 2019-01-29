@@ -128,4 +128,71 @@ public class LogcatOnFailureCollectorTest {
         assertTrue(mCollector.mOnTestStartCalled);
         assertTrue(mCollector.mOnTestFailCalled);
     }
+
+    @Test
+    public void testCollect_multiRun() throws Exception {
+        mMockReceiver.start();
+        EasyMock.expectLastCall().times(2);
+        mMockReceiver.clear();
+        EasyMock.expectLastCall().times(3);
+        mMockReceiver.stop();
+        EasyMock.expectLastCall().times(2);
+        mMockListener.testRunStarted("runName", 1);
+        TestDescription test = new TestDescription("class", "test");
+        TestDescription test2 = new TestDescription("class2", "test2");
+        mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
+        mMockListener.testFailed(EasyMock.eq(test), EasyMock.anyObject());
+        mMockListener.testEnded(
+                EasyMock.eq(test),
+                EasyMock.anyLong(),
+                EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
+        // Buffer at testRunStarted
+        EasyMock.expect(mMockReceiver.getLogcatData())
+                .andReturn(new ByteArrayInputStreamSource("aaa".getBytes()));
+        // Buffer to be logged
+        EasyMock.expect(mMockReceiver.getLogcatData(EasyMock.anyInt(), EasyMock.eq(3)))
+                .andReturn(new ByteArrayInputStreamSource("aaabbb".getBytes()));
+        mMockListener.testLog(
+                EasyMock.eq("logcat-on-failure-serial-class#test"),
+                EasyMock.eq(LogDataType.LOGCAT),
+                EasyMock.anyObject());
+
+        mMockListener.testRunStarted("runName2", 1);
+        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
+        mMockListener.testFailed(EasyMock.eq(test2), EasyMock.anyObject());
+        mMockListener.testEnded(
+                EasyMock.eq(test2),
+                EasyMock.anyLong(),
+                EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
+        // Buffer at testRunStarted
+        EasyMock.expect(mMockReceiver.getLogcatData())
+                .andReturn(new ByteArrayInputStreamSource("aaa".getBytes()));
+        // Buffer to be logged
+        EasyMock.expect(mMockReceiver.getLogcatData(EasyMock.anyInt(), EasyMock.eq(3)))
+                .andReturn(new ByteArrayInputStreamSource("aaabbb".getBytes()));
+        mMockListener.testLog(
+                EasyMock.eq("logcat-on-failure-serial-class2#test2"),
+                EasyMock.eq(LogDataType.LOGCAT),
+                EasyMock.anyObject());
+
+        EasyMock.replay(mMockListener, mMockDevice, mMockReceiver);
+        mTestListener = mCollector.init(mContext, mMockListener);
+        mTestListener.testRunStarted("runName", 1);
+        mTestListener.testStarted(test);
+        mTestListener.testFailed(test, "I failed");
+        mTestListener.testEnded(test, new HashMap<String, Metric>());
+        mTestListener.testRunEnded(0L, new HashMap<String, Metric>());
+        // Second run
+        mTestListener.testRunStarted("runName2", 1);
+        mTestListener.testStarted(test2);
+        mTestListener.testFailed(test2, "I failed");
+        mTestListener.testEnded(test2, new HashMap<String, Metric>());
+        mTestListener.testRunEnded(0L, new HashMap<String, Metric>());
+        EasyMock.verify(mMockListener, mMockDevice, mMockReceiver);
+        // Ensure the callback went through
+        assertTrue(mCollector.mOnTestStartCalled);
+        assertTrue(mCollector.mOnTestFailCalled);
+    }
 }
