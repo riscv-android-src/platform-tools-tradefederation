@@ -5,7 +5,6 @@
 	<classpathentry kind="src" path="easymock"/>
 	<classpathentry kind="src" path="mockito"/>
 	<classpathentry kind="src" path="objenesis"/>
-	<classpathentry kind="src" path="tradefedproto"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/ddmlib"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/tf-remote-client"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/tradefederation"/>
@@ -23,5 +22,6 @@
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/platform_testing/libraries/aoa-helper/aoa-helper/linux_glibc_common/combined/aoa-helper.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/prebuilts/tools/common/m2/truth-prebuilt-jar/linux_glibc_common/combined/truth-prebuilt-jar.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/external/jacoco/jacoco-cli/linux_glibc_common/combined/jacoco-cli.jar"/>
+	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/tools/tradefederation/core/tradefed-protos/linux_glibc_common/combined/tradefed-protos.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
