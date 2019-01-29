@@ -448,6 +448,32 @@ public class BaseTestSuiteTest {
     }
 
     @Test
+    public void testLoadTests_parameterizedModule_filter() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite-parameters-not-multi");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue("exclude-module-parameters", "instant_app");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.testtype.suite.TestSuiteStub:"
+                        + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(1, configMap.size());
+        // stub-parameterized-abi is parameterized and not multi_abi so it creates only one abi
+        // instant_app is filtered so only the regular version of it is created.
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi4"));
+        EasyMock.verify(mockDevice);
+    }
+
+    /**
+     * Test that when we filter some parameterization they are correctly excluded from the run
+     * setup.
+     */
+    @Test
     public void testLoadTests_parameterizedModule_forced() throws Exception {
         ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
         mRunner.setDevice(mockDevice);

@@ -48,6 +48,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +72,7 @@ public class SuiteModuleLoader {
 
     private boolean mAllowParameterizedModules = false;
     private ModuleParameters mForcedModuleParameter = null;
+    private Set<ModuleParameters> mExcludedModuleParameters = new HashSet<>();
 
     /**
      * Ctor for the SuiteModuleLoader.
@@ -101,6 +103,11 @@ public class SuiteModuleLoader {
     /** Sets the only {@link ModuleParameters} type that should be run. */
     public final void setModuleParameter(ModuleParameters param) {
         mForcedModuleParameter = param;
+    }
+
+    /** Sets the set of {@link ModuleParameters} that should not be considered at all. */
+    public final void setExcludedModuleParameters(Set<ModuleParameters> excludedParams) {
+        mExcludedModuleParameters = excludedParams;
     }
 
     /** Main loading of configurations, looking into a folder */
@@ -491,6 +498,11 @@ public class SuiteModuleLoader {
                                 moduleName, suiteParam, duplicateModule.get(family)));
             } else {
                 duplicateModule.put(suiteParam.getFamily(), suiteParam);
+            }
+            // Do not consider the excluded parameterization dimension
+            if (mExcludedModuleParameters.contains(suiteParam)) {
+                CLog.d("'%s' was excluded via exclude-module-parameters.");
+                continue;
             }
             IModuleParameter handler = ModuleParametersHelper.getParameterHandler(suiteParam);
             params.add(handler);

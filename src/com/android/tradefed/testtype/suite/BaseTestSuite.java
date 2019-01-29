@@ -156,6 +156,15 @@ public class BaseTestSuite extends ITestSuite {
     )
     private ModuleParameters mForceParameter = null;
 
+    @Option(
+        name = "exclude-module-parameters",
+        description =
+                "Exclude some modules parameter from being evaluated in the run combinations."
+                        + "For example: 'instant_app' would exclude all the instant_app version of "
+                        + "modules."
+    )
+    private Set<ModuleParameters> mExcludedModuleParameters = new HashSet<>();
+
     private SuiteModuleLoader mModuleRepo;
     private Map<String, List<SuiteTestFilter>> mIncludeFiltersParsed = new HashMap<>();
     private Map<String, List<SuiteTestFilter>> mExcludeFiltersParsed = new HashMap<>();
@@ -181,6 +190,7 @@ public class BaseTestSuite extends ITestSuite {
                             mIncludeFiltersParsed, mExcludeFiltersParsed, mTestArgs, mModuleArgs);
             mModuleRepo.setParameterizedModules(mEnableParameter);
             mModuleRepo.setModuleParameter(mForceParameter);
+            mModuleRepo.setExcludedModuleParameters(mExcludedModuleParameters);
 
             List<File> testsDirectories = new ArrayList<>();
 
