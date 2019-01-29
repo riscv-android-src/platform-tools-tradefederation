@@ -64,10 +64,10 @@ public class FakeTestTest {
     public void testDecodeRle() throws IllegalArgumentException {
         // testcases: input -> output
         final Map<String, String> t = new HashMap<String, String>();
-        t.put("PFE", "PFE");
-        t.put("P1F1E1", "PFE");
-        t.put("P2F2E2", "PPFFEE");
-        t.put("P3F2E1", "PPPFFE");
+        t.put("PFAI", "PFAI");
+        t.put("P1F1A1", "PFA");
+        t.put("P2F2A2", "PPFFAA");
+        t.put("P3F2A1", "PPPFFA");
         t.put("", "");
         for (Map.Entry<String, String> testcase : t.entrySet()) {
             final String input = testcase.getKey();
@@ -91,21 +91,21 @@ public class FakeTestTest {
         // testcases: input -> output
         final Map<String, String> t = new HashMap<String, String>();
         // Valid input for decodeRle should be valid for decode
-        t.put("PFE", "PFE");
-        t.put("P1F1E1", "PFE");
-        t.put("P2F2E2", "PPFFEE");
-        t.put("P3F2E1", "PPPFFE");
+        t.put("PFA", "PFA");
+        t.put("P1F1A1", "PFA");
+        t.put("P2F2A2", "PPFFAA");
+        t.put("P3F2A1", "PPPFFA");
         t.put("", "");
 
         // decode should also handle parens and lowercase input
-        t.put("(PFE)", "PFE");
-        t.put("pfe", "PFE");
-        t.put("(PFE)2", "PFEPFE");
-        t.put("((PF)2)2E3", "PFPFPFPFEEE");
-        t.put("()PFE", "PFE");
-        t.put("PFE()", "PFE");
-        t.put("(PF)(FE)", "PFFE");
-        t.put("(PF()FE)", "PFFE");
+        t.put("(PFA)", "PFA");
+        t.put("pfa", "PFA");
+        t.put("(PFA)2", "PFAPFA");
+        t.put("((PF)2)2A3", "PFPFPFPFAAA");
+        t.put("()PFA", "PFA");
+        t.put("PFA()", "PFA");
+        t.put("(PF)(FA)", "PFFA");
+        t.put("(PF()FA)", "PFFA");
 
         for (Map.Entry<String, String> testcase : t.entrySet()) {
             final String input = testcase.getKey();
@@ -176,14 +176,16 @@ public class FakeTestTest {
     public void testRun_basicSequence() throws Exception {
         final String name = "com.moo.cow";
         int i = 1;
-        mListener.testRunStarted(EasyMock.eq(name), EasyMock.eq(3));
+        mListener.testRunStarted(EasyMock.eq(name), EasyMock.eq(5));
         testPassExpectations(mListener, name, i++);
         testFailExpectations(mListener, name, i++);
         testPassExpectations(mListener, name, i++);
+        testAssumptionExpectations(mListener, name, i++);
+        testIgnoredExpectations(mListener, name, i++);
         mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
 
         EasyMock.replay(mListener);
-        mOption.setOptionValue("run", name, "PFP");
+        mOption.setOptionValue("run", name, "PFPAI");
         mTest.run(mListener);
         EasyMock.verify(mListener);
     }
@@ -274,6 +276,22 @@ public class FakeTestTest {
         final TestDescription test = new TestDescription(klass, name);
         l.testStarted(test);
         l.testFailed(EasyMock.eq(test), EasyMock.<String>anyObject());
+        l.testEnded(EasyMock.eq(test), EasyMock.<HashMap<String, Metric>>anyObject());
+    }
+
+    private void testAssumptionExpectations(ITestInvocationListener l, String klass, int idx) {
+        final String name = String.format("testMethod%d", idx);
+        final TestDescription test = new TestDescription(klass, name);
+        l.testStarted(test);
+        l.testAssumptionFailure(EasyMock.eq(test), EasyMock.<String>anyObject());
+        l.testEnded(EasyMock.eq(test), EasyMock.<HashMap<String, Metric>>anyObject());
+    }
+
+    private void testIgnoredExpectations(ITestInvocationListener l, String klass, int idx) {
+        final String name = String.format("testMethod%d", idx);
+        final TestDescription test = new TestDescription(klass, name);
+        l.testStarted(test);
+        l.testIgnored(EasyMock.eq(test));
         l.testEnded(EasyMock.eq(test), EasyMock.<HashMap<String, Metric>>anyObject());
     }
 }
