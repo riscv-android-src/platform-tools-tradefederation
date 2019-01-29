@@ -22,8 +22,10 @@ import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationExecution;
+import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.sandbox.SandboxInvocationRunner;
@@ -82,6 +84,15 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
             throws Throwable {
         // If the invocation is sandboxed run as a sandbox instead.
         SandboxInvocationRunner.prepareAndRun(config, context, listener);
+    }
+
+    @Override
+    public void reportLogs(ITestDevice device, ITestInvocationListener listener, Stage stage) {
+        // If it's not a major error we do not report it if no setup or teardown ran.
+        if (mParentPreparerConfig == null || !Stage.ERROR.equals(stage)) {
+            return;
+        }
+        super.reportLogs(device, listener, stage);
     }
 
     /** Returns the {@link IConfigurationFactory} used to created configurations. */
