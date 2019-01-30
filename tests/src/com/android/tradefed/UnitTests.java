@@ -200,6 +200,7 @@ import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
 import com.android.tradefed.targetprep.TestAppInstallSetupTest;
 import com.android.tradefed.targetprep.TestFilePushSetupTest;
 import com.android.tradefed.targetprep.TimeSetterTargetPreparerTest;
+import com.android.tradefed.targetprep.SwitchUserTargetPreparerTest;
 import com.android.tradefed.targetprep.UserCleanerTest;
 import com.android.tradefed.targetprep.adb.AdbStopServerPreparerTest;
 import com.android.tradefed.targetprep.multi.MergeMultiBuildTargetPreparerTest;
@@ -572,6 +573,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TestAppInstallSetupTest.class,
     TestFilePushSetupTest.class,
     TimeSetterTargetPreparerTest.class,
+    SwitchUserTargetPreparerTest.class,
     UserCleanerTest.class,
 
     // targetprep.adb
