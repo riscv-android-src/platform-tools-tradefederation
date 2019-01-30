@@ -20,6 +20,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -170,4 +171,13 @@ public interface IInvocationExecution {
             ITestInvocationListener listener,
             IConfiguration config,
             IInvocationContext context);
+
+    /**
+     * Report some device logs at different stage of the invocation. For example: logcat.
+     *
+     * @param device The device to report logs from.
+     * @param listener The logger for the logs.
+     * @param stage The stage of the invocation we are at.
+     */
+    public void reportLogs(ITestDevice device, ITestInvocationListener listener, Stage stage);
 }

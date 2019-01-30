@@ -292,3 +292,25 @@ def is_external_run():
     except subprocess.CalledProcessError:
         return True
     return True
+
+
+def print_data_collection_notice():
+    """Print the data collection notice."""
+    anonymous = ''
+    user_type = 'INTERNAL'
+    if is_external_run():
+        anonymous = ' anonymous'
+        user_type = 'EXTERNAL'
+    notice = ('  We collect%s usage statistics in accordance with our Content '
+              'Licenses (%s), Contributor License Agreement (%s), Privacy '
+              'Policy (%s) and Terms of Service (%s).'
+             ) % (anonymous,
+                  constants.CONTENT_LICENSES_URL,
+                  constants.CONTRIBUTOR_AGREEMENT_URL[user_type],
+                  constants.PRIVACY_POLICY_URL,
+                  constants.TERMS_SERVICE_URL
+                 )
+    print('\n------------------')
+    colorful_print("Notice:", constants.RED)
+    colorful_print("%s" % notice, constants.GREEN)
+    print('------------------\n')

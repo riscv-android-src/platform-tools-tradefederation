@@ -20,6 +20,7 @@ Atest Argument Parser class for atest.
 
 import argparse
 
+import atest_utils
 import constants
 
 
@@ -28,6 +29,7 @@ class AtestArgParser(argparse.ArgumentParser):
 
     def __init__(self):
         """Initialise an ArgumentParser instance."""
+        atest_utils.print_data_collection_notice()
         super(AtestArgParser, self).__init__(
             description=constants.HELP_DESC,
             epilog=self.EPILOG_TEXT,
