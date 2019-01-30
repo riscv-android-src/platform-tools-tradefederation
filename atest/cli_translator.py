@@ -31,6 +31,12 @@ import atest_utils
 import constants
 import test_finder_handler
 import test_mapping
+# TODO: Delete SEND_CC_LOG and try/except when no proto ImportError happened.
+SEND_CC_LOG = True
+try:
+    from metrics import metrics_utils
+except ImportError:
+    SEND_CC_LOG = False
 
 TEST_MAPPING = 'TEST_MAPPING'
 
@@ -341,6 +347,8 @@ class CLITranslator(object):
                 logging.warn(
                     'All available tests in TEST_MAPPING files are:\n%s',
                     tests)
+            if SEND_CC_LOG:
+                metrics_utils.send_exit_event(constants.EXIT_CODE_TEST_NOT_FOUND)
             sys.exit(constants.EXIT_CODE_TEST_NOT_FOUND)
 
         logging.debug(
