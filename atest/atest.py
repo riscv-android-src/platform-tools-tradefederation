@@ -43,7 +43,7 @@ import result_reporter
 import test_runner_handler
 from test_runners import regression_test_runner
 # TODO: Delete SEND_CC_LOG and try/except when no proto ImportError happened.
-SEND_CC_LOG = False
+SEND_CC_LOG = True
 try:
     from metrics import metrics
     from metrics import metrics_utils
@@ -508,8 +508,8 @@ def main(argv):
     _configure_logging(args.verbose)
     _validate_args(args)
     atest_metrics.log_start_event()
-    start = time.time()
     if SEND_CC_LOG:
+        metrics_utils.get_start_time()
         metrics.AtestStartEvent(
             command_line=' '.join(argv),
             test_references=args.tests,
@@ -524,7 +524,7 @@ def main(argv):
         build_targets, test_infos = translator.translate(args)
         if not test_infos:
             if SEND_CC_LOG:
-                metrics_utils.send_exit_event(start, constants.EXIT_CODE_TEST_NOT_FOUND)
+                metrics_utils.send_exit_event(constants.EXIT_CODE_TEST_NOT_FOUND)
             return constants.EXIT_CODE_TEST_NOT_FOUND
         if not is_from_test_mapping(test_infos):
             _validate_exec_mode(args, test_infos)
@@ -532,7 +532,7 @@ def main(argv):
             _validate_tm_tests_exec_mode(args, test_infos)
     if args.info:
         if SEND_CC_LOG:
-            metrics_utils.send_exit_event(start, constants.EXIT_CODE_SUCCESS)
+            metrics_utils.send_exit_event(constants.EXIT_CODE_SUCCESS)
         return _print_test_info(mod_info, test_infos)
     build_targets |= test_runner_handler.get_test_runner_reqs(mod_info,
                                                               test_infos)
@@ -540,7 +540,7 @@ def main(argv):
     if args.dry_run:
         _dry_run(results_dir, extra_args, test_infos)
         if SEND_CC_LOG:
-            metrics_utils.send_exit_event(start, constants.EXIT_CODE_SUCCESS)
+            metrics_utils.send_exit_event(constants.EXIT_CODE_SUCCESS)
         return constants.EXIT_CODE_SUCCESS
 
     if args.detect_regression:
@@ -555,7 +555,7 @@ def main(argv):
         success = atest_utils.build(build_targets, args.verbose)
         if not success:
             if SEND_CC_LOG:
-                metrics_utils.send_exit_event(start, constants.EXIT_CODE_BUILD_FAILURE)
+                metrics_utils.send_exit_event(constants.EXIT_CODE_BUILD_FAILURE)
             return constants.EXIT_CODE_BUILD_FAILURE
     elif constants.TEST_STEP not in steps:
         logging.warn('Install step without test step currently not '
@@ -579,7 +579,7 @@ def main(argv):
     if tests_exit_code != constants.EXIT_CODE_SUCCESS:
         tests_exit_code = constants.EXIT_CODE_TEST_FAILURE
     if SEND_CC_LOG:
-        metrics_utils.send_exit_event(start, tests_exit_code)
+        metrics_utils.send_exit_event(tests_exit_code)
     return tests_exit_code
 
 if __name__ == '__main__':
