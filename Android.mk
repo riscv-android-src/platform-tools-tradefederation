@@ -127,7 +127,6 @@ include $(call all-makefiles-under,$(LOCAL_PATH))
 
 ########################################################
 # Zip up the built files and dist it as tradefed.zip
-ifneq (,$(filter tradefed tradefed-all, $(TARGET_BUILD_APPS)))
 
 tradefed_dist_host_jars := tradefed tradefed-tests tf-prod-tests tf-prod-metatests emmalib jack-jacoco-reporter loganalysis loganalysis-tests tf-remote-client tradefed-contrib
 tradefed_dist_host_jar_files := $(foreach m, $(tradefed_dist_host_jars), $(HOST_OUT_JAVA_LIBRARIES)/$(m).jar)
@@ -151,6 +150,4 @@ $(tradefed_dist_zip) : $(tradefed_dist_files)
 	$(hide) cp -f $^ $(dir $@)
 	$(hide) cd $(dir $@) && zip -q $(notdir $@) $(notdir $^)
 
-$(call dist-for-goals, apps_only, $(tradefed_dist_zip))
-
-endif  # tradefed in $(TARGET_BUILD_APPS)
+$(call dist-for-goals, tradefed-all, $(tradefed_dist_zip))
