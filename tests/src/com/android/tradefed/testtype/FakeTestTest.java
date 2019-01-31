@@ -22,14 +22,18 @@ import static org.junit.Assert.fail;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -39,6 +43,8 @@ public class FakeTestTest {
     private FakeTest mTest = null;
     private ITestInvocationListener mListener = null;
     private OptionSetter mOption = null;
+
+    @Rule public TemporaryFolder mTempFolder = new TemporaryFolder();
 
     @Before
     public void setUp() throws Exception {
@@ -191,6 +197,35 @@ public class FakeTestTest {
     }
 
     @Test
+    public void testRun_withLogging() throws Exception {
+        File testLog = mTempFolder.newFile("test.log");
+        File testRunLog = mTempFolder.newFile("test-run.log");
+        File invocationLog = mTempFolder.newFile("invocation.log");
+
+        final String name = "com.moo.cow";
+        mListener.testRunStarted(EasyMock.eq(name), EasyMock.eq(1));
+        testPassExpectations(mListener, name, 1, testLog.getName());
+        mListener.testLog(
+                EasyMock.eq(testRunLog.getName()),
+                EasyMock.eq(LogDataType.UNKNOWN),
+                EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
+        mListener.testLog(
+                EasyMock.eq(invocationLog.getName()),
+                EasyMock.eq(LogDataType.UNKNOWN),
+                EasyMock.anyObject());
+
+        EasyMock.replay(mListener);
+
+        mOption.setOptionValue("run", name, "P");
+        mOption.setOptionValue("test-log", testLog.getAbsolutePath());
+        mOption.setOptionValue("test-run-log", testRunLog.getAbsolutePath());
+        mOption.setOptionValue("test-invocation-log", invocationLog.getAbsolutePath());
+        mTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    @Test
     public void testRun_basicParens() throws Exception {
         final String name = "com.moo.cow";
         int i = 1;
@@ -267,6 +302,15 @@ public class FakeTestTest {
         final String name = String.format("testMethod%d", idx);
         final TestDescription test = new TestDescription(klass, name);
         l.testStarted(test);
+        l.testEnded(EasyMock.eq(test), EasyMock.<HashMap<String, Metric>>anyObject());
+    }
+
+    private void testPassExpectations(
+            ITestInvocationListener l, String klass, int idx, String log) {
+        final String name = String.format("testMethod%d", idx);
+        final TestDescription test = new TestDescription(klass, name);
+        l.testStarted(test);
+        l.testLog(EasyMock.eq(log), EasyMock.eq(LogDataType.UNKNOWN), EasyMock.anyObject());
         l.testEnded(EasyMock.eq(test), EasyMock.<HashMap<String, Metric>>anyObject());
     }
 
