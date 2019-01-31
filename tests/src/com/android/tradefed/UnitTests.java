@@ -152,6 +152,7 @@ import com.android.tradefed.result.TestResultTest;
 import com.android.tradefed.result.TestRunResultTest;
 import com.android.tradefed.result.TestSummaryTest;
 import com.android.tradefed.result.XmlResultReporterTest;
+import com.android.tradefed.result.ddmlib.TestRunToTestInvocationForwarderTest;
 import com.android.tradefed.result.proto.FileProtoResultReporterTest;
 import com.android.tradefed.result.proto.ProtoResultParserTest;
 import com.android.tradefed.result.proto.ProtoResultReporterTest;
@@ -199,6 +200,7 @@ import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
 import com.android.tradefed.targetprep.TestAppInstallSetupTest;
 import com.android.tradefed.targetprep.TestFilePushSetupTest;
 import com.android.tradefed.targetprep.TimeSetterTargetPreparerTest;
+import com.android.tradefed.targetprep.SwitchUserTargetPreparerTest;
 import com.android.tradefed.targetprep.UserCleanerTest;
 import com.android.tradefed.targetprep.adb.AdbStopServerPreparerTest;
 import com.android.tradefed.targetprep.multi.MergeMultiBuildTargetPreparerTest;
@@ -281,6 +283,7 @@ import com.android.tradefed.util.FakeTestsZipFolderTest;
 import com.android.tradefed.util.FileUtilTest;
 import com.android.tradefed.util.FixedByteArrayOutputStreamTest;
 import com.android.tradefed.util.GCSFileDownloaderTest;
+import com.android.tradefed.util.GoogleApiClientUtilTest;
 import com.android.tradefed.util.HprofAllocSiteParserTest;
 import com.android.tradefed.util.JUnitXmlParserTest;
 import com.android.tradefed.util.KeyguardControllerStateTest;
@@ -528,6 +531,9 @@ import org.junit.runners.Suite.SuiteClasses;
     TestSummaryTest.class,
     XmlResultReporterTest.class,
 
+    // result.ddmlib
+    TestRunToTestInvocationForwarderTest.class,
+
     // result.proto
     FileProtoResultReporterTest.class,
     ProtoResultParserTest.class,
@@ -568,6 +574,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TestAppInstallSetupTest.class,
     TestFilePushSetupTest.class,
     TimeSetterTargetPreparerTest.class,
+    SwitchUserTargetPreparerTest.class,
     UserCleanerTest.class,
 
     // targetprep.adb
@@ -691,6 +698,7 @@ import org.junit.runners.Suite.SuiteClasses;
     FileUtilTest.class,
     FixedByteArrayOutputStreamTest.class,
     GCSFileDownloaderTest.class,
+    GoogleApiClientUtilTest.class,
     HprofAllocSiteParserTest.class,
     JUnitXmlParserTest.class,
     KeyguardControllerStateTest.class,
