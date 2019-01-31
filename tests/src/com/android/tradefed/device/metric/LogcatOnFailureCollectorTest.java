@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.device.metric;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.config.ConfigurationDef;
@@ -94,7 +95,6 @@ public class LogcatOnFailureCollectorTest {
     public void testCollect() throws Exception {
         mMockReceiver.start();
         mMockReceiver.clear();
-        EasyMock.expectLastCall().times(2);
         mMockReceiver.stop();
         mMockListener.testRunStarted("runName", 1);
         TestDescription test = new TestDescription("class", "test");
@@ -130,11 +130,21 @@ public class LogcatOnFailureCollectorTest {
     }
 
     @Test
+    public void testCollect_noRuns() throws Exception {
+        // If there was no runs, nothing should be done.
+        EasyMock.replay(mMockListener, mMockDevice, mMockReceiver);
+        mTestListener = mCollector.init(mContext, mMockListener);
+        EasyMock.verify(mMockListener, mMockDevice, mMockReceiver);
+        assertFalse(mCollector.mOnTestStartCalled);
+        assertFalse(mCollector.mOnTestFailCalled);
+    }
+
+    @Test
     public void testCollect_multiRun() throws Exception {
         mMockReceiver.start();
         EasyMock.expectLastCall().times(2);
         mMockReceiver.clear();
-        EasyMock.expectLastCall().times(3);
+        EasyMock.expectLastCall().times(2);
         mMockReceiver.stop();
         EasyMock.expectLastCall().times(2);
         mMockListener.testRunStarted("runName", 1);
