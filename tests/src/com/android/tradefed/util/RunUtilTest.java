@@ -53,7 +53,6 @@ public class RunUtilTest {
     private RunUtil mRunUtil;
     private RunnableResult mMockRunnableResult;
     private long mSleepTime = 0L;
-    private boolean success = false;
     private static final long VERY_SHORT_TIMEOUT_MS = 10L;
     private static final long SHORT_TIMEOUT_MS = 200L;
     private static final long LONG_TIMEOUT_MS = 1000L;
@@ -85,7 +84,7 @@ public class RunUtilTest {
         RunnableResult createRunnableResult(
                 OutputStream stdout, OutputStream stderr, String... command) {
             RunnableResult real = super.createRunnableResult(stdout, stderr, command);
-            mMockRunnableResult = (RunnableResult) Mockito.spy(real);
+            mMockRunnableResult = Mockito.spy(real);
             try {
                 if (mShouldThrow) {
                     // Test if the binary does not exists, startProcess throws directly in this case
@@ -157,8 +156,8 @@ public class RunUtilTest {
             runUtil.runTimed(VERY_SHORT_TIMEOUT_MS, runnable, true);
             fail("RunInterruptedException was expected, but not thrown.");
         } catch (RunInterruptedException e) {
-            // execution was cancelled due to interruption
-            Mockito.verify(runnable, Mockito.times(1)).cancel();
+            // Execution was cancelled due to interruption
+            Mockito.verify(runnable, Mockito.atLeast(1)).cancel();
         }
     }
 
