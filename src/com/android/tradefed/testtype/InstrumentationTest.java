@@ -702,7 +702,12 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     public void run(final ITestInvocationListener listener) throws DeviceNotAvailableException {
         checkArgument(mDevice != null, "Device has not been set.");
         checkArgument(mPackageName != null, "Package name has not been set.");
-
+        // Install the apk before checking the runner
+        if (mInstallFile != null) {
+            Assert.assertNull(
+                    mDevice.installPackage(
+                            mInstallFile, true, mInstallArgs.toArray(new String[] {})));
+        }
         if (mRunnerName == null) {
             setRunnerName(queryRunnerName());
             checkArgument(
@@ -710,13 +715,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
                     "Runner name has not been set and no matching instrumentations were found.");
             CLog.i("No runner name specified. Using: %s.", mRunnerName);
         }
-
         mRunner = createRemoteAndroidTestRunner(mPackageName, mRunnerName, mDevice.getIDevice());
         setRunnerArgs(mRunner);
-        if (mInstallFile != null) {
-            Assert.assertNull(mDevice.installPackage(mInstallFile, true,
-                    mInstallArgs.toArray(new String[]{})));
-        }
+
         doTestRun(listener);
         if (mInstallFile != null) {
             mDevice.uninstallPackage(mPackageName);
