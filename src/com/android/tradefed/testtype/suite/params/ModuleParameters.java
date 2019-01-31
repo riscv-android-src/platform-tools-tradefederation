@@ -24,8 +24,8 @@ public enum ModuleParameters {
     MULTI_ABI("multi_abi", "multi_abi_family"),
     NOT_MULTI_ABI("not_multi_abi", "multi_abi_family");
 
-    private static final String INSTANT_APP_FAMILY = "instant_app_family";
-    private static final String MULTI_ABI_FAMILY = "multi_abi_family";
+    public static final String INSTANT_APP_FAMILY = "instant_app_family";
+    public static final String MULTI_ABI_FAMILY = "multi_abi_family";
     public static final String[] FAMILY_LIST =
             new String[] {
                 INSTANT_APP_FAMILY, MULTI_ABI_FAMILY,
