@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.device.metric;
 
+import com.android.annotations.Nullable;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
@@ -26,6 +27,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.Pair;
 import com.android.tradefed.util.RunUtil;
 
 import java.io.File;
@@ -44,7 +46,7 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
     // in processing the files.
     private static final long MAX_SCRIPT_TIMEOUT_MSECS = 300000;
     private static final String LINE_SEPARATOR = "\\r?\\n";
-    private static final String KEY_VALUE_SEPARATOR = ":";
+    private static final char KEY_VALUE_SEPARATOR = ':';
 
     @Option(
             name = "perfetto-binary-path",
@@ -78,16 +80,12 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
             if (CommandStatus.SUCCESS.equals(cr.getStatus())) {
                 String[] metrics = cr.getStdout().split(LINE_SEPARATOR);
                 for (String metric : metrics) {
-                    // Expected script test outRput format.
-                    // Key1:Value1
-                    // Key2:Value2
-                    String[] pair = metric.split(KEY_VALUE_SEPARATOR);
-                    Metric.Builder metricBuilder = Metric.newBuilder();
-                    metricBuilder
-                            .getMeasurementsBuilder()
-                            .setSingleString(pair[1]);
-                    if (pair.length == 2) {
-                        data.addMetric(String.format("%s_%s", mMetricPrefix, pair[0]),
+                    Pair<String, String> kv = splitKeyValue(metric);
+                    if (kv != null) {
+                        Metric.Builder metricBuilder = Metric.newBuilder();
+                        metricBuilder.getMeasurementsBuilder().setSingleString(kv.second);
+                        data.addMetric(
+                                String.format("%s_%s", mMetricPrefix, kv.first),
                                 metricBuilder.setType(DataType.RAW));
                     } else {
                         CLog.e("Output %s not in the expected format.", metric);
@@ -120,6 +118,19 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
     @VisibleForTesting
     protected CommandResult runHostCommand(String[] commandArgs) {
         return RunUtil.getDefault().runTimedCmd(MAX_SCRIPT_TIMEOUT_MSECS, commandArgs);
+    }
+
+    @VisibleForTesting
+    @Nullable
+    static Pair<String, String> splitKeyValue(String s) {
+        // Expected script test output format.
+        // Key1:Value1
+        // Key2:Value2
+        int separatorIdx = s.lastIndexOf(KEY_VALUE_SEPARATOR);
+        if (separatorIdx > 0 && separatorIdx + 1 < s.length()) {
+            return new Pair<>(s.substring(0, separatorIdx), s.substring(separatorIdx + 1));
+        }
+        return null;
     }
 }
 
