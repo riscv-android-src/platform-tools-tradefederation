@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Only use this in interactive mode.
+if [[ ! $- =~ 'i' ]]; then
+  return 0
+fi
+
 # Use Py2 as the default interpreter. This script is aiming for being
 # compatible with both Py2 and Py3.
 PYTHON=
@@ -107,11 +112,18 @@ print("\n".join(parser.get_args()))
 END
 }
 
+# This function returns devices recognised by adb.
+fetch_adb_devices() {
+    while read dev; do echo $dev | awk '{print $1}'; done < <(adb devices | egrep -v "^List|^$"||true)
+}
+
 # The main tab completion function.
+_BREAKS=${COMP_WORDBREAKS}
 _atest() {
-    local current_word
+    local current_word previous_word
     COMPREPLY=()
     current_word="${COMP_WORDS[COMP_CWORD]}"
+    previous_word="${COMP_WORDS[COMP_CWORD-1]}"
 
     case "$current_word" in
         -*)
@@ -124,6 +136,18 @@ _atest() {
             COMPREPLY=($(compgen -W "$candidate_args" -- $current_word))
             ;;
     esac
+
+    case "$previous_word" in
+        --serial|-s)
+            # AVDs names have colons which by default won't be completed. Darwin
+            # don't have _get_comp_words_by_ref and __ltrim_colon_completions
+            # methods out-of-box so that manipulating COMP_WORDBREAKS becomes
+            # the only way to complete target with ":".
+            COMP_WORDBREAKS=${COMP_WORDBREAKS/:/}
+            COMPREPLY=($(compgen -W "$(fetch_adb_devices)" -- $current_word));;
+        --generate-baseline|--generate-new-metrics)
+            COMPREPLY=(5) ;;
+    esac
     return 0
 }
 
@@ -133,3 +157,5 @@ _atest() {
 comp_options="-o default -o nosort"
 complete -F _atest $comp_options atest 2>/dev/null || \
 complete -F _atest -o default atest
+# restore COMP_WORDBREAKS to avoid breaking other completions.
+export COMP_WORDBREAKS=${_BREAKS}
