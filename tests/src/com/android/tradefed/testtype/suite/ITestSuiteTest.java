@@ -53,6 +53,8 @@ import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.KeyguardStatusChecker;
 import com.android.tradefed.suite.checker.StatusCheckerResult;
 import com.android.tradefed.suite.checker.StatusCheckerResult.CheckStatus;
+import com.android.tradefed.targetprep.BaseTargetPreparer;
+import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.StubTargetPreparer;
 import com.android.tradefed.testtype.FakeTest;
 import com.android.tradefed.testtype.IAbi;
@@ -72,6 +74,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -100,6 +103,7 @@ public class ITestSuiteTest {
     private List<IMetricCollector> mListCollectors;
     private IConfiguration mStubMainConfiguration;
     private ILogSaver mMockLogSaver;
+    private BaseTargetPreparer mMockPreparer;
 
     // Guice scope and objects for testing
     private InvocationScope mScope;
@@ -110,11 +114,19 @@ public class ITestSuiteTest {
     /** Very basic implementation of {@link ITestSuite} to test it. */
     public static class TestSuiteImpl extends ITestSuite {
         private int mNumTests = 1;
+        private ITargetPreparer mPreparer;
 
-        public TestSuiteImpl() {}
+        public TestSuiteImpl() {
+            this(1);
+        }
 
         public TestSuiteImpl(int numTests) {
+            this(numTests, null);
+        }
+
+        public TestSuiteImpl(int numTests, ITargetPreparer preparer) {
             mNumTests = numTests;
+            mPreparer = preparer;
         }
 
         @Override
@@ -124,6 +136,9 @@ public class ITestSuiteTest {
                 IConfiguration config =
                         ConfigurationFactory.getInstance()
                                 .createConfigurationFromArgs(new String[] {EMPTY_CONFIG});
+                if (mPreparer != null) {
+                    config.setTargetPreparer(mPreparer);
+                }
                 config.setTest(new StubCollectingTest());
                 testConfig.put(TEST_CONFIG_NAME, config);
 
@@ -243,7 +258,9 @@ public class ITestSuiteTest {
         mInvocationScope = new InvocationScopeModule(mScope);
         mInjector = Guice.createInjector(mInvocationScope);
 
-        mTestSuite = new TestSuiteImpl();
+        mMockPreparer = Mockito.mock(BaseTargetPreparer.class);
+
+        mTestSuite = new TestSuiteImpl(1, mMockPreparer);
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
@@ -329,7 +346,7 @@ public class ITestSuiteTest {
             listener.testFailed(test, message);
         }
         listener.testEnded(test, 5, new HashMap<String, Metric>());
-        listener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         listener.testModuleEnded();
     }
 
@@ -346,7 +363,7 @@ public class ITestSuiteTest {
             }
             listener.testEnded(test, 5, new HashMap<String, Metric>());
             listener.testRunEnded(
-                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                    EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         }
         listener.testModuleEnded();
     }
@@ -372,6 +389,35 @@ public class ITestSuiteTest {
         replayMocks();
         mTestSuite.run(mMockListener);
         verifyMocks();
+        // Setup should have been called.
+        Mockito.verify(mMockPreparer).setUp(Mockito.any(), Mockito.any());
+    }
+
+    /** Test that when preparer-whitelist is set only the preparer whitelisted can run. */
+    @Test
+    public void testRun_whiteListPreparer() throws Exception {
+        OptionSetter setter = new OptionSetter(mTestSuite);
+        setter.setOptionValue("reboot-before-test", "true");
+        setter.setOptionValue(
+                ITestSuite.PREPARER_WHITELIST, StubTargetPreparer.class.getCanonicalName());
+        mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
+        // Since we set the option, expect a reboot to occur.
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(EasyMock.createMock(IDevice.class));
+        mMockDevice.reboot();
+
+        List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
+        sysChecker.add(mMockSysChecker);
+        mTestSuite.setSystemStatusChecker(sysChecker);
+        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
+                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
+                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        expectTestRun(mMockListener);
+        replayMocks();
+        mTestSuite.run(mMockListener);
+        verifyMocks();
+        // Setup should have been called.
+        Mockito.verify(mMockPreparer, Mockito.times(0)).setUp(Mockito.any(), Mockito.any());
     }
 
     /**
@@ -453,12 +499,12 @@ public class ITestSuiteTest {
 
         mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_PRE + "_test", 0);
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_POST + "_test", 0);
         mMockListener.testRunFailed(EasyMock.contains("some failures."));
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         replayMocks();
         mTestSuite.run(mMockListener);
@@ -527,7 +573,7 @@ public class ITestSuiteTest {
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(1);
         mMockListener.testModuleEnded();
         replayMocks();
@@ -580,7 +626,7 @@ public class ITestSuiteTest {
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(1);
 
         // The module that didn't run is reported too.
@@ -642,7 +688,7 @@ public class ITestSuiteTest {
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(1);
         mMockListener.testModuleEnded();
         replayMocks();
