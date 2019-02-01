@@ -22,6 +22,9 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.metric.CollectorHelper;
+import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -41,7 +44,8 @@ import java.util.Map;
 
 /** Runs all instrumentation found on current device. */
 @OptionClass(alias = "installed-instrumentation")
-public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTest, IShardableTest {
+public class InstalledInstrumentationsTest
+        implements IDeviceTest, IResumableTest, IShardableTest, IMetricCollectorReceiver {
 
     /** the metric key name for the test coverage target value */
     // TODO: move this to a more generic location
@@ -179,6 +183,7 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
 
     private int mTotalShards = 0;
     private int mShardIndex = 0;
+    private List<IMetricCollector> mMetricCollectorList = new ArrayList<>();
 
     private List<InstrumentationTest> mTests = null;
 
@@ -286,7 +291,8 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
                             continue;
                         }
                     }
-
+                    List<IMetricCollector> collectors =
+                            CollectorHelper.cloneCollectors(mMetricCollectorList);
                     InstrumentationTest t = createInstrumentationTest();
                     try {
                         // Copies all current argument values to the new runner that will be
@@ -296,6 +302,8 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
                         // Bail out rather than run tests with unexpected options
                         throw new RuntimeException("failed to copy instrumentation options", e);
                     }
+                    // Pass the collectors to each instrumentation, which will take care of init
+                    t.setMetricCollectors(collectors);
                     t.setPackageName(target.packageName);
                     t.setRunnerName(target.runnerName);
                     t.setCoverageTarget(target.targetName);
@@ -396,6 +404,11 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
             return false;
         }
         return mIsResumeMode;
+    }
+
+    @Override
+    public void setMetricCollectors(List<IMetricCollector> collectors) {
+        mMetricCollectorList = collectors;
     }
 
     /** {@inheritDoc} */
