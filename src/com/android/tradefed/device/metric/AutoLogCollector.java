@@ -18,6 +18,7 @@ package com.android.tradefed.device.metric;
 /** Enumeration describing which collector can automatically be handled by the harness. */
 public enum AutoLogCollector {
     BUGREPORTZ_ON_FAILURE(BugreportzOnFailureCollector.class),
+    HOSTLOG_ON_FAILURE(DebugHostLogOnFailureCollector.class),
     LOGCAT_ON_FAILURE(LogcatOnFailureCollector.class),
     SCREENSHOT_ON_FAILURE(ScreenshotOnFailureCollector.class);
 
