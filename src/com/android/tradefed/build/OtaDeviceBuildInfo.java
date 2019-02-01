@@ -467,6 +467,11 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
         return combinedFiles;
     }
 
+    @Override
+    public Set<String> getVersionedFileKeys() {
+        return mBaselineBuild.getVersionedFileKeys();
+    }
+
     public void setReportTargetBuild(boolean downgrade) {
         mReportTargetBuild = downgrade;
     }
