@@ -53,6 +53,7 @@ public class PythonUnitTestResultParserTest {
 
     public static final String PYTHON_OUTPUT_FILE_1 = "python_output1.txt";
     public static final String PYTHON_OUTPUT_FILE_2 = "python_output2.txt";
+    public static final String PYTHON_OUTPUT_FILE_3 = "python_output3.txt";
 
     private PythonUnitTestResultParser mParser;
     private ITestInvocationListener mMockListener;
@@ -474,7 +475,7 @@ public class PythonUnitTestResultParserTest {
         expectLastCall().times(1);
         mMockListener.testFailed(anyObject(), eq(expectedTrackback));
         expectLastCall().times(1);
-        mMockListener.testEnded(anyObject(), (HashMap<String, Metric>) anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
         expectLastCall().times(1);
         setRunListenerChecks(1, 1000);
 
@@ -490,7 +491,8 @@ public class PythonUnitTestResultParserTest {
         mMockListener.testRunStarted("test", 11);
         for (int i = 0; i < 11; i++) {
             mMockListener.testStarted(EasyMock.anyObject());
-            mMockListener.testEnded(EasyMock.anyObject(), (HashMap<String, Metric>) anyObject());
+            mMockListener.testEnded(
+                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
         }
 
         mMockListener.testFailed(
@@ -526,9 +528,33 @@ public class PythonUnitTestResultParserTest {
         mMockListener.testRunStarted("test", 107);
         for (int i = 0; i < 107; i++) {
             mMockListener.testStarted(EasyMock.anyObject());
-            mMockListener.testEnded(EasyMock.anyObject(), (HashMap<String, Metric>) anyObject());
+            mMockListener.testEnded(
+                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
         }
         mMockListener.testRunEnded(295, new HashMap<String, Metric>());
+        replay(mMockListener);
+        mParser.processNewLines(contents);
+        verify(mMockListener);
+    }
+
+    @Test
+    public void testParseRealOutput3() {
+        String[] contents = readInFile(PYTHON_OUTPUT_FILE_3);
+
+        mMockListener.testRunStarted("test", 11);
+        for (int i = 0; i < 11; i++) {
+            mMockListener.testStarted(EasyMock.anyObject());
+            mMockListener.testEnded(
+                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        }
+
+        mMockListener.testFailed(
+                EasyMock.eq(new TestDescription("__main__.ConnectionTest", "test_reconnect")),
+                EasyMock.anyObject());
+        mMockListener.testIgnored(
+                EasyMock.eq(new TestDescription("__main__.PowerTest", "test_resume_usb_kick")));
+
+        mMockListener.testRunEnded(27353, new HashMap<String, Metric>());
         replay(mMockListener);
         mParser.processNewLines(contents);
         verify(mMockListener);

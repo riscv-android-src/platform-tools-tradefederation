@@ -45,15 +45,7 @@ public class LogSaverResultForwarder extends ResultForwarder implements ILogSave
     public void invocationStarted(IInvocationContext context) {
         // Intentionally call invocationStarted for the log saver first.
         mLogSaver.invocationStarted(context);
-        for (ITestInvocationListener listener : getListeners()) {
-            try {
-                listener.invocationStarted(context);
-            } catch (RuntimeException e) {
-                // don't let the listener leave the invocation in a bad state
-                CLog.e("Caught runtime exception from ITestInvocationListener");
-                CLog.e(e);
-            }
-        }
+        InvocationSummaryHelper.reportInvocationStarted(getListeners(), context);
     }
 
     /**

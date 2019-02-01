@@ -26,8 +26,10 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.Pair;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -104,5 +106,18 @@ public class PerfettoPullerMetricCollectorTest {
         Mockito.verify(mPerfettoMetricCollector).runHostCommand(Mockito.any());
         Mockito.verify(mMockListener)
                 .testLog(Mockito.eq("trace"), Mockito.eq(LogDataType.PB), Mockito.any());
+    }
+
+    @Test
+    public void testSplitKeyValue() {
+
+        Assert.assertNull(PerfettoPullerMetricCollector.splitKeyValue("a:"));
+        Assert.assertNull(PerfettoPullerMetricCollector.splitKeyValue(""));
+        Assert.assertNull(PerfettoPullerMetricCollector.splitKeyValue(":a"));
+        Assert.assertEquals(
+                PerfettoPullerMetricCollector.splitKeyValue("abc:xyz"), new Pair<>("abc", "xyz"));
+        Assert.assertEquals(
+                PerfettoPullerMetricCollector.splitKeyValue("a:b:c:xyz"),
+                new Pair<>("a:b:c", "xyz"));
     }
 }

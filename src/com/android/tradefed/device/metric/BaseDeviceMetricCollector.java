@@ -120,6 +120,11 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     }
 
     @Override
+    public void onTestAssumptionFailure(DeviceMetricData testData, TestDescription test) {
+        // Does nothing
+    }
+
+    @Override
     public void onTestEnd(
             DeviceMetricData testData, final Map<String, Metric> currentTestCaseMetrics) {
         // Does nothing
@@ -242,6 +247,15 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
 
     @Override
     public final void testAssumptionFailure(TestDescription test, String trace) {
+        mSkipTestCase = shouldSkip(test);
+        if (!mSkipTestCase) {
+            try {
+                onTestAssumptionFailure(mTestData, test);
+            } catch (Throwable t) {
+                // Prevent exception from messing up the status reporting.
+                CLog.e(t);
+            }
+        }
         mForwarder.testAssumptionFailure(test, trace);
     }
 

@@ -69,7 +69,19 @@ public class GCSConfigurationFactory extends ConfigurationFactory {
             }
             // Create a local copy of the configuration
             try {
-                mConfigDownloaded = FileUtil.createTempFile("gcs-downloaded-global-config", ".xml");
+                // If available, store the downloaded global config within the Tradefed directory
+                File tfDir = null;
+                String tfPath = System.getProperty("TF_JAR_DIR");
+                if (tfPath != null) {
+                    // In some cases, a '.' for current is given, handle it.
+                    if (tfPath.equals(".")) {
+                        tfDir = new File("").getAbsoluteFile();
+                    } else {
+                        tfDir = new File(tfPath).getAbsoluteFile();
+                    }
+                }
+                mConfigDownloaded =
+                        FileUtil.createTempFile("gcs-downloaded-global-config", ".xml", tfDir);
                 mConfigDownloaded.deleteOnExit();
                 FileUtil.writeToFile(configStream, mConfigDownloaded);
                 // Reset the stream to be available from the start again.

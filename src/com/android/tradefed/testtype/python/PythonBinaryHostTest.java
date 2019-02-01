@@ -26,6 +26,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
@@ -46,6 +47,7 @@ import com.android.tradefed.util.SubprocessTestResultsParser;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -55,10 +57,11 @@ import java.util.Set;
 public class PythonBinaryHostTest
         implements IRemoteTest, IDeviceTest, IBuildReceiver, IInvocationContextReceiver {
 
-    protected static final String PYTHON_OUTPUT = "python-output";
     protected static final String ANDROID_SERIAL_VAR = "ANDROID_SERIAL";
     protected static final String PATH_VAR = "PATH";
     protected static final long PATH_TIMEOUT_MS = 60000L;
+
+    private static final String PYTHON_LOG_STDERR_FORMAT = "%s-stderr";
 
     @Option(name = "par-file-name", description = "The binary names inside the build info to run.")
     private Set<String> mBinaryNames = new HashSet<>();
@@ -210,7 +213,8 @@ public class PythonBinaryHostTest
 
         CommandResult result =
                 getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
-        PythonForwarder forwarder = new PythonForwarder(listener, pyFile.getName());
+        String runName = pyFile.getName();
+        PythonForwarder forwarder = new PythonForwarder(listener, runName);
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
             CLog.e(
                     "Something went wrong when running the python binary:\nstdout: "
@@ -223,7 +227,8 @@ public class PythonBinaryHostTest
             resultFile = FileUtil.createTempFile("python-res", ".txt");
             FileUtil.writeToFile(result.getStderr(), resultFile);
             try (FileInputStreamSource data = new FileInputStreamSource(resultFile)) {
-                listener.testLog(PYTHON_OUTPUT, LogDataType.TEXT, data);
+                listener.testLog(
+                        String.format(PYTHON_LOG_STDERR_FORMAT, runName), LogDataType.TEXT, data);
             }
             // If it doesn't have the std output TEST_RUN_STARTED, use regular parser.
             if (!result.getStderr().contains("TEST_RUN_STARTED")) {
@@ -237,6 +242,12 @@ public class PythonBinaryHostTest
                     parser.parseFile(resultFile);
                 }
             }
+        } catch (RuntimeException e) {
+            reportFailure(
+                    listener,
+                    runName,
+                    String.format("Failed to parse the python logs: %s", e.getMessage()));
+            CLog.e(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
         } finally {
@@ -255,6 +266,13 @@ public class PythonBinaryHostTest
     @VisibleForTesting
     String getAdbPath() {
         return GlobalConfiguration.getDeviceManagerInstance().getAdbPath();
+    }
+
+    private void reportFailure(
+            ITestInvocationListener listener, String runName, String errorMessage) {
+        listener.testRunStarted(runName, 0);
+        listener.testRunFailed(errorMessage);
+        listener.testRunEnded(0L, new HashMap<String, Metric>());
     }
 
     /** Result forwarder to replace the run name by the binary name. */

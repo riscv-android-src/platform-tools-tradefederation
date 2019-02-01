@@ -18,6 +18,8 @@ package com.android.tradefed.testtype;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollectionOf;
@@ -38,6 +40,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -45,6 +48,7 @@ import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.testtype.suite.GranularRetriableTestWrapperTest.CalledMetricCollector;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
 
@@ -65,8 +69,10 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /** Unit tests for {@link InstrumentationTest} */
@@ -833,6 +839,53 @@ public class InstrumentationTestTest {
         ITestInvocationListener listener =
                 mInstrumentationTest.addCoverageListenerIfEnabled(mMockListener);
         assertThat(listener).isSameAs(mMockListener);
+    }
+
+    /** Test normal run scenario when {@link IMetricCollector} are specified. */
+    @Test
+    public void testRun_withCollectors() throws DeviceNotAvailableException {
+        // verify the mock listener is passed through to the runner
+        RunInstrumentationTestsAnswer runTests =
+                (runner, listener) -> {
+                    // perform call back on listener to show run of two tests
+                    listener.testRunStarted(TEST_PACKAGE_VALUE, 2);
+                    listener.testStarted(TEST1);
+                    listener.testEnded(TEST1, EMPTY_STRING_MAP);
+                    listener.testStarted(TEST2);
+                    listener.testEnded(TEST2, EMPTY_STRING_MAP);
+                    listener.testRunEnded(1, EMPTY_STRING_MAP);
+                    return true;
+                };
+        doAnswer(runTests)
+                .when(mMockTestDevice)
+                .runInstrumentationTests(
+                        any(IRemoteAndroidTestRunner.class), any(ITestInvocationListener.class));
+
+        List<IMetricCollector> collectors = new ArrayList<>();
+        CalledMetricCollector calledCollector = new CalledMetricCollector();
+        CalledMetricCollector notCalledCollector = new CalledMetricCollector();
+        notCalledCollector.setDisable(true);
+        collectors.add(notCalledCollector);
+        collectors.add(calledCollector);
+        mInstrumentationTest.setMetricCollectors(collectors);
+        mInstrumentationTest.run(mMockListener);
+
+        InOrder inOrder = Mockito.inOrder(mInstrumentationTest, mMockTestDevice, mMockListener);
+        ArgumentCaptor<IRemoteAndroidTestRunner> runner =
+                ArgumentCaptor.forClass(IRemoteAndroidTestRunner.class);
+        inOrder.verify(mInstrumentationTest).setRunnerArgs(runner.capture());
+        inOrder.verify(mMockTestDevice, times(2))
+                .runInstrumentationTests(eq(runner.getValue()), any(ITestLifeCycleReceiver.class));
+
+        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
+        inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
+        inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
+        inOrder.verify(mMockListener).testStarted(eq(TEST2), anyLong());
+        inOrder.verify(mMockListener).testEnded(eq(TEST2), anyLong(), eq(EMPTY_STRING_MAP));
+        inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
+
+        assertTrue(calledCollector.wasCalled);
+        assertFalse(notCalledCollector.wasCalled);
     }
 
     private static class FakeTestRunner extends RemoteAndroidTestRunner {

@@ -114,9 +114,7 @@ public class Console extends Thread {
         }
     }
 
-    /**
-     * A {@link Runnable} with a {@code run} method that can take an argument
-     */
+    /** A {@link Runnable} with a {@code run} method that can take an argument */
     protected abstract static class ArgRunnable<T> implements Runnable {
         @Override
         public void run() {
@@ -139,7 +137,6 @@ public class Console extends Thread {
         @Option(name = "wait-for-commands", shortName = 'c', description =
                 "only exit after all commands have executed ")
         private boolean mExitOnEmpty = false;
-
 
         @Override
         public void run(CaptureList args) {
@@ -184,7 +181,6 @@ public class Console extends Thread {
     private class ForceQuitRunnable extends QuitRunnable {
         @Override
         public void run(CaptureList args) {
-            super.run(args);
             mScheduler.shutdownHard();
         }
     }

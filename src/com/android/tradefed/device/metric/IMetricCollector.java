@@ -96,6 +96,14 @@ public interface IMetricCollector extends ITestInvocationListener, IDisableable 
     public void onTestFail(DeviceMetricData testData, TestDescription test);
 
     /**
+     * Callback when a test case fails with assumption failure.
+     *
+     * @param testData the {@link DeviceMetricData} holding the data for the test case.
+     * @param test the {@link TestDescription} of the test case in progress.
+     */
+    public void onTestAssumptionFailure(DeviceMetricData testData, TestDescription test);
+
+    /**
      * Callback when a test case is ended. This should be the time for clean up.
      *
      * @param testData the {@link DeviceMetricData} holding the data for the test case. Will be the

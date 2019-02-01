@@ -128,6 +128,11 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
             Pattern.compile(
                     "(.*) \\.\\.\\. "
                             + "(ok|expected failure|FAIL|ERROR|skipped '.*'|unexpected success)");
+    static final Pattern PATTERN_TWO_LINE_RESULT_SECOND_ERROR =
+            Pattern.compile(
+                    "(.*) \\.\\.\\. error: (.*)"
+                            + "(ok|expected failure|FAIL|ERROR|skipped '.*'|unexpected success)",
+                    Pattern.DOTALL);
     static final Pattern PATTERN_FAIL_MESSAGE = Pattern.compile(
             "(FAIL|ERROR): (\\S*) \\((\\S*)\\)");
     static final Pattern PATTERN_RUN_SUMMARY = Pattern.compile(
@@ -253,6 +258,9 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
         } else if (lineMatchesPattern(line, PATTERN_TWO_LINE_RESULT_SECOND)) {
             mCurrentTestStatus = mCurrentMatcher.group(2);
             reportNonFailureTestResult();
+            mCurrentTestCaseString = null;
+        } else if (lineMatchesPattern(line, PATTERN_TWO_LINE_RESULT_SECOND_ERROR)) {
+            // Skip that odd error message
             mCurrentTestCaseString = null;
         } else if (lineMatchesPattern(line, MULTILINE_FINAL_RESULT_WITH_WARNING)) {
             StringBuilder message = new StringBuilder("Test seems to pass but with Warnings:\n");

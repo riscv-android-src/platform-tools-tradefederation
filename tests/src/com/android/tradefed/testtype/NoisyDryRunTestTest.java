@@ -18,6 +18,7 @@ package com.android.tradefed.testtype;
 import static org.easymock.EasyMock.anyLong;
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.eq;
+import static org.easymock.EasyMock.getCurrentArguments;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -34,6 +35,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.IRunUtil.EnvPriority;
 
 import org.easymock.EasyMock;
+import org.easymock.IAnswer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -83,16 +85,16 @@ public class NoisyDryRunTestTest {
                 + "tf/fake", mFile);
         mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseFile", 1);
         mMockListener.testStarted(anyObject());
-        mMockListener.testEnded(anyObject(), (HashMap<String, Metric>) anyObject());
-        mMockListener.testRunEnded(EasyMock.eq(0l), (HashMap<String, Metric>) anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
 
         mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseCommands",
                 2);
         mMockListener.testStarted(anyObject());
-        mMockListener.testEnded(anyObject(), (HashMap<String, Metric>) anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
         mMockListener.testStarted(anyObject());
-        mMockListener.testEnded(anyObject(), (HashMap<String, Metric>) anyObject());
-        mMockListener.testRunEnded(EasyMock.eq(0l), (HashMap<String, Metric>) anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
 
         NoisyDryRunTest noisyDryRunTest = new NoisyDryRunTest();
@@ -111,15 +113,15 @@ public class NoisyDryRunTestTest {
         FileUtil.writeToFile("tf/fake --fail-invocation-with-cause USE_KEYSTORE@fake\n", mFile);
         mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseFile", 1);
         mMockListener.testStarted(anyObject());
-        mMockListener.testEnded(anyObject(), (HashMap<String, Metric>) anyObject());
-        mMockListener.testRunEnded(EasyMock.eq(0l), (HashMap<String, Metric>) anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
 
         mMockListener.testRunStarted(
                 "com.android.tradefed.testtype.NoisyDryRunTest_parseCommands", 1);
         mMockListener.testStarted(anyObject());
-        mMockListener.testEnded(anyObject(), (HashMap<String, Metric>) anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
 
-        mMockListener.testRunEnded(EasyMock.eq(0l), (HashMap<String, Metric>) anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
 
         NoisyDryRunTest noisyDryRunTest = new NoisyDryRunTest();
@@ -134,9 +136,9 @@ public class NoisyDryRunTestTest {
         FileUtil.deleteFile(mFile);
         mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseFile", 1);
         mMockListener.testStarted(anyObject());
-        mMockListener.testEnded(anyObject(), (HashMap<String, Metric>) anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
         mMockListener.testFailed(anyObject(), anyObject());
-        mMockListener.testRunEnded(EasyMock.eq(0l), (HashMap<String, Metric>) anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
 
         NoisyDryRunTest noisyDryRunTest = new NoisyDryRunTest();
@@ -152,17 +154,17 @@ public class NoisyDryRunTestTest {
                 + "invalid --option value2", mFile);
         mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseFile", 1);
         mMockListener.testStarted(anyObject());
-        mMockListener.testEnded(anyObject(), (HashMap<String, Metric>) anyObject());
-        mMockListener.testRunEnded(EasyMock.eq(0l), (HashMap<String, Metric>) anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
 
         mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseCommands",
                 2);
         mMockListener.testStarted(anyObject());
-        mMockListener.testEnded(anyObject(), (HashMap<String, Metric>) anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
         mMockListener.testStarted(anyObject());
         mMockListener.testFailed(anyObject(), anyObject());
-        mMockListener.testEnded(anyObject(), (HashMap<String, Metric>) anyObject());
-        mMockListener.testRunEnded(EasyMock.eq(0l), (HashMap<String, Metric>) anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
 
         NoisyDryRunTest noisyDryRunTest = new NoisyDryRunTest();
@@ -248,22 +250,57 @@ public class NoisyDryRunTestTest {
     @Test
     public void testLoading_sandboxed() throws Exception {
         FileUtil.writeToFile("tf/fake\n" + "tf/fake --use-sandbox", mFile);
+        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        EasyMock.expectLastCall().times(2);
+        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
+        mMockRunUtil.setEnvVariable(
+                EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), anyObject());
+        mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                anyLong(),
+                                eq("java"),
+                                eq("-cp"),
+                                anyObject(),
+                                eq(SandboxConfigDump.class.getCanonicalName()),
+                                anyObject(),
+                                anyObject(),
+                                eq("tf/fake"),
+                                eq("--use-sandbox")))
+                .andAnswer(
+                        new IAnswer<CommandResult>() {
+                            @Override
+                            public CommandResult answer() throws Throwable {
+                                // Fake the command dump to avoid possible timeouts
+                                String path = (String) getCurrentArguments()[6];
+                                FileUtil.writeToFile(
+                                        "<configuration></configuration>", new File(path), false);
+                                return result;
+                            }
+                        });
 
         mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseFile", 1);
         mMockListener.testStarted(anyObject());
-        mMockListener.testEnded(anyObject(), (HashMap<String, Metric>) anyObject());
-        mMockListener.testRunEnded(EasyMock.eq(0l), (HashMap<String, Metric>) anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
 
         mMockListener.testRunStarted(
                 "com.android.tradefed.testtype.NoisyDryRunTest_parseCommands", 2);
         mMockListener.testStarted(anyObject());
-        mMockListener.testEnded(anyObject(), (HashMap<String, Metric>) anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
         mMockListener.testStarted(anyObject());
-        mMockListener.testEnded(anyObject(), (HashMap<String, Metric>) anyObject());
-        mMockListener.testRunEnded(EasyMock.eq(0l), (HashMap<String, Metric>) anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
 
-        NoisyDryRunTest noisyDryRunTest = new NoisyDryRunTest();
+        NoisyDryRunTest noisyDryRunTest =
+                new NoisyDryRunTest() {
+                    @Override
+                    IRunUtil createRunUtil() {
+                        return mMockRunUtil;
+                    }
+                };
         OptionSetter setter = new OptionSetter(noisyDryRunTest);
         setter.setOptionValue("cmdfile", mFile.getAbsolutePath());
         noisyDryRunTest.run(mMockListener);
@@ -297,19 +334,19 @@ public class NoisyDryRunTestTest {
 
         mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseFile", 1);
         mMockListener.testStarted(anyObject());
-        mMockListener.testEnded(anyObject(), (HashMap<String, Metric>) anyObject());
-        mMockListener.testRunEnded(EasyMock.eq(0l), (HashMap<String, Metric>) anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
 
         mMockListener.testRunStarted(
                 "com.android.tradefed.testtype.NoisyDryRunTest_parseCommands", 2);
         mMockListener.testStarted(anyObject());
-        mMockListener.testEnded(anyObject(), (HashMap<String, Metric>) anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
         mMockListener.testStarted(anyObject());
         mMockListener.testFailed(
                 anyObject(),
                 EasyMock.contains("Failed to parse command line: tf/fake --use-sandbox"));
-        mMockListener.testEnded(anyObject(), (HashMap<String, Metric>) anyObject());
-        mMockListener.testRunEnded(EasyMock.eq(0l), (HashMap<String, Metric>) anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
 
         NoisyDryRunTest noisyDryRunTest =

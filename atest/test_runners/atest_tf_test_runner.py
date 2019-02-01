@@ -554,6 +554,14 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         test_args.extend(['--log-level', log_level])
 
         args_to_add, args_not_supported = self._parse_extra_args(extra_args)
+
+        # TODO(b/122889707) Remove this after finding the root cause.
+        env_serial = os.environ.get(constants.ANDROID_SERIAL)
+        # Use the env variable ANDROID_SERIAL if it's set by user.
+        if env_serial and '--serial' not in args_to_add:
+            args_to_add.append("--serial")
+            args_to_add.append(env_serial)
+
         test_args.extend(args_to_add)
         if args_not_supported:
             logging.info('%s does not support the following args %s',

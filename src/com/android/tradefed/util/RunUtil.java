@@ -16,6 +16,7 @@
 
 package com.android.tradefed.util;
 
+import com.android.annotations.Nullable;
 import com.android.tradefed.command.CommandInterrupter;
 import com.android.tradefed.log.LogUtil.CLog;
 
@@ -162,7 +163,12 @@ public class RunUtil implements IRunUtil {
     @VisibleForTesting
     RunnableResult createRunnableResult(
             OutputStream stdout, OutputStream stderr, String... command) {
-        return new RunnableResult(null, createProcessBuilder(command), stdout, stderr);
+        return new RunnableResult(
+                /* input= */ null,
+                createProcessBuilder(command),
+                stdout,
+                stderr,
+                /* inputRedirect= */ null);
     }
 
     /** {@inheritDoc} */
@@ -230,6 +236,23 @@ public class RunUtil implements IRunUtil {
     public CommandResult runTimedCmdWithInput(final long timeout, String input,
             final List<String> command) {
         RunnableResult osRunnable = new RunnableResult(input, createProcessBuilder(command));
+        CommandStatus status = runTimed(timeout, osRunnable, true);
+        CommandResult result = osRunnable.getResult();
+        result.setStatus(status);
+        return result;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public CommandResult runTimedCmdWithInputRedirect(
+            final long timeout, @Nullable File inputRedirect, final String... command) {
+        RunnableResult osRunnable =
+                new RunnableResult(
+                        /* input= */ null,
+                        createProcessBuilder(command),
+                        /* stdout= */ null,
+                        /* stderr= */ null,
+                        inputRedirect);
         CommandStatus status = runTimed(timeout, osRunnable, true);
         CommandResult result = osRunnable.getResult();
         result.setStatus(status);
@@ -537,48 +560,50 @@ public class RunUtil implements IRunUtil {
         private Process mProcess = null;
         private CountDownLatch mCountDown = null;
         private Thread mExecutionThread;
-        private OutputStream stdOut = null;
-        private OutputStream stdErr = null;
+        private OutputStream mStdOut = null;
+        private OutputStream mStdErr = null;
+        private final File mInputRedirect;
         private boolean mCreatedStdoutStream = false;
         private boolean mCreatedStderrStream = false;
         private final Object mLock = new Object();
         private boolean mCancelled = false;
 
         RunnableResult(final String input, final ProcessBuilder processBuilder) {
-            this(input, processBuilder, null, null);
+            this(input, processBuilder, null, null, null);
         }
 
         /**
          * Alternative constructor that allows redirecting the output to any Outputstream. Stdout
          * and stderr can be independently redirected to different Outputstream implementations. If
          * streams are null, default behavior of using a buffer will be used.
+         *
+         * <p>Additionally, Stdin can be redirected from a File.
          */
         RunnableResult(
                 final String input,
                 final ProcessBuilder processBuilder,
                 OutputStream stdoutStream,
-                OutputStream stderrStream) {
+                OutputStream stderrStream,
+                File inputRedirect) {
             mProcessBuilder = processBuilder;
             mInput = input;
+
+            mInputRedirect = inputRedirect;
+            if (mInputRedirect != null) {
+                // Set Stdin to mInputRedirect file.
+                mProcessBuilder.redirectInput(mInputRedirect);
+            }
+
             mCommandResult = new CommandResult();
             // Ensure the outputs are never null
             mCommandResult.setStdout("");
             mCommandResult.setStderr("");
             mCountDown = new CountDownLatch(1);
+
             // Redirect IO, so that the outputstream for the spawn process does not fill up
             // and cause deadlock.
-            if (stdoutStream != null) {
-                stdOut = stdoutStream;
-            } else {
-                stdOut = new ByteArrayOutputStream();
-                mCreatedStdoutStream = true;
-            }
-            if (stderrStream != null) {
-                stdErr = stderrStream;
-            } else {
-                stdErr = new ByteArrayOutputStream();
-                mCreatedStderrStream = true;
-            }
+            mStdOut = stdoutStream != null ? stdoutStream : new ByteArrayOutputStream();
+            mStdErr = stderrStream != null ? stderrStream : new ByteArrayOutputStream();
         }
 
         public CommandResult getResult() {
@@ -615,21 +640,21 @@ public class RunUtil implements IRunUtil {
                 stdoutThread =
                         inheritIO(
                                 mProcess.getInputStream(),
-                                stdOut,
+                                mStdOut,
                                 String.format("inheritio-stdout-%s", mProcessBuilder.command()));
                 stderrThread =
                         inheritIO(
                                 mProcess.getErrorStream(),
-                                stdErr,
+                                mStdErr,
                                 String.format("inheritio-stderr-%s", mProcessBuilder.command()));
 
                 // Close the stdout/err streams if created by us. Streams provided by the caller
                 // should be closed by the caller.
                 if (mCreatedStdoutStream) {
-                    stdOut.close();
+                    mStdOut.close();
                 }
                 if (mCreatedStderrStream) {
-                    stdErr.close();
+                    mStdErr.close();
                 }
             }
             // Wait for process to complete.
@@ -650,17 +675,19 @@ public class RunUtil implements IRunUtil {
                     mCommandResult.setExitCode(rc);
 
                     // Write out the streams to the result.
-                    if (stdOut instanceof ByteArrayOutputStream) {
-                        mCommandResult.setStdout(((ByteArrayOutputStream)stdOut).toString("UTF-8"));
+                    if (mStdOut instanceof ByteArrayOutputStream) {
+                        mCommandResult.setStdout(
+                                ((ByteArrayOutputStream) mStdOut).toString("UTF-8"));
                     } else {
                         mCommandResult.setStdout(
-                                "redirected to " + stdOut.getClass().getSimpleName());
+                                "redirected to " + mStdOut.getClass().getSimpleName());
                     }
-                    if (stdErr instanceof ByteArrayOutputStream) {
-                        mCommandResult.setStderr(((ByteArrayOutputStream)stdErr).toString("UTF-8"));
+                    if (mStdErr instanceof ByteArrayOutputStream) {
+                        mCommandResult.setStderr(
+                                ((ByteArrayOutputStream) mStdErr).toString("UTF-8"));
                     } else {
                         mCommandResult.setStderr(
-                                "redirected to " + stdErr.getClass().getSimpleName());
+                                "redirected to " + mStdErr.getClass().getSimpleName());
                     }
                 }
             } finally {

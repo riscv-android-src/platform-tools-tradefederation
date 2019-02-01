@@ -74,7 +74,7 @@ public class TestMappingTest {
             tests =
                     new TestMapping(testMappingFile.toPath(), Paths.get(tempDir.getAbsolutePath()))
                             .getTests("postsubmit", null, false);
-            assertEquals(3, tests.size());
+            assertEquals(2, tests.size());
             assertEquals("test2", tests.get(0).getName());
             TestOption option = tests.get(0).getOptions().get(0);
             assertEquals("instrumentation-arg", option.getName());

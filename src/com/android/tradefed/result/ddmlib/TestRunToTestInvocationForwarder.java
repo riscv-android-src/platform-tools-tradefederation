@@ -34,8 +34,17 @@ import java.util.Map;
  */
 public class TestRunToTestInvocationForwarder implements ITestRunListener {
 
+    private static final String NULL_STRING = "null";
+    public static final String ERROR_MESSAGE_FORMAT =
+            "Runner reported an invalid method 'null' (%s). Something went wrong, Skipping "
+                    + "its reporting.";
+
     private Collection<ITestLifeCycleReceiver> mListeners;
     private Long mStartTime;
+    // Sometimes the instrumentation runner (Android JUnit Runner / AJUR) fails to load some class
+    // and report a "null" as a test method. This creates a lot of issues in the reporting pipeline
+    // so catch it, and avoid it at the root.
+    private TestIdentifier mNullMethod = null;
 
     public TestRunToTestInvocationForwarder(Collection<ITestLifeCycleReceiver> listeners) {
         mListeners = listeners;
@@ -48,6 +57,11 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
 
     @Override
     public void testStarted(TestIdentifier testId) {
+        if (NULL_STRING.equals(testId.getTestName())) {
+            mNullMethod = testId;
+            return;
+        }
+        mNullMethod = null;
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
                 listener.testStarted(TestDescription.createFromTestIdentifier(testId));
@@ -62,6 +76,11 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
 
     @Override
     public void testStarted(TestIdentifier testId, long startTime) {
+        if (NULL_STRING.equals(testId.getTestName())) {
+            mNullMethod = testId;
+            return;
+        }
+        mNullMethod = null;
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
                 listener.testStarted(TestDescription.createFromTestIdentifier(testId), startTime);
@@ -76,6 +95,9 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
 
     @Override
     public void testAssumptionFailure(TestIdentifier testId, String trace) {
+        if (mNullMethod != null && mNullMethod.equals(testId)) {
+            return;
+        }
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
                 listener.testAssumptionFailure(
@@ -91,6 +113,9 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
 
     @Override
     public void testFailed(TestIdentifier testId, String trace) {
+        if (mNullMethod != null && mNullMethod.equals(testId)) {
+            return;
+        }
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
                 listener.testFailed(TestDescription.createFromTestIdentifier(testId), trace);
@@ -105,6 +130,9 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
 
     @Override
     public void testIgnored(TestIdentifier testId) {
+        if (mNullMethod != null && mNullMethod.equals(testId)) {
+            return;
+        }
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
                 listener.testIgnored(TestDescription.createFromTestIdentifier(testId));
@@ -120,6 +148,10 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     @Override
     public void testEnded(TestIdentifier testId, Map<String, String> testMetrics) {
         for (ITestLifeCycleReceiver listener : mListeners) {
+            if (mNullMethod != null && mNullMethod.equals(testId)) {
+                listener.testRunFailed(String.format(ERROR_MESSAGE_FORMAT, mNullMethod));
+                continue;
+            }
             try {
                 listener.testEnded(
                         TestDescription.createFromTestIdentifier(testId),
@@ -136,6 +168,10 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     @Override
     public void testEnded(TestIdentifier testId, long endTime, Map<String, String> testMetrics) {
         for (ITestLifeCycleReceiver listener : mListeners) {
+            if (mNullMethod != null && mNullMethod.equals(testId)) {
+                listener.testRunFailed(String.format(ERROR_MESSAGE_FORMAT, mNullMethod));
+                continue;
+            }
             try {
                 listener.testEnded(
                         TestDescription.createFromTestIdentifier(testId),
