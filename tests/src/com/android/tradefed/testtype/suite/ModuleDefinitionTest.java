@@ -872,10 +872,11 @@ public class ModuleDefinitionTest {
                 EasyMock.eq(LogDataType.TEXT),
                 EasyMock.anyObject(),
                 EasyMock.eq(loggedFile));
+        mMockLogSaverListener.logAssociation("testlogclass", loggedFile);
 
         mMockLogSaverListener.testRunStarted(MODULE_NAME, 0);
         mMockLogSaverListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         // Simulate how the invoker actually put the log saver
         replayMocks();
