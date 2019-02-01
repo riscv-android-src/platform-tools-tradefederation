@@ -39,6 +39,7 @@ ALL_ABI = 'ALL_ABI'
 HOST = 'HOST'
 CUSTOM_ARGS = 'CUSTOM_ARGS'
 DRY_RUN = 'DRY_RUN'
+ANDROID_SERIAL = 'ANDROID_SERIAL'
 
 # Application exit codes.
 EXIT_CODE_SUCCESS = 0
@@ -120,6 +121,13 @@ METRICS_URL = 'http://asuite-218222.appspot.com/atest/metrics'
 EXTERNAL = 'EXTERNAL_RUN'
 INTERNAL = 'INTERNAL_RUN'
 INTERNAL_EMAIL = '@google.com'
+CONTENT_LICENSES_URL = 'https://source.android.com/setup/start/licenses'
+CONTRIBUTOR_AGREEMENT_URL = {
+    'INTERNAL': 'https://cla.developers.google.com/',
+    'EXTERNAL': 'https://opensource.google.com/docs/cla/'
+}
+PRIVACY_POLICY_URL = 'https://policies.google.com/privacy'
+TERMS_SERVICE_URL = 'https://policies.google.com/terms'
 
 # VTS plans
 VTS_STAGING_PLAN = 'vts-staging-default'

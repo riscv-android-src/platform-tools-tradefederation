@@ -805,7 +805,7 @@ public class GranularRetriableTestWrapperTest {
     /** Collector that track if it was called or not */
     public static class CalledMetricCollector extends BaseDeviceMetricCollector {
 
-        boolean wasCalled = false;
+        public boolean wasCalled = false;
 
         @Override
         public void onTestRunStart(DeviceMetricData runData) {

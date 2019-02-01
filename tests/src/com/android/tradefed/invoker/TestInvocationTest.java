@@ -343,7 +343,8 @@ public class TestInvocationTest {
      */
     @Test
     public void testInvoke_buildFailed() throws Throwable {
-        BuildRetrievalError exception = new BuildRetrievalError("error", null, mMockBuildInfo);
+        BuildRetrievalError exception =
+                new BuildRetrievalError("testInvoke_buildFailed", null, mMockBuildInfo);
         EasyMock.expect(mMockBuildProvider.getBuild()).andThrow(exception);
         EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn(null);
 
@@ -459,7 +460,7 @@ public class TestInvocationTest {
      */
     @Test
     public void testInvoke_testFail() throws Throwable {
-        IllegalArgumentException exception = new IllegalArgumentException();
+        IllegalArgumentException exception = new IllegalArgumentException("testInvoke_testFail");
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         test.run((ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
@@ -484,7 +485,7 @@ public class TestInvocationTest {
      */
     @Test
     public void testInvoke_fatalError() throws Throwable {
-        FatalHostError exception = new FatalHostError("error");
+        FatalHostError exception = new FatalHostError("testInvoke_fatalError");
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         test.run((ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
@@ -568,6 +569,7 @@ public class TestInvocationTest {
 
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
         resumeListener.invocationStarted(mStubInvocationMetadata);
+        EasyMock.expect(resumeListener.getSummary()).andReturn(null);
         mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.setOptions((TestDeviceOptions)EasyMock.anyObject());
         mMockBuildInfo.setDeviceSerial(SERIAL);
@@ -637,6 +639,7 @@ public class TestInvocationTest {
         mMockDevice.stopLogcat();
 
         mMockLogger.init();
+
         mMockLogSaver.invocationStarted(mStubInvocationMetadata);
         // now set resumed invocation expectations
         mMockDevice.clearLastConnectedWifiNetwork();
@@ -723,7 +726,7 @@ public class TestInvocationTest {
      */
     @Test
     public void testInvoke_retry() throws Throwable {
-        AssertionError exception = new AssertionError();
+        AssertionError exception = new AssertionError("testInvoke_retry");
         IRetriableTest test = EasyMock.createMock(IRetriableTest.class);
         test.run((ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
@@ -803,7 +806,7 @@ public class TestInvocationTest {
      */
     @Test
     public void testInvoke_tearDown_runtime() throws Throwable {
-        RuntimeException exception = new RuntimeException();
+        RuntimeException exception = new RuntimeException("testInvoke_tearDown_runtime");
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         test.run((ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
@@ -888,7 +891,7 @@ public class TestInvocationTest {
         logSaverListener.logAssociation(
                 EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME), EasyMock.anyObject());
         logSaverListener.invocationEnded(EasyMock.anyLong());
-        EasyMock.expect(logSaverListener.getSummary()).andReturn(mSummary);
+        EasyMock.expect(logSaverListener.getSummary()).andReturn(mSummary).times(2);
 
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         setupMockSuccessListeners();
@@ -1111,7 +1114,10 @@ public class TestInvocationTest {
         // invocationStarted
         mMockLogSaver.invocationStarted(mStubInvocationMetadata);
         mMockTestListener.invocationStarted(mStubInvocationMetadata);
+        EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
+        mMockSummaryListener.putEarlySummary(EasyMock.anyObject());
         mMockSummaryListener.invocationStarted(mStubInvocationMetadata);
+        EasyMock.expect(mMockSummaryListener.getSummary()).andReturn(null);
 
         if (!(throwable instanceof BuildRetrievalError)) {
             EasyMock.expect(

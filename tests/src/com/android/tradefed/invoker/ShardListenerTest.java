@@ -140,6 +140,7 @@ public class ShardListenerTest {
         EasyMock.expectLastCall().times(2);
 
         mockListener.invocationStarted(mContext);
+        EasyMock.expect(mockListener.getSummary()).andReturn(null);
         mockListener.testLog(
                 EasyMock.eq("run-file"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
         LogFile runFile = new LogFile("path", "url", false, LogDataType.TEXT, 0L);

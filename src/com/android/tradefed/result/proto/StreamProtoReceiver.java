@@ -63,8 +63,26 @@ public class StreamProtoReceiver implements Closeable {
     public StreamProtoReceiver(
             ITestInvocationListener listener, boolean reportInvocation, boolean quietParsing)
             throws IOException {
+        this(listener, reportInvocation, quietParsing, "subprocess-");
+    }
+
+    /**
+     * Ctor.
+     *
+     * @param listener the {@link ITestInvocationListener} where to report the results.
+     * @param reportInvocation Whether or not to report the invocation level events.
+     * @param quietParsing Whether or not to let the parser log debug information.
+     * @param logNamePrefix The prefix for file logged through the parser.
+     * @throws IOException
+     */
+    public StreamProtoReceiver(
+            ITestInvocationListener listener,
+            boolean reportInvocation,
+            boolean quietParsing,
+            String logNamePrefix)
+            throws IOException {
         mListener = listener;
-        mParser = new ProtoResultParser(mListener, reportInvocation);
+        mParser = new ProtoResultParser(mListener, reportInvocation, logNamePrefix);
         mParser.setQuiet(quietParsing);
         mEventReceiver = new EventReceiverThread();
         mEventReceiver.start();
@@ -77,6 +95,7 @@ public class StreamProtoReceiver implements Closeable {
 
         public EventReceiverThread() throws IOException {
             super("ProtoEventReceiverThread");
+            setDaemon(true);
             mSocket = new ServerSocket(DEFAULT_AVAILABLE_PORT);
             mCountDown = new CountDownLatch(1);
         }
@@ -142,6 +161,7 @@ public class StreamProtoReceiver implements Closeable {
                 CLog.i("Waiting for events to finish being processed.");
                 if (!mEventReceiver.getCountDown().await(millis, TimeUnit.MILLISECONDS)) {
                     CLog.e("Event receiver thread did not complete. Some events may be missing.");
+                    mEventReceiver.interrupt();
                     return false;
                 }
             } catch (InterruptedException e) {

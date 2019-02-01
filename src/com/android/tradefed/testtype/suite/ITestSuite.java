@@ -355,18 +355,18 @@ public abstract class ITestSuite
         // Apply our guice scope to all modules objects
         applyGuiceInjection(runConfig);
 
-        if (mModuleMetadataIncludeFilter.isEmpty() && mModuleMetadataExcludeFilter.isEmpty()) {
-            return runConfig;
-        }
         LinkedHashMap<String, IConfiguration> filteredConfig = new LinkedHashMap<>();
         for (Entry<String, IConfiguration> config : runConfig.entrySet()) {
-            if (!filterByConfigMetadata(
-                    config.getValue(),
-                    mModuleMetadataIncludeFilter,
-                    mModuleMetadataExcludeFilter)) {
-                // if the module config did not pass the metadata filters, it's excluded
-                // from execution.
-                continue;
+            if (!mModuleMetadataIncludeFilter.isEmpty()
+                    || !mModuleMetadataExcludeFilter.isEmpty()) {
+                if (!filterByConfigMetadata(
+                        config.getValue(),
+                        mModuleMetadataIncludeFilter,
+                        mModuleMetadataExcludeFilter)) {
+                    // if the module config did not pass the metadata filters, it's excluded
+                    // from execution.
+                    continue;
+                }
             }
             if (!filterByRunnerType(config.getValue(), mAllowedRunners)) {
                 // if the module config did not pass the runner type filter, it's excluded from
@@ -1116,10 +1116,12 @@ public abstract class ITestSuite
         if (preparerWhiteList.isEmpty()) {
             return;
         }
-        List<ITargetPreparer> preparers = new ArrayList<>(config.getTargetPreparers());
-        for (ITargetPreparer prep : preparers) {
-            if (!preparerWhiteList.contains(prep.getClass().getName())) {
-                config.getTargetPreparers().remove(prep);
+        for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
+            List<ITargetPreparer> preparers = new ArrayList<>(deviceConfig.getTargetPreparers());
+            for (ITargetPreparer prep : preparers) {
+                if (!preparerWhiteList.contains(prep.getClass().getName())) {
+                    deviceConfig.getTargetPreparers().remove(prep);
+                }
             }
         }
     }

@@ -245,6 +245,7 @@ public class ProtoResultParserTest {
         HashMap<String, Metric> metrics = new HashMap<String, Metric>();
         metrics.put("metric1", TfMetricProtoUtil.stringToMetric("value1"));
         LogFile logFile = new LogFile("path", "url", false, LogDataType.TEXT, 5);
+        LogFile logModuleFile = new LogFile("path", "url", false, LogDataType.TEXT, 5);
 
         // Verify Mocks
         mMockListener.invocationStarted(EasyMock.anyObject());
@@ -261,6 +262,7 @@ public class ProtoResultParserTest {
         mMockListener.logAssociation(EasyMock.eq("subprocess-run_log1"), EasyMock.anyObject());
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.logAssociation(EasyMock.eq("subprocess-log-module"), EasyMock.anyObject());
         mMockListener.testModuleEnded();
 
         mMockListener.invocationEnded(500L);
@@ -270,6 +272,8 @@ public class ProtoResultParserTest {
         mFinalTestParser.invocationStarted(mInvocationContext);
         // Run modules
         mFinalTestParser.testModuleStarted(createModuleContext("arm64 module1"));
+        // test log at module level
+        mFinalTestParser.logAssociation("log-module", logModuleFile);
         mFinalTestParser.testRunStarted("run1", 2);
 
         mFinalTestParser.testStarted(test1, 5L);

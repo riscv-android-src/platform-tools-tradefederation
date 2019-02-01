@@ -19,7 +19,7 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.command.CommandOptions;
-import com.android.tradefed.command.Console;
+import com.android.tradefed.command.CommandRunner;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
@@ -63,11 +63,12 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
     public static final long PUSH_TF_TIMEOUT = 120000L;
     public static final long PULL_RESULT_TIMEOUT = 180000L;
+    public static final long REMOTE_PROCESS_RUNNING_WAIT = 15000L;
 
     public static final String REMOTE_USER_DIR = "/home/{$USER}/";
     public static final String PROTO_RESULT_NAME = "output.pb";
-    public static final String STDOUT_FILE = "stdout.txt";
-    public static final String STDERR_FILE = "stderr.txt";
+    public static final String STDOUT_FILE = "remote-tradefed-stdout.txt";
+    public static final String STDERR_FILE = "remote-tradefed-stderr.txt";
 
     private String mRemoteTradefedDir = null;
     private String mRemoteFinalResult = null;
@@ -270,14 +271,15 @@ public class RemoteInvocationExecution extends InvocationExecution {
         remoteTfCommand.add(String.format("PATH=%s:$PATH", new File(mRemoteAdbPath).getParent()));
         remoteTfCommand.add("screen -dmSU tradefed sh -c");
 
-        String tfCommand = ("TF_GLOBAL_CONFIG=" + globalConfig.getName());
-        tfCommand +=
-                (" ./tradefed.sh run commandAndExit " + mRemoteTradefedDir + configFile.getName());
+        StringBuilder tfCmdBuilder =
+                new StringBuilder("TF_GLOBAL_CONFIG=" + globalConfig.getName());
+        tfCmdBuilder.append(" ENTRY_CLASS=" + CommandRunner.class.getCanonicalName());
+        tfCmdBuilder.append(" ./tradefed.sh " + mRemoteTradefedDir + configFile.getName());
         if (config.getCommandOptions().shouldUseRemoteSandboxMode()) {
-            tfCommand += (" --" + CommandOptions.USE_SANDBOX);
+            tfCmdBuilder.append(" --" + CommandOptions.USE_SANDBOX);
         }
-        tfCommand += (" > " + STDOUT_FILE + " 2> " + STDERR_FILE);
-        remoteTfCommand.add("\"" + tfCommand + "\"");
+        tfCmdBuilder.append(" > " + STDOUT_FILE + " 2> " + STDERR_FILE);
+        remoteTfCommand.add("\"" + tfCmdBuilder.toString() + "\"");
         // Kick off the actual remote run
         CommandResult resultRemoteExecution =
                 GceManager.remoteSshCommandExecution(
@@ -309,7 +311,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                             "ps",
                             "-ef",
                             "| grep",
-                            Console.class.getCanonicalName());
+                            CommandRunner.class.getCanonicalName());
             CLog.d("ps -ef: stdout: %s\nstderr: %s\n", psRes.getStdout(), psRes.getStderr());
             stillRunning = psRes.getStdout().contains(configFile.getName());
             CLog.d("still running: %s", stillRunning);
@@ -322,7 +324,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 break;
             }
             if (stillRunning) {
-                RunUtil.getDefault().sleep(15000L);
+                RunUtil.getDefault().sleep(REMOTE_PROCESS_RUNNING_WAIT);
             }
         }
         File resultFile = null;
@@ -351,11 +353,10 @@ public class RemoteInvocationExecution extends InvocationExecution {
                         mRemoteTradefedDir + STDOUT_FILE);
         if (stdoutFile != null) {
             try (InputStreamSource source = new FileInputStreamSource(stdoutFile, true)) {
-                currentInvocationListener.testLog("stdout", LogDataType.TEXT, source);
+                currentInvocationListener.testLog(STDOUT_FILE, LogDataType.TEXT, source);
             }
         }
 
-        // TODO: extract potential exception from stderr
         File stderrFile =
                 RemoteFileUtil.fetchRemoteFile(
                         info,
@@ -365,13 +366,14 @@ public class RemoteInvocationExecution extends InvocationExecution {
                         mRemoteTradefedDir + STDERR_FILE);
         if (stderrFile != null) {
             try (InputStreamSource source = new FileInputStreamSource(stderrFile, true)) {
-                currentInvocationListener.testLog("stderr", LogDataType.TEXT, source);
+                currentInvocationListener.testLog(STDERR_FILE, LogDataType.TEXT, source);
             }
         }
 
         if (resultFile != null) {
             // Report result to listener.
-            ProtoResultParser parser = new ProtoResultParser(currentInvocationListener, false);
+            ProtoResultParser parser =
+                    new ProtoResultParser(currentInvocationListener, false, "remote-");
             parser.processFinalizedProto(TestRecordProtoUtil.readFromFile(resultFile));
         }
     }

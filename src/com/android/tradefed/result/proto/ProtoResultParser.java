@@ -55,13 +55,22 @@ public class ProtoResultParser {
     private boolean mReportInvocation = false;
     /** The invocation context */
     private IInvocationContext mContext;
+    /** Prefix that will be added to the files logged through the parser. */
+    private String mFilePrefix;
 
     private boolean mQuietParsing = true;
 
     /** Ctor. */
     public ProtoResultParser(ITestInvocationListener listener, boolean reportInvocation) {
+        this(listener, reportInvocation, "subprocess-");
+    }
+
+    /** Ctor. */
+    public ProtoResultParser(
+            ITestInvocationListener listener, boolean reportInvocation, String prefixForFile) {
         mListener = listener;
         mReportInvocation = reportInvocation;
+        mFilePrefix = prefixForFile;
     }
 
     /** Sets whether or not to print when events are received. */
@@ -136,7 +145,7 @@ public class ProtoResultParser {
                 evalProto(childProto.getChildrenList(), inRun);
                 if (childProto.hasDescription()) {
                     // Module end
-                    mListener.testModuleEnded();
+                    handleModuleProto(childProto);
                 } else {
                     // run end
                     handleTestRunEnd(childProto);
@@ -213,9 +222,7 @@ public class ProtoResultParser {
     /** Handles module level of the invocation: They have a Description for the module context. */
     private void handleModuleProto(TestRecord moduleProto) {
         if (moduleProto.hasEndTime()) {
-            handleLogs(moduleProto);
-            log("Test module ended proto");
-            mListener.testModuleEnded();
+            handleModuleEnded(moduleProto);
         } else {
             handleModuleStart(moduleProto);
         }
@@ -234,6 +241,12 @@ public class ProtoResultParser {
         } catch (InvalidProtocolBufferException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private void handleModuleEnded(TestRecord moduleProto) {
+        handleLogs(moduleProto);
+        log("Test module ended proto");
+        mListener.testModuleEnded();
     }
 
     /** Handles the test run level of the invocation. */
@@ -350,11 +363,11 @@ public class ProtoResultParser {
                             type = LogDataType.ZIP;
                         }
                         log("Logging %s from subprocess: %s ", entry.getKey(), file.getPath());
-                        logger.testLog("subprocess-" + entry.getKey(), type, source);
+                        logger.testLog(mFilePrefix + entry.getKey(), type, source);
                     }
                 } else {
                     log("Logging %s from subprocess: %s", entry.getKey(), file.getUrl());
-                    logger.logAssociation("subprocess-" + entry.getKey(), file);
+                    logger.logAssociation(mFilePrefix + entry.getKey(), file);
                 }
             } catch (InvalidProtocolBufferException e) {
                 CLog.e("Couldn't unpack %s as a LogFileInfo", entry.getKey());

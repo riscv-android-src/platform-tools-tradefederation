@@ -42,10 +42,12 @@ import org.junit.runners.JUnit4;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -59,6 +61,7 @@ public class TestMappingSuiteRunnerTest {
     private static final String TEST_DATA_DIR = "testdata";
     private static final String TEST_MAPPING = "TEST_MAPPING";
     private static final String TEST_MAPPINGS_ZIP = "test_mappings.zip";
+    private static final String DISABLED_PRESUBMIT_TESTS = "disabled-presubmit-tests";
 
     private TestMappingSuiteRunner mRunner;
     private IDeviceBuildInfo mBuildInfo;
@@ -124,16 +127,23 @@ public class TestMappingSuiteRunnerTest {
             tempDir = FileUtil.createTempDir("test_mapping");
 
             File srcDir = FileUtil.createTempDir("src", tempDir);
-            String srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_1";
+            String srcFile =
+                    File.separator + TEST_DATA_DIR + File.separator + DISABLED_PRESUBMIT_TESTS;
             InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, srcDir, DISABLED_PRESUBMIT_TESTS);
+
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_1";
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
             FileUtil.saveResourceFile(resourceStream, srcDir, TEST_MAPPING);
             File subDir = FileUtil.createTempDir("sub_dir", srcDir);
             srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_2";
             resourceStream = this.getClass().getResourceAsStream(srcFile);
             FileUtil.saveResourceFile(resourceStream, subDir, TEST_MAPPING);
 
+            List<File> filesToZip =
+                    Arrays.asList(srcDir, new File(tempDir, DISABLED_PRESUBMIT_TESTS));
             File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
-            ZipUtil.createZip(srcDir, zipFile);
+            ZipUtil.createZip(filesToZip, zipFile);
 
             IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
             EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
@@ -150,7 +160,6 @@ public class TestMappingSuiteRunnerTest {
             // include-filters.
             assertTrue(mRunner.getIncludeFilter().contains("test2"));
             assertTrue(mRunner.getIncludeFilter().contains("instrument"));
-            assertTrue(mRunner.getIncludeFilter().contains("suite/stub1"));
             // Filters are applied directly
             assertTrue(mRunner.getIncludeFilter().contains("suite/stub2 filter.com"));
 
@@ -159,21 +168,18 @@ public class TestMappingSuiteRunnerTest {
                     (InstrumentationTest) configMap.get("arm64-v8a instrument").getTests().get(0);
             assertEquals("some-name", test.getRunName());
 
-            assertEquals(6, configMap.size());
+            assertEquals(4, configMap.size());
             assertTrue(configMap.containsKey(ABI_1 + " instrument"));
-            assertTrue(configMap.containsKey(ABI_1 + " suite/stub1"));
             assertTrue(configMap.containsKey(ABI_1 + " suite/stub2"));
             assertTrue(configMap.containsKey(ABI_2 + " instrument"));
-            assertTrue(configMap.containsKey(ABI_2 + " suite/stub1"));
             assertTrue(configMap.containsKey(ABI_2 + " suite/stub2"));
 
             // Confirm test sources are stored in test's ConfigurationDescription.
             Map<String, Integer> testSouceCount = new HashMap<>();
-            testSouceCount.put("suite/stub1", 2);
             testSouceCount.put("suite/stub2", 1);
             testSouceCount.put("instrument", 1);
 
-            assertEquals(6, configMap.size());
+            assertEquals(4, configMap.size());
             for (IConfiguration config : configMap.values()) {
                 assertTrue(testSouceCount.containsKey(config.getName()));
                 assertEquals(
@@ -198,21 +204,28 @@ public class TestMappingSuiteRunnerTest {
         File tempDir = null;
         try {
             OptionSetter setter = new OptionSetter(mRunner);
-            setter.setOptionValue("test-mapping-test-group", "postsubmit");
+            setter.setOptionValue("test-mapping-test-group", "presubmit");
 
             tempDir = FileUtil.createTempDir("test_mapping");
 
             File srcDir = FileUtil.createTempDir("src", tempDir);
-            String srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_1";
+            String srcFile =
+                    File.separator + TEST_DATA_DIR + File.separator + DISABLED_PRESUBMIT_TESTS;
             InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, tempDir, DISABLED_PRESUBMIT_TESTS);
+
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_1";
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
             FileUtil.saveResourceFile(resourceStream, srcDir, TEST_MAPPING);
             File subDir = FileUtil.createTempDir("sub_dir", srcDir);
             srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_2";
             resourceStream = this.getClass().getResourceAsStream(srcFile);
             FileUtil.saveResourceFile(resourceStream, subDir, TEST_MAPPING);
 
+            List<File> filesToZip =
+                    Arrays.asList(srcDir, new File(tempDir, DISABLED_PRESUBMIT_TESTS));
             File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
-            ZipUtil.createZip(srcDir, zipFile);
+            ZipUtil.createZip(filesToZip, zipFile);
 
             IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
             EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.HOST_LINKED_DIR))
@@ -272,7 +285,7 @@ public class TestMappingSuiteRunnerTest {
             EasyMock.replay(mockBuildInfo);
 
             Collection<IRemoteTest> tests = mRunner.split(2);
-            assertEquals(6, tests.size());
+            assertEquals(4, tests.size());
             EasyMock.verify(mockBuildInfo);
         } finally {
             FileUtil.recursiveDelete(tempDir);

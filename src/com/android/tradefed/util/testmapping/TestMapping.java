@@ -137,24 +137,16 @@ public class TestMapping {
     public List<TestInfo> getTests(String testGroup, Set<String> disabledTests, boolean hostOnly) {
         List<TestInfo> tests = new ArrayList<TestInfo>();
 
-        List<String> testGroups = new ArrayList<>();
-        testGroups.add(testGroup);
-        // All presubmit tests should be part of postsubmit too.
-        if (testGroup.equals(POSTSUBMIT)) {
-            testGroups.add(PRESUBMIT);
-        }
-        for (String group : testGroups) {
-            for (TestInfo test : mTestCollection.getOrDefault(group, new ArrayList<TestInfo>())) {
-                if (disabledTests != null && disabledTests.contains(test.getName())) {
-                    CLog.d("Test is disabled: %s.", test);
-                    continue;
-                }
-                if (test.getHostOnly() != hostOnly) {
-                    CLog.d("Test doesn't match the host requirement: %s.", test);
-                    continue;
-                }
-                tests.add(test);
+        for (TestInfo test : mTestCollection.getOrDefault(testGroup, new ArrayList<TestInfo>())) {
+            if (disabledTests != null && disabledTests.contains(test.getName())) {
+                CLog.d("Test is disabled: %s.", test);
+                continue;
             }
+            if (test.getHostOnly() != hostOnly) {
+                CLog.d("Test doesn't match the host requirement: %s.", test);
+                continue;
+            }
+            tests.add(test);
         }
 
         return tests;

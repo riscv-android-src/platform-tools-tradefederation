@@ -235,7 +235,7 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
                                         socket.timeout]
         mock_tf_subproc = mock.Mock()
         exit_code = 7
-        mock_tf_subproc.poll.side_effect = [None, None, exit]
+        mock_tf_subproc.poll.side_effect = [None, None, exit_code]
         mock_tf_subproc.returncode.returns = exit_code
         # First call should raise, because TF exits before socket_func returns
         self.assertRaises(atf_tr.TradeFedExitError,

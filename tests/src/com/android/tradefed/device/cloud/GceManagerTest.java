@@ -18,7 +18,6 @@ package com.android.tradefed.device.cloud;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
 
@@ -182,18 +181,10 @@ public class GceManagerTest {
                             mGceManager.getAvdConfigFile().getAbsolutePath(),
                             "--report_file",
                             reportFile.getAbsolutePath(),
-                            "-v",
-                            "--logcat_file",
-                            mGceManager.getGceBootLogcatLog().getAbsolutePath(),
-                            "--serial_log_file",
-                            mGceManager.getGceBootSerialLog().getAbsolutePath());
+                            "-v");
             assertEquals(expected, result);
-            assertTrue(mGceManager.getGceBootLogcatLog().exists());
-            assertTrue(mGceManager.getGceBootSerialLog().exists());
         } finally {
             FileUtil.deleteFile(reportFile);
-            FileUtil.deleteFile(mGceManager.getGceBootLogcatLog());
-            FileUtil.deleteFile(mGceManager.getGceBootSerialLog());
         }
         EasyMock.verify(mMockBuildInfo);
     }
@@ -230,18 +221,10 @@ public class GceManagerTest {
                             "/path/to/key.json",
                             "--report_file",
                             reportFile.getAbsolutePath(),
-                            "-v",
-                            "--logcat_file",
-                            mGceManager.getGceBootLogcatLog().getAbsolutePath(),
-                            "--serial_log_file",
-                            mGceManager.getGceBootSerialLog().getAbsolutePath());
+                            "-v");
             assertEquals(expected, result);
-            assertTrue(mGceManager.getGceBootLogcatLog().exists());
-            assertTrue(mGceManager.getGceBootSerialLog().exists());
         } finally {
             FileUtil.deleteFile(reportFile);
-            FileUtil.deleteFile(mGceManager.getGceBootLogcatLog());
-            FileUtil.deleteFile(mGceManager.getGceBootSerialLog());
         }
         EasyMock.verify(mMockBuildInfo);
     }
@@ -280,18 +263,10 @@ public class GceManagerTest {
                             mGceManager.getAvdConfigFile().getAbsolutePath(),
                             "--report_file",
                             reportFile.getAbsolutePath(),
-                            "-v",
-                            "--logcat_file",
-                            mGceManager.getGceBootLogcatLog().getAbsolutePath(),
-                            "--serial_log_file",
-                            mGceManager.getGceBootSerialLog().getAbsolutePath());
+                            "-v");
             assertEquals(expected, result);
-            assertTrue(mGceManager.getGceBootLogcatLog().exists());
-            assertTrue(mGceManager.getGceBootSerialLog().exists());
         } finally {
             FileUtil.deleteFile(reportFile);
-            FileUtil.deleteFile(mGceManager.getGceBootLogcatLog());
-            FileUtil.deleteFile(mGceManager.getGceBootSerialLog());
         }
         EasyMock.verify(mMockBuildInfo);
     }
@@ -328,19 +303,11 @@ public class GceManagerTest {
                             "--report_file",
                             reportFile.getAbsolutePath(),
                             "-v",
-                            "--logcat_file",
-                            mGceManager.getGceBootLogcatLog().getAbsolutePath(),
-                            "--serial_log_file",
-                            mGceManager.getGceBootSerialLog().getAbsolutePath(),
                             "--report-internal-ip",
                             "--no-autoconnect");
             assertEquals(expected, result);
-            assertTrue(mGceManager.getGceBootLogcatLog().exists());
-            assertTrue(mGceManager.getGceBootSerialLog().exists());
         } finally {
             FileUtil.deleteFile(reportFile);
-            FileUtil.deleteFile(mGceManager.getGceBootLogcatLog());
-            FileUtil.deleteFile(mGceManager.getGceBootSerialLog());
         }
         EasyMock.verify(mMockBuildInfo);
     }
@@ -413,18 +380,10 @@ public class GceManagerTest {
                             mGceManager.getAvdConfigFile().getAbsolutePath(),
                             "--report_file",
                             reportFile.getAbsolutePath(),
-                            "-v",
-                            "--logcat_file",
-                            mGceManager.getGceBootLogcatLog().getAbsolutePath(),
-                            "--serial_log_file",
-                            mGceManager.getGceBootSerialLog().getAbsolutePath());
+                            "-v");
             assertEquals(expected, result);
-            assertTrue(mGceManager.getGceBootLogcatLog().exists());
-            assertTrue(mGceManager.getGceBootSerialLog().exists());
         } finally {
             FileUtil.deleteFile(reportFile);
-            FileUtil.deleteFile(mGceManager.getGceBootLogcatLog());
-            FileUtil.deleteFile(mGceManager.getGceBootSerialLog());
         }
         EasyMock.verify(mMockBuildInfo);
     }

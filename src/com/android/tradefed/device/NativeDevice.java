@@ -3942,6 +3942,10 @@ public class NativeDevice implements IManagedTestDevice {
         IDeviceSelection selector = new DeviceSelectionOptions();
         IDevice idevice = getIDevice();
         try {
+            boolean isTemporary = false;
+            if (idevice instanceof NullDevice) {
+                isTemporary = ((NullDevice) idevice).isTemporary();
+            }
             return new DeviceDescriptor(
                     idevice.getSerialNumber(),
                     idevice instanceof StubDevice,
@@ -3956,6 +3960,7 @@ public class NativeDevice implements IManagedTestDevice {
                     getDisplayString(getMacAddress()),
                     getDisplayString(getSimState()),
                     getDisplayString(getSimOperator()),
+                    isTemporary,
                     idevice);
         } catch (RuntimeException e) {
             CLog.e("Exception while building device '%s' description:", getSerialNumber());

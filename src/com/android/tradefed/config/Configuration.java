@@ -1315,6 +1315,14 @@ public class Configuration implements IConfiguration {
     /** {@inheritDoc} */
     @Override
     public void dumpXml(PrintWriter output, List<String> excludeFilters) throws IOException {
+        dumpXml(output, excludeFilters, true);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void dumpXml(
+            PrintWriter output, List<String> excludeFilters, boolean printDeprecatedOptions)
+            throws IOException {
         KXmlSerializer serializer = new KXmlSerializer();
         serializer.setOutput(output);
         serializer.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
@@ -1326,12 +1334,17 @@ public class Configuration implements IConfiguration {
                     serializer,
                     MULTI_PRE_TARGET_PREPARER_TYPE_NAME,
                     multiPreTargerPrep,
-                    excludeFilters);
+                    excludeFilters,
+                    printDeprecatedOptions);
         }
 
         for (IMultiTargetPreparer multipreparer : getMultiTargetPreparers()) {
             ConfigurationUtil.dumpClassToXml(
-                    serializer, MULTI_PREPARER_TYPE_NAME, multipreparer, excludeFilters);
+                    serializer,
+                    MULTI_PREPARER_TYPE_NAME,
+                    multipreparer,
+                    excludeFilters,
+                    printDeprecatedOptions);
         }
 
         if (getDeviceConfig().size() > 1) {
@@ -1346,80 +1359,132 @@ public class Configuration implements IConfiguration {
                         serializer,
                         BUILD_PROVIDER_TYPE_NAME,
                         deviceConfig.getBuildProvider(),
-                        excludeFilters);
+                        excludeFilters,
+                        printDeprecatedOptions);
                 for (ITargetPreparer preparer : deviceConfig.getTargetPreparers()) {
                     ConfigurationUtil.dumpClassToXml(
-                            serializer, TARGET_PREPARER_TYPE_NAME, preparer, excludeFilters);
+                            serializer,
+                            TARGET_PREPARER_TYPE_NAME,
+                            preparer,
+                            excludeFilters,
+                            printDeprecatedOptions);
                 }
                 ConfigurationUtil.dumpClassToXml(
                         serializer,
                         DEVICE_RECOVERY_TYPE_NAME,
                         deviceConfig.getDeviceRecovery(),
-                        excludeFilters);
+                        excludeFilters,
+                        printDeprecatedOptions);
                 ConfigurationUtil.dumpClassToXml(
                         serializer,
                         DEVICE_REQUIREMENTS_TYPE_NAME,
                         deviceConfig.getDeviceRequirements(),
-                        excludeFilters);
+                        excludeFilters,
+                        printDeprecatedOptions);
                 ConfigurationUtil.dumpClassToXml(
                         serializer,
                         DEVICE_OPTIONS_TYPE_NAME,
                         deviceConfig.getDeviceOptions(),
-                        excludeFilters);
+                        excludeFilters,
+                        printDeprecatedOptions);
                 serializer.endTag(null, Configuration.DEVICE_NAME);
             }
         } else {
             // Put single device tags
             ConfigurationUtil.dumpClassToXml(
-                    serializer, BUILD_PROVIDER_TYPE_NAME, getBuildProvider(), excludeFilters);
+                    serializer,
+                    BUILD_PROVIDER_TYPE_NAME,
+                    getBuildProvider(),
+                    excludeFilters,
+                    printDeprecatedOptions);
             for (ITargetPreparer preparer : getTargetPreparers()) {
                 ConfigurationUtil.dumpClassToXml(
-                        serializer, TARGET_PREPARER_TYPE_NAME, preparer, excludeFilters);
+                        serializer,
+                        TARGET_PREPARER_TYPE_NAME,
+                        preparer,
+                        excludeFilters,
+                        printDeprecatedOptions);
             }
             ConfigurationUtil.dumpClassToXml(
-                    serializer, DEVICE_RECOVERY_TYPE_NAME, getDeviceRecovery(), excludeFilters);
+                    serializer,
+                    DEVICE_RECOVERY_TYPE_NAME,
+                    getDeviceRecovery(),
+                    excludeFilters,
+                    printDeprecatedOptions);
             ConfigurationUtil.dumpClassToXml(
                     serializer,
                     DEVICE_REQUIREMENTS_TYPE_NAME,
                     getDeviceRequirements(),
-                    excludeFilters);
+                    excludeFilters,
+                    printDeprecatedOptions);
             ConfigurationUtil.dumpClassToXml(
-                    serializer, DEVICE_OPTIONS_TYPE_NAME, getDeviceOptions(), excludeFilters);
+                    serializer,
+                    DEVICE_OPTIONS_TYPE_NAME,
+                    getDeviceOptions(),
+                    excludeFilters,
+                    printDeprecatedOptions);
         }
         for (IRemoteTest test : getTests()) {
-            ConfigurationUtil.dumpClassToXml(serializer, TEST_TYPE_NAME, test, excludeFilters);
+            ConfigurationUtil.dumpClassToXml(
+                    serializer, TEST_TYPE_NAME, test, excludeFilters, printDeprecatedOptions);
         }
         ConfigurationUtil.dumpClassToXml(
                 serializer,
                 CONFIGURATION_DESCRIPTION_TYPE_NAME,
                 getConfigurationDescription(),
-                excludeFilters);
+                excludeFilters,
+                printDeprecatedOptions);
         ConfigurationUtil.dumpClassToXml(
-                serializer, LOGGER_TYPE_NAME, getLogOutput(), excludeFilters);
+                serializer,
+                LOGGER_TYPE_NAME,
+                getLogOutput(),
+                excludeFilters,
+                printDeprecatedOptions);
         ConfigurationUtil.dumpClassToXml(
-                serializer, LOG_SAVER_TYPE_NAME, getLogSaver(), excludeFilters);
+                serializer,
+                LOG_SAVER_TYPE_NAME,
+                getLogSaver(),
+                excludeFilters,
+                printDeprecatedOptions);
         for (ITestInvocationListener listener : getTestInvocationListeners()) {
             ConfigurationUtil.dumpClassToXml(
-                    serializer, RESULT_REPORTER_TYPE_NAME, listener, excludeFilters);
+                    serializer,
+                    RESULT_REPORTER_TYPE_NAME,
+                    listener,
+                    excludeFilters,
+                    printDeprecatedOptions);
         }
         ConfigurationUtil.dumpClassToXml(
-                serializer, CMD_OPTIONS_TYPE_NAME, getCommandOptions(), excludeFilters);
+                serializer,
+                CMD_OPTIONS_TYPE_NAME,
+                getCommandOptions(),
+                excludeFilters,
+                printDeprecatedOptions);
 
         for (IMetricCollector collector : getMetricCollectors()) {
             ConfigurationUtil.dumpClassToXml(
-                    serializer, DEVICE_METRICS_COLLECTOR_TYPE_NAME, collector, excludeFilters);
+                    serializer,
+                    DEVICE_METRICS_COLLECTOR_TYPE_NAME,
+                    collector,
+                    excludeFilters,
+                    printDeprecatedOptions);
         }
 
         for (ISystemStatusChecker checker : getSystemStatusCheckers()) {
             ConfigurationUtil.dumpClassToXml(
-                    serializer, SYSTEM_STATUS_CHECKER_TYPE_NAME, checker, excludeFilters);
+                    serializer,
+                    SYSTEM_STATUS_CHECKER_TYPE_NAME,
+                    checker,
+                    excludeFilters,
+                    printDeprecatedOptions);
         }
 
         ConfigurationUtil.dumpClassToXml(
                 serializer,
                 SANBOX_OPTIONS_TYPE_NAME,
                 getConfigurationObject(SANBOX_OPTIONS_TYPE_NAME),
-                excludeFilters);
+                excludeFilters,
+                printDeprecatedOptions);
 
         serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
         serializer.endDocument();

@@ -193,5 +193,44 @@ class AtestUtilsUnittests(unittest.TestCase):
                          green_wrap_no_highlight_string)
 
 
+    @mock.patch('atest_utils.is_external_run')
+    def test_print_data_collection_notice(self, mock_is_external_run):
+        """Test method print_data_collection_notice."""
+
+        # is_external_run return False.
+        mock_is_external_run.return_value = True
+        notice_str = ('\n------------------\nNotice:\n'
+                      '  We collect anonymous usage statistics'
+                      ' in accordance with our'
+                      ' Content Licenses (https://source.android.com/setup/start/licenses),'
+                      ' Contributor License Agreement (https://opensource.google.com/docs/cla/),'
+                      ' Privacy Policy (https://policies.google.com/privacy) and'
+                      ' Terms of Service (https://policies.google.com/terms).'
+                      '\n------------------\n\n')
+        capture_output = StringIO()
+        sys.stdout = capture_output
+        atest_utils.print_data_collection_notice()
+        sys.stdout = sys.__stdout__
+        uncolored_string = notice_str
+        self.assertEqual(capture_output.getvalue(), uncolored_string)
+
+        # is_external_run return False.
+        mock_is_external_run.return_value = False
+        notice_str = ('\n------------------\nNotice:\n'
+                      '  We collect usage statistics'
+                      ' in accordance with our'
+                      ' Content Licenses (https://source.android.com/setup/start/licenses),'
+                      ' Contributor License Agreement (https://cla.developers.google.com/),'
+                      ' Privacy Policy (https://policies.google.com/privacy) and'
+                      ' Terms of Service (https://policies.google.com/terms).'
+                      '\n------------------\n\n')
+        capture_output = StringIO()
+        sys.stdout = capture_output
+        atest_utils.print_data_collection_notice()
+        sys.stdout = sys.__stdout__
+        uncolored_string = notice_str
+        self.assertEqual(capture_output.getvalue(), uncolored_string)
+
+
 if __name__ == "__main__":
     unittest.main()

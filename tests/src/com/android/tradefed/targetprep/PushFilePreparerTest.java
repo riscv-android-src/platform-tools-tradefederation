@@ -73,7 +73,6 @@ public class PushFilePreparerTest {
     public void testLocalNoExist() throws Exception {
         mOptionSetter.setOptionValue("push", "/noexist->/data/");
         mOptionSetter.setOptionValue("post-push", "ls /");
-        EasyMock.expect(mMockDevice.isDirectory("/data/")).andReturn(false);
         EasyMock.replay(mMockDevice);
         try {
             // Should throw TargetSetupError and _not_ run any post-push command
@@ -89,7 +88,6 @@ public class PushFilePreparerTest {
     public void testRemoteNoExist() throws Exception {
         mOptionSetter.setOptionValue("push", "/bin/sh->/noexist/");
         mOptionSetter.setOptionValue("post-push", "ls /");
-        EasyMock.expect(mMockDevice.isDirectory("/noexist/")).andReturn(false);
         // expect a pushFile() call and return false (failed)
         EasyMock.expect(
                 mMockDevice.pushFile((File)EasyMock.anyObject(), EasyMock.eq("/noexist/")))
@@ -118,12 +116,10 @@ public class PushFilePreparerTest {
             testFile.createNewFile();
             info.setFile("perf_test", testFile, "v1");
             mOptionSetter.setOptionValue("push", "perf_test->/data/local/tmp/");
-            EasyMock.expect(mMockDevice.isDirectory("/data/local/tmp/")).andReturn(true);
             // expect a pushFile() to be done with the appended file name.
             EasyMock.expect(
                             mMockDevice.pushFile(
-                                    EasyMock.eq(testFile),
-                                    EasyMock.eq("/data/local/tmp//perf_test")))
+                                    EasyMock.eq(testFile), EasyMock.eq("/data/local/tmp/")))
                     .andReturn(Boolean.TRUE);
             EasyMock.replay(mMockDevice);
             mPreparer.setUp(mMockDevice, info);
@@ -143,16 +139,42 @@ public class PushFilePreparerTest {
             testFile.mkdir();
             info.setFile("perf_test", testFile, "v1");
             mOptionSetter.setOptionValue("push", "perf_test->/data/local/tmp/");
+            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/")).andReturn(true);
             EasyMock.expect(mMockDevice.isDirectory("/data/local/tmp/")).andReturn(true);
             // expect a pushFile() to be done with the appended file name.
             EasyMock.expect(
                             mMockDevice.pushDir(
                                     EasyMock.eq(testFile),
-                                    EasyMock.eq("/data/local/tmp//perf_test"),
+                                    EasyMock.eq("/data/local/tmp/"),
                                     EasyMock.anyObject()))
                     .andReturn(Boolean.TRUE);
             EasyMock.replay(mMockDevice);
             mPreparer.setUp(mMockDevice, info);
+            EasyMock.verify(mMockDevice);
+        } finally {
+            FileUtil.recursiveDelete(testsDir);
+        }
+    }
+
+    /** Test when we attempt to push a directory but the receiving location is an existing file. */
+    @Test
+    public void testPushDir_RemoteIsFile() throws Exception {
+        BuildInfo info = new BuildInfo();
+        File testsDir = FileUtil.createTempDir("tests_dir");
+        try {
+            File testFile = new File(testsDir, "perf_test");
+            testFile.mkdir();
+            info.setFile("perf_test", testFile, "v1");
+            mOptionSetter.setOptionValue("push", "perf_test->/data/local/tmp/file");
+            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/file")).andReturn(true);
+            EasyMock.expect(mMockDevice.isDirectory("/data/local/tmp/file")).andReturn(false);
+            EasyMock.replay(mMockDevice);
+            try {
+                mPreparer.setUp(mMockDevice, info);
+                fail("Should have thrown an exception.");
+            } catch (TargetSetupError expected) {
+                // Expected
+            }
             EasyMock.verify(mMockDevice);
         } finally {
             FileUtil.recursiveDelete(testsDir);
@@ -207,7 +229,6 @@ public class PushFilePreparerTest {
         mOptionSetter.setOptionValue("post-push", "ls /");
         mOptionSetter.setOptionValue("abort-on-push-failure", "false");
 
-        EasyMock.expect(mMockDevice.isDirectory("/noexist/")).andReturn(false);
         // expect a pushFile() call and return false (failed)
         EasyMock.expect(
                 mMockDevice.pushFile((File)EasyMock.anyObject(), EasyMock.eq("/noexist/")))
@@ -282,7 +303,11 @@ public class PushFilePreparerTest {
             FileUtil.mkdirsRWX(debuggerFile);
 
             info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
-            EasyMock.expect(mMockDevice.isDirectory("/data/local/tmp/debugger")).andReturn(false);
+            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/debugger")).andReturn(false);
+            EasyMock.expect(
+                            mMockDevice.executeShellCommand(
+                                    "mkdir -p \"/data/local/tmp/debugger\""))
+                    .andReturn("");
             Capture<Set<String>> capture = new Capture<>();
             EasyMock.expect(
                             mMockDevice.pushDir(
@@ -313,7 +338,11 @@ public class PushFilePreparerTest {
             File debuggerFile = new File(tmpFolder, "target/testcases/debugger/x86/debugger32");
             FileUtil.mkdirsRWX(debuggerFile);
             info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
-            EasyMock.expect(mMockDevice.isDirectory("/data/local/tmp/debugger")).andReturn(false);
+            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/debugger")).andReturn(false);
+            EasyMock.expect(
+                            mMockDevice.executeShellCommand(
+                                    "mkdir -p \"/data/local/tmp/debugger\""))
+                    .andReturn("");
             Capture<Set<String>> capture = new Capture<>();
             EasyMock.expect(
                             mMockDevice.pushDir(
