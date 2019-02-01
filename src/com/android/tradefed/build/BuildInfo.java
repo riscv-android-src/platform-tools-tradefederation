@@ -287,6 +287,12 @@ public class BuildInfo implements IBuildInfo {
         return new MultiMap<>(mVersionedFileMultiMap);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getVersionedFileKeys() {
+        return mVersionedFileMultiMap.keySet();
+    }
+
     /**
      * {@inheritDoc}
      */
