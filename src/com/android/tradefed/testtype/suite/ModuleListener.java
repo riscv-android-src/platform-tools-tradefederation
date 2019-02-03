@@ -44,10 +44,13 @@ public class ModuleListener extends CollectingTestListener {
     private boolean mHasFailed = false;
 
     private boolean mCollectTestsOnly = false;
+    /** Track runs in progress for logging purpose */
+    private boolean mRunInProgress = false;
 
     /** Constructor. */
     public ModuleListener(ITestInvocationListener listener) {
         mMainListener = listener;
+        mRunInProgress = false;
         setIsAggregrateMetrics(true);
     }
 
@@ -58,6 +61,7 @@ public class ModuleListener extends CollectingTestListener {
 
     @Override
     public void testRunStarted(String name, int numTests, int attemptNumber) {
+        mRunInProgress = true;
         // In case of retry of the same run, do not add the expected count again. This allows
         // situation where test runner has a built-in retry (like InstrumentationTest) and calls
         // testRunStart several times to be counted properly.
@@ -76,6 +80,13 @@ public class ModuleListener extends CollectingTestListener {
         mHasFailed = true;
         CLog.d("ModuleListener.testRunFailed(%s)", errorMessage);
         super.testRunFailed(errorMessage);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
+        super.testRunEnded(elapsedTime, runMetrics);
+        mRunInProgress = false;
     }
 
     /** Returns whether or not the listener session has failed. */
@@ -162,6 +173,19 @@ public class ModuleListener extends CollectingTestListener {
         if (mMainListener instanceof ILogSaverListener) {
             ((ILogSaverListener) mMainListener)
                     .testLogSaved(dataName, dataType, dataStream, logFile);
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void logAssociation(String dataName, LogFile logFile) {
+        if (mRunInProgress) {
+            super.logAssociation(dataName, logFile);
+        } else {
+            // If no runs are in progress, any logs is reported at the module level.
+            if (mMainListener instanceof ILogSaverListener) {
+                ((ILogSaverListener) mMainListener).logAssociation(dataName, logFile);
+            }
         }
     }
 

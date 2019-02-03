@@ -178,9 +178,10 @@ public class LogRegistry implements ILogRegistry {
     /**
      * Gets the underlying logger associated with this thread.
      *
-     * @return the logger for this thread, or null if one has not been registered.
+     * @return the logger for this thread group, or the global logger if one has not been registered
+     *     for the thread group.
      */
-    ILeveledLogOutput getLogger() {
+    public ILeveledLogOutput getLogger() {
         synchronized (mLogTable) {
             ILeveledLogOutput log = mLogTable.get(getCurrentThreadGroup());
             if (log == null) {

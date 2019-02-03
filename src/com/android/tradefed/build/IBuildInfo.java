@@ -164,6 +164,11 @@ public interface IBuildInfo extends Serializable {
         return null;
     }
 
+    /** Returns the set of keys available to query {@link VersionedFile} via {@link #getFile}. */
+    public default Set<String> getVersionedFileKeys() {
+        return null;
+    }
+
     /**
      * Helper method to retrieve a file with given name.
      * @param name
