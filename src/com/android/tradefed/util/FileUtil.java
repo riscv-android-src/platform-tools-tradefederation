@@ -1077,22 +1077,6 @@ public class FileUtil {
     }
 
     /**
-     * Search a directory for files which path match the pattern regex.
-     *
-     * @param dir The directory {@link File} to search.
-     * @param pattern The regex string that the method will match.
-     * @return All the {@link File} whose absolute path match the pattern.
-     * @throws IOException
-     */
-    public static Set<File> findFilesByPattern(File dir, String pattern) throws IOException {
-        Set<File> files = new HashSet<>();
-        Files.walk(Paths.get(dir.getAbsolutePath()), FileVisitOption.FOLLOW_LINKS)
-                .filter(path -> path.toFile().getAbsolutePath().matches(pattern))
-                .forEach(path -> files.add(path.toFile()));
-        return files;
-    }
-
-    /**
      * Get all file paths of files in the given directory with name matching the given filter and
      * also filter the found file by abi arch if abi is not null. Return the first match file found.
      *
