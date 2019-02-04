@@ -327,7 +327,36 @@ public class ModuleDefinitionTest {
                 EasyMock.isNull());
         mMockListener.testRunStarted(MODULE_NAME, 0);
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        replayMocks();
+        mModule.run(mMockListener);
+        verifyMocks();
+    }
+
+    /**
+     * If an exception is thrown during tear down, report it for the module if there was no other
+     * errors.
+     */
+    @Test
+    public void testRun_tearDownException() throws Exception {
+        mModule.setBuild(mMockBuildInfo);
+        mModule.setDevice(mMockDevice);
+        EasyMock.expect(mMockPrep.isDisabled()).andReturn(false);
+        mMockPrep.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        EasyMock.expect(mMockCleaner.isDisabled()).andStubReturn(false);
+        mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        mMockTest.setBuild(EasyMock.eq(mMockBuildInfo));
+        mMockTest.setDevice(EasyMock.eq(mMockDevice));
+        mMockTest.run((ITestInvocationListener) EasyMock.anyObject());
+        EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
+        mMockCleaner.tearDown(
+                EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
+        // Exception thrown during tear down do not bubble up to invocation.
+        EasyMock.expectLastCall().andThrow(new RuntimeException("teardown failed"));
+        mMockListener.testRunStarted(MODULE_NAME, 0);
+        mMockListener.testRunFailed("teardown failed");
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
         mModule.run(mMockListener);
         verifyMocks();
