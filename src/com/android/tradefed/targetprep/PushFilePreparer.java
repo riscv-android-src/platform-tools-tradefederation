@@ -21,13 +21,17 @@ import com.android.ddmlib.Log;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
+import com.android.tradefed.testtype.IInvocationContextReceiver;
+import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 
@@ -38,6 +42,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -50,7 +55,8 @@ import java.util.Set;
  * enabled)
  */
 @OptionClass(alias = "push-file")
-public class PushFilePreparer extends BaseTargetPreparer implements ITargetCleaner, IAbiReceiver {
+public class PushFilePreparer extends BaseTargetPreparer
+        implements ITargetCleaner, IAbiReceiver, IInvocationContextReceiver {
     private static final String LOG_TAG = "PushFilePreparer";
     private static final String MEDIA_SCAN_INTENT =
             "am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://%s "
@@ -95,6 +101,8 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
     private boolean mRemount = false;
 
     private Set<String> mFilesPushed = null;
+    /** If the preparer is part of a module, we can use the test module name as a search criteria */
+    private String mModuleName = null;
 
     /**
      * Helper method to only throw if mAbortOnFailure is enabled.  Callers should behave as if this
@@ -121,6 +129,16 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
         return mAbi;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void setInvocationContext(IInvocationContext invocationContext) {
+        if (invocationContext.getAttributes().get(ModuleDefinition.MODULE_NAME) != null) {
+            // Only keep the module name
+            mModuleName =
+                    invocationContext.getAttributes().get(ModuleDefinition.MODULE_NAME).get(0);
+        }
+    }
+
     /**
      * Resolve relative file path via {@link IBuildInfo} and test cases directories.
      *
@@ -128,7 +146,8 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
      * @param fileName relative file path to be resolved
      * @return the file from the build info or test cases directories
      */
-    public File resolveRelativeFilePath(IBuildInfo buildInfo, String fileName) {
+    public File resolveRelativeFilePath(IBuildInfo buildInfo, String fileName)
+            throws TargetSetupError {
         File src = null;
         if (buildInfo != null) {
             src = buildInfo.getFile(fileName);
@@ -138,13 +157,38 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
         }
         if (buildInfo instanceof IDeviceBuildInfo) {
             IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo) buildInfo;
+            File testDir = deviceBuild.getTestsDir();
+            if (mModuleName != null) {
+                // Use module name as a discriminant to find some files
+                if (testDir != null) {
+                    Set<File> files = new LinkedHashSet<>();
+                    try {
+                        String pattern = String.format(".*%s.*%s$", mModuleName, fileName);
+                        files = FileUtil.findFilesByPattern(testDir, pattern);
+                    } catch (IOException e) {
+                        CLog.e(e);
+                    }
+                    // If only one, we found it.
+                    if (files.size() == 1) {
+                        return files.iterator().next();
+                    } else if (files.size() > 1) {
+                        String message =
+                                String.format(
+                                        "Found several files matching the push requirements: %s. "
+                                                + "You need a more accurate 'push' specification.",
+                                        files);
+                        DeviceDescriptor descriptor = null;
+                        throw new TargetSetupError(message, descriptor);
+                    }
+                }
+            }
+
             List<File> scanDirs = new ArrayList<>();
             // If it exists, always look first in the ANDROID_TARGET_OUT_TESTCASES
             File targetTestCases = deviceBuild.getFile(BuildInfoFileKey.TARGET_LINKED_DIR);
             if (targetTestCases != null) {
                 scanDirs.add(targetTestCases);
             }
-            File testDir = deviceBuild.getTestsDir();
             if (testDir != null) {
                 scanDirs.add(testDir);
             }
