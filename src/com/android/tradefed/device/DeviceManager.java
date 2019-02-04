@@ -289,12 +289,14 @@ public class DeviceManager implements IDeviceManager {
         addRemoteDevices();
 
         List<IMultiDeviceRecovery> recoverers = getGlobalConfig().getMultiDeviceRecoveryHandlers();
-        if (recoverers != null) {
+        if (recoverers != null && !recoverers.isEmpty()) {
             for (IMultiDeviceRecovery recoverer : recoverers) {
                 recoverer.setFastbootPath(mFastbootPath);
             }
             mDeviceRecoverer = new DeviceRecoverer(recoverers);
             startDeviceRecoverer();
+        } else {
+            CLog.d("No IMultiDeviceRecovery configured.");
         }
     }
 
@@ -1291,8 +1293,12 @@ public class DeviceManager implements IDeviceManager {
                     // After the sleep time, we check if we should run or not.
                     return;
                 }
+                CLog.d("Running DeviceRecoverer ...");
                 if (mMultiDeviceRecoverers != null && !mMultiDeviceRecoverers.isEmpty()) {
                     for (IMultiDeviceRecovery m : mMultiDeviceRecoverers) {
+                        CLog.d(
+                                "Triggering IMultiDeviceRecovery class %s ...",
+                                m.getClass().getSimpleName());
                         m.recoverDevices(getDeviceList());
                     }
                 }
