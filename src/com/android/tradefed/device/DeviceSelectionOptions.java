@@ -215,7 +215,8 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         // If no serial was explicitly set, use the environment variable ANDROID_SERIAL.
         if (mSerials.isEmpty() && !mFetchedEnvVariable) {
             String env_serial = fetchEnvironmentVariable("ANDROID_SERIAL");
-            if (env_serial != null && !(device instanceof StubDevice)) {
+            if (env_serial != null
+                    && (!(device instanceof StubDevice) || (device instanceof FastbootDevice))) {
                 mSerials.add(env_serial);
             }
             mFetchedEnvVariable = true;
