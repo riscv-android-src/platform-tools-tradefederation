@@ -29,7 +29,10 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.testtype.Abi;
+import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.FileUtil;
 
 import org.easymock.Capture;
@@ -247,7 +250,7 @@ public class PushFilePreparerTest {
      * additional tests directory if the given build if is not of IBuildInfo type.
      */
     @Test
-    public void testResolveRelativeFilePath_noDeviceBuildInfo() {
+    public void testResolveRelativeFilePath_noDeviceBuildInfo() throws Exception {
         IBuildInfo buildInfo = EasyMock.createStrictMock(IBuildInfo.class);
         String fileName = "source_file";
         EasyMock.expect(buildInfo.getFile(fileName)).andReturn(null);
@@ -275,8 +278,8 @@ public class PushFilePreparerTest {
 
             fileName = sourceFile.getName();
             EasyMock.expect(buildInfo.getFile(fileName)).andReturn(null);
-            EasyMock.expect(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null);
             EasyMock.expect(buildInfo.getTestsDir()).andReturn(testsDir);
+            EasyMock.expect(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null);
             EasyMock.replay(buildInfo);
 
             assertEquals(
@@ -359,6 +362,85 @@ public class PushFilePreparerTest {
         } finally {
             FileUtil.recursiveDelete(tmpFolder);
         }
+    }
+
+    /** Test that if a module name exists we attempt to search it first. */
+    @Test
+    public void testPush_moduleName() throws Exception {
+        mOptionSetter.setOptionValue("push", "lib64->/data/local/tmp/lib");
+        mPreparer.setAbi(new Abi("x86_64", "64"));
+
+        mPreparer.setInvocationContext(createModuleWithName("debugger"));
+        IDeviceBuildInfo info = new DeviceBuildInfo();
+        File tmpFolder = FileUtil.createTempDir("push-file-tests-dir");
+        try {
+            File beforeName = new File(tmpFolder, "target/testcases/aaaaa/x86_64/lib64");
+            FileUtil.mkdirsRWX(beforeName);
+            File libX86File = new File(tmpFolder, "target/testcases/debugger/x86_64/lib64");
+            FileUtil.mkdirsRWX(libX86File);
+            File otherLib = new File(tmpFolder, "target/testcases/random/x86_64/lib64");
+            FileUtil.mkdirsRWX(otherLib);
+            info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
+            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/lib")).andReturn(false);
+            EasyMock.expect(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/lib\""))
+                    .andReturn("");
+            Capture<Set<String>> capture = new Capture<>();
+            EasyMock.expect(
+                            mMockDevice.pushDir(
+                                    EasyMock.eq(
+                                            new File(
+                                                    tmpFolder,
+                                                    "target/testcases/debugger/x86_64/lib64")),
+                                    EasyMock.eq("/data/local/tmp/lib"),
+                                    EasyMock.capture(capture)))
+                    .andReturn(true);
+            EasyMock.replay(mMockDevice);
+            mPreparer.setUp(mMockDevice, info);
+            EasyMock.verify(mMockDevice);
+            // The x86 folder was not filtered
+            Set<String> capValue = capture.getValue();
+            assertFalse(capValue.contains("x86_64"));
+        } finally {
+            FileUtil.recursiveDelete(tmpFolder);
+        }
+    }
+
+    /**
+     * Test that if we find conflicting push specification for a module we ask the user to resolve
+     * it by making it more accurate.
+     */
+    @Test
+    public void testPush_moduleName_conflictingSpecs() throws Exception {
+        mOptionSetter.setOptionValue("push", "lib64->/data/local/tmp/lib");
+        mPreparer.setAbi(new Abi("x86_64", "64"));
+
+        mPreparer.setInvocationContext(createModuleWithName("debugger"));
+        IDeviceBuildInfo info = new DeviceBuildInfo();
+        File tmpFolder = FileUtil.createTempDir("push-file-tests-dir");
+        try {
+            File libX86File = new File(tmpFolder, "target/testcases/debugger/x86_64/lib64");
+            FileUtil.mkdirsRWX(libX86File);
+            File otherLib = new File(tmpFolder, "target/testcases/debugger/subdir/x86_64/lib64");
+            FileUtil.mkdirsRWX(otherLib);
+            info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
+            EasyMock.replay(mMockDevice);
+            try {
+                mPreparer.setUp(mMockDevice, info);
+                fail("Should have thrown an exception.");
+            } catch (TargetSetupError expected) {
+                assertTrue(expected.getMessage().contains(libX86File.getAbsolutePath()));
+                assertTrue(expected.getMessage().contains(otherLib.getAbsolutePath()));
+            }
+            EasyMock.verify(mMockDevice);
+        } finally {
+            FileUtil.recursiveDelete(tmpFolder);
+        }
+    }
+
+    private IInvocationContext createModuleWithName(String name) {
+        IInvocationContext moduleContext = new InvocationContext();
+        moduleContext.addInvocationAttribute(ModuleDefinition.MODULE_NAME, name);
+        return moduleContext;
     }
 }
 
