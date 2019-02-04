@@ -19,9 +19,7 @@ import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.device.ILogcatReceiver;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.LogcatReceiver;
-import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
@@ -42,20 +40,6 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
 
     private Map<ITestDevice, ILogcatReceiver> mLogcatReceivers = new HashMap<>();
     private Map<ITestDevice, Integer> mOffset = new HashMap<>();
-
-    @Override
-    public ITestInvocationListener init(
-            IInvocationContext context, ITestInvocationListener listener) {
-        ITestInvocationListener init = super.init(context, listener);
-        for (ITestDevice device : getDevices()) {
-            initReceiver(device);
-        }
-        getRunUtil().sleep(100);
-        for (ITestDevice device : getDevices()) {
-            mLogcatReceivers.get(device).clear();
-        }
-        return init;
-    }
 
     @Override
     public void onTestRunStart(DeviceMetricData runData) {
@@ -98,12 +82,7 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
 
     @Override
     public void onTestRunEnd(DeviceMetricData runData, Map<String, Metric> currentRunMetrics) {
-        for (ILogcatReceiver receiver : mLogcatReceivers.values()) {
-            receiver.stop();
-            receiver.clear();
-        }
-        mLogcatReceivers.clear();
-        mOffset.clear();
+        clearReceivers();
     }
 
     @VisibleForTesting
@@ -122,5 +101,14 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
             mLogcatReceivers.put(device, receiver);
             receiver.start();
         }
+    }
+
+    private void clearReceivers() {
+        for (ILogcatReceiver receiver : mLogcatReceivers.values()) {
+            receiver.stop();
+            receiver.clear();
+        }
+        mLogcatReceivers.clear();
+        mOffset.clear();
     }
 }
