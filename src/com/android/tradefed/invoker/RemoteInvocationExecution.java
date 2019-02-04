@@ -67,8 +67,10 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
     public static final String REMOTE_USER_DIR = "/home/{$USER}/";
     public static final String PROTO_RESULT_NAME = "output.pb";
-    public static final String STDOUT_FILE = "remote-tradefed-stdout.txt";
-    public static final String STDERR_FILE = "remote-tradefed-stderr.txt";
+    public static final String STDOUT_FILE = "screen-VM_tradefed-stdout.txt";
+    public static final String STDERR_FILE = "screen-VM_tradefed-stderr.txt";
+    public static final String REMOTE_CONFIG = "configuration";
+    public static final String GLOBAL_REMOTE_CONFIG = "global-remote-configuration";
 
     private String mRemoteTradefedDir = null;
     private String mRemoteFinalResult = null;
@@ -171,7 +173,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
         config.dumpXml(new PrintWriter(configFile));
         try {
             try (InputStreamSource source = new FileInputStreamSource(configFile)) {
-                listener.testLog("remote-configuration", LogDataType.XML, source);
+                listener.testLog(REMOTE_CONFIG, LogDataType.XML, source);
             }
             CLog.d("Pushing Tradefed XML configuration to remote.");
             boolean resultPush =
@@ -205,7 +207,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 return;
             }
             try (InputStreamSource source = new FileInputStreamSource(globalConfig)) {
-                listener.testLog("global-remote-configuration", LogDataType.XML, source);
+                listener.testLog(GLOBAL_REMOTE_CONFIG, LogDataType.XML, source);
             }
             boolean resultPushGlobal =
                     RemoteFileUtil.pushFileToRemote(
