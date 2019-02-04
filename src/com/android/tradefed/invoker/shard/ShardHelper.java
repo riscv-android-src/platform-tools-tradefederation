@@ -62,6 +62,8 @@ public class ShardHelper implements IShardHelper {
         CONFIG_OBJ_TO_CLONE.add(Configuration.DEVICE_METRICS_COLLECTOR_TYPE_NAME);
         CONFIG_OBJ_TO_CLONE.add(Configuration.TARGET_PREPARER_TYPE_NAME);
         CONFIG_OBJ_TO_CLONE.add(Configuration.MULTI_PREPARER_TYPE_NAME);
+        CONFIG_OBJ_TO_CLONE.add(Configuration.CMD_OPTIONS_TYPE_NAME);
+        CONFIG_OBJ_TO_CLONE.add(Configuration.LOGGER_TYPE_NAME);
     }
 
     /**
@@ -163,8 +165,7 @@ public class ShardHelper implements IShardHelper {
 
         shardConfig.setTestInvocationListeners(
                 buildShardListeners(resultCollector, config.getTestInvocationListeners()));
-        shardConfig.setLogOutput(config.getLogOutput().clone());
-        shardConfig.setCommandOptions(config.getCommandOptions().clone());
+
         // use the same {@link ITargetPreparer}, {@link IDeviceRecovery} etc as original config
         rescheduler.scheduleConfig(shardConfig);
     }
@@ -173,6 +174,12 @@ public class ShardHelper implements IShardHelper {
     @VisibleForTesting
     protected IGlobalConfiguration getGlobalConfiguration() {
         return GlobalConfiguration.getInstance();
+    }
+
+    /** Runs the {@link IConfiguration#validateOptions(boolean)} on the config. */
+    @VisibleForTesting
+    protected void validateOptions(IConfiguration config) throws ConfigurationException {
+        config.validateOptions(true);
     }
 
     /**
@@ -200,6 +207,10 @@ public class ShardHelper implements IShardHelper {
                 clonedConfig.setConfigurationObjectList(
                         objType, deepCopy.getConfigurationObjectList(objType));
             }
+            // Sharding was done, no need for children to look into it.
+            clonedConfig.getCommandOptions().setShardCount(null);
+            // Validate and download the dynamic options
+            validateOptions(clonedConfig);
         } catch (ConfigurationException e) {
             // should not happen
             throw new RuntimeException(

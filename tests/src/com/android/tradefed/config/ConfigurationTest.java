@@ -24,6 +24,7 @@ import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
+import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -628,6 +629,27 @@ public class ConfigurationTest extends TestCase {
         } catch(ConfigurationException expected) {
             assertEquals("a shard index must be in range [0, shard count)", expected.getMessage());
         }
+    }
+
+    /**
+     * Ensure that dynamic file download is not triggered in the parent invocation of local
+     * sharding. If that was the case, the downloaded files would be cleaned up right after the
+     * shards are kicked-off in new invocations.
+     */
+    public void testValidateOptions_localSharding_skipDownload() throws ConfigurationException {
+        CommandOptions options = new CommandOptions();
+        options.setShardCount(5);
+        options.setShardIndex(null);
+        mConfig.setCommandOptions(options);
+        TestDeviceOptions deviceOptions = new TestDeviceOptions();
+        File fakeConfigFile = new File("gs://bucket/remote/file/path");
+        deviceOptions.setAvdConfigFile(fakeConfigFile);
+        mConfig.setDeviceOptions(deviceOptions);
+
+        // No exception for download is thrown because no download occurred.
+        mConfig.validateOptions(true);
+        // Dynamic file is not resolved.
+        assertEquals(fakeConfigFile, deviceOptions.getAvdConfigFile());
     }
 
     /**

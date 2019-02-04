@@ -18,6 +18,8 @@ package com.android.tradefed.invoker.shard;
 import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -211,8 +213,13 @@ public final class TestsPoolPoller
                 if (test instanceof ITestCollector) {
                     ((ITestCollector) test).setCollectTestsOnly(mShouldCollectTest);
                 }
-                // Run the test itself and prevent random exception from stopping the poller.
+                IConfiguration validationConfig = new Configuration("validation", "validation");
                 try {
+                    // At this point only the <test> object needs to be validated for options, this
+                    // ensures that the object is fine before running it.
+                    validationConfig.setTest(test);
+                    validationConfig.validateOptions(true);
+                    // Run the test itself and prevent random exception from stopping the poller.
                     if (test instanceof IMetricCollectorReceiver) {
                         ((IMetricCollectorReceiver) test).setMetricCollectors(mCollectors);
                         // If test can receive collectors then let it handle the how to set them up
@@ -235,6 +242,13 @@ public final class TestsPoolPoller
                     CLog.w("Proceeding to the next test.");
                 } catch (DeviceNotAvailableException dnae) {
                     HandleDeviceNotAvailable(dnae, test);
+                } catch (ConfigurationException e) {
+                    CLog.w(
+                            "Failed to validate the @options of test: %s. Proceeding to next test.",
+                            test.getClass());
+                    CLog.w(e);
+                } finally {
+                    validationConfig.cleanDynamicOptionFiles();
                 }
             }
         } finally {
