@@ -31,8 +31,8 @@ import com.android.tradefed.util.HprofAllocSiteParser;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SystemUtil.EnvVariable;
-import com.android.tradefed.util.proto.TfMetricProtoUtil;
 import com.android.tradefed.util.TarUtil;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -338,6 +338,7 @@ public class TfTestLauncher extends SubprocessTfLauncher {
         String[] listFiles = tmpDir.list();
         List<String> unmatchedFiles = new ArrayList<String>();
         List<String> patterns = new ArrayList<String>(Arrays.asList(EXPECTED_TMP_FILE_PATTERNS));
+        patterns.add(mBuildInfo.getBuildBranch());
         for (String file : Arrays.asList(listFiles)) {
             Boolean matchFound = false;
             for (String pattern : patterns) {
@@ -352,10 +353,11 @@ public class TfTestLauncher extends SubprocessTfLauncher {
             }
         }
         if (unmatchedFiles.size() > 0) {
-            String trace = String.format("Found '%d' unexpected temporary files: %s.\nOnly "
-                    + "expected files are: %s. And each should appears only once.",
-                    unmatchedFiles.size(), unmatchedFiles,
-                    Arrays.asList(EXPECTED_TMP_FILE_PATTERNS));
+            String trace =
+                    String.format(
+                            "Found '%d' unexpected temporary files: %s.\nOnly "
+                                    + "expected files are: %s. And each should appears only once.",
+                            unmatchedFiles.size(), unmatchedFiles, patterns);
             listener.testFailed(tid, trace);
         }
         listener.testEnded(tid, new HashMap<String, Metric>());
