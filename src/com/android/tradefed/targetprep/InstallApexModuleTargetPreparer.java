@@ -17,66 +17,75 @@
 package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.config.Option;
-import com.android.tradefed.config.Option.Importance;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.ApexInfo;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.suite.SuiteApkInstaller;
+import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 
+import com.google.common.annotations.VisibleForTesting;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
-/** A target preparer that attempts to install an apex modules to device. */
+/*
+ * A target preparer that attempts to install an apex modules to device and verify install success.
+ */
 @OptionClass(alias = "apex-installer")
 public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
 
     private static final String APEX_DATA_DIR = "/data/apex";
 
-    // TODO: Use interface to retrieve manifest info from staging apex file.
-    // Currently we need to pass in the package name and version number.
-    @Option(
-        name = "apex-packageName",
-        description = "The package name of the apex module. Specified in manifest.json.",
-        importance = Importance.IF_UNSET,
-        mandatory = true
-    )
-    private String mApexPackageName;
-
-    @Option(
-        name = "apex-version",
-        description = "The version of the test apex file.",
-        importance = Importance.IF_UNSET,
-        mandatory = true
-    )
-    private long mApexVersion;
+    private List<ApexInfo> mTestApexInfoList;
 
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, DeviceNotAvailableException {
-        CommandResult result =
-                device.executeShellV2Command(
-                        "rm -rf "
-                                + APEX_DATA_DIR
-                                + "/*"
-                                + getModuleKeywordFromApexPackageName(mApexPackageName)
-                                + "*");
-        if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
-            throw new TargetSetupError(
-                    String.format(
-                            "Failed to clean up data/apex on device %s. Output: %s Error: %s",
-                            device.getSerialNumber(), result.getStdout(), result.getStderr()),
-                    device.getDeviceDescriptor());
+
+        if (getTestsFileName().isEmpty()) {
+            throw new TargetSetupError("No apex file specified.", device.getDeviceDescriptor());
         }
 
-        //TODO: Make sure the apex to install is the one specified (e.g., checking version info).
+        mTestApexInfoList = new ArrayList<ApexInfo>();
+
+        // Clean up data/apex.
+        // TODO: check if also need to clean up data/staging (chenzhu@, dariofreni@)
+        for (String apexFilename : getTestsFileName()) {
+            File apexFile = getLocalPathForFilename(buildInfo, apexFilename, device);
+            ApexInfo apexInfo = retrieveApexInfo(apexFile, device.getDeviceDescriptor());
+            mTestApexInfoList.add(apexInfo);
+            CommandResult result =
+                    device.executeShellV2Command(
+                            "rm -rf "
+                                    + APEX_DATA_DIR
+                                    + "/*"
+                                    + getModuleKeywordFromApexPackageName(apexInfo.name)
+                                    + "*");
+            if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+                throw new TargetSetupError(
+                        String.format(
+                                "Failed to clean up %s under data/apex on device %s."
+                                        + "Output: %s Error: %s",
+                                apexInfo.name,
+                                device.getSerialNumber(),
+                                result.getStdout(),
+                                result.getStderr()),
+                        device.getDeviceDescriptor());
+            }
+        }
+
+        // Install the apex files.
         super.setUp(device, buildInfo);
+        // Activate the staged apex files.
         device.reboot();
 
-        ApexInfo testApexInfo = new ApexInfo(mApexPackageName, mApexVersion);
         Set<ApexInfo> activatedApexes = device.getActiveApexes();
         if (activatedApexes.isEmpty()) {
             throw new TargetSetupError(
@@ -85,13 +94,24 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                             device.getSerialNumber()),
                     device.getDeviceDescriptor());
         }
-        if (!activatedApexes.contains(testApexInfo)) {
+        
+        List<ApexInfo> failToActivateApex = new ArrayList<ApexInfo>();
+
+        for (ApexInfo testApexInfo : mTestApexInfoList) {
+            if (!activatedApexes.contains(testApexInfo)) {
+                failToActivateApex.add(testApexInfo);
+            }
+        }
+
+        if (!failToActivateApex.isEmpty()) {
+            CLog.i("Activated apex packages list:");
+            for (ApexInfo info : activatedApexes) {
+                CLog.i("Activated apex: %s", info.toString());
+            }
             throw new TargetSetupError(
                     String.format(
-                            "Failed to activate %s on device %s. Activated package list: %s",
-                            getTestsFileName().toString(),
-                            device.getSerialNumber(),
-                            activatedApexes.toString()),
+                            "Failed to activate %s on device %s.",
+                            listApexInfo(failToActivateApex).toString(), device.getSerialNumber()),
                     device.getDeviceDescriptor());
         }
         CLog.i("Apex module is installed successfully");
@@ -102,24 +122,57 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             throws DeviceNotAvailableException {
         super.tearDown(device, buildInfo, e);
         if (!(e instanceof DeviceNotAvailableException)) {
-            CommandResult result =
-                    device.executeShellV2Command(
-                            "rm -rf "
-                                    + APEX_DATA_DIR
-                                    + "/*"
-                                    + getModuleKeywordFromApexPackageName(mApexPackageName)
-                                    + "*");
-            if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
-                CLog.i(
-                        String.format(
-                                "Failed to remove %s from %s", mApexPackageName, APEX_DATA_DIR));
+            for (ApexInfo apexInfo : mTestApexInfoList) {
+                CommandResult result =
+                        device.executeShellV2Command(
+                                "rm -rf "
+                                        + APEX_DATA_DIR
+                                        + "/*"
+                                        + getModuleKeywordFromApexPackageName(apexInfo.name)
+                                        + "*");
+                if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+                    CLog.i("Failed to remove %s from %s", apexInfo.name, APEX_DATA_DIR);
+                }
             }
             device.reboot();
         }
     }
 
+    /* Retrieve ApexInfo which contains packageName and versionCode
+     * from the given apex file.
+     *
+     * @param testApexFile The apex file we retrieve information from.
+     * @return an {@link ApexInfo} containing the packageName and versionCode of the given file
+     * @throws TargetSetupError if aapt parser failed to parse the file.
+     */
+    @VisibleForTesting
+    protected ApexInfo retrieveApexInfo(File testApexFile, DeviceDescriptor deviceDescriptor)
+            throws TargetSetupError {
+        AaptParser parser = AaptParser.parse(testApexFile);
+        if (parser == null) {
+            throw new TargetSetupError("apex installed but AaptParser failed", deviceDescriptor);
+        }
+        return new ApexInfo(parser.getPackageName(), Long.parseLong(parser.getVersionCode()));
+    }
+
+    /* Get the keyword (e.g., 'tzdata' for com.android.tzdata.apex)
+     * from the apex package name.
+     *
+     * @param packageName The package name of the apex file.
+     * @return a string The keyword of the apex package name.
+     */
     protected String getModuleKeywordFromApexPackageName(String packageName) {
         String[] components = packageName.split("\\.");
         return components[components.length - 1];
     }
+
+    /* Helper method to format List<ApexInfo> to List<String>. */
+    private ArrayList<String> listApexInfo(List<ApexInfo> list) {
+        ArrayList<String> res = new ArrayList<String>();
+        for (ApexInfo testApexInfo : list) {
+            res.add(testApexInfo.toString());
+        }
+        return res;
+    }
 }
+
