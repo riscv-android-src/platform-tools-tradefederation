@@ -48,6 +48,8 @@ class InstrumentationFileTest implements IRemoteTest {
 
     // on device test folder location where the test file should be saved
     private static final String ON_DEVICE_TEST_DIR_LOCATION = "/data/local/tmp/";
+    /** Key that matches the -e package option for instrumentation. */
+    private static final String PACKAGE_ARG_KEY = "package";
 
     private InstrumentationTest mInstrumentationTest = null;
 
@@ -156,7 +158,10 @@ class InstrumentationFileTest implements IRemoteTest {
             mFilePathOnDevice = ON_DEVICE_TEST_DIR_LOCATION + testFile.getName();
             if (pushFileToTestDevice(testFile, mFilePathOnDevice)) {
                 // Unset package name if any just in case to avoid conflict with classname.
+                // Since at that point we explicitly request the class to rerun there is no need to
+                // keep any of the original package options.
                 mInstrumentationTest.setTestPackageName(null);
+                mInstrumentationTest.removeFromInstrumentationArg(PACKAGE_ARG_KEY);
                 mInstrumentationTest.setTestFilePathOnDevice(mFilePathOnDevice);
                 CLog.d("Test file %s was successfully pushed to %s on device",
                         testFile.getAbsolutePath(), mFilePathOnDevice);
