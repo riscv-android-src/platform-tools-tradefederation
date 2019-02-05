@@ -21,7 +21,6 @@ import static org.junit.Assert.fail;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
-import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.ApexInfo;
 import com.android.tradefed.util.CommandResult;
@@ -47,11 +46,10 @@ public class InstallApexModuleTargetPreparerTest {
     private InstallApexModuleTargetPreparer mInstallApexModuleTargetPreparer;
     private IBuildInfo mMockBuildInfo;
     private ITestDevice mMockDevice;
-    private OptionSetter mSetter;
     private File mFakeApex;
     private static final String APEX_PACKAGE_NAME = "com.android.FAKE_APEX_PACKAGE_NAME";
     private static final String APEX_PACKAGE_KEYWORD = "FAKE_APEX_PACKAGE_NAME";
-    private static final String APEX_VERSION = "1";
+    private static final long APEX_VERSION = 1;
     private static final String APEX_NAME = "fakeApex.apex";
     private static final String REMOVE_EXISITING_APEX_UNDER_DATA_COMMAND =
             "rm -rf /data/apex/*FAKE_APEX_PACKAGE_NAME*";
@@ -59,6 +57,11 @@ public class InstallApexModuleTargetPreparerTest {
     @Before
     public void setUp() throws Exception {
         mFakeApex = FileUtil.createTempFile("fakeApex", ".apex");
+        mMockDevice = EasyMock.createMock(ITestDevice.class);
+        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(SERIAL);
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
+
         mInstallApexModuleTargetPreparer =
                 new InstallApexModuleTargetPreparer() {
                     @Override
@@ -78,16 +81,15 @@ public class InstallApexModuleTargetPreparerTest {
                             File testApexFile, DeviceDescriptor deviceDescriptor) {
                         return APEX_PACKAGE_NAME;
                     }
+
+                    @Override
+                    protected ApexInfo retrieveApexInfo(
+                            File apex, DeviceDescriptor deviceDescriptor) {
+                        ApexInfo apexInfo = new ApexInfo(APEX_PACKAGE_NAME, APEX_VERSION);
+                        return apexInfo;
+                    }
                 };
         mInstallApexModuleTargetPreparer.addTestFileName(APEX_NAME);
-        mSetter = new OptionSetter(mInstallApexModuleTargetPreparer);
-        mSetter.setOptionValue("apex-packageName", APEX_PACKAGE_NAME);
-        mSetter.setOptionValue("apex-version", APEX_VERSION);
-
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(SERIAL);
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
     }
 
     @After
@@ -123,7 +125,11 @@ public class InstallApexModuleTargetPreparerTest {
             mInstallApexModuleTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
             fail("Should have thrown a TargetSetupError.");
         } catch (TargetSetupError expected) {
-            assertTrue(expected.getMessage().contains("Failed to clean up data/apex on device"));
+            assertTrue(
+                    expected.getMessage()
+                            .contains(
+                                    "Failed to clean up com.android.FAKE_APEX_PACKAGE_NAME "
+                                            + "under data/apex on device"));
         } finally {
             EasyMock.verify(mMockBuildInfo, mMockDevice);
         }
@@ -186,30 +192,31 @@ public class InstallApexModuleTargetPreparerTest {
             mInstallApexModuleTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
             fail("Should have thrown a TargetSetupError.");
         } catch (TargetSetupError expected) {
-            assertTrue(
-                    expected.getMessage()
-                            .contains(
-                                    String.format(
-                                            "Failed to activate %s on device %s.",
-                                            mInstallApexModuleTargetPreparer
-                                                    .getTestsFileName()
-                                                    .toString(),
-                                            mMockDevice.getSerialNumber())));
+            String failureMsg =
+                    String.format(
+                            "packageName: %s, versionCode: %d", APEX_PACKAGE_NAME, APEX_VERSION);
+            assertTrue(expected.getMessage().contains(failureMsg));
         } finally {
             EasyMock.verify(mMockBuildInfo, mMockDevice);
         }
     }
 
     @Test
-    public void testTearDown() throws Exception {
+    public void testSetupAndTearDown() throws Exception {
         CommandResult resRemoveExistingApex = new CommandResult();
         resRemoveExistingApex.setStatus(CommandStatus.SUCCESS);
         EasyMock.expect(mMockDevice.executeShellV2Command(REMOVE_EXISITING_APEX_UNDER_DATA_COMMAND))
                 .andReturn(resRemoveExistingApex)
-                .once();
+                .times(2);
+        mockSuccessfulInstallPackageAndReboot();
+        Set<ApexInfo> activatedApex = new HashSet<ApexInfo>();
+        activatedApex.add(new ApexInfo("com.android.FAKE_APEX_PACKAGE_NAME", 1));
+        EasyMock.expect(mMockDevice.getActiveApexes()).andReturn(activatedApex);
         mMockDevice.reboot();
         EasyMock.expectLastCall();
+
         EasyMock.replay(mMockBuildInfo, mMockDevice);
+        mInstallApexModuleTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
         mInstallApexModuleTargetPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
         EasyMock.verify(mMockBuildInfo, mMockDevice);
     }
