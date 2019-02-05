@@ -20,7 +20,6 @@ import com.android.tradefed.command.CommandSchedulerFuncTest;
 import com.android.tradefed.command.remote.RemoteManagerFuncTest;
 import com.android.tradefed.device.metric.DeviceMetricDataFuncTest;
 import com.android.tradefed.util.FileUtilFuncTest;
-import com.android.tradefed.util.GCSBucketUtilFuncTest;
 import com.android.tradefed.util.GCSFileDownloaderFuncTest;
 import com.android.tradefed.util.RunUtilFuncTest;
 import com.android.tradefed.util.net.HttpHelperFuncTest;
@@ -43,7 +42,6 @@ import org.junit.runners.Suite.SuiteClasses;
     // util
     FileUtilFuncTest.class,
     GCSFileDownloaderFuncTest.class,
-    GCSBucketUtilFuncTest.class,
     HttpHelperFuncTest.class,
     RunUtilFuncTest.class,
 })
