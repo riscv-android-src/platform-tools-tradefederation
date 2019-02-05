@@ -22,6 +22,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceAllocationState;
+import com.android.tradefed.device.DeviceManager.FastbootDevice;
 import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IManagedTestDevice;
@@ -69,7 +70,8 @@ public class RunConfigDeviceRecovery implements IMultiDeviceRecovery {
             if (DeviceAllocationState.Allocated.equals(device.getAllocationState())) {
                 continue;
             }
-            if (device.getIDevice() instanceof StubDevice) {
+            if (device.getIDevice() instanceof StubDevice
+                    && !(device.getIDevice() instanceof FastbootDevice)) {
                 continue;
             }
             if (shouldSkip(device)) {

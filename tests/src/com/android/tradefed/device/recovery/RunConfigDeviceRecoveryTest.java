@@ -21,6 +21,7 @@ import com.android.ddmlib.IDevice;
 import com.android.tradefed.command.ICommandScheduler;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceAllocationState;
+import com.android.tradefed.device.DeviceManager.FastbootDevice;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IManagedTestDevice;
 import com.android.tradefed.device.ITestDevice;
@@ -82,6 +83,26 @@ public class RunConfigDeviceRecoveryTest {
 
     @Test
     public void testRecoverDevice_offline() throws Exception {
+        List<IManagedTestDevice> devices = new ArrayList<>();
+        devices.add(mMockTestDevice);
+        EasyMock.expect(mMockTestDevice.getAllocationState())
+                .andReturn(DeviceAllocationState.Available);
+        ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mMockDeviceManager.forceAllocateDevice("serial")).andReturn(device);
+
+        mMockScheduler.execCommand(EasyMock.anyObject(), EasyMock.eq(device), EasyMock.anyObject());
+
+        replay();
+        mRecoverer.recoverDevices(devices);
+        verify();
+    }
+
+    /** Test that FastbootDevice are considered for recovery. */
+    @Test
+    public void testRecoverDevice_fastboot() throws Exception {
+        EasyMock.reset(mMockTestDevice);
+        EasyMock.expect(mMockTestDevice.getIDevice()).andStubReturn(new FastbootDevice("serial"));
+        EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn("serial");
         List<IManagedTestDevice> devices = new ArrayList<>();
         devices.add(mMockTestDevice);
         EasyMock.expect(mMockTestDevice.getAllocationState())
