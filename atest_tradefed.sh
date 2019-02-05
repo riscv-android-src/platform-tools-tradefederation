@@ -24,7 +24,15 @@ source "${shdir}/script_help.sh"
 # installation.
 # Include any host-side dependency jars.
 if [ ! -z "${ANDROID_HOST_OUT}" ]; then
-    deps="compatibility-host-util.jar hosttestlib.jar cts-tradefed.jar vts-tradefed.jar host-libprotobuf-java-full.jar cts-dalvik-host-test-runner.jar"
+    # TF will load the first test-suite-info.properties in those jar files it loaded.
+    # In current cases that only those *ts suite jars have built in that file.
+    # If user tested testcases which using those jar files with suite-info properties
+    # but change the lunch target to different arch and continue testing other tests without the
+    # need of those *ts jars then TF will not testing with below error message:
+    # "None of the abi supported by this tests suite build".
+    # Create atest-tradefed.jar with test-suite-info.properties and make sure it's priroty is higher
+    # then other *ts-tradefed.jar.
+    deps="atest-tradefed.jar compatibility-host-util.jar hosttestlib.jar cts-tradefed.jar vts-tradefed.jar host-libprotobuf-java-full.jar cts-dalvik-host-test-runner.jar"
     for dep in $deps; do
         if [ -f "${ANDROID_HOST_OUT}"/framework/$dep ]; then
             TF_PATH=${TF_PATH}:"${ANDROID_HOST_OUT}"/framework/$dep
