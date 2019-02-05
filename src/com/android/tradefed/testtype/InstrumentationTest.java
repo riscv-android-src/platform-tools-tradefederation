@@ -576,6 +576,11 @@ public class InstrumentationTest
         mInstrArgMap.put(key, value);
     }
 
+    /** Allows to remove an entry from the instrumentation-arg. */
+    void removeFromInstrumentationArg(String key) {
+        mInstrArgMap.remove(key);
+    }
+
     /**
      * Retrieve the value of an argument to provide when running the instrumentation tests.
      *

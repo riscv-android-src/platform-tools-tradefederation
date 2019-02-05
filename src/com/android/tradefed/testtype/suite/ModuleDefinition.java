@@ -500,14 +500,19 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             }
         } finally {
             long cleanStartTime = getCurrentTime();
+            RuntimeException tearDownException = null;
             try {
                 // Tear down
                 runTearDown(preparationException);
-            } catch (DeviceNotAvailableException tearDownException) {
+            } catch (DeviceNotAvailableException dnae) {
                 CLog.e(
                         "Module %s failed during tearDown with: %s",
-                        getId(), StreamUtil.getStackTrace(tearDownException));
-                throw tearDownException;
+                        getId(), StreamUtil.getStackTrace(dnae));
+                throw dnae;
+            } catch (RuntimeException e) {
+                CLog.e("Exception while running tearDown:");
+                CLog.e(e);
+                tearDownException = e;
             } finally {
                 if (failureListener != null) {
                     failureListener.join();
@@ -516,7 +521,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 // finalize results
                 if (preparationException == null) {
                     if (mMergeAttempts) {
-                        reportFinalResults(listener, mExpectedTests, mTestsResults, null);
+                        reportFinalResults(
+                                listener, mExpectedTests, mTestsResults, null, tearDownException);
                     } else {
                         // Push the attempts one by one
                         for (int i = 0; i < maxRunLimit; i++) {
@@ -535,7 +541,12 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                             }
 
                             if (!runResultList.isEmpty()) {
-                                reportFinalResults(listener, expectedCount, runResultList, i);
+                                reportFinalResults(
+                                        listener,
+                                        expectedCount,
+                                        runResultList,
+                                        i,
+                                        tearDownException);
                             } else {
                                 CLog.d("No results to be forwarded for attempt %s.", i);
                             }
@@ -603,7 +614,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             ITestInvocationListener listener,
             int totalExpectedTests,
             List<TestRunResult> listResults,
-            Integer attempt) {
+            Integer attempt,
+            RuntimeException tearDownException) {
         long elapsedTime = 0l;
         HashMap<String, Metric> metricsProto = new HashMap<>();
         if (attempt != null) {
@@ -652,6 +664,11 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             listener.testRunFailed(error);
             CLog.e(error);
             mIsFailedModule = true;
+        }
+
+        if (!mIsFailedModule && tearDownException != null) {
+            // If no error was reported yet, report the teardown exception.
+            listener.testRunFailed(tearDownException.getMessage());
         }
 
         // Provide a strong association of the run to its logs.
