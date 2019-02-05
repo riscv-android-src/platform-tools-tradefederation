@@ -41,7 +41,7 @@ import java.util.Set;
 @OptionClass(alias = "apex-installer")
 public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
 
-    private static final String APEX_DATA_DIR = "/data/apex";
+    private static final String APEX_DATA_DIR = "/data/apex/active";
 
     private List<ApexInfo> mTestApexInfoList;
 
@@ -55,7 +55,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
 
         mTestApexInfoList = new ArrayList<ApexInfo>();
 
-        // Clean up data/apex.
+        // Clean up data/apex/active.
         // TODO: check if also need to clean up data/staging (chenzhu@, dariofreni@)
         for (String apexFilename : getTestsFileName()) {
             File apexFile = getLocalPathForFilename(buildInfo, apexFilename, device);
@@ -71,9 +71,10 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
                 throw new TargetSetupError(
                         String.format(
-                                "Failed to clean up %s under data/apex on device %s."
+                                "Failed to clean up %s under %s on device %s."
                                         + "Output: %s Error: %s",
                                 apexInfo.name,
+                                APEX_DATA_DIR,
                                 device.getSerialNumber(),
                                 result.getStdout(),
                                 result.getStderr()),

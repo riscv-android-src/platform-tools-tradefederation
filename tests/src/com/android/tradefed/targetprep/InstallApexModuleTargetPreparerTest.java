@@ -52,7 +52,7 @@ public class InstallApexModuleTargetPreparerTest {
     private static final long APEX_VERSION = 1;
     private static final String APEX_NAME = "fakeApex.apex";
     private static final String REMOVE_EXISITING_APEX_UNDER_DATA_COMMAND =
-            "rm -rf /data/apex/*FAKE_APEX_PACKAGE_NAME*";
+            "rm -rf /data/apex/active/*FAKE_APEX_PACKAGE_NAME*";
 
     @Before
     public void setUp() throws Exception {
@@ -129,7 +129,7 @@ public class InstallApexModuleTargetPreparerTest {
                     expected.getMessage()
                             .contains(
                                     "Failed to clean up com.android.FAKE_APEX_PACKAGE_NAME "
-                                            + "under data/apex on device"));
+                                            + "under /data/apex/active on device"));
         } finally {
             EasyMock.verify(mMockBuildInfo, mMockDevice);
         }
