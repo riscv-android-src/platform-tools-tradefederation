@@ -459,6 +459,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         # Use different base build requirements if google-tf is around.
         if self.module_info.is_module(constants.GTF_MODULE):
             build_req = {constants.GTF_TARGET}
+        # Always add ATest's own TF target.
+        build_req.add(constants.ATEST_TF_MODULE)
         # Add adb if we can't find it.
         for executable in EXEC_DEPENDENCIES:
             if self._is_missing_exec(executable):
