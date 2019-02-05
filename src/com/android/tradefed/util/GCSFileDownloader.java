@@ -18,7 +18,6 @@ package com.android.tradefed.util;
 
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IFileDownloader;
-import com.android.tradefed.host.HostOptions;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
@@ -59,8 +58,6 @@ public class GCSFileDownloader implements IFileDownloader {
             Collections.singleton("https://www.googleapis.com/auth/devstorage.read_only");
     private static final int DEFAULT_TIMEOUT = 10 * 60 * 1000; // 10minutes
     private static final long LIST_BATCH_SIZE = 100;
-    /** This is the key for {@link HostOptions}'s service-account-json-key-file option. */
-    private static final String GCS_JSON_KEY = "gcs-json-key";
 
     private File mJsonKeyFile = null;
     private Storage mStorage;
@@ -99,8 +96,25 @@ public class GCSFileDownloader implements IFileDownloader {
         GoogleCredential credential = null;
         try {
             if (mStorage == null) {
-                credential =
-                        GoogleApiClientUtil.createCredential(scopes, mJsonKeyFile, GCS_JSON_KEY);
+                if (mJsonKeyFile != null && mJsonKeyFile.exists()) {
+                    CLog.d("Using json key file %s.", mJsonKeyFile);
+                    credential =
+                            GoogleApiClientUtil.createCredentialFromJsonKeyFile(
+                                    mJsonKeyFile, scopes);
+                } else {
+                    CLog.d("Using local authentication.");
+                    try {
+                        credential = GoogleCredential.getApplicationDefault().createScoped(scopes);
+                    } catch (IOException e) {
+                        CLog.e(e.getMessage());
+                        CLog.e(
+                                "Try 'gcloud auth application-default login' to login for "
+                                        + "personal account; Or 'export "
+                                        + "GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json' "
+                                        + "for service account.");
+                        throw e;
+                    }
+                }
                 mStorage =
                         new Storage.Builder(
                                         GoogleNetHttpTransport.newTrustedTransport(),

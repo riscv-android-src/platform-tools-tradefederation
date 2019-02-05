@@ -284,7 +284,6 @@ import com.android.tradefed.util.FakeTestsZipFolderTest;
 import com.android.tradefed.util.FileUtilTest;
 import com.android.tradefed.util.FixedByteArrayOutputStreamTest;
 import com.android.tradefed.util.GCSFileDownloaderTest;
-import com.android.tradefed.util.GoogleApiClientUtilTest;
 import com.android.tradefed.util.HprofAllocSiteParserTest;
 import com.android.tradefed.util.JUnitXmlParserTest;
 import com.android.tradefed.util.KeyguardControllerStateTest;
@@ -700,7 +699,6 @@ import org.junit.runners.Suite.SuiteClasses;
     FileUtilTest.class,
     FixedByteArrayOutputStreamTest.class,
     GCSFileDownloaderTest.class,
-    GoogleApiClientUtilTest.class,
     HprofAllocSiteParserTest.class,
     JUnitXmlParserTest.class,
     KeyguardControllerStateTest.class,
