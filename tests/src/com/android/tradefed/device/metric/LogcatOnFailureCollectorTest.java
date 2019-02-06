@@ -112,7 +112,7 @@ public class LogcatOnFailureCollectorTest {
         EasyMock.expect(mMockReceiver.getLogcatData(EasyMock.anyInt(), EasyMock.eq(3)))
                 .andReturn(new ByteArrayInputStreamSource("aaabbb".getBytes()));
         mMockListener.testLog(
-                EasyMock.eq("logcat-on-failure-serial-class#test"),
+                EasyMock.eq("class#test-serial-logcat-on-failure"),
                 EasyMock.eq(LogDataType.LOGCAT),
                 EasyMock.anyObject());
 
@@ -164,7 +164,7 @@ public class LogcatOnFailureCollectorTest {
         EasyMock.expect(mMockReceiver.getLogcatData(EasyMock.anyInt(), EasyMock.eq(3)))
                 .andReturn(new ByteArrayInputStreamSource("aaabbb".getBytes()));
         mMockListener.testLog(
-                EasyMock.eq("logcat-on-failure-serial-class#test"),
+                EasyMock.eq("class#test-serial-logcat-on-failure"),
                 EasyMock.eq(LogDataType.LOGCAT),
                 EasyMock.anyObject());
 
@@ -183,7 +183,7 @@ public class LogcatOnFailureCollectorTest {
         EasyMock.expect(mMockReceiver.getLogcatData(EasyMock.anyInt(), EasyMock.eq(3)))
                 .andReturn(new ByteArrayInputStreamSource("aaabbb".getBytes()));
         mMockListener.testLog(
-                EasyMock.eq("logcat-on-failure-serial-class2#test2"),
+                EasyMock.eq("class2#test2-serial-logcat-on-failure"),
                 EasyMock.eq(LogDataType.LOGCAT),
                 EasyMock.anyObject());
 
