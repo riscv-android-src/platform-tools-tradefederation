@@ -508,6 +508,11 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 continue
             if constants.DRY_RUN == arg:
                 continue
+            if constants.INSTANT == arg:
+                args_to_append.append('--enable-parameterized-modules')
+                args_to_append.append('--module-parameter')
+                args_to_append.append('instant_app')
+                continue
             args_not_supported.append(arg)
         return args_to_append, args_not_supported
 
