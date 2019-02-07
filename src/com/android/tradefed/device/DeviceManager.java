@@ -102,9 +102,9 @@ public class DeviceManager implements IDeviceManager {
      *
      * <p>serial1 device
      *
-     * <p>serial2 device
+     * <p>serial2 offline
      */
-    private static final String DEVICE_LIST_PATTERN = "(.*)(\n)(%s)(\\s+)(device)(.*?)";
+    private static final String DEVICE_LIST_PATTERN = ".*\n(%s)\\s+(device|offline).*";
 
     private Semaphore mConcurrentFlashLock = null;
 
