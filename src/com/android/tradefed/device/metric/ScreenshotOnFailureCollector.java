@@ -25,14 +25,14 @@ import com.android.tradefed.result.TestDescription;
 /** Collector that will capture and log a screenshot when a test case fails. */
 public class ScreenshotOnFailureCollector extends BaseDeviceMetricCollector {
 
+    private static final String NAME_FORMAT = "%s-%s-screenshot-on-failure";
+
     @Override
     public void onTestFail(DeviceMetricData testData, TestDescription test) {
         for (ITestDevice device : getDevices()) {
             try (InputStreamSource screenSource = device.getScreenshot()) {
                 super.testLog(
-                        String.format(
-                                "screenshot-on-failure-%s-%s#%s",
-                                device.getSerialNumber(), test.getClassName(), test.getTestName()),
+                        String.format(NAME_FORMAT, test.toString(), device.getSerialNumber()),
                         LogDataType.PNG,
                         screenSource);
             } catch (DeviceNotAvailableException e) {
