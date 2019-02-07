@@ -962,7 +962,7 @@ public class DeviceManagerTest {
         mMockStateMonitor.setState(TestDeviceState.NOT_AVAILABLE);
 
         CommandResult stubAdbDevices = new CommandResult(CommandStatus.SUCCESS);
-        stubAdbDevices.setStdout("List of devices attached\nserial\tdevice\n");
+        stubAdbDevices.setStdout("List of devices attached\nserial\toffline\n");
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
                                 EasyMock.anyLong(), EasyMock.eq("adb"), EasyMock.eq("devices")))
