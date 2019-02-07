@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.device.recovery;
 
+import com.android.ddmlib.IDevice;
 import com.android.helper.aoa.UsbDevice;
 import com.android.helper.aoa.UsbException;
 import com.android.helper.aoa.UsbHelper;
@@ -27,16 +28,15 @@ import com.android.tradefed.device.FastbootHelper;
 import com.android.tradefed.device.IManagedTestDevice;
 import com.android.tradefed.device.IMultiDeviceRecovery;
 import com.android.tradefed.device.INativeDevice;
-import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.RunUtil;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /** A {@link IMultiDeviceRecovery} which resets USB buses for offline devices. */
@@ -59,72 +59,72 @@ public class UsbResetMultiDeviceRecovery implements IMultiDeviceRecovery {
             return; // Skip device recovery
         }
 
-        FastbootHelper fastboot = getFastbootHelper();
-        Set<String> fastbootSerials;
-
-        // Track devices in an Unknown, Unavailable, or otherwise suspicious state
-        List<IManagedTestDevice> devicesToReset = new ArrayList<>();
-
-        fastbootSerials = fastboot.getDevices();
-        for (IManagedTestDevice device : devices) {
-            // Make sure not to skip Fastboot devices
-            if (device.getIDevice() instanceof StubDevice
-                    && !(device.getIDevice() instanceof DeviceManager.FastbootDevice)) {
-                continue;
-            }
-
-            DeviceAllocationState state = device.getAllocationState();
-            // Always reset Unknown or Unavailable devices
-            if (DeviceAllocationState.Unknown.equals(state)
-                    || DeviceAllocationState.Unavailable.equals(state)
-                    // If device is in Fastboot but unallocated, this is suspicious and it is reset
-                    || (fastbootSerials.contains(device.getSerialNumber())
-                            && !DeviceAllocationState.Allocated.equals(state))) {
-                devicesToReset.add(device);
-            }
-        }
-
-        if (devicesToReset.isEmpty()) {
-            return; // No devices to recover
-        }
-
-        // Reset USB ports
-        resetUsbPorts(devicesToReset);
-
-        // Reboot devices
-        fastbootSerials = fastboot.getDevices();
-        for (ITestDevice device : devicesToReset) {
-            if (fastbootSerials.contains(device.getSerialNumber())) {
-                continue; // Skip Fastboot devices as they may require additional recovery steps
-            }
-
-            try {
-                device.reboot();
-            } catch (DeviceNotAvailableException e) {
-                CLog.e(e);
-                CLog.w(
-                        "Device '%s' did not come back online after USB reset.",
-                        device.getSerialNumber());
-            }
-        }
-    }
-
-    // Perform a USB port reset on all the specified devices
-    private void resetUsbPorts(List<? extends INativeDevice> devices) {
-        List<String> deviceSerials = Lists.transform(devices, INativeDevice::getSerialNumber);
+        Map<String, IManagedTestDevice> managedDeviceMap =
+                Maps.uniqueIndex(devices, INativeDevice::getSerialNumber);
 
         try (UsbHelper usb = getUsbHelper()) {
+            // Find USB-connected Android devices, using AOA compatibility to differentiate between
+            // Android and non-Android devices (supported in 4.1+)
+            Set<String> deviceSerials = usb.getSerialNumbers(/* AOAv2-compatible */ true);
+
+            // Find devices currently in fastboot
+            FastbootHelper fastboot = getFastbootHelper();
+            Set<String> fastbootSerials = fastboot.getDevices();
+
+            // AOA check fails on Fastboot devices, so add them to the set of connected devices
+            deviceSerials.addAll(fastbootSerials);
+
+            // Filter out managed devices in a valid state
+            for (IManagedTestDevice device : devices) {
+                if (!shouldReset(device)) {
+                    deviceSerials.remove(device.getSerialNumber());
+                }
+            }
+
+            // Perform a USB port reset on the remaining devices
             for (String serial : deviceSerials) {
                 try (UsbDevice device = usb.getDevice(serial)) {
-                    if (device != null) {
-                        device.reset();
-                    } else {
+                    if (device == null) {
                         CLog.w("Device '%s' not found during USB reset.", serial);
+                        continue;
+                    }
+
+                    CLog.d("Resetting USB port for device '%s'", serial);
+                    device.reset();
+                    // If device was managed, attempt to reboot it
+                    if (managedDeviceMap.containsKey(serial)) {
+                        tryReboot(managedDeviceMap.get(serial));
                     }
                 }
             }
         } catch (UsbException e) {
             CLog.w("Failed to reset USB ports.");
+            CLog.e(e);
+        }
+    }
+
+    // Determines whether a device is a candidate for recovery
+    private boolean shouldReset(IManagedTestDevice device) {
+        // Skip stub devices, but make sure not to skip those in fastboot
+        IDevice iDevice = device.getIDevice();
+        if (iDevice instanceof StubDevice && !(iDevice instanceof DeviceManager.FastbootDevice)) {
+            return false;
+        }
+
+        // Recover all devices that are neither available nor allocated
+        DeviceAllocationState state = device.getAllocationState();
+        return !DeviceAllocationState.Allocated.equals(state)
+                && !DeviceAllocationState.Available.equals(state);
+    }
+
+    // Attempt to reboot a managed device
+    private void tryReboot(IManagedTestDevice device) {
+        try {
+            device.reboot();
+        } catch (DeviceNotAvailableException e) {
+            CLog.w(
+                    "Device '%s' did not come back online after USB reset.",
+                    device.getSerialNumber());
             CLog.e(e);
         }
     }
