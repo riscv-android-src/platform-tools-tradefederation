@@ -30,7 +30,7 @@ import java.io.InputStream;
 /** Collector that will gather and log the host-side logs when a test case failure occurs. */
 public class DebugHostLogOnFailureCollector extends BaseDeviceMetricCollector {
 
-    private static final String NAME_FORMAT = "debug-hostlog-on-failure-%s";
+    private static final String NAME_FORMAT = "%s-debug-hostlog-on-failure";
 
     public Long offset = null;
 
