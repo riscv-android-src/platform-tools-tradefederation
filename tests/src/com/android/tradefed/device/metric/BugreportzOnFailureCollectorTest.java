@@ -64,7 +64,7 @@ public class BugreportzOnFailureCollectorTest {
 
         EasyMock.expect(
                         mMockDevice.logBugreport(
-                                EasyMock.eq("bugreportz-on-failure-serial-class#test"),
+                                EasyMock.eq("class#test-serial-bugreportz-on-failure"),
                                 EasyMock.anyObject()))
                 .andReturn(true);
 

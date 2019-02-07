@@ -36,7 +36,7 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
     /** Always include a bit of prior data to capture what happened before */
     private static final int OFFSET_CORRECTION = 20000;
 
-    private static final String NAME_FORMAT = "logcat-on-failure-%s-%s#%s";
+    private static final String NAME_FORMAT = "%s-%s-logcat-on-failure";
 
     private Map<ITestDevice, ILogcatReceiver> mLogcatReceivers = new HashMap<>();
     private Map<ITestDevice, Integer> mOffset = new HashMap<>();
@@ -69,12 +69,7 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
                     mLogcatReceivers
                             .get(device)
                             .getLogcatData(MAX_LOGAT_SIZE_BYTES, mOffset.get(device))) {
-                String name =
-                        String.format(
-                                NAME_FORMAT,
-                                device.getSerialNumber(),
-                                test.getClassName(),
-                                test.getTestName());
+                String name = String.format(NAME_FORMAT, test.toString(), device.getSerialNumber());
                 super.testLog(name, LogDataType.LOGCAT, logcatSource);
             }
         }
