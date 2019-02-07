@@ -28,14 +28,17 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.IGlobalConfiguration;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.IManagedTestDevice.DeviceEventResponse;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.ZipUtil;
 
 import org.easymock.Capture;
 import org.easymock.EasyMock;
@@ -46,6 +49,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -376,6 +380,29 @@ public class DeviceManagerTest {
         mgr.init(null, null, mMockDeviceFactory);
         assertNotNull(mgr.allocateDevice(mDeviceSelections, false));
         verifyMocks();
+    }
+
+    /** Test that when a zipped fastboot file is provided we unpack it and use it. */
+    @Test
+    public void testUnpackZippedFastboot() throws Exception {
+        File tmpDir = FileUtil.createTempDir("fake-fastbootdir");
+        File fastboot = new File(tmpDir, "fastboot");
+        FileUtil.writeToFile("TEST", fastboot);
+        File zipDir = ZipUtil.createZip(tmpDir);
+        replayMocks();
+        DeviceManager mgr = createDeviceManagerNoInit();
+        try {
+            OptionSetter setter = new OptionSetter(mgr);
+            setter.setOptionValue("fastboot-path", zipDir.getAbsolutePath());
+            mgr.init(null, null, mMockDeviceFactory);
+            assertTrue(mgr.getFastbootPath().contains("fastboot"));
+            assertEquals("TEST", FileUtil.readStringFromFile(new File(mgr.getFastbootPath())));
+            verifyMocks();
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+            FileUtil.deleteFile(zipDir);
+            mgr.terminate();
+        }
     }
 
     /** Test freeing an emulator */
