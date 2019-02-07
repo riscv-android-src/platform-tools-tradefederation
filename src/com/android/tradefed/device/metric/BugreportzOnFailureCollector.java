@@ -22,13 +22,12 @@ import com.android.tradefed.result.TestDescription;
 /** Collect a bugreportz when a test case fails. */
 public class BugreportzOnFailureCollector extends BaseDeviceMetricCollector {
 
+    private static final String NAME_FORMAT = "%s-%s-bugreportz-on-failure";
+
     @Override
     public void onTestFail(DeviceMetricData testData, TestDescription test) {
         for (ITestDevice device : getDevices()) {
-            String name =
-                    String.format(
-                            "bugreportz-on-failure-%s-%s#%s",
-                            device.getSerialNumber(), test.getClassName(), test.getTestName());
+            String name = String.format(NAME_FORMAT, test.toString(), device.getSerialNumber());
             if (!device.logBugreport(name, getInvocationListener())) {
                 CLog.e("Failed to capture bugreportz on '%s'", device.getSerialNumber());
             }
