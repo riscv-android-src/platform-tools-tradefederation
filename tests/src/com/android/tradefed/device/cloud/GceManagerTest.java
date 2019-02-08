@@ -233,13 +233,18 @@ public class GceManagerTest {
     @Test
     public void testBuildGceCommandWithEmulatorBuild() throws Exception {
         IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        EasyMock.expect(mMockBuildInfo.getBuildAttributes())
+                .andReturn(Collections.<String, String>emptyMap());
+        EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andReturn("TARGET");
+        EasyMock.expect(mMockBuildInfo.getBuildBranch()).andReturn("BRANCH");
         EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn("BUILDID");
         EasyMock.replay(mMockBuildInfo);
         File reportFile = null;
+
         try {
             OptionSetter setter = new OptionSetter(mOptions);
-            setter.setOptionValue("test-sysimage-target", "TARGET");
-            setter.setOptionValue("test-sysimage-branch", "BRANCH");
+            setter.setOptionValue("gce-driver-param", "--emulator-build-id");
+            setter.setOptionValue("gce-driver-param", "EMULATOR_BUILD_ID");
             mGceManager =
                     new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, null) {
                         @Override
@@ -257,8 +262,10 @@ public class GceManagerTest {
                             "TARGET",
                             "--branch",
                             "BRANCH",
-                            "--emulator-build-id",
+                            "--build_id",
                             "BUILDID",
+                            "--emulator-build-id",
+                            "EMULATOR_BUILD_ID",
                             "--config_file",
                             mGceManager.getAvdConfigFile().getAbsolutePath(),
                             "--report_file",
@@ -298,13 +305,13 @@ public class GceManagerTest {
                             "BRANCH",
                             "--build_id",
                             "BUILDID",
+                            "--report-internal-ip",
+                            "--no-autoconnect",
                             "--config_file",
                             mGceManager.getAvdConfigFile().getAbsolutePath(),
                             "--report_file",
                             reportFile.getAbsolutePath(),
-                            "-v",
-                            "--report-internal-ip",
-                            "--no-autoconnect");
+                            "-v");
             assertEquals(expected, result);
         } finally {
             FileUtil.deleteFile(reportFile);
@@ -363,7 +370,8 @@ public class GceManagerTest {
         File reportFile = null;
         try {
             OptionSetter setter = new OptionSetter(mOptions);
-            setter.setOptionValue("gce-driver-build-id-param", "kernel_build_id");
+            setter.setOptionValue("gce-driver-param", "--kernel_build_id");
+            setter.setOptionValue("gce-driver-param", "KERNELBUILDID");
             reportFile = FileUtil.createTempFile("test-gce-cmd", "report");
             List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo);
             List<String> expected =
@@ -374,8 +382,10 @@ public class GceManagerTest {
                             "FLAVOR",
                             "--branch",
                             "BRANCH",
-                            "--kernel_build_id",
+                            "--build_id",
                             "BUILDID",
+                            "--kernel_build_id",
+                            "KERNELBUILDID",
                             "--config_file",
                             mGceManager.getAvdConfigFile().getAbsolutePath(),
                             "--report_file",
