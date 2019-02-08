@@ -180,6 +180,7 @@ public class TestDeviceOptions {
     )
     private List<String> mGceDriverParams = new ArrayList<>();
 
+    @Deprecated
     @Option(
         name = "gce-driver-build-id-param",
         description =
@@ -225,32 +226,6 @@ public class TestDeviceOptions {
             name = "base-host-image",
             description = "The base image to be used for the GCE VM to host emulator.")
     private String mBaseImage = null;
-
-    /**
-     * This command line argument is used to specify an emulator system image branch (e.g.
-     * git_pi-dev) that needs to be tested against an emulator binary build specified by
-     * "--build-id" argument.
-     *
-     * <p>This argument is to be used only in a case when tradefed is evoked for testing an emulator
-     * binary build.
-     */
-    @Option(
-            name = "test-sysimage-branch",
-            description = "The emulator system image branch that needs to be tested.")
-    private String mTestBranch = null;
-
-    /**
-     * This command line argument is used to specify an emulator system image target (e.g.
-     * sdk_gphone_x86_64-userdebug) that needs to be tested against an emulator binary build
-     * specified by "--build-id" argument.
-     *
-     * <p>This argument is to be used only in a case when tradefed is evoked for testing an emulator
-     * binary build.
-     */
-    @Option(
-            name = "test-sysimage-target",
-            description = "The emulator system image target that needs to be tested.")
-    private String mTestTarget = null;
 
     // END ====================== Options Related to Virtual Devices ======================
 
@@ -609,16 +584,6 @@ public class TestDeviceOptions {
     /** Returns the base image name to be used for the current instance */
     public String getBaseImage() {
         return mBaseImage;
-    }
-
-    /** Returns the system image branch to be used for the current instance */
-    public String getSystemImageBranch() {
-        return mTestBranch;
-    }
-
-    /** Returns the system image target to be used for the current instance */
-    public String getSystemImageTarget() {
-        return mTestTarget;
     }
 
     public static String getCreateCommandByInstanceType(InstanceType type) {
