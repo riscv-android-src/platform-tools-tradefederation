@@ -29,7 +29,10 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.testtype.Abi;
+import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.FileUtil;
 
 import org.easymock.Capture;
@@ -275,8 +278,8 @@ public class PushFilePreparerTest {
 
             fileName = sourceFile.getName();
             EasyMock.expect(buildInfo.getFile(fileName)).andReturn(null);
-            EasyMock.expect(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null);
             EasyMock.expect(buildInfo.getTestsDir()).andReturn(testsDir);
+            EasyMock.expect(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null);
             EasyMock.replay(buildInfo);
 
             assertEquals(
@@ -296,6 +299,42 @@ public class PushFilePreparerTest {
     public void testPush_abiDirectory_noBitness() throws Exception {
         mOptionSetter.setOptionValue("push", "debugger->/data/local/tmp/debugger");
         mPreparer.setAbi(new Abi("x86", "32"));
+        IDeviceBuildInfo info = new DeviceBuildInfo();
+        File tmpFolder = FileUtil.createTempDir("push-file-tests-dir");
+        try {
+            File debuggerFile = new File(tmpFolder, "target/testcases/debugger/x86/debugger");
+            FileUtil.mkdirsRWX(debuggerFile);
+
+            info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
+            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/debugger")).andReturn(false);
+            EasyMock.expect(
+                            mMockDevice.executeShellCommand(
+                                    "mkdir -p \"/data/local/tmp/debugger\""))
+                    .andReturn("");
+            Capture<Set<String>> capture = new Capture<>();
+            EasyMock.expect(
+                            mMockDevice.pushDir(
+                                    EasyMock.eq(new File(tmpFolder, "target/testcases/debugger")),
+                                    EasyMock.eq("/data/local/tmp/debugger"),
+                                    EasyMock.capture(capture)))
+                    .andReturn(true);
+
+            EasyMock.replay(mMockDevice);
+            mPreparer.setUp(mMockDevice, info);
+            EasyMock.verify(mMockDevice);
+            // The x86 folder was not filtered
+            Set<String> capValue = capture.getValue();
+            assertFalse(capValue.contains("x86"));
+        } finally {
+            FileUtil.recursiveDelete(tmpFolder);
+        }
+    }
+
+    @Test
+    public void testPush_abiDirectory_noBitness_2() throws Exception {
+        mOptionSetter.setOptionValue("push", "debugger->/data/local/tmp/debugger");
+        mPreparer.setAbi(new Abi("x86", "32"));
+        mPreparer.setInvocationContext(createModuleWithName("debugger"));
         IDeviceBuildInfo info = new DeviceBuildInfo();
         File tmpFolder = FileUtil.createTempDir("push-file-tests-dir");
         try {
@@ -359,6 +398,205 @@ public class PushFilePreparerTest {
         } finally {
             FileUtil.recursiveDelete(tmpFolder);
         }
+    }
+
+    /** Test that if a module name exists we attempt to search it first. */
+    @Test
+    public void testPush_moduleName_dirs() throws Exception {
+        mOptionSetter.setOptionValue("push", "lib64->/data/local/tmp/lib");
+        mPreparer.setAbi(new Abi("x86_64", "64"));
+
+        mPreparer.setInvocationContext(createModuleWithName("debugger"));
+        IDeviceBuildInfo info = new DeviceBuildInfo();
+        File tmpFolder = FileUtil.createTempDir("push-file-tests-dir");
+        try {
+            File beforeName = new File(tmpFolder, "target/testcases/aaaaa/x86_64/lib64");
+            FileUtil.mkdirsRWX(beforeName);
+            File libX86File = new File(tmpFolder, "target/testcases/debugger/x86_64/lib64");
+            FileUtil.mkdirsRWX(libX86File);
+            File otherLib = new File(tmpFolder, "target/testcases/random/x86_64/lib64");
+            FileUtil.mkdirsRWX(otherLib);
+            info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
+            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/lib")).andReturn(false);
+            EasyMock.expect(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/lib\""))
+                    .andReturn("");
+            Capture<Set<String>> capture = new Capture<>();
+            EasyMock.expect(
+                            mMockDevice.pushDir(
+                                    EasyMock.eq(
+                                            new File(
+                                                    tmpFolder,
+                                                    "target/testcases/debugger/x86_64/lib64")),
+                                    EasyMock.eq("/data/local/tmp/lib"),
+                                    EasyMock.capture(capture)))
+                    .andReturn(true);
+            EasyMock.replay(mMockDevice);
+            mPreparer.setUp(mMockDevice, info);
+            EasyMock.verify(mMockDevice);
+            // The x86 folder was not filtered
+            Set<String> capValue = capture.getValue();
+            assertFalse(capValue.contains("x86_64"));
+        } finally {
+            FileUtil.recursiveDelete(tmpFolder);
+        }
+    }
+
+    @Test
+    public void testPush_moduleName_files() throws Exception {
+        mOptionSetter.setOptionValue("push", "file->/data/local/tmp/file");
+        mPreparer.setAbi(new Abi("x86_64", "64"));
+
+        mPreparer.setInvocationContext(createModuleWithName("debugger"));
+        IDeviceBuildInfo info = new DeviceBuildInfo();
+        File tmpFolder = FileUtil.createTempDir("push-file-tests-dir");
+        try {
+            File beforeName = new File(tmpFolder, "target/testcases/aaaaa/x86_64/file");
+            FileUtil.mkdirsRWX(beforeName.getParentFile());
+            beforeName.createNewFile();
+            File libX86File = new File(tmpFolder, "target/testcases/debugger/x86_64/file");
+            FileUtil.mkdirsRWX(libX86File.getParentFile());
+            libX86File.createNewFile();
+            File otherLib = new File(tmpFolder, "target/testcases/random/x86_64/file");
+            FileUtil.mkdirsRWX(otherLib.getParentFile());
+            otherLib.createNewFile();
+            info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
+            EasyMock.expect(
+                            mMockDevice.pushFile(
+                                    EasyMock.eq(
+                                            new File(
+                                                    tmpFolder,
+                                                    "target/testcases/debugger/x86_64/file")),
+                                    EasyMock.eq("/data/local/tmp/file")))
+                    .andReturn(true);
+            EasyMock.replay(mMockDevice);
+            mPreparer.setUp(mMockDevice, info);
+            EasyMock.verify(mMockDevice);
+        } finally {
+            FileUtil.recursiveDelete(tmpFolder);
+        }
+    }
+
+    @Test
+    public void testPush_moduleName_ignored() throws Exception {
+        mOptionSetter.setOptionValue("push", "lib64->/data/local/tmp/lib");
+        mPreparer.setAbi(new Abi("x86_64", "64"));
+
+        mPreparer.setInvocationContext(createModuleWithName("debugger"));
+        IDeviceBuildInfo info = new DeviceBuildInfo();
+        File tmpFolder = FileUtil.createTempDir("push-file-tests-dir");
+        try {
+            File beforeName = new File(tmpFolder, "target/testcases/aaaaa/x86_64/lib64");
+            FileUtil.mkdirsRWX(beforeName);
+            File libX86File = new File(tmpFolder, "target/testcases/debugger/x86_64/minilib64");
+            FileUtil.mkdirsRWX(libX86File);
+            info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
+            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/lib")).andReturn(false);
+            EasyMock.expect(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/lib\""))
+                    .andReturn("");
+            Capture<Set<String>> capture = new Capture<>();
+            // Use the only dir matching the file, regardless of the module if the module doesn't
+            // contain the file.
+            EasyMock.expect(
+                            mMockDevice.pushDir(
+                                    EasyMock.eq(
+                                            new File(
+                                                    tmpFolder,
+                                                    "target/testcases/aaaaa/x86_64/lib64")),
+                                    EasyMock.eq("/data/local/tmp/lib"),
+                                    EasyMock.capture(capture)))
+                    .andReturn(true);
+            EasyMock.replay(mMockDevice);
+            mPreparer.setUp(mMockDevice, info);
+            EasyMock.verify(mMockDevice);
+            // The x86 folder was not filtered
+            Set<String> capValue = capture.getValue();
+            assertFalse(capValue.contains("x86_64"));
+        } finally {
+            FileUtil.recursiveDelete(tmpFolder);
+        }
+    }
+
+    @Test
+    public void testPush_moduleName_multiAbi() throws Exception {
+        mOptionSetter.setOptionValue("push", "lib64->/data/local/tmp/lib");
+        mPreparer.setAbi(new Abi("x86", "32"));
+
+        mPreparer.setInvocationContext(createModuleWithName("debugger"));
+        IDeviceBuildInfo info = new DeviceBuildInfo();
+        File tmpFolder = FileUtil.createTempDir("push-file-tests-dir");
+        try {
+            File beforeName = new File(tmpFolder, "target/testcases/aaaaa/x86_64/lib64");
+            FileUtil.mkdirsRWX(beforeName);
+            File libX86File = new File(tmpFolder, "target/testcases/debugger/x86_64/lib64");
+            FileUtil.mkdirsRWX(libX86File);
+            File otherLib = new File(tmpFolder, "target/testcases/debugger/x86/lib64");
+            FileUtil.mkdirsRWX(otherLib);
+            File otherLibAbi = new File(tmpFolder, "target/testcases/debugger/arm/lib64");
+            FileUtil.mkdirsRWX(otherLibAbi);
+            info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
+            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/lib")).andReturn(false);
+            EasyMock.expect(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/lib\""))
+                    .andReturn("");
+            Capture<Set<String>> capture = new Capture<>();
+            EasyMock.expect(
+                            mMockDevice.pushDir(
+                                    EasyMock.eq(
+                                            new File(
+                                                    tmpFolder,
+                                                    "target/testcases/debugger/x86/lib64")),
+                                    EasyMock.eq("/data/local/tmp/lib"),
+                                    EasyMock.capture(capture)))
+                    .andReturn(true);
+            EasyMock.replay(mMockDevice);
+            mPreparer.setUp(mMockDevice, info);
+            EasyMock.verify(mMockDevice);
+            // The x86 folder was not filtered
+            Set<String> capValue = capture.getValue();
+            assertFalse(capValue.contains("x86"));
+        } finally {
+            FileUtil.recursiveDelete(tmpFolder);
+        }
+    }
+
+    @Test
+    public void testPush_moduleName_multiabi_files() throws Exception {
+        mOptionSetter.setOptionValue("push", "file->/data/local/tmp/file");
+        mPreparer.setAbi(new Abi("x86", "32"));
+
+        mPreparer.setInvocationContext(createModuleWithName("debugger"));
+        IDeviceBuildInfo info = new DeviceBuildInfo();
+        File tmpFolder = FileUtil.createTempDir("push-file-tests-dir");
+        try {
+            File beforeName = new File(tmpFolder, "target/testcases/debugger/x86/file");
+            FileUtil.mkdirsRWX(beforeName.getParentFile());
+            beforeName.createNewFile();
+            File libX86File = new File(tmpFolder, "target/testcases/debugger/x86_64/file");
+            FileUtil.mkdirsRWX(libX86File.getParentFile());
+            libX86File.createNewFile();
+            File otherLib = new File(tmpFolder, "target/testcases/debugger/arm/file");
+            FileUtil.mkdirsRWX(otherLib.getParentFile());
+            otherLib.createNewFile();
+            info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
+            EasyMock.expect(
+                            mMockDevice.pushFile(
+                                    EasyMock.eq(
+                                            new File(
+                                                    tmpFolder,
+                                                    "target/testcases/debugger/x86/file")),
+                                    EasyMock.eq("/data/local/tmp/file")))
+                    .andReturn(true);
+            EasyMock.replay(mMockDevice);
+            mPreparer.setUp(mMockDevice, info);
+            EasyMock.verify(mMockDevice);
+        } finally {
+            FileUtil.recursiveDelete(tmpFolder);
+        }
+    }
+
+    private IInvocationContext createModuleWithName(String name) {
+        IInvocationContext moduleContext = new InvocationContext();
+        moduleContext.addInvocationAttribute(ModuleDefinition.MODULE_NAME, name);
+        return moduleContext;
     }
 }
 
