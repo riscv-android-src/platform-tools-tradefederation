@@ -25,9 +25,12 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
+import com.android.tradefed.testtype.IInvocationContextReceiver;
+import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 
@@ -50,7 +53,8 @@ import java.util.Set;
  * enabled)
  */
 @OptionClass(alias = "push-file")
-public class PushFilePreparer extends BaseTargetPreparer implements ITargetCleaner, IAbiReceiver {
+public class PushFilePreparer extends BaseTargetPreparer
+        implements ITargetCleaner, IAbiReceiver, IInvocationContextReceiver {
     private static final String LOG_TAG = "PushFilePreparer";
     private static final String MEDIA_SCAN_INTENT =
             "am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://%s "
@@ -95,6 +99,8 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
     private boolean mRemount = false;
 
     private Set<String> mFilesPushed = null;
+    /** If the preparer is part of a module, we can use the test module name as a search criteria */
+    private String mModuleName = null;
 
     /**
      * Helper method to only throw if mAbortOnFailure is enabled.  Callers should behave as if this
@@ -121,6 +127,16 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
         return mAbi;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void setInvocationContext(IInvocationContext invocationContext) {
+        if (invocationContext.getAttributes().get(ModuleDefinition.MODULE_NAME) != null) {
+            // Only keep the module name
+            mModuleName =
+                    invocationContext.getAttributes().get(ModuleDefinition.MODULE_NAME).get(0);
+        }
+    }
+
     /**
      * Resolve relative file path via {@link IBuildInfo} and test cases directories.
      *
@@ -138,16 +154,46 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
         }
         if (buildInfo instanceof IDeviceBuildInfo) {
             IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo) buildInfo;
+            File testDir = deviceBuild.getTestsDir();
             List<File> scanDirs = new ArrayList<>();
             // If it exists, always look first in the ANDROID_TARGET_OUT_TESTCASES
             File targetTestCases = deviceBuild.getFile(BuildInfoFileKey.TARGET_LINKED_DIR);
             if (targetTestCases != null) {
                 scanDirs.add(targetTestCases);
             }
-            File testDir = deviceBuild.getTestsDir();
             if (testDir != null) {
                 scanDirs.add(testDir);
             }
+
+            if (mModuleName != null) {
+                // Use module name as a discriminant to find some files
+                if (testDir != null) {
+                    try {
+                        File moduleDir =
+                                FileUtil.findFile(
+                                        mModuleName, null, scanDirs.toArray(new File[] {}));
+                        if (moduleDir != null) {
+                            // If the spec is pushing the module itself
+                            if (mModuleName.equals(fileName)) {
+                                return moduleDir;
+                            }
+                            // Search the module directory if it exists use it in priority
+                            src = FileUtil.findFile(fileName, mAbi, moduleDir);
+                            if (src != null) {
+                                return src;
+                            }
+                        } else {
+                            CLog.e("Did not find any module directory for '%s'", mModuleName);
+                        }
+                    } catch (IOException e) {
+                        CLog.w(
+                                "Something went wrong while searching for the module '%s' "
+                                        + "directory.",
+                                mModuleName);
+                    }
+                }
+            }
+
             try {
                 // Search the full tests dir if no target dir is available.
                 src = FileUtil.findFile(fileName, null, scanDirs.toArray(new File[] {}));
