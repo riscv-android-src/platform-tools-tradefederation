@@ -37,15 +37,18 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TableFormatter;
+import com.android.tradefed.util.ZipUtil2;
 import com.android.tradefed.util.hostmetric.IHostMonitor;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
@@ -102,9 +105,9 @@ public class DeviceManager implements IDeviceManager {
      *
      * <p>serial1 device
      *
-     * <p>serial2 device
+     * <p>serial2 offline
      */
-    private static final String DEVICE_LIST_PATTERN = "(.*)(\n)(%s)(\\s+)(device)(.*?)";
+    private static final String DEVICE_LIST_PATTERN = ".*\n(%s)\\s+(device|offline).*";
 
     private Semaphore mConcurrentFlashLock = null;
 
@@ -164,9 +167,14 @@ public class DeviceManager implements IDeviceManager {
             + "default use the one in $PATH.")
     private String mAdbPath = "adb";
 
-    @Option(name = "fastboot-path", description = "path of the fastboot binary to use, "
-            + "default use the one in $PATH.")
-    private String mFastbootPath = "fastboot";
+    @Option(
+        name = "fastboot-path",
+        description = "path of the fastboot binary to use, default use the one in $PATH."
+    )
+    private File mFastbootFile = new File("fastboot");
+
+    private File mUnpackedFastbootDir = null;
+    private File mUnpackedFastboot = null;
 
     private DeviceRecoverer mDeviceRecoverer;
 
@@ -232,7 +240,22 @@ public class DeviceManager implements IDeviceManager {
         }
         mManagedDeviceList = new ManagedDeviceList(deviceFactory);
 
-        final FastbootHelper fastboot = new FastbootHelper(getRunUtil(), mFastbootPath);
+        // Setup fastboot- if it's zipped, unzip it
+        if (".zip".equals(FileUtil.getExtension(mFastbootFile.getName()))) {
+            // Unzip the fastboot files
+            try {
+                mUnpackedFastbootDir =
+                        ZipUtil2.extractZipToTemp(mFastbootFile, "unpacked-fastboot");
+                mUnpackedFastboot = FileUtil.findFile(mUnpackedFastbootDir, "fastboot");
+            } catch (IOException e) {
+                CLog.e("Failed to unpacked zipped fastboot.");
+                CLog.e(e);
+                FileUtil.recursiveDelete(mUnpackedFastbootDir);
+                mUnpackedFastbootDir = null;
+            }
+        }
+
+        final FastbootHelper fastboot = new FastbootHelper(getRunUtil(), getFastbootPath());
         if (fastboot.isFastbootAvailable()) {
             mFastbootListeners = Collections.synchronizedSet(new HashSet<IFastbootListener>());
             mFastbootMonitor = new FastbootMonitor();
@@ -291,7 +314,7 @@ public class DeviceManager implements IDeviceManager {
         List<IMultiDeviceRecovery> recoverers = getGlobalConfig().getMultiDeviceRecoveryHandlers();
         if (recoverers != null && !recoverers.isEmpty()) {
             for (IMultiDeviceRecovery recoverer : recoverers) {
-                recoverer.setFastbootPath(mFastbootPath);
+                recoverer.setFastbootPath(getFastbootPath());
             }
             mDeviceRecoverer = new DeviceRecoverer(recoverers);
             startDeviceRecoverer();
@@ -498,7 +521,7 @@ public class DeviceManager implements IDeviceManager {
     }
 
     private void addFastbootDevices() {
-        final FastbootHelper fastboot = new FastbootHelper(getRunUtil(), mFastbootPath);
+        final FastbootHelper fastboot = new FastbootHelper(getRunUtil(), getFastbootPath());
         Set<String> serials = fastboot.getDevices();
         for (String serial : serials) {
             FastbootDevice d = new FastbootDevice(serial);
@@ -898,6 +921,7 @@ public class DeviceManager implements IDeviceManager {
                 }
             }
         }
+        FileUtil.recursiveDelete(mUnpackedFastbootDir);
     }
 
     /** Stop adb bridge and services depending on adb connection. */
@@ -1242,7 +1266,7 @@ public class DeviceManager implements IDeviceManager {
 
         @Override
         public void run() {
-            final FastbootHelper fastboot = new FastbootHelper(getRunUtil(), mFastbootPath);
+            final FastbootHelper fastboot = new FastbootHelper(getRunUtil(), getFastbootPath());
             while (!mQuit) {
                 Set<String> serials = fastboot.getDevices();
                 if (serials != null) {
@@ -1368,7 +1392,14 @@ public class DeviceManager implements IDeviceManager {
 
     @Override
     public String getFastbootPath() {
-        return mFastbootPath;
+        if (mUnpackedFastboot != null) {
+            return mUnpackedFastboot.getAbsolutePath();
+        }
+        // Support default fastboot in PATH variable
+        if (new File("fastboot").equals(mFastbootFile)) {
+            return "fastboot";
+        }
+        return mFastbootFile.getAbsolutePath();
     }
 
     /**

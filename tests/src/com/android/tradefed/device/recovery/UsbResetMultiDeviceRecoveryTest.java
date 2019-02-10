@@ -15,12 +15,12 @@
  */
 package com.android.tradefed.device.recovery;
 
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import com.android.helper.aoa.UsbHelper;
@@ -32,6 +32,7 @@ import com.android.tradefed.device.IManagedTestDevice;
 import com.android.tradefed.device.StubDevice;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -39,6 +40,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Answers;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 
@@ -60,7 +62,10 @@ public class UsbResetMultiDeviceRecoveryTest {
         when(mDevice.getSerialNumber()).thenReturn(SERIAL);
 
         mFastboot = mock(FastbootHelper.class);
+        when(mFastboot.getDevices()).thenReturn(new HashSet<>());
+
         mUsb = mock(UsbHelper.class, Answers.RETURNS_DEEP_STUBS);
+        when(mUsb.getSerialNumbers(anyBoolean())).thenReturn(new HashSet<>());
 
         mRecoverer =
                 new UsbResetMultiDeviceRecovery() {
@@ -76,58 +81,92 @@ public class UsbResetMultiDeviceRecoveryTest {
                 };
     }
 
-    /** Test that a stub device is not considered for recovery. */
     @Test
-    public void testStubDevice() throws DeviceNotAvailableException {
+    public void testRecover_stub() {
+        // stub device
         when(mDevice.getIDevice()).thenReturn(new StubDevice(SERIAL));
+        mRecoverer.recoverDevices(Arrays.asList(mDevice));
+
+        // stub devices are ignored and not recovered
+        verify(mUsb, never()).getDevice(any());
+    }
+
+    @Test
+    public void testRecover_available() throws DeviceNotAvailableException {
+        // connected and available device
+        when(mUsb.getSerialNumbers(anyBoolean())).thenReturn(Sets.newHashSet(SERIAL));
+        when(mDevice.getAllocationState()).thenReturn(DeviceAllocationState.Available);
 
         mRecoverer.recoverDevices(Arrays.asList(mDevice));
 
-        verifyZeroInteractions(mUsb);
+        // device is in a valid state and not recovered
+        verify(mUsb.getDevice(SERIAL), never()).reset();
         verify(mDevice, never()).reboot();
     }
 
-    /** Test that an allocated fastboot device is not considered for recovery. */
     @Test
-    public void testFastbootDevice_found_allocated() throws DeviceNotAvailableException {
-        when(mDevice.getIDevice()).thenReturn(new FastbootDevice(SERIAL));
-        when(mDevice.getAllocationState()).thenReturn(DeviceAllocationState.Allocated);
-        // found in fastboot
-        when(mFastboot.getDevices()).thenReturn(ImmutableSet.of(SERIAL));
-
-        mRecoverer.recoverDevices(Arrays.asList(mDevice));
-
-        verifyZeroInteractions(mUsb);
-        verify(mDevice, never()).reboot();
-    }
-
-    /** Test that an unavailable fastboot device is reset but not rebooted. */
-    @Test
-    public void testFastbootDevice_found_unavailable() throws DeviceNotAvailableException {
-        when(mDevice.getIDevice()).thenReturn(new FastbootDevice(SERIAL));
+    public void testRecover_unavailable() throws DeviceNotAvailableException {
+        // connected but unavailable device
+        when(mUsb.getSerialNumbers(anyBoolean())).thenReturn(Sets.newHashSet(SERIAL));
         when(mDevice.getAllocationState()).thenReturn(DeviceAllocationState.Unavailable);
-        // found in fastboot
-        when(mFastboot.getDevices()).thenReturn(ImmutableSet.of(SERIAL));
 
         mRecoverer.recoverDevices(Arrays.asList(mDevice));
 
-        verify(mUsb, times(1)).getDevice(eq(SERIAL));
-        verify(mUsb.getDevice(SERIAL), times(1)).reset();
-        verify(mDevice, never()).reboot();
-    }
-
-    /** Test that an unavailable device not found in fastboot is reset and rebooted. */
-    @Test
-    public void testFastbootDevice_notFound_unavailable() throws DeviceNotAvailableException {
-        when(mDevice.getIDevice()).thenReturn(new FastbootDevice(SERIAL));
-        when(mDevice.getAllocationState()).thenReturn(DeviceAllocationState.Unavailable);
-        // not found in fastboot
-        when(mFastboot.getDevices()).thenReturn(new HashSet<>());
-
-        mRecoverer.recoverDevices(Arrays.asList(mDevice));
-
-        verify(mUsb, times(1)).getDevice(eq(SERIAL));
+        // device is in an invalid state and reset/reboot is performed
         verify(mUsb.getDevice(SERIAL), times(1)).reset();
         verify(mDevice, times(1)).reboot();
+    }
+
+    @Test
+    public void testRecover_fastboot_allocated() throws DeviceNotAvailableException {
+        // allocated fastboot device
+        when(mFastboot.getDevices()).thenReturn(Sets.newHashSet(SERIAL));
+        when(mDevice.getIDevice()).thenReturn(new FastbootDevice(SERIAL));
+        when(mDevice.getAllocationState()).thenReturn(DeviceAllocationState.Allocated);
+
+        mRecoverer.recoverDevices(Arrays.asList(mDevice));
+
+        // device is in a valid state and not recovered
+        verify(mUsb.getDevice(SERIAL), never()).reset();
+        verify(mDevice, never()).reboot();
+    }
+
+    @Test
+    public void testRecover_fastboot_unallocated() throws DeviceNotAvailableException {
+        // non-allocated fastboot device
+        when(mFastboot.getDevices()).thenReturn(ImmutableSet.of(SERIAL));
+        when(mDevice.getIDevice()).thenReturn(new FastbootDevice(SERIAL));
+        when(mDevice.getAllocationState()).thenReturn(DeviceAllocationState.Ignored);
+
+        mRecoverer.recoverDevices(Arrays.asList(mDevice));
+
+        // device is in an invalid state and reset/reboot is performed
+        verify(mUsb.getDevice(SERIAL), times(1)).reset();
+        verify(mDevice, times(1)).reboot();
+    }
+
+    @Test
+    public void testRecover_notManaged() throws DeviceNotAvailableException {
+        // connected device found, but no managed devices
+        when(mUsb.getSerialNumbers(anyBoolean())).thenReturn(Sets.newHashSet(SERIAL));
+
+        mRecoverer.recoverDevices(new ArrayList<>());
+
+        // reset still performed on connected device, but no reboot
+        verify(mUsb.getDevice(SERIAL), times(1)).reset();
+        verify(mDevice, never()).reboot();
+    }
+
+    @Test
+    public void testRecover_notConnected() throws DeviceNotAvailableException {
+        // no connected devices found, but one managed device in an unknown state
+        when(mUsb.getSerialNumbers(anyBoolean())).thenReturn(new HashSet<>());
+        when(mDevice.getAllocationState()).thenReturn(DeviceAllocationState.Unknown);
+
+        mRecoverer.recoverDevices(Arrays.asList(mDevice));
+
+        // device not found and not recovered
+        verify(mUsb.getDevice(SERIAL), never()).reset();
+        verify(mDevice, never()).reboot();
     }
 }
