@@ -289,8 +289,13 @@ def is_external_run():
         output = subprocess.check_output(['git', 'config', '--get', 'user.email'])
         if output and output.strip().endswith(constants.INTERNAL_EMAIL):
             return False
-    except subprocess.CalledProcessError:
-        return True
+    except (subprocess.CalledProcessError, OSError) as err:
+        # OSError can be raised when running atest_unittests on a host
+        # without git being set up.
+        # This happens before atest._configure_logging is called to set up
+        # logging. Therefore, use print to log the error message, instead of
+        # logging.debug.
+        print('is_external_run raised exception: %s' % err)
     return True
 
 
