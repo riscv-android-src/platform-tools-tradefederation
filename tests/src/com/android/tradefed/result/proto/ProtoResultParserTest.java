@@ -48,6 +48,7 @@ import java.util.HashMap;
 @RunWith(JUnit4.class)
 public class ProtoResultParserTest {
 
+    private static final String CONTEXT_TEST_KEY = "context-late-attribute";
     private static final String TEST_KEY = "late-attribute";
 
     private ProtoResultParser mParser;
@@ -64,6 +65,8 @@ public class ProtoResultParserTest {
             mParser.processNewProto(invocationStartRecord);
             // After context was proto-ified once add an attribute
             context.getBuildInfos().get(0).addBuildAttribute(TEST_KEY, "build_value");
+            // Test a context attribute
+            context.addInvocationAttribute(CONTEXT_TEST_KEY, "context_value");
         }
 
         @Override
@@ -201,6 +204,7 @@ public class ProtoResultParserTest {
         IInvocationContext context = mParser.getInvocationContext();
         assertEquals(
                 "build_value", context.getBuildInfos().get(0).getBuildAttributes().get(TEST_KEY));
+        assertEquals("context_value", context.getAttributes().get(CONTEXT_TEST_KEY).get(0));
     }
 
     /** Test that a run failure occurring inside a test case pair is handled properly. */
@@ -473,6 +477,7 @@ public class ProtoResultParserTest {
             assertEquals(
                     "build_value",
                     context.getBuildInfos().get(0).getBuildAttributes().get(TEST_KEY));
+            assertEquals("context_value", context.getAttributes().get(CONTEXT_TEST_KEY).get(0));
         } finally {
             FileUtil.deleteFile(tmpLogFile);
             FileUtil.deleteFile(tmpZipLogFile);

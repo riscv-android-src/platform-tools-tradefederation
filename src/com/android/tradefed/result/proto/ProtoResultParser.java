@@ -39,6 +39,8 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Timestamp;
 
 import java.io.File;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
@@ -389,6 +391,22 @@ public class ProtoResultParser {
             }
             info.addBuildAttributes(endInvocationInfo.getBuildAttributes());
         }
+
+        try {
+            Method unlock = InvocationContext.class.getDeclaredMethod("unlock");
+            unlock.setAccessible(true);
+            unlock.invoke(mContext);
+            unlock.setAccessible(false);
+        } catch (NoSuchMethodException
+                | SecurityException
+                | IllegalAccessException
+                | IllegalArgumentException
+                | InvocationTargetException e) {
+            CLog.e("Couldn't unlock the main context. Skip copying attributes");
+            return;
+        }
+        // Copy invocation attributes
+        mContext.addInvocationAttributes(endInvocationContext.getAttributes());
     }
 
     private void log(String format, Object... obj) {
