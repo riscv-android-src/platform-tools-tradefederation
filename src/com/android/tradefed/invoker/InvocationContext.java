@@ -211,7 +211,7 @@ public class InvocationContext implements IInvocationContext {
 
     /** {@inheritDoc} */
     @Override
-    public void addInvocationAttributes(UniqueMultiMap<String, String> attributesMap) {
+    public void addInvocationAttributes(MultiMap<String, String> attributesMap) {
         if (mLocked) {
             throw new IllegalStateException(
                     "Attempting to add invocation attribute during a test.");

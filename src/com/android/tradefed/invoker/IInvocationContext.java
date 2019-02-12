@@ -140,7 +140,7 @@ public interface IInvocationContext extends Serializable {
     public void addInvocationAttribute(String attributeName, String attributeValue);
 
     /** Add several invocation attributes at once through a {@link UniqueMultiMap}. */
-    public void addInvocationAttributes(UniqueMultiMap<String, String> attributesMap);
+    public void addInvocationAttributes(MultiMap<String, String> attributesMap);
 
     /** Returns a copy of the map containing all the invocation attributes. */
     public MultiMap<String, String> getAttributes();
