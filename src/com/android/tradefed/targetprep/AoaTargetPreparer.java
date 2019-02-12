@@ -57,8 +57,6 @@ import java.util.regex.Pattern;
 @OptionClass(alias = "aoa-preparer")
 public class AoaTargetPreparer extends BaseTargetPreparer {
 
-    private static final Duration DEVICE_TIMEOUT = Duration.ofMinutes(1L);
-
     private static final String POINT = "(\\d{1,3}) (\\d{1,3})";
     private static final String KEY = "(\\d{1,3}|0[xX][0-9a-fA-F]{1,2})";
 
@@ -132,6 +130,13 @@ public class AoaTargetPreparer extends BaseTargetPreparer {
                 "sleep (\\S+)");
     }
 
+    @Option(
+        name = "device-timeout",
+        description = "Maximum time to wait for device.",
+        isTimeVal = true
+    )
+    private long mDeviceTimeout = 60 * 1000;
+
     @Option(name = "action", description = "AOAv2 action to perform. Can be repeated.")
     private List<String> mActions = new ArrayList<>();
 
@@ -152,7 +157,8 @@ public class AoaTargetPreparer extends BaseTargetPreparer {
     // Connect to device using its serial number and perform actions
     private void configure(String serialNumber) throws DeviceNotAvailableException {
         try (UsbHelper usb = new UsbHelper();
-                AoaDevice device = usb.getAoaDevice(serialNumber, DEVICE_TIMEOUT)) {
+                AoaDevice device =
+                        usb.getAoaDevice(serialNumber, Duration.ofMillis(mDeviceTimeout))) {
             if (device == null) {
                 throw new DeviceNotAvailableException(
                         "AOAv2-compatible device not found", serialNumber);
