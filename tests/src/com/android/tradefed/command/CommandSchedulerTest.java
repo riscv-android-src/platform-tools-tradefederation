@@ -99,6 +99,7 @@ public class CommandSchedulerTest {
     private CommandFileParser mMockCmdFileParser;
     private List<IDeviceConfiguration> mMockDeviceConfig;
     private ConfigurationDescriptor mMockConfigDescriptor;
+    private IKeyStoreClient mMockKeyStoreClient;
     private IInvocationContext mContext;
 
     class TestableCommandScheduler extends CommandScheduler {
@@ -147,6 +148,11 @@ public class CommandSchedulerTest {
         CommandFileParser createCommandFileParser() {
             return mMockCmdFileParser;
         }
+
+        @Override
+        protected IKeyStoreClient getKeyStoreClient() {
+            return mMockKeyStoreClient;
+        }
     }
 
     @Before
@@ -154,6 +160,7 @@ public class CommandSchedulerTest {
         mMockInvocation = EasyMock.createMock(ITestInvocation.class);
         mMockManager = new MockDeviceManager(0);
         mMockConfigFactory = EasyMock.createMock(IConfigurationFactory.class);
+        mMockKeyStoreClient = EasyMock.createMock(IKeyStoreClient.class);
         mMockConfiguration = EasyMock.createMock(IConfiguration.class);
         EasyMock.expect(mMockConfiguration.getTests()).andStubReturn(new ArrayList<>());
         mCommandOptions = new CommandOptions();
@@ -184,7 +191,8 @@ public class CommandSchedulerTest {
      * Switch all mock objects to replay mode
      */
     private void replayMocks(Object... additionalMocks) {
-        EasyMock.replay(mMockConfigFactory, mMockConfiguration, mMockInvocation);
+        EasyMock.replay(
+                mMockConfigFactory, mMockConfiguration, mMockInvocation, mMockKeyStoreClient);
         for (Object mock : additionalMocks) {
             EasyMock.replay(mock);
         }
@@ -194,7 +202,8 @@ public class CommandSchedulerTest {
      * Verify all mock objects
      */
     private void verifyMocks(Object... additionalMocks) {
-        EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
+        EasyMock.verify(
+                mMockConfigFactory, mMockConfiguration, mMockInvocation, mMockKeyStoreClient);
         for (Object mock : additionalMocks) {
             EasyMock.verify(mock);
         }
@@ -1162,5 +1171,22 @@ public class CommandSchedulerTest {
         // only attribute is invocation ID
         assertEquals(1, mContext.getAttributes().size());
         assertNotNull(mContext.getInvocationId());
+    }
+
+    /**
+     * If no-use-sandbox is present on the command line after use-sandbox it cancels it like any
+     * regular options.
+     */
+    @Test
+    public void testExecCommand_noSandboxed() throws Throwable {
+        String[] args = new String[] {"test", "--use-sandbox", "--no-use-sandbox"};
+        mCommandOptions.setJsonHelpMode(true);
+        setCreateConfigExpectations(args, 1);
+        // expect
+        EasyMock.expect(mMockConfiguration.getJsonCommandUsage()).andReturn(new JSONArray());
+        replayMocks();
+        mScheduler.start();
+        mScheduler.addCommand(args);
+        verifyMocks();
     }
 }
