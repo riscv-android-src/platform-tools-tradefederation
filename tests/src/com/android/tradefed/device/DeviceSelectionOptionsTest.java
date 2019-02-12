@@ -107,6 +107,26 @@ public class DeviceSelectionOptionsTest {
         assertTrue(options.matches(device));
     }
 
+    /** Test matching a FastbootDevice when ANDROID_SERIAL is set. */
+    @Test
+    public void testGetSerials_envVariable_FastbootDevice() {
+        DeviceSelectionOptions options = getDeviceSelectionOptionsWithEnvVar(DEVICE_ENV_SERIAL);
+        // If no serial is available, the environment variable will be used instead.
+        IDevice device = new FastbootDevice(DEVICE_ENV_SERIAL);
+        assertEquals(1, options.getSerials(device).size());
+        assertTrue(options.matches(device));
+    }
+
+    /** Test not matching a FastbootDevice when ANDROID_SERIAL is set. */
+    @Test
+    public void testGetSerials_envVariable_FastbootDevice_noMatch() {
+        DeviceSelectionOptions options = getDeviceSelectionOptionsWithEnvVar(DEVICE_ENV_SERIAL);
+        // If no serial is available, the environment variable will be used instead.
+        IDevice device = new FastbootDevice("serial");
+        assertEquals(1, options.getSerials(device).size());
+        assertFalse(options.matches(device));
+    }
+
     /**
      * Test that {@link DeviceSelectionOptions#getSerials(IDevice)} does not override the values.
      */
