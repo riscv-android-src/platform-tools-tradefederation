@@ -76,6 +76,12 @@ class AtestArgParser(argparse.ArgumentParser):
         self.add_argument('--detect-regression', nargs='*',
                           help='Run regression detection algorithm. Supply '
                                'path to baseline and/or new metrics folders.')
+        # Options related to module parameterization
+        self.add_argument('--instant', action='store_true',
+                          help='Run the instant_app version of the module, '
+                               'if the module supports it. Note: running a test '
+                               'that does not support instant with --instant '
+                               'will result in nothing running.')
         # Options related to Test Mapping
         self.add_argument('-p', '--test-mapping', action='store_true',
                           help='Run tests in TEST_MAPPING files.')
