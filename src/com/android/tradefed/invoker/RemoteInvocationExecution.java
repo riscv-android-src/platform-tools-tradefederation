@@ -31,6 +31,7 @@ import com.android.tradefed.device.cloud.GceAvdInfo;
 import com.android.tradefed.device.cloud.GceManager;
 import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteFileUtil;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -48,6 +49,7 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.proto.TestRecordProtoUtil;
 
+import com.google.common.base.Strings;
 import com.google.protobuf.InvalidProtocolBufferException;
 
 import java.io.File;
@@ -67,8 +69,10 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
     public static final String REMOTE_USER_DIR = "/home/{$USER}/";
     public static final String PROTO_RESULT_NAME = "output.pb";
-    public static final String STDOUT_FILE = "remote-tradefed-stdout.txt";
-    public static final String STDERR_FILE = "remote-tradefed-stderr.txt";
+    public static final String STDOUT_FILE = "screen-VM_tradefed-stdout.txt";
+    public static final String STDERR_FILE = "screen-VM_tradefed-stderr.txt";
+    public static final String REMOTE_CONFIG = "configuration";
+    public static final String GLOBAL_REMOTE_CONFIG = "global-remote-configuration";
 
     private String mRemoteTradefedDir = null;
     private String mRemoteFinalResult = null;
@@ -171,7 +175,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
         config.dumpXml(new PrintWriter(configFile));
         try {
             try (InputStreamSource source = new FileInputStreamSource(configFile)) {
-                listener.testLog("remote-configuration", LogDataType.XML, source);
+                listener.testLog(REMOTE_CONFIG, LogDataType.XML, source);
             }
             CLog.d("Pushing Tradefed XML configuration to remote.");
             boolean resultPush =
@@ -205,7 +209,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 return;
             }
             try (InputStreamSource source = new FileInputStreamSource(globalConfig)) {
-                listener.testLog("global-remote-configuration", LogDataType.XML, source);
+                listener.testLog(GLOBAL_REMOTE_CONFIG, LogDataType.XML, source);
             }
             boolean resultPushGlobal =
                     RemoteFileUtil.pushFileToRemote(
@@ -225,6 +229,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
             resetAdb(info, options, runUtil);
             runRemote(listener, configFile, info, options, runUtil, config, globalConfig);
+            collectAdbLogs(info, options, runUtil, listener);
         } finally {
             FileUtil.recursiveDelete(configFile);
             FileUtil.recursiveDelete(globalConfig);
@@ -399,5 +404,36 @@ public class RemoteInvocationExecution extends InvocationExecution {
                         info, options, runUtil, 120000L, mRemoteAdbPath, "version");
         CLog.d("version adb: %s", versionAdb.getStdout());
         CLog.d("%s", versionAdb.getStderr());
+    }
+
+    /**
+     * Remote invocation relies on the adb of the remote, so always collect its logs to make sure we
+     * can debug it appropriately.
+     */
+    private void collectAdbLogs(
+            GceAvdInfo info, TestDeviceOptions options, IRunUtil runUtil, ITestLogger logger) {
+        CommandResult tmpDirFolder =
+                GceManager.remoteSshCommandExecution(
+                        info, options, runUtil, 120000L, "bash -c \"echo \\$TMPDIR\"");
+        String folder = tmpDirFolder.getStdout().trim();
+        CLog.d("Remote TMPDIR folder is: %s", folder);
+        if (Strings.isNullOrEmpty(folder)) {
+            // If TMPDIR is not set, default to /tmp/ location.
+            folder = "/tmp";
+        }
+        CommandResult uid =
+                GceManager.remoteSshCommandExecution(
+                        info, options, new RunUtil(), 120000L, "bash -c \"echo \\$UID\"");
+        String uidString = uid.getStdout().trim();
+        CLog.d("Remote $UID for adb is: %s", uidString);
+
+        GceManager.logNestedRemoteFile(
+                logger,
+                info,
+                options,
+                runUtil,
+                folder + "/adb." + uidString + ".log",
+                LogDataType.TEXT,
+                "full_adb.log");
     }
 }

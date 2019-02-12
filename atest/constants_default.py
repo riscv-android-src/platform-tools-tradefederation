@@ -40,6 +40,7 @@ HOST = 'HOST'
 CUSTOM_ARGS = 'CUSTOM_ARGS'
 DRY_RUN = 'DRY_RUN'
 ANDROID_SERIAL = 'ANDROID_SERIAL'
+INSTANT = 'INSTANT'
 
 # Application exit codes.
 EXIT_CODE_SUCCESS = 0
@@ -137,3 +138,6 @@ TEST_MAPPING_SUITES = ['device-tests', 'general-tests']
 
 # VTS TF
 VTS_TF_MODULE = 'vts-tradefed'
+
+# ATest TF
+ATEST_TF_MODULE = 'atest-tradefed'

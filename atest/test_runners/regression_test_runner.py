@@ -26,7 +26,7 @@ class RegressionTestRunner(test_runner_base.TestRunnerBase):
     NAME = 'RegressionTestRunner'
     EXECUTABLE = 'tradefed.sh'
     _RUN_CMD = '{exe} run commandAndExit regression -n {args}'
-    _BUILD_REQ = {'tradefed-core'}
+    _BUILD_REQ = {'tradefed-core', constants.ATEST_TF_MODULE}
 
     def __init__(self, results_dir):
         """Init stuff for base class."""

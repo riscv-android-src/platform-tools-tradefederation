@@ -1140,12 +1140,17 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /** Returns true if {@link CommandOptions#USE_SANDBOX} is part of the command line. */
     private boolean isCommandSandboxed(String[] args) {
+        boolean foundSandbox = false;
+        // Since the order is important, mark the found sandbox when we find it, and unset it if
+        // we find the negation.
         for (String arg : args) {
             if (("--" + CommandOptions.USE_SANDBOX).equals(arg)) {
-                return true;
+                foundSandbox = true;
+            } else if (("--no-" + CommandOptions.USE_SANDBOX).equals(arg)) {
+                foundSandbox = false;
             }
         }
-        return false;
+        return foundSandbox;
     }
 
     /** Returns true if the configuration used is a retry one. */

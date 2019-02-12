@@ -666,7 +666,7 @@ public class TestInvocation implements ITestInvocation {
             boolean deviceInit = false;
             // If the top level invocation has --use-sandbox do not shard there. It will shard in
             // the child invocation.
-            if (!config.getCommandOptions().shouldUseSandboxing()) {
+            if (RunMode.REGULAR.equals(mode) || RunMode.SANDBOX.equals(mode)) {
                 mStatus = "sharding";
 
                 // TODO: Handle local sharding and special devices
