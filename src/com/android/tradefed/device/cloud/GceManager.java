@@ -215,15 +215,11 @@ public class GceManager {
         gceArgs.add(
                 TestDeviceOptions.getCreateCommandByInstanceType(
                         getTestDeviceOptions().getInstanceType()));
-        if (getTestDeviceOptions().getSystemImageTarget() != null) {
-            // TF invoked with emulator binary build information
-            gceArgs.add("--build_target");
-            gceArgs.add(getTestDeviceOptions().getSystemImageTarget());
-            gceArgs.add("--branch");
-            gceArgs.add(getTestDeviceOptions().getSystemImageBranch());
-            // TODO(b/119440413) clean this up when this part is migrated into infra config
-            getTestDeviceOptions().setGceDriverBuildIdParam("emulator-build-id");
-        } else {
+        // Handle the build id related params
+        List<String> gceDriverParams = getTestDeviceOptions().getGceDriverParams();
+        // If args passed by gce-driver-param do not contain build_id or branch,
+        // use build_id and branch from device BuildInfo
+        if (!gceDriverParams.contains("--build_id") && !gceDriverParams.contains("--branch")) {
             gceArgs.add("--build_target");
             if (b.getBuildAttributes().containsKey("build_target")) {
                 // If BuildInfo contains the attribute for a build target, use that.
@@ -233,10 +229,12 @@ public class GceManager {
             }
             gceArgs.add("--branch");
             gceArgs.add(b.getBuildBranch());
+            gceArgs.add("--build_id");
+            gceArgs.add(b.getBuildId());
         }
-        // handled the build id related params
-        gceArgs.add("--" + getTestDeviceOptions().getGceDriverBuildIdParam());
-        gceArgs.add(b.getBuildId());
+        // Add additional args passed by gce-driver-param.
+        gceArgs.addAll(gceDriverParams);
+        // Get extra params by instance type
         gceArgs.addAll(
                 TestDeviceOptions.getExtraParamsByInstanceType(
                         getTestDeviceOptions().getInstanceType(),
@@ -265,8 +263,6 @@ public class GceManager {
         }
         // Do not pass flags --logcat_file and --serial_log_file to collect logcat and serial logs.
 
-        // Add additional args passed in.
-        gceArgs.addAll(getTestDeviceOptions().getGceDriverParams());
         return gceArgs;
     }
 

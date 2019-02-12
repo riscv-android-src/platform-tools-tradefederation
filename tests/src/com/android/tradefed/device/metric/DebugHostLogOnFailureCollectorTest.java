@@ -97,7 +97,7 @@ public class DebugHostLogOnFailureCollectorTest {
                                 })
                 .when(mMockListener)
                 .testLog(
-                        Mockito.eq("debug-hostlog-on-failure-class#test"),
+                        Mockito.eq("class#test-debug-hostlog-on-failure"),
                         Mockito.eq(LogDataType.TEXT),
                         Mockito.any());
         mTestListener = mCollector.init(mContext, mMockListener);
@@ -116,7 +116,7 @@ public class DebugHostLogOnFailureCollectorTest {
         Mockito.verify(mMockListener).testFailed(Mockito.eq(test), Mockito.any());
         Mockito.verify(mMockListener)
                 .testLog(
-                        Mockito.eq("debug-hostlog-on-failure-class#test"),
+                        Mockito.eq("class#test-debug-hostlog-on-failure"),
                         Mockito.eq(LogDataType.TEXT),
                         Mockito.any());
         Mockito.verify(mMockListener)

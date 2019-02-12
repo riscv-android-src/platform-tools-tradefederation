@@ -459,6 +459,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         # Use different base build requirements if google-tf is around.
         if self.module_info.is_module(constants.GTF_MODULE):
             build_req = {constants.GTF_TARGET}
+        # Always add ATest's own TF target.
+        build_req.add(constants.ATEST_TF_MODULE)
         # Add adb if we can't find it.
         for executable in EXEC_DEPENDENCIES:
             if self._is_missing_exec(executable):
@@ -505,6 +507,11 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 args_to_append.append('--all-abi')
                 continue
             if constants.DRY_RUN == arg:
+                continue
+            if constants.INSTANT == arg:
+                args_to_append.append('--enable-parameterized-modules')
+                args_to_append.append('--module-parameter')
+                args_to_append.append('instant_app')
                 continue
             args_not_supported.append(arg)
         return args_to_append, args_not_supported

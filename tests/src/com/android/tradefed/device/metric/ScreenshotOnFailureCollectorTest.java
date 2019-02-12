@@ -67,7 +67,7 @@ public class ScreenshotOnFailureCollectorTest {
         EasyMock.expect(mMockDevice.getScreenshot())
                 .andReturn(new ByteArrayInputStreamSource("".getBytes()));
         mMockListener.testLog(
-                EasyMock.eq("screenshot-on-failure-serial-class#test"),
+                EasyMock.eq("class#test-serial-screenshot-on-failure"),
                 EasyMock.eq(LogDataType.PNG),
                 EasyMock.anyObject());
 

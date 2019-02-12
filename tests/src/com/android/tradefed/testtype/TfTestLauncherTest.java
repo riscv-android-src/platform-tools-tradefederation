@@ -123,7 +123,7 @@ public class TfTestLauncherTest {
         mMockRunUtil.setEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE, SUB_GLOBAL_CONFIG);
 
         EasyMock.expect(mMockBuildInfo.getTestTag()).andReturn(TEST_TAG);
-        EasyMock.expect(mMockBuildInfo.getBuildBranch()).andReturn(BUILD_BRANCH).times(2);
+        EasyMock.expect(mMockBuildInfo.getBuildBranch()).andReturn(BUILD_BRANCH).times(3);
         EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andReturn(BUILD_FLAVOR).times(2);
 
         EasyMock.expect(mMockBuildInfo.getRootDir()).andReturn(new File(""));
@@ -146,9 +146,9 @@ public class TfTestLauncherTest {
         mMockListener.testRunStarted("elapsed-time", 1);
         mMockListener.testStarted(EasyMock.anyObject());
         mMockListener.testEnded(
-                EasyMock.anyObject(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         EasyMock.replay(mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
         mTfTestLauncher.run(mMockListener);
@@ -181,6 +181,8 @@ public class TfTestLauncherTest {
      */
     @Test
     public void testTestTmpDirClean_failExtraFile() {
+        mTfTestLauncher.setBuild(mMockBuildInfo);
+        EasyMock.expect(mMockBuildInfo.getBuildBranch()).andReturn(BUILD_BRANCH).times(1);
         mMockListener.testRunStarted("temporaryFiles", 1);
         mMockListener.testStarted((TestDescription) EasyMock.anyObject());
         mMockListener.testFailed(
@@ -190,9 +192,9 @@ public class TfTestLauncherTest {
         mMockListener.testRunEnded(0, new HashMap<String, Metric>());
         File tmpDir = Mockito.mock(File.class);
         Mockito.when(tmpDir.list()).thenReturn(new String[] {"extra_file"});
-        EasyMock.replay(mMockListener);
+        EasyMock.replay(mMockListener, mMockBuildInfo);
         mTfTestLauncher.testTmpDirClean(tmpDir, mMockListener);
-        EasyMock.verify(mMockListener);
+        EasyMock.verify(mMockListener, mMockBuildInfo);
     }
 
     /**
@@ -202,6 +204,8 @@ public class TfTestLauncherTest {
      */
     @Test
     public void testTestTmpDirClean_failMultipleFiles() {
+        mTfTestLauncher.setBuild(mMockBuildInfo);
+        EasyMock.expect(mMockBuildInfo.getBuildBranch()).andReturn(BUILD_BRANCH).times(1);
         mMockListener.testRunStarted("temporaryFiles", 1);
         mMockListener.testStarted((TestDescription) EasyMock.anyObject());
         mMockListener.testFailed(
@@ -211,9 +215,9 @@ public class TfTestLauncherTest {
         mMockListener.testRunEnded(0, new HashMap<String, Metric>());
         File tmpDir = Mockito.mock(File.class);
         Mockito.when(tmpDir.list()).thenReturn(new String[] {"inv_1", "inv_2"});
-        EasyMock.replay(mMockListener);
+        EasyMock.replay(mMockListener, mMockBuildInfo);
         mTfTestLauncher.testTmpDirClean(tmpDir, mMockListener);
-        EasyMock.verify(mMockListener);
+        EasyMock.verify(mMockListener, mMockBuildInfo);
     }
 
     /** Test that when code coverage option is on, we add the javaagent to the java arguments. */

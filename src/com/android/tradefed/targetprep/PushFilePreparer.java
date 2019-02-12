@@ -21,7 +21,6 @@ import com.android.ddmlib.Log;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
-import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -42,7 +41,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -146,8 +144,7 @@ public class PushFilePreparer extends BaseTargetPreparer
      * @param fileName relative file path to be resolved
      * @return the file from the build info or test cases directories
      */
-    public File resolveRelativeFilePath(IBuildInfo buildInfo, String fileName)
-            throws TargetSetupError {
+    public File resolveRelativeFilePath(IBuildInfo buildInfo, String fileName) {
         File src = null;
         if (buildInfo != null) {
             src = buildInfo.getFile(fileName);
@@ -158,31 +155,6 @@ public class PushFilePreparer extends BaseTargetPreparer
         if (buildInfo instanceof IDeviceBuildInfo) {
             IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo) buildInfo;
             File testDir = deviceBuild.getTestsDir();
-            if (mModuleName != null) {
-                // Use module name as a discriminant to find some files
-                if (testDir != null) {
-                    Set<File> files = new LinkedHashSet<>();
-                    try {
-                        String pattern = String.format(".*%s.*%s$", mModuleName, fileName);
-                        files = FileUtil.findFilesByPattern(testDir, pattern);
-                    } catch (IOException e) {
-                        CLog.e(e);
-                    }
-                    // If only one, we found it.
-                    if (files.size() == 1) {
-                        return files.iterator().next();
-                    } else if (files.size() > 1) {
-                        String message =
-                                String.format(
-                                        "Found several files matching the push requirements: %s. "
-                                                + "You need a more accurate 'push' specification.",
-                                        files);
-                        DeviceDescriptor descriptor = null;
-                        throw new TargetSetupError(message, descriptor);
-                    }
-                }
-            }
-
             List<File> scanDirs = new ArrayList<>();
             // If it exists, always look first in the ANDROID_TARGET_OUT_TESTCASES
             File targetTestCases = deviceBuild.getFile(BuildInfoFileKey.TARGET_LINKED_DIR);
@@ -192,6 +164,36 @@ public class PushFilePreparer extends BaseTargetPreparer
             if (testDir != null) {
                 scanDirs.add(testDir);
             }
+
+            if (mModuleName != null) {
+                // Use module name as a discriminant to find some files
+                if (testDir != null) {
+                    try {
+                        File moduleDir =
+                                FileUtil.findFile(
+                                        mModuleName, null, scanDirs.toArray(new File[] {}));
+                        if (moduleDir != null) {
+                            // If the spec is pushing the module itself
+                            if (mModuleName.equals(fileName)) {
+                                return moduleDir;
+                            }
+                            // Search the module directory if it exists use it in priority
+                            src = FileUtil.findFile(fileName, mAbi, moduleDir);
+                            if (src != null) {
+                                return src;
+                            }
+                        } else {
+                            CLog.e("Did not find any module directory for '%s'", mModuleName);
+                        }
+                    } catch (IOException e) {
+                        CLog.w(
+                                "Something went wrong while searching for the module '%s' "
+                                        + "directory.",
+                                mModuleName);
+                    }
+                }
+            }
+
             try {
                 // Search the full tests dir if no target dir is available.
                 src = FileUtil.findFile(fileName, null, scanDirs.toArray(new File[] {}));
