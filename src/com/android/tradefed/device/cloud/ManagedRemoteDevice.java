@@ -22,6 +22,7 @@ import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceStateMonitor;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDevice;
+import com.android.tradefed.device.TestDeviceOptions.InstanceType;
 import com.android.tradefed.device.cloud.GceAvdInfo.GceStatus;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -107,6 +108,23 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
                 // Log the serial output of the instance.
                 getGceHandler().logSerialOutput(mGceAvd, mTestLogger);
 
+                if (InstanceType.CUTTLEFISH.equals(getOptions().getInstanceType())
+                        || InstanceType.REMOTE_NESTED_AVD.equals(getOptions().getInstanceType())) {
+                    LogRemoteFile(
+                            RemoteAndroidVirtualDevice.NESTED_REMOTE_LOG_DIR + "kernel.log",
+                            LogDataType.TEXT,
+                            null);
+                    LogRemoteFile(
+                            RemoteAndroidVirtualDevice.NESTED_REMOTE_LOG_DIR + "logcat",
+                            LogDataType.LOGCAT,
+                            "full_gce_logcat");
+                    LogRemoteFile(
+                            RemoteAndroidVirtualDevice.NESTED_REMOTE_LOG_DIR
+                                    + "cuttlefish_config.json",
+                            LogDataType.TEXT,
+                            null);
+                }
+
                 // Cleanup GCE first to make sure ssh tunnel has nowhere to go.
                 if (!getOptions().shouldSkipTearDown()) {
                     getGceHandler().shutdownGce();
@@ -156,6 +174,25 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
                 throw new TargetSetupError(mGceAvd.getErrors(), getDeviceDescriptor());
             }
         }
+    }
+
+    /**
+     * Captures a log from the remote destination.
+     *
+     * @param fileToRetrieve The remote path to the file to pull.
+     * @param logType The expected type of the pulled log.
+     * @param baseName The base name that will be used to log the file, if null the actually file
+     *     name will be used.
+     */
+    private void LogRemoteFile(String fileToRetrieve, LogDataType logType, String baseName) {
+        GceManager.logNestedRemoteFile(
+                mTestLogger,
+                mGceAvd,
+                getOptions(),
+                getRunUtil(),
+                fileToRetrieve,
+                logType,
+                baseName);
     }
 
     /** Capture a remote bugreport by ssh-ing into the device directly. */
