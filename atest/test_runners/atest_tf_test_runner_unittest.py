@@ -42,7 +42,7 @@ else:
 TEST_INFO_DIR = '/tmp/atest_run_1510085893_pi_Nbi'
 METRICS_DIR = '%s/baseline-metrics' % TEST_INFO_DIR
 METRICS_DIR_ARG = '--metrics-folder %s ' % METRICS_DIR
-RUN_CMD_ARGS = '{metrics}--log-level WARN'
+RUN_CMD_ARGS = '{metrics}--log-level WARN{serial}'
 RUN_CMD = atf_tr.AtestTradefedTestRunner._RUN_CMD.format(
     exe=atf_tr.AtestTradefedTestRunner.EXECUTABLE,
     template=atf_tr.AtestTradefedTestRunner._TF_TEMPLATE,
@@ -435,10 +435,10 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         ))
         mock_reporter.process_test_result.assert_has_calls([call1, call2])
 
-
+    @mock.patch('os.environ.get', return_value=None)
     @mock.patch.object(atf_tr.AtestTradefedTestRunner, '_generate_metrics_folder')
     @mock.patch('atest_utils.get_result_server_args')
-    def test_generate_run_commands(self, mock_resultargs, mock_mertrics):
+    def test_generate_run_commands_without_serial_env(self, mock_resultargs, mock_mertrics, _):
         """Test generate_run_command method."""
         # Basic Run Cmd
         mock_resultargs.return_value = []
@@ -446,12 +446,12 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         unittest_utils.assert_strict_equal(
             self,
             self.tr.generate_run_commands([], {}),
-            [RUN_CMD.format(metrics='')])
+            [RUN_CMD.format(metrics='', serial='')])
         mock_mertrics.return_value = METRICS_DIR
         unittest_utils.assert_strict_equal(
             self,
             self.tr.generate_run_commands([], {}),
-            [RUN_CMD.format(metrics=METRICS_DIR_ARG)])
+            [RUN_CMD.format(metrics=METRICS_DIR_ARG, serial='')])
         # Run cmd with result server args.
         result_arg = '--result_arg'
         mock_resultargs.return_value = [result_arg]
@@ -459,7 +459,31 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         unittest_utils.assert_strict_equal(
             self,
             self.tr.generate_run_commands([], {}),
-            [RUN_CMD.format(metrics='') + ' ' + result_arg])
+            [RUN_CMD.format(metrics='', serial='') + ' ' + result_arg])
+
+    @mock.patch('os.environ.get')
+    @mock.patch.object(atf_tr.AtestTradefedTestRunner, '_generate_metrics_folder')
+    @mock.patch('atest_utils.get_result_server_args')
+    def test_generate_run_commands_with_serial_env(self, mock_resultargs, mock_mertrics, mock_env):
+        """Test generate_run_command method."""
+        # Basic Run Cmd
+        env_device_serial = 'env-device-0'
+        mock_resultargs.return_value = []
+        mock_mertrics.return_value = ''
+        mock_env.return_value = env_device_serial
+        env_serial_arg = ' --serial %s' % env_device_serial
+        # Serial env be set and without --serial arg.
+        unittest_utils.assert_strict_equal(
+            self,
+            self.tr.generate_run_commands([], {}),
+            [RUN_CMD.format(metrics='', serial=env_serial_arg)])
+        # Serial env be set but with --serial arg.
+        arg_device_serial = 'arg-device-0'
+        arg_serial_arg = ' --serial %s' % arg_device_serial
+        unittest_utils.assert_strict_equal(
+            self,
+            self.tr.generate_run_commands([], {constants.SERIAL:arg_device_serial}),
+            [RUN_CMD.format(metrics='', serial=arg_serial_arg)])
 
     def test_flatten_test_filters(self):
         """Test _flatten_test_filters method."""
