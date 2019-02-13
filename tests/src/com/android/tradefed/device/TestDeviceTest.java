@@ -1722,7 +1722,7 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
-     * Test default installPackagse on device without runtime permission support list of args
+     * Test default installPackages on device without runtime permission support list of args
      *
      * @throws Exception
      */
@@ -1785,6 +1785,73 @@ public class TestDeviceTest extends TestCase {
         }
     }
 
+    /** Test installPackagesForUser on device without runtime permission support */
+    public void testInstallPackagesForUser_default_runtimePermissionNotSupported()
+            throws Exception {
+        List<File> mLocalApks = new ArrayList<File>();
+        for (int i = 0; i < 3; i++) {
+            File apkFile = File.createTempFile("test", ".apk");
+            mLocalApks.add(apkFile);
+        }
+        try {
+            Capture<List<String>> optionsCapture = new Capture<List<String>>();
+            setMockIDeviceRuntimePermissionNotSupported();
+            mMockIDevice.installPackages(
+                    EasyMock.eq(mLocalApks),
+                    EasyMock.eq(true),
+                    EasyMock.capture(optionsCapture),
+                    EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                    EasyMock.eq(TimeUnit.MINUTES));
+            EasyMock.expectLastCall();
+            replayMocks();
+            assertNull(mTestDevice.installPackagesForUser(mLocalApks, true, 1));
+            assertTrue(optionsCapture.getValue().contains("--user"));
+            assertTrue(optionsCapture.getValue().contains("1"));
+            assertFalse(optionsCapture.getValue().contains("-g"));
+            verifyMocks();
+        } finally {
+            for (File apkFile : mLocalApks) {
+                FileUtil.deleteFile(apkFile);
+            }
+        }
+    }
+
+    /**
+     * Test installPackagesForUser on device with runtime permission support
+     *
+     * @throws Exception
+     */
+    public void testInstallPackagesForUser_default_runtimePermissionSupported() throws Exception {
+        List<File> mLocalApks = new ArrayList<File>();
+        for (int i = 0; i < 3; i++) {
+            File apkFile = File.createTempFile("test", ".apk");
+            mLocalApks.add(apkFile);
+        }
+        try {
+            Capture<List<String>> optionsCapture = new Capture<List<String>>();
+            setMockIDeviceRuntimePermissionSupported();
+            setMockIDeviceRuntimePermissionSupported();
+
+            mMockIDevice.installPackages(
+                    EasyMock.eq(mLocalApks),
+                    EasyMock.eq(true),
+                    EasyMock.capture(optionsCapture),
+                    EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                    EasyMock.eq(TimeUnit.MINUTES));
+            EasyMock.expectLastCall();
+            replayMocks();
+            assertNull(mTestDevice.installPackagesForUser(mLocalApks, true, 1));
+            assertTrue(optionsCapture.getValue().contains("--user"));
+            assertTrue(optionsCapture.getValue().contains("1"));
+            assertTrue(optionsCapture.getValue().contains("-g"));
+            verifyMocks();
+        } finally {
+            for (File apkFile : mLocalApks) {
+                FileUtil.deleteFile(apkFile);
+            }
+        }
+    }
+
     /**
      * Test installPackages timeout on device with runtime permission support list of args
      *
@@ -1814,7 +1881,7 @@ public class TestDeviceTest extends TestCase {
         verifyMocks();
         for (File apkFile : mLocalApks) {
             assertTrue(filesCapture.getValue().contains(apkFile));
-            apkFile.delete();
+            FileUtil.deleteFile(apkFile);
         }
     }
 
