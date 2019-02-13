@@ -367,7 +367,7 @@ public class TestDevice extends NativeDevice {
                                     .installPackages(
                                             packageFiles,
                                             reinstall,
-                                            new ArrayList(extraArgs),
+                                            extraArgs,
                                             INSTALL_TIMEOUT_MINUTES,
                                             TimeUnit.MINUTES);
                             response[0] = null;
@@ -416,6 +416,35 @@ public class TestDevice extends NativeDevice {
         return internalInstallPackages(packageFiles, reinstall, args);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public String installPackagesForUser(
+            List<File> packageFiles, boolean reinstall, int userId, String... extraArgs)
+            throws DeviceNotAvailableException {
+        // Grant all permissions by default if feature is supported
+        return installPackagesForUser(
+                packageFiles, reinstall, isRuntimePermissionSupported(), userId, extraArgs);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String installPackagesForUser(
+            List<File> packageFiles,
+            boolean reinstall,
+            boolean grantPermissions,
+            int userId,
+            String... extraArgs)
+            throws DeviceNotAvailableException {
+        List<String> args = new ArrayList<>(Arrays.asList(extraArgs));
+        if (grantPermissions) {
+            ensureRuntimePermissionSupported();
+            args.add("-g");
+        }
+        args.add("--user");
+        args.add(Integer.toString(userId));
+        return internalInstallPackages(packageFiles, reinstall, args);
+    }
+
     /**
      * Core implementation for split apk remote installation {@link IDevice#installPackage(String,
      * boolean, String...)}
@@ -445,7 +474,7 @@ public class TestDevice extends NativeDevice {
                                     .installRemotePackages(
                                             remoteApkPaths,
                                             reinstall,
-                                            new ArrayList(extraArgs),
+                                            extraArgs,
                                             INSTALL_TIMEOUT_MINUTES,
                                             TimeUnit.MINUTES);
                             response[0] = null;
