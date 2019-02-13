@@ -68,7 +68,6 @@ import com.android.tradefed.device.ReconnectingRecoveryTest;
 import com.android.tradefed.device.RemoteAndroidDeviceTest;
 import com.android.tradefed.device.TestDeviceTest;
 import com.android.tradefed.device.TopHelperTest;
-import com.android.tradefed.device.recovery.UsbResetMultiDeviceRecoveryTest;
 import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
 import com.android.tradefed.device.cloud.AcloudConfigParserTest;
@@ -106,6 +105,7 @@ import com.android.tradefed.device.metric.TemperatureCollectorTest;
 import com.android.tradefed.device.metric.TraceMetricCollectorTest;
 import com.android.tradefed.device.recovery.BatteryUnavailableDeviceRecoveryTest;
 import com.android.tradefed.device.recovery.RunConfigDeviceRecoveryTest;
+import com.android.tradefed.device.recovery.UsbResetMultiDeviceRecoveryTest;
 import com.android.tradefed.guice.InvocationScopeTest;
 import com.android.tradefed.host.LocalHostResourceManagerTest;
 import com.android.tradefed.host.gcs.GCSHostResourceManagerTest;
@@ -197,13 +197,14 @@ import com.android.tradefed.targetprep.RootTargetPreparerTest;
 import com.android.tradefed.targetprep.RunCommandTargetPreparerTest;
 import com.android.tradefed.targetprep.RunHostCommandTargetPreparerTest;
 import com.android.tradefed.targetprep.StopServicesSetupTest;
+import com.android.tradefed.targetprep.SwitchUserTargetPreparerTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
 import com.android.tradefed.targetprep.TestAppInstallSetupTest;
 import com.android.tradefed.targetprep.TestFilePushSetupTest;
 import com.android.tradefed.targetprep.TimeSetterTargetPreparerTest;
-import com.android.tradefed.targetprep.SwitchUserTargetPreparerTest;
 import com.android.tradefed.targetprep.UserCleanerTest;
 import com.android.tradefed.targetprep.adb.AdbStopServerPreparerTest;
+import com.android.tradefed.targetprep.app.NoApkTestSkipperTest;
 import com.android.tradefed.targetprep.multi.MergeMultiBuildTargetPreparerTest;
 import com.android.tradefed.targetprep.suite.SuiteApkInstallerTest;
 import com.android.tradefed.testtype.AndroidJUnitTestTest;
@@ -580,6 +581,9 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // targetprep.adb
     AdbStopServerPreparerTest.class,
+
+    // targetprep.app
+    NoApkTestSkipperTest.class,
 
     // targetprep.multi
     MergeMultiBuildTargetPreparerTest.class,
