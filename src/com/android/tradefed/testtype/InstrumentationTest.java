@@ -1146,4 +1146,9 @@ public class InstrumentationTest
     public boolean getDebug() {
         return mDebug;
     }
+
+    /** Set wether or not to use the isolated storage. */
+    public void setIsolatedStorage(boolean isolatedStorage) {
+        mIsolatedStorage = isolatedStorage;
+    }
 }
