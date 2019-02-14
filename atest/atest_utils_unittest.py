@@ -16,6 +16,7 @@
 
 """Unittests for atest_utils."""
 
+import subprocess
 import sys
 import unittest
 import mock
@@ -192,6 +193,19 @@ class AtestUtilsUnittests(unittest.TestCase):
         self.assertEqual(capture_output.getvalue(),
                          green_wrap_no_highlight_string)
 
+    @mock.patch('subprocess.check_output')
+    def test_is_external_run(self, mock_output):
+        """Test method is_external_run."""
+        mock_output.return_value = ''
+        self.assertTrue(atest_utils.is_external_run())
+        mock_output.return_value = 'test@other.com'
+        self.assertTrue(atest_utils.is_external_run())
+        mock_output.return_value = 'test@google.com'
+        self.assertFalse(atest_utils.is_external_run())
+        mock_output.side_effect = OSError()
+        self.assertTrue(atest_utils.is_external_run())
+        mock_output.side_effect = subprocess.CalledProcessError(1, 'cmd')
+        self.assertTrue(atest_utils.is_external_run())
 
     @mock.patch('atest_utils.is_external_run')
     def test_print_data_collection_notice(self, mock_is_external_run):
