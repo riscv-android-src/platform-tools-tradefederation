@@ -25,6 +25,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -45,7 +46,11 @@ import java.util.Map;
 /** Runs all instrumentation found on current device. */
 @OptionClass(alias = "installed-instrumentation")
 public class InstalledInstrumentationsTest
-        implements IDeviceTest, IResumableTest, IShardableTest, IMetricCollectorReceiver {
+        implements IDeviceTest,
+                IResumableTest,
+                IShardableTest,
+                IMetricCollectorReceiver,
+                IInvocationContextReceiver {
 
     /** the metric key name for the test coverage target value */
     // TODO: move this to a more generic location
@@ -184,6 +189,7 @@ public class InstalledInstrumentationsTest
     private int mTotalShards = 0;
     private int mShardIndex = 0;
     private List<IMetricCollector> mMetricCollectorList = new ArrayList<>();
+    private IInvocationContext mContext;
 
     private List<InstrumentationTest> mTests = null;
 
@@ -206,6 +212,12 @@ public class InstalledInstrumentationsTest
     @Override
     public void setDevice(ITestDevice device) {
         mDevice = device;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setInvocationContext(IInvocationContext invocationContext) {
+        mContext = invocationContext;
     }
 
     /**
@@ -302,6 +314,7 @@ public class InstalledInstrumentationsTest
                         // Bail out rather than run tests with unexpected options
                         throw new RuntimeException("failed to copy instrumentation options", e);
                     }
+                    t.setInvocationContext(mContext);
                     // Pass the collectors to each instrumentation, which will take care of init
                     t.setMetricCollectors(collectors);
                     t.setPackageName(target.packageName);
