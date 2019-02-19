@@ -20,15 +20,20 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.util.FileUtil;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Hashtable;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * A {@link ILogRegistry} implementation that multiplexes and manages different loggers,
@@ -43,10 +48,12 @@ public class LogRegistry implements ILogRegistry {
     private static final String LOG_TAG = "LogRegistry";
     private static final String GLOBAL_LOG_PREFIX = "tradefed_global_log_";
     private static final String HISTORY_LOG_PREFIX = "tradefed_history_log_";
+    private static final long MAX_HISTORY_SIZE = 10000;
     private static LogRegistry mLogRegistry = null;
     private Map<ThreadGroup, ILeveledLogOutput> mLogTable = new Hashtable<>();
     private FileLogger mGlobalLogger;
     private HistoryLogger mHistoryLogger;
+    private ConcurrentLinkedQueue<LogEntry> mLogEntryHistory = new ConcurrentLinkedQueue<>();
 
     /**
      * Package-private constructor; callers should use {@link #getLogRegistry} to get an instance of
@@ -155,6 +162,32 @@ public class LogRegistry implements ILogRegistry {
         return Thread.currentThread().getThreadGroup();
     }
 
+    private void addToLogEntryHistory(LogLevel logLevel, String tag, String message) {
+        mLogEntryHistory.add(new LogEntry(logLevel, tag, message));
+        while (mLogEntryHistory.size() > getMaxHistorySize()) {
+            mLogEntryHistory.poll();
+        }
+    }
+
+    @VisibleForTesting
+    long getMaxHistorySize() {
+        return MAX_HISTORY_SIZE;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<LogEntry> getLogEntriesAfter(LogEntry logEntry) {
+        List<LogEntry> logs = new ArrayList<LogEntry>(mLogEntryHistory);
+        if (logs.isEmpty() || logEntry == null) {
+            return logs;
+        }
+        int ind = logs.indexOf(logEntry);
+        if (ind < 0) {
+            return logs;
+        }
+        return logs.subList(ind + 1, logs.size());
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -165,6 +198,7 @@ public class LogRegistry implements ILogRegistry {
         if (logLevel.getPriority() >= currentLogLevel.getPriority()) {
             log.printLog(logLevel, tag, message);
         }
+        addToLogEntryHistory(logLevel, tag, message);
     }
 
     /**
@@ -173,6 +207,7 @@ public class LogRegistry implements ILogRegistry {
     @Override
     public void printAndPromptLog(LogLevel logLevel, String tag, String message) {
         getLogger().printAndPromptLog(logLevel, tag, message);
+        addToLogEntryHistory(logLevel, tag, message);
     }
 
     /**
