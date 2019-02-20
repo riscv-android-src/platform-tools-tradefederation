@@ -3318,6 +3318,18 @@ public class NativeDevice implements IManagedTestDevice {
         return mFastbootPath;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public String getFastbootVersion() {
+        try {
+            CommandResult res = executeFastbootCommand("--version");
+            return res.getStdout().trim();
+        } catch (DeviceNotAvailableException e) {
+            // Ignored for host side request
+        }
+        return null;
+    }
+
     /**
      * {@inheritDoc}
      */
