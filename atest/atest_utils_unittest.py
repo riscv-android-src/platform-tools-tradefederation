@@ -213,14 +213,14 @@ class AtestUtilsUnittests(unittest.TestCase):
 
         # is_external_run return False.
         mock_is_external_run.return_value = True
-        notice_str = ('\n------------------\nNotice:\n'
+        notice_str = ('\n==================\nNotice:\n'
                       '  We collect anonymous usage statistics'
                       ' in accordance with our'
                       ' Content Licenses (https://source.android.com/setup/start/licenses),'
                       ' Contributor License Agreement (https://opensource.google.com/docs/cla/),'
                       ' Privacy Policy (https://policies.google.com/privacy) and'
                       ' Terms of Service (https://policies.google.com/terms).'
-                      '\n------------------\n\n')
+                      '\n==================\n\n')
         capture_output = StringIO()
         sys.stdout = capture_output
         atest_utils.print_data_collection_notice()
@@ -230,14 +230,14 @@ class AtestUtilsUnittests(unittest.TestCase):
 
         # is_external_run return False.
         mock_is_external_run.return_value = False
-        notice_str = ('\n------------------\nNotice:\n'
+        notice_str = ('\n==================\nNotice:\n'
                       '  We collect usage statistics'
                       ' in accordance with our'
                       ' Content Licenses (https://source.android.com/setup/start/licenses),'
                       ' Contributor License Agreement (https://cla.developers.google.com/),'
                       ' Privacy Policy (https://policies.google.com/privacy) and'
                       ' Terms of Service (https://policies.google.com/terms).'
-                      '\n------------------\n\n')
+                      '\n==================\n\n')
         capture_output = StringIO()
         sys.stdout = capture_output
         atest_utils.print_data_collection_notice()

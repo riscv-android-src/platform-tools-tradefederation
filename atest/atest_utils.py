@@ -315,7 +315,7 @@ def print_data_collection_notice():
                   constants.PRIVACY_POLICY_URL,
                   constants.TERMS_SERVICE_URL
                  )
-    print('\n------------------')
+    print('\n==================')
     colorful_print("Notice:", constants.RED)
     colorful_print("%s" % notice, constants.GREEN)
-    print('------------------\n')
+    print('==================\n')
