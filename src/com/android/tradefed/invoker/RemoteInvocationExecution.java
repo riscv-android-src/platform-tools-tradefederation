@@ -71,6 +71,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
     public static final long REMOTE_PROCESS_RUNNING_WAIT = 15000L;
     public static final long LAUNCH_EXTRA_DEVICE = 2 * 60 * 1000L;
     public static final long NEW_USER_TIMEOUT = 5 * 60 * 1000L;
+    public static final String REMOTE_VM_VARIABLE = "REMOTE_VM_ENV";
 
     public static final String REMOTE_USER_DIR = "/home/{$USER}/";
     public static final String PROTO_RESULT_NAME = "output.pb";
@@ -350,6 +351,8 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
         StringBuilder tfCmdBuilder =
                 new StringBuilder("TF_GLOBAL_CONFIG=" + globalConfig.getName());
+        // Set an env variable to notify that this a remote environment.
+        tfCmdBuilder.append(" " + REMOTE_VM_VARIABLE + "=1");
         tfCmdBuilder.append(" ENTRY_CLASS=" + CommandRunner.class.getCanonicalName());
         tfCmdBuilder.append(" ./tradefed.sh " + mRemoteTradefedDir + configFile.getName());
         if (config.getCommandOptions().shouldUseRemoteSandboxMode()) {
@@ -524,6 +527,11 @@ public class RemoteInvocationExecution extends InvocationExecution {
                         info, options, new RunUtil(), 120000L, "bash -c \"echo \\$UID\"");
         String uidString = uid.getStdout().trim();
         CLog.d("Remote $UID for adb is: %s", uidString);
+
+        if (Strings.isNullOrEmpty(uidString)) {
+            CLog.w("Could not determine adb log path.");
+            return;
+        }
 
         GceManager.logNestedRemoteFile(
                 logger,
