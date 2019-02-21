@@ -13,9 +13,12 @@
 # limitations under the License.
 
 # Only use this in interactive mode.
-if [[ ! $- =~ 'i' ]]; then
-  return 0
-fi
+[[ ! $- =~ 'i' ]] && return 0
+
+# Not support completion on Darwin since the bash version of it
+# is too old to fully support useful built-in commands/functions
+# such as compopt, _get_comp_words_by_ref and __ltrim_colon_completions.
+[[ "$(uname -s)" == "Darwin" ]] && return 0
 
 # Use Py2 as the default interpreter. This script is aiming for being
 # compatible with both Py2 and Py3.
@@ -117,37 +120,54 @@ fetch_adb_devices() {
     while read dev; do echo $dev | awk '{print $1}'; done < <(adb devices | egrep -v "^List|^$"||true)
 }
 
-# The main tab completion function.
-_BREAKS=${COMP_WORDBREAKS}
-_atest() {
-    local current_word previous_word
-    COMPREPLY=()
-    current_word="${COMP_WORDS[COMP_CWORD]}"
-    previous_word="${COMP_WORDS[COMP_CWORD-1]}"
+# This function returns all paths contain TEST_MAPPING.
+fetch_test_mapping_files() {
+    find -maxdepth 5 -type f -name TEST_MAPPING |sed 's/^.\///g'| xargs dirname 2>/dev/null
+}
 
-    case "$current_word" in
+# The main tab completion function.
+_atest() {
+    local cur prev
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    _get_comp_words_by_ref -n : cur prev || true
+
+    case "$cur" in
         -*)
-            COMPREPLY=($(compgen -W "$(fetch_atest_args)" -- $current_word))
+            COMPREPLY=($(compgen -W "$(fetch_atest_args)" -- $cur))
             ;;
         */*)
             ;;
         *)
             local candidate_args=$(ls; fetch_testable_modules)
-            COMPREPLY=($(compgen -W "$candidate_args" -- $current_word))
+            COMPREPLY=($(compgen -W "$candidate_args" -- $cur))
             ;;
     esac
 
-    case "$previous_word" in
+    case "$prev" in
         --serial|-s)
-            # AVDs names have colons which by default won't be completed. Darwin
-            # don't have _get_comp_words_by_ref and __ltrim_colon_completions
-            # methods out-of-box so that manipulating COMP_WORDBREAKS becomes
-            # the only way to complete target with ":".
-            COMP_WORDBREAKS=${COMP_WORDBREAKS/:/}
-            COMPREPLY=($(compgen -W "$(fetch_adb_devices)" -- $current_word));;
+            local adb_devices="$(fetch_adb_devices)"
+            if [ -n "$adb_devices" ]; then
+                COMPREPLY=($(compgen -W "$(fetch_adb_devices)" -- $cur))
+            else
+                # Don't complete files/dirs when there'is no devices.
+                compopt -o nospace
+                COMPREPLY=("")
+            fi ;;
         --generate-baseline|--generate-new-metrics)
             COMPREPLY=(5) ;;
+        --test-mapping|-p)
+            local mapping_files="$(fetch_test_mapping_files)"
+            if [ -n "$mapping_files" ]; then
+                COMPREPLY=($(compgen -W "$mapping_files" -- $cur))
+            else
+                # Don't complete files/dirs when TEST_MAPPING wasn't found.
+                compopt -o nospace
+                COMPREPLY=("")
+            fi ;;
     esac
+    __ltrim_colon_completions "$cur" "$prev" || true
     return 0
 }
 
@@ -157,5 +177,3 @@ _atest() {
 comp_options="-o default -o nosort"
 complete -F _atest $comp_options atest 2>/dev/null || \
 complete -F _atest -o default atest
-# restore COMP_WORDBREAKS to avoid breaking other completions.
-export COMP_WORDBREAKS=${_BREAKS}
