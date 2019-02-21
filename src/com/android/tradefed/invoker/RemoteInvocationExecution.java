@@ -63,7 +63,7 @@ import java.util.List;
 /** Implementation of {@link InvocationExecution} that drives a remote execution. */
 public class RemoteInvocationExecution extends InvocationExecution {
 
-    public static final long PUSH_TF_TIMEOUT = 120000L;
+    public static final long PUSH_TF_TIMEOUT = 150000L;
     public static final long PULL_RESULT_TIMEOUT = 180000L;
     public static final long REMOTE_PROCESS_RUNNING_WAIT = 15000L;
 
@@ -73,6 +73,9 @@ public class RemoteInvocationExecution extends InvocationExecution {
     public static final String STDERR_FILE = "screen-VM_tradefed-stderr.txt";
     public static final String REMOTE_CONFIG = "configuration";
     public static final String GLOBAL_REMOTE_CONFIG = "global-remote-configuration";
+
+    private static final int MAX_CONNECTION_REFUSED_COUNT = 3;
+    private static final int MAX_PUSH_TF_ATTEMPTS = 3;
 
     private String mRemoteTradefedDir = null;
     private String mRemoteFinalResult = null;
@@ -134,15 +137,21 @@ public class RemoteInvocationExecution extends InvocationExecution {
             return;
         }
 
-        boolean result =
-                RemoteFileUtil.pushFileToRemote(
-                        info,
-                        options,
-                        Arrays.asList("-r"),
-                        runUtil,
-                        PUSH_TF_TIMEOUT,
-                        mRemoteTradefedDir,
-                        currentTf);
+        // Push Tradefed to the remote
+        int attempt = 0;
+        boolean result = false;
+        while (!result && attempt < MAX_PUSH_TF_ATTEMPTS) {
+            result =
+                    RemoteFileUtil.pushFileToRemote(
+                            info,
+                            options,
+                            Arrays.asList("-r"),
+                            runUtil,
+                            PUSH_TF_TIMEOUT,
+                            mRemoteTradefedDir,
+                            currentTf);
+            attempt++;
+        }
         if (!result) {
             CLog.e("Failed to push Tradefed.");
             listener.invocationFailed(new RuntimeException("Failed to push Tradefed."));
@@ -211,6 +220,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
             try (InputStreamSource source = new FileInputStreamSource(globalConfig)) {
                 listener.testLog(GLOBAL_REMOTE_CONFIG, LogDataType.XML, source);
             }
+            // Push the global configuration
             boolean resultPushGlobal =
                     RemoteFileUtil.pushFileToRemote(
                             info,
@@ -298,40 +308,12 @@ public class RemoteInvocationExecution extends InvocationExecution {
         // Sleep a bit to let the process start
         RunUtil.getDefault().sleep(10000L);
 
-        // Monitor the remote invocation to ensure it's completing
-        long maxTimeout = config.getCommandOptions().getInvocationTimeout();
-        Long endTime = null;
-        if (maxTimeout > 0L) {
-            endTime = System.currentTimeMillis() + maxTimeout;
-        }
+        // Monitor the remote invocation to ensure it's completing. Block until timeout or stops
+        // running.
+        boolean stillRunning =
+                isStillRunning(
+                        currentInvocationListener, configFile, info, options, runUtil, config);
 
-        boolean stillRunning = true;
-        while (stillRunning) {
-            CommandResult psRes =
-                    GceManager.remoteSshCommandExecution(
-                            info,
-                            options,
-                            runUtil,
-                            120000L,
-                            "ps",
-                            "-ef",
-                            "| grep",
-                            CommandRunner.class.getCanonicalName());
-            CLog.d("ps -ef: stdout: %s\nstderr: %s\n", psRes.getStdout(), psRes.getStderr());
-            stillRunning = psRes.getStdout().contains(configFile.getName());
-            CLog.d("still running: %s", stillRunning);
-            if (endTime != null && System.currentTimeMillis() > endTime) {
-                currentInvocationListener.invocationFailed(
-                        new RuntimeException(
-                                String.format(
-                                        "Remote invocation timeout after %s",
-                                        TimeUtil.formatElapsedTime(maxTimeout))));
-                break;
-            }
-            if (stillRunning) {
-                RunUtil.getDefault().sleep(REMOTE_PROCESS_RUNNING_WAIT);
-            }
-        }
         File resultFile = null;
         if (!stillRunning) {
             resultFile =
@@ -381,6 +363,60 @@ public class RemoteInvocationExecution extends InvocationExecution {
                     new ProtoResultParser(currentInvocationListener, false, "remote-");
             parser.processFinalizedProto(TestRecordProtoUtil.readFromFile(resultFile));
         }
+    }
+
+    private boolean isStillRunning(
+            ITestInvocationListener currentInvocationListener,
+            File configFile,
+            GceAvdInfo info,
+            TestDeviceOptions options,
+            IRunUtil runUtil,
+            IConfiguration config) {
+        long maxTimeout = config.getCommandOptions().getInvocationTimeout();
+        Long endTime = null;
+        if (maxTimeout > 0L) {
+            endTime = System.currentTimeMillis() + maxTimeout;
+        }
+        boolean stillRunning = true;
+        int errorConnectCount = 0;
+        while (stillRunning) {
+            CommandResult psRes =
+                    GceManager.remoteSshCommandExecution(
+                            info,
+                            options,
+                            runUtil,
+                            120000L,
+                            "ps",
+                            "-ef",
+                            "| grep",
+                            CommandRunner.class.getCanonicalName());
+            if (!CommandStatus.SUCCESS.equals(psRes.getStatus())) {
+                errorConnectCount++;
+                // If we get several connection errors in a row, give up.
+                if (errorConnectCount > MAX_CONNECTION_REFUSED_COUNT) {
+                    CLog.e("Failed to connect to the remote to check running status.");
+                    return false;
+                }
+            } else {
+                // Reset the error count
+                errorConnectCount = 0;
+                CLog.d("ps -ef: stdout: %s\nstderr: %s\n", psRes.getStdout(), psRes.getStderr());
+                stillRunning = psRes.getStdout().contains(configFile.getName());
+                CLog.d("still running: %s", stillRunning);
+                if (endTime != null && System.currentTimeMillis() > endTime) {
+                    currentInvocationListener.invocationFailed(
+                            new RuntimeException(
+                                    String.format(
+                                            "Remote invocation timeout after %s",
+                                            TimeUtil.formatElapsedTime(maxTimeout))));
+                    break;
+                }
+            }
+            if (stillRunning) {
+                RunUtil.getDefault().sleep(REMOTE_PROCESS_RUNNING_WAIT);
+            }
+        }
+        return stillRunning;
     }
 
     /** Returns the main remote working directory. */
