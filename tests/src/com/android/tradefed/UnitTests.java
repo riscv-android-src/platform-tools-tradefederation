@@ -467,6 +467,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TestAppInstallSetupTest.class,
     TestFilePushSetupTest.class,
     TimeSetterTargetPreparerTest.class,
+    SwitchUserTargetPreparerTest.class,
 
     // targetprep.multi
     MergeMultiBuildTargetPreparerTest.class,
