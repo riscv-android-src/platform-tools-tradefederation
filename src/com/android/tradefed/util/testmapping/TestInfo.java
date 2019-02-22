@@ -35,15 +35,22 @@ public class TestInfo {
 
     private String mName = null;
     private List<TestOption> mOptions = new ArrayList<TestOption>();
-    // A list of locations with TEST_MAPPING files that containing the test.
+    // A Set of locations with TEST_MAPPING files that containing the test.
     private Set<String> mSources = new HashSet<String>();
     // True if the test should run on host and require no device.
     private boolean mHostOnly = false;
+    // A Set of keywords to be matched when filtering tests to run in a Test Mapping suite.
+    private Set<String> mKeywords = null;
 
     public TestInfo(String name, String source, boolean hostOnly) {
+        this(name, source, hostOnly, new HashSet<String>());
+    }
+
+    public TestInfo(String name, String source, boolean hostOnly, Set<String> keywords) {
         mName = name;
         mSources.add(source);
         mHostOnly = hostOnly;
+        mKeywords = keywords;
     }
 
     public String getName() {
@@ -77,6 +84,11 @@ public class TestInfo {
      */
     public String getNameAndHostOnly() {
         return String.format("%s - %s", mName, mHostOnly);
+    }
+
+    /** Get a {@link Set} of the keywords supported by the test. */
+    public Set<String> getKeywords() {
+        return new HashSet<>(mKeywords);
     }
 
     /**
@@ -248,17 +260,24 @@ public class TestInfo {
 
     @Override
     public String toString() {
-        if (mOptions.size() == 0) {
-            return mName;
-        } else {
-            return String.format(
-                    "%s: Options: %s",
-                    mName,
-                    Joiner.on(",")
-                            .join(
-                                    mOptions.stream()
-                                            .map(TestOption::toString)
-                                            .collect(Collectors.toList())));
+        String options = "";
+        String keywords = "";
+        if (!mOptions.isEmpty()) {
+            options =
+                    String.format(
+                            "; Options: %s",
+                            Joiner.on(",")
+                                    .join(
+                                            mOptions.stream()
+                                                    .map(TestOption::toString)
+                                                    .collect(Collectors.toList())));
         }
+        if (!mKeywords.isEmpty()) {
+            keywords =
+                    String.format(
+                            "; Keywords: %s",
+                            Joiner.on(",").join(mKeywords.stream().collect(Collectors.toList())));
+        }
+        return String.format("%s%s%s", mName, options, keywords);
     }
 }

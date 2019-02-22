@@ -115,6 +115,18 @@ public class TestMappingSuiteRunnerTest {
     }
 
     /**
+     * Test for {@link TestMappingSuiteRunner#loadTests()} to fail when option test-mapping-keyword
+     * is used but test-mapping-test-group is not set.
+     */
+    @Test(expected = RuntimeException.class)
+    public void testLoadTests_conflictKeyword() throws Exception {
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("include-filter", "test1");
+        setter.setOptionValue("test-mapping-keyword", "key1");
+        mRunner.loadTests();
+    }
+
+    /**
      * Test for {@link TestMappingSuiteRunner#loadTests()} for loading tests from test_mappings.zip.
      */
     @Test
@@ -190,6 +202,128 @@ public class TestMappingSuiteRunnerTest {
             }
 
             EasyMock.verify(mockBuildInfo);
+        } finally {
+            FileUtil.recursiveDelete(tempDir);
+        }
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#loadTests()} for loading tests matching keywords
+     * setting from test_mappings.zip.
+     */
+    @Test
+    public void testLoadTests_testMappingsZipFoundTestsWithKeywords() throws Exception {
+        File tempDir = null;
+        try {
+            OptionSetter setter = new OptionSetter(mRunner);
+            setter.setOptionValue("test-mapping-keyword", "key_1");
+            setter.setOptionValue("test-mapping-test-group", "presubmit");
+
+            tempDir = FileUtil.createTempDir("test_mapping");
+
+            File srcDir = FileUtil.createTempDir("src", tempDir);
+            String srcFile =
+                    File.separator + TEST_DATA_DIR + File.separator + DISABLED_PRESUBMIT_TESTS;
+            InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, srcDir, DISABLED_PRESUBMIT_TESTS);
+
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_1";
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, srcDir, TEST_MAPPING);
+            File subDir = FileUtil.createTempDir("sub_dir", srcDir);
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_2";
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, subDir, TEST_MAPPING);
+
+            List<File> filesToZip =
+                    Arrays.asList(srcDir, new File(tempDir, DISABLED_PRESUBMIT_TESTS));
+            File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
+            ZipUtil.createZip(filesToZip, zipFile);
+
+            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
+                    .andReturn(null);
+            EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(new File("non-existing-dir"));
+            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+
+            mRunner.setBuild(mockBuildInfo);
+            EasyMock.replay(mockBuildInfo);
+
+            LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+
+            // Only suite/stub2 should be listed as it contains key_1 in keywords.
+            assertTrue(mRunner.getIncludeFilter().contains("suite/stub2"));
+
+            assertEquals(2, configMap.size());
+            assertTrue(configMap.containsKey(ABI_1 + " suite/stub2"));
+            assertTrue(configMap.containsKey(ABI_2 + " suite/stub2"));
+
+            // Confirm test sources are stored in test's ConfigurationDescription.
+            // Only the test in test_mapping_1 has keywords matched, so there should be only 1 test
+            // source for the test.
+            Map<String, Integer> testSouceCount = new HashMap<>();
+            testSouceCount.put("suite/stub2", 1);
+
+            for (IConfiguration config : configMap.values()) {
+                assertTrue(testSouceCount.containsKey(config.getName()));
+                assertEquals(
+                        testSouceCount.get(config.getName()).intValue(),
+                        config.getConfigurationDescription()
+                                .getMetaData(TestMapping.TEST_SOURCES)
+                                .size());
+            }
+
+            EasyMock.verify(mockBuildInfo);
+        } finally {
+            FileUtil.recursiveDelete(tempDir);
+        }
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#loadTests()} for loading tests matching keywords
+     * setting from test_mappings.zip and no test should be found.
+     */
+    @Test(expected = RuntimeException.class)
+    public void testLoadTests_testMappingsZipFailWithKeywords() throws Exception {
+        File tempDir = null;
+        try {
+            OptionSetter setter = new OptionSetter(mRunner);
+            setter.setOptionValue("test-mapping-keyword", "key_2");
+            setter.setOptionValue("test-mapping-test-group", "presubmit");
+
+            tempDir = FileUtil.createTempDir("test_mapping");
+
+            File srcDir = FileUtil.createTempDir("src", tempDir);
+            String srcFile =
+                    File.separator + TEST_DATA_DIR + File.separator + DISABLED_PRESUBMIT_TESTS;
+            InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, srcDir, DISABLED_PRESUBMIT_TESTS);
+
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_1";
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, srcDir, TEST_MAPPING);
+            File subDir = FileUtil.createTempDir("sub_dir", srcDir);
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_2";
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, subDir, TEST_MAPPING);
+
+            List<File> filesToZip =
+                    Arrays.asList(srcDir, new File(tempDir, DISABLED_PRESUBMIT_TESTS));
+            File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
+            ZipUtil.createZip(filesToZip, zipFile);
+
+            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
+                    .andReturn(null);
+            EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(new File("non-existing-dir"));
+            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+
+            mRunner.setBuild(mockBuildInfo);
+            EasyMock.replay(mockBuildInfo);
+
+            // No test should be found with keyword key_2, loadTests method shall raise
+            // RuntimeException.
+            LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
         } finally {
             FileUtil.recursiveDelete(tempDir);
         }
