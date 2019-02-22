@@ -17,8 +17,6 @@ Atest Tradefed test runner class.
 """
 
 from __future__ import print_function
-from collections import deque
-from datetime import timedelta
 import errno
 import json
 import logging
@@ -32,6 +30,7 @@ import sys
 # pylint: disable=import-error
 import atest_utils
 import constants
+from event_handler import EventHandler
 from test_finders import test_info
 from test_runners import test_runner_base
 
@@ -43,49 +42,14 @@ SOCKET_BUFFER = 4096
 # Socket Events of form FIRST_EVENT {JSON_DATA}\nSECOND_EVENT {JSON_DATA}
 # EVENT_RE has groups for the name and the data. "." does not match \n.
 EVENT_RE = re.compile(r'^(?P<event_name>[A-Z_]+) (?P<json_data>{.*})(?:\n|$)')
-EVENT_NAMES = {'module_started': 'TEST_MODULE_STARTED',
-               'module_ended': 'TEST_MODULE_ENDED',
-               'run_started': 'TEST_RUN_STARTED',
-               'run_ended': 'TEST_RUN_ENDED',
-               # Next three are test-level events
-               'test_started': 'TEST_STARTED',
-               'test_failed': 'TEST_FAILED',
-               'test_ended': 'TEST_ENDED',
-               # Last two failures are runner-level, not test-level.
-               # Invocation failure is broader than run failure.
-               'run_failed': 'TEST_RUN_FAILED',
-               'invocation_failed': 'INVOCATION_FAILED',
-               'test_ignored': 'TEST_IGNORED'}
-EVENT_PAIRS = {EVENT_NAMES['module_started']: EVENT_NAMES['module_ended'],
-               EVENT_NAMES['run_started']: EVENT_NAMES['run_ended'],
-               EVENT_NAMES['test_started']: EVENT_NAMES['test_ended']}
-START_EVENTS = list(EVENT_PAIRS.keys())
-END_EVENTS = list(EVENT_PAIRS.values())
-TEST_NAME_TEMPLATE = '%s#%s'
+
 EXEC_DEPENDENCIES = ('adb', 'aapt')
-
-CONNECTION_STATE = {
-    'current_test': None,
-    'last_failed': None,
-    'last_ignored': None,
-    'current_group': None,
-    'current_group_total': None,
-    'test_count': 0,
-    'test_start_time': None
-}
-
-# time in millisecond.
-ONE_SECOND = 1000
-ONE_MINUTE = 60000
-ONE_HOUR = 3600000
-
-class TradeFedExitError(Exception):
-    """Raised when TradeFed exists before test run has finished."""
 
 TRADEFED_EXIT_MSG = ('TradeFed subprocess exited early with exit code=%s.')
 
-EVENTS_NOT_BALANCED = ('Error: Saw %s Start event and %s End event. These '
-                       'should be equal!')
+
+class TradeFedExitError(Exception):
+    """Raised when TradeFed exists before test run has finished."""
 
 
 class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
@@ -166,7 +130,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 signal.signal(signal.SIGINT, self._signal_passer(subproc))
                 conn, addr = self._exec_with_tf_polling(server.accept, subproc)
                 logging.debug('Accepted connection from %s', addr)
-                self._process_connection(conn, reporter)
+                event_handler = EventHandler(reporter, self.NAME)
+                self._process_connection(conn, event_handler)
             except Exception as error:
                 # exc_info=1 tells logging to log the stacktrace
                 logging.debug('Caught exception:', exc_info=1)
@@ -228,7 +193,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                     raise TradeFedExitError(TRADEFED_EXIT_MSG
                                             % tf_subproc.returncode)
 
-    def _process_connection(self, conn, reporter):
+    def _process_connection(self, conn, event_handler):
         """Process a socket connection from TradeFed.
 
         Expect data of form EVENT_NAME {JSON_DATA}.  Multiple events will be
@@ -237,12 +202,10 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
 
         Args:
             conn: A socket connection.
-            reporter: A result_report.ResultReporter
+            event_handler: EventHandler object.
         """
-        connection_state = CONNECTION_STATE.copy()
         conn.settimeout(None)
         buf = ''
-        event_stack = deque()
         while True:
             logging.debug('Waiting to receive data')
             data = conn.recv(SOCKET_BUFFER)
@@ -259,168 +222,13 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                             break
                         event_name = match.group('event_name')
                         buf = buf[match.end():]
-                        self._process_event(event_name, event_data, reporter,
-                                            connection_state, event_stack)
+                        event_handler.process_event(event_name, event_data)
                         continue
                     break
             else:
                 # client sent empty string, so no more data.
                 conn.close()
                 break
-
-    def _check_events_are_balanced(self, event_name, reporter, state,
-                                   event_stack):
-        """Check Start events and End events. They should be balanced.
-
-        If they are not balanced, print the error message in
-        state['last_failed'], then raise TradeFedExitError.
-
-        Args:
-            event_name: A string of the event name.
-            reporter: A ResultReporter instance.
-            state: A dict of the state of the test run.
-            event_stack: A collections.deque(stack) of the events for pairing
-                         START and END events.
-        Raises:
-            TradeFedExitError if we doesn't have a balance of START/END events.
-        """
-        start_event = event_stack.pop() if event_stack else None
-        if not start_event or EVENT_PAIRS[start_event] != event_name:
-            # Here bubble up the failed trace in the situation having
-            # TEST_FAILED but never receiving TEST_ENDED.
-            if state['last_failed'] and (start_event ==
-                                         EVENT_NAMES['test_started']):
-                reporter.process_test_result(test_runner_base.TestResult(
-                    runner_name=self.NAME,
-                    group_name=state['current_group'],
-                    test_name=state['last_failed']['name'],
-                    status=test_runner_base.FAILED_STATUS,
-                    details=state['last_failed']['trace'],
-                    test_count=state['test_count'],
-                    test_time='',
-                    runner_total=None,
-                    group_total=state['current_group_total']))
-            raise TradeFedExitError(EVENTS_NOT_BALANCED % (start_event,
-                                                           event_name))
-
-    def _print_duration(self, duration):
-        """Convert duration from ms to 3h2m43.034s.
-
-        Args:
-            duration: millisecond
-
-        Returns:
-            string in h:m:s, m:s, s or millis, depends on the duration.
-        """
-        delta = timedelta(milliseconds=duration)
-        timestamp = str(delta).split(':') # hh:mm:microsec
-
-        if duration < ONE_SECOND:
-            return "({}ms)".format(duration)
-        elif duration < ONE_MINUTE:
-            return "({:.3f}s)".format(float(timestamp[2]))
-        elif duration < ONE_HOUR:
-            return "({0}m{1:.3f}s)".format(timestamp[1], float(timestamp[2]))
-        return "({0}h{1}m{2:.3f}s)".format(timestamp[0],
-                                           timestamp[1], float(timestamp[2]))
-
-    # pylint: disable=too-many-branches
-    def _process_event(self, event_name, event_data, reporter, state,
-                       event_stack):
-        """Process the events of the test run and call reporter with results.
-
-        Args:
-            event_name: A string of the event name.
-            event_data: A dict of event data.
-            reporter: A ResultReporter instance.
-            state: A dict of the state of the test run.
-            event_stack: A collections.deque(stack) of the events for pairing
-                         START and END events.
-        """
-        logging.debug('Processing %s %s', event_name, event_data)
-        if event_name in START_EVENTS:
-            event_stack.append(event_name)
-        elif event_name in END_EVENTS:
-            self._check_events_are_balanced(event_name, reporter, state,
-                                            event_stack)
-        if event_name == EVENT_NAMES['module_started']:
-            state['current_group'] = event_data['moduleName']
-            state['last_failed'] = None
-            state['current_test'] = None
-        elif event_name == EVENT_NAMES['run_started']:
-            # Technically there can be more than one run per module.
-            state['current_group_total'] = event_data['testCount']
-            state['test_count'] = 0
-            state['last_failed'] = None
-            state['current_test'] = None
-        elif event_name == EVENT_NAMES['test_started']:
-            name = TEST_NAME_TEMPLATE % (event_data['className'],
-                                         event_data['testName'])
-            state['current_test'] = name
-            state['test_count'] += 1
-            state['test_start_time'] = event_data['start_time']
-        elif event_name == EVENT_NAMES['test_failed']:
-            state['last_failed'] = {'name': TEST_NAME_TEMPLATE % (
-                event_data['className'],
-                event_data['testName']),
-                                    'trace': event_data['trace']}
-        elif event_name == EVENT_NAMES['test_ignored']:
-            name = TEST_NAME_TEMPLATE % (event_data['className'],
-                                         event_data['testName'])
-            state['last_ignored'] = name
-        elif event_name == EVENT_NAMES['run_failed']:
-            # Module and Test Run probably started, but failure occurred.
-            reporter.process_test_result(test_runner_base.TestResult(
-                runner_name=self.NAME,
-                group_name=state['current_group'],
-                test_name=state['current_test'],
-                status=test_runner_base.ERROR_STATUS,
-                details=event_data['reason'],
-                test_count=state['test_count'],
-                test_time='',
-                runner_total=None,
-                group_total=state['current_group_total']))
-        elif event_name == EVENT_NAMES['invocation_failed']:
-            # Broadest possible failure. May not even start the module/test run.
-            reporter.process_test_result(test_runner_base.TestResult(
-                runner_name=self.NAME,
-                group_name=state['current_group'],
-                test_name=state['current_test'],
-                status=test_runner_base.ERROR_STATUS,
-                details=event_data['cause'],
-                test_count=state['test_count'],
-                test_time='',
-                runner_total=None,
-                group_total=state['current_group_total']))
-        elif event_name == EVENT_NAMES['test_ended']:
-            name = TEST_NAME_TEMPLATE % (event_data['className'],
-                                         event_data['testName'])
-            if state['test_start_time']:
-                test_time = self._print_duration(event_data['end_time'] -
-                                                 state['test_start_time'])
-            else:
-                test_time = ''
-            if state['last_failed'] and name == state['last_failed']['name']:
-                status = test_runner_base.FAILED_STATUS
-                trace = state['last_failed']['trace']
-                state['last_failed'] = None
-            elif state['last_ignored'] and name == state['last_ignored']:
-                status = test_runner_base.IGNORED_STATUS
-                state['last_ignored'] = None
-                trace = None
-            else:
-                status = test_runner_base.PASSED_STATUS
-                trace = None
-            reporter.process_test_result(test_runner_base.TestResult(
-                runner_name=self.NAME,
-                group_name=state['current_group'],
-                test_name=name,
-                status=status,
-                details=trace,
-                test_count=state['test_count'],
-                test_time=test_time,
-                runner_total=None,
-                group_total=state['current_group_total']))
 
     def host_env_check(self):
         """Check that host env has everything we need.
