@@ -50,9 +50,9 @@ public class TestMapping {
     public static final String TEST_SOURCES = "Test Sources";
 
     private static final String PRESUBMIT = "presubmit";
-    private static final String POSTSUBMIT = "postsubmit";
     private static final String IMPORTS = "imports";
     private static final String KEY_HOST = "host";
+    private static final String KEY_KEYWORDS = "keywords";
     private static final String KEY_NAME = "name";
     private static final String KEY_OPTIONS = "options";
     private static final String TEST_MAPPING = "TEST_MAPPING";
@@ -91,9 +91,19 @@ public class TestMapping {
                         JSONObject testObject = arr.getJSONObject(i);
                         boolean hostOnly =
                                 testObject.has(KEY_HOST) && testObject.getBoolean(KEY_HOST);
+                        Set<String> keywords = new HashSet<>();
+                        if (testObject.has(KEY_KEYWORDS)) {
+                            JSONArray keywordArray = testObject.getJSONArray(KEY_KEYWORDS);
+                            for (int j = 0; j < keywordArray.length(); j++) {
+                                keywords.add(keywordArray.getString(j));
+                            }
+                        }
                         TestInfo test =
                                 new TestInfo(
-                                        testObject.getString(KEY_NAME), relativePath, hostOnly);
+                                        testObject.getString(KEY_NAME),
+                                        relativePath,
+                                        hostOnly,
+                                        keywords);
                         if (testObject.has(KEY_OPTIONS)) {
                             JSONArray optionObjects = testObject.getJSONArray(KEY_OPTIONS);
                             for (int j = 0; j < optionObjects.length(); j++) {
@@ -132,9 +142,12 @@ public class TestMapping {
      * @param disabledTests A set of {@link String} for the name of the disabled tests.
      * @param hostOnly true if only tests running on host and don't require device should be
      *     returned. false to return tests that require device to run.
+     * @param keywords A set of {@link String} to be matched when filtering tests to run in a Test
+     *     Mapping suite.
      * @return A {@code List<TestInfo>} of the test infos.
      */
-    public List<TestInfo> getTests(String testGroup, Set<String> disabledTests, boolean hostOnly) {
+    public List<TestInfo> getTests(
+            String testGroup, Set<String> disabledTests, boolean hostOnly, Set<String> keywords) {
         List<TestInfo> tests = new ArrayList<TestInfo>();
 
         for (TestInfo test : mTestCollection.getOrDefault(testGroup, new ArrayList<TestInfo>())) {
@@ -145,6 +158,28 @@ public class TestMapping {
             if (test.getHostOnly() != hostOnly) {
                 CLog.d("Test doesn't match the host requirement: %s.", test);
                 continue;
+            }
+            // Skip the test if no keyword is specified but the test requires certain keywords.
+            if ((keywords == null || keywords.isEmpty()) && !test.getKeywords().isEmpty()) {
+                CLog.d("Test %s requires keywords: %s. Skip the test.", test, test.getKeywords());
+                continue;
+            }
+            // Skip the test if any of the required keywords is not specified by the test.
+            if (keywords != null) {
+                Boolean allKeywordsFound = true;
+                for (String keyword : keywords) {
+                    if (!test.getKeywords().contains(keyword)) {
+                        CLog.d(
+                                "Test %s doesn't have required keyword: %s. Skip the test.",
+                                test, keyword);
+                        allKeywordsFound = false;
+                        break;
+                    }
+                }
+                // The test should be skipped if any keyword is missing in the test configuration.
+                if (!allKeywordsFound) {
+                    continue;
+                }
             }
             tests.add(test);
         }
@@ -190,7 +225,8 @@ public class TestMapping {
      *     returned. false to return tests that require device to run.
      * @return A {@code Set<TestInfo>} of tests set in the build artifact, test_mappings.zip.
      */
-    public static Set<TestInfo> getTests(IBuildInfo buildInfo, String testGroup, boolean hostOnly) {
+    public static Set<TestInfo> getTests(
+            IBuildInfo buildInfo, String testGroup, boolean hostOnly, Set<String> keywords) {
         Set<TestInfo> tests = new HashSet<TestInfo>();
         Set<String> disabledTests = new HashSet<>();
 
@@ -215,7 +251,11 @@ public class TestMapping {
                             path ->
                                     tests.addAll(
                                             new TestMapping(path, testMappingsRootPath)
-                                                    .getTests(testGroup, disabledTests, hostOnly)));
+                                                    .getTests(
+                                                            testGroup,
+                                                            disabledTests,
+                                                            hostOnly,
+                                                            keywords)));
 
         } catch (IOException e) {
             RuntimeException runtimeException =
