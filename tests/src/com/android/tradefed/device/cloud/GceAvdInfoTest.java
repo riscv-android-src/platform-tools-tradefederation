@@ -18,6 +18,7 @@ package com.android.tradefed.device.cloud;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -50,6 +51,35 @@ public class GceAvdInfoTest {
         assertNotNull(avd);
         assertEquals(avd.hostAndPort().getHostText(), "104.154.62.236");
         assertEquals(avd.instanceName(), "gce-x86-phone-userdebug-2299773-22cf");
+        assertTrue(avd.getBuildVars().isEmpty());
+    }
+
+    @Test
+    public void testValidGceJsonParsingWithBuildVars() throws Exception {
+        String valid =
+                " {\n"
+                        + "    \"data\": {\n"
+                        + "      \"devices\": [\n"
+                        + "        {\n"
+                        + "          \"ip\": \"104.154.62.236\",\n"
+                        + "          \"branch\": \"git_master\",\n"
+                        + "          \"build_id\": \"5230832\",\n"
+                        + "          \"build_target\": \"cf_x86_phone-userdebug\",\n"
+                        + "          \"instance_name\": \"gce-x86-phone-userdebug-2299773-22cf\"\n"
+                        + "        }\n"
+                        + "      ]\n"
+                        + "    },\n"
+                        + "    \"errors\": [],\n"
+                        + "    \"command\": \"create\",\n"
+                        + "    \"status\": \"SUCCESS\"\n"
+                        + "  }";
+        GceAvdInfo avd = GceAvdInfo.parseGceInfoFromString(valid, null, 5555);
+        assertNotNull(avd);
+        assertEquals(avd.hostAndPort().getHostText(), "104.154.62.236");
+        assertEquals(avd.instanceName(), "gce-x86-phone-userdebug-2299773-22cf");
+        assertEquals(avd.getBuildVars().get("branch"), "git_master");
+        assertEquals(avd.getBuildVars().get("build_id"), "5230832");
+        assertEquals(avd.getBuildVars().get("build_target"), "cf_x86_phone-userdebug");
     }
 
     @Test
