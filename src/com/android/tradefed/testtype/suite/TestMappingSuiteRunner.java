@@ -87,6 +87,10 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
                     "At least one of the options, --test-mapping-test-group or --include-filter, "
                             + "should be set.");
         }
+        if (mTestGroup == null && !mKeywords.isEmpty()) {
+            throw new RuntimeException(
+                    "Must specify --test-mapping-test-group when applying --test-mapping-keyword.");
+        }
         if (mTestGroup != null && !includeFilter.isEmpty()) {
             throw new RuntimeException(
                     "If options --test-mapping-test-group is set, option --include-filter should "
@@ -95,7 +99,8 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
 
         if (mTestGroup != null) {
             Set<TestInfo> testsToRun =
-                    TestMapping.getTests(getBuildInfo(), mTestGroup, getPrioritizeHostConfig());
+                    TestMapping.getTests(
+                            getBuildInfo(), mTestGroup, getPrioritizeHostConfig(), mKeywords);
             if (testsToRun.isEmpty()) {
                 throw new RuntimeException(
                         String.format("No test found for the given group: %s.", mTestGroup));
