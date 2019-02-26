@@ -24,6 +24,8 @@ import com.android.tradefed.sandbox.SandboxConfigurationException;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
+import com.android.tradefed.util.keystore.IKeyStoreFactory;
+import com.android.tradefed.util.keystore.KeyStoreException;
 
 import java.io.File;
 import java.io.IOException;
@@ -89,7 +91,7 @@ public class SandboxConfigurationFactory extends ConfigurationFactory {
             throws ConfigurationException {
         // Create on a new object to avoid state on the factory.
         SandboxConfigurationFactory loader = new RunSandboxConfigurationFactory(command);
-        return loader.createConfigurationFromArgs(arrayArgs);
+        return loader.createConfigurationFromArgs(arrayArgs, null, getKeyStoreClient());
     }
 
     /**
@@ -151,6 +153,24 @@ public class SandboxConfigurationFactory extends ConfigurationFactory {
             FileUtil.deleteFile(xmlConfig);
         }
         return config;
+    }
+
+    private IKeyStoreClient getKeyStoreClient() {
+        try {
+            IKeyStoreFactory f = GlobalConfiguration.getInstance().getKeyStoreFactory();
+            if (f != null) {
+                try {
+                    return f.createKeyStoreClient();
+                } catch (KeyStoreException e) {
+                    CLog.e("Failed to create key store client");
+                    CLog.e(e);
+                }
+            }
+        } catch (IllegalStateException e) {
+            CLog.w("Global configuration has not been created, failed to get keystore");
+            CLog.e(e);
+        }
+        return null;
     }
 
     /** Returns the classpath of the current running Tradefed. */
