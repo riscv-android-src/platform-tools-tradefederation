@@ -99,7 +99,8 @@ public class JUnitXmlParserTest {
         TestDescription test3 = new TestDescription("ErrorTest", "testFail");
         mMockListener.testStarted(test3);
         mMockListener.testFailed(
-                EasyMock.eq(test3), EasyMock.contains("java.lang.NullPointerException"));
+                EasyMock.eq(test3),
+                EasyMock.eq("java.lang.NullPointerException\n    at FailTest.testFail:65\n        "));
         mMockListener.testEnded(test3, new HashMap<String, Metric>());
 
         mMockListener.testRunEnded(918686L, new HashMap<String, Metric>());
