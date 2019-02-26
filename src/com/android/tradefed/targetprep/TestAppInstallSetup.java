@@ -308,7 +308,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer
      *     contains only one apk name, the apk will be installed as single package. If apkNames
      *     contains more than one name, the apks will be installed as split apks.
      */
-    private void installer(ITestDevice device, IBuildInfo buildInfo, List<String> apkNames)
+    protected void installer(ITestDevice device, IBuildInfo buildInfo, List<String> apkNames)
             throws TargetSetupError, DeviceNotAvailableException {
         List<File> appFiles = new ArrayList<File>();
         List<String> packageNames = new ArrayList<String>();
@@ -421,7 +421,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer
     }
 
     /** Attempt to remove the package from the device. */
-    private void uninstallPackage(ITestDevice device, String packageName)
+    protected void uninstallPackage(ITestDevice device, String packageName)
             throws DeviceNotAvailableException {
         String msg = device.uninstallPackage(packageName);
         if (msg != null) {
@@ -438,5 +438,5 @@ public class TestAppInstallSetup extends BaseTargetPreparer
         }
         return parser.getPackageName();
     }
-
 }
+
