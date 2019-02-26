@@ -29,14 +29,33 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 
 /** Structure to hold relevant data for a given GCE AVD instance. */
 public class GceAvdInfo {
+
+    public static final List<String> BUILD_VARS =
+            Arrays.asList(
+                    "build_id",
+                    "build_target",
+                    "branch",
+                    "kernel_build_id",
+                    "kernel_build_target",
+                    "kernel_branch",
+                    "system_build_id",
+                    "system_build_target",
+                    "system_branch",
+                    "emulator_build_id",
+                    "emulator_build_target",
+                    "emulator_branch");
 
     private String mInstanceName;
     private HostAndPort mHostAndPort;
     private String mErrors;
     private GceStatus mStatus;
+    private static HashMap<String, String> mBuildVars;
 
     public static enum GceStatus {
         SUCCESS,
@@ -48,6 +67,7 @@ public class GceAvdInfo {
     public GceAvdInfo(String instanceName, HostAndPort hostAndPort) {
         mInstanceName = instanceName;
         mHostAndPort = hostAndPort;
+        mBuildVars = new HashMap<String, String>();
     }
 
     public GceAvdInfo(
@@ -56,6 +76,7 @@ public class GceAvdInfo {
         mHostAndPort = hostAndPort;
         mErrors = errors;
         mStatus = status;
+        mBuildVars = new HashMap<String, String>();
     }
 
     /** {@inheritDoc} */
@@ -69,6 +90,8 @@ public class GceAvdInfo {
                 + mErrors
                 + ", mStatus="
                 + mStatus
+                + ", mBuildVars="
+                + mBuildVars.toString()
                 + "]";
     }
 
@@ -90,6 +113,18 @@ public class GceAvdInfo {
 
     public void setStatus(GceStatus status) {
         mStatus = status;
+    }
+
+    /**
+     * Return build variable information hash of GCE AVD device.
+     *
+     * <p>Possible build variables keys are described in BUILD_VARS for example: build_id,
+     * build_target, branch, kernel_build_id, kernel_build_target, kernel_branch, system_build_id,
+     * system_build_target, system_branch, emulator_build_id, emulator_build_target,
+     * emulator_branch.
+     */
+    public HashMap<String, String> getBuildVars() {
+        return new HashMap<String, String>(mBuildVars);
     }
 
     /**
@@ -147,11 +182,18 @@ public class GceAvdInfo {
                     JSONObject d = (JSONObject) devices.get(0);
                     String ip = d.getString("ip");
                     String instanceName = d.getString("instance_name");
-                    return new GceAvdInfo(
-                            instanceName,
-                            HostAndPort.fromString(ip).withDefaultPort(remoteAdbPort),
-                            errors,
-                            gceStatus);
+                    GceAvdInfo avdInfo =
+                            new GceAvdInfo(
+                                    instanceName,
+                                    HostAndPort.fromString(ip).withDefaultPort(remoteAdbPort),
+                                    errors,
+                                    gceStatus);
+                    for (String buildVar : BUILD_VARS) {
+                        if (d.has(buildVar) && !d.getString(buildVar).trim().isEmpty()) {
+                            mBuildVars.put(buildVar, d.getString(buildVar).trim());
+                        }
+                    }
+                    return avdInfo;
                 } else {
                     CLog.w("Expected only one device to return but found %d", devices.length());
                 }
