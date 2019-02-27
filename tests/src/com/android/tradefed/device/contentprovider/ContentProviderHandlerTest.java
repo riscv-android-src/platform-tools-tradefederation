@@ -24,6 +24,7 @@ import static org.mockito.Mockito.doReturn;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
 
 import org.junit.After;
 import org.junit.Before;
@@ -32,6 +33,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
+import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -115,5 +117,29 @@ public class ContentProviderHandlerTest {
                                         + "/"
                                         + devicePath));
         assertFalse(mProvider.deleteFile(devicePath));
+    }
+
+    /** Test {@link ContentProviderHandler#pushFile(File, String)}. */
+    @Test
+    public void testPushFile() throws Exception {
+        File toPush = FileUtil.createTempFile("content-provider-test", ".txt");
+        try {
+            String devicePath = "path/somewhere/file.txt";
+            CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+            result.setStderr("");
+            doReturn(99).when(mMockDevice).getCurrentUser();
+            doReturn(result)
+                    .when(mMockDevice)
+                    .executeShellV2Command(
+                            eq(
+                                    "content write --user 99 --uri "
+                                            + ContentProviderHandler.CONTENT_PROVIDER_URI
+                                            + "/"
+                                            + devicePath),
+                            eq(toPush));
+            assertTrue(mProvider.pushFile(toPush, devicePath));
+        } finally {
+            FileUtil.deleteFile(toPush);
+        }
     }
 }
