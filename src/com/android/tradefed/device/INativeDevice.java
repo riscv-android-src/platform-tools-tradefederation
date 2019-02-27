@@ -276,6 +276,19 @@ public interface INativeDevice {
     public CommandResult executeShellV2Command(String command) throws DeviceNotAvailableException;
 
     /**
+     * Helper method which executes an adb shell command and returns the results as a {@link
+     * CommandResult} properly populated with the command status output, stdout and stderr.
+     *
+     * @param command The command that should be run.
+     * @param pipeAsInput A {@link File} that will be piped as input to the command.
+     * @return The result in {@link CommandResult}.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     */
+    public CommandResult executeShellV2Command(String command, File pipeAsInput)
+            throws DeviceNotAvailableException;
+
+    /**
      * Executes a adb shell command, with more parameters to control command behavior.
      *
      * @see #executeShellV2Command(String)
