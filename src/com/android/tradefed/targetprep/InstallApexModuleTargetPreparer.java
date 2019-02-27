@@ -43,7 +43,7 @@ import java.util.Set;
 public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
 
     private static final String APEX_DATA_DIR = "/data/apex/active";
-    private static final String STAGING_DATA_DIR = "/data/pkg_staging";
+    private static final String STAGING_DATA_DIR = "/data/app-staging";
     private static final String APEX_SUFFIX = ".apex";
     private static final String TRAIN_WITH_APEX_INSTALL_CMD = "install-multi-package";
 
@@ -62,7 +62,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         mApkInstalled = new ArrayList<>();
         mTestApexInfoList = new ArrayList<ApexInfo>();
 
-        // Clean up data/apex/active and data/pkg_staging.
+        // Clean up data/apex/active and data/app-staging.
         cleanUpStagedAndActiveSession(device, buildInfo);
 
         List<String> testAppFileNames = getTestsFileName();
@@ -243,7 +243,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         return false;
     }
 
-    /** Clean up data/apex/active and data/pkg_staging. */
+    /** Clean up data/apex/active and data/app-staging. */
     private void cleanUpStagedAndActiveSession(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, DeviceNotAvailableException {
         for (String appFilename : getTestsFileName()) {
