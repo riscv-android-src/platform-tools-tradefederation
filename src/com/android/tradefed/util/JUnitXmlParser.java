@@ -104,19 +104,8 @@ public class JUnitXmlParser extends AbstractXmlParser {
                 }
             }
             if (FAILURE_TAG.equalsIgnoreCase(name) || ERROR_TAG.equalsIgnoreCase(name)) {
-                // current testcase has a failure - extract out message and type and store it
-                // detailed stack is CDATA, will be extracted in characters() callback
+                // current testcase has a failure - will be extracted in characters() callback
                 mFailureContent = new StringBuffer();
-                String message = attributes.getValue("message");
-                String type = attributes.getValue("type");
-                if (message != null) {
-                    mFailureContent.append(message);
-                    mFailureContent.append("\n");
-                }
-                if (type != null) {
-                    mFailureContent.append(type);
-                    mFailureContent.append("\n");
-                }
             }
         }
 

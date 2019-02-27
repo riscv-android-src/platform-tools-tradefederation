@@ -82,10 +82,8 @@ public class SandboxConfigDump {
         SandboxConfigurationFactory factory = SandboxConfigurationFactory.getInstance();
         PrintWriter pw = null;
         try {
-            // TODO: Handle keystore
             IConfiguration config =
                     factory.createConfigurationFromArgs(argList.toArray(new String[0]), cmd);
-            //factory.createConfigurationFromArgs(argList.toArray(new String[0]), cmd);
             if (DumpCmd.RUN_CONFIG.equals(cmd) || DumpCmd.TEST_MODE.equals(cmd)) {
                 config.getCommandOptions().setShouldUseSandboxing(false);
                 config.getConfigurationDescription().setSandboxed(true);

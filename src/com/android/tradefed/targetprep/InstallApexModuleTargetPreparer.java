@@ -226,7 +226,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     }
 
     /* Check if the app file is apex or not */
-    protected boolean isApex(File file) {
+    private boolean isApex(File file) {
         if (file.getName().endsWith(APEX_SUFFIX)) {
             return true;
         }
@@ -234,9 +234,9 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     }
 
     /** Check if the apps need to be installed contains apex. */
-    protected boolean containsApex(Collection<String> testFileNames) {
+    private boolean containsApex(Collection<String> testFileNames) {
         for (String filename : testFileNames) {
-            if (filename.endsWith(".apex")) {
+            if (filename.endsWith(APEX_SUFFIX)) {
                 return true;
             }
         }

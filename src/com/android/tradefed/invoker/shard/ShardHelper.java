@@ -166,7 +166,10 @@ public class ShardHelper implements IShardHelper {
         shardConfig.setTestInvocationListeners(
                 buildShardListeners(resultCollector, config.getTestInvocationListeners()));
 
-        // use the same {@link ITargetPreparer}, {@link IDeviceRecovery} etc as original config
+        // Use the same {@link ITargetPreparer}, {@link IDeviceRecovery} etc as original config
+        // Make sure we don't run as sandboxed in shards, only parent invocation needs to
+        // run as sandboxed
+        shardConfig.getConfigurationDescription().setSandboxed(false);
         rescheduler.scheduleConfig(shardConfig);
     }
 
