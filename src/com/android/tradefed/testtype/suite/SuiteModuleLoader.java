@@ -215,12 +215,20 @@ public class SuiteModuleLoader {
                     continue;
                 }
                 String baseId = AbiUtils.createId(abi.getName(), name);
-                if (!shouldRunModule(baseId)) {
-                    // If the module should not run tests based on the state of filters,
-                    // skip this name/abi combination.
-                    continue;
+                IConfiguration config = null;
+                try {
+                    config = mConfigFactory.createConfigurationFromArgs(pathArg);
+                } catch (ConfigurationException e) {
+                    // If the module should not have been running in the first place, give it a
+                    // pass on the configuration failure.
+                    if (!shouldRunModule(baseId)) {
+                        primaryAbi = false;
+                        // If the module should not run tests based on the state of filters,
+                        // skip this name/abi combination.
+                        continue;
+                    }
+                    throw e;
                 }
-                IConfiguration config = mConfigFactory.createConfigurationFromArgs(pathArg);
 
                 // If a suiteTag is used, we load with it.
                 if (!Strings.isNullOrEmpty(suiteTag)
@@ -234,7 +242,20 @@ public class SuiteModuleLoader {
                 }
 
                 boolean skipCreatingBaseConfig = false;
-                List<IModuleParameter> params = getModuleParameters(name, config);
+                List<IModuleParameter> params = null;
+                try {
+                    params = getModuleParameters(name, config);
+                } catch (ConfigurationException e) {
+                    // If the module should not have been running in the first place, give it a
+                    // pass on the configuration failure.
+                    if (!shouldRunModule(baseId)) {
+                        primaryAbi = false;
+                        // If the module should not run tests based on the state of filters,
+                        // skip this name/abi combination.
+                        continue;
+                    }
+                    throw e;
+                }
 
                 // Handle parameterized modules if enabled.
                 if (mAllowParameterizedModules) {
@@ -273,11 +294,13 @@ public class SuiteModuleLoader {
                         }
                         String fullId =
                                 String.format("%s[%s]", baseId, param.getParameterIdentifier());
-                        IConfiguration paramConfig =
-                                mConfigFactory.createConfigurationFromArgs(pathArg);
-                        setUpConfig(name, baseId, fullId, paramConfig, abi);
-                        param.applySetup(paramConfig);
-                        toRun.put(fullId, paramConfig);
+                        if (shouldRunModule(fullId)) {
+                            IConfiguration paramConfig =
+                                    mConfigFactory.createConfigurationFromArgs(pathArg);
+                            setUpConfig(name, baseId, fullId, paramConfig, abi);
+                            param.applySetup(paramConfig);
+                            toRun.put(fullId, paramConfig);
+                        }
                     }
                 }
                 primaryAbi = false;
@@ -286,9 +309,11 @@ public class SuiteModuleLoader {
                 if (skipCreatingBaseConfig) {
                     continue;
                 }
-                // Always add the base regular configuration to the execution.
-                setUpConfig(name, baseId, baseId, config, abi);
-                toRun.put(baseId, config);
+                if (shouldRunModule(baseId)) {
+                    // Always add the base regular configuration to the execution.
+                    setUpConfig(name, baseId, baseId, config, abi);
+                    toRun.put(baseId, config);
+                }
             }
         } catch (ConfigurationException e) {
             throw new RuntimeException(
@@ -297,6 +322,7 @@ public class SuiteModuleLoader {
                             configFullName, e.getMessage()),
                     e);
         }
+
         return toRun;
     }
 
