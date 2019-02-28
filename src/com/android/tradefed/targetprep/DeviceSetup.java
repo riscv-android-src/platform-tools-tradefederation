@@ -88,6 +88,9 @@ public class DeviceSetup extends BaseTargetPreparer implements ITargetCleaner {
             description = "The passphrase used to connect to a secured network")
     protected String mWifiPsk = null;
 
+    @Option(name = "wifi-ssid-to-psk", description = "A map of wifi SSIDs to passwords.")
+    protected Map<String, String> mWifiSsidToPsk = new HashMap<>();
+
     @Option(name = "wifi-watchdog",
             description = "Turn wifi watchdog on or off")
     protected BinaryState mWifiWatchdog = BinaryState.IGNORE;
@@ -470,7 +473,8 @@ public class DeviceSetup extends BaseTargetPreparer implements ITargetCleaner {
 
         // Only try to disconnect if wifi ssid is set since isWifiEnabled() is a heavy operation
         // which should be avoided when possible
-        if (mDisconnectWifiAfterTest && mWifiSsid != null && device.isWifiEnabled()) {
+        boolean wifiSet = mWifiSsid != null || !mWifiSsidToPsk.isEmpty();
+        if (mDisconnectWifiAfterTest && wifiSet && device.isWifiEnabled()) {
             boolean result = device.disconnectFromWifi();
             if (result) {
                 CLog.i("Successfully disconnected from wifi network on %s",
@@ -884,12 +888,21 @@ public class DeviceSetup extends BaseTargetPreparer implements ITargetCleaner {
             return;
         }
 
-        if (mWifiSsid != null) {
-            if (!device.connectToWifiNetwork(mWifiSsid, mWifiPsk)) {
-                throw new TargetSetupError(String.format(
-                        "Failed to connect to wifi network %s on %s", mWifiSsid,
-                        device.getSerialNumber()), device.getDeviceDescriptor());
+        if (mWifiSsid != null && device.connectToWifiNetwork(mWifiSsid, mWifiPsk)) {
+            return;
+        }
+        for (Map.Entry<String, String> ssidToPsk : mWifiSsidToPsk.entrySet()) {
+            if (device.connectToWifiNetwork(ssidToPsk.getKey(), ssidToPsk.getValue())) {
+                return;
             }
+        }
+        // Error message does not acknowledge mWifiSsidToPsk for parity with existing monitoring.
+        if (mWifiSsid != null || !mWifiSsidToPsk.isEmpty()) {
+            throw new TargetSetupError(
+                    String.format(
+                            "Failed to connect to wifi network %s on %s",
+                            mWifiSsid, device.getSerialNumber()),
+                    device.getDeviceDescriptor());
         }
     }
 
@@ -1044,6 +1057,18 @@ public class DeviceSetup extends BaseTargetPreparer implements ITargetCleaner {
      */
     protected void setWifiNetwork(String wifiNetwork) {
         mWifiSsid = wifiNetwork;
+    }
+
+    /* Exposed for unit testing */
+    @VisibleForTesting
+    protected void setWifiPsk(String wifiPsk) {
+        mWifiPsk = wifiPsk;
+    }
+
+    /* Exposed for unit testing */
+    @VisibleForTesting
+    protected void setWifiSsidToPsk(Map<String, String> wifiSssidToPsk) {
+        mWifiSsidToPsk = wifiSssidToPsk;
     }
 
     /**

@@ -35,6 +35,7 @@ import org.easymock.Capture;
 import org.easymock.EasyMock;
 
 import java.io.File;
+import java.util.LinkedHashMap;
 
 /**
  * Unit tests for {@link DeviceSetup}.
@@ -221,6 +222,46 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setWifi(BinaryState.OFF);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testSetup_wifi_network_name() throws Exception {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doSettingExpectations("global", "wifi_on", "1");
+        doCommandsExpectations("svc wifi enable");
+        EasyMock.expect(mMockDevice.connectToWifiNetwork("wifi_network", "psk")).andReturn(true);
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setWifiNetwork("wifi_network");
+        mDeviceSetup.setWifiPsk("psk");
+
+        mDeviceSetup.setWifi(BinaryState.ON);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testSetup_wifi_multiple_network_names() throws Exception {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doSettingExpectations("global", "wifi_on", "1");
+        doCommandsExpectations("svc wifi enable");
+        EasyMock.expect(mMockDevice.connectToWifiNetwork("old_network", "abc")).andReturn(false);
+        EasyMock.expect(mMockDevice.connectToWifiNetwork("network", "def")).andReturn(false);
+        EasyMock.expect(mMockDevice.connectToWifiNetwork("new_network", "ghi")).andReturn(true);
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setWifiNetwork("old_network");
+        mDeviceSetup.setWifiPsk("abc");
+        LinkedHashMap<String, String> ssidToPsk = new LinkedHashMap<>();
+        ssidToPsk.put("network", "def");
+        ssidToPsk.put("new_network", "ghi");
+        mDeviceSetup.setWifiSsidToPsk(ssidToPsk);
+
+        mDeviceSetup.setWifi(BinaryState.ON);
         mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
 
         EasyMock.verify(mMockDevice);
