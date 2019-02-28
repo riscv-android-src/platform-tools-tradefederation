@@ -63,6 +63,7 @@ import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.ZipUtil2;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 
 import org.apache.commons.compress.archivers.zip.ZipFile;
 
@@ -389,10 +390,6 @@ public class NativeDevice implements IManagedTestDevice {
         return getIDevice().getSerialNumber();
     }
 
-    private boolean nullOrEmpty(String string) {
-        return string == null || string.isEmpty();
-    }
-
     /**
      * Fetch a device property, from the ddmlib cache by default, and falling back to either `adb
      * shell getprop` or `fastboot getvar` depending on whether the device is in Fastboot or not.
@@ -487,16 +484,20 @@ public class NativeDevice implements IManagedTestDevice {
      */
     private String internalGetProductType(int retryAttempts) throws DeviceNotAvailableException {
         String productType = internalGetProperty(DeviceProperties.BOARD, "product", "Product type");
+        // fallback to ro.hardware for legacy devices
+        if (Strings.isNullOrEmpty(productType)) {
+            productType = internalGetProperty(DeviceProperties.HARDWARE, "product", "Product type");
+        }
 
         // Things will likely break if we don't have a valid product type.  Try recovery (in case
         // the device is only partially booted for some reason), and if that doesn't help, bail.
-        if (nullOrEmpty(productType)) {
+        if (Strings.isNullOrEmpty(productType)) {
             if (retryAttempts > 0) {
                 recoverDevice();
                 productType = internalGetProductType(retryAttempts - 1);
             }
 
-            if (nullOrEmpty(productType)) {
+            if (Strings.isNullOrEmpty(productType)) {
                 throw new DeviceNotAvailableException(String.format(
                         "Could not determine product type for device %s.", getSerialNumber()),
                         getSerialNumber());
