@@ -16,6 +16,7 @@
 package com.android.tradefed.device.metric;
 
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
@@ -30,6 +31,7 @@ import java.util.Map;
  * (AndroidTest.xml). TODO: When device-side reporting gets better, fix the LogDataType to be more
  * accurate.
  */
+@OptionClass(alias = "file-puller-log-collector")
 public class FilePullerLogCollector extends FilePullerDeviceMetricCollector {
 
     @Option(
