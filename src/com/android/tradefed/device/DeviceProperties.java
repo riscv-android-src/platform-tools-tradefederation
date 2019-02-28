@@ -22,6 +22,8 @@ public class DeviceProperties {
 
     /** property name for device board */
     public static final String BOARD = "ro.product.board";
+    /** property name for device hardware */
+    public static final String HARDWARE = "ro.hardware";
     /** proprty name to indicate device variant (e.g. flo vs dev) */
     public static final String VARIANT = "ro.product.vendor.device";
     /** Legacy O-MR1 property name to indicate device variant (e.g. flo vs dev) */

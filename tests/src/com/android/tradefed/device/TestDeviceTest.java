@@ -370,8 +370,9 @@ public class TestDeviceTest extends TestCase {
      * Test {@link TestDevice#getProductType()} when device is in adb and IDevice has not cached
      * product type property
      */
-    public void testGetProductType_adb() throws Exception {
+    public void testGetProductType_adbWithRetry() throws Exception {
         EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.BOARD)).andReturn(null);
+        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.HARDWARE)).andReturn(null);
         final String expectedOutput = "nexusone";
         injectSystemProperty(DeviceProperties.BOARD, expectedOutput);
         EasyMock.replay(mMockIDevice);
@@ -393,6 +394,19 @@ public class TestDeviceTest extends TestCase {
         } catch (DeviceNotAvailableException e) {
             // expected
         }
+    }
+
+    /**
+     * Verify that {@link TestDevice#getProductType()} falls back to ro.hardware
+     *
+     * @throws Exception
+     */
+    public void testGetProductType_legacy() throws Exception {
+        final String expectedOutput = "nexusone";
+        injectSystemProperty(DeviceProperties.BOARD, "");
+        injectSystemProperty(DeviceProperties.HARDWARE, expectedOutput);
+        EasyMock.replay(mMockIDevice);
+        assertEquals(expectedOutput, mTestDevice.getProductType());
     }
 
     /**
