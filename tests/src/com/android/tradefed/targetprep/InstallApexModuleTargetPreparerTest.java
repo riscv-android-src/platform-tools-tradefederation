@@ -16,7 +16,6 @@
 package com.android.tradefed.targetprep;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -308,13 +307,6 @@ public class InstallApexModuleTargetPreparerTest {
         mInstallApexModuleTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
         mInstallApexModuleTargetPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
         EasyMock.verify(mMockBuildInfo, mMockDevice);
-    }
-
-    @Test
-    public void testIsApex() throws Exception {
-        mInstallApexModuleTargetPreparer = new InstallApexModuleTargetPreparer();
-        assertTrue(mInstallApexModuleTargetPreparer.isApex(mFakeApex));
-        assertFalse(mInstallApexModuleTargetPreparer.isApex(mFakeApk));
     }
 
     private void mockSuccessfulInstallPackageAndReboot() throws Exception {
