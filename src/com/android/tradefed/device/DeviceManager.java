@@ -725,7 +725,7 @@ public class DeviceManager implements IDeviceManager {
 
     private void assertEmulatorProcessAlive(Process p, ITestDevice device)
             throws DeviceNotAvailableException {
-        if (!isProcessRunning(p)) {
+        if (!p.isAlive()) {
             try {
                 CLog.e("Emulator process has died . stdout: '%s', stderr: '%s'",
                         StreamUtil.getStringFromStream(p.getInputStream()),
@@ -736,22 +736,6 @@ public class DeviceManager implements IDeviceManager {
             throw new DeviceNotAvailableException("emulator died after launch",
                     device.getSerialNumber());
         }
-    }
-
-    /**
-     * Check if emulator process has died
-     *
-     * @param p the {@link Process} to check
-     * @return true if process is running, false otherwise
-     */
-    private boolean isProcessRunning(Process p) {
-        try {
-            p.exitValue();
-        } catch (IllegalThreadStateException e) {
-            // expected if process is still alive
-            return true;
-        }
-        return false;
     }
 
     /**
@@ -772,7 +756,7 @@ public class DeviceManager implements IDeviceManager {
         Process emulatorProcess = ((IManagedTestDevice) device).getEmulatorProcess();
         if (emulatorProcess != null) {
             emulatorProcess.destroy();
-            if (isProcessRunning(emulatorProcess)) {
+            if (emulatorProcess.isAlive()) {
                 CLog.w("Emulator process still running after destroy for %s",
                         device.getSerialNumber());
                 forceKillProcess(emulatorProcess, device.getSerialNumber());
