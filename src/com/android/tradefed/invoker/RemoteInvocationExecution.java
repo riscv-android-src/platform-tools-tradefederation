@@ -29,7 +29,9 @@ import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.cloud.GceAvdInfo;
 import com.android.tradefed.device.cloud.GceManager;
+import com.android.tradefed.device.cloud.LaunchCvdHelper;
 import com.android.tradefed.device.cloud.ManagedRemoteDevice;
+import com.android.tradefed.device.cloud.MultiUserSetupUtil;
 import com.android.tradefed.device.cloud.RemoteFileUtil;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -49,6 +51,7 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.proto.TestRecordProtoUtil;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -66,6 +69,8 @@ public class RemoteInvocationExecution extends InvocationExecution {
     public static final long PUSH_TF_TIMEOUT = 150000L;
     public static final long PULL_RESULT_TIMEOUT = 180000L;
     public static final long REMOTE_PROCESS_RUNNING_WAIT = 15000L;
+    public static final long LAUNCH_EXTRA_DEVICE = 2 * 60 * 1000L;
+    public static final long NEW_USER_TIMEOUT = 5 * 60 * 1000L;
 
     public static final String REMOTE_USER_DIR = "/home/{$USER}/";
     public static final String PROTO_RESULT_NAME = "output.pb";
@@ -117,6 +122,63 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
         TestDeviceOptions options = device.getOptions();
         String mainRemoteDir = getRemoteMainDir(options);
+        // Handle sharding
+        if (config.getCommandOptions().getShardCount() != null
+                && config.getCommandOptions().getShardIndex() == null) {
+            if (config.getCommandOptions().getShardCount() > 1) {
+                // For each device after the first one we need to start a new device.
+                for (int i = 2; i < config.getCommandOptions().getShardCount() + 1; i++) {
+                    String username = String.format("vsoc-0%s", i);
+                    CommandResult userSetup =
+                            MultiUserSetupUtil.prepareRemoteUser(
+                                    username, info, options, runUtil, NEW_USER_TIMEOUT);
+                    if (userSetup != null) {
+                        String errorMsg =
+                                String.format("Failed to setup user: %s", userSetup.getStderr());
+                        CLog.e(errorMsg);
+                        listener.invocationFailed(new RuntimeException(errorMsg));
+                        return;
+                    }
+
+                    CommandResult homeDirSetup =
+                            MultiUserSetupUtil.prepareRemoteHomeDir(
+                                    options.getInstanceUser(),
+                                    username,
+                                    info,
+                                    options,
+                                    runUtil,
+                                    NEW_USER_TIMEOUT);
+                    if (homeDirSetup != null) {
+                        String errorMsg =
+                                String.format(
+                                        "Failed to setup home dir: %s", homeDirSetup.getStderr());
+                        CLog.e(errorMsg);
+                        listener.invocationFailed(new RuntimeException(errorMsg));
+                        return;
+                    }
+
+                    List<String> startCommand =
+                            LaunchCvdHelper.createSimpleDeviceCommand(username, true);
+                    CommandResult startDeviceRes =
+                            GceManager.remoteSshCommandExecution(
+                                    info,
+                                    options,
+                                    runUtil,
+                                    LAUNCH_EXTRA_DEVICE,
+                                    Joiner.on(" ").join(startCommand));
+                    if (!CommandStatus.SUCCESS.equals(startDeviceRes.getStatus())) {
+                        String errorMsg =
+                                String.format(
+                                        "Failed to start %s: %s",
+                                        username, startDeviceRes.getStderr());
+                        CLog.e(errorMsg);
+                        listener.invocationFailed(new RuntimeException(errorMsg));
+                        return;
+                    }
+                }
+            }
+        }
+
         mRemoteAdbPath = String.format("/home/%s/bin/adb", options.getInstanceUser());
 
         String tfPath = System.getProperty("TF_JAR_DIR");
