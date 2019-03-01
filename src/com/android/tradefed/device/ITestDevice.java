@@ -592,6 +592,15 @@ public interface ITestDevice extends INativeDevice {
     public int createUser(String name) throws DeviceNotAvailableException, IllegalStateException;
 
     /**
+     * Create a user with a given name and default flags 0.
+     *
+     * @param name of the user to create on the device
+     * @return the integer for the user id created or -1 for error.
+     * @throws DeviceNotAvailableException
+     */
+    public int createUserNoThrow(String name) throws DeviceNotAvailableException;
+
+    /**
      * Create a user with a given name and the provided flags
      *
      * @param name of the user to create on the device
@@ -694,6 +703,14 @@ public interface ITestDevice extends INativeDevice {
      * @throws DeviceNotAvailableException
      */
     public int getUserFlags(int userId) throws DeviceNotAvailableException;
+
+    /**
+     * Return whether the specified user is a secondary user according to it's flags.
+     *
+     * @return true if the user is secondary, false otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    public boolean isUserSecondary(int userId) throws DeviceNotAvailableException;
 
     /**
      * Return the serial number associated to the userId if found, -10000 in any other cases.
