@@ -3663,6 +3663,12 @@ public class NativeDevice implements IManagedTestDevice {
         throw new UnsupportedOperationException("No support for user's feature.");
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public int createUserNoThrow(String name) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -3744,6 +3750,13 @@ public class NativeDevice implements IManagedTestDevice {
     public int getCurrentUser() throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("No support for user's feature.");
     }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean isUserSecondary(int userId) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
 
     /**
      * {@inheritDoc}
