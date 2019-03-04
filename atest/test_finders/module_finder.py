@@ -52,53 +52,6 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         self.root_dir = os.environ.get(constants.ANDROID_BUILD_TOP)
         self.module_info = module_info
 
-    def _has_test_config(self, mod_info):
-        """Validate if this module has a test config.
-
-        A module can have a test config in the following manner:
-          - AndroidTest.xml at the module path.
-          - test_config be set in module-info.json.
-          - Auto-generated config via the auto_test_config key in module-info.json.
-
-        Args:
-            mod_info: Dict of module info to check.
-
-        Returns:
-            True if this module has a test config, False otherwise.
-        """
-        # Check if test_config in module-info is set.
-        for test_config in mod_info.get(constants.MODULE_TEST_CONFIG, []):
-            if os.path.isfile(os.path.join(self.root_dir, test_config)):
-                return True
-        # Check for AndroidTest.xml at the module path.
-        for path in mod_info.get(constants.MODULE_PATH, []):
-            if os.path.isfile(os.path.join(self.root_dir, path,
-                                           constants.MODULE_CONFIG)):
-                return True
-        # Check if the module has an auto-generated config.
-        return self._is_auto_gen_test_config(mod_info.get(constants.MODULE_NAME))
-
-    def _is_testable_module(self, mod_info):
-        """Check if module is something we can test.
-
-        A module is testable if:
-          - it's installed.
-          - it's a robolectric module (or shares path with one).
-
-        Args:
-            mod_info: Dict of module info to check.
-
-        Returns:
-            True if we can test this module, False otherwise.
-        """
-        if not mod_info:
-            return False
-        if mod_info.get(constants.MODULE_INSTALLED) and self._has_test_config(mod_info):
-            return True
-        if self._is_robolectric_test(mod_info.get(constants.MODULE_NAME)):
-            return True
-        return False
-
     def _determine_testable_module(self, path):
         """Determine which module the user is trying to test.
 
@@ -117,9 +70,9 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             # Robolectric tests always exist in pairs of 2, one module to build
             # the test and another to run it. For now, we are assuming they are
             # isolated in their own folders and will return if we find one.
-            if self._is_robolectric_test(mod):
+            if self.module_info.is_robolectric_test(mod):
                 return mod
-            if self._is_testable_module(mod_info):
+            if self.module_info.is_testable_module(mod_info):
                 testable_modules.append(mod_info.get(constants.MODULE_NAME))
         return test_finder_utils.extract_test_from_tests(testable_modules)
 
@@ -171,50 +124,6 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         test.build_targets.add(test.test_name)
         return test
 
-    def _get_robolectric_test_name(self, module_name):
-        """Returns run robolectric module.
-
-        There are at least 2 modules in every robolectric module path, return
-        the module that we can run as a build target.
-
-        Arg:
-            module_name: String of module.
-
-        Returns:
-            String of module that is the run robolectric module, None if none
-            could be found.
-        """
-        module_name_info = self.module_info.get_module_info(module_name)
-        if not module_name_info:
-            return None
-        for mod in self.module_info.get_module_names(
-                module_name_info.get(constants.MODULE_PATH, [])[0]):
-            mod_info = self.module_info.get_module_info(mod)
-            if test_finder_utils.is_robolectric_module(mod_info):
-                return mod
-        return None
-
-    def _is_robolectric_test(self, module_name):
-        """Check if module is a robolectric test.
-
-        A module can be a robolectric test if the specified module has their
-        class set as ROBOLECTRIC (or shares their path with a module that does).
-
-        Args:
-            module_name: String of module to check.
-
-        Returns:
-            True if the module is a robolectric module, else False.
-        """
-        # Check 1, module class is ROBOLECTRIC
-        mod_info = self.module_info.get_module_info(module_name)
-        if mod_info and test_finder_utils.is_robolectric_module(mod_info):
-            return True
-        # Check 2, shared modules in the path have class ROBOLECTRIC_CLASS.
-        if self._get_robolectric_test_name(module_name):
-            return True
-        return False
-
     def _update_to_robolectric_test_info(self, test):
         """Update the fields for a robolectric test.
 
@@ -225,7 +134,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
           TestInfo with robolectric fields.
         """
         test.test_runner = self._ROBOLECTRIC_RUNNER
-        test.test_name = self._get_robolectric_test_name(test.test_name)
+        test.test_name = self.module_info.get_robolectric_test_name(test.test_name)
         return test
 
     def _process_test_info(self, test):
@@ -251,26 +160,11 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         # Check if this is only a vts module.
         if self._is_vts_module(test.test_name):
             return self._update_to_vts_test_info(test)
-        elif self._is_robolectric_test(test.test_name):
+        elif self.module_info.is_robolectric_test(test.test_name):
             return self._update_to_robolectric_test_info(test)
         rel_config = test.data[constants.TI_REL_CONFIG]
         test.build_targets = self._get_build_targets(module_name, rel_config)
         return test
-
-    def _is_auto_gen_test_config(self, module_name):
-        """Check if the test config file will be generated automatically.
-
-        Args:
-            module_name: A string of the module name.
-
-        Returns:
-            True if the test config file will be generated automatically.
-        """
-        if self.module_info.is_module(module_name):
-            mod_info = self.module_info.get_module_info(module_name)
-            auto_test_config = mod_info.get('auto_test_config', [])
-            return auto_test_config and auto_test_config[0]
-        return False
 
     def _get_build_targets(self, module_name, rel_config):
         """Get the test deps.
@@ -283,7 +177,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             Set of build targets.
         """
         targets = set()
-        if not self._is_auto_gen_test_config(module_name):
+        if not self.module_info.is_auto_gen_test_config(module_name):
             config_file = os.path.join(self.root_dir, rel_config)
             targets = test_finder_utils.get_targets_from_xml(config_file,
                                                              self.module_info)
@@ -313,7 +207,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             test_config_list = mod_info.get(constants.MODULE_TEST_CONFIG, [])
             if test_config_list:
                 test_config = test_config_list[0]
-            if not self._is_auto_gen_test_config(module_name) and test_config != '':
+            if not self.module_info.is_auto_gen_test_config(module_name) and test_config != '':
                 return test_config
         return rel_config
 
@@ -327,7 +221,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             A populated TestInfo namedtuple if found, else None.
         """
         mod_info = self.module_info.get_module_info(module_name)
-        if self._is_testable_module(mod_info):
+        if self.module_info.is_testable_module(mod_info):
             # path is a list with only 1 element.
             rel_config = os.path.join(mod_info['path'][0],
                                       constants.MODULE_CONFIG)
@@ -543,7 +437,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                     [test_info.TestFilter(test_finder_utils.get_cc_filter(
                         '*', methods), frozenset())])
         # Path to non-module dir, treat as package.
-        elif (not file_name and not self._is_auto_gen_test_config(module_name)
+        elif (not file_name and not self.module_info.is_auto_gen_test_config(module_name)
               and rel_module_dir != os.path.relpath(path, self.root_dir)):
             dir_items = [os.path.join(path, f) for f in os.listdir(path)]
             for dir_item in dir_items:
