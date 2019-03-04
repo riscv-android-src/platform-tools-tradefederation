@@ -26,6 +26,9 @@ RESULT_SERVER_TIMEOUT = 5
 # Result arguments if tests are configured in TEST_MAPPING.
 TEST_MAPPING_RESULT_SERVER_ARGS = []
 
+# Google service key for gts tests.
+GTS_GOOGLE_SERVICE_ACCOUNT = ''
+
 # Arg constants.
 WAIT_FOR_DEBUGGER = 'WAIT_FOR_DEBUGGER'
 DISABLE_INSTALL = 'DISABLE_INSTALL'
