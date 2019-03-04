@@ -69,6 +69,30 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                              'template': self._TF_TEMPLATE,
                              'args': ''}
         self.is_verbose = logging.getLogger().isEnabledFor(logging.DEBUG)
+        self.root_dir = os.environ.get(constants.ANDROID_BUILD_TOP)
+
+    def _try_set_gts_authentication_key(self):
+        """Set GTS authentication key if it is available or exists.
+
+        Strategy:
+            Get APE_API_KEY from os.environ:
+                - If APE_API_KEY is already set by user -> do nothing.
+            Get the APE_API_KEY from constants:
+                - If the key file exists -> set to env var.
+            If APE_API_KEY isn't set and the key file doesn't exist:
+                - Warn user some GTS tests may fail without authentication.
+        """
+        if os.environ.get('APE_API_KEY'):
+            logging.debug('APE_API_KEY is set by developer.')
+            return
+        ape_api_key = constants.GTS_GOOGLE_SERVICE_ACCOUNT
+        key_path = os.path.join(self.root_dir, ape_api_key)
+        if ape_api_key and os.path.exists(key_path):
+            logging.debug('Set APE_API_KEY: %s', ape_api_key)
+            os.environ['APE_API_KEY'] = ape_api_key
+        else:
+            logging.debug('APE_API_KEY not set, some GTS tests may fail'
+                          'without authentication.')
 
     def run_tests(self, test_infos, extra_args, reporter):
         """Run the list of test_infos. See base class for more.
@@ -81,6 +105,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         Returns:
             0 if tests succeed, non-zero otherwise.
         """
+        # Set google service key if it's available or found before running tests.
+        self._try_set_gts_authentication_key()
         if os.getenv(OLD_OUTPUT_ENV_VAR):
             return self.run_tests_raw(test_infos, extra_args, reporter)
         return self.run_tests_pretty(test_infos, extra_args, reporter)
