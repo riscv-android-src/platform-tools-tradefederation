@@ -485,7 +485,6 @@ def _dry_run(results_dir, extra_args, test_infos):
         results_dir: Path for saving atest logs.
         extra_args: Dict of extra args for test runners to utilize.
         test_infos: A list of TestInfos.
-
     """
     for test_runner, tests in test_runner_handler.group_tests_by_test_runners(test_infos):
         runner = test_runner(results_dir)
@@ -494,6 +493,19 @@ def _dry_run(results_dir, extra_args, test_infos):
             print('Would run test via command: %s'
                   % (atest_utils.colorize(run_cmd, constants.GREEN)))
 
+def _print_testable_modules(mod_info, suite):
+    """Print the testable modules for a given suite.
+
+    Args:
+        mod_info: ModuleInfo object.
+        suite: A string of suite name.
+    """
+    testable_modules = mod_info.get_testable_modules(suite)
+    print('\n%s' % atest_utils.colorize('%s Testable %s modules' % (
+        len(testable_modules), suite), constants.CYAN))
+    print('-------')
+    for module in sorted(testable_modules):
+        print('\t%s' % module)
 
 # pylint: disable=too-many-statements
 # pylint: disable=too-many-branches
@@ -520,29 +532,26 @@ def main(argv):
     results_dir = make_test_run_dir()
     mod_info = module_info.ModuleInfo(force_build=args.rebuild_module_info)
     translator = cli_translator.CLITranslator(module_info=mod_info)
+    if args.list_modules:
+        _print_testable_modules(mod_info, args.list_modules)
+        return constants.EXIT_CODE_SUCCESS
     build_targets = set()
     test_infos = set()
     if _will_run_tests(args):
         build_targets, test_infos = translator.translate(args)
         if not test_infos:
-            if SEND_CC_LOG:
-                metrics_utils.send_exit_event(constants.EXIT_CODE_TEST_NOT_FOUND)
             return constants.EXIT_CODE_TEST_NOT_FOUND
         if not is_from_test_mapping(test_infos):
             _validate_exec_mode(args, test_infos)
         else:
             _validate_tm_tests_exec_mode(args, test_infos)
     if args.info:
-        if SEND_CC_LOG:
-            metrics_utils.send_exit_event(constants.EXIT_CODE_SUCCESS)
         return _print_test_info(mod_info, test_infos)
     build_targets |= test_runner_handler.get_test_runner_reqs(mod_info,
                                                               test_infos)
     extra_args = get_extra_args(args)
     if args.dry_run:
         _dry_run(results_dir, extra_args, test_infos)
-        if SEND_CC_LOG:
-            metrics_utils.send_exit_event(constants.EXIT_CODE_SUCCESS)
         return constants.EXIT_CODE_SUCCESS
 
     if args.detect_regression:
@@ -556,8 +565,6 @@ def main(argv):
         build_targets.add(mod_info.module_info_target)
         success = atest_utils.build(build_targets, args.verbose)
         if not success:
-            if SEND_CC_LOG:
-                metrics_utils.send_exit_event(constants.EXIT_CODE_BUILD_FAILURE)
             return constants.EXIT_CODE_BUILD_FAILURE
     elif constants.TEST_STEP not in steps:
         logging.warn('Install step without test step currently not '
@@ -580,9 +587,10 @@ def main(argv):
                 None, regression_args, reporter)
     if tests_exit_code != constants.EXIT_CODE_SUCCESS:
         tests_exit_code = constants.EXIT_CODE_TEST_FAILURE
-    if SEND_CC_LOG:
-        metrics_utils.send_exit_event(tests_exit_code)
     return tests_exit_code
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))
+    EXIT_CODE = main(sys.argv[1:])
+    if SEND_CC_LOG:
+        metrics_utils.send_exit_event(EXIT_CODE)
+    sys.exit(EXIT_CODE)
