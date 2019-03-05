@@ -50,6 +50,7 @@ import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget
 import com.android.tradefed.util.StringEscapeUtils;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 
 import org.junit.Assert;
 
@@ -58,6 +59,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -716,13 +718,24 @@ public class InstrumentationTest
         ListInstrumentationParser parser = getListInstrumentationParser();
         getDevice().executeShellCommand("pm list instrumentation", parser);
 
+        Set<String> candidates = new LinkedHashSet<>();
         for (InstrumentationTarget target : parser.getInstrumentationTargets()) {
             if (mPackageName.equals(target.packageName)) {
-                return target.runnerName;
+                candidates.add(target.runnerName);
             }
         }
-        CLog.w("Unable to determine runner name for package: %s", mPackageName);
-        return null;
+        if (candidates.isEmpty()) {
+            CLog.w("Unable to determine runner name for package: %s", mPackageName);
+            return null;
+        }
+        // Bias toward using one of the AJUR runner when available, otherwise use the first runner
+        // available.
+        Set<String> intersection =
+                Sets.intersection(candidates, ListInstrumentationParser.SHARDABLE_RUNNERS);
+        if (intersection.isEmpty()) {
+            return candidates.iterator().next();
+        }
+        return intersection.iterator().next();
     }
 
     /**
