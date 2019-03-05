@@ -909,10 +909,29 @@ public class TestDevice extends NativeDevice {
      */
     @Override
     public boolean startUser(int userId) throws DeviceNotAvailableException {
-        final String output = executeShellCommand(String.format("am start-user %s", userId));
+        return startUser(userId, false);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean startUser(int userId, boolean waitFlag) throws DeviceNotAvailableException {
+        if (waitFlag) {
+            checkApiLevelAgainstNextRelease("start-user -w", 29);
+        }
+        String cmd = "am start-user " + (waitFlag ? "-w " : "") + userId;
+
+        CLog.d("Starting user with command: %s", cmd);
+        final String output = executeShellCommand(cmd);
         if (output.startsWith("Error")) {
             CLog.e("Failed to start user: %s", output);
             return false;
+        }
+        if (waitFlag) {
+            String state = executeShellCommand("am get-started-user-state " + userId);
+            if (!state.contains("RUNNING_UNLOCKED")) {
+                CLog.w("User %s is not RUNNING_UNLOCKED after start-user -w. (%s).", userId, state);
+                return false;
+            }
         }
         return true;
     }

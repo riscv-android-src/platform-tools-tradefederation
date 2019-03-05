@@ -610,6 +610,17 @@ public class NativeDeviceTest {
         fail("stopUser should have thrown an exception.");
     }
 
+    /** Unit test for {@link NativeDevice#startUser(int, boolean)}. */
+    @Test
+    public void testStartUserFlags_exception() throws Exception {
+        try {
+            mTestDevice.startUser(0, true);
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("startUser should have thrown an exception.");
+    }
+
     /** Unit test for {@link NativeDevice#isUserRunning(int)}. */
     @Test
     public void testIsUserIdRunning_exception() throws Exception {

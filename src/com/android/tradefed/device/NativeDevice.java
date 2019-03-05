@@ -3707,6 +3707,12 @@ public class NativeDevice implements IManagedTestDevice {
         throw new UnsupportedOperationException("No support for user's feature.");
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public boolean startUser(int userId, boolean waitFlag) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
     /**
      * {@inheritDoc}
      */
