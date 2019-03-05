@@ -39,6 +39,7 @@ public class SystemServerStatusChecker implements ISystemStatusChecker {
             String message = "Failed to get system_server pid.";
             CLog.w(message);
             result.setStatus(CheckStatus.FAILED);
+            result.setBugreportNeeded(true);
             result.setErrorMessage(message);
             return result;
         }
@@ -73,6 +74,7 @@ public class SystemServerStatusChecker implements ISystemStatusChecker {
                         mSystemServerPid, tmpSystemServerPid);
         CLog.w(message);
         StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
+        result.setBugreportNeeded(true);
         result.setErrorMessage(message);
         return result;
     }
