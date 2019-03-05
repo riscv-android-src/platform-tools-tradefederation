@@ -380,21 +380,6 @@ def is_equal_or_sub_dir(sub_dir, parent_dir):
     return os.path.commonprefix([sub_dir, parent_dir]) == parent_dir
 
 
-def is_robolectric_module(mod_info):
-    """Check if a module is a robolectric module.
-
-    Args:
-        mod_info: ModuleInfo to check.
-
-    Returns:
-        True if module is a robolectric module, False otherwise.
-    """
-    if mod_info:
-        return (mod_info.get(constants.MODULE_CLASS, [None])[0] ==
-                constants.MODULE_CLASS_ROBOLECTRIC)
-    return False
-
-
 def find_parent_module_dir(root_dir, start_dir, module_info):
     """From current dir search up file tree until root dir for module dir.
 
@@ -424,7 +409,7 @@ def find_parent_module_dir(root_dir, start_dir, module_info):
             return rel_dir
         # Check module_info if auto_gen config or robo (non-config) here
         for mod in module_info.path_to_module_info.get(rel_dir, []):
-            if is_robolectric_module(mod):
+            if module_info.is_robolectric_module(mod):
                 return rel_dir
             for test_config in mod.get(constants.MODULE_TEST_CONFIG, []):
                 if os.path.isfile(os.path.join(root_dir, test_config)):
