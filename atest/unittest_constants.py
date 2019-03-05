@@ -208,3 +208,5 @@ FIND_PATH_FILENAME_CC = 'hello_world_test'
 FIND_PATH_TESTCASE_CC = 'HelloWorldTest'
 FIND_PATH_FOLDER = 'class_file_path_testing'
 FIND_PATH = os.path.join(TEST_DATA_DIR, FIND_PATH_FOLDER)
+
+DEFAULT_INSTALL_PATH = ['/path/to/install']

@@ -207,6 +207,24 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         self.assertGreaterEqual(port, 1024)
         server.close()
 
+    @mock.patch('os.path.exists')
+    @mock.patch.dict('os.environ', {'APE_API_KEY':'/tmp/123.json'})
+    def test_try_set_gts_authentication_key_is_set_by_user(self, mock_exist):
+        """Test try_set_authentication_key_is_set_by_user method."""
+        # Test key is set by user.
+        self.tr._try_set_gts_authentication_key()
+        mock_exist.assert_not_called()
+
+    @mock.patch('constants.GTS_GOOGLE_SERVICE_ACCOUNT')
+    @mock.patch('os.path.exists')
+    def test_try_set_gts_authentication_key_not_set(self, mock_exist, mock_key):
+        """Test try_set_authentication_key_not_set method."""
+        # Test key neither exists nor set by user.
+        mock_exist.return_value = False
+        mock_key.return_value = ''
+        self.tr._try_set_gts_authentication_key()
+        self.assertEquals(os.environ.get('APE_API_KEY'), None)
+
     @mock.patch.object(event_handler.EventHandler, 'process_event')
     def test_process_connection(self, mock_pe):
         """Test _process_connection method."""
