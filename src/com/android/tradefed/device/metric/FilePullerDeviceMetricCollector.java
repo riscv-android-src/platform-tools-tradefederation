@@ -57,16 +57,27 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
     )
     private boolean mCleanUp = true;
 
-    @Override
-    public void onTestRunEnd(
-            DeviceMetricData runData, final Map<String, Metric> currentRunMetrics) {
-        processMetricRequest(runData, currentRunMetrics);
-    }
+    @Option(
+        name = "collect-on-run-ended-only",
+        description =
+                "Attempt to collect the files on test run end only instead of on both test cases "
+                        + "and test run ended."
+    )
+    private boolean mCollectOnRunEndedOnly = false;
 
     @Override
     public void onTestEnd(DeviceMetricData testData,
             Map<String, Metric> currentTestCaseMetrics) {
+        if (mCollectOnRunEndedOnly) {
+            return;
+        }
         processMetricRequest(testData, currentTestCaseMetrics);
+    }
+
+    @Override
+    public void onTestRunEnd(
+            DeviceMetricData runData, final Map<String, Metric> currentRunMetrics) {
+        processMetricRequest(runData, currentRunMetrics);
     }
 
     /** Adds additional pattern keys to the pull from the device. */
@@ -150,7 +161,8 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
                 }
             }
         }
-        CLog.e("Could not find a device file associated to pattern '%s'.", pattern);
+        // Not a hard failure, just nice to know
+        CLog.d("Could not find a device file associated to pattern '%s'.", pattern);
         return null;
     }
 
