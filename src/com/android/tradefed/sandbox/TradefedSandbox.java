@@ -49,6 +49,7 @@ import com.android.tradefed.util.keystore.IKeyStoreClient;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -68,7 +69,7 @@ public class TradefedSandbox implements ISandbox {
 
     private File mStdoutFile = null;
     private File mStderrFile = null;
-    private FileOutputStream mStdout = null;
+    private OutputStream mStdout = null;
     private FileOutputStream mStderr = null;
 
     private File mSandboxTmpFolder = null;
@@ -81,6 +82,7 @@ public class TradefedSandbox implements ISandbox {
     private StreamProtoReceiver mProtoReceiver = null;
 
     private IRunUtil mRunUtil;
+    private boolean mCollectStdout = true;
 
     @Override
     public CommandResult run(IConfiguration config, ITestLogger logger) throws Throwable {
@@ -110,8 +112,10 @@ public class TradefedSandbox implements ISandbox {
         CommandResult result =
                 mRunUtil.runTimedCmd(timeout, mStdout, mStderr, mCmdArgs.toArray(new String[0]));
         // Log stdout and stderr
-        try (InputStreamSource sourceStdOut = new FileInputStreamSource(mStdoutFile)) {
-            logger.testLog("sandbox-stdout", LogDataType.TEXT, sourceStdOut);
+        if (mStdoutFile != null) {
+            try (InputStreamSource sourceStdOut = new FileInputStreamSource(mStdoutFile)) {
+                logger.testLog("sandbox-stdout", LogDataType.TEXT, sourceStdOut);
+            }
         }
         try (InputStreamSource sourceStdErr = new FileInputStreamSource(mStderrFile)) {
             logger.testLog("sandbox-stderr", LogDataType.TEXT, sourceStdErr);
@@ -154,11 +158,28 @@ public class TradefedSandbox implements ISandbox {
     @Override
     public Exception prepareEnvironment(
             IInvocationContext context, IConfiguration config, ITestInvocationListener listener) {
+        // Check for local sharding, avoid redirecting several stdout (from each shards) to the
+        // sandbox stdout as it creates a lot of I/O to the same output.
+        if (config.getCommandOptions().getShardCount() != null
+                && config.getCommandOptions().getShardIndex() == null) {
+            mCollectStdout = false;
+        }
         // Create our temp directories.
         try {
-            mStdoutFile = FileUtil.createTempFile("stdout_subprocess_", ".log");
+            if (mCollectStdout) {
+                mStdoutFile = FileUtil.createTempFile("stdout_subprocess_", ".log");
+                mStdout = new FileOutputStream(mStdoutFile);
+            } else {
+                mStdout =
+                        new OutputStream() {
+                            @Override
+                            public void write(int b) throws IOException {
+                                // Ignore stdout
+                            }
+                        };
+            }
+
             mStderrFile = FileUtil.createTempFile("stderr_subprocess_", ".log");
-            mStdout = new FileOutputStream(mStdoutFile);
             mStderr = new FileOutputStream(mStderrFile);
 
             mSandboxTmpFolder = FileUtil.createTempDir("tradefed-container");
@@ -186,7 +207,6 @@ public class TradefedSandbox implements ISandbox {
         if (res != null) {
             return res;
         }
-
         // Prepare the context
         try {
             mSerializedContext = prepareContext(context, config);
