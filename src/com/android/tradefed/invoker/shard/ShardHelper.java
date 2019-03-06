@@ -123,7 +123,7 @@ public class ShardHelper implements IShardHelper {
                     TestsPoolPoller poller =
                             new TestsPoolPoller(shardableTests, tokenPool, tracker);
                     shardConfig.setTest(poller);
-                    rescheduleConfig(shardConfig, config, context, rescheduler, resultCollector);
+                    rescheduleConfig(shardConfig, config, context, rescheduler, resultCollector, i);
                 }
             } else {
                 CountDownLatch tracker = new CountDownLatch(shardableTests.size());
@@ -131,6 +131,7 @@ public class ShardHelper implements IShardHelper {
                 if (config.getCommandOptions().shouldUseTokenSharding()) {
                     tokenPool = extractTokenTests(shardableTests);
                 }
+                int i = 0;
                 for (IRemoteTest testShard : shardableTests) {
                     CLog.d("Rescheduling sharded config...");
                     IConfiguration shardConfig = config.clone();
@@ -141,7 +142,8 @@ public class ShardHelper implements IShardHelper {
                     } else {
                         shardConfig.setTest(testShard);
                     }
-                    rescheduleConfig(shardConfig, config, context, rescheduler, resultCollector);
+                    rescheduleConfig(shardConfig, config, context, rescheduler, resultCollector, i);
+                    i++;
                 }
             }
         }
@@ -154,17 +156,25 @@ public class ShardHelper implements IShardHelper {
         return true;
     }
 
-    public void rescheduleConfig(
+    private void rescheduleConfig(
             IConfiguration shardConfig,
             IConfiguration config,
             IInvocationContext context,
             IRescheduler rescheduler,
-            ShardMasterResultForwarder resultCollector) {
+            ShardMasterResultForwarder resultCollector,
+            int index) {
         cloneConfigObject(config, shardConfig);
         ShardBuildCloner.cloneBuildInfos(config, shardConfig, context);
 
         shardConfig.setTestInvocationListeners(
                 buildShardListeners(resultCollector, config.getTestInvocationListeners()));
+
+        // Set the host_log suffix to avoid similar names
+        String suffix = String.format("_shard_index_%s", index);
+        if (shardConfig.getCommandOptions().getHostLogSuffix() != null) {
+            suffix = shardConfig.getCommandOptions().getHostLogSuffix() + suffix;
+        }
+        shardConfig.getCommandOptions().setHostLogSuffix(suffix);
 
         // Use the same {@link ITargetPreparer}, {@link IDeviceRecovery} etc as original config
         // Make sure we don't run as sandboxed in shards, only parent invocation needs to

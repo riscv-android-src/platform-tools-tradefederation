@@ -188,6 +188,12 @@ public class CommandOptions implements ICommandOptions {
     @Option(name = "screenshot-on-failure", description = "Take a screenshot on every test failure")
     private boolean mScreenshotOnFailure = false;
 
+    @Option(
+        name = "host-log-suffix",
+        description = "Suffix to add to Tradefed host_log before logging it."
+    )
+    private String mHostLogSuffix = null;
+
     /**
      * Set the help mode for the config.
      * <p/>
@@ -504,5 +510,17 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean captureLogcatOnFailure() {
         return mLogcatOnFailure;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String getHostLogSuffix() {
+        return mHostLogSuffix;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setHostLogSuffix(String suffix) {
+        mHostLogSuffix = suffix;
     }
 }
