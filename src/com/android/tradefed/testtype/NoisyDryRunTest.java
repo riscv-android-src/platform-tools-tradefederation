@@ -32,6 +32,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.sandbox.ISandbox;
 import com.android.tradefed.sandbox.TradefedSandbox;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
@@ -94,14 +95,33 @@ public class NoisyDryRunTest implements IRemoteTest {
     @VisibleForTesting
     void checkFileWithTimeout(File file) throws IOException {
         long timeout = currentTimeMillis() + mTimeoutMilliSec;
-        while (!file.exists() && currentTimeMillis() < timeout) {
-            CLog.w("%s doesn't exist, wait and recheck.", file.getAbsoluteFile());
+        boolean canRead = false;
+        while (!(canRead = checkFile(file)) && currentTimeMillis() < timeout) {
+            CLog.w("Can not read %s, wait and recheck.", file.getAbsoluteFile());
             sleep();
         }
-        if (!file.exists()) {
-            throw new IOException(
-                    String.format("%s doesn't exist.", file.getAbsoluteFile()));
+        if (!canRead) {
+            throw new IOException(String.format("Can not read %s.", file.getAbsoluteFile()));
         }
+    }
+
+    /** Check if the file is readable or not. */
+    private boolean checkFile(File file) {
+        if (!file.exists()) {
+            CLog.w("%s doesn't exist.", file.getAbsoluteFile());
+            return false;
+        }
+        if (!file.canRead()) {
+            CLog.w("No read access to %s.", file.getAbsoluteFile());
+            return false;
+        }
+        try {
+            FileUtil.readStringFromFile(file);
+        } catch (IOException e) {
+            CLog.w("Fail to read %s.", file.getAbsoluteFile());
+            return false;
+        }
+        return true;
     }
 
     @VisibleForTesting
