@@ -431,6 +431,7 @@ public class ITestSuiteTest {
         mTestSuite.setSystemStatusChecker(sysChecker);
         StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
         result.setErrorMessage("some failures.");
+        result.setBugreportNeeded(true);
         EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
                 .andReturn(result);
         EasyMock.expect(
@@ -471,7 +472,7 @@ public class ITestSuiteTest {
         mTestSuite.run(mMockListener);
         verifyMocks();
     }
-
+    
     /**
      * Test for {@link ITestSuite#run(ITestInvocationListener)} when the System status checker is
      * passing pre-check but failing post-check and we enable reporting a failure for it.
@@ -485,14 +486,47 @@ public class ITestSuiteTest {
         mTestSuite.setSystemStatusChecker(sysChecker);
         EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
                 .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+
+        // No bugreport is captured if not explicitly requested
+        StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
+        result.setErrorMessage("some failures.");
+        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
+                .andReturn(result);
+        expectTestRun(mMockListener);
+
+        mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_PRE + "_test", 0);
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+
+        mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_POST + "_test", 0);
+        mMockListener.testRunFailed(EasyMock.contains("some failures."));
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+
+        replayMocks();
+        mTestSuite.run(mMockListener);
+        verifyMocks();
+    }
+
+    @Test
+    public void testRun_failedSystemChecker_reportFailure_bugreport() throws Exception {
+        OptionSetter setter = new OptionSetter(mTestSuite);
+        setter.setOptionValue("report-system-checkers", "true");
+        List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
+        sysChecker.add(mMockSysChecker);
+        mTestSuite.setSystemStatusChecker(sysChecker);
+        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
+                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
         EasyMock.expect(
                         mMockDevice.logBugreport(
                                 EasyMock.anyObject(), EasyMock.same(mMockListener)))
                 .andReturn(true)
                 .times(1);
 
+        // No bugreport is captured if not explicitly requested
         StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
         result.setErrorMessage("some failures.");
+        result.setBugreportNeeded(true);
         EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
                 .andReturn(result);
         expectTestRun(mMockListener);

@@ -623,6 +623,7 @@ public abstract class ITestSuite
         long startTime = System.currentTimeMillis();
         CLog.i("Running system status checker before module execution: %s", moduleName);
         Map<String, String> failures = new LinkedHashMap<>();
+        boolean bugreportNeeded = false;
         for (ISystemStatusChecker checker : checkers) {
             // Check if the status checker should be skipped.
             if (mSystemStatusCheckBlacklist.contains(checker.getClass().getName())) {
@@ -638,18 +639,19 @@ public abstract class ITestSuite
             } catch (RuntimeException e) {
                 // Catch RuntimeException to avoid leaking throws that go to the invocation.
                 result.setErrorMessage(e.getMessage());
+                result.setBugreportNeeded(true);
             }
             if (!CheckStatus.SUCCESS.equals(result.getStatus())) {
                 String errorMessage =
                         (result.getErrorMessage() == null) ? "" : result.getErrorMessage();
                 failures.put(checker.getClass().getCanonicalName(), errorMessage);
+                bugreportNeeded = bugreportNeeded | result.isBugreportNeeded();
                 CLog.w("System status checker [%s] failed.", checker.getClass().getCanonicalName());
             }
         }
         if (!failures.isEmpty()) {
-            CLog.w("There are failed system status checkers: %s capturing a bugreport",
-                    failures.toString());
-            if (!(device.getIDevice() instanceof StubDevice)) {
+            CLog.w("There are failed system status checkers: %s", failures.toString());
+            if (bugreportNeeded && !(device.getIDevice() instanceof StubDevice)) {
                 device.logBugreport(
                         String.format("bugreport-checker-pre-module-%s", moduleName), listener);
             }
@@ -672,6 +674,7 @@ public abstract class ITestSuite
         long startTime = System.currentTimeMillis();
         CLog.i("Running system status checker after module execution: %s", moduleName);
         Map<String, String> failures = new LinkedHashMap<>();
+        boolean bugreportNeeded = false;
         for (ISystemStatusChecker checker : checkers) {
             // Check if the status checker should be skipped.
             if (mSystemStatusCheckBlacklist.contains(checker.getClass().getName())) {
@@ -684,18 +687,19 @@ public abstract class ITestSuite
             } catch (RuntimeException e) {
                 // Catch RuntimeException to avoid leaking throws that go to the invocation.
                 result.setErrorMessage(e.getMessage());
+                result.setBugreportNeeded(true);
             }
             if (!CheckStatus.SUCCESS.equals(result.getStatus())) {
                 String errorMessage =
                         (result.getErrorMessage() == null) ? "" : result.getErrorMessage();
                 failures.put(checker.getClass().getCanonicalName(), errorMessage);
+                bugreportNeeded = bugreportNeeded | result.isBugreportNeeded();
                 CLog.w("System status checker [%s] failed", checker.getClass().getCanonicalName());
             }
         }
         if (!failures.isEmpty()) {
-            CLog.w("There are failed system status checkers: %s capturing a bugreport",
-                    failures.toString());
-            if (!(device.getIDevice() instanceof StubDevice)) {
+            CLog.w("There are failed system status checkers: %s", failures.toString());
+            if (bugreportNeeded && !(device.getIDevice() instanceof StubDevice)) {
                 device.logBugreport(
                         String.format("bugreport-checker-post-module-%s", moduleName), listener);
             }
