@@ -140,6 +140,7 @@ import com.android.tradefed.result.FailureEmailResultReporterTest;
 import com.android.tradefed.result.FileSystemLogSaverTest;
 import com.android.tradefed.result.InvocationFailureEmailResultReporterTest;
 import com.android.tradefed.result.InvocationToJUnitResultForwarderTest;
+import com.android.tradefed.result.JsonHttpTestResultReporterTest;
 import com.android.tradefed.result.JUnitToInvocationResultForwarderTest;
 import com.android.tradefed.result.LegacySubprocessResultsReporterTest;
 import com.android.tradefed.result.LogFileSaverTest;
@@ -522,6 +523,7 @@ import org.junit.runners.Suite.SuiteClasses;
     FileSystemLogSaverTest.class,
     InvocationFailureEmailResultReporterTest.class,
     InvocationToJUnitResultForwarderTest.class,
+    JsonHttpTestResultReporterTest.class,
     JUnitToInvocationResultForwarderTest.class,
     LocalRunInstructionBuilderTest.class,
     LogcatCrashResultForwarderTest.class,

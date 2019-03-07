@@ -336,7 +336,7 @@ public class TestInvocation implements ITestInvocation {
                             "====================================================================="
                                     + "====");
                 }
-                reportHostLog(listener, config.getLogOutput());
+                reportHostLog(listener, config);
                 elapsedTime = System.currentTimeMillis() - startTime;
                 if (!resumed) {
                     listener.invocationEnded(elapsedTime);
@@ -450,9 +450,14 @@ public class TestInvocation implements ITestInvocation {
         }
     }
 
-    private void reportHostLog(ITestInvocationListener listener, ILeveledLogOutput logger) {
+    private void reportHostLog(ITestInvocationListener listener, IConfiguration config) {
+        ILeveledLogOutput logger = config.getLogOutput();
         try (InputStreamSource globalLogSource = logger.getLog()) {
-            listener.testLog(TRADEFED_LOG_NAME, LogDataType.TEXT, globalLogSource);
+            String name = TRADEFED_LOG_NAME;
+            if (config.getCommandOptions().getHostLogSuffix() != null) {
+                name += config.getCommandOptions().getHostLogSuffix();
+            }
+            listener.testLog(name, LogDataType.TEXT, globalLogSource);
         }
         // once tradefed log is reported, all further log calls for this invocation can get lost
         // unregister logger so future log calls get directed to the tradefed global log
@@ -575,7 +580,7 @@ public class TestInvocation implements ITestInvocation {
         for (ITestDevice device : context.getDevices()) {
             invocationPath.reportLogs(device, listener, Stage.ERROR);
         }
-        reportHostLog(listener, config.getLogOutput());
+        reportHostLog(listener, config);
         listener.invocationEnded(0L);
         return false;
     }
@@ -692,7 +697,7 @@ public class TestInvocation implements ITestInvocation {
                             for (ITestDevice device : context.getDevices()) {
                                 invocationPath.reportLogs(device, listener, Stage.ERROR);
                             }
-                            reportHostLog(listener, config.getLogOutput());
+                            reportHostLog(listener, config);
                             listener.invocationEnded(0L);
                         }
                         return;
