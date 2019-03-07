@@ -36,7 +36,8 @@ EVENT_NAMES = {'module_started': 'TEST_MODULE_STARTED',
                # Invocation failure is broader than run failure.
                'run_failed': 'TEST_RUN_FAILED',
                'invocation_failed': 'INVOCATION_FAILED',
-               'test_ignored': 'TEST_IGNORED'}
+               'test_ignored': 'TEST_IGNORED',
+               'log_association':'LOG_ASSOCIATION'}
 
 EVENT_PAIRS = {EVENT_NAMES['module_started']: EVENT_NAMES['module_ended'],
                EVENT_NAMES['run_started']: EVENT_NAMES['run_ended'],
@@ -167,6 +168,9 @@ class EventHandler(object):
             runner_total=None,
             group_total=self.state['current_group_total']))
 
+    def _log_association(self, event_data):
+        pass
+
     switch_handler = {EVENT_NAMES['module_started']: _module_started,
                       EVENT_NAMES['run_started']: _run_started,
                       EVENT_NAMES['test_started']: _test_started,
@@ -176,7 +180,8 @@ class EventHandler(object):
                       EVENT_NAMES['invocation_failed']: _invocation_failed,
                       EVENT_NAMES['test_ended']: _test_ended,
                       EVENT_NAMES['run_ended']: _run_ended,
-                      EVENT_NAMES['module_ended']: _module_ended}
+                      EVENT_NAMES['module_ended']: _module_ended,
+                      EVENT_NAMES['log_association']: _log_association}
 
     def process_event(self, event_name, event_data):
         """Process the events of the test run and call reporter with results.
@@ -190,7 +195,10 @@ class EventHandler(object):
             self.event_stack.append(event_name)
         elif event_name in END_EVENTS:
             self._check_events_are_balanced(event_name, self.reporter)
-        self.switch_handler[event_name](self, event_data)
+        if self.switch_handler.has_key(event_name):
+            self.switch_handler[event_name](self, event_data)
+        else:
+            logging.warning('Event[%s]: %s is not processable.', event_name, event_data)
 
     def _check_events_are_balanced(self, event_name, reporter):
         """Check Start events and End events. They should be balanced.
