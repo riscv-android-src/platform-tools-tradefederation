@@ -44,6 +44,7 @@ import org.junit.runners.JUnit4;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -318,6 +319,58 @@ public class BaseTestSuiteTest {
                 testSuiteStub
                         .getExcludeAnnotations()
                         .contains("android.platform.test.annotations.AppModeInstant"));
+    }
+
+    /** Ensure parameterized modules are created properly even when main abi is filtered. */
+    @Test
+    public void testLoadTests_parameterizedModule_load_with_filter() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        Set<String> excludeModule = new HashSet<>();
+        excludeModule.add("arm64-v8a suite/load-filter-test");
+        mRunner.setExcludeFilter(excludeModule);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "test-filter-load");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.testtype.suite.TestSuiteStub:"
+                        + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(2, configMap.size());
+        // Config main abi non-parameterized is filtered, this shouldn't prevent the parameterized
+        // version from being created, and the other abi.
+        assertTrue(configMap.containsKey("arm64-v8a suite/load-filter-test[instant]"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/load-filter-test"));
+        EasyMock.verify(mockDevice);
+    }
+
+    /** Ensure parameterized modules are filtered when requested. */
+    @Test
+    public void testLoadTests_parameterizedModule_load_with_filter_param() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        Set<String> excludeModule = new HashSet<>();
+        excludeModule.add("arm64-v8a suite/load-filter-test[instant]");
+        mRunner.setExcludeFilter(excludeModule);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "test-filter-load");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.testtype.suite.TestSuiteStub:"
+                        + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(2, configMap.size());
+        // Config main abi parameterized is filtered, this shouldn't prevent the non-parameterized
+        // version from being created, and the other abi.
+        assertTrue(configMap.containsKey("arm64-v8a suite/load-filter-test"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/load-filter-test"));
+        EasyMock.verify(mockDevice);
     }
 
     /**
