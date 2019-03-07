@@ -759,7 +759,7 @@ public class OptionSetter {
      * @return The list of {@link File} that was resolved that way.
      * @throws ConfigurationException
      */
-    protected Set<File> validateRemoteFilePath() throws ConfigurationException {
+    public final Set<File> validateRemoteFilePath() throws ConfigurationException {
         DynamicRemoteFileResolver resolver = createResolver();
         resolver.setOptionMap(mOptionMap);
         return resolver.validateRemoteFilePath();
@@ -769,7 +769,7 @@ public class OptionSetter {
      * Create a {@link DynamicRemoteFileResolver} that will resolved {@link File} of remote file.
      */
     @VisibleForTesting
-    DynamicRemoteFileResolver createResolver() {
+    protected DynamicRemoteFileResolver createResolver() {
         return new DynamicRemoteFileResolver();
     }
 
