@@ -584,7 +584,10 @@ public class ITestSuiteTest {
                                     ConfigurationFactory.getInstance()
                                             .createConfigurationFromArgs(
                                                     new String[] {EMPTY_CONFIG});
-                            fake.setTest(new StubCollectingTest(new DeviceUnresponsiveException()));
+                            fake.setTest(
+                                    new StubCollectingTest(
+                                            new DeviceUnresponsiveException(
+                                                    "unresponsive", "serial")));
                             testConfig.put(TEST_CONFIG_NAME, fake);
                         } catch (ConfigurationException e) {
                             CLog.e(e);
@@ -605,6 +608,7 @@ public class ITestSuiteTest {
         mMockListener.testModuleStarted(EasyMock.anyObject());
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         EasyMock.expectLastCall().times(1);
+        mMockListener.testRunFailed("unresponsive");
         mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
@@ -699,7 +703,7 @@ public class ITestSuiteTest {
                                     ConfigurationFactory.getInstance()
                                             .createConfigurationFromArgs(
                                                     new String[] {EMPTY_CONFIG});
-                            fake.setTest(new StubCollectingTest(new RuntimeException()));
+                            fake.setTest(new StubCollectingTest(new RuntimeException("runtime")));
                             testConfig.put(TEST_CONFIG_NAME, fake);
                         } catch (ConfigurationException e) {
                             CLog.e(e);
@@ -720,6 +724,7 @@ public class ITestSuiteTest {
         mMockListener.testModuleStarted(EasyMock.anyObject());
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         EasyMock.expectLastCall().times(1);
+        mMockListener.testRunFailed("runtime");
         mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
