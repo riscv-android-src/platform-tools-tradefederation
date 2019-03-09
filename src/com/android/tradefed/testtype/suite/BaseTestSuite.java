@@ -280,6 +280,11 @@ public class BaseTestSuite extends ITestSuite {
         mExcludeFilters.addAll(excludeFilters);
     }
 
+    /** Gets a copy of exclude-filters for the compatibility test */
+    protected Set<String> getExcludeFilter() {
+        return new HashSet<String>(mExcludeFilters);
+    }
+
     /** Returns the current {@link SuiteModuleLoader}. */
     public SuiteModuleLoader getModuleLoader() {
         return mModuleRepo;

@@ -172,7 +172,9 @@ public class TestMappingSuiteRunnerTest {
             // include-filters.
             assertTrue(mRunner.getIncludeFilter().contains("test2"));
             assertTrue(mRunner.getIncludeFilter().contains("instrument"));
+            assertTrue(mRunner.getIncludeFilter().contains("suite/stub1"));
             // Filters are applied directly
+            assertTrue(mRunner.getExcludeFilter().contains("suite/stub1 filter.com"));
             assertTrue(mRunner.getIncludeFilter().contains("suite/stub2 filter.com"));
 
             // Check module-arg work as expected.
@@ -180,18 +182,20 @@ public class TestMappingSuiteRunnerTest {
                     (InstrumentationTest) configMap.get("arm64-v8a instrument").getTests().get(0);
             assertEquals("some-name", test.getRunName());
 
-            assertEquals(4, configMap.size());
+            assertEquals(6, configMap.size());
             assertTrue(configMap.containsKey(ABI_1 + " instrument"));
+            assertTrue(configMap.containsKey(ABI_1 + " suite/stub1"));
             assertTrue(configMap.containsKey(ABI_1 + " suite/stub2"));
             assertTrue(configMap.containsKey(ABI_2 + " instrument"));
+            assertTrue(configMap.containsKey(ABI_2 + " suite/stub1"));
             assertTrue(configMap.containsKey(ABI_2 + " suite/stub2"));
 
             // Confirm test sources are stored in test's ConfigurationDescription.
             Map<String, Integer> testSouceCount = new HashMap<>();
+            testSouceCount.put("suite/stub1", 1);
             testSouceCount.put("suite/stub2", 1);
             testSouceCount.put("instrument", 1);
 
-            assertEquals(4, configMap.size());
             for (IConfiguration config : configMap.values()) {
                 assertTrue(testSouceCount.containsKey(config.getName()));
                 assertEquals(
@@ -419,7 +423,7 @@ public class TestMappingSuiteRunnerTest {
             EasyMock.replay(mockBuildInfo);
 
             Collection<IRemoteTest> tests = mRunner.split(2);
-            assertEquals(4, tests.size());
+            assertEquals(6, tests.size());
             EasyMock.verify(mockBuildInfo);
         } finally {
             FileUtil.recursiveDelete(tempDir);
