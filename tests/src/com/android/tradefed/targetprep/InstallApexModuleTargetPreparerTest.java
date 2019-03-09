@@ -59,7 +59,7 @@ public class InstallApexModuleTargetPreparerTest {
     private static final String REMOVE_EXISTING_APEX_UNDER_DATA_COMMAND =
             "rm -rf /data/apex/active/*FAKE_APEX_PACKAGE_NAME*";
     private static final String REMOVE_EXISTING_APEX_UNDER_STAGING_COMMAND =
-            "rm -rf /data/pkg_staging/*";
+            "rm -rf /data/app-staging/*";
 
     @Before
     public void setUp() throws Exception {
