@@ -115,18 +115,17 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
             // module-arg options compiled from test options for each test.
             Set<String> moduleArgs = new HashSet<>();
             for (TestInfo test : testsToRun) {
-                boolean hasFilters = false;
+                boolean hasIncludeFilters = false;
                 for (TestOption option : test.getOptions()) {
                     switch (option.getName()) {
                             // Handle include and exclude filter at the suite level to hide each
                             // test runner specific implementation and option names related to filtering
                         case TEST_MAPPING_INCLUDE_FILTER:
-                            hasFilters = true;
+                            hasIncludeFilters = true;
                             mappingIncludeFilters.add(
                                     String.format("%s %s", test.getName(), option.getValue()));
                             break;
                         case TEST_MAPPING_EXCLUDE_FILTER:
-                            hasFilters = true;
                             mappingExcludeFilters.add(
                                     String.format("%s %s", test.getName(), option.getValue()));
                             break;
@@ -140,7 +139,7 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
                             break;
                     }
                 }
-                if (!hasFilters) {
+                if (!hasIncludeFilters) {
                     testNames.add(test.getName());
                 }
             }
