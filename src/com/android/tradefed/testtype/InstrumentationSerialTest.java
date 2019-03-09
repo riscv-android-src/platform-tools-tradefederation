@@ -153,10 +153,6 @@ class InstrumentationSerialTest implements IRemoteTest {
                         : "The test was not initialized by the test runner.";
         listener.testFailed(
                 test, String.format("Test failed to run. Test run failed due to : %s", message));
-
-        if (testRun.isRunFailure()) {
-            listener.testRunFailed(message);
-        }
         listener.testEnded(test, new HashMap<String, Metric>());
         listener.testRunEnded(0, new HashMap<String, Metric>());
     }
