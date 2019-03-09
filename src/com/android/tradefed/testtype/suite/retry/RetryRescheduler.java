@@ -229,7 +229,7 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
                     && RetryResultHelper.shouldRunModule(moduleResult, types)) {
                 if (types.contains(RetryType.NOT_EXECUTED)) {
                     // Clear the run failure since we are attempting to rerun all non-executed
-                    moduleResult.testRunFailed(null);
+                    moduleResult.resetRunFailure();
                 }
 
                 Map<TestDescription, TestResult> parameterizedMethods = new LinkedHashMap<>();

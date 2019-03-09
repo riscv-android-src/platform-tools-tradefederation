@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype.suite;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.android.ddmlib.IDevice;
@@ -34,13 +35,16 @@ import com.android.tradefed.invoker.TestInvocation;
 import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
+import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.LogSaverResultForwarder;
+import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.targetprep.BaseTargetPreparer;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetCleaner;
@@ -126,10 +130,10 @@ public class ModuleDefinitionTest {
                 TestDescription test = new TestDescription(mRunName + "class", "test" + i);
                 listener.testStarted(test);
                 if (mShouldThrow && i == mNumTest / 2) {
-                    throw new DeviceNotAvailableException();
+                    throw new DeviceNotAvailableException("unavailable", "serial");
                 }
                 if (mDeviceUnresponsive) {
-                    throw new DeviceUnresponsiveException();
+                    throw new DeviceUnresponsiveException("unresponsive", "serial");
                 }
                 listener.testEnded(test, new HashMap<String, Metric>());
             }
@@ -360,6 +364,81 @@ public class ModuleDefinitionTest {
         replayMocks();
         mModule.run(mMockListener);
         verifyMocks();
+    }
+
+    /**
+     * In case of multiple run failures happening, ensure we have some way to get them all
+     * eventually.
+     */
+    @Test
+    public void testRun_aggregateRunFailures() throws Exception {
+        final int testCount = 4;
+        List<IRemoteTest> testList = new ArrayList<>();
+        testList.add(new TestObject("run1", testCount, false, true));
+        mModule =
+                new ModuleDefinition(
+                        MODULE_NAME,
+                        testList,
+                        mMapDeviceTargetPreparer,
+                        mMultiTargetPrepList,
+                        new Configuration("", ""));
+        mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
+        mModule.getModuleInvocationContext()
+                .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
+        mModule.setBuild(mMockBuildInfo);
+        mModule.setDevice(mMockDevice);
+        EasyMock.expect(mMockPrep.isDisabled()).andReturn(false);
+        // no isTearDownDisabled() expected for setup
+        mMockPrep.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        EasyMock.expect(mMockCleaner.isDisabled()).andStubReturn(false);
+        mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
+        mMockCleaner.tearDown(
+                EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
+        // Exception thrown during tear down do not bubble up to invocation.
+        EasyMock.expectLastCall().andThrow(new RuntimeException("teardown failed"));
+        mMockListener.testRunStarted(MODULE_NAME, testCount);
+        for (int i = 0; i < 1; i++) {
+            mMockListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
+            mMockListener.testEnded(
+                    (TestDescription) EasyMock.anyObject(),
+                    EasyMock.anyLong(),
+                    EasyMock.<HashMap<String, Metric>>anyObject());
+        }
+        mMockListener.testFailed(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testRunFailed("unresponsive");
+        mMockListener.testRunFailed(
+                EasyMock.eq("Module fakeName only ran 1 out of 4 expected tests."));
+        mMockListener.testRunFailed("teardown failed");
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+
+        // There was a module failure so a bugreport should be captured.
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
+        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("SERIAL");
+        EasyMock.expect(
+                        mMockDevice.logBugreport(
+                                EasyMock.eq("module-fakeName-failure-SERIAL-bugreport"),
+                                EasyMock.anyObject()))
+                .andReturn(true);
+
+        replayMocks();
+        CollectingTestListener errorChecker = new CollectingTestListener();
+        // DeviceUnresponsive should not throw since it indicates that the device was recovered.
+        mModule.run(new ResultForwarder(mMockListener, errorChecker));
+        // Only one module
+        assertEquals(1, mModule.getTestsResults().size());
+        assertEquals(0, mModule.getTestsResults().get(0).getNumCompleteTests());
+        verifyMocks();
+        // Check that the error aggregates
+        List<TestRunResult> res = errorChecker.getTestRunAttempts(MODULE_NAME);
+        assertEquals(1, res.size());
+        assertTrue(res.get(0).isRunFailure());
+        assertEquals(
+                "unresponsive\n====Next Error====\n"
+                        + "Module fakeName only ran 1 out of 4 expected tests.\n====Next "
+                        + "Error====\nteardown failed",
+                res.get(0).getRunFailureMessage());
     }
 
     /** Test that Module definition properly parse tokens out of the configuration description. */
@@ -995,6 +1074,7 @@ public class ModuleDefinitionTest {
                     (HashMap<String, Metric>) EasyMock.anyObject());
         }
         mMockListener.testFailed(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testRunFailed("unresponsive");
         mMockListener.testRunFailed(EasyMock.anyObject());
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());

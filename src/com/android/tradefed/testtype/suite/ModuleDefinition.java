@@ -666,7 +666,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             mIsFailedModule = true;
         }
 
-        if (!mIsFailedModule && tearDownException != null) {
+        if (tearDownException != null) {
             // If no error was reported yet, report the teardown exception.
             listener.testRunFailed(tearDownException.getMessage());
         }
