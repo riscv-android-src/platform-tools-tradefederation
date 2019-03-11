@@ -17,6 +17,7 @@ Utils for finder classes.
 """
 
 import logging
+import multiprocessing
 import os
 import re
 import subprocess
@@ -54,7 +55,12 @@ _DEVICE_PATH_RE = re.compile(r'.*\/target\/.*', re.I)
 
 FIND_REFERENCE_TYPE = atest_enum.AtestEnum(['CLASS', 'QUALIFIED_CLASS',
                                             'PACKAGE', 'INTEGRATION', 'CC_CLASS'])
-
+# Get cpu count.
+_CPU_COUNT = 1
+try:
+    _CPU_COUNT = multiprocessing.cpu_count()
+except NotImplementedError:
+    pass
 # Unix find commands for searching for test files based on test type input.
 # Note: Find (unlike grep) exits with status 0 if nothing found.
 FIND_CMDS = {
@@ -69,7 +75,8 @@ FIND_CMDS = {
                                      r"'*{2}.xml' -print",
     FIND_REFERENCE_TYPE.CC_CLASS: r"find {0} -type d {1} -prune -o -type f "
                                   r"\( -name '*.cpp' -o -name '*.cc' \)"
-                                  r" -exec grep -H -E 'TEST(_F)?\({2},' {{}} + || true"
+                                  r" | xargs -P " + str(_CPU_COUNT) +
+                                  r" grep -s -H -E 'TEST(_F)?\({2},' {{}} + || true"
 }
 
 # XML parsing related constants.
