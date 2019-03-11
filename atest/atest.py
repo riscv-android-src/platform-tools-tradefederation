@@ -41,14 +41,10 @@ import constants
 import module_info
 import result_reporter
 import test_runner_handler
+
+from metrics import metrics
+from metrics import metrics_utils
 from test_runners import regression_test_runner
-# TODO: Delete SEND_CC_LOG and try/except when no proto ImportError happened.
-SEND_CC_LOG = True
-try:
-    from metrics import metrics
-    from metrics import metrics_utils
-except ImportError:
-    SEND_CC_LOG = False
 
 EXPECTED_VARS = frozenset([
     constants.ANDROID_BUILD_TOP,
@@ -200,22 +196,21 @@ def _validate_exec_mode(args, test_infos, host_tests=None):
             tests can be either deviceless or device tests.
     """
     all_device_modes = [x.get_supported_exec_mode() for x in test_infos]
+    err_msg = None
     # In the case of '$atest <device-only> --host', exit.
     if (host_tests or args.host) and constants.DEVICE_TEST in all_device_modes:
         err_msg = ('Test side and option(--host) conflict. Please remove '
                    '--host if the test run on device side.')
-        logging.error(err_msg)
-        sys.exit(constants.EXIT_CODE_ERROR)
     # In the case of '$atest <host-only> <device-only> --host' or
     # '$atest <host-only> <device-only>', exit.
     if (constants.DEVICELESS_TEST in all_device_modes and
             constants.DEVICE_TEST in all_device_modes):
         err_msg = 'There are host-only and device-only tests in command.'
-        logging.error(err_msg)
-        sys.exit(constants.EXIT_CODE_ERROR)
     if host_tests is False and constants.DEVICELESS_TEST in all_device_modes:
         err_msg = 'There are host-only tests in command.'
+    if err_msg:
         logging.error(err_msg)
+        metrics_utils.send_exit_event(constants.EXIT_CODE_ERROR, logs=err_msg)
         sys.exit(constants.EXIT_CODE_ERROR)
     # In the case of '$atest <host-only>', we add --host to run on host-side.
     # The option should only be overriden if `host_tests` is not set.
@@ -522,13 +517,12 @@ def main(argv):
     _configure_logging(args.verbose)
     _validate_args(args)
     atest_metrics.log_start_event()
-    if SEND_CC_LOG:
-        metrics_utils.get_start_time()
-        metrics.AtestStartEvent(
-            command_line=' '.join(argv),
-            test_references=args.tests,
-            cwd=os.getcwd(),
-            os=platform.platform())
+    metrics_utils.get_start_time()
+    metrics.AtestStartEvent(
+        command_line=' '.join(argv),
+        test_references=args.tests,
+        cwd=os.getcwd(),
+        os=platform.platform())
     results_dir = make_test_run_dir()
     mod_info = module_info.ModuleInfo(force_build=args.rebuild_module_info)
     translator = cli_translator.CLITranslator(module_info=mod_info)
@@ -591,6 +585,5 @@ def main(argv):
 
 if __name__ == '__main__':
     EXIT_CODE = main(sys.argv[1:])
-    if SEND_CC_LOG:
-        metrics_utils.send_exit_event(EXIT_CODE)
+    metrics_utils.send_exit_event(EXIT_CODE)
     sys.exit(EXIT_CODE)
