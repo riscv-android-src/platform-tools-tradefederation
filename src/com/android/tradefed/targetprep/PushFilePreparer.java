@@ -62,9 +62,16 @@ public class PushFilePreparer extends BaseTargetPreparer
 
     private IAbi mAbi;
 
-    @Option(name="push", description=
-            "A push-spec, formatted as '/path/to/srcfile.txt->/path/to/destfile.txt' or " +
-            "'/path/to/srcfile.txt->/path/to/destdir/'. May be repeated.")
+    @Option(
+        name = "push",
+        description =
+                "A push-spec, formatted as "
+                        + "'/localpath/to/srcfile.txt->/devicepath/to/destfile.txt' "
+                        + "or '/localpath/to/srcfile.txt->/devicepath/to/destdir/'. "
+                        + "May be repeated. The local path may be relative to the test cases "
+                        + "build out directories "
+                        + "($ANDROID_HOST_OUT_TESTCASES / $ANDROID_TARGET_OUT_TESTCASES)."
+    )
     private Collection<String> mPushSpecs = new ArrayList<>();
 
     @Option(
