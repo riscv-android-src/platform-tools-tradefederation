@@ -306,6 +306,9 @@ public abstract class ITestSuite
     // Guice object
     private Injector mInjector;
 
+    // Current modules to run, null if not started to run yet.
+    private List<ModuleDefinition> mRunModules = null;
+
     /**
      * Get the current Guice {@link Injector} from the invocation. It should allow us to continue
      * the object injection of modules.
@@ -464,9 +467,9 @@ public abstract class ITestSuite
         checkClassLoad(mAllowedRunners, RUNNER_WHITELIST);
         checkClassLoad(mAllowedPreparers, PREPARER_WHITELIST);
 
-        List<ModuleDefinition> runModules = createExecutionList();
+        mRunModules = createExecutionList();
         // Check if we have something to run.
-        if (runModules.isEmpty()) {
+        if (mRunModules.isEmpty()) {
             CLog.i("No tests to be run.");
             return;
         }
@@ -498,19 +501,19 @@ public abstract class ITestSuite
         List<ITestInvocationListener> moduleListeners = createModuleListeners();
 
         // Only print the running log if we are going to run something.
-        if (runModules.get(0).hasTests()) {
+        if (mRunModules.get(0).hasTests()) {
             CLog.logAndDisplay(
                     LogLevel.INFO,
                     "%s running %s modules: %s",
                     mDevice.getSerialNumber(),
-                    runModules.size(),
-                    runModules);
+                    mRunModules.size(),
+                    mRunModules);
         }
 
         /** Run all the module, make sure to reduce the list to release resources as we go. */
         try {
-            while (!runModules.isEmpty()) {
-                ModuleDefinition module = runModules.remove(0);
+            while (!mRunModules.isEmpty()) {
+                ModuleDefinition module = mRunModules.remove(0);
                 // Before running the module we ensure it has tests at this point or skip completely
                 // to avoid running SystemCheckers and preparation for nothing.
                 if (module.hasTests()) {
@@ -542,14 +545,8 @@ public abstract class ITestSuite
         } catch (DeviceNotAvailableException e) {
             CLog.e(
                     "A DeviceNotAvailableException occurred, following modules did not run: %s",
-                    runModules);
-            for (ModuleDefinition module : runModules) {
-                listener.testModuleStarted(module.getModuleInvocationContext());
-                listener.testRunStarted(module.getId(), 0);
-                listener.testRunFailed("Module did not run due to device not available.");
-                listener.testRunEnded(0, new HashMap<String, Metric>());
-                listener.testModuleEnded();
-            }
+                    mRunModules);
+            reportNotExecuted(listener, "Module did not run due to device not available.");
             throw e;
         }
     }
@@ -909,7 +906,14 @@ public abstract class ITestSuite
     /** {@inheritDoc} */
     @Override
     public void reportNotExecuted(ITestInvocationListener listener, String message) {
-        List<ModuleDefinition> runModules = createExecutionList();
+        // If the runner is already in progress, report the remaining tests as not executed.
+        List<ModuleDefinition> runModules = null;
+        if (mRunModules != null) {
+            runModules = new ArrayList<>(mRunModules);
+        }
+        if (runModules == null) {
+            runModules = createExecutionList();
+        }
 
         while (!runModules.isEmpty()) {
             ModuleDefinition module = runModules.remove(0);
