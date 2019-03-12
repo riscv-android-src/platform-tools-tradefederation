@@ -33,6 +33,7 @@ import time
 import platform
 
 import atest_arg_parser
+import atest_execution_info
 import atest_metrics
 import atest_utils
 import cli_translator
@@ -449,6 +450,7 @@ def _run_test_mapping_tests(results_dir, test_infos, extra_args):
         logging.debug('\n'.join([str(info) for info in tests]))
         tests_exit_code, reporter = test_runner_handler.run_all_tests(
             results_dir, tests, args, delay_print_summary=True)
+        atest_execution_info.AtestExecutionInfo.result_reporters.append(reporter)
         test_results.append((tests_exit_code, reporter, test_type))
 
     all_tests_exit_code = constants.EXIT_CODE_SUCCESS
@@ -504,11 +506,12 @@ def _print_testable_modules(mod_info, suite):
 
 # pylint: disable=too-many-statements
 # pylint: disable=too-many-branches
-def main(argv):
+def main(argv, results_dir):
     """Entry point of atest script.
 
     Args:
         argv: A list of arguments.
+        results_dir: A directory which stores the ATest execution information.
 
     Returns:
         Exit code.
@@ -523,7 +526,6 @@ def main(argv):
         test_references=args.tests,
         cwd=os.getcwd(),
         os=platform.platform())
-    results_dir = make_test_run_dir()
     mod_info = module_info.ModuleInfo(force_build=args.rebuild_module_info)
     translator = cli_translator.CLITranslator(module_info=mod_info)
     if args.list_modules:
@@ -567,8 +569,9 @@ def main(argv):
     tests_exit_code = constants.EXIT_CODE_SUCCESS
     if constants.TEST_STEP in steps:
         if not is_from_test_mapping(test_infos):
-            tests_exit_code, _ = test_runner_handler.run_all_tests(
+            tests_exit_code, reporter = test_runner_handler.run_all_tests(
                 results_dir, test_infos, extra_args)
+            atest_execution_info.AtestExecutionInfo.result_reporters.append(reporter)
         else:
             tests_exit_code = _run_test_mapping_tests(
                 results_dir, test_infos, extra_args)
@@ -576,6 +579,7 @@ def main(argv):
         regression_args = _get_regression_detection_args(args, results_dir)
         # TODO(b/110485713): Should not call run_tests here.
         reporter = result_reporter.ResultReporter()
+        atest_execution_info.AtestExecutionInfo.result_reporters.append(reporter)
         tests_exit_code |= regression_test_runner.RegressionTestRunner(
             '').run_tests(
                 None, regression_args, reporter)
@@ -584,6 +588,11 @@ def main(argv):
     return tests_exit_code
 
 if __name__ == '__main__':
-    EXIT_CODE = main(sys.argv[1:])
-    metrics_utils.send_exit_event(EXIT_CODE)
+    RESULTS_DIR = make_test_run_dir()
+    with atest_execution_info.AtestExecutionInfo(sys.argv[1:],
+                                                 RESULTS_DIR) as result_file:
+        EXIT_CODE = main(sys.argv[1:], RESULTS_DIR)
+        metrics_utils.send_exit_event(EXIT_CODE)
+        if result_file:
+            print('Execution detail has saved in %s' % result_file.name)
     sys.exit(EXIT_CODE)
