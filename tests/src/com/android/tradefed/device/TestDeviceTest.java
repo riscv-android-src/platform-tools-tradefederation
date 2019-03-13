@@ -2623,6 +2623,48 @@ public class TestDeviceTest extends TestCase {
         assertFalse(mTestDevice.startUser(10));
     }
 
+    /** Test that successful user start is handled by {@link TestDevice#startUser(int, boolean)}. */
+    public void testStartUser_wait() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 29;
+                    }
+
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "Q\n";
+                    }
+                };
+        injectShellResponse("am start-user -w 10", "Success: user started\n");
+        injectShellResponse("am get-started-user-state 10", "RUNNING_UNLOCKED\n");
+        replayMocks();
+        assertTrue(mTestDevice.startUser(10, true));
+    }
+
+    /** Test that waitFlag for startUser throws when called on API level before it was supported. */
+    public void testStartUser_wait_api27() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 27;
+                    }
+
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "O\n";
+                    }
+                };
+        try {
+            mTestDevice.startUser(10, true);
+            fail("IllegalArgumentException should be thrown");
+        } catch (IllegalArgumentException ex) {
+            // expected
+        }
+    }
+
     /**
      * Test that remount works as expected on a device not supporting dm verity
      * @throws Exception
