@@ -240,15 +240,14 @@ class TestFinderUtilsUnittests(unittest.TestCase):
 
     @mock.patch('os.path.isdir', return_value=True)
     @mock.patch('os.path.isfile', return_value=False)
-    @mock.patch.object(test_finder_utils, 'is_robolectric_module',
-                       return_value=True)
-    def test_find_parent_module_dir_robo(self, _is_robo, _isfile, _isdir):
+    def test_find_parent_module_dir_robo(self, _isfile, _isdir):
         """Test _find_parent_module_dir method.
 
         Make sure we behave as expected when we encounter a robo module path.
         """
         abs_class_dir = '/%s' % CLASS_DIR
         mock_module_info = mock.Mock(spec=module_info.ModuleInfo)
+        mock_module_info.is_robolectric_module.return_value = True
         rel_class_dir_path = os.path.relpath(abs_class_dir, uc.ROOT)
         mock_module_info.path_to_module_info = {rel_class_dir_path: [{}]}
         unittest_utils.assert_strict_equal(
