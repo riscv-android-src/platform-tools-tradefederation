@@ -52,6 +52,8 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
     private IInvocationContext mContext;
 
     private Throwable mInvocationFailure = null;
+    /** Whether or not a testModuleStart had currently been called. */
+    private boolean mModuleInProgress = false;
 
     /**
      * Handling of the partial invocation test record proto after {@link
@@ -155,6 +157,10 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
 
     @Override
     public final void invocationEnded(long elapsedTime) {
+        if (mModuleInProgress) {
+            // If we had a module in progress, and a new module start occurs, complete the call
+            testModuleEnded();
+        }
         // Populate end time of invocation
         Timestamp endTime = createTimeStamp(mInvocationStartTime + elapsedTime);
         mInvocationRecordBuilder.setEndTime(endTime);
@@ -182,6 +188,10 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
 
     @Override
     public final void testModuleStarted(IInvocationContext moduleContext) {
+        if (mModuleInProgress) {
+            // If we had a module in progress, and a new module start occurs, complete the call
+            testModuleEnded();
+        }
         TestRecord.Builder moduleBuilder = TestRecord.newBuilder();
         moduleBuilder.setParentTestRecordId(mInvocationRecordBuilder.getTestRecordId());
         moduleBuilder.setTestRecordId(
@@ -189,6 +199,7 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
         moduleBuilder.setStartTime(createTimeStamp(System.currentTimeMillis()));
         moduleBuilder.setDescription(Any.pack(moduleContext.toProto()));
         mLatestChild.add(moduleBuilder);
+        mModuleInProgress = true;
         try {
             processTestModuleStarted(moduleBuilder.build());
         } catch (RuntimeException e) {
@@ -200,6 +211,7 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
     @Override
     public final void testModuleEnded() {
         TestRecord.Builder moduleBuilder = mLatestChild.pop();
+        mModuleInProgress = false;
         moduleBuilder.setEndTime(createTimeStamp(System.currentTimeMillis()));
         TestRecord.Builder parentBuilder = mLatestChild.peek();
 
