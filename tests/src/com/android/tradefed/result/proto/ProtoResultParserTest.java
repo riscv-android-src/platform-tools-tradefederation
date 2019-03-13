@@ -484,6 +484,68 @@ public class ProtoResultParserTest {
         }
     }
 
+    /** Test the parsing when a missing testModuleEnded occurs. */
+    @Test
+    public void testEvents_finaleProto_partialEvents() {
+        TestDescription test1 = new TestDescription("class1", "test1");
+        TestDescription test2 = new TestDescription("class1", "test2");
+        HashMap<String, Metric> metrics = new HashMap<String, Metric>();
+        metrics.put("metric1", TfMetricProtoUtil.stringToMetric("value1"));
+        LogFile logFile = new LogFile("path", "url", false, LogDataType.TEXT, 5);
+        LogFile logModuleFile = new LogFile("path", "url", false, LogDataType.TEXT, 5);
+
+        // Verify Mocks
+        mMockListener.invocationStarted(EasyMock.anyObject());
+
+        mMockListener.testModuleStarted(EasyMock.anyObject());
+        mMockListener.testRunStarted("run1", 2);
+        mMockListener.testStarted(test1, 5L);
+        mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
+
+        mMockListener.testStarted(test2, 11L);
+        mMockListener.testFailed(test2, "I failed");
+        mMockListener.logAssociation(EasyMock.eq("subprocess-log1"), EasyMock.anyObject());
+        mMockListener.testEnded(test2, 60L, metrics);
+        mMockListener.logAssociation(EasyMock.eq("subprocess-run_log1"), EasyMock.anyObject());
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.logAssociation(EasyMock.eq("subprocess-log-module"), EasyMock.anyObject());
+        // We complete the missing event
+        mMockListener.testModuleEnded();
+
+        mMockListener.invocationEnded(500L);
+
+        EasyMock.replay(mMockListener);
+        // Invocation start
+        mFinalTestParser.invocationStarted(mInvocationContext);
+        // Run modules
+        mFinalTestParser.testModuleStarted(createModuleContext("arm64 module1"));
+        // test log at module level
+        mFinalTestParser.logAssociation("log-module", logModuleFile);
+        mFinalTestParser.testRunStarted("run1", 2);
+
+        mFinalTestParser.testStarted(test1, 5L);
+        mFinalTestParser.testEnded(test1, 10L, new HashMap<String, Metric>());
+
+        mFinalTestParser.testStarted(test2, 11L);
+        mFinalTestParser.testFailed(test2, "I failed");
+        // test log
+        mFinalTestParser.logAssociation("log1", logFile);
+
+        mFinalTestParser.testEnded(test2, 60L, metrics);
+        // run log
+        mFinalTestParser.logAssociation(
+                "run_log1", new LogFile("path", "url", false, LogDataType.LOGCAT, 5));
+        mFinalTestParser.testRunEnded(50L, new HashMap<String, Metric>());
+
+        // Missing testModuleEnded due to a timeout for example
+        //mFinalTestParser.testModuleEnded();
+
+        // Invocation ends
+        mFinalTestParser.invocationEnded(500L);
+        EasyMock.verify(mMockListener);
+    }
+
     /** Helper to create a module context. */
     private IInvocationContext createModuleContext(String moduleId) {
         IInvocationContext context = new InvocationContext();
