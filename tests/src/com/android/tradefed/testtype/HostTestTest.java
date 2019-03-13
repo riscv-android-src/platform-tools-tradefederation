@@ -15,10 +15,15 @@
  */
 package com.android.tradefed.testtype;
 
+import static org.mockito.Mockito.doReturn;
+
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.config.remote.GcsRemoteFileResolver;
+import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -51,7 +56,9 @@ import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.JUnit4;
 import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
+import org.mockito.Mockito;
 
+import java.io.File;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.AnnotatedElement;
@@ -67,14 +74,19 @@ import java.util.Map;
 @SuppressWarnings("unchecked")
 public class HostTestTest extends TestCase {
 
+    private static final File FAKE_REMOTE_FILE_PATH = new File("gs://bucket/path/file");
+
     private HostTest mHostTest;
     private ITestInvocationListener mListener;
     private ITestDevice mMockDevice;
     private IBuildInfo mMockBuildInfo;
 
+    private IRemoteFileResolver mMockResolver;
+
     @MyAnnotation
     @MyAnnotation3
     public static class SuccessTestCase extends TestCase {
+
         public SuccessTestCase() {}
 
         public SuccessTestCase(String name) {
@@ -88,6 +100,22 @@ public class HostTestTest extends TestCase {
         @MyAnnotation
         @MyAnnotation2
         public void testPass2() {
+        }
+    }
+
+    public static class DynamicTestCase extends TestCase {
+
+        @Option(name = "dynamic-option")
+        private File mDynamicFile = FAKE_REMOTE_FILE_PATH;
+
+        public DynamicTestCase() {}
+
+        public DynamicTestCase(String name) {
+            super(name);
+        }
+
+        public void testPass() {
+            assertFalse(mDynamicFile.equals(new File("gs://bucket/path/file")));
         }
     }
 
@@ -441,13 +469,53 @@ public class HostTestTest extends TestCase {
         }
     }
 
+    public static class TestableHostTest extends HostTest {
+
+        private IRemoteFileResolver mRemoteFileResolver;
+
+        public TestableHostTest() {
+            mRemoteFileResolver = null;
+        }
+
+        public TestableHostTest(IRemoteFileResolver remoteFileResolver) {
+            mRemoteFileResolver = remoteFileResolver;
+        }
+
+        @Override
+        OptionSetter createOptionSetter(Object obj) throws ConfigurationException {
+            return new OptionSetter(obj) {
+                @Override
+                protected DynamicRemoteFileResolver createResolver() {
+                    DynamicRemoteFileResolver mResolver =
+                            new DynamicRemoteFileResolver() {
+                                @Override
+                                protected IRemoteFileResolver getResolver(String protocol) {
+                                    if (protocol.equals(GcsRemoteFileResolver.PROTOCOL)) {
+                                        return mRemoteFileResolver;
+                                    }
+                                    return null;
+                                }
+
+                                @Override
+                                protected boolean updateProtocols() {
+                                    // Do not set the static variable
+                                    return false;
+                                }
+                            };
+                    return mResolver;
+                }
+            };
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        mHostTest = new HostTest();
+        mMockResolver = Mockito.mock(IRemoteFileResolver.class);
+        mHostTest = new TestableHostTest(mMockResolver);
         mListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
@@ -577,6 +645,25 @@ public class HostTestTest extends TestCase {
         mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
         mListener.testStarted(EasyMock.eq(test2));
         mListener.testEnded(EasyMock.eq(test2), (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test success case for {@link HostTest#run(ITestInvocationListener)}, where test to run is a
+     * {@link TestSuite} and has dynamic options.
+     */
+    public void testRun_junit3TestSuite_dynamicOptions() throws Exception {
+        doReturn(new File("/downloaded/somewhere"))
+                .when(mMockResolver)
+                .resolveRemoteFiles(Mockito.eq(FAKE_REMOTE_FILE_PATH), Mockito.any());
+        mHostTest.setClassName(DynamicTestCase.class.getName());
+        TestDescription test1 = new TestDescription(DynamicTestCase.class.getName(), "testPass");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
@@ -1395,11 +1482,14 @@ public class HostTestTest extends TestCase {
         List<IRemoteTest> list = (ArrayList<IRemoteTest>) mHostTest.split(1);
         // split by class; numShards parameter should be ignored
         assertEquals(3, list.size());
-        assertEquals("com.android.tradefed.testtype.HostTest",
+        assertEquals(
+                "com.android.tradefed.testtype.HostTestTest$TestableHostTest",
                 list.get(0).getClass().getName());
-        assertEquals("com.android.tradefed.testtype.HostTest",
+        assertEquals(
+                "com.android.tradefed.testtype.HostTestTest$TestableHostTest",
                 list.get(1).getClass().getName());
-        assertEquals("com.android.tradefed.testtype.HostTest",
+        assertEquals(
+                "com.android.tradefed.testtype.HostTestTest$TestableHostTest",
                 list.get(2).getClass().getName());
 
         // We expect all the test from the JUnit4 suite to run under the original suite classname
@@ -1991,7 +2081,7 @@ public class HostTestTest extends TestCase {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", "i.cannot.be.resolved");
 
-        mListener.testRunStarted(HostTest.class.getName(), 0);
+        mListener.testRunStarted(HostTestTest.class.getName() + ".TestableHostTest", 0);
         mListener.testRunFailed("Could not load Test class i.cannot.be.resolved");
         mListener.testRunEnded(0L, new HashMap<String, Metric>());
 

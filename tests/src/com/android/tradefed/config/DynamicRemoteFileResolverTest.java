@@ -73,7 +73,7 @@ public class DynamicRemoteFileResolverTest {
         mResolver =
                 new DynamicRemoteFileResolver() {
                     @Override
-                    IRemoteFileResolver getResolver(String protocol) {
+                    protected IRemoteFileResolver getResolver(String protocol) {
                         if (protocol.equals(GcsRemoteFileResolver.PROTOCOL)) {
                             return mMockResolver;
                         }
@@ -81,7 +81,7 @@ public class DynamicRemoteFileResolverTest {
                     }
 
                     @Override
-                    boolean updateProtocols() {
+                    protected boolean updateProtocols() {
                         // Do not set the static variable
                         return false;
                     }
@@ -94,7 +94,7 @@ public class DynamicRemoteFileResolverTest {
         OptionSetter setter =
                 new OptionSetter(object) {
                     @Override
-                    DynamicRemoteFileResolver createResolver() {
+                    protected DynamicRemoteFileResolver createResolver() {
                         return mResolver;
                     }
                 };
@@ -130,7 +130,7 @@ public class DynamicRemoteFileResolverTest {
         OptionSetter setter =
                 new OptionSetter(object) {
                     @Override
-                    DynamicRemoteFileResolver createResolver() {
+                    protected DynamicRemoteFileResolver createResolver() {
                         return mResolver;
                     }
                 };
@@ -172,7 +172,7 @@ public class DynamicRemoteFileResolverTest {
         OptionSetter setter =
                 new OptionSetter(object) {
                     @Override
-                    DynamicRemoteFileResolver createResolver() {
+                    protected DynamicRemoteFileResolver createResolver() {
                         return mResolver;
                     }
                 };
@@ -214,7 +214,7 @@ public class DynamicRemoteFileResolverTest {
         OptionSetter setter =
                 new OptionSetter(object) {
                     @Override
-                    DynamicRemoteFileResolver createResolver() {
+                    protected DynamicRemoteFileResolver createResolver() {
                         return mResolver;
                     }
                 };
@@ -259,7 +259,7 @@ public class DynamicRemoteFileResolverTest {
         OptionSetter setter =
                 new OptionSetter(object) {
                     @Override
-                    DynamicRemoteFileResolver createResolver() {
+                    protected DynamicRemoteFileResolver createResolver() {
                         return mResolver;
                     }
                 };
@@ -311,7 +311,7 @@ public class DynamicRemoteFileResolverTest {
         OptionSetter setter =
                 new OptionSetter(object) {
                     @Override
-                    DynamicRemoteFileResolver createResolver() {
+                    protected DynamicRemoteFileResolver createResolver() {
                         return mResolver;
                     }
                 };
@@ -349,7 +349,7 @@ public class DynamicRemoteFileResolverTest {
         mResolver =
                 new DynamicRemoteFileResolver() {
                     @Override
-                    boolean updateProtocols() {
+                    protected boolean updateProtocols() {
                         // Do not set the static variable
                         return true;
                     }
@@ -391,7 +391,7 @@ public class DynamicRemoteFileResolverTest {
         OptionSetter setter =
                 new OptionSetter(object) {
                     @Override
-                    DynamicRemoteFileResolver createResolver() {
+                    protected DynamicRemoteFileResolver createResolver() {
                         return mResolver;
                     }
                 };
