@@ -402,6 +402,28 @@ public class BaseTestSuiteTest {
         EasyMock.verify(mockDevice);
     }
 
+    @Test
+    public void testLoadTests_parameterizedModule_multiAbi_filter() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        Set<String> includeFilters = new HashSet<>();
+        includeFilters.add("suite/stub-parameterized-abi[instant]");
+        mRunner.setIncludeFilter(includeFilters);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "multi-params");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.testtype.suite.TestSuiteStub:"
+                        + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(1, configMap.size());
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi[instant]"));
+        EasyMock.verify(mockDevice);
+    }
+
     /**
      * Test when a config supports multi_abi and is forced to run one parameter. In this case only
      * the parameter is run.
@@ -487,6 +509,30 @@ public class BaseTestSuiteTest {
         setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "example-suite-parameters-not-multi");
         setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.testtype.suite.TestSuiteStub:"
+                        + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(2, configMap.size());
+        // stub-parameterized-abi is parameterized and not multi_abi so it creates only one abi
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi4"));
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi4[instant]"));
+        EasyMock.verify(mockDevice);
+    }
+
+    @Test
+    public void testLoadTests_parameterizedModule_notMultiAbi_withFilter() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite-parameters-not-multi");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        Set<String> includeModules = new HashSet<>();
+        includeModules.add("suite/stub-parameterized-abi4");
+        mRunner.setIncludeFilter(includeModules);
         setter.setOptionValue(
                 "test-arg",
                 "com.android.tradefed.testtype.suite.TestSuiteStub:"
