@@ -270,8 +270,8 @@ public class GTestResultParserTest extends GTestParserTestBase {
         ITestInvocationListener mockRunListener =
                 EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 18);
-        // 14 passing tests
-        for (int i=0; i<14; ++i) {
+        // 13 passing tests
+        for (int i = 0; i < 13; ++i) {
             mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
             mockRunListener.testEnded(
                     (TestDescription) EasyMock.anyObject(),
@@ -299,6 +299,12 @@ public class GTestResultParserTest extends GTestParserTestBase {
                 (HashMap<String, Metric>) EasyMock.anyObject());
         // 1 passing test
         mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+        mockRunListener.testEnded(
+                (TestDescription) EasyMock.anyObject(),
+                (HashMap<String, Metric>) EasyMock.anyObject());
+        // 1 ignored test
+        mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+        mockRunListener.testIgnored((TestDescription) EasyMock.anyObject());
         mockRunListener.testEnded(
                 (TestDescription) EasyMock.anyObject(),
                 (HashMap<String, Metric>) EasyMock.anyObject());
