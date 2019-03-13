@@ -271,5 +271,17 @@ class ModuleInfoUnittests(unittest.TestCase):
         self.assertFalse(mod_info.is_auto_gen_test_config(MOD_NAME3))
         self.assertFalse(mod_info.is_auto_gen_test_config(MOD_NAME4))
 
+    def test_is_robolectric_module(self):
+        """Test is_robolectric_module correctly detects the module."""
+        mod_info = module_info.ModuleInfo(module_file=JSON_FILE_PATH)
+        is_robolectric_module = {'class': ['ROBOLECTRIC']}
+        is_not_robolectric_module = {'class': ['OTHERS']}
+        MOD_INFO_DICT[MOD_NAME1] = is_robolectric_module
+        MOD_INFO_DICT[MOD_NAME2] = is_not_robolectric_module
+        mod_info.name_to_module_info = MOD_INFO_DICT
+        self.assertTrue(mod_info.is_robolectric_module(MOD_INFO_DICT[MOD_NAME1]))
+        self.assertFalse(mod_info.is_robolectric_module(MOD_INFO_DICT[MOD_NAME2]))
+
+
 if __name__ == '__main__':
     unittest.main()
