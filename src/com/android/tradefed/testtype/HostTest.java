@@ -717,7 +717,7 @@ public class HostTest
                 if (testObj instanceof TestCase) {
                     ((TestCase)testObj).setName(method.getName());
                 }
-
+                resolveRemoteFileForObject(testObj);
                 suite.addTest(testObj);
             }
         }
@@ -1159,6 +1159,20 @@ public class HostTest
             return jarFile;
         }
         throw new FileNotFoundException(String.format("Could not find jar: %s", jarName));
+    }
+
+    @VisibleForTesting
+    OptionSetter createOptionSetter(Object obj) throws ConfigurationException {
+        return new OptionSetter(obj);
+    }
+
+    private Set<File> resolveRemoteFileForObject(Object obj) {
+        try {
+            OptionSetter setter = createOptionSetter(obj);
+            return setter.validateRemoteFilePath();
+        } catch (ConfigurationException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private File searchJarFile(File baseSearchFile, String jarName) {
