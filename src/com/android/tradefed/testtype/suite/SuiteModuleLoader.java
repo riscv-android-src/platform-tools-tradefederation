@@ -294,7 +294,7 @@ public class SuiteModuleLoader {
                         }
                         String fullId =
                                 String.format("%s[%s]", baseId, param.getParameterIdentifier());
-                        if (shouldRunModule(fullId)) {
+                        if (shouldRunParameterized(baseId, fullId)) {
                             IConfiguration paramConfig =
                                     mConfigFactory.createConfigurationFromArgs(pathArg);
                             setUpConfig(name, baseId, fullId, paramConfig, abi);
@@ -381,6 +381,25 @@ public class SuiteModuleLoader {
         // if including all modules or includes exist for this module, and there are not excludes
         // for the entire module, this module should be run.
         return (mIncludeAll || !mdIncludes.isEmpty()) && !containsModuleExclude(mdExcludes);
+    }
+
+    /**
+     * Except if the parameterized module is explicitly excluded, including the base module result
+     * in including its parameterization variant.
+     */
+    private boolean shouldRunParameterized(String baseId, String parameterModuleId) {
+        // Explicitly excluded
+        List<SuiteTestFilter> mdExcludes = getFilterList(mExcludeFilters, parameterModuleId);
+        if (containsModuleExclude(mdExcludes)) {
+            return false;
+        }
+        // itself or its base is included
+        List<SuiteTestFilter> mdIncludes = getFilterList(mIncludeFilters, baseId);
+        List<SuiteTestFilter> mParamIncludes = getFilterList(mIncludeFilters, parameterModuleId);
+        if (mIncludeAll || !mdIncludes.isEmpty() || !mParamIncludes.isEmpty()) {
+            return true;
+        }
+        return false;
     }
 
     private void addTestIncludes(

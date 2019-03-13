@@ -18,5 +18,6 @@
     <option name="metadata" key="parameter" value="multi_abi" />
 
     <option name="test-suite-tag" value="example-suite-parameters-abi" />
+    <option name="test-suite-tag" value="multi-params" />
     <test class="com.android.tradefed.testtype.suite.TestSuiteStub" />
 </configuration>
