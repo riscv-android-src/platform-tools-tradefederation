@@ -41,6 +41,8 @@ public class TestDeviceOptions {
         REMOTE_NESTED_AVD,
         /** An android emulator. */
         EMULATOR,
+        /** Chrome OS VM (betty) */
+        CHEEPS,
     }
 
     public static final int DEFAULT_ADB_PORT = 5555;
@@ -588,6 +590,7 @@ public class TestDeviceOptions {
 
     public static String getCreateCommandByInstanceType(InstanceType type) {
         switch (type) {
+            case CHEEPS:
             case GCE:
             case REMOTE_AVD:
                 return "create";
