@@ -29,6 +29,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.UserUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -853,6 +854,17 @@ public class TestDevice extends NativeDevice {
         return createUser(name, false, false);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public int createUserNoThrow(String name) throws DeviceNotAvailableException {
+        try {
+            return createUser(name);
+        } catch (IllegalStateException e) {
+            CLog.e("Error creating user: " + e.toString());
+            return -1;
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -998,6 +1010,19 @@ public class TestDevice extends NativeDevice {
         }
         CLog.w("Could not find any flags for userId: %d in output: %s", userId, commandOutput);
         return INVALID_USER_ID;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean isUserSecondary(int userId) throws DeviceNotAvailableException {
+        if (userId == UserUtil.USER_SYSTEM) {
+            return false;
+        }
+        int flags = getUserFlags(userId);
+        if (flags == INVALID_USER_ID) {
+            return false;
+        }
+        return (flags & UserUtil.FLAGS_NOT_SECONDARY) == 0;
     }
 
     /**
