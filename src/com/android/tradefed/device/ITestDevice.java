@@ -657,6 +657,18 @@ public interface ITestDevice extends INativeDevice {
     public boolean startUser(int userId) throws DeviceNotAvailableException;
 
     /**
+     * Starts a given user in the background if it is currently stopped. If the user is already
+     * running in the background, this method is a NOOP. Possible to provide extra flag to wait for
+     * the operation to have effect.
+     *
+     * @param userId of the user to start in the background
+     * @param waitFlag will make the command wait until user is started and unlocked.
+     * @return true if the user was successfully started in the background.
+     * @throws DeviceNotAvailableException
+     */
+    public boolean startUser(int userId, boolean waitFlag) throws DeviceNotAvailableException;
+
+    /**
      * Stops a given user. If the user is already stopped, this method is a NOOP.
      * Cannot stop current and system user.
      *
