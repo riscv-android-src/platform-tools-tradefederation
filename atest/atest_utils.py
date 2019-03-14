@@ -237,7 +237,7 @@ def _has_colors(stream):
 
 
 def colorize(text, color, highlight=False):
-    """ Convert to coloful string with ANSI escape code.
+    """ Convert to colorful string with ANSI escape code.
 
     Args:
         text: A string to print.
@@ -246,7 +246,7 @@ def colorize(text, color, highlight=False):
         highlight: True to print with highlight.
 
     Returns:
-        Coloful string with ANSI escape code.
+        Colorful string with ANSI escape code.
     """
     clr_pref = '\033[1;'
     clr_suff = '\033[0m'
