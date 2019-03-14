@@ -24,6 +24,7 @@
 
     <!-- Tell all AndroidJUnitTests to exclude certain annotations -->
     <option name="test-arg" value="com.android.tradefed.testtype.AndroidJUnitTest:exclude-annotation:android.platform.test.annotations.RestrictedBuildTest" />
+    <option name="test-arg" value="com.android.tradefed.testtype.AndroidJUnitTest:exclude-annotation:android.platform.test.annotations.AppModeInstant" />
 
     <!-- Tell all HostTests to exclude certain annotations -->
     <option name="test-arg" value="com.android.tradefed.testtype.HostTest:exclude-annotation:android.platform.test.annotations.RestrictedBuildTest" />
