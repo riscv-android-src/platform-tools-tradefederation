@@ -310,11 +310,8 @@ public class GTestResultParser extends MultiLineReceiver {
                                                 + Prefixes.SKIPPED_TEST_MARKER.length())
                                 .trim();
                 if (!testInProgress()) {
-                    // If we are missing the RUN tag, skip it wrong format
-                    CLog.e(
-                            "Found %s without %s before, Ensure you are using GTest format",
-                            line, Prefixes.START_TEST_MARKER);
-                    return;
+                    // Alternative format does not have a RUN tag, so we fake it.
+                    fakeRunMarker(message);
                 }
                 processSkippedTag(message);
                 clearCurrentTestResult();

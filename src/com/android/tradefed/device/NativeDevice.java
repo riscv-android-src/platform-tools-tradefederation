@@ -3606,7 +3606,8 @@ public class NativeDevice implements IManagedTestDevice {
             dateString = sdf.format(date);
         }
         // best effort, no verification
-        executeShellCommand("date -u " + dateString);
+        // Use TZ= to default to UTC timezone (b/128353510 for background)
+        executeShellCommand("TZ=UTC date -u " + dateString);
     }
 
     /**
@@ -3699,6 +3700,12 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public boolean startUser(int userId) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean startUser(int userId, boolean waitFlag) throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("No support for user's feature.");
     }
 

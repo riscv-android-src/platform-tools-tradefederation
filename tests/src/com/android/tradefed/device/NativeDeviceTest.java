@@ -620,6 +620,17 @@ public class NativeDeviceTest {
         fail("stopUser should have thrown an exception.");
     }
 
+    /** Unit test for {@link NativeDevice#startUser(int, boolean)}. */
+    @Test
+    public void testStartUserFlags_exception() throws Exception {
+        try {
+            mTestDevice.startUser(0, true);
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("startUser should have thrown an exception.");
+    }
+
     /** Unit test for {@link NativeDevice#isUserRunning(int)}. */
     @Test
     public void testIsUserIdRunning_exception() throws Exception {
@@ -1853,7 +1864,7 @@ public class NativeDeviceTest {
                     public String executeShellCommand(String command)
                             throws DeviceNotAvailableException {
                         CLog.e("%s", command);
-                        assertEquals("date -u 102010212016.21", command);
+                        assertEquals("TZ=UTC date -u 102010212016.21", command);
                         return command;
                     }
                 };
@@ -1884,7 +1895,7 @@ public class NativeDeviceTest {
                     public String executeShellCommand(String command)
                             throws DeviceNotAvailableException {
                         CLog.e("%s", command);
-                        assertEquals("date -u 1476958881", command);
+                        assertEquals("TZ=UTC date -u 1476958881", command);
                         return command;
                     }
                 };
