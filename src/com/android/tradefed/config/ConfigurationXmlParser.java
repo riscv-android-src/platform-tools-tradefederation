@@ -27,8 +27,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -74,6 +76,7 @@ class ConfigurationXmlParser {
         private String mCurrentDeviceObject;
         private List<String> mListDevice = new ArrayList<String>();
         private List<String> mOutsideTag = new ArrayList<String>();
+        private Set<String> mTemplaceName = new HashSet<>();
 
         private Boolean isLocalConfig = null;
 
@@ -251,6 +254,12 @@ class ConfigurationXmlParser {
                 if (includeName == null) {
                     throwTemplateException(mConfigDef.getName(), templateName);
                 }
+                if (mTemplaceName.contains(templateName)) {
+                    throwException(
+                            String.format(
+                                    "Template named '%s' appeared more than once.", templateName));
+                }
+                mTemplaceName.add(templateName);
                 // Removing the used template from the map to avoid re-using it.
                 mTemplateMap.remove(templateName);
                 try {
