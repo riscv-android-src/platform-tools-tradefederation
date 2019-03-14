@@ -443,6 +443,27 @@ public class ConfigurationXmlParserTest {
         }
     }
 
+    /** Prevent template-include with the same name from appearing. */
+    @Test
+    public void testParse_repeatedTemplateName() {
+        String expectedException =
+                "Failed to parse config xml 'config'. Reason: Template named 'preparers' "
+                        + "appeared more than once.";
+        final String normalConfig =
+                "<configuration description=\"desc\" >\n"
+                        + "  <template-include name=\"preparers\" default=\"empty\"/>\n"
+                        + "  <template-include name=\"preparers\" default=\"empty\"/>\n"
+                        + "</configuration>";
+        final String configName = "config";
+        ConfigurationDef configDef = new ConfigurationDef(configName);
+        try {
+            xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
+            fail("An exception should have been thrown.");
+        } catch (ConfigurationException expected) {
+            assertEquals(expectedException, expected.getMessage());
+        }
+    }
+
     /**
      * Test that if an object is left at the root of the config but with one real and one fake
      * device, we do not reject the xml. Object will be associated later to the real device.
