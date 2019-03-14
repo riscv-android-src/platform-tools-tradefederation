@@ -406,10 +406,11 @@ public class ModuleDefinitionTest {
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
         mMockListener.testFailed(EasyMock.anyObject(), EasyMock.anyObject());
-        mMockListener.testRunFailed("unresponsive");
-        mMockListener.testRunFailed(
-                EasyMock.eq("Module fakeName only ran 1 out of 4 expected tests."));
-        mMockListener.testRunFailed("teardown failed");
+        String aggError =
+                "unresponsive\n====Next Error====\n"
+                        + "Module fakeName only ran 1 out of 4 expected tests.\n====Next "
+                        + "Error====\nteardown failed";
+        mMockListener.testRunFailed(aggError);
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
@@ -434,11 +435,7 @@ public class ModuleDefinitionTest {
         List<TestRunResult> res = errorChecker.getTestRunAttempts(MODULE_NAME);
         assertEquals(1, res.size());
         assertTrue(res.get(0).isRunFailure());
-        assertEquals(
-                "unresponsive\n====Next Error====\n"
-                        + "Module fakeName only ran 1 out of 4 expected tests.\n====Next "
-                        + "Error====\nteardown failed",
-                res.get(0).getRunFailureMessage());
+        assertEquals(aggError, res.get(0).getRunFailureMessage());
     }
 
     /** Test that Module definition properly parse tokens out of the configuration description. */
@@ -1071,13 +1068,15 @@ public class ModuleDefinitionTest {
             mMockListener.testEnded(
                     (TestDescription) EasyMock.anyObject(),
                     EasyMock.anyLong(),
-                    (HashMap<String, Metric>) EasyMock.anyObject());
+                    EasyMock.<HashMap<String, Metric>>anyObject());
         }
         mMockListener.testFailed(EasyMock.anyObject(), EasyMock.anyObject());
-        mMockListener.testRunFailed("unresponsive");
-        mMockListener.testRunFailed(EasyMock.anyObject());
+        mMockListener.testRunFailed(
+                "unresponsive"
+                        + TestRunResult.ERROR_DIVIDER
+                        + "Module fakeName only ran 1 out of 4 expected tests.");
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         // There was a module failure so a bugreport should be captured.
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
@@ -1382,7 +1381,7 @@ public class ModuleDefinitionTest {
                 mMockListener.testEnded(
                         EasyMock.eq(testId0),
                         EasyMock.anyLong(),
-                        (HashMap<String, Metric>) EasyMock.anyObject());
+                        EasyMock.<HashMap<String, Metric>>anyObject());
             }
             TestDescription testFail0 = new TestDescription(runName + "0class", "fail0");
             mMockListener.testStarted(EasyMock.eq(testFail0), EasyMock.anyLong());
@@ -1390,14 +1389,14 @@ public class ModuleDefinitionTest {
             mMockListener.testEnded(
                     EasyMock.eq(testFail0),
                     EasyMock.anyLong(),
-                    (HashMap<String, Metric>) EasyMock.anyObject());
+                    EasyMock.<HashMap<String, Metric>>anyObject());
             if (attempt < 1) {
                 TestDescription testId1 = new TestDescription(runName + "0class", "test1");
                 mMockListener.testStarted(EasyMock.eq(testId1), EasyMock.anyLong());
                 mMockListener.testEnded(
                         EasyMock.eq(testId1),
                         EasyMock.anyLong(),
-                        (HashMap<String, Metric>) EasyMock.anyObject());
+                        EasyMock.<HashMap<String, Metric>>anyObject());
             }
 
             // The second set of test cases from the second test run
@@ -1407,7 +1406,7 @@ public class ModuleDefinitionTest {
                 mMockListener.testEnded(
                         EasyMock.eq(testId0_1),
                         EasyMock.anyLong(),
-                        (HashMap<String, Metric>) EasyMock.anyObject());
+                        EasyMock.<HashMap<String, Metric>>anyObject());
             }
             TestDescription testFail0_1 = new TestDescription(runName + "1class", "fail0");
             mMockListener.testStarted(EasyMock.eq(testFail0_1), EasyMock.anyLong());
@@ -1415,17 +1414,17 @@ public class ModuleDefinitionTest {
             mMockListener.testEnded(
                     EasyMock.eq(testFail0_1),
                     EasyMock.anyLong(),
-                    (HashMap<String, Metric>) EasyMock.anyObject());
+                    EasyMock.<HashMap<String, Metric>>anyObject());
             if (attempt < 1) {
                 TestDescription testId1_1 = new TestDescription(runName + "1class", "test1");
                 mMockListener.testStarted(EasyMock.eq(testId1_1), EasyMock.anyLong());
                 mMockListener.testEnded(
                         EasyMock.eq(testId1_1),
                         EasyMock.anyLong(),
-                        (HashMap<String, Metric>) EasyMock.anyObject());
+                        EasyMock.<HashMap<String, Metric>>anyObject());
             }
             mMockListener.testRunEnded(
-                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                    EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         }
         replayMocks();
         mModule.run(mMockListener, null, null, 3);

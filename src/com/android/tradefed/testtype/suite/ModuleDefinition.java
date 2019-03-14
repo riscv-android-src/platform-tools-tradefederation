@@ -62,6 +62,7 @@ import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
+import com.google.api.client.repackaged.com.google.common.base.Joiner;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.PrintWriter;
@@ -625,11 +626,12 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
         int numResults = 0;
         Map<String, LogFile> aggLogFiles = new LinkedHashMap<>();
+        List<String> runFailureMessages = new ArrayList<>();
         for (TestRunResult runResult : listResults) {
             numResults += runResult.getTestResults().size();
             forwardTestResults(runResult.getTestResults(), listener);
             if (runResult.isRunFailure()) {
-                listener.testRunFailed(runResult.getRunFailureMessage());
+                runFailureMessages.add(runResult.getRunFailureMessage());
                 mIsFailedModule = true;
             }
             elapsedTime += runResult.getElapsedTime();
@@ -661,14 +663,17 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     String.format(
                             "Module %s only ran %d out of %d expected tests.",
                             getId(), numResults, totalExpectedTests);
-            listener.testRunFailed(error);
+            runFailureMessages.add(error);
             CLog.e(error);
             mIsFailedModule = true;
         }
 
         if (tearDownException != null) {
-            // If no error was reported yet, report the teardown exception.
-            listener.testRunFailed(tearDownException.getMessage());
+            runFailureMessages.add(tearDownException.getMessage());
+        }
+        // If there is any errors report them all at once
+        if (!runFailureMessages.isEmpty()) {
+            listener.testRunFailed(Joiner.on(TestRunResult.ERROR_DIVIDER).join(runFailureMessages));
         }
 
         // Provide a strong association of the run to its logs.
