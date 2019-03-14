@@ -27,8 +27,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -65,6 +67,7 @@ class ConfigurationXmlParser {
         private final IConfigDefLoader mConfigDefLoader;
         private final ConfigurationDef mConfigDef;
         private final Map<String, String> mTemplateMap;
+        private final Set<String> mTemplateSeen;
         private final String mName;
         private final boolean mInsideParentDeviceTag;
 
@@ -82,7 +85,8 @@ class ConfigurationXmlParser {
                 String name,
                 IConfigDefLoader loader,
                 String parentDeviceObject,
-                Map<String, String> templateMap) {
+                Map<String, String> templateMap,
+                Set<String> templateSeen) {
             mName = name;
             mConfigDef = def;
             mConfigDefLoader = loader;
@@ -93,6 +97,11 @@ class ConfigurationXmlParser {
                 mTemplateMap = Collections.<String, String>emptyMap();
             } else {
                 mTemplateMap = templateMap;
+            }
+            if (templateSeen == null) {
+                mTemplateSeen = new HashSet<>();
+            } else {
+                mTemplateSeen = templateSeen;
             }
         }
 
@@ -226,7 +235,12 @@ class ConfigurationXmlParser {
                 }
                 try {
                     mConfigDefLoader.loadIncludedConfiguration(
-                            mConfigDef, mName, includeName, mCurrentDeviceObject, mTemplateMap);
+                            mConfigDef,
+                            mName,
+                            includeName,
+                            mCurrentDeviceObject,
+                            mTemplateMap,
+                            mTemplateSeen);
                 } catch (ConfigurationException e) {
                     if (e instanceof TemplateResolutionError) {
                         throwException(String.format(INNER_TEMPLATE_INCLUDE_ERROR,
@@ -243,7 +257,11 @@ class ConfigurationXmlParser {
                     // TODO: Add this use case.
                     throwException("<template> inside device object currently not supported.");
                 }
-
+                if (mTemplateSeen.contains(templateName)) {
+                    throwException(
+                            String.format(
+                                    "Template named '%s' appeared more than once.", templateName));
+                }
                 String includeName = mTemplateMap.get(templateName);
                 if (includeName == null) {
                     includeName = attributes.getValue("default");
@@ -251,11 +269,12 @@ class ConfigurationXmlParser {
                 if (includeName == null) {
                     throwTemplateException(mConfigDef.getName(), templateName);
                 }
+                mTemplateSeen.add(templateName);
                 // Removing the used template from the map to avoid re-using it.
                 mTemplateMap.remove(templateName);
                 try {
                     mConfigDefLoader.loadIncludedConfiguration(
-                            mConfigDef, mName, includeName, null, mTemplateMap);
+                            mConfigDef, mName, includeName, null, mTemplateMap, mTemplateSeen);
                 } catch (ConfigurationException e) {
                     if (e instanceof TemplateResolutionError) {
                         throwException(String.format(INNER_TEMPLATE_INCLUDE_ERROR,
@@ -344,24 +363,57 @@ class ConfigurationXmlParser {
 
     /**
      * Parses out configuration data contained in given input into the given configdef.
-     * <p/>
-     * Currently performs limited error checking.
+     *
+     * <p>Currently performs limited error checking.
      *
      * @param configDef the {@link ConfigurationDef} to load data into
-     * @param name the name of the configuration currently being loaded. Used for logging only.
-     * Can be different than configDef.getName in cases of included configs
+     * @param name the name of the configuration currently being loaded. Used for logging only. Can
+     *     be different than configDef.getName in cases of included configs
      * @param xmlInput the configuration xml to parse
+     * @param templateMap the current map of template to be loaded.
      * @throws ConfigurationException if input could not be parsed or had invalid format
      */
-    void parse(ConfigurationDef configDef, String name, InputStream xmlInput,
-            Map<String, String> templateMap) throws ConfigurationException {
+    void parse(
+            ConfigurationDef configDef,
+            String name,
+            InputStream xmlInput,
+            Map<String, String> templateMap)
+            throws ConfigurationException {
+        parse(configDef, name, xmlInput, templateMap, null);
+    }
+
+    /**
+     * Parses out configuration data contained in given input into the given configdef.
+     *
+     * <p>Currently performs limited error checking.
+     *
+     * @param configDef the {@link ConfigurationDef} to load data into
+     * @param name the name of the configuration currently being loaded. Used for logging only. Can
+     *     be different than configDef.getName in cases of included configs
+     * @param xmlInput the configuration xml to parse
+     * @param templateMap the current map of template to be loaded.
+     * @param templateSeen Set of name of template placeholder already encountered.
+     * @throws ConfigurationException if input could not be parsed or had invalid format
+     */
+    void parse(
+            ConfigurationDef configDef,
+            String name,
+            InputStream xmlInput,
+            Map<String, String> templateMap,
+            Set<String> templateSeen)
+            throws ConfigurationException {
         try {
             SAXParserFactory parserFactory = SAXParserFactory.newInstance();
             parserFactory.setNamespaceAware(true);
             SAXParser parser = parserFactory.newSAXParser();
             ConfigHandler configHandler =
                     new ConfigHandler(
-                            configDef, name, mConfigDefLoader, mParentDeviceObject, templateMap);
+                            configDef,
+                            name,
+                            mConfigDefLoader,
+                            mParentDeviceObject,
+                            templateMap,
+                            templateSeen);
             parser.parse(new InputSource(xmlInput), configHandler);
             // ConfigurationDef holds whether or not the configs are multi-device or not.
             checkValidMultiConfiguration(configHandler, configDef);
