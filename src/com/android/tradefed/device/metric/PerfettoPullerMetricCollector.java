@@ -33,6 +33,7 @@ import com.android.tradefed.util.RunUtil;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Base implementation of {@link FilePullerDeviceMetricCollector} that allows
@@ -41,10 +42,6 @@ import java.util.List;
 @OptionClass(alias = "perfetto-metric-collector")
 public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollector {
 
-    // Timeout for the script to process the trace files.
-    // This value is arbitarily choosen to be 5 mins to prevent the test spending more time
-    // in processing the files.
-    private static final long MAX_SCRIPT_TIMEOUT_MSECS = 300000;
     private static final String LINE_SEPARATOR = "\\r?\\n";
     private static final char KEY_VALUE_SEPARATOR = ':';
 
@@ -57,6 +54,16 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
             name = "perfetto-metric-prefix",
             description = "Prefix to be used with the metrics collected from perfetto.")
     private String mMetricPrefix = "perfetto";
+
+    // Timeout for the script to process the trace files.
+    // The default is arbitarily chosen to be 5 mins to prevent the test spending more time in
+    // processing the files.
+    @Option(
+        name = "perfetto-script-timeout",
+        description = "Timeout for the perfetto script.",
+        isTimeVal = true
+    )
+    private long mScriptTimeoutMs = TimeUnit.MINUTES.toMillis(5);
 
     /**
      * Process the perfetto trace file for the additional metrics and add it to final metrics.
@@ -117,7 +124,7 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
      */
     @VisibleForTesting
     protected CommandResult runHostCommand(String[] commandArgs) {
-        return RunUtil.getDefault().runTimedCmd(MAX_SCRIPT_TIMEOUT_MSECS, commandArgs);
+        return RunUtil.getDefault().runTimedCmd(mScriptTimeoutMs, commandArgs);
     }
 
     @VisibleForTesting
