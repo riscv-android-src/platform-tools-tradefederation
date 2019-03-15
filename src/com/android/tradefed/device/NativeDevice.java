@@ -263,15 +263,21 @@ public class NativeDevice implements IManagedTestDevice {
 
         private String[] mCmd;
         private long mTimeout;
+        private File mPipeAsInput;
 
-        AdbShellAction(String[] cmd, long timeout) {
+        AdbShellAction(String[] cmd, File pipeAsInput, long timeout) {
             mCmd = cmd;
+            mPipeAsInput = pipeAsInput;
             mTimeout = timeout;
         }
 
         @Override
         public boolean run() throws TimeoutException, IOException {
-            mResult = getRunUtil().runTimedCmd(mTimeout, mCmd);
+            if (mPipeAsInput != null) {
+                mResult = getRunUtil().runTimedCmdWithInputRedirect(mTimeout, mPipeAsInput, mCmd);
+            } else {
+                mResult = getRunUtil().runTimedCmd(mTimeout, mCmd);
+            }
             if (mResult.getStatus() == CommandStatus.EXCEPTION) {
                 throw new IOException(mResult.getStderr());
             } else if (mResult.getStatus() == CommandStatus.TIMED_OUT) {
@@ -704,10 +710,18 @@ public class NativeDevice implements IManagedTestDevice {
 
     /** {@inheritDoc} */
     @Override
+    public CommandResult executeShellV2Command(String cmd, File pipeAsInput)
+            throws DeviceNotAvailableException {
+        return executeShellV2Command(
+                cmd, pipeAsInput, getCommandTimeout(), TimeUnit.MILLISECONDS, MAX_RETRY_ATTEMPTS);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public CommandResult executeShellV2Command(
             String cmd, final long maxTimeoutForCommand, final TimeUnit timeUnit)
             throws DeviceNotAvailableException {
-        return executeShellV2Command(cmd, maxTimeoutForCommand, timeUnit, MAX_RETRY_ATTEMPTS);
+        return executeShellV2Command(cmd, null, maxTimeoutForCommand, timeUnit, MAX_RETRY_ATTEMPTS);
     }
 
     /** {@inheritDoc} */
@@ -715,9 +729,19 @@ public class NativeDevice implements IManagedTestDevice {
     public CommandResult executeShellV2Command(
             String cmd, final long maxTimeoutForCommand, final TimeUnit timeUnit, int retryAttempts)
             throws DeviceNotAvailableException {
+        return executeShellV2Command(cmd, null, maxTimeoutForCommand, timeUnit, retryAttempts);
+    }
+
+    private CommandResult executeShellV2Command(
+            String cmd,
+            File pipeAsInput,
+            final long maxTimeoutForCommand,
+            final TimeUnit timeUnit,
+            int retryAttempts)
+            throws DeviceNotAvailableException {
         final String[] fullCmd = buildAdbShellCommand(cmd);
         AdbShellAction adbActionV2 =
-                new AdbShellAction(fullCmd, timeUnit.toMillis(maxTimeoutForCommand));
+                new AdbShellAction(fullCmd, pipeAsInput, timeUnit.toMillis(maxTimeoutForCommand));
         performDeviceAction(String.format("adb %s", fullCmd[4]), adbActionV2, retryAttempts);
         return adbActionV2.mResult;
     }

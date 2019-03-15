@@ -17,11 +17,12 @@ package com.android.tradefed.device.contentprovider;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.WifiHelper;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+
+import com.google.common.base.Strings;
 
 import java.io.File;
 import java.io.IOException;
@@ -74,21 +75,21 @@ public class ContentProviderHandler {
     }
 
     /** Clean the device from the content provider helper. */
-    public void tearDown() throws Exception {
+    public void tearDown() throws DeviceNotAvailableException {
         FileUtil.deleteFile(mContentProviderApk);
         mDevice.uninstallPackage(PACKAGE_NAME);
     }
 
     /**
      * Content provider callback that delete a file at the URI location. File will be deleted from
-     * the disk.
+     * the device content.
      *
      * @param deviceFilePath The path on the device of the file to delete.
      * @return True if successful, False otherwise
      * @throws DeviceNotAvailableException
      */
     public boolean deleteFile(String deviceFilePath) throws DeviceNotAvailableException {
-        String contentUri = String.format("%s/%s", CONTENT_PROVIDER_URI, deviceFilePath);
+        String contentUri = createContentUri(deviceFilePath);
         String deleteCommand =
                 String.format(
                         "content delete --user %d --uri %s", mDevice.getCurrentUser(), contentUri);
@@ -103,11 +104,55 @@ public class ContentProviderHandler {
         return false;
     }
 
+    /**
+     * Content provider callback that push a file to the URI location.
+     *
+     * @param fileToPush The {@link File} to be pushed to the device.
+     * @param deviceFilePath The path on the device where to push the file.
+     * @return True if successful, False otherwise
+     * @throws DeviceNotAvailableException
+     * @throws IllegalArgumentException
+     */
+    public boolean pushFile(File fileToPush, String deviceFilePath)
+            throws DeviceNotAvailableException, IllegalArgumentException {
+        if (fileToPush.isDirectory()) {
+            throw new IllegalArgumentException(
+                    String.format("File '%s' to push is a directory.", fileToPush));
+        }
+        if (!fileToPush.exists()) {
+            throw new IllegalArgumentException(
+                    String.format("File '%s' to push does not exist.", fileToPush));
+        }
+        String contentUri = createContentUri(deviceFilePath);
+        String pushCommand =
+                String.format(
+                        "content write --user %d --uri %s", mDevice.getCurrentUser(), contentUri);
+        CommandResult pushResult = mDevice.executeShellV2Command(pushCommand, fileToPush);
+
+        String stderr = pushResult.getStderr();
+        if (CommandStatus.SUCCESS.equals(pushResult.getStatus())) {
+            // Command above returns success even if it prints stack failure.
+            if (Strings.isNullOrEmpty(stderr)) {
+                return true;
+            }
+        }
+        CLog.e(
+                "Failed to push a file '%s' at %s using content provider. Error: '%s'",
+                fileToPush, deviceFilePath, stderr);
+        return false;
+    }
+
     /** Helper method to extract the content provider apk. */
     private File extractResourceApk() throws IOException {
         File apkTempFile = FileUtil.createTempFile(APK_NAME, ".apk");
-        InputStream apkStream = WifiHelper.class.getResourceAsStream(CONTENT_PROVIDER_APK_RES);
+        InputStream apkStream =
+                ContentProviderHandler.class.getResourceAsStream(CONTENT_PROVIDER_APK_RES);
         FileUtil.writeToFile(apkStream, apkTempFile);
         return apkTempFile;
+    }
+
+    /** Returns the full URI string for the given device path. */
+    private String createContentUri(String deviceFilePath) {
+        return String.format("%s/%s", CONTENT_PROVIDER_URI, deviceFilePath);
     }
 }
