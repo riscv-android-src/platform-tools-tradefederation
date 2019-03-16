@@ -116,6 +116,7 @@ import com.android.tradefed.invoker.ShardListenerTest;
 import com.android.tradefed.invoker.ShardMasterResultForwarderTest;
 import com.android.tradefed.invoker.TestInvocationMultiTest;
 import com.android.tradefed.invoker.TestInvocationTest;
+import com.android.tradefed.invoker.UnexecutedTestReporterThreadTest;
 import com.android.tradefed.invoker.monitor.InvocationsMonitorTest;
 import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecutionTest;
 import com.android.tradefed.invoker.shard.ShardHelperTest;
@@ -139,8 +140,8 @@ import com.android.tradefed.result.FailureEmailResultReporterTest;
 import com.android.tradefed.result.FileSystemLogSaverTest;
 import com.android.tradefed.result.InvocationFailureEmailResultReporterTest;
 import com.android.tradefed.result.InvocationToJUnitResultForwarderTest;
-import com.android.tradefed.result.JsonHttpTestResultReporterTest;
 import com.android.tradefed.result.JUnitToInvocationResultForwarderTest;
+import com.android.tradefed.result.JsonHttpTestResultReporterTest;
 import com.android.tradefed.result.LegacySubprocessResultsReporterTest;
 import com.android.tradefed.result.LogFileSaverTest;
 import com.android.tradefed.result.LogcatCrashResultForwarderTest;
@@ -484,6 +485,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ShardMasterResultForwarderTest.class,
     TestInvocationMultiTest.class,
     TestInvocationTest.class,
+    UnexecutedTestReporterThreadTest.class,
 
     // invoker.monitor
     InvocationsMonitorTest.class,
