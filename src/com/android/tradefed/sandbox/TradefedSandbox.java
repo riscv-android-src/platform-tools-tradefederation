@@ -64,9 +64,6 @@ import java.util.Set;
  */
 public class TradefedSandbox implements ISandbox {
 
-    /** Timeout to wait for the events received from subprocess to finish being processed. */
-    private static final long EVENT_THREAD_JOIN_TIMEOUT_MS = 30 * 1000;
-
     private File mStdoutFile = null;
     private File mStderrFile = null;
     private OutputStream mStdout = null;
@@ -138,10 +135,11 @@ public class TradefedSandbox implements ISandbox {
         }
 
         boolean joinResult = false;
+        long waitTime = getSandboxOptions(config).getWaitForEventsTimeout();
         if (mProtoReceiver != null) {
-            joinResult = mProtoReceiver.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS);
+            joinResult = mProtoReceiver.joinReceiver(waitTime);
         } else {
-            joinResult = mEventParser.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS);
+            joinResult = mEventParser.joinReceiver(waitTime);
         }
 
         if (!joinResult) {

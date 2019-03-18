@@ -17,8 +17,10 @@ package com.android.tradefed.result.proto;
 
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.proto.ProtoResultParser.TestLevel;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.TimeUtil;
 
 import java.io.BufferedReader;
 import java.io.Closeable;
@@ -34,11 +36,17 @@ import java.util.concurrent.TimeUnit;
 public class StreamProtoReceiver implements Closeable {
 
     private static final int DEFAULT_AVAILABLE_PORT = 0;
+    private static final long PER_MODULE_EXTRA_WAIT_TIME_MS = 5000L;
 
     private EventReceiverThread mEventReceiver;
     private ITestInvocationListener mListener;
     private ProtoResultParser mParser;
     private Throwable mError;
+    /**
+     * For each module processed we give ourselves a couple extra seconds to process the final
+     * results. The longer the invocation goes, the higher is the chance of backing up events.
+     */
+    private long mExtraWaitTimeForEvents = 0L;
 
     /**
      * Ctor.
@@ -158,8 +166,11 @@ public class StreamProtoReceiver implements Closeable {
     public boolean joinReceiver(long millis) {
         if (mEventReceiver != null) {
             try {
-                CLog.i("Waiting for events to finish being processed.");
-                if (!mEventReceiver.getCountDown().await(millis, TimeUnit.MILLISECONDS)) {
+                long waitTime = millis + mExtraWaitTimeForEvents;
+                CLog.i(
+                        "Waiting for events to finish being processed for %s",
+                        TimeUtil.formatElapsedTime(waitTime));
+                if (!mEventReceiver.getCountDown().await(waitTime, TimeUnit.MILLISECONDS)) {
                     CLog.e("Event receiver thread did not complete. Some events may be missing.");
                     mEventReceiver.interrupt();
                     return false;
@@ -174,7 +185,10 @@ public class StreamProtoReceiver implements Closeable {
 
     private void parse(TestRecord receivedRecord) {
         try {
-            mParser.processNewProto(receivedRecord);
+            TestLevel level = mParser.processNewProto(receivedRecord);
+            if (TestLevel.MODULE.equals(level)) {
+                mExtraWaitTimeForEvents += PER_MODULE_EXTRA_WAIT_TIME_MS;
+            }
         } catch (Throwable e) {
             CLog.e(e);
             mError = e;
