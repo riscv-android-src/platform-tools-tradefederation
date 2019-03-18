@@ -3885,9 +3885,7 @@ public class NativeDevice implements IManagedTestDevice {
         // Default implementation empty on purpose
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void postInvocationTearDown() {
         // Default implementation
