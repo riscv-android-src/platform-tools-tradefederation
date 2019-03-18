@@ -35,6 +35,7 @@ import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.device.contentprovider.ContentProviderHandler;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -96,6 +97,7 @@ import javax.annotation.concurrent.GuardedBy;
  */
 public class NativeDevice implements IManagedTestDevice {
 
+    private static final String SD_CARD = "/sdcard/";
     /**
      * Allow pauses of up to 2 minutes while receiving bugreport.
      * <p/>
@@ -204,6 +206,9 @@ public class NativeDevice implements IManagedTestDevice {
     private String mLastConnectedWifiSsid = null;
     private String mLastConnectedWifiPsk = null;
     private boolean mNetworkMonitorEnabled = false;
+
+    private ContentProviderHandler mContentProvider = null;
+    private boolean mShouldSkipContentProviderSetup = false;
 
     /**
      * Interface for a generic device communication attempt.
@@ -1018,6 +1023,14 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean pushFile(final File localFile, final String remoteFilePath)
             throws DeviceNotAvailableException {
+        if (remoteFilePath.startsWith(SD_CARD)) {
+            ContentProviderHandler handler = getContentProvider();
+            if (handler != null) {
+                mShouldSkipContentProviderSetup = true;
+                return handler.pushFile(localFile, remoteFilePath);
+            }
+        }
+
         DeviceAction pushAction =
                 new DeviceAction() {
                     @Override
@@ -1794,7 +1807,11 @@ public class NativeDevice implements IManagedTestDevice {
     /** Builds the OS command for the given adb shell command session and args */
     private String[] buildAdbShellCommand(String command) {
         // TODO: implement the shell v2 support in ddmlib itself.
-        String[] commandArgs = QuotationAwareTokenizer.tokenizeLine(command);
+        String[] commandArgs =
+                QuotationAwareTokenizer.tokenizeLine(
+                        command,
+                        /** No logging */
+                        false);
         return ArrayUtil.buildArray(
                 new String[] {"adb", "-s", getSerialNumber(), "shell"}, commandArgs);
     }
@@ -3869,7 +3886,18 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public void postInvocationTearDown() {
-        // Default implementation empty on purpose
+        // Default implementation
+        if (getIDevice() instanceof StubDevice) {
+            return;
+        }
+        try {
+            ContentProviderHandler handler = getContentProvider();
+            if (handler != null) {
+                handler.tearDown();
+            }
+        } catch (DeviceNotAvailableException e) {
+            CLog.e(e);
+        }
     }
 
     /**
@@ -4102,5 +4130,20 @@ public class NativeDevice implements IManagedTestDevice {
     @VisibleForTesting
     IHostOptions getHostOptions() {
         return GlobalConfiguration.getInstance().getHostOptions();
+    }
+
+    /** Returns the {@link ContentProviderHandler} or null if not available. */
+    @VisibleForTesting
+    ContentProviderHandler getContentProvider() throws DeviceNotAvailableException {
+        if (mContentProvider == null) {
+            mContentProvider = new ContentProviderHandler(this);
+        }
+        if (!mShouldSkipContentProviderSetup) {
+            boolean res = mContentProvider.setUp();
+            if (!res) {
+                return null;
+            }
+        }
+        return mContentProvider;
     }
 }

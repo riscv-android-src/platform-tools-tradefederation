@@ -55,13 +55,13 @@ public class ContentProviderHandlerTest {
         mProvider.tearDown();
     }
 
+    /** Test the install flow. */
     @Test
     public void testSetUp_install() throws Exception {
         Set<String> set = new HashSet<>();
         doReturn(set).when(mMockDevice).getInstalledPackageNames();
         doReturn(1).when(mMockDevice).getCurrentUser();
         doReturn(null).when(mMockDevice).installPackage(any(), eq(true), eq(true));
-
         assertTrue(mProvider.setUp());
     }
 

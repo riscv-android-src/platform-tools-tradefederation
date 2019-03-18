@@ -56,22 +56,33 @@ public class ContentProviderHandler {
      *
      * @return True if ready to be used, False otherwise.
      */
-    public boolean setUp() throws DeviceNotAvailableException, IOException {
+    public boolean setUp() throws DeviceNotAvailableException {
         Set<String> packageNames = mDevice.getInstalledPackageNames();
         if (packageNames.contains(PACKAGE_NAME)) {
             return true;
         }
         if (mContentProviderApk == null) {
-            mContentProviderApk = extractResourceApk();
+            try {
+                mContentProviderApk = extractResourceApk();
+            } catch (IOException e) {
+                CLog.e(e);
+                return false;
+            }
         }
         // Install package for all users
-        String output = mDevice.installPackage(mContentProviderApk, true, true);
-        if (output == null) {
-            return true;
+        String output =
+                mDevice.installPackage(
+                        mContentProviderApk,
+                        /** reinstall */
+                        true,
+                        /** grant permission */
+                        true);
+        if (output != null) {
+            CLog.e("Something went wrong while installing the content provider apk: %s", output);
+            FileUtil.deleteFile(mContentProviderApk);
+            return false;
         }
-        CLog.e("Something went wrong while installing the content provider apk: %s", output);
-        FileUtil.deleteFile(mContentProviderApk);
-        return false;
+        return true;
     }
 
     /** Clean the device from the content provider helper. */

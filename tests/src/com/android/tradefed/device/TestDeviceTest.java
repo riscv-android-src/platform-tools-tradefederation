@@ -29,6 +29,7 @@ import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice.MountPointInfo;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.device.contentprovider.ContentProviderHandler;
 import com.android.tradefed.host.HostOptions;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -3755,6 +3756,11 @@ public class TestDeviceTest extends TestCase {
                     IWifiHelper createWifiHelper(boolean doSetup)
                             throws DeviceNotAvailableException {
                         return mMockWifi;
+                    }
+
+                    @Override
+                    ContentProviderHandler getContentProvider() throws DeviceNotAvailableException {
+                        return null;
                     }
                 };
         mMockIDevice.executeShellCommand(
