@@ -316,6 +316,13 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
             self,
             self.tr.generate_run_commands([], {constants.SERIAL:arg_device_serial}),
             [RUN_CMD.format(metrics='', serial=arg_serial_arg)])
+        # Serial env be set but with -n arg
+        unittest_utils.assert_strict_equal(
+            self,
+            self.tr.generate_run_commands([], {constants.HOST}),
+            [RUN_CMD.format(metrics='', serial='') +
+             ' -n --prioritize-host-config --skip-host-arch-check'])
+
 
     def test_flatten_test_filters(self):
         """Test _flatten_test_filters method."""
