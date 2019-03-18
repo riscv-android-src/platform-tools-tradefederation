@@ -29,6 +29,7 @@ public final class SandboxOptions {
     public static final String USE_PROTO_REPORTER = "use-proto-reporter";
     public static final String CHILD_GLOBAL_CONFIG = "sub-global-config";
     public static final String PARENT_PREPARER_CONFIG = "parent-preparer-config";
+    public static final String WAIT_FOR_EVENTS_TIMEOUT = "wait-for-events";
 
     @Option(
         name = TF_LOCATION,
@@ -64,6 +65,15 @@ public final class SandboxOptions {
     )
     private String mParentPreparerConfig = null;
 
+    @Option(
+        name = WAIT_FOR_EVENTS_TIMEOUT,
+        isTimeVal = true,
+        description =
+                "The time we should wait for all events to complete after the "
+                        + "sandbox is done running."
+    )
+    private long mWaitForEventsTimeoutMs = 30000L;
+
     /**
      * Returns the provided directories containing the Trade Federation version to use for
      * sandboxing the run.
@@ -93,5 +103,12 @@ public final class SandboxOptions {
     /** Returns the configuration which preparer should run in the parent process of the sandbox. */
     public String getParentPreparerConfig() {
         return mParentPreparerConfig;
+    }
+
+    /**
+     * Returns the time we should wait for events to be processed after the sandbox is done running.
+     */
+    public long getWaitForEventsTimeout() {
+        return mWaitForEventsTimeoutMs;
     }
 }
