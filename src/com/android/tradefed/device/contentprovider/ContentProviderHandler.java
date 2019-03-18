@@ -42,6 +42,7 @@ public class ContentProviderHandler {
     public static final String CONTENT_PROVIDER_URI = "content://android.tradefed.contentprovider";
     private static final String APK_NAME = "TradefedContentProvider.apk";
     private static final String CONTENT_PROVIDER_APK_RES = "/apks/contentprovider/" + APK_NAME;
+    private static final String PROPERTY_RESULT = "LEGACY_STORAGE: allow";
 
     private ITestDevice mDevice;
     private File mContentProviderApk = null;
@@ -56,20 +57,43 @@ public class ContentProviderHandler {
      *
      * @return True if ready to be used, False otherwise.
      */
-    public boolean setUp() throws DeviceNotAvailableException, IOException {
+    public boolean setUp() throws DeviceNotAvailableException {
         Set<String> packageNames = mDevice.getInstalledPackageNames();
         if (packageNames.contains(PACKAGE_NAME)) {
             return true;
         }
         if (mContentProviderApk == null) {
-            mContentProviderApk = extractResourceApk();
+            try {
+                mContentProviderApk = extractResourceApk();
+            } catch (IOException e) {
+                CLog.e(e);
+                return false;
+            }
         }
         // Install package for all users
-        String output = mDevice.installPackage(mContentProviderApk, true, true);
-        if (output == null) {
+        String output =
+                mDevice.installPackage(
+                        mContentProviderApk,
+                        /** reinstall */
+                        true,
+                        /** grant permission */
+                        true);
+        if (output != null) {
+            CLog.e("Something went wrong while installing the content provider apk: %s", output);
+            FileUtil.deleteFile(mContentProviderApk);
+            return false;
+        }
+        // Enable appops legacy storage
+        mDevice.executeShellV2Command(
+                String.format("cmd appops set %s android:legacy_storage allow", PACKAGE_NAME));
+        // Check that it worked and set on the system
+        CommandResult appOpsResult =
+                mDevice.executeShellV2Command(String.format("cmd appops get %s", PACKAGE_NAME));
+        if (CommandStatus.SUCCESS.equals(appOpsResult.getStatus())
+                && appOpsResult.getStdout().contains(PROPERTY_RESULT)) {
             return true;
         }
-        CLog.e("Something went wrong while installing the content provider apk: %s", output);
+        CLog.e("Failed to set legacy_storage: %s", appOpsResult.getStderr());
         FileUtil.deleteFile(mContentProviderApk);
         return false;
     }
