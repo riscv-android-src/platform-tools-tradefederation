@@ -70,7 +70,7 @@ public class SandboxConfigurationFactory extends ConfigurationFactory {
         // TODO: Extend ConfigurationDef to possibly create a different IConfiguration type and
         // handle more elegantly the parent/subprocess incompatibilities.
         ConfigurationDef def = createConfigurationDef(name);
-        new ConfigLoader(isGlobal).loadConfiguration(name, def, null, templateMap);
+        new ConfigLoader(isGlobal).loadConfiguration(name, def, null, templateMap, null);
         return def;
     }
 
