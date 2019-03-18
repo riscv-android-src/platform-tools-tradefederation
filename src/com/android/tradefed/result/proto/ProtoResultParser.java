@@ -75,6 +75,14 @@ public class ProtoResultParser {
         mFilePrefix = prefixForFile;
     }
 
+    /** Enumeration representing the current level of the proto being processed. */
+    public enum TestLevel {
+        INVOCATION,
+        MODULE,
+        TEST_RUN,
+        TEST_CASE
+    }
+
     /** Sets whether or not to print when events are received. */
     public void setQuiet(boolean quiet) {
         mQuietParsing = quiet;
@@ -102,21 +110,26 @@ public class ProtoResultParser {
      * Main entry function where each proto is presented to get parsed into Tradefed events.
      *
      * @param currentProto The current {@link TestRecord} to be parsed.
+     * @return True if the proto processed was a module.
      */
-    public void processNewProto(TestRecord currentProto) {
+    public TestLevel processNewProto(TestRecord currentProto) {
         // Handle initial root proto
         if (currentProto.getParentTestRecordId().isEmpty()) {
             handleRootProto(currentProto);
+            return TestLevel.INVOCATION;
         } else if (currentProto.hasDescription()) {
             // If it has a Any Description with Context then it's a module
             handleModuleProto(currentProto);
+            return TestLevel.MODULE;
         } else if (mCurrentRunName == null
                 || currentProto.getTestRecordId().equals(mCurrentRunName)) {
             // Need to track the parent test run id to make sure we need testRunEnd or testRunFail
             handleTestRun(currentProto);
+            return TestLevel.TEST_RUN;
         } else {
             // Test cases handling
             handleTestCase(currentProto);
+            return TestLevel.TEST_CASE;
         }
     }
 
