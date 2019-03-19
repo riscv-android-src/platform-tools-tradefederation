@@ -12,42 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Only use this in interactive mode.
-[[ ! $- =~ 'i' ]] && return 0
-
-# Not support completion on Darwin since the bash version of it
-# is too old to fully support useful built-in commands/functions
-# such as compopt, _get_comp_words_by_ref and __ltrim_colon_completions.
-[[ "$(uname -s)" == "Darwin" ]] && return 0
-
-# Use Py2 as the default interpreter. This script is aiming for being
-# compatible with both Py2 and Py3.
-PYTHON=
-if [ -x "$(which python2)" ]; then
-    PYTHON=$(which python2)
-elif [ -x "$(which python3)" ]; then
-    PYTHON=$(which python3)
-else
-    PYTHON="/usr/bin/env python"
-fi
-
 # Get testable module names from module_info.json.
 # Will return null if module_info.json doesn't exist.
-# TODO: move the python code into an appropriate module which
-# 1. Doesn't have py2/3 compatibility issue(e.g. urllib vs urllib2)
-# 2. Doesn't import too many atest modules that affect user experience.
-fetch_testable_modules() {
+_fetch_testable_modules() {
     [ -z $ANDROID_PRODUCT_OUT ] && { exit 0; }
     $PYTHON - << END
 import hashlib
-import json
 import os
 import pickle
 import sys
 
-modules = set()
-module_info = os.path.join(os.environ["ANDROID_PRODUCT_OUT"] ,"module-info.json")
+atest_dir = os.path.join(os.environ['ANDROID_BUILD_TOP'], 'tools/tradefederation/core/atest')
+sys.path.append(atest_dir)
+import module_info
 
+module_info_json = os.path.join(os.environ["ANDROID_PRODUCT_OUT"] ,"module-info.json")
+
+# TODO: This method should be implemented while making module-info.json.
 def get_serialised_filename(mod_info):
     """Determine the serialised filename used for reading testable modules.
 
@@ -62,29 +43,14 @@ def get_serialised_filename(mod_info):
         serial_filename += hashlib.md5(mod_info_obj.read().encode('utf-8')).hexdigest()
     return serial_filename
 
-def create_json_data(mod_info):
-    with open(mod_info, 'r') as mod_info_obj:
-        return json.load(mod_info_obj)
-
+# TODO: This method should be implemented while making module-info.json.
 def create_serialised_file(serial_file):
-    # TODO: logic below will be abandoned and utilise test_finder_utils.py
-    # after aosp/736172 merged (b/112904944).
-    '''
-    Testable module names can be found by fulfilling both conditions:
-    1. module_name == value['module_name']
-    2. test_config has value OR auto_test_config has value
-    '''
-    for module_name, value in create_json_data(module_info).items():
-        if module_name != value.get("module_name", ""):
-            continue
-        elif value.get("auto_test_config") or value.get("test_config"):
-            modules.add(module_name)
-    print("\n".join(modules))
+    modules = module_info.ModuleInfo().get_testable_modules()
     with open(serial_file, 'wb') as serial_file_obj:
         pickle.dump(modules, serial_file_obj, protocol=2)
 
-if os.path.isfile(module_info):
-    latest_serial_file = get_serialised_filename(module_info)
+if os.path.isfile(module_info_json):
+    latest_serial_file = get_serialised_filename(module_info_json)
     # When module-info.json changes, recreate a serialisation file.
     if not os.path.exists(latest_serial_file):
         create_serialised_file(latest_serial_file)
@@ -98,7 +64,7 @@ END
 
 # This function invoke get_args() and return each item
 # of the list for tab completion candidates.
-fetch_atest_args() {
+_fetch_atest_args() {
     [ -z $ANDROID_BUILD_TOP ] && { exit 0; }
     $PYTHON - << END
 import os
@@ -116,17 +82,22 @@ END
 }
 
 # This function returns devices recognised by adb.
-fetch_adb_devices() {
+_fetch_adb_devices() {
     while read dev; do echo $dev | awk '{print $1}'; done < <(adb devices | egrep -v "^List|^$"||true)
 }
 
 # This function returns all paths contain TEST_MAPPING.
-fetch_test_mapping_files() {
+_fetch_test_mapping_files() {
     find -maxdepth 5 -type f -name TEST_MAPPING |sed 's/^.\///g'| xargs dirname 2>/dev/null
 }
 
 # The main tab completion function.
 _atest() {
+    # Not support completion on Darwin since the bash version of it
+    # is too old to fully support useful built-in commands/functions
+    # such as compopt, _get_comp_words_by_ref and __ltrim_colon_completions.
+    [[ "$(uname -s)" == "Darwin" ]] && return 0
+
     local cur prev
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
@@ -135,30 +106,33 @@ _atest() {
 
     case "$cur" in
         -*)
-            COMPREPLY=($(compgen -W "$(fetch_atest_args)" -- $cur))
+            COMPREPLY=($(compgen -W "$(_fetch_atest_args)" -- $cur))
             ;;
         */*)
             ;;
         *)
-            local candidate_args=$(ls; fetch_testable_modules)
+            local candidate_args=$(ls; _fetch_testable_modules)
             COMPREPLY=($(compgen -W "$candidate_args" -- $cur))
             ;;
     esac
 
     case "$prev" in
+        --generate-baseline|--generate-new-metrics)
+            COMPREPLY=(5) ;;
+        --list-modules|-L)
+            # TODO: genetate the list automately when the API is availble.
+            COMPREPLY=($(compgen -W "cts vts" -- $cur)) ;;
         --serial|-s)
-            local adb_devices="$(fetch_adb_devices)"
+            local adb_devices="$(_fetch_adb_devices)"
             if [ -n "$adb_devices" ]; then
-                COMPREPLY=($(compgen -W "$(fetch_adb_devices)" -- $cur))
+                COMPREPLY=($(compgen -W "$(_fetch_adb_devices)" -- $cur))
             else
                 # Don't complete files/dirs when there'is no devices.
                 compopt -o nospace
                 COMPREPLY=("")
             fi ;;
-        --generate-baseline|--generate-new-metrics)
-            COMPREPLY=(5) ;;
         --test-mapping|-p)
-            local mapping_files="$(fetch_test_mapping_files)"
+            local mapping_files="$(_fetch_test_mapping_files)"
             if [ -n "$mapping_files" ]; then
                 COMPREPLY=($(compgen -W "$mapping_files" -- $cur))
             else
@@ -171,9 +145,34 @@ _atest() {
     return 0
 }
 
-# Complete file/dir name first by using option "nosort".
-# BASH version <= 4.3 doesn't have nosort option.
-# Note that nosort has no effect for zsh.
-comp_options="-o default -o nosort"
-complete -F _atest $comp_options atest 2>/dev/null || \
-complete -F _atest -o default atest
+function _atest_main() {
+    # Only use this in interactive mode.
+    [[ ! $- =~ 'i' ]] && return 0
+
+    # Use Py2 as the default interpreter. This script is aiming for being
+    # compatible with both Py2 and Py3.
+    PYTHON=
+    if [ -x "$(which python2)" ]; then
+        PYTHON=$(which python2)
+    elif [ -x "$(which python3)" ]; then
+        PYTHON=$(which python3)
+    else
+        PYTHON="/usr/bin/env python"
+    fi
+
+    # Complete file/dir name first by using option "nosort".
+    # BASH version <= 4.3 doesn't have nosort option.
+    # Note that nosort has no effect for zsh.
+    local _atest_comp_options="-o default -o nosort"
+    local _atest_executables=(atest atest-dev atest-src)
+    for exec in "${_atest_executables[*]}"; do
+        complete -F _atest $_atest_comp_options $exec 2>/dev/null || \
+        complete -F _atest -o default $exec
+    done
+
+    # Install atest-src for the convenience of debugging.
+    local atest_src="$(gettop)/tools/tradefederation/core/atest/atest.py"
+    [[ -f "$atest_src" ]] && alias atest-src="$atest_src"
+}
+
+_atest_main
