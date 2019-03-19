@@ -377,8 +377,9 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
 
         # TODO(b/122889707) Remove this after finding the root cause.
         env_serial = os.environ.get(constants.ANDROID_SERIAL)
-        # Use the env variable ANDROID_SERIAL if it's set by user.
-        if env_serial and '--serial' not in args_to_add:
+        # Use the env variable ANDROID_SERIAL if it's set by user but only when
+        # the target tests are not deviceless tests.
+        if env_serial and '--serial' not in args_to_add and '-n' not in args_to_add:
             args_to_add.append("--serial")
             args_to_add.append(env_serial)
 
