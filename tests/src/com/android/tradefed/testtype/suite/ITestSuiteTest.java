@@ -49,6 +49,7 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.KeyguardStatusChecker;
 import com.android.tradefed.suite.checker.StatusCheckerResult;
@@ -608,8 +609,10 @@ public class ITestSuiteTest {
         mMockListener.testModuleStarted(EasyMock.anyObject());
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         EasyMock.expectLastCall().times(1);
-        mMockListener.testRunFailed("unresponsive");
-        mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
+        mMockListener.testRunFailed(
+                "unresponsive"
+                        + TestRunResult.ERROR_DIVIDER
+                        + "Module test only ran 0 out of 1 expected tests.");
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(1);
@@ -724,8 +727,10 @@ public class ITestSuiteTest {
         mMockListener.testModuleStarted(EasyMock.anyObject());
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         EasyMock.expectLastCall().times(1);
-        mMockListener.testRunFailed("runtime");
-        mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
+        mMockListener.testRunFailed(
+                "runtime"
+                        + TestRunResult.ERROR_DIVIDER
+                        + "Module test only ran 0 out of 1 expected tests.");
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(1);

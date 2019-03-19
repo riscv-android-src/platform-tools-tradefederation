@@ -40,7 +40,7 @@ import java.util.Set;
  */
 public class TestRunResult {
 
-    private static final String ERROR_DIVIDER = "\n====Next Error====\n";
+    public static final String ERROR_DIVIDER = "\n====Next Error====\n";
     private String mTestRunName;
     // Uses a LinkedHashMap to have predictable iteration order
     private Map<TestDescription, TestResult> mTestResults =
