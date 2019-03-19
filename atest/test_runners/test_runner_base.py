@@ -18,15 +18,23 @@ Base test runner class.
 Class that other test runners will instantiate for test runners.
 """
 
+from __future__ import print_function
+import errno
 import logging
 import signal
 import subprocess
 import tempfile
 import os
+import sys
+
 from collections import namedtuple
 
 # pylint: disable=import-error
 import atest_error
+import atest_utils
+import constants
+
+OLD_OUTPUT_ENV_VAR = 'ATEST_OLD_OUTPUT'
 
 # TestResult contains information of individual tests during a test run.
 TestResult = namedtuple('TestResult', ['runner_name', 'group_name',
@@ -55,7 +63,7 @@ class TestRunnerBase(object):
         if kwargs:
             logging.debug('ignoring the following args: %s', kwargs)
 
-    def run(self, cmd, output_to_stdout=False):
+    def run(self, cmd, output_to_stdout=False, env_vars=None):
         """Shell out and execute command.
 
         Args:
@@ -68,6 +76,7 @@ class TestRunnerBase(object):
 
                               Set to True to see the output of the cmd. This
                               would be appropriate for verbose runs.
+            env_vars: Environment variables passed to the subprocess.
         """
         if not output_to_stdout:
             self.test_log_file = tempfile.NamedTemporaryFile(mode='w',
@@ -75,7 +84,46 @@ class TestRunnerBase(object):
                                                              delete=True)
         logging.debug('Executing command: %s', cmd)
         return subprocess.Popen(cmd, preexec_fn=os.setsid, shell=True,
-                                stderr=subprocess.STDOUT, stdout=self.test_log_file)
+                                stderr=subprocess.STDOUT, stdout=self.test_log_file,
+                                env=env_vars)
+
+    # pylint: disable=broad-except
+    def handle_subprocess(self, subproc, func):
+        """Execute the function. Interrupt the subproc when exception occurs.
+
+        Args:
+            subproc: A subprocess to be terminated.
+            func: A function to be run.
+        """
+        try:
+            signal.signal(signal.SIGINT, self._signal_passer(subproc))
+            func()
+        except Exception as error:
+            # exc_info=1 tells logging to log the stacktrace
+            logging.debug('Caught exception:', exc_info=1)
+            # Remember our current exception scope, before new try block
+            # Python3 will make this easier, the error itself stores
+            # the scope via error.__traceback__ and it provides a
+            # "raise from error" pattern.
+            # https://docs.python.org/3.5/reference/simple_stmts.html#raise
+            exc_type, exc_msg, traceback_obj = sys.exc_info()
+            # If atest crashes, try to kill subproc group as well.
+            try:
+                logging.debug('Killing subproc: %s', subproc.pid)
+                os.killpg(os.getpgid(subproc.pid), signal.SIGINT)
+            except OSError:
+                # this wipes our previous stack context, which is why
+                # we have to save it above.
+                logging.debug('Subproc already terminated, skipping')
+            finally:
+                if self.test_log_file:
+                    with open(self.test_log_file.name, 'r') as f:
+                        intro_msg = "Unexpected Issue. Raw Output:"
+                        print(atest_utils.colorize(intro_msg, constants.RED))
+                        print(f.read())
+                # Ignore socket.recv() raising due to ctrl-c
+                if not error.args or error.args[0] != errno.EINTR:
+                    raise exc_type, exc_msg, traceback_obj
 
     def wait_for_subprocess(self, proc):
         """Check the process status. Interrupt the TF subporcess if user
@@ -114,7 +162,7 @@ class TestRunnerBase(object):
             is started in a process group, so this SIGINT is sufficient to
             kill all the child processes TradeFed spawns as well.
             """
-            logging.info('Ctrl-C received. Killing Tradefed subprocess group')
+            logging.info('Ctrl-C received. Killing subprocess group')
             os.killpg(os.getpgid(proc.pid), signal.SIGINT)
         return signal_handler
 

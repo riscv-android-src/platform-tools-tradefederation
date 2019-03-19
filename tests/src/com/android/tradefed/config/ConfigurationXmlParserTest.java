@@ -28,6 +28,7 @@ import org.junit.runners.JUnit4;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
 
 /** Unit tests for {@link ConfigurationXmlParser}. */
@@ -193,6 +194,7 @@ public class ConfigurationXmlParserTest {
                 EasyMock.eq("foo"),
                 EasyMock.eq(includedName),
                 EasyMock.anyObject(),
+                EasyMock.anyObject(),
                 EasyMock.anyObject());
         EasyMock.replay(mMockLoader);
         final String config = "<include name=\"includeme\" />";
@@ -206,7 +208,12 @@ public class ConfigurationXmlParserTest {
         ConfigurationDef parent = new ConfigurationDef("name");
         ConfigurationException exception = new ConfigurationException("I don't exist");
         mMockLoader.loadIncludedConfiguration(
-                parent, "name", includedName, null, Collections.<String, String>emptyMap());
+                parent,
+                "name",
+                includedName,
+                null,
+                Collections.<String, String>emptyMap(),
+                new HashSet<>());
         EasyMock.expectLastCall().andThrow(exception);
         EasyMock.replay(mMockLoader);
         final String config = String.format("<include name=\"%s\" />", includedName);
