@@ -17,15 +17,14 @@ Atest Tradefed test runner class.
 """
 
 from __future__ import print_function
-import errno
 import json
 import logging
 import os
 import re
-import signal
 import socket
 import subprocess
-import sys
+
+from functools import partial
 
 # pylint: disable=import-error
 import atest_utils
@@ -34,7 +33,6 @@ from event_handler import EventHandler
 from test_finders import test_info
 from test_runners import test_runner_base
 
-OLD_OUTPUT_ENV_VAR = 'ATEST_OLD_OUTPUT'
 POLL_FREQ_SECS = 10
 SOCKET_HOST = '127.0.0.1'
 SOCKET_QUEUE_MAX = 1
@@ -107,7 +105,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         """
         # Set google service key if it's available or found before running tests.
         self._try_set_gts_authentication_key()
-        if os.getenv(OLD_OUTPUT_ENV_VAR):
+        if os.getenv(test_runner_base.OLD_OUTPUT_ENV_VAR):
             return self.run_tests_raw(test_infos, extra_args, reporter)
         return self.run_tests_pretty(test_infos, extra_args, reporter)
 
@@ -132,8 +130,6 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             ret_code |= self.wait_for_subprocess(subproc)
         return ret_code
 
-    # pylint: disable=broad-except
-    # pylint: disable=too-many-locals
     def run_tests_pretty(self, test_infos, extra_args, reporter):
         """Run the list of test_infos. See base class for more.
 
@@ -152,43 +148,26 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             run_cmds = self.generate_run_commands(test_infos, extra_args,
                                                   server.getsockname()[1])
             subproc = self.run(run_cmds[0], output_to_stdout=self.is_verbose)
-            try:
-                signal.signal(signal.SIGINT, self._signal_passer(subproc))
-                conn, addr = self._exec_with_tf_polling(server.accept, subproc)
-                logging.debug('Accepted connection from %s', addr)
-                event_handler = EventHandler(reporter, self.NAME)
-                self._process_connection(conn, event_handler)
-            except Exception as error:
-                # exc_info=1 tells logging to log the stacktrace
-                logging.debug('Caught exception:', exc_info=1)
-                # Remember our current exception scope, before new try block
-                # Python3 will make this easier, the error itself stores
-                # the scope via error.__traceback__ and it provides a
-                # "raise from error" pattern.
-                # https://docs.python.org/3.5/reference/simple_stmts.html#raise
-                exc_type, exc_msg, traceback_obj = sys.exc_info()
-                # If atest crashes, try to kill TF subproc group as well.
-                try:
-                    logging.debug('Killing TF subproc: %s', subproc.pid)
-                    os.killpg(os.getpgid(subproc.pid), signal.SIGINT)
-                except OSError:
-                    # this wipes our previous stack context, which is why
-                    # we have to save it above.
-                    logging.debug('Subproc already terminated, skipping')
-                finally:
-                    if self.test_log_file:
-                        with open(self.test_log_file.name, 'r') as f:
-                            intro_msg = "Unexpected Tradefed Issue. Raw Output:"
-                            print(atest_utils.colorize(intro_msg, constants.RED))
-                            print(f.read())
-                    # Ignore socket.recv() raising due to ctrl-c
-                    if not error.args or error.args[0] != errno.EINTR:
-                        raise exc_type, exc_msg, traceback_obj
-            finally:
-                server.close()
-                subproc.wait()
-                ret_code |= subproc.returncode
+            event_handler = EventHandler(reporter, self.NAME)
+            self.handle_subprocess(subproc, partial(self._start_monitor,
+                                                    server,
+                                                    subproc,
+                                                    event_handler))
+            server.close()
+            ret_code |= self.wait_for_subprocess(subproc)
         return ret_code
+
+    def _start_monitor(self, server, tf_subproc, event_handler):
+        """Polling and process event.
+
+        Args:
+            server: Socket server object.
+            tf_subproc: The tradefed subprocess to poll.
+            event_handler: EventHandler object.
+        """
+        conn, addr = self._exec_with_tf_polling(server.accept, tf_subproc)
+        logging.debug('Accepted connection from %s', addr)
+        self._process_connection(conn, event_handler)
 
     def _start_socket_server(self):
         """Start a TCP server."""
