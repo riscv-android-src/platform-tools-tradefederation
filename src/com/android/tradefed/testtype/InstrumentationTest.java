@@ -52,8 +52,6 @@ import com.android.tradefed.util.StringEscapeUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 
-import org.junit.Assert;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -747,9 +745,15 @@ public class InstrumentationTest
         checkArgument(mPackageName != null, "Package name has not been set.");
         // Install the apk before checking the runner
         if (mInstallFile != null) {
-            Assert.assertNull(
+            String installOutput =
                     mDevice.installPackage(
-                            mInstallFile, true, mInstallArgs.toArray(new String[] {})));
+                            mInstallFile, true, mInstallArgs.toArray(new String[] {}));
+            if (installOutput != null) {
+                throw new RuntimeException(
+                        String.format(
+                                "Error while installing '%s': %s",
+                                mInstallFile.getName(), installOutput));
+            }
         }
         if (mRunnerName == null) {
             setRunnerName(queryRunnerName());
