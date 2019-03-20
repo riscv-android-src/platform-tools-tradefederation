@@ -286,6 +286,7 @@ import com.android.tradefed.util.ConfigCompletorTest;
 import com.android.tradefed.util.DirectedGraphTest;
 import com.android.tradefed.util.EmailTest;
 import com.android.tradefed.util.FakeTestsZipFolderTest;
+import com.android.tradefed.util.FileIdleMonitorTest;
 import com.android.tradefed.util.FileUtilTest;
 import com.android.tradefed.util.FixedByteArrayOutputStreamTest;
 import com.android.tradefed.util.GCSFileDownloaderTest;
@@ -711,6 +712,7 @@ import org.junit.runners.Suite.SuiteClasses;
     DirectedGraphTest.class,
     EmailTest.class,
     FakeTestsZipFolderTest.class,
+    FileIdleMonitorTest.class,
     FileUtilTest.class,
     FixedByteArrayOutputStreamTest.class,
     GCSFileDownloaderTest.class,
