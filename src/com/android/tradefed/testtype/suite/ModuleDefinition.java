@@ -337,7 +337,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
 
         CLog.d("Running module %s", getId());
-        Exception preparationException = null;
+        Throwable preparationException = null;
         // Setup
         long prepStartTime = getCurrentTime();
 
@@ -723,7 +723,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     /** Run all the prepare steps. */
-    private Exception runPreparerSetup(
+    private Throwable runPreparerSetup(
             ITestDevice device, IBuildInfo build, ITargetPreparer preparer, ITestLogger logger) {
         if (preparer.isDisabled()) {
             // If disabled skip completely.
@@ -741,7 +741,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             }
             preparer.setUp(device, build);
             return null;
-        } catch (BuildError | TargetSetupError | DeviceNotAvailableException | RuntimeException e) {
+        } catch (BuildError
+                | TargetSetupError
+                | DeviceNotAvailableException
+                | RuntimeException
+                | AssertionError e) {
+            // We catch all the TargetPreparer possible exception + RuntimeException to avoid
+            // specific issues + AssertionError since it's widely used in tests and doesn't notify
+            // something very wrong with the harness.
             CLog.e("Unexpected Exception from preparer: %s", preparer.getClass().getName());
             CLog.e(e);
             return e;
@@ -749,7 +756,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     /** Run all multi target preparer step. */
-    private Exception runMultiPreparerSetup(IMultiTargetPreparer preparer, ITestLogger logger) {
+    private Throwable runMultiPreparerSetup(IMultiTargetPreparer preparer, ITestLogger logger) {
         if (preparer.isDisabled()) {
             // If disabled skip completely.
             return null;
@@ -766,7 +773,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             }
             preparer.setUp(mModuleInvocationContext);
             return null;
-        } catch (BuildError | TargetSetupError | DeviceNotAvailableException | RuntimeException e) {
+        } catch (BuildError
+                | TargetSetupError
+                | DeviceNotAvailableException
+                | RuntimeException
+                | AssertionError e) {
+            // We catch all the MultiTargetPreparer possible exception + RuntimeException to avoid
+            // specific issues + AssertionError since it's widely used in tests and doesn't notify
+            // something very wrong with the harness.
             CLog.e("Unexpected Exception from preparer: %s", preparer.getClass().getName());
             CLog.e(e);
             return e;
@@ -774,7 +788,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     /** Run all the tear down steps from preparers. */
-    private void runTearDown(Exception setupException) throws DeviceNotAvailableException {
+    private void runTearDown(Throwable setupException) throws DeviceNotAvailableException {
         // Tear down
         List<IMultiTargetPreparer> cleanerList = new ArrayList<>(mMultiPreparers);
         Collections.reverse(cleanerList);
