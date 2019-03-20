@@ -17,10 +17,12 @@ package com.android.tradefed.result.suite;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
@@ -155,7 +157,8 @@ public class FormattedGeneratorReporterTest {
                     }
                 };
         mReporter.invocationStarted(mContext);
-        mReporter.invocationFailed(new RuntimeException("Invocation failed."));
+        DeviceDescriptor descriptor = null;
+        mReporter.invocationFailed(new TargetSetupError("Invocation failed.", descriptor));
         mReporter.invocationEnded(500L);
     }
 
