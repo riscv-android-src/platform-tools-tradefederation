@@ -409,6 +409,12 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             CLog.w(due);
             CLog.w("Proceeding to the next test.");
             runListener.testRunFailed(due.getMessage());
+        } catch (DeviceNotAvailableException dnae) {
+            // TODO: See if it's possible to report IReportNotExecuted
+            runListener.testRunFailed(
+                    "Run in progress was not completed due to: " + dnae.getMessage());
+            // Device Not Available Exception are rethrown.
+            throw dnae;
         } finally {
             mRetryAttemptForwarder.incrementAttempt();
         }
