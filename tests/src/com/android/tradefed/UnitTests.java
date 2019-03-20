@@ -240,6 +240,7 @@ import com.android.tradefed.testtype.PythonUnitTestResultParserTest;
 import com.android.tradefed.testtype.PythonUnitTestRunnerTest;
 import com.android.tradefed.testtype.TfTestLauncherTest;
 import com.android.tradefed.testtype.VersionedTfLauncherTest;
+import com.android.tradefed.testtype.binary.ExecutableHostTestTest;
 import com.android.tradefed.testtype.host.CoverageMeasurementForwarderTest;
 import com.android.tradefed.testtype.junit4.BaseHostJUnit4TestTest;
 import com.android.tradefed.testtype.junit4.DeviceParameterizedRunnerTest;
@@ -648,6 +649,9 @@ import org.junit.runners.Suite.SuiteClasses;
     PythonUnitTestRunnerTest.class,
     TfTestLauncherTest.class,
     VersionedTfLauncherTest.class,
+
+    // testtype/binary
+    ExecutableHostTestTest.class,
 
     // testtype/junit4
     BaseHostJUnit4TestTest.class,
