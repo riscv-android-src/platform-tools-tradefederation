@@ -925,6 +925,15 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         return mModuleInvocationContext;
     }
 
+    /** Report completely not executed modules. */
+    public final void reportNotExecuted(ITestInvocationListener listener, String message) {
+        listener.testModuleStarted(getModuleInvocationContext());
+        listener.testRunStarted(getId(), 0);
+        listener.testRunFailed(message);
+        listener.testRunEnded(0, new HashMap<String, Metric>());
+        listener.testModuleEnded();
+    }
+
     /**
      * Allow to load a module_controller object to tune how should a particular module run.
      *
