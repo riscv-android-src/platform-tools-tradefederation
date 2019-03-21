@@ -395,7 +395,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                 }
                 mTest.run(runListener);
             }
-        } catch (RuntimeException re) {
+        } catch (RuntimeException | AssertionError re) {
             CLog.e("Module '%s' - test '%s' threw exception:", mModuleId, mTest.getClass());
             CLog.e(re);
             CLog.e("Proceeding to the next test.");
