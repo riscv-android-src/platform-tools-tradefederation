@@ -16,6 +16,7 @@
 package com.android.tradefed.result.suite;
 
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.targetprep.TargetSetupError;
 
 /** Reporter that allows to generate reports in a particular format. TODO: fix logged file */
 public abstract class FormattedGeneratorReporter extends SuiteResultReporter {
@@ -40,7 +41,9 @@ public abstract class FormattedGeneratorReporter extends SuiteResultReporter {
 
     @Override
     public void invocationFailed(Throwable cause) {
-        mInvocationFailed = true;
+        if (cause instanceof TargetSetupError) {
+            mInvocationFailed = true;
+        }
         super.invocationFailed(cause);
     }
 
