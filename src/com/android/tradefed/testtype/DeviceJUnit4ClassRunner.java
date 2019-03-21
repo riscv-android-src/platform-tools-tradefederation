@@ -16,7 +16,9 @@
 package com.android.tradefed.testtype;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -25,6 +27,8 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.MetricTestCase.LogHolder;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import org.junit.rules.ExternalResource;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
@@ -32,11 +36,13 @@ import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.Statement;
 
+import java.io.File;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * JUnit4 test runner that also accommodate {@link IDeviceTest}. Should be specify above JUnit4 Test
@@ -92,6 +98,7 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
         }
         // Set options of test object
         HostTest.setOptionToLoadedObject(testObj, mKeyValueOptions);
+        resolveRemoteFileForObject(testObj);
         return testObj;
     }
 
@@ -128,6 +135,20 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
     @Override
     public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
         mDeviceInfos = deviceInfos;
+    }
+
+    @VisibleForTesting
+    OptionSetter createOptionSetter(Object obj) throws ConfigurationException {
+        return new OptionSetter(obj);
+    }
+
+    private Set<File> resolveRemoteFileForObject(Object obj) {
+        try {
+            OptionSetter setter = createOptionSetter(obj);
+            return setter.validateRemoteFilePath();
+        } catch (ConfigurationException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
