@@ -109,6 +109,7 @@ public class ModuleDefinitionTest {
         private int mNumTest;
         private boolean mShouldThrow;
         private boolean mDeviceUnresponsive = false;
+        private boolean mThrowError = false;
 
         public TestObject(String runName, int numTest, boolean shouldThrow) {
             mRunName = runName;
@@ -118,10 +119,18 @@ public class ModuleDefinitionTest {
 
         public TestObject(
                 String runName, int numTest, boolean shouldThrow, boolean deviceUnresponsive) {
-            mRunName = runName;
-            mNumTest = numTest;
-            mShouldThrow = shouldThrow;
+            this(runName, numTest, shouldThrow);
             mDeviceUnresponsive = deviceUnresponsive;
+        }
+
+        public TestObject(
+                String runName,
+                int numTest,
+                boolean shouldThrow,
+                boolean deviceUnresponsive,
+                boolean throwError) {
+            this(runName, numTest, shouldThrow, deviceUnresponsive);
+            mThrowError = throwError;
         }
 
         @Override
@@ -135,6 +144,9 @@ public class ModuleDefinitionTest {
                 }
                 if (mDeviceUnresponsive) {
                     throw new DeviceUnresponsiveException("unresponsive", "serial");
+                }
+                if (mThrowError && i == mNumTest / 2) {
+                    throw new AssertionError("assert error");
                 }
                 listener.testEnded(test, new HashMap<String, Metric>());
             }
@@ -804,6 +816,59 @@ public class ModuleDefinitionTest {
         // Only one module
         assertEquals(1, mModule.getTestsResults().size());
         assertEquals(2, mModule.getTestsResults().get(0).getNumCompleteTests());
+        verifyMocks();
+    }
+
+    @Test
+    public void testRun_partialRun_error() throws Exception {
+        final int testCount = 4;
+        List<IRemoteTest> testList = new ArrayList<>();
+        testList.add(new TestObject("run1", testCount, false, false, true));
+        mModule =
+                new ModuleDefinition(
+                        MODULE_NAME,
+                        testList,
+                        mMapDeviceTargetPreparer,
+                        mMultiTargetPrepList,
+                        new Configuration("", ""));
+        mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
+        mModule.getModuleInvocationContext()
+                .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
+        mModule.setBuild(mMockBuildInfo);
+        mModule.setDevice(mMockDevice);
+        EasyMock.expect(mMockPrep.isDisabled()).andReturn(false);
+        // no isTearDownDisabled() expected for setup
+        mMockPrep.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        EasyMock.expect(mMockCleaner.isDisabled()).andStubReturn(false);
+        mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
+        mMockCleaner.tearDown(
+                EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
+        mMockListener.testRunStarted(MODULE_NAME, testCount);
+        for (int i = 0; i < 3; i++) {
+            mMockListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
+            mMockListener.testEnded(
+                    (TestDescription) EasyMock.anyObject(),
+                    EasyMock.anyLong(),
+                    EasyMock.<HashMap<String, Metric>>anyObject());
+        }
+        mMockListener.testFailed(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testRunFailed(EasyMock.anyObject());
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+
+        // Run failed
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(EasyMock.createMock(IDevice.class));
+        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("serial");
+        EasyMock.expect(mMockDevice.logBugreport(EasyMock.anyObject(), EasyMock.anyObject()))
+                .andReturn(true);
+
+        replayMocks();
+        mModule.run(mMockListener);
+        // Only one module
+        assertEquals(1, mModule.getTestsResults().size());
+        assertEquals(2, mModule.getTestsResults().get(0).getNumCompleteTests());
+        assertEquals("assert error", mModule.getTestsResults().get(0).getRunFailureMessage());
         verifyMocks();
     }
 
