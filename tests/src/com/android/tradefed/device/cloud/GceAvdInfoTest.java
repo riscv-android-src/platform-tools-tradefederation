@@ -83,6 +83,58 @@ public class GceAvdInfoTest {
     }
 
     @Test
+    public void testDualAvdsJsonParsingWithBuildVars() throws Exception {
+        String json1 =
+                " {\n"
+                        + "    \"data\": {\n"
+                        + "      \"devices\": [\n"
+                        + "        {\n"
+                        + "          \"ip\": \"1.1.1.1\",\n"
+                        + "          \"branch\": \"git_master\",\n"
+                        + "          \"build_id\": \"1111111\",\n"
+                        + "          \"build_target\": \"cf_x86_phone-userdebug\",\n"
+                        + "          \"instance_name\": \"gce-x86-phone-userdebug-1111111-22cf\"\n"
+                        + "        }\n"
+                        + "      ]\n"
+                        + "    },\n"
+                        + "    \"errors\": [],\n"
+                        + "    \"command\": \"create\",\n"
+                        + "    \"status\": \"SUCCESS\"\n"
+                        + "  }";
+        String json2 =
+                " {\n"
+                        + "    \"data\": {\n"
+                        + "      \"devices\": [\n"
+                        + "        {\n"
+                        + "          \"ip\": \"2.2.2.2\",\n"
+                        + "          \"branch\": \"git_master-release\",\n"
+                        + "          \"build_id\": \"2222222\",\n"
+                        + "          \"build_target\": \"cf_x86_phone-userdebug\",\n"
+                        + "          \"instance_name\": \"gce-x86-phone-userdebug-2222222-22cf\"\n"
+                        + "        }\n"
+                        + "      ]\n"
+                        + "    },\n"
+                        + "    \"errors\": [],\n"
+                        + "    \"command\": \"create\",\n"
+                        + "    \"status\": \"SUCCESS\"\n"
+                        + "  }";
+        GceAvdInfo avd1 = GceAvdInfo.parseGceInfoFromString(json1, null, 1111);
+        GceAvdInfo avd2 = GceAvdInfo.parseGceInfoFromString(json2, null, 2222);
+        assertNotNull(avd1);
+        assertEquals(avd1.hostAndPort().getHostText(), "1.1.1.1");
+        assertEquals(avd1.instanceName(), "gce-x86-phone-userdebug-1111111-22cf");
+        assertEquals(avd1.getBuildVars().get("branch"), "git_master");
+        assertEquals(avd1.getBuildVars().get("build_id"), "1111111");
+        assertEquals(avd1.getBuildVars().get("build_target"), "cf_x86_phone-userdebug");
+        assertNotNull(avd2);
+        assertEquals(avd2.hostAndPort().getHostText(), "2.2.2.2");
+        assertEquals(avd2.instanceName(), "gce-x86-phone-userdebug-2222222-22cf");
+        assertEquals(avd2.getBuildVars().get("branch"), "git_master-release");
+        assertEquals(avd2.getBuildVars().get("build_id"), "2222222");
+        assertEquals(avd2.getBuildVars().get("build_target"), "cf_x86_phone-userdebug");
+    }
+
+    @Test
     public void testNullStringJsonParsing() throws Exception {
         GceAvdInfo avd = GceAvdInfo.parseGceInfoFromString(null, null, 5555);
         assertNull(avd);
