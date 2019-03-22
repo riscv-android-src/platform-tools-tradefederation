@@ -55,7 +55,7 @@ public class GceAvdInfo {
     private HostAndPort mHostAndPort;
     private String mErrors;
     private GceStatus mStatus;
-    private static HashMap<String, String> mBuildVars;
+    private HashMap<String, String> mBuildVars;
 
     public static enum GceStatus {
         SUCCESS,
@@ -113,6 +113,10 @@ public class GceAvdInfo {
 
     public void setStatus(GceStatus status) {
         mStatus = status;
+    }
+
+    private void addBuildVar(String buildKey, String buildValue) {
+        mBuildVars.put(buildKey, buildValue);
     }
 
     /**
@@ -190,7 +194,7 @@ public class GceAvdInfo {
                                     gceStatus);
                     for (String buildVar : BUILD_VARS) {
                         if (d.has(buildVar) && !d.getString(buildVar).trim().isEmpty()) {
-                            mBuildVars.put(buildVar, d.getString(buildVar).trim());
+                            avdInfo.addBuildVar(buildVar, d.getString(buildVar).trim());
                         }
                     }
                     return avdInfo;
