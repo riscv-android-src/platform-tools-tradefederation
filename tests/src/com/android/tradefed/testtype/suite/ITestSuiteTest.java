@@ -665,7 +665,10 @@ public class ITestSuiteTest {
         EasyMock.expectLastCall().times(2);
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         EasyMock.expectLastCall().times(1);
-        mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
+        mMockListener.testRunFailed(
+                "Run in progress was not completed due to: I failed"
+                        + TestRunResult.ERROR_DIVIDER
+                        + "Module test only ran 0 out of 1 expected tests.");
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(1);
