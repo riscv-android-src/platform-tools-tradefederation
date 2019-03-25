@@ -1117,6 +1117,31 @@ public class FileUtil {
     }
 
     /**
+     * Search and return the first directory {@link File} among other directories.
+     *
+     * @param dirName The directory name we are looking for.
+     * @param dirs The list of directories we are searching.
+     * @return a {@link File} with the directory found or Null if not found.
+     * @throws IOException
+     */
+    public static File findDirectory(String dirName, File... dirs) throws IOException {
+        for (File dir : dirs) {
+            Set<File> testSrcs = findFilesObject(dir, dirName);
+            if (testSrcs.isEmpty()) {
+                continue;
+            }
+            Iterator<File> itr = testSrcs.iterator();
+            while (itr.hasNext()) {
+                File file = itr.next();
+                if (file.isDirectory()) {
+                    return file;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * Get all file paths of files in the given directory with name matching the given filter
      *
      * @param dir {@link File} object of the directory to search for files recursively
