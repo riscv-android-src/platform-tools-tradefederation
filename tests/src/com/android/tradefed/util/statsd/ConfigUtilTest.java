@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 import com.android.os.AtomsProto.Atom;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.util.CommandResult;
 import com.google.common.collect.ImmutableList;
 
 import org.junit.Before;
@@ -60,7 +61,10 @@ public class ConfigUtilTest {
     public void testPushDeviceConfig() throws DeviceNotAvailableException, IOException {
         // Mock the push file, update config, and rm commands.
         when(mTestDevice.pushFile(any(File.class), anyString())).thenReturn(true);
-        when(mTestDevice.executeShellCommand(matches(STATS_CONFIG_UPDATE_MATCHER))).thenReturn("");
+        CommandResult mockResult = new CommandResult();
+        mockResult.setStderr("");
+        when(mTestDevice.executeShellV2Command(matches(STATS_CONFIG_UPDATE_MATCHER)))
+                .thenReturn(mockResult);
         when(mTestDevice.executeShellCommand(matches(REMOTE_PATH_REMOVE_MATCHER))).thenReturn("");
         // Push a file with some atoms to the device. If it fails to push or parse the file, or
         // any of the commands do not match, the utility will throw an exception and fail this test.
@@ -73,7 +77,7 @@ public class ConfigUtilTest {
                                 Atom.BOOT_SEQUENCE_REPORTED_FIELD_NUMBER));
         // Verify that key methods and commands are called on the device.
         verify(mTestDevice, times(1)).pushFile(any(File.class), anyString());
-        verify(mTestDevice, times(1)).executeShellCommand(matches(STATS_CONFIG_UPDATE_MATCHER));
+        verify(mTestDevice, times(1)).executeShellV2Command(matches(STATS_CONFIG_UPDATE_MATCHER));
         verify(mTestDevice, times(1)).executeShellCommand(matches(REMOTE_PATH_REMOVE_MATCHER));
     }
 
@@ -82,8 +86,10 @@ public class ConfigUtilTest {
     public void testPushInvalidDeviceConfig() throws DeviceNotAvailableException, IOException {
         // Mock the push file, update config, and rm commands.
         when(mTestDevice.pushFile(any(File.class), anyString())).thenReturn(true);
-        when(mTestDevice.executeShellCommand(matches(STATS_CONFIG_UPDATE_MATCHER)))
-                .thenReturn("Error parsing proto stream for StatsConfig.");
+        CommandResult mockResult = new CommandResult();
+        mockResult.setStderr("Error parsing proto stream for StatsConfig.");
+        when(mTestDevice.executeShellV2Command(matches(STATS_CONFIG_UPDATE_MATCHER)))
+                .thenReturn(mockResult);
         when(mTestDevice.executeShellCommand(matches("rm /data/local/tmp/.*"))).thenReturn("");
         try {
             // Push a file with some atoms to the device and expect parsing failure.
