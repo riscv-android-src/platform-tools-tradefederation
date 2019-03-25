@@ -22,6 +22,7 @@ import com.android.internal.os.StatsdConfigProto.StatsdConfig;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.FileUtil;
 
 import com.google.common.io.Files;
@@ -62,8 +63,8 @@ public class ConfigUtil {
             Files.write(config.toByteArray(), configFile);
             String remotePath = String.format("/data/local/tmp/%s", configFile.getName());
             if (device.pushFile(configFile, remotePath)) {
-                String output =
-                        device.executeShellCommand(
+                CommandResult output =
+                        device.executeShellV2Command(
                                 String.join(
                                         " ",
                                         "cat",
@@ -72,9 +73,12 @@ public class ConfigUtil {
                                         UPDATE_CONFIG_CMD,
                                         String.valueOf(config.getId())));
                 device.executeShellCommand(String.format("rm %s", remotePath));
-                // If failed to parse, return error ID.
-                if (output.contains("Error parsing")) {
+                if (output.getStderr().contains("Error parsing")) {
                     throw new RuntimeException("Failed to parse configuration file on the device.");
+                } else if (!output.getStderr().isEmpty()) {
+                    throw new RuntimeException(
+                            String.format(
+                                    "Failed to push config with error: %s.", output.getStderr()));
                 } else {
                     return config.getId();
                 }
