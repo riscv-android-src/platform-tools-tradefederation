@@ -198,7 +198,8 @@ class EventHandler(object):
         if self.switch_handler.has_key(event_name):
             self.switch_handler[event_name](self, event_data)
         else:
-            logging.warning('Event[%s]: %s is not processable.', event_name, event_data)
+            # TODO(b/128875503): Implement the mechanism to inform not handled TF event.
+            logging.debug('Event[%s] is not processable.', event_name)
 
     def _check_events_are_balanced(self, event_name, reporter):
         """Check Start events and End events. They should be balanced.
