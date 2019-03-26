@@ -55,12 +55,25 @@ public class ContentProviderHandlerTest {
         mProvider.tearDown();
     }
 
+    /** Test the install flow. */
     @Test
     public void testSetUp_install() throws Exception {
         Set<String> set = new HashSet<>();
         doReturn(set).when(mMockDevice).getInstalledPackageNames();
         doReturn(1).when(mMockDevice).getCurrentUser();
         doReturn(null).when(mMockDevice).installPackage(any(), eq(true), eq(true));
+        doReturn(null)
+                .when(mMockDevice)
+                .executeShellV2Command(
+                        String.format(
+                                "cmd appops set %s android:legacy_storage allow",
+                                ContentProviderHandler.PACKAGE_NAME));
+        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+        res.setStdout("LEGACY_STORAGE: allow");
+        doReturn(res)
+                .when(mMockDevice)
+                .executeShellV2Command(
+                        String.format("cmd appops get %s", ContentProviderHandler.PACKAGE_NAME));
 
         assertTrue(mProvider.setUp());
     }
