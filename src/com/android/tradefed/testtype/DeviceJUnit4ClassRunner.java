@@ -25,6 +25,7 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.MetricTestCase.LogHolder;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -32,7 +33,9 @@ import com.google.common.annotations.VisibleForTesting;
 import org.junit.rules.ExternalResource;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
+import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.BlockJUnit4ClassRunner;
+import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.Statement;
 
@@ -60,6 +63,9 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
     private IAbi mAbi;
     private IInvocationContext mContext;
     private Map<ITestDevice, IBuildInfo> mDeviceInfos;
+
+    /** Keep track of the list of downloaded files. */
+    private List<File> mDownloadedFiles = new ArrayList<>();
 
     @Option(name = HostTest.SET_OPTION_NAME, description = HostTest.SET_OPTION_DESC)
     private List<String> mKeyValueOptions = new ArrayList<>();
@@ -98,8 +104,19 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
         }
         // Set options of test object
         HostTest.setOptionToLoadedObject(testObj, mKeyValueOptions);
-        resolveRemoteFileForObject(testObj);
+        mDownloadedFiles.addAll(resolveRemoteFileForObject(testObj));
         return testObj;
+    }
+
+    @Override
+    protected void runChild(FrameworkMethod method, RunNotifier notifier) {
+        try {
+            super.runChild(method, notifier);
+        } finally {
+            for (File f : mDownloadedFiles) {
+                FileUtil.recursiveDelete(f);
+            }
+        }
     }
 
     @Override
