@@ -23,6 +23,7 @@ import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.device.DeviceManager.FastbootDevice;
 import com.android.tradefed.device.cloud.ManagedRemoteDevice;
+import com.android.tradefed.device.cloud.NestedDeviceStateMonitor;
 import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.device.cloud.VmRemoteDevice;
@@ -95,7 +96,8 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
                 testDevice =
                         new NestedRemoteDevice(
                                 idevice,
-                                new DeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
+                                new NestedDeviceStateMonitor(
+                                        mDeviceManager, idevice, mFastbootEnabled),
                                 mAllocationMonitor);
             } else {
                 // Handle device connected via 'adb connect'
