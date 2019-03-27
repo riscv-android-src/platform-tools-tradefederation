@@ -2787,11 +2787,8 @@ public class NativeDevice implements IManagedTestDevice {
         doReboot();
         RecoveryMode cachedRecoveryMode = getRecoveryMode();
         setRecoveryMode(RecoveryMode.ONLINE);
-        if (mStateMonitor.waitForDeviceOnline() != null) {
-            enableAdbRoot();
-        } else {
-            recoverDevice();
-        }
+        waitForDeviceOnline();
+        enableAdbRoot();
         setRecoveryMode(cachedRecoveryMode);
     }
 

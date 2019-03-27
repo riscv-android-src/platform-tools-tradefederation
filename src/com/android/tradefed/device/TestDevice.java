@@ -62,7 +62,7 @@ public class TestDevice extends NativeDevice {
     /** the command used to dismiss a error dialog. Currently sends a DPAD_CENTER key event */
     static final String DISMISS_DIALOG_CMD = "input keyevent 23";
     /** Commands that can be used to dismiss the keyguard. */
-    static final String DISMISS_KEYGUARD_CMD = "input keyevent 82";
+    public static final String DISMISS_KEYGUARD_CMD = "input keyevent 82";
 
     /**
      * Alternative command to dismiss the keyguard by requesting the Window Manager service to do
@@ -343,9 +343,9 @@ public class TestDevice extends NativeDevice {
 
     /**
      * Core implementation for installing application with split apk files {@link
-     * IDevice#installPackages(String, boolean, String...)}
-     * See "https://developer.android.com/studio/build/configure-apk-splits" on how to split
-     * apk to several files.
+     * IDevice#installPackages(List, boolean, List)} See
+     * "https://developer.android.com/studio/build/configure-apk-splits" on how to split apk to
+     * several files.
      *
      * @param packageFiles the local apk files
      * @param reinstall <code>true</code> if a reinstall should be performed
@@ -448,11 +448,10 @@ public class TestDevice extends NativeDevice {
 
     /**
      * Core implementation for split apk remote installation {@link IDevice#installPackage(String,
-     * boolean, String...)}
-     * See "https://developer.android.com/studio/build/configure-apk-splits" on how to split
-     * apk to several files.
+     * boolean, String...)} See "https://developer.android.com/studio/build/configure-apk-splits" on
+     * how to split apk to several files.
      *
-     * @param packageFiles the remote apk file paths
+     * @param remoteApkPaths the remote apk file paths
      * @param reinstall <code>true</code> if a reinstall should be performed
      * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
      *     available options.
