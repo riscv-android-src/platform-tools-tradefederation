@@ -1502,9 +1502,6 @@ public class ITestSuiteTest {
     public void testNoAbi() throws Exception {
         EasyMock.reset(mMockDevice);
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(new TcpDevice("tcp-device-0"));
-        Set<String> expectedAbis = new HashSet<>();
-        expectedAbis.add("arm64-v8a");
-        expectedAbis.add("armeabi-v7a");
 
         EasyMock.expect(mMockDevice.getProperty("ro.product.cpu.abilist")).andReturn(null);
         EasyMock.expect(mMockDevice.getProperty("ro.product.cpu.abi")).andReturn(null);
