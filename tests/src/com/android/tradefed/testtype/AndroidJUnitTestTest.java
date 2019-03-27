@@ -202,7 +202,8 @@ public class AndroidJUnitTestTest extends TestCase {
                 EasyMock.<File>anyObject(), EasyMock.<String>anyObject())).andReturn(Boolean.TRUE);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
                 .andReturn("")
-                .times(2);
+                .times(1);
+        mMockTestDevice.deleteFile("/data/local/tmp/ajur");
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFile = FileUtil.createTempFile("testFile", ".txt");
@@ -227,7 +228,8 @@ public class AndroidJUnitTestTest extends TestCase {
                 EasyMock.<File>anyObject(), EasyMock.<String>anyObject())).andReturn(Boolean.TRUE);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
                 .andReturn("")
-                .times(2);
+                .times(1);
+        mMockTestDevice.deleteFile("/data/local/tmp/ajur");
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFile = FileUtil.createTempFile("notTestFile", ".txt");
@@ -256,7 +258,8 @@ public class AndroidJUnitTestTest extends TestCase {
                 EasyMock.<String>anyObject())).andReturn(Boolean.TRUE).times(2);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
                 .andReturn("")
-                .times(3);
+                .times(2);
+        mMockTestDevice.deleteFile("/data/local/tmp/ajur");
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
@@ -324,7 +327,8 @@ public class AndroidJUnitTestTest extends TestCase {
                 .times(2);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
                 .andReturn("")
-                .times(3);
+                .times(2);
+        mMockTestDevice.deleteFile("/data/local/tmp/ajur");
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");

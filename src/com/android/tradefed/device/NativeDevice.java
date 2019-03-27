@@ -1096,13 +1096,17 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public boolean doesFileExist(String destPath) throws DeviceNotAvailableException {
-        String lsGrep = executeShellCommand(String.format("ls \"%s\"", destPath));
+    public boolean doesFileExist(String deviceFilePath) throws DeviceNotAvailableException {
+        String lsGrep = executeShellCommand(String.format("ls \"%s\"", deviceFilePath));
         return !lsGrep.contains("No such file or directory");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void deleteFile(String deviceFilePath) throws DeviceNotAvailableException {
+        executeShellCommand(String.format("rm -rf \"%s\"", deviceFilePath));
     }
 
     /**
@@ -2307,7 +2311,7 @@ public class NativeDevice implements IManagedTestDevice {
                             remoteFilePath.substring(0, remoteFilePath.lastIndexOf('/'));
                     if (!bugreportDir.isEmpty()) {
                         // clean bugreport files directory on device
-                        executeShellCommand(String.format("rm %s/*", bugreportDir));
+                        deleteFile(String.format("%s/*", bugreportDir));
                     }
 
                     return zipFile;

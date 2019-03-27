@@ -316,8 +316,7 @@ public class GTestTest {
                 EasyMock.same(mMockReceiver), EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(),
                 EasyMock.anyInt());
         // Expect deletion of file on device
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                EasyMock.eq(String.format("rm %s", deviceScriptPath)))).andReturn("");
+        mMockITestDevice.deleteFile(deviceScriptPath);
         replayMocks();
         mGTest.run(mMockInvocationListener);
 

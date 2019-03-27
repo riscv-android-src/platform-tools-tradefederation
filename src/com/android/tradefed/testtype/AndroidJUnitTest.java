@@ -373,8 +373,7 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     }
 
     private void removeTestFilterDir() throws DeviceNotAvailableException {
-        ITestDevice device = getDevice();
-        device.executeShellCommand(String.format("rm -r %s", mTestFilterDir));
+        getDevice().deleteFile(mTestFilterDir);
     }
 
     private void reportEarlyFailure(ITestInvocationListener listener, String errorMessage) {
