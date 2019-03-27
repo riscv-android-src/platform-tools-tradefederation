@@ -46,14 +46,14 @@ public class UserCheckerTest {
 
         ITestDevice preDevice =
                 mockDeviceUserState(
-                        /* users=        */ new Integer[] {0},
+                        /* userIds=        */ new Integer[] {0},
                         /* runningUsers= */ new Integer[] {0},
                         /* currentUser=  */ 0);
         assertEquals(CheckStatus.SUCCESS, checker.preExecutionCheck(preDevice).getStatus());
 
         ITestDevice postDevice =
                 mockDeviceUserState(
-                        /* users=        */ new Integer[] {0},
+                        /* userIds=        */ new Integer[] {0},
                         /* runningUsers= */ new Integer[] {0},
                         /* currentUser=  */ 0);
         assertEquals(CheckStatus.SUCCESS, checker.postExecutionCheck(postDevice).getStatus());
@@ -66,7 +66,7 @@ public class UserCheckerTest {
 
         ITestDevice preDevice =
                 mockDeviceUserState(
-                        /* users=        */ new Integer[] {0, 10, 11},
+                        /* userIds=        */ new Integer[] {0, 10, 11},
                         /* runningUsers= */ new Integer[] {0, 10},
                         /* currentUser=  */ 10);
         assertEquals(CheckStatus.SUCCESS, checker.preExecutionCheck(preDevice).getStatus());
@@ -74,7 +74,7 @@ public class UserCheckerTest {
         // User12 created, User11 deleted, User10 stopped, currentUser changed
         ITestDevice postDevice =
                 mockDeviceUserState(
-                        /* users=        */ new Integer[] {0, 10, 12},
+                        /* userIds=        */ new Integer[] {0, 10, 12},
                         /* runningUsers= */ new Integer[] {0},
                         /* currentUser=  */ 0);
         assertEquals(CheckStatus.FAILED, checker.postExecutionCheck(postDevice).getStatus());
@@ -87,7 +87,7 @@ public class UserCheckerTest {
         mOptionSetter.setOptionValue("user-type", "secondary");
         ITestDevice device =
                 mockDeviceUserState(
-                        /* users=        */ new Integer[] {0},
+                        /* userIds=        */ new Integer[] {0},
                         /* runningUsers= */ new Integer[] {0},
                         /* currentUser=  */ 0);
 
@@ -111,7 +111,7 @@ public class UserCheckerTest {
         mOptionSetter.setOptionValue("user-type", "secondary");
         ITestDevice device =
                 mockDeviceUserState(
-                        /* users=        */ new Integer[] {0},
+                        /* userIds=        */ new Integer[] {0},
                         /* runningUsers= */ new Integer[] {0},
                         /* currentUser=  */ 0);
 
@@ -128,12 +128,12 @@ public class UserCheckerTest {
     public void testFindRemovedUsers() throws Exception {
         DeviceUserState preState =
                 getMockedUserState(
-                        /* users=        */ new Integer[] {0, 10},
+                        /* userIds=        */ new Integer[] {0, 10},
                         /* runningUsers= */ new Integer[] {0, 10},
                         /* currentUser=  */ 0);
         DeviceUserState postState =
                 getMockedUserState(
-                        /* users=        */ new Integer[] {0},
+                        /* userIds=        */ new Integer[] {0},
                         /* runningUsers= */ new Integer[] {0},
                         /* currentUser=  */ 0);
 
@@ -144,12 +144,12 @@ public class UserCheckerTest {
     public void testFindAddedUsers() throws Exception {
         DeviceUserState preState =
                 getMockedUserState(
-                        /* users=        */ new Integer[] {0},
+                        /* userIds=        */ new Integer[] {0},
                         /* runningUsers= */ new Integer[] {0},
                         /* currentUser=  */ 0);
         DeviceUserState postState =
                 getMockedUserState(
-                        /* users=        */ new Integer[] {0, 10},
+                        /* userIds=        */ new Integer[] {0, 10},
                         /* runningUsers= */ new Integer[] {0},
                         /* currentUser=  */ 0);
 
@@ -160,12 +160,12 @@ public class UserCheckerTest {
     public void testCurrentUserChanged() throws Exception {
         DeviceUserState preState =
                 getMockedUserState(
-                        /* users=        */ new Integer[] {0, 10},
+                        /* userIds=        */ new Integer[] {0, 10},
                         /* runningUsers= */ new Integer[] {0, 10},
                         /* currentUser=  */ 10);
         DeviceUserState postState =
                 getMockedUserState(
-                        /* users=        */ new Integer[] {0, 10},
+                        /* userIds=        */ new Integer[] {0, 10},
                         /* runningUsers= */ new Integer[] {0, 10},
                         /* currentUser=  */ 0);
 
@@ -176,12 +176,12 @@ public class UserCheckerTest {
     public void testfindStartedUsers() throws Exception {
         DeviceUserState preState =
                 getMockedUserState(
-                        /* users=        */ new Integer[] {0, 10},
+                        /* userIds=        */ new Integer[] {0, 10},
                         /* runningUsers= */ new Integer[] {0},
                         /* currentUser=  */ 0);
         DeviceUserState postState =
                 getMockedUserState(
-                        /* users=        */ new Integer[] {0, 10},
+                        /* userIds=        */ new Integer[] {0, 10},
                         /* runningUsers= */ new Integer[] {0, 10},
                         /* currentUser=  */ 0);
 
@@ -193,12 +193,12 @@ public class UserCheckerTest {
     public void testFindStopedUsers() throws Exception {
         DeviceUserState preState =
                 getMockedUserState(
-                        /* users=        */ new Integer[] {0, 10},
+                        /* userIds=        */ new Integer[] {0, 10},
                         /* runningUsers= */ new Integer[] {0, 10},
                         /* currentUser=  */ 0);
         DeviceUserState postState =
                 getMockedUserState(
-                        /* users=        */ new Integer[] {0, 10},
+                        /* userIds=        */ new Integer[] {0, 10},
                         /* runningUsers= */ new Integer[] {0},
                         /* currentUser=  */ 0);
 
