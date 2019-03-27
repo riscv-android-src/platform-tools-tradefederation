@@ -352,8 +352,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
         StringBuilder tfCmdBuilder =
                 new StringBuilder("TF_GLOBAL_CONFIG=" + globalConfig.getName());
         // Set an env variable to notify that this a remote environment.
-        // TODO: Reenable, right now it causes issue
-        // tfCmdBuilder.append(" " + REMOTE_VM_VARIABLE + "=1");
+        tfCmdBuilder.append(" " + REMOTE_VM_VARIABLE + "=1");
         tfCmdBuilder.append(" ENTRY_CLASS=" + CommandRunner.class.getCanonicalName());
         tfCmdBuilder.append(" ./tradefed.sh " + mRemoteTradefedDir + configFile.getName());
         if (config.getCommandOptions().shouldUseRemoteSandboxMode()) {
