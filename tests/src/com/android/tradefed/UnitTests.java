@@ -281,6 +281,7 @@ import com.android.tradefed.util.ArrayUtilTest;
 import com.android.tradefed.util.BluetoothUtilsTest;
 import com.android.tradefed.util.BugreportTest;
 import com.android.tradefed.util.BuildTestsZipUtilsTest;
+import com.android.tradefed.util.BundletoolUtilTest;
 import com.android.tradefed.util.ByteArrayListTest;
 import com.android.tradefed.util.ClassPathScannerTest;
 import com.android.tradefed.util.ConditionPriorityBlockingQueueTest;
@@ -709,6 +710,7 @@ import org.junit.runners.Suite.SuiteClasses;
     BluetoothUtilsTest.class,
     BugreportTest.class,
     BuildTestsZipUtilsTest.class,
+    BundletoolUtilTest.class,
     ByteArrayListTest.class,
     ClassPathScannerTest.class,
     ConditionPriorityBlockingQueueTest.class,
