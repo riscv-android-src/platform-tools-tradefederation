@@ -20,6 +20,8 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.testtype.IAbi;
+import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
@@ -33,11 +35,11 @@ import java.util.List;
 
 /** Base class for executable style of tests. For example: binaries, shell scripts. */
 public abstract class ExecutableBaseTest
-        implements IRemoteTest, IRuntimeHintProvider, ITestCollector, IShardableTest {
+        implements IRemoteTest, IRuntimeHintProvider, ITestCollector, IShardableTest, IAbiReceiver {
 
-    public static final String NO_BINARY_ERROR = "Binary %s does not exists.";
+    public static final String NO_BINARY_ERROR = "Binary %s does not exist.";
 
-    @Option(name = "binary-path", description = "Path to the binary to be run. Can be repeated.")
+    @Option(name = "binary", description = "Path to the binary to be run. Can be repeated.")
     private List<String> mBinaryPaths = new ArrayList<>();
 
     @Option(
@@ -53,13 +55,15 @@ public abstract class ExecutableBaseTest
     )
     private long mRuntimeHintMs = 60000L; // 1 minute
 
+    private IAbi mAbi;
+
     @Override
     public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        for (String path : mBinaryPaths) {
-            // TODO: Improve the search logic to the usual places (ANDROID_TESTCASES, etc.)
-            if (!checkBinaryExists(path)) {
-                listener.testRunStarted(new File(path).getName(), 0);
-                listener.testRunFailed(String.format(NO_BINARY_ERROR, path));
+        for (String binary : mBinaryPaths) {
+            String path = findBinary(binary);
+            if (path == null) {
+                listener.testRunStarted(new File(binary).getName(), 0);
+                listener.testRunFailed(String.format(NO_BINARY_ERROR, binary));
                 listener.testRunEnded(0L, new HashMap<String, Metric>());
             } else {
                 listener.testRunStarted(new File(path).getName(), 1);
@@ -75,12 +79,12 @@ public abstract class ExecutableBaseTest
     }
 
     /**
-     * Ensures that a binary exists.
+     * Search for the binary to be able to run it.
      *
-     * @param binaryPath the path of the binary.
-     * @return True if the binary exists.
+     * @param binary the path of the binary or simply the binary name.
+     * @return The path to the binary, or null if not found.
      */
-    public abstract boolean checkBinaryExists(String binaryPath);
+    public abstract String findBinary(String binary);
 
     /**
      * Actually run the binary at the given path.
@@ -100,6 +104,18 @@ public abstract class ExecutableBaseTest
     @Override
     public final long getRuntimeHint() {
         return mRuntimeHintMs;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public final void setAbi(IAbi abi) {
+        mAbi = abi;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public IAbi getAbi() {
+        return mAbi;
     }
 
     /** {@inheritDoc} */

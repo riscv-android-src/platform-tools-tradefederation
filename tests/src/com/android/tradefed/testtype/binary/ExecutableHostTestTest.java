@@ -22,6 +22,8 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import com.android.tradefed.build.DeviceBuildInfo;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -75,7 +77,7 @@ public class ExecutableHostTestTest {
     public void testRunHostExecutable_doesNotExists() throws Exception {
         String path = "/does/not/exists/path/bin/test";
         OptionSetter setter = new OptionSetter(mExecutableTest);
-        setter.setOptionValue("binary-path", path);
+        setter.setOptionValue("binary", path);
 
         mExecutableTest.run(mMockListener);
 
@@ -91,7 +93,7 @@ public class ExecutableHostTestTest {
         File tmpBinary = FileUtil.createTempFile("test-executable", "");
         try {
             OptionSetter setter = new OptionSetter(mExecutableTest);
-            setter.setOptionValue("binary-path", tmpBinary.getAbsolutePath());
+            setter.setOptionValue("binary", tmpBinary.getAbsolutePath());
 
             CommandResult result = new CommandResult(CommandStatus.SUCCESS);
             doReturn(result)
@@ -109,12 +111,73 @@ public class ExecutableHostTestTest {
         }
     }
 
+    /** If the binary is available from the tests directory we can find it and run it. */
+    @Test
+    public void testRunHostExecutable_search() throws Exception {
+        File testsDir = FileUtil.createTempDir("executable-tests-dir");
+        File tmpBinary = FileUtil.createTempFile("test-executable", "", testsDir);
+        try {
+            IDeviceBuildInfo info = new DeviceBuildInfo();
+            info.setTestsDir(testsDir, "testversion");
+            mExecutableTest.setBuild(info);
+            OptionSetter setter = new OptionSetter(mExecutableTest);
+            setter.setOptionValue("binary", tmpBinary.getName());
+
+            CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+            doReturn(result)
+                    .when(mMockRunUtil)
+                    .runTimedCmd(Mockito.anyLong(), Mockito.eq(tmpBinary.getAbsolutePath()));
+
+            mExecutableTest.run(mMockListener);
+
+            verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(1));
+            verify(mMockListener, Mockito.times(0)).testRunFailed(any());
+            verify(mMockListener, Mockito.times(1))
+                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        } finally {
+            FileUtil.recursiveDelete(testsDir);
+        }
+    }
+
+    @Test
+    public void testRunHostExecutable_notFound() throws Exception {
+        File testsDir = FileUtil.createTempDir("executable-tests-dir");
+        File tmpBinary = FileUtil.createTempFile("test-executable", "", testsDir);
+        try {
+            IDeviceBuildInfo info = new DeviceBuildInfo();
+            info.setTestsDir(testsDir, "testversion");
+            mExecutableTest.setBuild(info);
+            OptionSetter setter = new OptionSetter(mExecutableTest);
+            setter.setOptionValue("binary", tmpBinary.getName());
+            tmpBinary.delete();
+
+            CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+            doReturn(result)
+                    .when(mMockRunUtil)
+                    .runTimedCmd(Mockito.anyLong(), Mockito.eq(tmpBinary.getAbsolutePath()));
+
+            mExecutableTest.run(mMockListener);
+
+            verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(0));
+            verify(mMockListener, Mockito.times(1))
+                    .testRunFailed(
+                            eq(
+                                    String.format(
+                                            ExecutableBaseTest.NO_BINARY_ERROR,
+                                            tmpBinary.getName())));
+            verify(mMockListener, Mockito.times(1))
+                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        } finally {
+            FileUtil.recursiveDelete(testsDir);
+        }
+    }
+
     @Test
     public void testRunHostExecutable_failure() throws Exception {
         File tmpBinary = FileUtil.createTempFile("test-executable", "");
         try {
             OptionSetter setter = new OptionSetter(mExecutableTest);
-            setter.setOptionValue("binary-path", tmpBinary.getAbsolutePath());
+            setter.setOptionValue("binary", tmpBinary.getAbsolutePath());
 
             CommandResult result = new CommandResult(CommandStatus.FAILED);
             result.setExitCode(5);
