@@ -29,4 +29,7 @@
     <!-- Tell all HostTests to exclude certain annotations -->
     <option name="test-arg" value="com.android.tradefed.testtype.HostTest:exclude-annotation:android.platform.test.annotations.RestrictedBuildTest" />
     <option name="test-arg" value="com.android.compatibility.common.tradefed.testtype.JarHostTest:exclude-annotation:android.platform.test.annotations.RestrictedBuildTest" />
+
+    <!-- Force GTest to report binary name in results -->
+    <option name="test-arg" value="com.android.tradefed.testtype.GTest:prepend-filename:true" />
 </configuration>
