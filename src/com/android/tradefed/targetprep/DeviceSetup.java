@@ -488,7 +488,7 @@ public class DeviceSetup extends BaseTargetPreparer implements ITargetCleaner {
             if (mPreviousProperties != null) {
                 device.pushFile(mPreviousProperties, "/data/local.prop");
             } else {
-                device.executeShellCommand("rm -f /data/local.prop");
+                device.deleteFile("/data/local.prop");
             }
             device.reboot();
         }
