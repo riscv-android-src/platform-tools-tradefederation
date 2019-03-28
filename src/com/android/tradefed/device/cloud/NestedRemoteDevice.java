@@ -38,5 +38,9 @@ public class NestedRemoteDevice extends TestDevice {
     public NestedRemoteDevice(
             IDevice device, IDeviceStateMonitor stateMonitor, IDeviceMonitor allocationMonitor) {
         super(device, stateMonitor, allocationMonitor);
+        // TODO: Use IDevice directly
+        if (stateMonitor instanceof NestedDeviceStateMonitor) {
+            ((NestedDeviceStateMonitor) stateMonitor).setDevice(this);
+        }
     }
 }

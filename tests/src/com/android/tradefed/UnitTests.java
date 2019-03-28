@@ -215,6 +215,7 @@ import com.android.tradefed.targetprep.suite.SuiteApkInstallerTest;
 import com.android.tradefed.testtype.AndroidJUnitTestTest;
 import com.android.tradefed.testtype.CodeCoverageListenerTest;
 import com.android.tradefed.testtype.DeviceBatteryLevelCheckerTest;
+import com.android.tradefed.testtype.DeviceJUnit4ClassRunnerTest;
 import com.android.tradefed.testtype.DeviceSuiteTest;
 import com.android.tradefed.testtype.DeviceTestCaseTest;
 import com.android.tradefed.testtype.DeviceTestSuiteTest;
@@ -626,6 +627,7 @@ import org.junit.runners.Suite.SuiteClasses;
     CodeCoverageListenerTest.class,
     CoverageMeasurementForwarderTest.class,
     DeviceBatteryLevelCheckerTest.class,
+    DeviceJUnit4ClassRunnerTest.class,
     DeviceSuiteTest.class,
     DeviceTestCaseTest.class,
     DeviceTestSuiteTest.class,

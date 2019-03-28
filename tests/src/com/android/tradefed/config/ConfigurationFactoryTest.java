@@ -886,8 +886,6 @@ public class ConfigurationFactoryTest extends TestCase {
         final String configName = "template-include-config-with-default";
         final String targetName = "local-config";
         final String nameTemplate = "target";
-        Map<String, String> expected = new HashMap<String,String>();
-        expected.put(nameTemplate, targetName);
         IConfiguration tmp = null;
         try {
             tmp = mFactory.createConfigurationFromArgs(new String[]{configName,

@@ -178,6 +178,9 @@ public class HostTest
     private static final String TEST_FULL_NAME_FORMAT = "%s#%s";
     private static final String ROOT_DIR = "ROOT_DIR";
 
+    /** Track the downloaded files. */
+    private List<File> mDownloadedFiles = new ArrayList<>();
+
     public HostTest() {
         mFilterHelper = new TestFilterHelper(new ArrayList<String>(), new ArrayList<String>(),
                 mIncludeAnnotations, mExcludeAnnotations);
@@ -531,7 +534,19 @@ public class HostTest
                 runRemoteTest(listener, test);
             } else if (Test.class.isAssignableFrom(classObj)) {
                 TestSuite junitTest = collectTests(collectClasses(classObj));
-                runJUnit3Tests(listener, junitTest, classObj.getName());
+                // Resolve dynamic files for the junit3 test objects
+                Enumeration<Test> allTest = junitTest.tests();
+                while (allTest.hasMoreElements()) {
+                    Test testObj = allTest.nextElement();
+                    mDownloadedFiles.addAll(resolveRemoteFileForObject(testObj));
+                }
+                try {
+                    runJUnit3Tests(listener, junitTest, classObj.getName());
+                } finally {
+                    for (File f : mDownloadedFiles) {
+                        FileUtil.recursiveDelete(f);
+                    }
+                }
             } else if (hasJUnit4Annotation(classObj)) {
                 // Include the method name filtering
                 Set<String> includes = mFilterHelper.getIncludeFilters();
@@ -717,7 +732,6 @@ public class HostTest
                 if (testObj instanceof TestCase) {
                     ((TestCase)testObj).setName(method.getName());
                 }
-                resolveRemoteFileForObject(testObj);
                 suite.addTest(testObj);
             }
         }
