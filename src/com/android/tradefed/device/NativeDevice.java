@@ -3988,6 +3988,10 @@ public class NativeDevice implements IManagedTestDevice {
             return;
         }
         try {
+            // If we never installed it, don't even bother checking for it during tear down.
+            if (mContentProvider == null) {
+                return;
+            }
             ContentProviderHandler handler = getContentProvider();
             if (handler != null) {
                 handler.tearDown();
