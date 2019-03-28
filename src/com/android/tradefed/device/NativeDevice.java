@@ -4266,6 +4266,10 @@ public class NativeDevice implements IManagedTestDevice {
     /** Returns the {@link ContentProviderHandler} or null if not available. */
     @VisibleForTesting
     ContentProviderHandler getContentProvider() throws DeviceNotAvailableException {
+        // Prevent usage of content provider before API 25 as it would not work well.
+        if (getApiLevel() < 25) {
+            return null;
+        }
         if (mContentProvider == null) {
             mContentProvider = new ContentProviderHandler(this);
         }
