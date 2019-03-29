@@ -876,4 +876,13 @@ public interface ITestDevice extends INativeDevice {
      * @throws DeviceNotAvailableException
      */
     public File dumpHeap(String process, String devicePath) throws DeviceNotAvailableException;
+
+    /**
+     * Collect the list of available displays id on the device as reported by "dumpsys
+     * SurfaceFlinger".
+     *
+     * @return The list of displays. Default always returns the default display 0.
+     * @throws DeviceNotAvailableException
+     */
+    public Set<Integer> listDisplayIds() throws DeviceNotAvailableException;
 }

@@ -4248,6 +4248,12 @@ public class NativeDevice implements IManagedTestDevice {
         return null;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Set<Integer> listDisplayIds() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("dumpsys SurfaceFlinger is not supported.");
+    }
+
     /** Validate that pid is an integer and not empty. */
     private boolean checkValidPid(String output) {
         if (output.isEmpty()) {
