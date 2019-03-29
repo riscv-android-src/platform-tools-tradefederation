@@ -259,25 +259,54 @@ public class TestInfo {
     }
 
     @Override
+    public boolean equals(Object o) {
+        return this.toString().equals(o.toString());
+    }
+
+    @Override
+    public int hashCode() {
+        return this.toString().hashCode();
+    }
+
+    @Override
     public String toString() {
-        String options = "";
-        String keywords = "";
+        StringBuilder string = new StringBuilder();
+        string.append(mName);
         if (!mOptions.isEmpty()) {
-            options =
+            String options =
                     String.format(
-                            "; Options: %s",
+                            "Options: %s",
                             Joiner.on(",")
                                     .join(
                                             mOptions.stream()
+                                                    .sorted()
                                                     .map(TestOption::toString)
                                                     .collect(Collectors.toList())));
+            string.append("\n\t").append(options);
         }
         if (!mKeywords.isEmpty()) {
-            keywords =
+            String keywords =
                     String.format(
-                            "; Keywords: %s",
-                            Joiner.on(",").join(mKeywords.stream().collect(Collectors.toList())));
+                            "Keywords: %s",
+                            Joiner.on(",")
+                                    .join(
+                                            mKeywords.stream()
+                                                    .sorted()
+                                                    .collect(Collectors.toList())));
+            string.append("\n\t").append(keywords);
         }
-        return String.format("%s%s%s", mName, options, keywords);
+        if (!mSources.isEmpty()) {
+            String sources =
+                    String.format(
+                            "Sources: %s",
+                            Joiner.on(",")
+                                    .join(
+                                            mSources.stream()
+                                                    .sorted()
+                                                    .collect(Collectors.toList())));
+            string.append("\n\t").append(sources);
+        }
+        string.append("\n\tHost: ").append(mHostOnly);
+        return string.toString();
     }
 }
