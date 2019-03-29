@@ -598,6 +598,80 @@ public class PushFilePreparerTest {
         }
     }
 
+    /**
+     * Test that if a binary name is repeating in another directory that is searched first we don't
+     * use it and do prioritize the module name directory.
+     */
+    @Test
+    public void testPush_moduleName_repeating_name() throws Exception {
+        mOptionSetter.setOptionValue(
+                "push",
+                "propertyinfoserializer_tests->/data/local/tmp/propertyinfoserializer_tests");
+        mPreparer.setAbi(new Abi("x86", "32"));
+
+        mPreparer.setInvocationContext(createModuleWithName("propertyinfoserializer_tests"));
+        IDeviceBuildInfo info = new DeviceBuildInfo();
+        File tmpFolder = FileUtil.createTempDir("push-file-tests-dir");
+        try {
+            File beforeName =
+                    new File(
+                            tmpFolder,
+                            "target/testcases/propertyinfoserializer_tests/x86/"
+                                    + "propertyinfoserializer_tests");
+            FileUtil.mkdirsRWX(beforeName.getParentFile());
+            beforeName.createNewFile();
+            File libArmFile =
+                    new File(
+                            tmpFolder,
+                            "target/testcases/propertyinfoserializer_tests/arm/"
+                                    + "propertyinfoserializer_tests");
+            FileUtil.mkdirsRWX(libArmFile.getParentFile());
+            libArmFile.createNewFile();
+            File otherModule =
+                    new File(
+                            tmpFolder,
+                            "target/testcases/propertyinfoserializer_tests.vendor/arm/"
+                                    + "propertyinfoserializer_tests");
+            FileUtil.mkdirsRWX(otherModule.getParentFile());
+            otherModule.createNewFile();
+            File otherModule2 =
+                    new File(
+                            tmpFolder,
+                            "target/testcases/propertyinfoserializer_tests.vendor/x86/"
+                                    + "propertyinfoserializer_tests");
+            FileUtil.mkdirsRWX(otherModule2.getParentFile());
+            otherModule2.createNewFile();
+            info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
+
+            EasyMock.expect(
+                            mMockDevice.doesFileExist(
+                                    "/data/local/tmp/propertyinfoserializer_tests"))
+                    .andReturn(false);
+            EasyMock.expect(
+                            mMockDevice.executeShellCommand(
+                                    "mkdir -p \"/data/local/tmp/propertyinfoserializer_tests\""))
+                    .andReturn("");
+            Capture<Set<String>> capture = new Capture<>();
+            EasyMock.expect(
+                            mMockDevice.pushDir(
+                                    EasyMock.eq(
+                                            new File(
+                                                    tmpFolder,
+                                                    "target/testcases/propertyinfoserializer_tests")),
+                                    EasyMock.eq("/data/local/tmp/propertyinfoserializer_tests"),
+                                    EasyMock.capture(capture)))
+                    .andReturn(true);
+            EasyMock.replay(mMockDevice);
+            mPreparer.setUp(mMockDevice, info);
+            EasyMock.verify(mMockDevice);
+            // The x86 folder was not filtered
+            Set<String> capValue = capture.getValue();
+            assertFalse(capValue.contains("x86"));
+        } finally {
+            FileUtil.recursiveDelete(tmpFolder);
+        }
+    }
+
     @Test
     public void testPush_moduleName_multiAbi_repeatedName() throws Exception {
         mOptionSetter.setOptionValue("push", "lib64->/data/local/tmp/lib");
