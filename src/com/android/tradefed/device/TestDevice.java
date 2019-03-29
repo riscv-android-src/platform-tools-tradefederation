@@ -25,6 +25,7 @@ import com.android.ddmlib.SyncException;
 import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -560,6 +561,29 @@ public class TestDevice extends NativeDevice {
         // Return an error in the buffer
         return new ByteArrayInputStreamSource(
                 "Error: device reported null for screenshot.".getBytes());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public InputStreamSource getScreenshot(int displayId) throws DeviceNotAvailableException {
+        final String tmpDevicePath = String.format("/data/local/tmp/display_%s.png", displayId);
+        CommandResult result =
+                executeShellV2Command(
+                        String.format("screencap -p -d %s %s", displayId, tmpDevicePath));
+        if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+            // Return an error in the buffer
+            CLog.e("Error: device reported error for screenshot: %s", result.getStderr());
+            return null;
+        }
+        try {
+            File tmpScreenshot = pullFile(tmpDevicePath);
+            if (tmpScreenshot == null) {
+                return null;
+            }
+            return new FileInputStreamSource(tmpScreenshot, true);
+        } finally {
+            deleteFile(tmpDevicePath);
+        }
     }
 
     private class ScreenshotAction implements DeviceAction {

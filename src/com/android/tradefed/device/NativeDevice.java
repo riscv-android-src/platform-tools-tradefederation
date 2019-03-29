@@ -2453,6 +2453,12 @@ public class NativeDevice implements IManagedTestDevice {
 
     /** {@inheritDoc} */
     @Override
+    public InputStreamSource getScreenshot(int displayId) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Screenshot");
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public void clearLastConnectedWifiNetwork() {
         mLastConnectedWifiSsid = null;
         mLastConnectedWifiPsk = null;

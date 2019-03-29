@@ -50,6 +50,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Set;
 
 import javax.imageio.ImageIO;
@@ -826,5 +827,20 @@ public class TestDeviceFuncTest implements IDeviceTest {
     public void testListDisplays() throws Exception {
         Set<Integer> displays = mTestDevice.listDisplayIds();
         assertEquals(1, displays.size());
+    }
+
+    /** Test for {@link TestDevice#getScreenshot(int)}. */
+    @Test
+    public void testScreenshot() throws Exception {
+        InputStreamSource screenshot = mTestDevice.getScreenshot(0);
+        assertNotNull(screenshot);
+        File testFile = FileUtil.createTempFile("test-screenshot", ".testpng");
+        try {
+            FileUtil.writeToFile(screenshot.createInputStream(), testFile);
+            assertEquals("image/png", Files.probeContentType(testFile.toPath()));
+        } finally {
+            FileUtil.deleteFile(testFile);
+            StreamUtil.close(screenshot);
+        }
     }
 }
