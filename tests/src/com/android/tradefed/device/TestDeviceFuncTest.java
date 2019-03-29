@@ -50,6 +50,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Set;
 
 import javax.imageio.ImageIO;
 
@@ -818,5 +819,12 @@ public class TestDeviceFuncTest implements IDeviceTest {
         assertEquals("50", secondValue);
         // restore initial value
         mTestDevice.setSetting(0, "system", "screen_brightness", initValue);
+    }
+
+    /** Test for {@link TestDevice#listDisplayIds()}. */
+    @Test
+    public void testListDisplays() throws Exception {
+        Set<Integer> displays = mTestDevice.listDisplayIds();
+        assertEquals(1, displays.size());
     }
 }
