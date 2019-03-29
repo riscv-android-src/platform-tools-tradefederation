@@ -20,34 +20,53 @@
 #   2. PREUPLOAD hook invokes this script.
 
 ATEST_DIR=`dirname $0`/
+ATEST_REAL_PATH=`realpath $ATEST_DIR`
 PREUPLOAD_FILES=$@
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
 function set_pythonpath() {
-  local path_to_check=`realpath $ATEST_DIR`
-  if ! echo $PYTHONPATH | grep -q $path_to_check; then
-    PYTHONPATH=$path_to_check:$PYTHONPATH
+  if ! echo $PYTHONPATH | grep -q $ATEST_REAL_PATH; then
+    PYTHONPATH=$ATEST_REAL_PATH:$PYTHONPATH
   fi
 }
 
+function print_summary() {
+    local test_results=$1
+    local coverage_run=$2
+    if [[ $coverage_run == "coverage" ]]; then
+        coverage report -m
+        coverage html
+    fi
+    if [[ $test_results -eq 0 ]]; then
+        echo -e "${GREEN}All unittests pass${NC}!"
+    else
+        echo -e "${RED}There was a unittest failure${NC}"
+    fi
+}
+
 function run_atest_unittests() {
-  set_pythonpath
+  echo "Running tests..."
+  local coverage_run=$1
+  local run_cmd="python"
   local rc=0
-  for test_file in $(find $ATEST_DIR -name "*_unittest.py");
-  do
-    if ! $test_file; then
+  set_pythonpath $coverage_run
+  if [[ $coverage_run == "coverage" ]]; then
+      # Clear previously coverage data.
+      python -m coverage erase
+      # Collected coverage data.
+      run_cmd="coverage run --source $ATEST_REAL_PATH --append"
+  fi
+
+  for test_file in $(find $ATEST_DIR -name "*_unittest.py"); do
+    if ! $run_cmd $test_file; then
       rc=1
+      echo -e "${RED}$t failed${NC}"
     fi
   done
-
   echo
-  if [[ $rc -eq 0 ]]; then
-    echo -e "${GREEN}All unittests pass${NC}!"
-  else
-    echo -e "${RED}There was a unittest failure${NC}"
-  fi
+  print_summary $rc $coverage_run
   return $rc
 }
 
@@ -57,8 +76,7 @@ if [[ -z $PREUPLOAD_FILES ]]; then
   run_atest_unittests
   exit $?
 else
-  for f in $PREUPLOAD_FILES;
-  do
+  for f in $PREUPLOAD_FILES; do
     # We only want to run this unittest if atest files have been touched.
     if [[ $f == atest/* ]]; then
       run_atest_unittests
@@ -66,3 +84,12 @@ else
     fi
   done
 fi
+
+case "$1" in
+    'coverage')
+        run_atest_unittests "coverage"
+        ;;
+    *)
+        run_atest_unittests
+        ;;
+esac
