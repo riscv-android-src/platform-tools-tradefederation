@@ -1117,13 +1117,17 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public boolean doesFileExist(String destPath) throws DeviceNotAvailableException {
-        String lsGrep = executeShellCommand(String.format("ls \"%s\"", destPath));
+    public boolean doesFileExist(String deviceFilePath) throws DeviceNotAvailableException {
+        String lsGrep = executeShellCommand(String.format("ls \"%s\"", deviceFilePath));
         return !lsGrep.contains("No such file or directory");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void deleteFile(String deviceFilePath) throws DeviceNotAvailableException {
+        executeShellCommand(String.format("rm -rf \"%s\"", deviceFilePath));
     }
 
     /**
@@ -2353,7 +2357,7 @@ public class NativeDevice implements IManagedTestDevice {
                             remoteFilePath.substring(0, remoteFilePath.lastIndexOf('/'));
                     if (!bugreportDir.isEmpty()) {
                         // clean bugreport files directory on device
-                        executeShellCommand(String.format("rm %s/*", bugreportDir));
+                        deleteFile(String.format("%s/*", bugreportDir));
                     }
 
                     return zipFile;
@@ -3985,6 +3989,10 @@ public class NativeDevice implements IManagedTestDevice {
             return;
         }
         try {
+            // If we never installed it, don't even bother checking for it during tear down.
+            if (mContentProvider == null) {
+                return;
+            }
             ContentProviderHandler handler = getContentProvider();
             if (handler != null) {
                 handler.tearDown();
@@ -4240,6 +4248,12 @@ public class NativeDevice implements IManagedTestDevice {
         return null;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Set<Integer> listDisplayIds() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("dumpsys SurfaceFlinger is not supported.");
+    }
+
     /** Validate that pid is an integer and not empty. */
     private boolean checkValidPid(String output) {
         if (output.isEmpty()) {
@@ -4263,6 +4277,10 @@ public class NativeDevice implements IManagedTestDevice {
     /** Returns the {@link ContentProviderHandler} or null if not available. */
     @VisibleForTesting
     ContentProviderHandler getContentProvider() throws DeviceNotAvailableException {
+        // Prevent usage of content provider before API 25 as it would not work well.
+        if (getApiLevel() < 25) {
+            return null;
+        }
         if (mContentProvider == null) {
             mContentProvider = new ContentProviderHandler(this);
         }

@@ -26,6 +26,8 @@ import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -90,6 +92,8 @@ public class TestDevice extends NativeDevice {
 
     /** user pattern in the output of "pm list users" = TEXT{<id>:<name>:<flags>} TEXT * */
     private static final String USER_PATTERN = "(.*?\\{)(\\d+)(:)(.*)(:)(\\d+)(\\}.*)";
+    /** Pattern to find the display ids of "dumpsys SurfaceFlinger" */
+    private static final String DISPLAY_ID_PATTERN = "(Display )(?<id>\\d+)( color modes:)";
 
     private static final int API_LEVEL_GET_CURRENT_USER = 24;
     /** Timeout to wait for a screenshot before giving up to avoid hanging forever */
@@ -1668,5 +1672,27 @@ public class TestDevice extends NativeDevice {
         }
         File dumpFile = pullFile(devicePath);
         return dumpFile;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<Integer> listDisplayIds() throws DeviceNotAvailableException {
+        Set<Integer> displays = new HashSet<>();
+        // Zero is the default display
+        displays.add(0);
+        CommandResult res = executeShellV2Command("dumpsys SurfaceFlinger | grep 'color modes:'");
+        if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
+            CLog.e("Something went wrong while listing displays: %s", res.getStderr());
+            return displays;
+        }
+        String output = res.getStdout();
+        Pattern p = Pattern.compile(DISPLAY_ID_PATTERN);
+        for (String line : output.split("\n")) {
+            Matcher m = p.matcher(line);
+            if (m.matches()) {
+                displays.add(Integer.parseInt(m.group("id")));
+            }
+        }
+        return displays;
     }
 }

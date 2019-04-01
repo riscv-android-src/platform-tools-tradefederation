@@ -17,12 +17,15 @@ Aggregates test runners, groups tests by test runners and kicks off tests.
 """
 
 import itertools
+import time
 import traceback
 
 import atest_error
 import constants
 import result_reporter
 
+from metrics import metrics
+from metrics import metrics_utils
 from test_runners import atest_tf_test_runner
 from test_runners import robolectric_test_runner
 from test_runners import suite_plan_test_runner
@@ -116,13 +119,28 @@ def run_all_tests(results_dir, test_infos, extra_args,
     reporter.print_starting_text()
     tests_ret_code = constants.EXIT_CODE_SUCCESS
     for test_runner, tests in group_tests_by_test_runners(test_infos):
+        test_name = ' '.join([test.test_name for test in tests])
+        test_start = time.time()
+        is_success = True
+        ret_code = constants.EXIT_CODE_TEST_FAILURE
+        stacktrace = ''
         try:
             test_runner = test_runner(results_dir)
-            tests_ret_code |= test_runner.run_tests(tests, extra_args, reporter)
+            ret_code = test_runner.run_tests(tests, extra_args, reporter)
+            tests_ret_code |= ret_code
         # pylint: disable=broad-except
         except Exception:
-            reporter.runner_failure(test_runner.NAME, traceback.format_exc())
+            stacktrace = traceback.format_exc()
+            reporter.runner_failure(test_runner.NAME, stacktrace)
             tests_ret_code = constants.EXIT_CODE_TEST_FAILURE
+            is_success = False
+        metrics.RunnerFinishEvent(
+            duration=metrics_utils.convert_duration(time.time() - test_start),
+            success=is_success,
+            runner_name=test_runner.NAME,
+            test=[{'name': test_name,
+                   'result': ret_code,
+                   'stacktrace': stacktrace}])
     if delay_print_summary:
         return tests_ret_code, reporter
     return reporter.print_summary() or tests_ret_code, reporter

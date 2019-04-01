@@ -31,6 +31,7 @@ from __future__ import print_function
 
 import os
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -45,7 +46,8 @@ class ATestIntegrationTest(unittest.TestCase):
     """ATest Integration Test Class."""
     NAME = 'ATestIntegrationTest'
     EXECUTABLE = 'atest'
-    _RUN_CMD = '{exe} {test}'
+    OPTIONS = ''
+    _RUN_CMD = '{exe} {options} {test}'
     _PASSED_CRITERIAS = ['will be rescheduled', 'All tests passed']
 
     def setUp(self):
@@ -64,7 +66,8 @@ class ATestIntegrationTest(unittest.TestCase):
         Args:
             testcase: A string of testcase name.
         """
-        run_cmd_dict = {'exe': self.EXECUTABLE, 'test': testcase}
+        run_cmd_dict = {'exe': self.EXECUTABLE, 'options': self.OPTIONS,
+                        'test': testcase}
         run_command = self._RUN_CMD.format(**run_cmd_dict)
         try:
             subprocess.check_output(run_command,
@@ -124,6 +127,10 @@ def create_test_run_dir():
 
 
 if __name__ == '__main__':
+    # TODO(b/129029189) Implement detail comparison check for dry-run mode.
+    ARGS = ' '.join(sys.argv[1:])
+    if ARGS:
+        ATestIntegrationTest.OPTIONS = ARGS
     TEST_PLANS = os.path.join(os.path.dirname(__file__), _INTEGRATION_TESTS)
     try:
         LOG_PATH = os.path.join(create_test_run_dir(), _LOG_FILE)

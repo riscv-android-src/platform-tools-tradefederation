@@ -27,6 +27,7 @@ import test_finder_handler
 import test_mapping
 import unittest_constants as uc
 import unittest_utils
+from metrics import metrics
 from test_finders import test_finder_base
 
 # TEST_MAPPING related consts
@@ -80,8 +81,9 @@ class CLITranslatorUnittests(unittest.TestCase):
         """Run after execution of every test"""
         reload(uc)
 
+    @mock.patch.object(metrics, 'FindTestFinishEvent')
     @mock.patch.object(test_finder_handler, 'get_find_methods_for_test')
-    def test_get_test_infos(self, mock_getfindmethods):
+    def test_get_test_infos(self, mock_getfindmethods, _metrics):
         """Test _get_test_infos method."""
         ctr = cli_t.CLITranslator()
         find_method_return_module_info = lambda x, y: uc.MODULE_INFO

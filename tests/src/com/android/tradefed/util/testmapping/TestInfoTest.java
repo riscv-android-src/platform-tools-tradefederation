@@ -43,7 +43,11 @@ public class TestInfoTest {
         assertEquals("option2", info.getOptions().get(1).getName());
         assertEquals("value2", info.getOptions().get(1).getValue());
         assertEquals(
-                "test1; Options: option1:value1,option2:value2; Keywords: key1,key2",
+                "test1\n\t" +
+                "Options: option1:value1,option2:value2\n\t" +
+                "Keywords: key1,key2\n\t" +
+                "Sources: folder1\n\t" +
+                "Host: false",
                 info.toString());
         assertEquals("test1 - false", info.getNameAndHostOnly());
     }
