@@ -32,6 +32,7 @@ import constants
 import test_finder_handler
 import test_mapping
 
+from metrics import metrics
 from metrics import metrics_utils
 
 TEST_MAPPING = 'TEST_MAPPING'
@@ -77,7 +78,10 @@ class CLITranslator(object):
         if not test_mapping_test_details:
             test_mapping_test_details = [None] * len(tests)
         for test, tm_test_detail in zip(tests, test_mapping_test_details):
+            test_find_starts = time.time()
             test_found = False
+            test_finders = []
+            test_info_str = ''
             find_test_err_msg = None
             for finder in test_finder_handler.get_find_methods_for_test(
                     self.mod_info, test):
@@ -101,6 +105,8 @@ class CLITranslator(object):
                     print("Found '%s' as %s" % (
                         atest_utils.colorize(test, constants.GREEN),
                         finder_info))
+                    test_finders.append(finder_info)
+                    test_info_str = str(test_info)
                     break
             if not test_found:
                 print('No test found for: %s' %
@@ -114,6 +120,13 @@ class CLITranslator(object):
                           '\n' % (atest_utils.colorize(
                               constants.REBUILD_MODULE_INFO_FLAG,
                               constants.RED)))
+            metrics.FindTestFinishEvent(
+                duration=metrics_utils.convert_duration(
+                    time.time() - test_find_starts),
+                success=test_found,
+                test_reference=test,
+                test_finders=test_finders,
+                test_info=test_info_str)
         return test_infos
 
     def _read_tests_in_test_mapping(self, test_mapping_file):
