@@ -28,6 +28,7 @@ import com.android.tradefed.build.OtaZipfileBuildProviderTest;
 import com.android.tradefed.build.SdkBuildInfoTest;
 import com.android.tradefed.command.CommandFileParserTest;
 import com.android.tradefed.command.CommandFileWatcherTest;
+import com.android.tradefed.command.CommandInterrupterTest;
 import com.android.tradefed.command.CommandOptionsTest;
 import com.android.tradefed.command.CommandRunnerTest;
 import com.android.tradefed.command.CommandSchedulerTest;
@@ -317,6 +318,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // command
     CommandFileParserTest.class,
     CommandFileWatcherTest.class,
+    CommandInterrupterTest.class,
     CommandOptionsTest.class,
     CommandRunnerTest.class,
     CommandSchedulerTest.class,
