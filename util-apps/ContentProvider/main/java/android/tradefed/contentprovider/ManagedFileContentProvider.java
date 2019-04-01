@@ -157,7 +157,6 @@ public class ManagedFileContentProvider extends ContentProvider {
     @Override
     public int delete(
             @NonNull Uri uri, @Nullable String selection, @Nullable String[] selectionArgs) {
-        // TODO: Support deleting a file created via content write
         ContentValues values = mFileTracker.remove(uri);
         if (values == null) {
             return 0;
@@ -192,7 +191,6 @@ public class ManagedFileContentProvider extends ContentProvider {
     @Override
     public ParcelFileDescriptor openFile(@NonNull Uri uri, @NonNull String mode)
             throws FileNotFoundException {
-        // TODO: Track the file created via this callback (content write)
         final File file = getFileForUri(uri);
         final int fileMode = modeToMode(mode);
 
@@ -200,6 +198,10 @@ public class ManagedFileContentProvider extends ContentProvider {
             // If the file is being created, create all its parent directories that don't already
             // exist.
             file.getParentFile().mkdirs();
+            if (!mFileTracker.containsKey(uri)) {
+                // Track the file, if not already tracked.
+                mFileTracker.put(uri, new ContentValues());
+            }
         }
         return ParcelFileDescriptor.open(file, fileMode);
     }
