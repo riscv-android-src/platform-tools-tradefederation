@@ -261,7 +261,7 @@ public class TestInvocationTest {
                             }
 
                             @Override
-                            String getAdbVersion() {
+                            protected String getAdbVersion() {
                                 return null;
                             }
                         };
@@ -1558,7 +1558,7 @@ public class TestInvocationTest {
                             }
 
                             @Override
-                            String getAdbVersion() {
+                            protected String getAdbVersion() {
                                 return null;
                             }
                         };
@@ -1638,7 +1638,7 @@ public class TestInvocationTest {
                                 }
 
                                 @Override
-                                String getAdbVersion() {
+                                protected String getAdbVersion() {
                                     return null;
                                 }
                             };
@@ -1730,7 +1730,7 @@ public class TestInvocationTest {
                                 }
 
                                 @Override
-                                String getAdbVersion() {
+                                protected String getAdbVersion() {
                                     return null;
                                 }
                             };
