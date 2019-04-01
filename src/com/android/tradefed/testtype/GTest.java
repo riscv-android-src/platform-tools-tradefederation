@@ -206,7 +206,7 @@ public class GTest extends GTestBase implements IDeviceTest {
                 getMaxTestTimeMs() /* maxTimeToShellOutputResponse */,
                 TimeUnit.MILLISECONDS,
                 0 /* retry attempts */);
-        testDevice.executeShellCommand(String.format("rm %s", tmpFileDevice));
+        testDevice.deleteFile(tmpFileDevice);
     }
 
     @Override

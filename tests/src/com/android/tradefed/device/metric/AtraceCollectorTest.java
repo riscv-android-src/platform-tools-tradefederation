@@ -236,9 +236,7 @@ public final class AtraceCollectorTest {
         EasyMock.expect(mMockDevice.pullFile(EasyMock.eq(M_DEFAULT_LOG_PATH)))
                 .andReturn(new File("/tmp/potato"))
                 .once();
-        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("rm -f " + M_DEFAULT_LOG_PATH)))
-                .andReturn("")
-                .times(1);
+        mMockDevice.deleteFile(M_DEFAULT_LOG_PATH);
 
         EasyMock.replay(mMockDevice);
         mAtrace.onTestEnd(

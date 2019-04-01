@@ -16,10 +16,16 @@
 package com.android.tradefed.testtype.binary;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
+import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -28,6 +34,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,7 +43,8 @@ import java.util.List;
  * the host binary might communicate to a device. If the received device is not a {@link StubDevice}
  * the serial will be passed to the binary to be used.
  */
-public class ExecutableHostTest extends ExecutableBaseTest implements IDeviceTest {
+@OptionClass(alias = "executable-host-test")
+public class ExecutableHostTest extends ExecutableBaseTest implements IDeviceTest, IBuildReceiver {
 
     private static final String ANDROID_SERIAL = "ANDROID_SERIAL";
 
@@ -48,10 +56,40 @@ public class ExecutableHostTest extends ExecutableBaseTest implements IDeviceTes
     private long mTimeoutPerBinaryMs = 5 * 60 * 1000L;
 
     private ITestDevice mDevice;
+    private IBuildInfo mBuild;
 
     @Override
-    public boolean checkBinaryExists(String binaryPath) {
-        return new File(binaryPath).exists();
+    public String findBinary(String binary) {
+        File bin = new File(binary);
+        // If it's a local path or absolute path
+        if (bin.exists()) {
+            return bin.getAbsolutePath();
+        }
+        if (mBuild instanceof IDeviceBuildInfo) {
+            IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo) mBuild;
+            File testsDir = deviceBuild.getTestsDir();
+
+            List<File> scanDirs = new ArrayList<>();
+            // If it exists, always look first in the ANDROID_HOST_OUT_TESTCASES
+            File targetTestCases = deviceBuild.getFile(BuildInfoFileKey.HOST_LINKED_DIR);
+            if (targetTestCases != null) {
+                scanDirs.add(targetTestCases);
+            }
+            if (testsDir != null) {
+                scanDirs.add(testsDir);
+            }
+
+            try {
+                // Search the full tests dir if no target dir is available.
+                File src = FileUtil.findFile(binary, getAbi(), scanDirs.toArray(new File[] {}));
+                if (src != null) {
+                    return src.getAbsolutePath();
+                }
+            } catch (IOException e) {
+                CLog.e("Failed to find test files from directory.");
+            }
+        }
+        return null;
     }
 
     @Override
@@ -91,6 +129,11 @@ public class ExecutableHostTest extends ExecutableBaseTest implements IDeviceTes
     @Override
     public final ITestDevice getDevice() {
         return mDevice;
+    }
+
+    @Override
+    public final void setBuild(IBuildInfo buildInfo) {
+        mBuild = buildInfo;
     }
 
     @VisibleForTesting
