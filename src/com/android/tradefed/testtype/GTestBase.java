@@ -352,6 +352,11 @@ public abstract class GTestBase
         return mIsSharded;
     }
 
+    /** Gets coverage flag. */
+    public boolean isCoverageEnabled() {
+        return mCoverage;
+    }
+
     /**
      * Define get filter method.
      *
