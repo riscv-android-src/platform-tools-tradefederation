@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='proto/external_user_log.proto',
   package='',
   syntax='proto2',
-  serialized_pb=_b('\n\x1dproto/external_user_log.proto\x1a\x12proto/common.proto\"\xbd\x02\n\x15\x41testLogEventExternal\x12\x10\n\x08user_key\x18\x01 \x01(\t\x12\x0e\n\x06run_id\x18\x02 \x01(\t\x12\x1c\n\tuser_type\x18\x03 \x01(\x0e\x32\t.UserType\x12\x43\n\x11\x61test_start_event\x18\x04 \x01(\x0b\x32&.AtestLogEventExternal.AtestStartEventH\x00\x12\x41\n\x10\x61test_exit_event\x18\x05 \x01(\x0b\x32%.AtestLogEventExternal.AtestExitEventH\x00\x1a\x11\n\x0f\x41testStartEvent\x1a@\n\x0e\x41testExitEvent\x12\x1b\n\x08\x64uration\x18\x01 \x01(\x0b\x32\t.Duration\x12\x11\n\texit_code\x18\x02 \x01(\x05\x42\x07\n\x05\x65vent')
+  serialized_pb=_b('\n\x1dproto/external_user_log.proto\x1a\x12proto/common.proto\"\xfc\x06\n\x15\x41testLogEventExternal\x12\x10\n\x08user_key\x18\x01 \x01(\t\x12\x0e\n\x06run_id\x18\x02 \x01(\t\x12\x1c\n\tuser_type\x18\x03 \x01(\x0e\x32\t.UserType\x12\x43\n\x11\x61test_start_event\x18\x04 \x01(\x0b\x32&.AtestLogEventExternal.AtestStartEventH\x00\x12\x41\n\x10\x61test_exit_event\x18\x05 \x01(\x0b\x32%.AtestLogEventExternal.AtestExitEventH\x00\x12L\n\x16\x66ind_test_finish_event\x18\x06 \x01(\x0b\x32*.AtestLogEventExternal.FindTestFinishEventH\x00\x12\x45\n\x12\x62uild_finish_event\x18\x07 \x01(\x0b\x32\'.AtestLogEventExternal.BuildFinishEventH\x00\x12G\n\x13runner_finish_event\x18\x08 \x01(\x0b\x32(.AtestLogEventExternal.RunnerFinishEventH\x00\x12L\n\x16run_tests_finish_event\x18\t \x01(\x0b\x32*.AtestLogEventExternal.RunTestsFinishEventH\x00\x1a\x11\n\x0f\x41testStartEvent\x1a@\n\x0e\x41testExitEvent\x12\x1b\n\x08\x64uration\x18\x01 \x01(\x0b\x32\t.Duration\x12\x11\n\texit_code\x18\x02 \x01(\x05\x1a\x43\n\x13\x46indTestFinishEvent\x12\x1b\n\x08\x64uration\x18\x01 \x01(\x0b\x32\t.Duration\x12\x0f\n\x07success\x18\x02 \x01(\x08\x1a@\n\x10\x42uildFinishEvent\x12\x1b\n\x08\x64uration\x18\x01 \x01(\x0b\x32\t.Duration\x12\x0f\n\x07success\x18\x02 \x01(\x08\x1aV\n\x11RunnerFinishEvent\x12\x1b\n\x08\x64uration\x18\x01 \x01(\x0b\x32\t.Duration\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\x13\n\x0brunner_name\x18\x03 \x01(\t\x1a\x32\n\x13RunTestsFinishEvent\x12\x1b\n\x08\x64uration\x18\x01 \x01(\x0b\x32\t.DurationB\x07\n\x05\x65vent')
   ,
   dependencies=[proto_dot_common__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -48,8 +48,8 @@ _ATESTLOGEVENTEXTERNAL_ATESTSTARTEVENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=279,
-  serialized_end=296,
+  serialized_start=579,
+  serialized_end=596,
 )
 
 _ATESTLOGEVENTEXTERNAL_ATESTEXITEVENT = _descriptor.Descriptor(
@@ -85,8 +85,156 @@ _ATESTLOGEVENTEXTERNAL_ATESTEXITEVENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=298,
-  serialized_end=362,
+  serialized_start=598,
+  serialized_end=662,
+)
+
+_ATESTLOGEVENTEXTERNAL_FINDTESTFINISHEVENT = _descriptor.Descriptor(
+  name='FindTestFinishEvent',
+  full_name='AtestLogEventExternal.FindTestFinishEvent',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='duration', full_name='AtestLogEventExternal.FindTestFinishEvent.duration', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='success', full_name='AtestLogEventExternal.FindTestFinishEvent.success', index=1,
+      number=2, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=664,
+  serialized_end=731,
+)
+
+_ATESTLOGEVENTEXTERNAL_BUILDFINISHEVENT = _descriptor.Descriptor(
+  name='BuildFinishEvent',
+  full_name='AtestLogEventExternal.BuildFinishEvent',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='duration', full_name='AtestLogEventExternal.BuildFinishEvent.duration', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='success', full_name='AtestLogEventExternal.BuildFinishEvent.success', index=1,
+      number=2, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=733,
+  serialized_end=797,
+)
+
+_ATESTLOGEVENTEXTERNAL_RUNNERFINISHEVENT = _descriptor.Descriptor(
+  name='RunnerFinishEvent',
+  full_name='AtestLogEventExternal.RunnerFinishEvent',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='duration', full_name='AtestLogEventExternal.RunnerFinishEvent.duration', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='success', full_name='AtestLogEventExternal.RunnerFinishEvent.success', index=1,
+      number=2, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='runner_name', full_name='AtestLogEventExternal.RunnerFinishEvent.runner_name', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=799,
+  serialized_end=885,
+)
+
+_ATESTLOGEVENTEXTERNAL_RUNTESTSFINISHEVENT = _descriptor.Descriptor(
+  name='RunTestsFinishEvent',
+  full_name='AtestLogEventExternal.RunTestsFinishEvent',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='duration', full_name='AtestLogEventExternal.RunTestsFinishEvent.duration', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=887,
+  serialized_end=937,
 )
 
 _ATESTLOGEVENTEXTERNAL = _descriptor.Descriptor(
@@ -131,10 +279,38 @@ _ATESTLOGEVENTEXTERNAL = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='find_test_finish_event', full_name='AtestLogEventExternal.find_test_finish_event', index=5,
+      number=6, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='build_finish_event', full_name='AtestLogEventExternal.build_finish_event', index=6,
+      number=7, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='runner_finish_event', full_name='AtestLogEventExternal.runner_finish_event', index=7,
+      number=8, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='run_tests_finish_event', full_name='AtestLogEventExternal.run_tests_finish_event', index=8,
+      number=9, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
-  nested_types=[_ATESTLOGEVENTEXTERNAL_ATESTSTARTEVENT, _ATESTLOGEVENTEXTERNAL_ATESTEXITEVENT, ],
+  nested_types=[_ATESTLOGEVENTEXTERNAL_ATESTSTARTEVENT, _ATESTLOGEVENTEXTERNAL_ATESTEXITEVENT, _ATESTLOGEVENTEXTERNAL_FINDTESTFINISHEVENT, _ATESTLOGEVENTEXTERNAL_BUILDFINISHEVENT, _ATESTLOGEVENTEXTERNAL_RUNNERFINISHEVENT, _ATESTLOGEVENTEXTERNAL_RUNTESTSFINISHEVENT, ],
   enum_types=[
   ],
   options=None,
@@ -147,21 +323,45 @@ _ATESTLOGEVENTEXTERNAL = _descriptor.Descriptor(
       index=0, containing_type=None, fields=[]),
   ],
   serialized_start=54,
-  serialized_end=371,
+  serialized_end=946,
 )
 
 _ATESTLOGEVENTEXTERNAL_ATESTSTARTEVENT.containing_type = _ATESTLOGEVENTEXTERNAL
 _ATESTLOGEVENTEXTERNAL_ATESTEXITEVENT.fields_by_name['duration'].message_type = proto_dot_common__pb2._DURATION
 _ATESTLOGEVENTEXTERNAL_ATESTEXITEVENT.containing_type = _ATESTLOGEVENTEXTERNAL
+_ATESTLOGEVENTEXTERNAL_FINDTESTFINISHEVENT.fields_by_name['duration'].message_type = proto_dot_common__pb2._DURATION
+_ATESTLOGEVENTEXTERNAL_FINDTESTFINISHEVENT.containing_type = _ATESTLOGEVENTEXTERNAL
+_ATESTLOGEVENTEXTERNAL_BUILDFINISHEVENT.fields_by_name['duration'].message_type = proto_dot_common__pb2._DURATION
+_ATESTLOGEVENTEXTERNAL_BUILDFINISHEVENT.containing_type = _ATESTLOGEVENTEXTERNAL
+_ATESTLOGEVENTEXTERNAL_RUNNERFINISHEVENT.fields_by_name['duration'].message_type = proto_dot_common__pb2._DURATION
+_ATESTLOGEVENTEXTERNAL_RUNNERFINISHEVENT.containing_type = _ATESTLOGEVENTEXTERNAL
+_ATESTLOGEVENTEXTERNAL_RUNTESTSFINISHEVENT.fields_by_name['duration'].message_type = proto_dot_common__pb2._DURATION
+_ATESTLOGEVENTEXTERNAL_RUNTESTSFINISHEVENT.containing_type = _ATESTLOGEVENTEXTERNAL
 _ATESTLOGEVENTEXTERNAL.fields_by_name['user_type'].enum_type = proto_dot_common__pb2._USERTYPE
 _ATESTLOGEVENTEXTERNAL.fields_by_name['atest_start_event'].message_type = _ATESTLOGEVENTEXTERNAL_ATESTSTARTEVENT
 _ATESTLOGEVENTEXTERNAL.fields_by_name['atest_exit_event'].message_type = _ATESTLOGEVENTEXTERNAL_ATESTEXITEVENT
+_ATESTLOGEVENTEXTERNAL.fields_by_name['find_test_finish_event'].message_type = _ATESTLOGEVENTEXTERNAL_FINDTESTFINISHEVENT
+_ATESTLOGEVENTEXTERNAL.fields_by_name['build_finish_event'].message_type = _ATESTLOGEVENTEXTERNAL_BUILDFINISHEVENT
+_ATESTLOGEVENTEXTERNAL.fields_by_name['runner_finish_event'].message_type = _ATESTLOGEVENTEXTERNAL_RUNNERFINISHEVENT
+_ATESTLOGEVENTEXTERNAL.fields_by_name['run_tests_finish_event'].message_type = _ATESTLOGEVENTEXTERNAL_RUNTESTSFINISHEVENT
 _ATESTLOGEVENTEXTERNAL.oneofs_by_name['event'].fields.append(
   _ATESTLOGEVENTEXTERNAL.fields_by_name['atest_start_event'])
 _ATESTLOGEVENTEXTERNAL.fields_by_name['atest_start_event'].containing_oneof = _ATESTLOGEVENTEXTERNAL.oneofs_by_name['event']
 _ATESTLOGEVENTEXTERNAL.oneofs_by_name['event'].fields.append(
   _ATESTLOGEVENTEXTERNAL.fields_by_name['atest_exit_event'])
 _ATESTLOGEVENTEXTERNAL.fields_by_name['atest_exit_event'].containing_oneof = _ATESTLOGEVENTEXTERNAL.oneofs_by_name['event']
+_ATESTLOGEVENTEXTERNAL.oneofs_by_name['event'].fields.append(
+  _ATESTLOGEVENTEXTERNAL.fields_by_name['find_test_finish_event'])
+_ATESTLOGEVENTEXTERNAL.fields_by_name['find_test_finish_event'].containing_oneof = _ATESTLOGEVENTEXTERNAL.oneofs_by_name['event']
+_ATESTLOGEVENTEXTERNAL.oneofs_by_name['event'].fields.append(
+  _ATESTLOGEVENTEXTERNAL.fields_by_name['build_finish_event'])
+_ATESTLOGEVENTEXTERNAL.fields_by_name['build_finish_event'].containing_oneof = _ATESTLOGEVENTEXTERNAL.oneofs_by_name['event']
+_ATESTLOGEVENTEXTERNAL.oneofs_by_name['event'].fields.append(
+  _ATESTLOGEVENTEXTERNAL.fields_by_name['runner_finish_event'])
+_ATESTLOGEVENTEXTERNAL.fields_by_name['runner_finish_event'].containing_oneof = _ATESTLOGEVENTEXTERNAL.oneofs_by_name['event']
+_ATESTLOGEVENTEXTERNAL.oneofs_by_name['event'].fields.append(
+  _ATESTLOGEVENTEXTERNAL.fields_by_name['run_tests_finish_event'])
+_ATESTLOGEVENTEXTERNAL.fields_by_name['run_tests_finish_event'].containing_oneof = _ATESTLOGEVENTEXTERNAL.oneofs_by_name['event']
 DESCRIPTOR.message_types_by_name['AtestLogEventExternal'] = _ATESTLOGEVENTEXTERNAL
 
 AtestLogEventExternal = _reflection.GeneratedProtocolMessageType('AtestLogEventExternal', (_message.Message,), dict(
@@ -179,6 +379,34 @@ AtestLogEventExternal = _reflection.GeneratedProtocolMessageType('AtestLogEventE
     # @@protoc_insertion_point(class_scope:AtestLogEventExternal.AtestExitEvent)
     ))
   ,
+
+  FindTestFinishEvent = _reflection.GeneratedProtocolMessageType('FindTestFinishEvent', (_message.Message,), dict(
+    DESCRIPTOR = _ATESTLOGEVENTEXTERNAL_FINDTESTFINISHEVENT,
+    __module__ = 'proto.external_user_log_pb2'
+    # @@protoc_insertion_point(class_scope:AtestLogEventExternal.FindTestFinishEvent)
+    ))
+  ,
+
+  BuildFinishEvent = _reflection.GeneratedProtocolMessageType('BuildFinishEvent', (_message.Message,), dict(
+    DESCRIPTOR = _ATESTLOGEVENTEXTERNAL_BUILDFINISHEVENT,
+    __module__ = 'proto.external_user_log_pb2'
+    # @@protoc_insertion_point(class_scope:AtestLogEventExternal.BuildFinishEvent)
+    ))
+  ,
+
+  RunnerFinishEvent = _reflection.GeneratedProtocolMessageType('RunnerFinishEvent', (_message.Message,), dict(
+    DESCRIPTOR = _ATESTLOGEVENTEXTERNAL_RUNNERFINISHEVENT,
+    __module__ = 'proto.external_user_log_pb2'
+    # @@protoc_insertion_point(class_scope:AtestLogEventExternal.RunnerFinishEvent)
+    ))
+  ,
+
+  RunTestsFinishEvent = _reflection.GeneratedProtocolMessageType('RunTestsFinishEvent', (_message.Message,), dict(
+    DESCRIPTOR = _ATESTLOGEVENTEXTERNAL_RUNTESTSFINISHEVENT,
+    __module__ = 'proto.external_user_log_pb2'
+    # @@protoc_insertion_point(class_scope:AtestLogEventExternal.RunTestsFinishEvent)
+    ))
+  ,
   DESCRIPTOR = _ATESTLOGEVENTEXTERNAL,
   __module__ = 'proto.external_user_log_pb2'
   # @@protoc_insertion_point(class_scope:AtestLogEventExternal)
@@ -186,6 +414,10 @@ AtestLogEventExternal = _reflection.GeneratedProtocolMessageType('AtestLogEventE
 _sym_db.RegisterMessage(AtestLogEventExternal)
 _sym_db.RegisterMessage(AtestLogEventExternal.AtestStartEvent)
 _sym_db.RegisterMessage(AtestLogEventExternal.AtestExitEvent)
+_sym_db.RegisterMessage(AtestLogEventExternal.FindTestFinishEvent)
+_sym_db.RegisterMessage(AtestLogEventExternal.BuildFinishEvent)
+_sym_db.RegisterMessage(AtestLogEventExternal.RunnerFinishEvent)
+_sym_db.RegisterMessage(AtestLogEventExternal.RunTestsFinishEvent)
 
 
 # @@protoc_insertion_point(module_scope)

@@ -23,6 +23,7 @@ import mock
 
 import atest_error
 import test_runner_handler
+from metrics import metrics
 from test_finders import test_info
 from test_runners import test_runner_base as tr_base
 
@@ -115,7 +116,8 @@ class TestRunnerHandlerUnittests(unittest.TestCase):
             test_runner_handler.get_test_runner_reqs(empty_module_info,
                                                      test_infos))
 
-    def test_run_all_tests(self):
+    @mock.patch.object(metrics, 'RunnerFinishEvent')
+    def test_run_all_tests(self, _mock_runner_finish):
         """Test that the return value as we expected."""
         results_dir = ""
         extra_args = []
