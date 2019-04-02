@@ -30,8 +30,11 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.Pair;
 import com.android.tradefed.util.RunUtil;
 
+import com.google.common.base.Joiner;
+
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -54,6 +57,14 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
             name = "perfetto-metric-prefix",
             description = "Prefix to be used with the metrics collected from perfetto.")
     private String mMetricPrefix = "perfetto";
+
+    // List of process names passed to perfetto binary.
+    @Option(
+        name = "process-name",
+        description =
+                "Process names to be passed in perfetto script."
+    )
+    private Collection<String> mProcessNames = new ArrayList<String>();
 
     // Timeout for the script to process the trace files.
     // The default is arbitarily chosen to be 5 mins to prevent the test spending more time in
@@ -81,6 +92,11 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
             commandArgsList.add(scriptPath);
             commandArgsList.add("-trace_file");
             commandArgsList.add(metricFile.getAbsolutePath());
+
+            if (!mProcessNames.isEmpty()) {
+                commandArgsList.add("-process_names");
+                commandArgsList.add(Joiner.on(",").join(mProcessNames));
+            }
 
             CommandResult cr = runHostCommand(commandArgsList.toArray(new String[commandArgsList
                     .size()]));
