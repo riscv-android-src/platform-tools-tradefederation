@@ -1141,6 +1141,15 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@inheritDoc} */
     @Override
     public void deleteFile(String deviceFilePath) throws DeviceNotAvailableException {
+        if (deviceFilePath.startsWith(SD_CARD)) {
+            ContentProviderHandler handler = getContentProvider();
+            if (handler != null) {
+                if (handler.deleteFile(deviceFilePath)) {
+                    return;
+                }
+            }
+        }
+        // Fallback to the direct command if content provider is unsuccessful
         executeShellCommand(String.format("rm -rf \"%s\"", deviceFilePath));
     }
 
