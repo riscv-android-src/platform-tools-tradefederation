@@ -75,8 +75,7 @@ public class FilePullerLogCollectorTest {
         mMockListener.testStarted(test, 0L);
         EasyMock.expect(mMockDevice.pullFile("/data/local/tmp/log1.txt"))
                 .andReturn(new File("file"));
-        EasyMock.expect(mMockDevice.executeShellCommand("rm -f /data/local/tmp/log1.txt"))
-                .andReturn("");
+        mMockDevice.deleteFile("/data/local/tmp/log1.txt");
         mMockListener.testLog(
                 EasyMock.eq("file"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
         mMockListener.testEnded(EasyMock.eq(test), EasyMock.eq(50L), EasyMock.capture(capture));
@@ -139,8 +138,7 @@ public class FilePullerLogCollectorTest {
         mMockListener.testStarted(test, 0L);
         EasyMock.expect(mMockDevice.pullFile("/data/local/tmp/log1.txt"))
                 .andReturn(new File("file"));
-        EasyMock.expect(mMockDevice.executeShellCommand("rm -f /data/local/tmp/log1.txt"))
-                .andReturn("");
+        mMockDevice.deleteFile("/data/local/tmp/log1.txt");
         mMockListener.testLog(
                 EasyMock.eq("file"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
         mMockListener.testEnded(EasyMock.eq(test), EasyMock.eq(50L), EasyMock.capture(capture));
