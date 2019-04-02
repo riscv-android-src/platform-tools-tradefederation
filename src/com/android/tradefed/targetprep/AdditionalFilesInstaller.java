@@ -82,7 +82,7 @@ public class AdditionalFilesInstaller extends BaseTargetPreparer implements ITar
             TargetSetupError {
         if (mUninstall) {
             for (int i=0; i < 3; i++) {
-                device.executeShellCommand(String.format("rm -r %s*", DEST_PATH));
+                device.deleteFile(DEST_PATH + "*");
                 if (!hasContents(device, DEST_PATH)) {
                     return;
                 }
