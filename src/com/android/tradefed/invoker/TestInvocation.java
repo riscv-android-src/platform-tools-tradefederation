@@ -302,7 +302,7 @@ public class TestInvocation implements ITestInvocation {
             }
             mStatus = "tearing down";
             try {
-                invocationPath.doTeardown(context, config, exception);
+                invocationPath.doTeardown(context, config, listener, exception);
             } catch (Throwable e) {
                 tearDownException = e;
                 CLog.e("Exception when tearing down invocation: %s", tearDownException.toString());
