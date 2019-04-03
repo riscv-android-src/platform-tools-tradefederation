@@ -855,8 +855,8 @@ public class InstrumentationTestTest {
         mInstrumentationTest.setCoverage(true);
 
         ITestInvocationListener listener =
-                mInstrumentationTest.addCoverageListenerIfEnabled(mMockListener);
-        assertThat(listener).isInstanceOf(CodeCoverageListener.class);
+                mInstrumentationTest.addJavaCoverageListenerIfEnabled(mMockListener);
+        assertThat(listener).isInstanceOf(JavaCodeCoverageListener.class);
     }
 
     @Test
@@ -864,7 +864,7 @@ public class InstrumentationTestTest {
         mInstrumentationTest.setCoverage(false);
 
         ITestInvocationListener listener =
-                mInstrumentationTest.addCoverageListenerIfEnabled(mMockListener);
+                mInstrumentationTest.addJavaCoverageListenerIfEnabled(mMockListener);
         assertThat(listener).isSameAs(mMockListener);
     }
 
