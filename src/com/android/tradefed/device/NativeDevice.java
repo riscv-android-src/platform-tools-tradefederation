@@ -214,6 +214,8 @@ public class NativeDevice implements IManagedTestDevice {
 
     private ContentProviderHandler mContentProvider = null;
     private boolean mShouldSkipContentProviderSetup = false;
+    /** Keep track of the last time Tradefed itself triggered a reboot. */
+    private long mLastTradefedRebootTime = 0L;
 
     /**
      * Interface for a generic device communication attempt.
@@ -2828,6 +2830,9 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @VisibleForTesting
     void doReboot() throws DeviceNotAvailableException, UnsupportedOperationException {
+        // Track Tradefed reboot time
+        mLastTradefedRebootTime = System.currentTimeMillis();
+
         if (TestDeviceState.FASTBOOT == getDeviceState()) {
             CLog.i("device %s in fastboot. Rebooting to userspace.", getSerialNumber());
             executeFastbootCommand("reboot");
@@ -4252,6 +4257,12 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public Set<Integer> listDisplayIds() throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("dumpsys SurfaceFlinger is not supported.");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public long getLastExpectedRebootTimeMillis() {
+        return mLastTradefedRebootTime;
     }
 
     /** Validate that pid is an integer and not empty. */
