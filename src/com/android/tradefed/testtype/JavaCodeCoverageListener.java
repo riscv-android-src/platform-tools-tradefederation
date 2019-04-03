@@ -34,10 +34,10 @@ import java.io.IOException;
 import java.util.HashMap;
 
 /**
- * A {@link ResultForwarder} that will pull coverage measurements off of the device and log them as
- * test artifacts.
+ * A {@link ResultForwarder} that will pull Java coverage measurements off of the device and log
+ * them as test artifacts.
  */
-final class CodeCoverageListener extends ResultForwarder {
+final class JavaCodeCoverageListener extends ResultForwarder {
 
     public static final String MERGE_COVERAGE_MEASUREMENTS_TEST_NAME = "mergeCoverageMeasurements";
     public static final String COVERAGE_MEASUREMENT_KEY = "coverageFilePath";
@@ -50,7 +50,7 @@ final class CodeCoverageListener extends ResultForwarder {
 
     private String mCurrentRunName;
 
-    public CodeCoverageListener(
+    public JavaCodeCoverageListener(
             ITestDevice device, boolean mergeMeasurements, ITestInvocationListener... listeners) {
         super(listeners);
         mDevice = device;
