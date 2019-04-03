@@ -45,7 +45,6 @@ import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IReportNotExecuted;
-import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TimeUtil;
 
@@ -74,7 +73,6 @@ public final class TestsPoolPoller
                 IMultiDeviceTest,
                 IInvocationContextReceiver,
                 ISystemStatusCheckerReceiver,
-                ITestCollector,
                 IMetricCollectorReceiver {
 
     private static final long WAIT_RECOVERY_TIME = 15 * 60 * 1000;
@@ -91,7 +89,6 @@ public final class TestsPoolPoller
     private IConfiguration mConfig;
     private List<ISystemStatusChecker> mSystemStatusCheckers;
     private List<IMetricCollector> mCollectors;
-    private boolean mShouldCollectTest = false;
 
     private ILogRegistry mRegistry = null;
 
@@ -209,9 +206,6 @@ public final class TestsPoolPoller
                 if (test instanceof ISystemStatusCheckerReceiver) {
                     ((ISystemStatusCheckerReceiver) test)
                             .setSystemStatusChecker(mSystemStatusCheckers);
-                }
-                if (test instanceof ITestCollector) {
-                    ((ITestCollector) test).setCollectTestsOnly(mShouldCollectTest);
                 }
                 IConfiguration validationConfig = new Configuration("validation", "validation");
                 try {
@@ -393,11 +387,6 @@ public final class TestsPoolPoller
     @Override
     public void setSystemStatusChecker(List<ISystemStatusChecker> systemCheckers) {
         mSystemStatusCheckers = systemCheckers;
-    }
-
-    @Override
-    public void setCollectTestsOnly(boolean shouldCollectTest) {
-        mShouldCollectTest = shouldCollectTest;
     }
 
     @Override
