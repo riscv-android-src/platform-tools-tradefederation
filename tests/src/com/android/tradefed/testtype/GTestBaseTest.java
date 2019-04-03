@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.android.ddmlib.IShellOutputReceiver;
@@ -143,5 +144,13 @@ public class GTestBaseTest {
         filters = gTestBase.getGTestFilters(moduleName);
         assertEquals(String.format("--gtest_filter=%s", "filter1:filter2:filter3"), filters);
         assertEquals(0, gTestBase.getShardCount());
+    }
+
+    /** GTest should never shard if collect-tests-only is set to true. */
+    @Test
+    public void testGTestSharding_CollectOnly() throws Exception {
+        GTestBase gTestBase = new GTestBaseImpl();
+        gTestBase.setCollectTestsOnly(true);
+        assertNull(gTestBase.split(5));
     }
 }
