@@ -16,7 +16,7 @@
 
 package com.android.tradefed.testtype;
 
-import static com.android.tradefed.testtype.CodeCoverageListener.MERGE_COVERAGE_MEASUREMENTS_TEST_NAME;
+import static com.android.tradefed.testtype.JavaCodeCoverageListener.MERGE_COVERAGE_MEASUREMENTS_TEST_NAME;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -65,9 +65,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-/** Unit tests for {@link CodeCoverageListener}. */
+/** Unit tests for {@link JavaCodeCoverageListener}. */
 @RunWith(JUnit4.class)
-public class CodeCoverageListenerTest {
+public class JavaCodeCoverageListenerTest {
 
     private static final int PROBE_COUNT = 10;
 
@@ -86,13 +86,13 @@ public class CodeCoverageListenerTest {
     @Spy LogFileReader mFakeListener = new LogFileReader();
 
     /** Object under test. */
-    CodeCoverageListener mCodeCoverageListener;
+    JavaCodeCoverageListener mCodeCoverageListener;
 
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
 
-        mCodeCoverageListener = new CodeCoverageListener(mMockDevice, false, mFakeListener);
+        mCodeCoverageListener = new JavaCodeCoverageListener(mMockDevice, false, mFakeListener);
     }
 
     @Test
@@ -157,7 +157,7 @@ public class CodeCoverageListenerTest {
         // Setup mocks.
         File coverageFile1 = folder.newFile("coverage1.ec");
         try (OutputStream out = new FileOutputStream(coverageFile1)) {
-            ByteString measurement = measurement(fullyCovered(CodeCoverageListener.class));
+            ByteString measurement = measurement(fullyCovered(JavaCodeCoverageListener.class));
             measurement.writeTo(out);
         }
 
@@ -165,12 +165,12 @@ public class CodeCoverageListenerTest {
         try (OutputStream out = new FileOutputStream(coverageFile2)) {
             ByteString measurement =
                     measurement(
-                            partiallyCovered(CodeCoverageListener.class),
-                            partiallyCovered(CodeCoverageListenerTest.class));
+                            partiallyCovered(JavaCodeCoverageListener.class),
+                            partiallyCovered(JavaCodeCoverageListenerTest.class));
             measurement.writeTo(out);
         }
 
-        mCodeCoverageListener = new CodeCoverageListener(mMockDevice, true, mFakeListener);
+        mCodeCoverageListener = new JavaCodeCoverageListener(mMockDevice, true, mFakeListener);
 
         Map<String, String> metric = new HashMap<>();
         metric.put("coverageFilePath", DEVICE_PATH);
@@ -197,13 +197,14 @@ public class CodeCoverageListenerTest {
         boolean[] fullyCovered = new boolean[PROBE_COUNT];
         Arrays.fill(fullyCovered, Boolean.TRUE);
 
-        assertThat(execData.contains(vmName(CodeCoverageListener.class))).isTrue();
-        assertThat(getProbes(CodeCoverageListener.class, execData)).isEqualTo(fullyCovered);
+        assertThat(execData.contains(vmName(JavaCodeCoverageListener.class))).isTrue();
+        assertThat(getProbes(JavaCodeCoverageListener.class, execData)).isEqualTo(fullyCovered);
 
         boolean[] partiallyCovered = new boolean[PROBE_COUNT];
         partiallyCovered[0] = true;
-        assertThat(execData.contains(vmName(CodeCoverageListenerTest.class))).isTrue();
-        assertThat(getProbes(CodeCoverageListenerTest.class, execData)).isEqualTo(partiallyCovered);
+        assertThat(execData.contains(vmName(JavaCodeCoverageListenerTest.class))).isTrue();
+        assertThat(getProbes(JavaCodeCoverageListenerTest.class, execData))
+                .isEqualTo(partiallyCovered);
     }
 
     private static <T> String vmName(Class<T> clazz) {
