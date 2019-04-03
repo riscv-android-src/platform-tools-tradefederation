@@ -15,11 +15,14 @@
  */
 package com.android.tradefed.device.contentprovider;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.CommandResult;
@@ -31,9 +34,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.io.File;
+import java.io.OutputStream;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -88,9 +93,8 @@ public class ContentProviderHandlerTest {
     @Test
     public void testDeleteFile() throws Exception {
         String devicePath = "path/somewhere/file.txt";
-        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
         doReturn(99).when(mMockDevice).getCurrentUser();
-        doReturn(result)
+        doReturn(mockSuccess())
                 .when(mMockDevice)
                 .executeShellV2Command(
                         eq(
@@ -125,10 +129,8 @@ public class ContentProviderHandlerTest {
         File toPush = FileUtil.createTempFile("content-provider-test", ".txt");
         try {
             String devicePath = "path/somewhere/file.txt";
-            CommandResult result = new CommandResult(CommandStatus.SUCCESS);
-            result.setStderr("");
             doReturn(99).when(mMockDevice).getCurrentUser();
-            doReturn(result)
+            doReturn(mockSuccess())
                     .when(mMockDevice)
                     .executeShellV2Command(
                             eq(
@@ -141,5 +143,75 @@ public class ContentProviderHandlerTest {
         } finally {
             FileUtil.deleteFile(toPush);
         }
+    }
+
+    /** Test {@link ContentProviderHandler#pullFile(String, File)}. */
+    @Test
+    public void testPullFile_verifyShellCommand() throws Exception {
+        File pullTo = FileUtil.createTempFile("content-provider-test", ".txt");
+        String devicePath = "path/somewhere/file.txt";
+        doReturn(99).when(mMockDevice).getCurrentUser();
+        mockPullFileSuccess();
+
+        try {
+            mProvider.pullFile(devicePath, pullTo);
+
+            // Capture the shell command used by pullFile.
+            ArgumentCaptor<String> shellCommandCaptor = ArgumentCaptor.forClass(String.class);
+            verify(mMockDevice)
+                    .executeShellV2Command(shellCommandCaptor.capture(), any(OutputStream.class));
+
+            // Verify the command.
+            assertEquals(
+                    shellCommandCaptor.getValue(),
+                    "content read --user 99 --uri "
+                            + ContentProviderHandler.CONTENT_PROVIDER_URI
+                            + "/"
+                            + devicePath);
+        } finally {
+            FileUtil.deleteFile(pullTo);
+        }
+    }
+
+    /** Test {@link ContentProviderHandler#pullFile(String, File)}. */
+    @Test
+    public void testPullFile_createLocalFileIfNotExist() throws Exception {
+        File pullTo = new File("content-provider-test.txt");
+        String devicePath = "path/somewhere/file.txt";
+        mockPullFileSuccess();
+
+        try {
+            assertFalse(pullTo.exists());
+            mProvider.pullFile(devicePath, pullTo);
+            assertTrue(pullTo.exists());
+        } finally {
+            FileUtil.deleteFile(pullTo);
+        }
+    }
+
+    /** Test {@link ContentProviderHandler#pullFile(String, File)}. */
+    @Test
+    public void testPullFile_success() throws Exception {
+        File pullTo = new File("content-provider-test.txt");
+        String devicePath = "path/somewhere/file.txt";
+
+        try {
+            mockPullFileSuccess();
+            assertTrue(mProvider.pullFile(devicePath, pullTo));
+        } finally {
+            FileUtil.deleteFile(pullTo);
+        }
+    }
+
+    private CommandResult mockSuccess() {
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStderr("");
+        return result;
+    }
+
+    private void mockPullFileSuccess() throws Exception {
+        doReturn(mockSuccess())
+                .when(mMockDevice)
+                .executeShellV2Command(anyString(), any(OutputStream.class));
     }
 }

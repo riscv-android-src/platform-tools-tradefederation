@@ -71,6 +71,7 @@ import org.apache.commons.compress.archivers.zip.ZipFile;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Clock;
@@ -263,11 +264,13 @@ public class NativeDevice implements IManagedTestDevice {
 
         private String[] mCmd;
         private long mTimeout;
-        private File mPipeAsInput;
+        private File mPipeAsInput; // Used in pushFile, uses local file as input to "content write"
+        private OutputStream mPipeToOutput; // Used in pullFile, to pipe content from "content read"
 
-        AdbShellAction(String[] cmd, File pipeAsInput, long timeout) {
+        AdbShellAction(String[] cmd, File pipeAsInput, OutputStream pipeToOutput, long timeout) {
             mCmd = cmd;
             mPipeAsInput = pipeAsInput;
+            mPipeToOutput = pipeToOutput;
             mTimeout = timeout;
         }
 
@@ -276,7 +279,8 @@ public class NativeDevice implements IManagedTestDevice {
             if (mPipeAsInput != null) {
                 mResult = getRunUtil().runTimedCmdWithInputRedirect(mTimeout, mPipeAsInput, mCmd);
             } else {
-                mResult = getRunUtil().runTimedCmd(mTimeout, mCmd);
+                mResult =
+                        getRunUtil().runTimedCmd(mTimeout, mPipeToOutput, /* stderr= */ null, mCmd);
             }
             if (mResult.getStatus() == CommandStatus.EXCEPTION) {
                 throw new IOException(mResult.getStderr());
@@ -699,7 +703,25 @@ public class NativeDevice implements IManagedTestDevice {
     public CommandResult executeShellV2Command(String cmd, File pipeAsInput)
             throws DeviceNotAvailableException {
         return executeShellV2Command(
-                cmd, pipeAsInput, getCommandTimeout(), TimeUnit.MILLISECONDS, MAX_RETRY_ATTEMPTS);
+                cmd,
+                pipeAsInput,
+                null,
+                getCommandTimeout(),
+                TimeUnit.MILLISECONDS,
+                MAX_RETRY_ATTEMPTS);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public CommandResult executeShellV2Command(String cmd, OutputStream pipeToOutput)
+            throws DeviceNotAvailableException {
+        return executeShellV2Command(
+                cmd,
+                null,
+                pipeToOutput,
+                getCommandTimeout(),
+                TimeUnit.MILLISECONDS,
+                MAX_RETRY_ATTEMPTS);
     }
 
     /** {@inheritDoc} */
@@ -707,7 +729,8 @@ public class NativeDevice implements IManagedTestDevice {
     public CommandResult executeShellV2Command(
             String cmd, final long maxTimeoutForCommand, final TimeUnit timeUnit)
             throws DeviceNotAvailableException {
-        return executeShellV2Command(cmd, null, maxTimeoutForCommand, timeUnit, MAX_RETRY_ATTEMPTS);
+        return executeShellV2Command(
+                cmd, null, null, maxTimeoutForCommand, timeUnit, MAX_RETRY_ATTEMPTS);
     }
 
     /** {@inheritDoc} */
@@ -715,19 +738,25 @@ public class NativeDevice implements IManagedTestDevice {
     public CommandResult executeShellV2Command(
             String cmd, final long maxTimeoutForCommand, final TimeUnit timeUnit, int retryAttempts)
             throws DeviceNotAvailableException {
-        return executeShellV2Command(cmd, null, maxTimeoutForCommand, timeUnit, retryAttempts);
+        return executeShellV2Command(
+                cmd, null, null, maxTimeoutForCommand, timeUnit, retryAttempts);
     }
 
     private CommandResult executeShellV2Command(
             String cmd,
             File pipeAsInput,
+            OutputStream pipeToOutput,
             final long maxTimeoutForCommand,
             final TimeUnit timeUnit,
             int retryAttempts)
             throws DeviceNotAvailableException {
         final String[] fullCmd = buildAdbShellCommand(cmd);
         AdbShellAction adbActionV2 =
-                new AdbShellAction(fullCmd, pipeAsInput, timeUnit.toMillis(maxTimeoutForCommand));
+                new AdbShellAction(
+                        fullCmd,
+                        pipeAsInput,
+                        pipeToOutput,
+                        timeUnit.toMillis(maxTimeoutForCommand));
         performDeviceAction(String.format("adb %s", fullCmd[4]), adbActionV2, retryAttempts);
         return adbActionV2.mResult;
     }
@@ -922,6 +951,13 @@ public class NativeDevice implements IManagedTestDevice {
     public boolean pullFile(final String remoteFilePath, final File localFile)
             throws DeviceNotAvailableException {
 
+        if (remoteFilePath.startsWith(SD_CARD)) {
+            ContentProviderHandler handler = getContentProvider();
+            if (handler != null) {
+                return handler.pullFile(remoteFilePath, localFile);
+            }
+        }
+
         DeviceAction pullAction = new DeviceAction() {
             @Override
             public boolean run() throws TimeoutException, IOException, AdbCommandRejectedException,
@@ -1026,7 +1062,6 @@ public class NativeDevice implements IManagedTestDevice {
         if (remoteFilePath.startsWith(SD_CARD)) {
             ContentProviderHandler handler = getContentProvider();
             if (handler != null) {
-                mShouldSkipContentProviderSetup = true;
                 return handler.pushFile(localFile, remoteFilePath);
             }
         }
@@ -4151,8 +4186,10 @@ public class NativeDevice implements IManagedTestDevice {
         if (!mShouldSkipContentProviderSetup) {
             boolean res = mContentProvider.setUp();
             if (!res) {
+                // TODO: once CP becomes a requirement, throw/fail the test if CP can't be found
                 return null;
             }
+            mShouldSkipContentProviderSetup = true;
         }
         return mContentProvider;
     }

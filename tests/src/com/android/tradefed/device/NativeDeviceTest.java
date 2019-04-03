@@ -54,6 +54,7 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.time.Clock;
 import java.util.ArrayList;
@@ -2326,11 +2327,13 @@ public class NativeDeviceTest extends TestCase {
 
     /** Test when {@link NativeDevice#executeShellV2Command(String)} returns a success. */
     public void testExecuteShellV2Command() throws Exception {
+        OutputStream stdout = null, stderr = null;
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.SUCCESS);
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
-                                100, "adb", "-s", "serial", "shell", "some", "command"))
+                                100, stdout, stderr, "adb", "-s", "serial", "shell", "some",
+                                "command"))
                 .andReturn(res);
         EasyMock.replay(mMockRunUtil, mMockIDevice);
         assertNotNull(mTestDevice.executeShellV2Command("some command"));
@@ -2342,12 +2345,14 @@ public class NativeDeviceTest extends TestCase {
      * repeat because of a timeout.
      */
     public void testExecuteShellV2Command_timeout() throws Exception {
+        OutputStream stdout = null, stderr = null;
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.TIMED_OUT);
         res.setStderr("timed out");
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
-                                200L, "adb", "-s", "serial", "shell", "some", "command"))
+                                200L, stdout, stderr, "adb", "-s", "serial", "shell", "some",
+                                "command"))
                 .andReturn(res)
                 .times(2);
         EasyMock.replay(mMockRunUtil, mMockIDevice);
@@ -2365,12 +2370,14 @@ public class NativeDeviceTest extends TestCase {
      * output.
      */
     public void testExecuteShellV2Command_fail() throws Exception {
+        OutputStream stdout = null, stderr = null;
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.FAILED);
         res.setStderr("timed out");
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
-                                200L, "adb", "-s", "serial", "shell", "some", "command"))
+                                200L, stdout, stderr, "adb", "-s", "serial", "shell", "some",
+                                "command"))
                 .andReturn(res)
                 .times(1);
         EasyMock.replay(mMockRunUtil, mMockIDevice);
@@ -2381,4 +2388,134 @@ public class NativeDeviceTest extends TestCase {
         assertSame(res, result);
         EasyMock.verify(mMockRunUtil, mMockIDevice);
     }
+
+// FIXME: delete this, not necessary
+// <<<<<<< HEAD
+// =======
+//
+//     /** Unit test for {@link INativeDevice#setProperty(String, String)}. */
+//     @Test
+//     public void testSetProperty() throws DeviceNotAvailableException {
+//         OutputStream stdout = null, stderr = null;
+//         mTestDevice =
+//                 new TestableAndroidNativeDevice() {
+//                     @Override
+//                     public boolean isAdbRoot() throws DeviceNotAvailableException {
+//                         return true;
+//                     }
+//                 };
+//         CommandResult res = new CommandResult();
+//         res.setStatus(CommandStatus.SUCCESS);
+//         EasyMock.expect(
+//                         mMockRunUtil.runTimedCmd(
+//                                 120000, stdout, stderr, "adb", "-s", "serial", "shell", "setprop",
+//                                 "test", "value"))
+//                 .andReturn(res);
+//         EasyMock.replay(mMockRunUtil, mMockIDevice);
+//         assertTrue(mTestDevice.setProperty("test", "value"));
+//         EasyMock.verify(mMockRunUtil, mMockIDevice);
+//     }
+//
+//     /** Unit test for {@link INativeDevice#setProperty(String, String)}. */
+//     @Test
+//     public void testSetProperty_notRoot() throws DeviceNotAvailableException {
+//         mTestDevice =
+//                 new TestableAndroidNativeDevice() {
+//                     @Override
+//                     public boolean isAdbRoot() throws DeviceNotAvailableException {
+//                         return false;
+//                     }
+//                 };
+//         EasyMock.replay(mMockRunUtil, mMockIDevice);
+//         assertFalse(mTestDevice.setProperty("test", "value"));
+//         EasyMock.verify(mMockRunUtil, mMockIDevice);
+//     }
+//
+//     /**
+//      * Verifies that {@link INativeDevice#isExecutable(String)} recognizes regular executable file
+//      *
+//      * @throws Exception
+//      */
+//     @Test
+//     public void testIsDeviceFileExecutable_executable_rwx() throws Exception {
+//         mTestDevice =
+//                 new TestableAndroidNativeDevice() {
+//                     @Override
+//                     public String executeShellCommand(String command)
+//                             throws DeviceNotAvailableException {
+//                         return "-rwxr-xr-x 1 root shell 42824 2009-01-01 00:00 /system/bin/ping";
+//                     }
+//                 };
+//         assertTrue(mTestDevice.isExecutable("/system/bin/ping"));
+//     }
+//
+//     /**
+//      * Verifies that {@link INativeDevice#isExecutable(String)} recognizes symlink'd executable file
+//      *
+//      * @throws Exception
+//      */
+//     @Test
+//     public void testIsDeviceFileExecutable_executable_lrwx() throws Exception {
+//         mTestDevice =
+//                 new TestableAndroidNativeDevice() {
+//                     @Override
+//                     public String executeShellCommand(String command)
+//                             throws DeviceNotAvailableException {
+//                         return "lrwxr-xr-x 1 root shell 7 2009-01-01 00:00 /system/bin/start -> toolbox";
+//                     }
+//                 };
+//         assertTrue(mTestDevice.isExecutable("/system/bin/start"));
+//     }
+//
+//     /**
+//      * Verifies that {@link INativeDevice#isExecutable(String)} recognizes non-executable file
+//      *
+//      * @throws Exception
+//      */
+//     @Test
+//     public void testIsDeviceFileExecutable_notExecutable() throws Exception {
+//         mTestDevice =
+//                 new TestableAndroidNativeDevice() {
+//                     @Override
+//                     public String executeShellCommand(String command)
+//                             throws DeviceNotAvailableException {
+//                         return "-rw-r--r-- 1 root root 5020 2009-01-01 00:00 /system/build.prop";
+//                     }
+//                 };
+//         assertFalse(mTestDevice.isExecutable("/system/build.prop"));
+//     }
+//
+//     /**
+//      * Verifies that {@link INativeDevice#isExecutable(String)} recognizes a directory listing
+//      *
+//      * @throws Exception
+//      */
+//     @Test
+//     public void testIsDeviceFileExecutable_directory() throws Exception {
+//         mTestDevice =
+//                 new TestableAndroidNativeDevice() {
+//                     @Override
+//                     public String executeShellCommand(String command)
+//                             throws DeviceNotAvailableException {
+//                         return "total 416\n"
+//                                 + "drwxr-xr-x 74 root root    4096 2009-01-01 00:00 app\n"
+//                                 + "drwxr-xr-x  3 root shell   8192 2009-01-01 00:00 bin\n"
+//                                 + "-rw-r--r--  1 root root    5020 2009-01-01 00:00 build.prop\n"
+//                                 + "drwxr-xr-x 15 root root    4096 2009-01-01 00:00 etc\n"
+//                                 + "drwxr-xr-x  2 root root    4096 2009-01-01 00:00 fake-libs\n"
+//                                 + "drwxr-xr-x  2 root root    8192 2009-01-01 00:00 fonts\n"
+//                                 + "drwxr-xr-x  4 root root    4096 2009-01-01 00:00 framework\n"
+//                                 + "drwxr-xr-x  6 root root    8192 2009-01-01 00:00 lib\n"
+//                                 + "drwx------  2 root root    4096 1970-01-01 00:00 lost+found\n"
+//                                 + "drwxr-xr-x  3 root root    4096 2009-01-01 00:00 media\n"
+//                                 + "drwxr-xr-x 68 root root    4096 2009-01-01 00:00 priv-app\n"
+//                                 + "-rw-r--r--  1 root root  137093 2009-01-01 00:00 recovery-from-boot.p\n"
+//                                 + "drwxr-xr-x  9 root root    4096 2009-01-01 00:00 usr\n"
+//                                 + "drwxr-xr-x  8 root shell   4096 2009-01-01 00:00 vendor\n"
+//                                 + "drwxr-xr-x  2 root shell   4096 2009-01-01 00:00 xbin\n";
+//                     }
+//                 };
+//         assertFalse(mTestDevice.isExecutable("/system"));
+//     }
+// >>>>>>> f39a78ced... Hook up pullFile to use content provider.
 }

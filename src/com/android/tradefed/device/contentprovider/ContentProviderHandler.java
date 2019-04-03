@@ -21,12 +21,16 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.base.Strings;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Set;
 
 /**
@@ -116,6 +120,46 @@ public class ContentProviderHandler {
     }
 
     /**
+     * Content provider callback that pulls a file from the URI location into a local file.
+     *
+     * @param deviceFilePath The path on the device where to pull the file from.
+     * @param localFile The {@link File} to store the contents in. If non-empty, contents will be
+     *     replaced.
+     * @return True if successful, False otherwise
+     * @throws DeviceNotAvailableException
+     */
+    public boolean pullFile(String deviceFilePath, File localFile)
+            throws DeviceNotAvailableException {
+        String contentUri = createContentUri(deviceFilePath);
+        String pullCommand =
+                String.format(
+                        "content read --user %d --uri %s", mDevice.getCurrentUser(), contentUri);
+
+        // Open the output stream to the local file.
+        OutputStream localFileStream;
+        try {
+            localFileStream = new FileOutputStream(localFile);
+        } catch (FileNotFoundException e) {
+            CLog.e("Failed to open OutputStream to the local file. Error: %s", e.getMessage());
+            return false;
+        }
+
+        try {
+            CommandResult pullResult = mDevice.executeShellV2Command(pullCommand, localFileStream);
+            if (isSuccessful(pullResult)) {
+                return true;
+            }
+
+            CLog.e(
+                    "Failed to pull a file at '%s' to %s using content provider. Error: '%s'",
+                    deviceFilePath, localFile, pullResult.getStderr());
+            return false;
+        } finally {
+            StreamUtil.close(localFileStream);
+        }
+    }
+
+    /**
      * Content provider callback that push a file to the URI location.
      *
      * @param fileToPush The {@link File} to be pushed to the device.
@@ -140,17 +184,20 @@ public class ContentProviderHandler {
                         "content write --user %d --uri %s", mDevice.getCurrentUser(), contentUri);
         CommandResult pushResult = mDevice.executeShellV2Command(pushCommand, fileToPush);
 
-        String stderr = pushResult.getStderr();
-        if (CommandStatus.SUCCESS.equals(pushResult.getStatus())) {
-            // Command above returns success even if it prints stack failure.
-            if (Strings.isNullOrEmpty(stderr)) {
-                return true;
-            }
+        if (isSuccessful(pushResult)) {
+            return true;
         }
+
         CLog.e(
                 "Failed to push a file '%s' at %s using content provider. Error: '%s'",
-                fileToPush, deviceFilePath, stderr);
+                fileToPush, deviceFilePath, pushResult.getStderr());
         return false;
+    }
+
+    /** Returns true if {@link CommandStatus} is successful and there is no error message. */
+    private boolean isSuccessful(CommandResult result) {
+        String stderr = result.getStderr();
+        return CommandStatus.SUCCESS.equals(result.getStatus()) && Strings.isNullOrEmpty(stderr);
     }
 
     /** Helper method to extract the content provider apk. */
