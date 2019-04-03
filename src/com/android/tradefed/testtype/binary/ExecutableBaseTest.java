@@ -20,6 +20,7 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -68,12 +69,20 @@ public abstract class ExecutableBaseTest
             } else {
                 listener.testRunStarted(new File(path).getName(), 1);
                 long startTimeMs = System.currentTimeMillis();
-                if (!mCollectTestsOnly) {
-                    // Do not actually run the test if we are dry running it.
-                    runBinary(path, listener);
+                TestDescription description =
+                        new TestDescription(new File(path).getName(), new File(path).getName());
+                listener.testStarted(description);
+                try {
+                    if (!mCollectTestsOnly) {
+                        // Do not actually run the test if we are dry running it.
+                        runBinary(path, listener, description);
+                    }
+                } finally {
+                    listener.testEnded(description, new HashMap<String, Metric>());
+                    listener.testRunEnded(
+                            System.currentTimeMillis() - startTimeMs,
+                            new HashMap<String, Metric>());
                 }
-                listener.testRunEnded(
-                        System.currentTimeMillis() - startTimeMs, new HashMap<String, Metric>());
             }
         }
     }
@@ -91,8 +100,11 @@ public abstract class ExecutableBaseTest
      *
      * @param binaryPath The path of the binary.
      * @param listener The listener where to report the results.
+     * @param description The test in progress.
      */
-    public abstract void runBinary(String binaryPath, ITestInvocationListener listener);
+    public abstract void runBinary(
+            String binaryPath, ITestInvocationListener listener, TestDescription description)
+            throws DeviceNotAvailableException;
 
     /** {@inheritDoc} */
     @Override
