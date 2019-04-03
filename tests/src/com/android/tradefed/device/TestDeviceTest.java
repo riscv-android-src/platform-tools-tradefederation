@@ -63,6 +63,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -4233,11 +4234,14 @@ public class TestDeviceTest extends TestCase {
 
     /** Test that displays can be collected. */
     public void testListDisplayId() throws Exception {
+        OutputStream stdout = null, stderr = null;
         CommandResult res = new CommandResult(CommandStatus.SUCCESS);
         res.setStdout("Display 0 color modes:\nDisplay 5 color modes:\n");
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
                                 100L,
+                                stdout,
+                                stderr,
                                 "adb",
                                 "-s",
                                 "serial",
