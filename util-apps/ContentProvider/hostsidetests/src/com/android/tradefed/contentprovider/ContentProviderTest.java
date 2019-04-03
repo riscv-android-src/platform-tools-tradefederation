@@ -61,6 +61,20 @@ public class ContentProviderTest extends BaseHostJUnit4Test {
         mToBeDeleted.clear();
     }
 
+    /** Test pushing a file with special characters in the name. */
+    @Test
+    public void testPushFile_encode() throws Exception {
+        // Name with space and parenthesis
+        File tmpFile = FileUtil.createTempFile("tmpFileToPush (test)", ".txt");
+        try {
+            boolean res = mHandler.pushFile(tmpFile, "/sdcard/" + tmpFile.getName());
+            assertTrue(res);
+            assertTrue(getDevice().doesFileExist("/sdcard/" + tmpFile.getName()));
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+        }
+    }
+
     @Test
     public void testPushFile() throws Exception {
         File tmpFile = FileUtil.createTempFile("tmpFileToPush", ".txt");

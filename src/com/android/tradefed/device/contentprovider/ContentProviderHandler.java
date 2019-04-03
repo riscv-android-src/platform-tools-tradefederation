@@ -24,6 +24,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.base.Strings;
+import com.google.common.net.UrlEscapers;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -31,6 +32,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.Set;
 
 /**
@@ -104,7 +107,7 @@ public class ContentProviderHandler {
      * @throws DeviceNotAvailableException
      */
     public boolean deleteFile(String deviceFilePath) throws DeviceNotAvailableException {
-        String contentUri = createContentUri(deviceFilePath);
+        String contentUri = createEscapedContentUri(deviceFilePath);
         String deleteCommand =
                 String.format(
                         "content delete --user %d --uri %s", mDevice.getCurrentUser(), contentUri);
@@ -130,7 +133,7 @@ public class ContentProviderHandler {
      */
     public boolean pullFile(String deviceFilePath, File localFile)
             throws DeviceNotAvailableException {
-        String contentUri = createContentUri(deviceFilePath);
+        String contentUri = createEscapedContentUri(deviceFilePath);
         String pullCommand =
                 String.format(
                         "content read --user %d --uri %s", mDevice.getCurrentUser(), contentUri);
@@ -178,7 +181,7 @@ public class ContentProviderHandler {
             throw new IllegalArgumentException(
                     String.format("File '%s' to push does not exist.", fileToPush));
         }
-        String contentUri = createContentUri(deviceFilePath);
+        String contentUri = createEscapedContentUri(deviceFilePath);
         String pushCommand =
                 String.format(
                         "content write --user %d --uri %s", mDevice.getCurrentUser(), contentUri);
@@ -209,8 +212,19 @@ public class ContentProviderHandler {
         return apkTempFile;
     }
 
-    /** Returns the full URI string for the given device path. */
-    private String createContentUri(String deviceFilePath) {
-        return String.format("%s/%s", CONTENT_PROVIDER_URI, deviceFilePath);
+    /**
+     * Returns the full URI string for the given device path, escaped and encoded to avoid non-URL
+     * characters.
+     */
+    public static String createEscapedContentUri(String deviceFilePath) {
+        String escapedFilePath = deviceFilePath;
+        try {
+            // Escape the path then encode it.
+            String escaped = UrlEscapers.urlPathSegmentEscaper().escape(deviceFilePath);
+            escapedFilePath = URLEncoder.encode(escaped, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            CLog.e(e);
+        }
+        return String.format("\"%s/%s\"", CONTENT_PROVIDER_URI, escapedFilePath);
     }
 }
