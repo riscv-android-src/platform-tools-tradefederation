@@ -21,10 +21,12 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.util.CommandResult;
@@ -93,7 +95,9 @@ public class ExecutableHostTest extends ExecutableBaseTest implements IDeviceTes
     }
 
     @Override
-    public void runBinary(String binaryPath, ITestInvocationListener listener) {
+    public void runBinary(
+            String binaryPath, ITestInvocationListener listener, TestDescription description)
+            throws DeviceNotAvailableException {
         IRunUtil runUtil = createRunUtil();
         // Output everything in stdout
         runUtil.setRedirectStderrToStdout(true);
@@ -117,7 +121,18 @@ public class ExecutableHostTest extends ExecutableBaseTest implements IDeviceTes
             if (res.getExitCode() != null) {
                 errorMessage += String.format("\nExit Code: %s", res.getExitCode());
             }
-            listener.testRunFailed(errorMessage);
+            listener.testFailed(description, errorMessage);
+        }
+        if (!(mDevice.getIDevice() instanceof StubDevice)) {
+            // Ensure that the binary did not leave the device offline.
+            CLog.d("Checking whether device is still online after %s", binaryPath);
+            try {
+                mDevice.waitForDeviceAvailable();
+            } catch (DeviceNotAvailableException e) {
+                listener.testRunFailed(
+                        String.format("Device became unavailable after %s.", binaryPath));
+                throw e;
+            }
         }
     }
 
