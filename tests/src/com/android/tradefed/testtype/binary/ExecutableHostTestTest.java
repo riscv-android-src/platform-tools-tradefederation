@@ -15,16 +15,19 @@
  */
 package com.android.tradefed.testtype.binary;
 
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -104,6 +107,42 @@ public class ExecutableHostTestTest {
 
             verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(1));
             verify(mMockListener, Mockito.times(0)).testRunFailed(any());
+            verify(mMockListener, Mockito.times(0)).testFailed(any(), any());
+            verify(mMockListener, Mockito.times(1))
+                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        } finally {
+            FileUtil.recursiveDelete(tmpBinary);
+        }
+    }
+
+    @Test
+    public void testRunHostExecutable_dnae() throws Exception {
+        File tmpBinary = FileUtil.createTempFile("test-executable", "");
+        try {
+            OptionSetter setter = new OptionSetter(mExecutableTest);
+            setter.setOptionValue("binary", tmpBinary.getAbsolutePath());
+
+            CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+            doReturn(result)
+                    .when(mMockRunUtil)
+                    .runTimedCmd(Mockito.anyLong(), Mockito.eq(tmpBinary.getAbsolutePath()));
+
+            doThrow(new DeviceNotAvailableException()).when(mMockDevice).waitForDeviceAvailable();
+            try {
+                mExecutableTest.run(mMockListener);
+                fail("Should have thrown an exception.");
+            } catch (DeviceNotAvailableException expected) {
+                // Expected
+            }
+
+            verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(1));
+            verify(mMockListener, Mockito.times(1))
+                    .testRunFailed(
+                            eq(
+                                    String.format(
+                                            "Device became unavailable after %s.",
+                                            tmpBinary.getAbsolutePath())));
+            verify(mMockListener, Mockito.times(0)).testFailed(any(), any());
             verify(mMockListener, Mockito.times(1))
                     .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {
@@ -132,6 +171,7 @@ public class ExecutableHostTestTest {
 
             verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(1));
             verify(mMockListener, Mockito.times(0)).testRunFailed(any());
+            verify(mMockListener, Mockito.times(0)).testFailed(any(), any());
             verify(mMockListener, Mockito.times(1))
                     .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {
@@ -189,7 +229,8 @@ public class ExecutableHostTestTest {
             mExecutableTest.run(mMockListener);
 
             verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(1));
-            verify(mMockListener, Mockito.times(1)).testRunFailed("stdout\nExit Code: 5");
+            verify(mMockListener, Mockito.times(0)).testRunFailed(any());
+            verify(mMockListener, Mockito.times(1)).testFailed(any(), eq("stdout\nExit Code: 5"));
             verify(mMockListener, Mockito.times(1))
                     .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {
