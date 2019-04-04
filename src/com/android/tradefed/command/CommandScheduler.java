@@ -27,6 +27,7 @@ import com.android.tradefed.command.remote.IRemoteClient;
 import com.android.tradefed.command.remote.RemoteClient;
 import com.android.tradefed.command.remote.RemoteException;
 import com.android.tradefed.command.remote.RemoteManager;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
@@ -1358,8 +1359,15 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      */
     private synchronized boolean addExecCommandToQueue(final ExecutableCommand cmd,
             long delayTime) {
+        // If the command is local sharding one being rescheduled, do not apply the shutdown yet
+        // This allows commandAndExit to still works with local sharding.
         if (isShutdown()) {
-            return false;
+            if (cmd.getConfiguration()
+                            .getConfigurationDescription()
+                            .getMetaData(ConfigurationDescriptor.LOCAL_SHARDED_KEY)
+                    == null) {
+                return false;
+            }
         }
         if (delayTime > 0) {
             mSleepingCommands.add(cmd);
