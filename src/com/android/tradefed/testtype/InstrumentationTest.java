@@ -862,7 +862,7 @@ public class InstrumentationTest
         // Reruns do not create new listeners.
         if (!mIsRerun) {
             listener = addBugreportListenerIfEnabled(listener);
-            listener = addCoverageListenerIfEnabled(listener);
+            listener = addJavaCoverageListenerIfEnabled(listener);
 
             // TODO: Convert to device-side collectors when possible.
             for (IMetricCollector collector : mCollectors) {
@@ -921,9 +921,9 @@ public class InstrumentationTest
      * Returns a listener that will collect coverage measurements, or the original {@code listener}
      * if this feature is disabled.
      */
-    ITestInvocationListener addCoverageListenerIfEnabled(ITestInvocationListener listener) {
+    ITestInvocationListener addJavaCoverageListenerIfEnabled(ITestInvocationListener listener) {
         if (mCoverage) {
-            listener = new CodeCoverageListener(getDevice(), mMergeCoverageMeasurements, listener);
+            return new JavaCodeCoverageListener(getDevice(), mMergeCoverageMeasurements, listener);
         }
         return listener;
     }
