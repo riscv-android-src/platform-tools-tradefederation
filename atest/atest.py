@@ -547,7 +547,6 @@ def main(argv):
     if args.dry_run:
         _dry_run(results_dir, extra_args, test_infos)
         return constants.EXIT_CODE_SUCCESS
-
     if args.detect_regression:
         build_targets |= (regression_test_runner.RegressionTestRunner('')
                           .get_test_runner_build_reqs())
@@ -557,7 +556,12 @@ def main(argv):
         # Add module-info.json target to the list of build targets to keep the
         # file up to date.
         build_targets.add(mod_info.module_info_target)
+        build_start = time.time()
         success = atest_utils.build(build_targets, args.verbose)
+        metrics.BuildFinishEvent(
+            duration=metrics_utils.convert_duration(time.time() - build_start),
+            success=success,
+            targets=build_targets)
         if not success:
             return constants.EXIT_CODE_BUILD_FAILURE
     elif constants.TEST_STEP not in steps:
@@ -565,6 +569,7 @@ def main(argv):
                      'supported, installing AND testing instead.')
         steps.append(constants.TEST_STEP)
     tests_exit_code = constants.EXIT_CODE_SUCCESS
+    test_start = time.time()
     if constants.TEST_STEP in steps:
         if not is_from_test_mapping(test_infos):
             tests_exit_code, _ = test_runner_handler.run_all_tests(
@@ -579,6 +584,8 @@ def main(argv):
         tests_exit_code |= regression_test_runner.RegressionTestRunner(
             '').run_tests(
                 None, regression_args, reporter)
+    metrics.RunTestsFinishEvent(
+        duration=metrics_utils.convert_duration(time.time() - test_start))
     if tests_exit_code != constants.EXIT_CODE_SUCCESS:
         tests_exit_code = constants.EXIT_CODE_TEST_FAILURE
     return tests_exit_code

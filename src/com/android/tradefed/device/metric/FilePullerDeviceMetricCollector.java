@@ -146,8 +146,7 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
                         File attemptPull = device.pullFile(entry.getValue());
                         if (attemptPull != null) {
                             if (mCleanUp) {
-                                device.executeShellCommand(
-                                        String.format("rm -f %s", entry.getValue()));
+                                device.deleteFile(entry.getValue());
                             }
                             // Return the actual key and the file associated
                             return new SimpleEntry<String, File>(entry.getKey(), attemptPull);
@@ -181,8 +180,7 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
                 try {
                     if (device.pullDir(keyDirectory, tmpDestDir)) {
                         if (mCleanUp) {
-                            device.executeShellCommand(
-                                    String.format("rm -rf %s", keyDirectory));
+                            device.deleteFile(keyDirectory);
                         }
                         return new SimpleEntry<String, File>(keyDirectory, tmpDestDir);
                     }

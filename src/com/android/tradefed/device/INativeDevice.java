@@ -629,6 +629,14 @@ public interface INativeDevice {
     public boolean doesFileExist(String deviceFilePath) throws DeviceNotAvailableException;
 
     /**
+     * Helper method to delete a file or directory on the device.
+     *
+     * @param deviceFilePath The absolute path of the file on the device.
+     * @throws DeviceNotAvailableException
+     */
+    public void deleteFile(String deviceFilePath) throws DeviceNotAvailableException;
+
+    /**
      * Retrieve a reference to a remote file on device.
      *
      * @param path the file path to retrieve. Can be an absolute path or path relative to '/'. (ie
@@ -1248,4 +1256,10 @@ public interface INativeDevice {
 
     /** Returns the current battery level of a device or Null if battery level unavailable. */
     public Integer getBattery();
+
+    /**
+     * Returns the last time Tradefed APIs triggered a reboot in milliseconds since EPOCH as
+     * returned by {@link System#currentTimeMillis()}.
+     */
+    public long getLastExpectedRebootTimeMillis();
 }

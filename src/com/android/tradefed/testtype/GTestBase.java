@@ -503,6 +503,10 @@ public abstract class GTestBase
         if (shardCountHint <= 1 || mIsSharded) {
             return null;
         }
+        if (mCollectTestsOnly) {
+            // GTest cannot shard and use collect tests only, so prevent sharding in this case.
+            return null;
+        }
         Collection<IRemoteTest> tests = new ArrayList<>();
         for (int i = 0; i < shardCountHint; i++) {
             tests.add(getTestShard(shardCountHint, i));

@@ -34,6 +34,7 @@ import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.device.contentprovider.ContentProviderHandler;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -98,6 +99,7 @@ import javax.annotation.concurrent.GuardedBy;
  */
 public class NativeDevice implements IManagedTestDevice {
 
+    private static final String SD_CARD = "/sdcard/";
     /**
      * Allow pauses of up to 2 minutes while receiving bugreport.
      * <p/>
@@ -209,6 +211,11 @@ public class NativeDevice implements IManagedTestDevice {
     private String mLastConnectedWifiSsid = null;
     private String mLastConnectedWifiPsk = null;
     private boolean mNetworkMonitorEnabled = false;
+
+    private ContentProviderHandler mContentProvider = null;
+    private boolean mShouldSkipContentProviderSetup = false;
+    /** Keep track of the last time Tradefed itself triggered a reboot. */
+    private long mLastTradefedRebootTime = 0L;
 
     /**
      * Interface for a generic device communication attempt.
@@ -1039,6 +1046,14 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean pushFile(final File localFile, final String remoteFilePath)
             throws DeviceNotAvailableException {
+        if (remoteFilePath.startsWith(SD_CARD)) {
+            ContentProviderHandler handler = getContentProvider();
+            if (handler != null) {
+                mShouldSkipContentProviderSetup = true;
+                return handler.pushFile(localFile, remoteFilePath);
+            }
+        }
+
         DeviceAction pushAction =
                 new DeviceAction() {
                     @Override
@@ -1104,13 +1119,17 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public boolean doesFileExist(String destPath) throws DeviceNotAvailableException {
-        String lsGrep = executeShellCommand(String.format("ls \"%s\"", destPath));
+    public boolean doesFileExist(String deviceFilePath) throws DeviceNotAvailableException {
+        String lsGrep = executeShellCommand(String.format("ls \"%s\"", deviceFilePath));
         return !lsGrep.contains("No such file or directory");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void deleteFile(String deviceFilePath) throws DeviceNotAvailableException {
+        executeShellCommand(String.format("rm -rf \"%s\"", deviceFilePath));
     }
 
     /**
@@ -1840,7 +1859,11 @@ public class NativeDevice implements IManagedTestDevice {
     /** Builds the OS command for the given adb shell command session and args */
     private String[] buildAdbShellCommand(String command) {
         // TODO: implement the shell v2 support in ddmlib itself.
-        String[] commandArgs = QuotationAwareTokenizer.tokenizeLine(command);
+        String[] commandArgs =
+                QuotationAwareTokenizer.tokenizeLine(
+                        command,
+                        /** No logging */
+                        false);
         return ArrayUtil.buildArray(
                 new String[] {"adb", "-s", getSerialNumber(), "shell"}, commandArgs);
     }
@@ -2336,7 +2359,7 @@ public class NativeDevice implements IManagedTestDevice {
                             remoteFilePath.substring(0, remoteFilePath.lastIndexOf('/'));
                     if (!bugreportDir.isEmpty()) {
                         // clean bugreport files directory on device
-                        executeShellCommand(String.format("rm %s/*", bugreportDir));
+                        deleteFile(String.format("%s/*", bugreportDir));
                     }
 
                     return zipFile;
@@ -2770,11 +2793,8 @@ public class NativeDevice implements IManagedTestDevice {
         doReboot();
         RecoveryMode cachedRecoveryMode = getRecoveryMode();
         setRecoveryMode(RecoveryMode.ONLINE);
-        if (mStateMonitor.waitForDeviceOnline() != null) {
-            enableAdbRoot();
-        } else {
-            recoverDevice();
-        }
+        waitForDeviceOnline();
+        enableAdbRoot();
         setRecoveryMode(cachedRecoveryMode);
     }
 
@@ -2810,6 +2830,9 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @VisibleForTesting
     void doReboot() throws DeviceNotAvailableException, UnsupportedOperationException {
+        // Track Tradefed reboot time
+        mLastTradefedRebootTime = System.currentTimeMillis();
+
         if (TestDeviceState.FASTBOOT == getDeviceState()) {
             CLog.i("device %s in fastboot. Rebooting to userspace.", getSerialNumber());
             executeFastbootCommand("reboot");
@@ -3966,7 +3989,22 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public void postInvocationTearDown() {
-        // Default implementation empty on purpose
+        // Default implementation
+        if (getIDevice() instanceof StubDevice) {
+            return;
+        }
+        try {
+            // If we never installed it, don't even bother checking for it during tear down.
+            if (mContentProvider == null) {
+                return;
+            }
+            ContentProviderHandler handler = getContentProvider();
+            if (handler != null) {
+                handler.tearDown();
+            }
+        } catch (DeviceNotAvailableException e) {
+            CLog.e(e);
+        }
     }
 
     /**
@@ -4215,6 +4253,18 @@ public class NativeDevice implements IManagedTestDevice {
         return null;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Set<Integer> listDisplayIds() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("dumpsys SurfaceFlinger is not supported.");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public long getLastExpectedRebootTimeMillis() {
+        return mLastTradefedRebootTime;
+    }
+
     /** Validate that pid is an integer and not empty. */
     private boolean checkValidPid(String output) {
         if (output.isEmpty()) {
@@ -4233,5 +4283,24 @@ public class NativeDevice implements IManagedTestDevice {
     @VisibleForTesting
     IHostOptions getHostOptions() {
         return GlobalConfiguration.getInstance().getHostOptions();
+    }
+
+    /** Returns the {@link ContentProviderHandler} or null if not available. */
+    @VisibleForTesting
+    ContentProviderHandler getContentProvider() throws DeviceNotAvailableException {
+        // Prevent usage of content provider before API 25 as it would not work well.
+        if (getApiLevel() < 25) {
+            return null;
+        }
+        if (mContentProvider == null) {
+            mContentProvider = new ContentProviderHandler(this);
+        }
+        if (!mShouldSkipContentProviderSetup) {
+            boolean res = mContentProvider.setUp();
+            if (!res) {
+                return null;
+            }
+        }
+        return mContentProvider;
     }
 }

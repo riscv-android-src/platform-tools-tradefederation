@@ -250,8 +250,8 @@ public class RunUtil implements IRunUtil {
                 new RunnableResult(
                         /* input= */ null,
                         createProcessBuilder(command),
-                        /* stdout= */ null,
-                        /* stderr= */ null,
+                        /* stdoutStream= */ null,
+                        /* stderrStream= */ null,
                         inputRedirect);
         CommandStatus status = runTimed(timeout, osRunnable, true);
         CommandResult result = osRunnable.getResult();

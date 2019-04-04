@@ -520,19 +520,18 @@ public abstract class ITestSuite
                     continue;
                 }
 
+                // Populate the module context with devices and builds
+                for (String deviceName : mContext.getDeviceConfigNames()) {
+                    module.getModuleInvocationContext()
+                            .addAllocatedDevice(deviceName, mContext.getDevice(deviceName));
+                    module.getModuleInvocationContext()
+                            .addDeviceBuildInfo(deviceName, mContext.getBuildInfo(deviceName));
+                }
+                listener.testModuleStarted(module.getModuleInvocationContext());
+                // Trigger module start on module level listener too
+                new ResultForwarder(moduleListeners)
+                        .testModuleStarted(module.getModuleInvocationContext());
                 try {
-                    // Populate the module context with devices and builds
-                    for (String deviceName : mContext.getDeviceConfigNames()) {
-                        module.getModuleInvocationContext()
-                                .addAllocatedDevice(deviceName, mContext.getDevice(deviceName));
-                        module.getModuleInvocationContext()
-                                .addDeviceBuildInfo(deviceName, mContext.getBuildInfo(deviceName));
-                    }
-                    listener.testModuleStarted(module.getModuleInvocationContext());
-                    // Trigger module start on module level listener too
-                    new ResultForwarder(moduleListeners)
-                            .testModuleStarted(module.getModuleInvocationContext());
-
                     runSingleModule(module, listener, moduleListeners, failureListener);
                 } finally {
                     // Trigger module end on module level listener too
@@ -787,6 +786,9 @@ public abstract class ITestSuite
                 if (test instanceof IInvocationContextReceiver) {
                     ((IInvocationContextReceiver) test).setInvocationContext(mContext);
                 }
+                if (test instanceof ITestCollector) {
+                    ((ITestCollector) test).setCollectTestsOnly(mCollectTestsOnly);
+                }
             }
         }
     }
@@ -917,11 +919,7 @@ public abstract class ITestSuite
 
         while (!runModules.isEmpty()) {
             ModuleDefinition module = runModules.remove(0);
-            listener.testModuleStarted(module.getModuleInvocationContext());
-            listener.testRunStarted(module.getId(), 0);
-            listener.testRunFailed(message);
-            listener.testRunEnded(0, new HashMap<String, Metric>());
-            listener.testModuleEnded();
+            module.reportNotExecuted(listener, message);
         }
     }
 

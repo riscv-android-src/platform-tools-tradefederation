@@ -31,6 +31,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice.ApexInfo;
 import com.android.tradefed.device.ITestDevice.MountPointInfo;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.device.contentprovider.ContentProviderHandler;
 import com.android.tradefed.host.HostOptions;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -4210,6 +4211,11 @@ public class TestDeviceTest extends TestCase {
                             throws DeviceNotAvailableException {
                         return mMockWifi;
                     }
+
+                    @Override
+                    ContentProviderHandler getContentProvider() throws DeviceNotAvailableException {
+                        return null;
+                    }
                 };
         mMockIDevice.executeShellCommand(
                 EasyMock.eq("dumpsys package com.android.tradefed.utils.wifi"),
@@ -4222,6 +4228,32 @@ public class TestDeviceTest extends TestCase {
         replayMocks();
         mTestDevice.getIpAddress();
         mTestDevice.postInvocationTearDown();
+        verifyMocks();
+    }
+
+    /** Test that displays can be collected. */
+    public void testListDisplayId() throws Exception {
+        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+        res.setStdout("Display 0 color modes:\nDisplay 5 color modes:\n");
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                100L,
+                                "adb",
+                                "-s",
+                                "serial",
+                                "shell",
+                                "dumpsys",
+                                "SurfaceFlinger",
+                                "|",
+                                "grep",
+                                "'color",
+                                "modes:'"))
+                .andReturn(res);
+        replayMocks();
+        Set<Integer> displays = mTestDevice.listDisplayIds();
+        assertEquals(2, displays.size());
+        assertTrue(displays.contains(0));
+        assertTrue(displays.contains(5));
         verifyMocks();
     }
 }

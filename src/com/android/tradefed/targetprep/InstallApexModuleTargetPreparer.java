@@ -54,13 +54,13 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, DeviceNotAvailableException {
 
-        if (getTestsFileName().isEmpty()) {
-            throw new TargetSetupError(
-                    "No apk/apex module file specified.", device.getDeviceDescriptor());
-        }
-
         mApkInstalled = new ArrayList<>();
         mTestApexInfoList = new ArrayList<ApexInfo>();
+
+        if (getTestsFileName().isEmpty()) {
+            CLog.i("No apk/apex module file to install. Skipping.");
+            return;
+        }
 
         // Clean up data/apex/active and data/app-staging.
         cleanUpStagedAndActiveSession(device, buildInfo);

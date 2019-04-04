@@ -20,6 +20,8 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ZipUtil2;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -32,8 +34,8 @@ import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -57,9 +59,10 @@ public class TestMapping {
     private static final String KEY_OPTIONS = "options";
     private static final String TEST_MAPPING = "TEST_MAPPING";
     private static final String TEST_MAPPINGS_ZIP = "test_mappings.zip";
-    private static final String DISABLED_PRESUBMIT_TESTS = "disabled-presubmit-tests";
+    // A file containing module names that are disabled in presubmit test runs.
+    private static final String DISABLED_PRESUBMIT_TESTS_FILE = "disabled-presubmit-tests";
 
-    private Map<String, List<TestInfo>> mTestCollection = null;
+    private Map<String, Set<TestInfo>> mTestCollection = null;
 
     /**
      * Constructor to create a {@link TestMapping} object from a path to TEST_MAPPING file.
@@ -84,7 +87,7 @@ public class TestMapping {
                         // need to be considered.
                         continue;
                     }
-                    List<TestInfo> testsForGroup = new ArrayList<TestInfo>();
+                    Set<TestInfo> testsForGroup = new HashSet<>();
                     mTestCollection.put(group, testsForGroup);
                     JSONArray arr = root.getJSONArray(group);
                     for (int i = 0; i < arr.length(); i++) {
@@ -144,13 +147,13 @@ public class TestMapping {
      *     returned. false to return tests that require device to run.
      * @param keywords A set of {@link String} to be matched when filtering tests to run in a Test
      *     Mapping suite.
-     * @return A {@code List<TestInfo>} of the test infos.
+     * @return A {@code Set<TestInfo>} of the test infos.
      */
-    public List<TestInfo> getTests(
+    public Set<TestInfo> getTests(
             String testGroup, Set<String> disabledTests, boolean hostOnly, Set<String> keywords) {
-        List<TestInfo> tests = new ArrayList<TestInfo>();
+        Set<TestInfo> tests = new HashSet<TestInfo>();
 
-        for (TestInfo test : mTestCollection.getOrDefault(testGroup, new ArrayList<TestInfo>())) {
+        for (TestInfo test : mTestCollection.getOrDefault(testGroup, new HashSet<>())) {
             if (disabledTests != null && disabledTests.contains(test.getName())) {
                 CLog.d("Test is disabled: %s.", test);
                 continue;
@@ -228,23 +231,11 @@ public class TestMapping {
     public static Set<TestInfo> getTests(
             IBuildInfo buildInfo, String testGroup, boolean hostOnly, Set<String> keywords) {
         Set<TestInfo> tests = new HashSet<TestInfo>();
-        Set<String> disabledTests = new HashSet<>();
-
-        File testMappingsZip = buildInfo.getFile(TEST_MAPPINGS_ZIP);
-        File testMappingsDir = null;
+        File testMappingsDir = extractTestMappingsZip(buildInfo.getFile(TEST_MAPPINGS_ZIP));
         Stream<Path> stream = null;
         try {
-            testMappingsDir = ZipUtil2.extractZipToTemp(testMappingsZip, TEST_MAPPINGS_ZIP);
             Path testMappingsRootPath = Paths.get(testMappingsDir.getAbsolutePath());
-            if (testGroup.equals(PRESUBMIT)) {
-                File disabledPresubmitTestsFile =
-                        new File(testMappingsRootPath.toString(), DISABLED_PRESUBMIT_TESTS);
-                disabledTests.addAll(
-                        Arrays.asList(
-                                FileUtil.readStringFromFile(disabledPresubmitTestsFile)
-                                        .split("\\r?\\n")));
-            }
-
+            Set<String> disabledTests = getDisabledTests(testMappingsRootPath, testGroup);
             stream = Files.walk(testMappingsRootPath, FileVisitOption.FOLLOW_LINKS);
             stream.filter(path -> path.getFileName().toString().equals(TEST_MAPPING))
                     .forEach(
@@ -258,13 +249,10 @@ public class TestMapping {
                                                             keywords)));
 
         } catch (IOException e) {
-            RuntimeException runtimeException =
-                    new RuntimeException(
-                            String.format(
-                                    "IO error (%s) when reading tests from TEST_MAPPING files (%s)",
-                                    e.getMessage(), testMappingsZip.getAbsolutePath()),
-                            e);
-            throw runtimeException;
+            throw new RuntimeException(
+                    String.format(
+                            "IO exception (%s) when reading tests from TEST_MAPPING files (%s)",
+                            e.getMessage(), testMappingsDir.getAbsolutePath()), e);
         } finally {
             if (stream != null) {
                 stream.close();
@@ -273,5 +261,112 @@ public class TestMapping {
         }
 
         return TestMapping.mergeTests(tests);
+    }
+
+    /**
+     * Helper to find all tests in the TEST_MAPPING files from a given directory.
+     *
+     * @param testMappingsDir the {@link File} the directory containing all Test Mapping files.
+     * @return A {@code Map<String, Set<TestInfo>>} of tests in the given directory and its child
+     *     directories.
+     */
+    public static Map<String, Set<TestInfo>> getAllTests(File testMappingsDir) {
+        Map<String, Set<TestInfo>> allTests = new HashMap<String, Set<TestInfo>>();
+        Stream<Path> stream = null;
+        try {
+            Path testMappingsRootPath = Paths.get(testMappingsDir.getAbsolutePath());
+            stream = Files.walk(testMappingsRootPath, FileVisitOption.FOLLOW_LINKS);
+            stream.filter(path -> path.getFileName().toString().equals(TEST_MAPPING))
+                    .forEach(
+                            path ->
+                                    getAllTests(allTests, path, testMappingsRootPath));
+
+        } catch (IOException e) {
+            throw new RuntimeException(
+                    String.format(
+                            "IO exception (%s) when reading tests from TEST_MAPPING files (%s)",
+                            e.getMessage(), testMappingsDir.getAbsolutePath()), e);
+        } finally {
+            if (stream != null) {
+                stream.close();
+            }
+        }
+        return allTests;
+    }
+
+    /**
+     * Extract a zip file and return the directory that contains the content of unzipped files.
+     *
+     * @param testMappingsZip A {@link File} of the test mappings zip to extract.
+     * @return a {@link File} pointing to the temp directory for test mappings zip.
+     */
+    public static File extractTestMappingsZip(File testMappingsZip) {
+        File testMappingsDir = null;
+        try {
+            testMappingsDir = ZipUtil2.extractZipToTemp(testMappingsZip, TEST_MAPPINGS_ZIP);
+        } catch (IOException e) {
+            throw new RuntimeException(
+                    String.format(
+                            "IO exception (%s) when extracting test mappings zip (%s)",
+                            e.getMessage(), testMappingsZip.getAbsolutePath()), e);
+        }
+        return testMappingsDir;
+    }
+
+    /**
+     * Get disabled tests from test mapping artifact.
+     *
+     * @param testMappingsRootPath The {@link Path} to a test mappings zip path.
+     * @param testGroup a {@link String} of the test group.
+     * @return a {@link Set<String>} containing all the disabled presubmit tests. No test is
+     *     returned if the testGroup is not PRESUBMIT.
+     */
+    @VisibleForTesting
+    static Set<String> getDisabledTests(Path testMappingsRootPath, String testGroup) {
+        Set<String> disabledTests = new HashSet<>();
+        File disabledPresubmitTestsFile =
+                new File(testMappingsRootPath.toString(), DISABLED_PRESUBMIT_TESTS_FILE);
+        if (!(testGroup.equals(PRESUBMIT) && disabledPresubmitTestsFile.exists())) {
+            return disabledTests;
+        }
+        try {
+            disabledTests.addAll(
+                    Arrays.asList(
+                            FileUtil.readStringFromFile(disabledPresubmitTestsFile)
+                                    .split("\\r?\\n")));
+        } catch (IOException e) {
+            throw new RuntimeException(
+                    String.format(
+                            "IO exception (%s) when reading disabled tests from file (%s)",
+                            e.getMessage(), disabledPresubmitTestsFile.getAbsolutePath()), e);
+        }
+        return disabledTests;
+    }
+
+    /**
+     * Helper to find all tests in the TEST_MAPPING files from a given directory.
+     *
+     * @param allTests the {@code HashMap<String, Set<TestInfo>>} containing the tests of each
+     * test group.
+     * @param path the {@link Path} to a TEST_MAPPING file.
+     * @param testMappingsRootPath the {@link Path} to a test mappings zip path.
+     */
+    private static void getAllTests(Map<String, Set<TestInfo>> allTests,
+        Path path, Path testMappingsRootPath) {
+        Map<String, Set<TestInfo>> testCollection =
+            new TestMapping(path, testMappingsRootPath).getTestCollection();
+        for (String group : testCollection.keySet()) {
+            allTests.computeIfAbsent(group, k -> new HashSet<>()).addAll(testCollection.get(group));
+        }
+    }
+
+    /**
+     * Helper to get the test collection in a TEST_MAPPING file.
+     *
+     * @return A {@code Map<String, Set<TestInfo>>} containing the test collection in a
+     *     TEST_MAPPING file.
+     */
+    private Map<String, Set<TestInfo>> getTestCollection() {
+        return mTestCollection;
     }
 }
