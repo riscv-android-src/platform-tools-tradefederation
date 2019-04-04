@@ -786,6 +786,9 @@ public abstract class ITestSuite
                 if (test instanceof IInvocationContextReceiver) {
                     ((IInvocationContextReceiver) test).setInvocationContext(mContext);
                 }
+                if (test instanceof ITestCollector) {
+                    ((ITestCollector) test).setCollectTestsOnly(mCollectTestsOnly);
+                }
             }
         }
     }
