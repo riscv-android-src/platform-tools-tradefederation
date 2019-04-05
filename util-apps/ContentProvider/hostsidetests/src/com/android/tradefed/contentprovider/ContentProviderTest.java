@@ -15,7 +15,9 @@
  */
 package com.android.tradefed.contentprovider;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 
 import com.android.tradefed.device.contentprovider.ContentProviderHandler;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
@@ -32,12 +34,16 @@ import java.io.File;
 /** Host tests for the Tradefed Content Provider. */
 @RunWith(DeviceJUnit4ClassRunner.class)
 public class ContentProviderTest extends BaseHostJUnit4Test {
+    private static final String EXTERNAL_STORAGE_PATH = "/storage/emulated/%d/";
 
     private ContentProviderHandler mHandler;
+    private String mCurrentUserStoragePath;
 
     @Before
     public void setUp() throws Exception {
         mHandler = new ContentProviderHandler(getDevice());
+        mCurrentUserStoragePath =
+                String.format(EXTERNAL_STORAGE_PATH, getDevice().getCurrentUser());
         assertTrue(mHandler.setUp());
     }
 
@@ -54,9 +60,33 @@ public class ContentProviderTest extends BaseHostJUnit4Test {
         try {
             boolean res = mHandler.pushFile(tmpFile, "/sdcard/" + tmpFile.getName());
             assertTrue(res);
-            assertTrue(getDevice().doesFileExist("/sdcard/" + tmpFile.getName()));
+            assertTrue(getDevice().doesFileExist(mCurrentUserStoragePath + tmpFile.getName()));
         } finally {
             FileUtil.deleteFile(tmpFile);
+        }
+    }
+
+    @Test
+    public void testPullFile() throws Exception {
+        String fileContent = "some test content";
+
+        // First, push the file onto a device.
+        File tmpFile = FileUtil.createTempFile("tmpFileToPush", ".txt");
+        FileUtil.writeToFile(fileContent, tmpFile);
+        mHandler.pushFile(tmpFile, "/sdcard/" + tmpFile.getName());
+
+        File tmpPullFile = new File("fileToPullTo.txt");
+        // Local file does not exist before we pull the content from the device.
+        assertFalse(tmpPullFile.exists());
+
+        try {
+            boolean res = mHandler.pullFile("/sdcard/" + tmpFile.getName(), tmpPullFile);
+            assertTrue(res);
+            assertTrue(tmpPullFile.exists()); // Verify existence.
+            assertEquals(FileUtil.readStringFromFile(tmpPullFile), fileContent); // Verify content.
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+            FileUtil.deleteFile(tmpPullFile);
         }
     }
 }
