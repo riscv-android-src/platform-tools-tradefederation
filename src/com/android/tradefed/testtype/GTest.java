@@ -343,6 +343,8 @@ public class GTest extends GTestBase implements IDeviceTest {
         if (mStopRuntime) {
             mDevice.executeShellCommand("stop");
         }
+        // Insert the coverage listener if code coverage collection is enabled.
+        listener = addNativeCoverageListenerIfEnabled(mDevice, listener);
         Throwable throwable = null;
         try {
             doRunAllTestsInSubdirectory(testPath, mDevice, listener);
