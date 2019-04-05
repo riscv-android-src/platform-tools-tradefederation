@@ -42,7 +42,7 @@ import java.util.HashMap;
  */
 final class NativeCodeCoverageListener extends ResultForwarder {
 
-    private static final String NATIVE_COVERAGE_DEVICE_PATH = "/data/misc/gcov";
+    private static final String NATIVE_COVERAGE_DEVICE_PATH = "/data/misc/trace";
     private static final String COVERAGE_FILE_LIST_COMMAND =
             String.format("find %s -name '*.gcda'", NATIVE_COVERAGE_DEVICE_PATH);
 

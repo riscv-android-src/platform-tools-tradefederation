@@ -92,8 +92,8 @@ public class NativeCodeCoverageListenerTest {
         // Setup mocks to write the coverage measurement to the file.
         doReturn(
                         new StringJoiner("\n")
-                                .add("/data/misc/gcov/path/to/coverage.gcda")
-                                .add("/data/misc/gcov/path/to/.hidden/coverage2.gcda")
+                                .add("/data/misc/trace/path/to/coverage.gcda")
+                                .add("/data/misc/trace/path/to/.hidden/coverage2.gcda")
                                 .toString())
                 .when(mMockDevice)
                 .executeShellCommand(anyString());
@@ -137,7 +137,7 @@ public class NativeCodeCoverageListenerTest {
     @Test
     public void testFailure_unableToPullFile() throws DeviceNotAvailableException {
         // Setup mocks.
-        doReturn("/data/misc/gcov/some/path/to/coverage.gcda\n")
+        doReturn("/data/misc/trace/some/path/to/coverage.gcda\n")
                 .when(mMockDevice)
                 .executeShellCommand(anyString());
         doReturn(false).when(mMockDevice).pullFile(anyString(), any());
