@@ -60,6 +60,7 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.time.Clock;
 import java.util.ArrayList;
@@ -2390,11 +2391,13 @@ public class NativeDeviceTest {
     /** Test when {@link NativeDevice#executeShellV2Command(String)} returns a success. */
     @Test
     public void testExecuteShellV2Command() throws Exception {
+        OutputStream stdout = null, stderr = null;
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.SUCCESS);
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
-                                100, "adb", "-s", "serial", "shell", "some", "command"))
+                                100, stdout, stderr, "adb", "-s", "serial", "shell", "some",
+                                "command"))
                 .andReturn(res);
         EasyMock.replay(mMockRunUtil, mMockIDevice);
         assertNotNull(mTestDevice.executeShellV2Command("some command"));
@@ -2407,12 +2410,14 @@ public class NativeDeviceTest {
      */
     @Test
     public void testExecuteShellV2Command_timeout() throws Exception {
+        OutputStream stdout = null, stderr = null;
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.TIMED_OUT);
         res.setStderr("timed out");
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
-                                200L, "adb", "-s", "serial", "shell", "some", "command"))
+                                200L, stdout, stderr, "adb", "-s", "serial", "shell", "some",
+                                "command"))
                 .andReturn(res)
                 .times(2);
         EasyMock.replay(mMockRunUtil, mMockIDevice);
@@ -2431,12 +2436,14 @@ public class NativeDeviceTest {
      */
     @Test
     public void testExecuteShellV2Command_fail() throws Exception {
+        OutputStream stdout = null, stderr = null;
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.FAILED);
         res.setStderr("timed out");
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
-                                200L, "adb", "-s", "serial", "shell", "some", "command"))
+                                200L, stdout, stderr, "adb", "-s", "serial", "shell", "some",
+                                "command"))
                 .andReturn(res)
                 .times(1);
         EasyMock.replay(mMockRunUtil, mMockIDevice);
@@ -2451,6 +2458,7 @@ public class NativeDeviceTest {
     /** Unit test for {@link INativeDevice#setProperty(String, String)}. */
     @Test
     public void testSetProperty() throws DeviceNotAvailableException {
+        OutputStream stdout = null, stderr = null;
         mTestDevice =
                 new TestableAndroidNativeDevice() {
                     @Override
@@ -2462,7 +2470,8 @@ public class NativeDeviceTest {
         res.setStatus(CommandStatus.SUCCESS);
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
-                                120000, "adb", "-s", "serial", "shell", "setprop", "test", "value"))
+                                120000, stdout, stderr, "adb", "-s", "serial", "shell", "setprop",
+                                "test", "value"))
                 .andReturn(res);
         EasyMock.replay(mMockRunUtil, mMockIDevice);
         assertTrue(mTestDevice.setProperty("test", "value"));
