@@ -2729,6 +2729,8 @@ public class NativeDevice implements IManagedTestDevice {
             throw new UnsupportedOperationException(
                     "Fastboot is not available and cannot reboot into bootloader");
         }
+        // If we go to bootloader, it's probably for flashing so ensure we re-check the provider
+        mShouldSkipContentProviderSetup = false;
         CLog.i("Rebooting device %s in state %s into bootloader", getSerialNumber(),
                 getDeviceState());
         if (TestDeviceState.FASTBOOT.equals(getDeviceState())) {
@@ -4176,6 +4178,10 @@ public class NativeDevice implements IManagedTestDevice {
     /** Returns the {@link ContentProviderHandler} or null if not available. */
     @VisibleForTesting
     ContentProviderHandler getContentProvider() throws DeviceNotAvailableException {
+        // If disabled at the device level, don't attempt any checks.
+        if (!getOptions().shouldUseContentProvider()) {
+            return null;
+        }
         // Prevent usage of content provider before API 25 as it would not work well.
         if (getApiLevel() < 25) {
             return null;
