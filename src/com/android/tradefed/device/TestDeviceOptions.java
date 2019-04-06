@@ -138,6 +138,14 @@ public class TestDeviceOptions {
             "the minimum battery level required to continue the invocation. Scale: 0-100")
     private Integer mCutoffBattery = null;
 
+    @Option(
+        name = "use-content-provider",
+        description =
+                "Allow to disable the use of the content provider at the device level. "
+                        + "This results in falling back to standard adb push/pull."
+    )
+    private boolean mUseContentProvider = true;
+
     // ====================== Options Related to Virtual Devices ======================
     @Option(
             name = INSTANCE_TYPE_OPTION,
@@ -458,6 +466,11 @@ public class TestDeviceOptions {
     /** Returns the instance type of virtual device that should be created */
     public InstanceType getInstanceType() {
         return mInstanceType;
+    }
+
+    /** Returns whether or not the Tradefed content provider can be used to push/pull files. */
+    public boolean shouldUseContentProvider() {
+        return mUseContentProvider;
     }
 
     // =========================== Getter and Setter for Virtual Devices
