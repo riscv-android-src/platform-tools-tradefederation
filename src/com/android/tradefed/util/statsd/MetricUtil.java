@@ -18,6 +18,7 @@ package com.android.tradefed.util.statsd;
 import com.android.os.StatsLog.ConfigMetricsReport;
 import com.android.os.StatsLog.ConfigMetricsReportList;
 import com.android.os.StatsLog.EventMetricData;
+import com.android.os.StatsLog.StatsdStatsReport;
 import com.android.os.StatsLog.StatsLogReport;
 import com.android.tradefed.device.CollectingByteOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -26,6 +27,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.InvalidProtocolBufferException;
 
 import java.util.ArrayList;
@@ -34,8 +36,12 @@ import java.util.List;
 
 /** Utility class for pulling metrics from pushed statsd configurations. */
 public class MetricUtil {
+    @VisibleForTesting
     static final String DUMP_REPORT_CMD_TEMPLATE =
             "cmd stats dump-report %s --include_current_bucket --proto";
+    // The command is documented in frameworks/base/cmds/statsd/src/StatsService.cpp.
+    @VisibleForTesting
+    static final String DUMP_STATSD_METADATA_CMD = "dumpsys stats --metadata --proto";
 
     /** Get statsd event metrics data from the device using the statsd config id. */
     public static List<EventMetricData> getEventMetricData(ITestDevice device, long configId)
@@ -45,13 +51,16 @@ public class MetricUtil {
             CLog.d("No stats report collected.");
             return new ArrayList<EventMetricData>();
         }
-        ConfigMetricsReport report = reports.getReports(0);
         List<EventMetricData> data = new ArrayList<>();
-        for (StatsLogReport metric : report.getMetricsList()) {
-            data.addAll(metric.getEventMetrics().getDataList());
+        // Usually, there is only one report. However, a runtime restart will generate a new report
+        // for the same config, resulting in multiple reports. Their data is independent and can
+        // simply be concatenated together.
+        for (ConfigMetricsReport report : reports.getReportsList()) {
+            for (StatsLogReport metric : report.getMetricsList()) {
+                data.addAll(metric.getEventMetrics().getDataList());
+            }
         }
         data.sort(Comparator.comparing(EventMetricData::getElapsedTimestampNanos));
-
         CLog.d("Received EventMetricDataList as following:\n");
         for (EventMetricData d : data) {
             CLog.d("Atom at %d:\n%s", d.getElapsedTimestampNanos(), d.getAtom().toString());
@@ -63,6 +72,14 @@ public class MetricUtil {
     public static InputStreamSource getReportByteStream(ITestDevice device, long configId)
             throws DeviceNotAvailableException {
         return new ByteArrayInputStreamSource(getReportByteArray(device, configId));
+    }
+
+    /** Get statsd metadata which also contains system server crash information. */
+    public static StatsdStatsReport getStatsdMetadata(ITestDevice device)
+            throws DeviceNotAvailableException, InvalidProtocolBufferException {
+        final CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
+        device.executeShellCommand(DUMP_STATSD_METADATA_CMD, receiver);
+        return StatsdStatsReport.parser().parseFrom(receiver.getOutput());
     }
 
     /** Get the report list proto from the device for the given {@code configId}. */
@@ -86,6 +103,4 @@ public class MetricUtil {
                 String.format(DUMP_REPORT_CMD_TEMPLATE, String.valueOf(configId)), receiver);
         return receiver.getOutput();
     }
-
-
 }

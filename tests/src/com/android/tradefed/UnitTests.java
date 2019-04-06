@@ -99,6 +99,7 @@ import com.android.tradefed.device.metric.PagetypeInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.PerfettoPullerMetricCollectorTest;
 import com.android.tradefed.device.metric.ProcessMaxMemoryCollectorTest;
 import com.android.tradefed.device.metric.RebootReasonCollectorTest;
+import com.android.tradefed.device.metric.RuntimeRestartCollectorTest;
 import com.android.tradefed.device.metric.ScheduleMultipleDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.ScheduledDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.ScreenshotOnFailureCollectorTest;
@@ -469,6 +470,7 @@ import org.junit.runners.Suite.SuiteClasses;
     PerfettoPullerMetricCollectorTest.class,
     ProcessMaxMemoryCollectorTest.class,
     RebootReasonCollectorTest.class,
+    RuntimeRestartCollectorTest.class,
     ScheduledDeviceMetricCollectorTest.class,
     ScheduleMultipleDeviceMetricCollectorTest.class,
     ScreenshotOnFailureCollectorTest.class,
