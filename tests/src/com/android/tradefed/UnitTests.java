@@ -235,6 +235,7 @@ import com.android.tradefed.testtype.JarHostTestTest;
 import com.android.tradefed.testtype.JavaCodeCoverageListenerTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestParserTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestTest;
+import com.android.tradefed.testtype.NativeCodeCoverageListenerTest;
 import com.android.tradefed.testtype.NativeStressTestParserTest;
 import com.android.tradefed.testtype.NativeStressTestTest;
 import com.android.tradefed.testtype.NoisyDryRunTestTest;
@@ -647,6 +648,7 @@ import org.junit.runners.Suite.SuiteClasses;
     JavaCodeCoverageListenerTest.class,
     NativeBenchmarkTestParserTest.class,
     NativeBenchmarkTestTest.class,
+    NativeCodeCoverageListenerTest.class,
     NativeStressTestParserTest.class,
     NativeStressTestTest.class,
     NoisyDryRunTestTest.class,
