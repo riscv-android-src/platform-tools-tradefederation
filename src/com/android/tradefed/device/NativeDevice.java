@@ -4039,6 +4039,8 @@ public class NativeDevice implements IManagedTestDevice {
         if (getIDevice() instanceof StubDevice) {
             return;
         }
+        // Reset the Content Provider bit.
+        mShouldSkipContentProviderSetup = false;
         try {
             // If we never installed it, don't even bother checking for it during tear down.
             if (mContentProvider == null) {
