@@ -109,11 +109,15 @@ public interface IInvocationExecution {
      *
      * @param context the {@link IInvocationContext} of the invocation.
      * @param config the {@link IConfiguration} of this test run.
+     * @param logger the {@link ITestLogger} to report logs.
      * @param exception the original exception thrown by the test running.
      * @throws Throwable
      */
     public default void doTeardown(
-            IInvocationContext context, IConfiguration config, Throwable exception)
+            IInvocationContext context,
+            IConfiguration config,
+            ITestLogger logger,
+            Throwable exception)
             throws Throwable {}
 
     /**
