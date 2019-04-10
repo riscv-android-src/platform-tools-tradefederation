@@ -112,9 +112,8 @@ public class ContentProviderHandlerTest {
                 .executeShellV2Command(
                         eq(
                                 "content delete --user 99 --uri "
-                                        + ContentProviderHandler.CONTENT_PROVIDER_URI
-                                        + "/"
-                                        + devicePath));
+                                        + ContentProviderHandler.createEscapedContentUri(
+                                                devicePath)));
         assertTrue(mProvider.deleteFile(devicePath));
     }
 
@@ -130,9 +129,8 @@ public class ContentProviderHandlerTest {
                 .executeShellV2Command(
                         eq(
                                 "content delete --user 99 --uri "
-                                        + ContentProviderHandler.CONTENT_PROVIDER_URI
-                                        + "/"
-                                        + devicePath));
+                                        + ContentProviderHandler.createEscapedContentUri(
+                                                devicePath)));
         assertFalse(mProvider.deleteFile(devicePath));
     }
 
@@ -148,9 +146,8 @@ public class ContentProviderHandlerTest {
                     .executeShellV2Command(
                             eq(
                                     "content write --user 99 --uri "
-                                            + ContentProviderHandler.CONTENT_PROVIDER_URI
-                                            + "/"
-                                            + devicePath),
+                                            + ContentProviderHandler.createEscapedContentUri(
+                                                    devicePath)),
                             eq(toPush));
             assertTrue(mProvider.pushFile(toPush, devicePath));
         } finally {
@@ -178,9 +175,7 @@ public class ContentProviderHandlerTest {
             assertEquals(
                     shellCommandCaptor.getValue(),
                     "content read --user 99 --uri "
-                            + ContentProviderHandler.CONTENT_PROVIDER_URI
-                            + "/"
-                            + devicePath);
+                            + ContentProviderHandler.createEscapedContentUri(devicePath));
         } finally {
             FileUtil.deleteFile(pullTo);
         }
@@ -214,6 +209,17 @@ public class ContentProviderHandlerTest {
         } finally {
             FileUtil.deleteFile(pullTo);
         }
+    }
+
+    @Test
+    public void testCreateUri() throws Exception {
+        String espacedUrl =
+                ContentProviderHandler.createEscapedContentUri("filepath/file name spaced (data)");
+        // We expect the full url to be quoted to avoid space issues and the URL to be encoded.
+        assertEquals(
+                "\"content://android.tradefed.contentprovider/filepath%252Ffile%2520name"
+                        + "%2520spaced%2520%28data%29\"",
+                espacedUrl);
     }
 
     private CommandResult mockSuccess() {
