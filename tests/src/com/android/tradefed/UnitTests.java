@@ -28,6 +28,7 @@ import com.android.tradefed.build.OtaZipfileBuildProviderTest;
 import com.android.tradefed.build.SdkBuildInfoTest;
 import com.android.tradefed.command.CommandFileParserTest;
 import com.android.tradefed.command.CommandFileWatcherTest;
+import com.android.tradefed.command.CommandInterrupterTest;
 import com.android.tradefed.command.CommandOptionsTest;
 import com.android.tradefed.command.CommandRunnerTest;
 import com.android.tradefed.command.CommandSchedulerTest;
@@ -135,6 +136,7 @@ import com.android.tradefed.suite.checker.KeyguardStatusCheckerTest;
 import com.android.tradefed.suite.checker.SystemServerFileDescriptorCheckerTest;
 import com.android.tradefed.suite.checker.SystemServerStatusCheckerTest;
 import com.android.tradefed.suite.checker.TimeStatusCheckerTest;
+import com.android.tradefed.suite.checker.UserCheckerTest;
 import com.android.tradefed.targetprep.AllTestAppsInstallSetupTest;
 import com.android.tradefed.targetprep.AppSetupTest;
 import com.android.tradefed.targetprep.BuildInfoAttributePreparerTest;
@@ -272,6 +274,7 @@ import com.android.tradefed.util.TestLoaderTest;
 import com.android.tradefed.util.TestMappingTest;
 import com.android.tradefed.util.TimeUtilTest;
 import com.android.tradefed.util.TimeValTest;
+import com.android.tradefed.util.UserUtilTest;
 import com.android.tradefed.util.ZipUtil2Test;
 import com.android.tradefed.util.ZipUtilTest;
 import com.android.tradefed.util.hostmetric.AbstractHostMonitorTest;
@@ -315,6 +318,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // command
     CommandFileParserTest.class,
     CommandFileWatcherTest.class,
+    CommandInterrupterTest.class,
     CommandOptionsTest.class,
     CommandRunnerTest.class,
     CommandSchedulerTest.class,
@@ -488,6 +492,7 @@ import org.junit.runners.Suite.SuiteClasses;
     SystemServerFileDescriptorCheckerTest.class,
     SystemServerStatusCheckerTest.class,
     TimeStatusCheckerTest.class,
+    UserCheckerTest.class,
 
     // testtype
     AndroidJUnitTestTest.class,
@@ -609,6 +614,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TestMappingTest.class,
     TimeUtilTest.class,
     TimeValTest.class,
+    UserUtilTest.class,
     ZipUtilTest.class,
     ZipUtil2Test.class,
 
