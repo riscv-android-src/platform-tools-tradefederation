@@ -65,6 +65,7 @@ class CLITranslator(object):
         """
         self.mod_info = module_info
 
+    # pylint: disable=too-many-locals
     def _find_test_infos(self, test, tm_test_detail):
         """Return set of TestInfos based on a given test.
 
@@ -88,29 +89,30 @@ class CLITranslator(object):
             # test name, so the details can be set after test_info object
             # is created.
             try:
-                test_info = finder.find_method(finder.test_finder_instance,
-                                               test)
+                found_test_infos = finder.find_method(
+                    finder.test_finder_instance, test)
             except atest_error.TestDiscoveryException as e:
                 find_test_err_msg = e
-            if test_info:
-                if tm_test_detail:
-                    test_info.data[constants.TI_MODULE_ARG] = (
-                        tm_test_detail.options)
-                    test_info.from_test_mapping = True
-                    test_info.host = tm_test_detail.host
-                test_infos.add(test_info)
+            if found_test_infos:
+                for test_info in found_test_infos:
+                    if tm_test_detail:
+                        test_info.data[constants.TI_MODULE_ARG] = (
+                            tm_test_detail.options)
+                        test_info.from_test_mapping = True
+                        test_info.host = tm_test_detail.host
+                    test_infos.add(test_info)
                 test_found = True
                 finder_info = finder.finder_info
                 print("Found '%s' as %s" % (
                     atest_utils.colorize(test, constants.GREEN),
                     finder_info))
                 test_finders.append(finder_info)
-                test_info_str = str(test_info)
+                test_info_str = ','.join([str(x) for x in found_test_infos])
                 break
         if not test_found:
             f_results = self._fuzzy_search_and_msg(test, find_test_err_msg)
             if f_results:
-                test_infos.add(f_results)
+                test_infos.update(f_results)
                 test_found = True
                 test_finders.append(FUZZY_FINDER)
         metrics.FindTestFinishEvent(
@@ -130,7 +132,7 @@ class CLITranslator(object):
             find_test_err_msg: A string of find test error message.
 
         Returns:
-            A TestInfos if found, otherwise None.
+            A list of TestInfos if found, otherwise None.
         """
         print('No test found for: %s' %
               atest_utils.colorize(test, constants.RED))
@@ -139,9 +141,10 @@ class CLITranslator(object):
         mod_finder = module_finder.ModuleFinder(self.mod_info)
         results = mod_finder.get_fuzzy_searching_results(test)
         if len(results) == 1 and self._confirm_running(results):
-            test_info = mod_finder.find_test_by_module_name(results[0])
-            if test_info:
-                return test_info
+            found_test_infos = mod_finder.find_test_by_module_name(results[0])
+            # found_test_infos is a list with at most 1 element.
+            if found_test_infos:
+                return found_test_infos
         elif len(results) > 1:
             self._print_fuzzy_searching_results(results)
         else:

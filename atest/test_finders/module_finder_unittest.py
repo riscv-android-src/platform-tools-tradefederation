@@ -110,9 +110,10 @@ class ModuleFinderUnittests(unittest.TestCase):
                     'path': [uc.MODULE_DIR],
                     constants.MODULE_CLASS: []}
         self.mod_finder.module_info.get_module_info.return_value = mod_info
+        t_infos = self.mod_finder.find_test_by_module_name(uc.MODULE_NAME)
         unittest_utils.assert_equal_testinfos(
             self,
-            self.mod_finder.find_test_by_module_name(uc.MODULE_NAME),
+            t_infos[0],
             uc.MODULE_INFO)
         self.mod_finder.module_info.get_module_info.return_value = None
         self.mod_finder.module_info.is_testable_module.return_value = False
@@ -140,35 +141,38 @@ class ModuleFinderUnittests(unittest.TestCase):
             constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
             constants.MODULE_NAME: uc.MODULE_NAME,
             constants.MODULE_CLASS: []}
+        t_infos = self.mod_finder.find_test_by_class_name(uc.CLASS_NAME)
         unittest_utils.assert_equal_testinfos(
-            self, self.mod_finder.find_test_by_class_name(uc.CLASS_NAME), uc.CLASS_INFO)
+            self, t_infos[0], uc.CLASS_INFO)
 
         # with method
         mock_build.return_value = uc.MODULE_BUILD_TARGETS
         class_with_method = '%s#%s' % (uc.CLASS_NAME, uc.METHOD_NAME)
+        t_infos = self.mod_finder.find_test_by_class_name(class_with_method)
         unittest_utils.assert_equal_testinfos(
-            self,
-            self.mod_finder.find_test_by_class_name(class_with_method),
-            uc.METHOD_INFO)
+            self, t_infos[0], uc.METHOD_INFO)
         mock_build.return_value = uc.MODULE_BUILD_TARGETS
         class_methods = '%s,%s' % (class_with_method, uc.METHOD2_NAME)
+        t_infos = self.mod_finder.find_test_by_class_name(class_methods)
         unittest_utils.assert_equal_testinfos(
-            self, self.mod_finder.find_test_by_class_name(class_methods),
+            self, t_infos[0],
             FLAT_METHOD_INFO)
         # module and rel_config passed in
         mock_build.return_value = uc.CLASS_BUILD_TARGETS
+        t_infos = self.mod_finder.find_test_by_class_name(
+            uc.CLASS_NAME, uc.MODULE_NAME, uc.CONFIG_FILE)
         unittest_utils.assert_equal_testinfos(
-            self, self.mod_finder.find_test_by_class_name(
-                uc.CLASS_NAME, uc.MODULE_NAME, uc.CONFIG_FILE), uc.CLASS_INFO)
+            self, t_infos[0], uc.CLASS_INFO)
         # find output fails to find class file
         mock_checkoutput.return_value = ''
         self.assertIsNone(self.mod_finder.find_test_by_class_name('Not class'))
         # class is outside given module path
         mock_checkoutput.side_effect = classoutside_side_effect
-        unittest_utils.assert_equal_testinfos(
-            self, self.mod_finder.find_test_by_class_name(uc.CLASS_NAME,
+        t_infos = self.mod_finder.find_test_by_class_name(uc.CLASS_NAME,
                                                           uc.MODULE2_NAME,
-                                                          uc.CONFIG2_FILE),
+                                                          uc.CONFIG2_FILE)
+        unittest_utils.assert_equal_testinfos(
+            self, t_infos[0],
             CLASS_INFO_MODULE_2)
 
     @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
@@ -193,12 +197,12 @@ class ModuleFinderUnittests(unittest.TestCase):
                     constants.MODULE_PATH: [uc.MODULE_DIR],
                     constants.MODULE_CLASS: []}
         self.mod_finder.module_info.get_module_info.return_value = mod_info
-        t_info = self.mod_finder.find_test_by_module_and_class(MODULE_CLASS)
-        unittest_utils.assert_equal_testinfos(self, t_info, uc.CLASS_INFO)
+        t_infos = self.mod_finder.find_test_by_module_and_class(MODULE_CLASS)
+        unittest_utils.assert_equal_testinfos(self, t_infos[0], uc.CLASS_INFO)
         # with method
         mock_build.return_value = uc.MODULE_BUILD_TARGETS
-        t_info = self.mod_finder.find_test_by_module_and_class(MODULE_CLASS_METHOD)
-        unittest_utils.assert_equal_testinfos(self, t_info, uc.METHOD_INFO)
+        t_infos = self.mod_finder.find_test_by_module_and_class(MODULE_CLASS_METHOD)
+        unittest_utils.assert_equal_testinfos(self, t_infos[0], uc.METHOD_INFO)
         self.mod_finder.module_info.is_testable_module.return_value = False
         # bad module, good class, returns None
         bad_module = '%s:%s' % ('BadMod', uc.CLASS_NAME)
@@ -232,13 +236,13 @@ class ModuleFinderUnittests(unittest.TestCase):
                     constants.MODULE_PATH: [uc.CC_MODULE_DIR],
                     constants.MODULE_CLASS: []}
         self.mod_finder.module_info.get_module_info.return_value = mod_info
-        t_info = self.mod_finder.find_test_by_module_and_class(CC_MODULE_CLASS)
-        unittest_utils.assert_equal_testinfos(self, t_info, uc.CC_MODULE_CLASS_INFO)
+        t_infos = self.mod_finder.find_test_by_module_and_class(CC_MODULE_CLASS)
+        unittest_utils.assert_equal_testinfos(self, t_infos[0], uc.CC_MODULE_CLASS_INFO)
         # with method
         mock_build.return_value = uc.MODULE_BUILD_TARGETS
         mock_fcf.side_effect = [None, None, '/']
-        t_info = self.mod_finder.find_test_by_module_and_class(CC_MODULE_CLASS_METHOD)
-        unittest_utils.assert_equal_testinfos(self, t_info, uc.CC_METHOD_INFO)
+        t_infos = self.mod_finder.find_test_by_module_and_class(CC_MODULE_CLASS_METHOD)
+        unittest_utils.assert_equal_testinfos(self, t_infos[0], uc.CC_METHOD_INFO)
         # bad module, good class, returns None
         bad_module = '%s:%s' % ('BadMod', uc.CC_CLASS_NAME)
         self.mod_finder.module_info.get_module_info.return_value = None
@@ -264,8 +268,9 @@ class ModuleFinderUnittests(unittest.TestCase):
             constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
             constants.MODULE_NAME: uc.MODULE_NAME,
             constants.MODULE_CLASS: []}
+        t_infos = self.mod_finder.find_test_by_package_name(uc.PACKAGE)
         unittest_utils.assert_equal_testinfos(
-            self, self.mod_finder.find_test_by_package_name(uc.PACKAGE),
+            self, t_infos[0],
             uc.PACKAGE_INFO)
         # with method, should raise
         pkg_with_method = '%s#%s' % (uc.PACKAGE, uc.METHOD_NAME)
@@ -273,9 +278,10 @@ class ModuleFinderUnittests(unittest.TestCase):
                           self.mod_finder.find_test_by_package_name,
                           pkg_with_method)
         # module and rel_config passed in
+        t_infos = self.mod_finder.find_test_by_package_name(
+            uc.PACKAGE, uc.MODULE_NAME, uc.CONFIG_FILE)
         unittest_utils.assert_equal_testinfos(
-            self, self.mod_finder.find_test_by_package_name(
-                uc.PACKAGE, uc.MODULE_NAME, uc.CONFIG_FILE), uc.PACKAGE_INFO)
+            self, t_infos[0], uc.PACKAGE_INFO)
         # find output fails to find class file
         mock_checkoutput.return_value = ''
         self.assertIsNone(self.mod_finder.find_test_by_package_name('Not pkg'))
@@ -297,8 +303,8 @@ class ModuleFinderUnittests(unittest.TestCase):
                     constants.MODULE_PATH: [uc.MODULE_DIR],
                     constants.MODULE_CLASS: []}
         self.mod_finder.module_info.get_module_info.return_value = mod_info
-        t_info = self.mod_finder.find_test_by_module_and_package(MODULE_PACKAGE)
-        unittest_utils.assert_equal_testinfos(self, t_info, uc.PACKAGE_INFO)
+        t_infos = self.mod_finder.find_test_by_module_and_package(MODULE_PACKAGE)
+        unittest_utils.assert_equal_testinfos(self, t_infos[0], uc.PACKAGE_INFO)
         # with method, raises
         module_pkg_with_method = '%s:%s#%s' % (uc.MODULE2_NAME, uc.PACKAGE,
                                                uc.METHOD_NAME)
@@ -354,23 +360,27 @@ class ModuleFinderUnittests(unittest.TestCase):
 
         class_path = '%s.kt' % uc.CLASS_NAME
         mock_build.return_value = uc.CLASS_BUILD_TARGETS
+        t_infos = self.mod_finder.find_test_by_path(class_path)
         unittest_utils.assert_equal_testinfos(
-            self, uc.CLASS_INFO, self.mod_finder.find_test_by_path(class_path))
+            self, uc.CLASS_INFO, t_infos[0])
 
         class_path = '%s.java' % uc.CLASS_NAME
         mock_build.return_value = uc.CLASS_BUILD_TARGETS
+        t_infos = self.mod_finder.find_test_by_path(class_path)
         unittest_utils.assert_equal_testinfos(
-            self, uc.CLASS_INFO, self.mod_finder.find_test_by_path(class_path))
+            self, uc.CLASS_INFO, t_infos[0])
 
         class_with_method = '%s#%s' % (class_path, uc.METHOD_NAME)
         mock_build.return_value = uc.MODULE_BUILD_TARGETS
+        t_infos = self.mod_finder.find_test_by_path(class_with_method)
         unittest_utils.assert_equal_testinfos(
-            self, self.mod_finder.find_test_by_path(class_with_method), uc.METHOD_INFO)
+            self, t_infos[0], uc.METHOD_INFO)
 
         class_with_methods = '%s,%s' % (class_with_method, uc.METHOD2_NAME)
         mock_build.return_value = uc.MODULE_BUILD_TARGETS
+        t_infos = self.mod_finder.find_test_by_path(class_with_methods)
         unittest_utils.assert_equal_testinfos(
-            self, self.mod_finder.find_test_by_path(class_with_methods),
+            self, t_infos[0],
             FLAT_METHOD_INFO)
 
         # Cc path testing.
@@ -382,8 +392,9 @@ class ModuleFinderUnittests(unittest.TestCase):
         mock_dir.return_value = uc.CC_MODULE_DIR
         class_path = '%s' % uc.CC_PATH
         mock_build.return_value = uc.CLASS_BUILD_TARGETS
+        t_infos = self.mod_finder.find_test_by_path(class_path)
         unittest_utils.assert_equal_testinfos(
-            self, uc.CC_PATH_INFO2, self.mod_finder.find_test_by_path(class_path))
+            self, uc.CC_PATH_INFO2, t_infos[0])
 
     @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets',
                        return_value=uc.MODULE_BUILD_TARGETS)
@@ -404,13 +415,15 @@ class ModuleFinderUnittests(unittest.TestCase):
             constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
             constants.MODULE_NAME: uc.MODULE_NAME,
             constants.MODULE_CLASS: []}
+        t_infos = self.mod_finder.find_test_by_path(class_dir)
         unittest_utils.assert_equal_testinfos(
-            self, uc.PATH_INFO, self.mod_finder.find_test_by_path(class_dir))
+            self, uc.PATH_INFO, t_infos[0])
         # Dir with no java files in it, should run whole module
         empty_dir = os.path.join(uc.TEST_DATA_DIR, 'path_testing_empty')
+        t_infos = self.mod_finder.find_test_by_path(empty_dir)
         unittest_utils.assert_equal_testinfos(
             self, uc.EMPTY_PATH_INFO,
-            self.mod_finder.find_test_by_path(empty_dir))
+            t_infos[0])
         # Dir with cc files in it, should run as cc class
         class_dir = os.path.join(uc.TEST_DATA_DIR, 'cc_path_testing')
         self.mod_finder.module_info.get_module_names.return_value = [uc.CC_MODULE_NAME]
@@ -418,8 +431,9 @@ class ModuleFinderUnittests(unittest.TestCase):
             constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
             constants.MODULE_NAME: uc.CC_MODULE_NAME,
             constants.MODULE_CLASS: []}
+        t_infos = self.mod_finder.find_test_by_path(class_dir)
         unittest_utils.assert_equal_testinfos(
-            self, uc.CC_PATH_INFO, self.mod_finder.find_test_by_path(class_dir))
+            self, uc.CC_PATH_INFO, t_infos[0])
 
     @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
                        return_value=False)
@@ -441,36 +455,42 @@ class ModuleFinderUnittests(unittest.TestCase):
             constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
             constants.MODULE_NAME: uc.CC_MODULE_NAME,
             constants.MODULE_CLASS: []}
+        t_infos = self.mod_finder.find_test_by_cc_class_name(uc.CC_CLASS_NAME)
         unittest_utils.assert_equal_testinfos(
-            self, self.mod_finder.find_test_by_cc_class_name(uc.CC_CLASS_NAME), uc.CC_CLASS_INFO)
+            self, t_infos[0], uc.CC_CLASS_INFO)
 
         # with method
         mock_build.return_value = uc.MODULE_BUILD_TARGETS
         class_with_method = '%s#%s' % (uc.CC_CLASS_NAME, uc.CC_METHOD_NAME)
+        t_infos = self.mod_finder.find_test_by_cc_class_name(class_with_method)
         unittest_utils.assert_equal_testinfos(
             self,
-            self.mod_finder.find_test_by_cc_class_name(class_with_method),
+            t_infos[0],
             uc.CC_METHOD_INFO)
         mock_build.return_value = uc.MODULE_BUILD_TARGETS
         class_methods = '%s,%s' % (class_with_method, uc.CC_METHOD2_NAME)
+        t_infos = self.mod_finder.find_test_by_cc_class_name(class_methods)
         unittest_utils.assert_equal_testinfos(
-            self, self.mod_finder.find_test_by_cc_class_name(class_methods),
+            self, t_infos[0],
             uc.CC_METHOD2_INFO)
         # module and rel_config passed in
         mock_build.return_value = uc.CLASS_BUILD_TARGETS
+        t_infos = self.mod_finder.find_test_by_cc_class_name(
+            uc.CC_CLASS_NAME, uc.CC_MODULE_NAME, uc.CC_CONFIG_FILE)
         unittest_utils.assert_equal_testinfos(
-            self, self.mod_finder.find_test_by_cc_class_name(
-                uc.CC_CLASS_NAME, uc.CC_MODULE_NAME, uc.CC_CONFIG_FILE), uc.CC_CLASS_INFO)
+            self, t_infos[0], uc.CC_CLASS_INFO)
         # find output fails to find class file
         mock_checkoutput.return_value = ''
         self.assertIsNone(self.mod_finder.find_test_by_cc_class_name(
             'Not class'))
         # class is outside given module path
         mock_checkoutput.return_value = uc.CC_FIND_ONE
+        t_infos = self.mod_finder.find_test_by_cc_class_name(
+            uc.CC_CLASS_NAME,
+            uc.CC_MODULE2_NAME,
+            uc.CC_CONFIG2_FILE)
         unittest_utils.assert_equal_testinfos(
-            self, self.mod_finder.find_test_by_cc_class_name(uc.CC_CLASS_NAME,
-                                                             uc.CC_MODULE2_NAME,
-                                                             uc.CC_CONFIG2_FILE),
+            self, t_infos[0],
             CC_CLASS_INFO_MODULE_2)
 
     def test_get_testable_modules_with_ld(self):
