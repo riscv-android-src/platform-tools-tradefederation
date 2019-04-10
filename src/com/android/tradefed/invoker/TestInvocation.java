@@ -84,6 +84,8 @@ public class TestInvocation implements ITestInvocation {
     private static final String BATTERY_ATTRIBUTE_FORMAT_KEY = "%s-battery-%s";
 
     static final String TRADEFED_LOG_NAME = "host_log";
+    /** Suffix used on host_log for the part before sharding occurs. */
+    static final String BEFORE_SHARDING_SUFFIX = "_before_sharding";
     static final String DEVICE_LOG_NAME_PREFIX = "device_logcat_";
     static final String EMULATOR_LOG_NAME_PREFIX = "emulator_log_";
     static final String BUILD_ERROR_BUGREPORT_NAME = "build_error_bugreport";
@@ -451,9 +453,13 @@ public class TestInvocation implements ITestInvocation {
     }
 
     private void reportHostLog(ITestInvocationListener listener, IConfiguration config) {
+        reportHostLog(listener, config, TRADEFED_LOG_NAME);
+    }
+
+    private void reportHostLog(
+            ITestInvocationListener listener, IConfiguration config, String name) {
         ILeveledLogOutput logger = config.getLogOutput();
         try (InputStreamSource globalLogSource = logger.getLog()) {
-            String name = TRADEFED_LOG_NAME;
             if (config.getCommandOptions().getHostLogSuffix() != null) {
                 name += config.getCommandOptions().getHostLogSuffix();
             }
@@ -709,6 +715,8 @@ public class TestInvocation implements ITestInvocation {
                     CLog.i(
                             "Invocation for %s has been sharded, rescheduling",
                             context.getSerials());
+                    // Log the chunk of parent host_log before sharding
+                    reportHostLog(listener, config, TRADEFED_LOG_NAME + BEFORE_SHARDING_SUFFIX);
                     return;
                 }
             }

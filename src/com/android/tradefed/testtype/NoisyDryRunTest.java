@@ -156,7 +156,8 @@ public class NoisyDryRunTest implements IRemoteTest {
                     IConfiguration config =
                             ConfigurationFactory.getInstance()
                                     .createConfigurationFromArgs(args, null, new DryRunKeyStore());
-                    config.validateOptions();
+                    // Do not resolve dynamic files
+                    config.validateOptions(false);
                 }
             } catch (ConfigurationException e) {
                 String errorMessage = String.format("Failed to parse command line: %s.", cmdLine);
@@ -181,7 +182,8 @@ public class NoisyDryRunTest implements IRemoteTest {
                 SandboxConfigurationFactory.getInstance()
                         .createConfigurationFromArgs(
                                 args, new DryRunKeyStore(), createSandbox(), createRunUtil());
-        config.validateOptions();
+        // Do not resolve dynamic files
+        config.validateOptions(false);
     }
 
     /** Returns a {@link IRunUtil} implementation. */
