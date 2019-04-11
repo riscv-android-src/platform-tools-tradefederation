@@ -64,6 +64,8 @@ public class ShardHelper implements IShardHelper {
         CONFIG_OBJ_TO_CLONE.add(Configuration.MULTI_PREPARER_TYPE_NAME);
         CONFIG_OBJ_TO_CLONE.add(Configuration.CMD_OPTIONS_TYPE_NAME);
         CONFIG_OBJ_TO_CLONE.add(Configuration.LOGGER_TYPE_NAME);
+        // Deep clone of log_saver to ensure each shard manages its own logs
+        CONFIG_OBJ_TO_CLONE.add(Configuration.LOG_SAVER_TYPE_NAME);
     }
 
     /**
