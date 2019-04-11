@@ -317,7 +317,11 @@ public class RemoteInvocationExecution extends InvocationExecution {
     }
 
     @Override
-    public void doTeardown(IInvocationContext context, IConfiguration config, Throwable exception)
+    public void doTeardown(
+            IInvocationContext context,
+            IConfiguration config,
+            ITestLogger logger,
+            Throwable exception)
             throws Throwable {
         // Only run device post invocation teardown
         super.runDevicePostInvocationTearDown(context, config);
