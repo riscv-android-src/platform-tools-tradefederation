@@ -209,7 +209,7 @@ public class GceManager {
     }
 
     /** Build and return the command to launch GCE. Exposed for testing. */
-    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) throws IOException {
+    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
         List<String> gceArgs =
                 ArrayUtil.list(getTestDeviceOptions().getAvdDriverBinary().getAbsolutePath());
         gceArgs.add(
@@ -444,6 +444,18 @@ public class GceManager {
                 RemoteFileUtil.fetchRemoteFile(
                         gceAvd, options, runUtil, REMOTE_FILE_OP_TIMEOUT, remoteFilePath);
         if (remoteFile != null) {
+            // If we happened to fetch a directory, log all the subfiles
+            logFile(remoteFile, baseName, logger, type);
+        }
+    }
+
+    private static void logFile(
+            File remoteFile, String baseName, ITestLogger logger, LogDataType type) {
+        if (remoteFile.isDirectory()) {
+            for (File f : remoteFile.listFiles()) {
+                logFile(f, null, logger, type);
+            }
+        } else {
             try (InputStreamSource remoteFileStream = new FileInputStreamSource(remoteFile, true)) {
                 String name = baseName;
                 if (name == null) {
