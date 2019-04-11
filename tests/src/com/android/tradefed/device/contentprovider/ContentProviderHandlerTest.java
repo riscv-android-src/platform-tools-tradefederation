@@ -109,7 +109,25 @@ public class ContentProviderHandlerTest {
     public void testDeleteFile_fail() throws Exception {
         String devicePath = "path/somewhere/file.txt";
         CommandResult result = new CommandResult(CommandStatus.FAILED);
+        result.setStdout("");
         result.setStderr("couldn't find the file");
+        doReturn(99).when(mMockDevice).getCurrentUser();
+        doReturn(result)
+                .when(mMockDevice)
+                .executeShellV2Command(
+                        eq(
+                                "content delete --user 99 --uri "
+                                        + ContentProviderHandler.createEscapedContentUri(
+                                                devicePath)));
+        assertFalse(mProvider.deleteFile(devicePath));
+    }
+
+    /** Test {@link ContentProviderHandler#deleteFile(String)}. */
+    @Test
+    public void testError() throws Exception {
+        String devicePath = "path/somewhere/file.txt";
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStdout("[ERROR] Unsupported operation: delete");
         doReturn(99).when(mMockDevice).getCurrentUser();
         doReturn(result)
                 .when(mMockDevice)
@@ -212,6 +230,7 @@ public class ContentProviderHandlerTest {
     private CommandResult mockSuccess() {
         CommandResult result = new CommandResult(CommandStatus.SUCCESS);
         result.setStderr("");
+        result.setStdout("");
         return result;
     }
 

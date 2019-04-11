@@ -49,6 +49,7 @@ public class ContentProviderHandler {
     public static final String CONTENT_PROVIDER_URI = "content://android.tradefed.contentprovider";
     private static final String APK_NAME = "TradefedContentProvider.apk";
     private static final String CONTENT_PROVIDER_APK_RES = "/apks/contentprovider/" + APK_NAME;
+    private static final String ERROR_MESSAGE_TAG = "[ERROR]";
 
     private ITestDevice mDevice;
     private File mContentProviderApk = null;
@@ -113,7 +114,7 @@ public class ContentProviderHandler {
                         "content delete --user %d --uri %s", mDevice.getCurrentUser(), contentUri);
         CommandResult deleteResult = mDevice.executeShellV2Command(deleteCommand);
 
-        if (CommandStatus.SUCCESS.equals(deleteResult.getStatus())) {
+        if (isSuccessful(deleteResult)) {
             return true;
         }
         CLog.e(
@@ -199,8 +200,15 @@ public class ContentProviderHandler {
 
     /** Returns true if {@link CommandStatus} is successful and there is no error message. */
     private boolean isSuccessful(CommandResult result) {
+        if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+            return false;
+        }
+        String stdout = result.getStdout();
+        if (stdout.contains(ERROR_MESSAGE_TAG)) {
+            return false;
+        }
         String stderr = result.getStderr();
-        return CommandStatus.SUCCESS.equals(result.getStatus()) && Strings.isNullOrEmpty(stderr);
+        return Strings.isNullOrEmpty(stderr);
     }
 
     /** Helper method to extract the content provider apk. */
