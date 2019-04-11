@@ -25,6 +25,7 @@ import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -266,10 +267,20 @@ public final class TestsPoolPoller
                 CLog.d(
                         "Wait %s for device to maybe come back online.",
                         TimeUtil.formatElapsedTime(WAIT_RECOVERY_TIME));
-                mDevice.waitForDeviceAvailable(WAIT_RECOVERY_TIME);
-                mDevice.reboot();
-                CLog.d("TestPoller was recovered after %s went offline", mDevice.getSerialNumber());
-                return;
+                if (mDevice instanceof NestedRemoteDevice) {
+                    // If it's not the last device, reset it.
+                    if (!((NestedRemoteDevice) mDevice).resetVirtualDevice()) {
+                        CLog.e("Virtual device %s reset failed.", mDevice.getSerialNumber());
+                        // Original exception will be thrown below
+                    }
+                } else {
+                    mDevice.waitForDeviceAvailable(WAIT_RECOVERY_TIME);
+                    mDevice.reboot();
+                    CLog.d(
+                            "TestPoller was recovered after %s went offline",
+                            mDevice.getSerialNumber());
+                    return;
+                }
             }
         } catch (DeviceNotAvailableException e) {
             // ignore this exception

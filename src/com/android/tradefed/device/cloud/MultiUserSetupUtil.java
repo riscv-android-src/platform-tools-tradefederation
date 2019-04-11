@@ -72,8 +72,16 @@ public class MultiUserSetupUtil {
         if (!CommandStatus.SUCCESS.equals(copyRes.getStatus())) {
             return copyRes;
         }
+        // Delete the 'cuttlefish_runtime' link, it needs to be recreated
+        String deleteRuntime = "sudo rm -r /home/" + username + "/cuttlefish_runtime";
+        CommandResult deleteRes =
+                RemoteSshUtil.remoteSshCommandExec(
+                        remoteInstance, options, runUtil, timeoutMs, deleteRuntime.split(" "));
+        if (!CommandStatus.SUCCESS.equals(deleteRes.getStatus())) {
+            return copyRes;
+        }
         // Permission
-        String chownUser = "find /home/" + username + " | sudo xargs chown " + username;
+        String chownUser = getChownCommand(username);
         CommandResult chownRes =
                 RemoteSshUtil.remoteSshCommandExec(
                         remoteInstance, options, runUtil, timeoutMs, chownUser);
@@ -81,5 +89,10 @@ public class MultiUserSetupUtil {
             return chownRes;
         }
         return null;
+    }
+
+    /** Gets the command for a user to own the main directory. */
+    public static String getChownCommand(String username) {
+        return "find /home/" + username + " | sudo xargs chown " + username;
     }
 }
