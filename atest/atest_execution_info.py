@@ -167,8 +167,9 @@ class AtestExecutionInfo(object):
                 group_summary = _SUMMARY_MAP_TEMPLATE.copy()
                 for status in info_dict[_TEST_RUNNER_KEY][runner][group]:
                     count = len(info_dict[_TEST_RUNNER_KEY][runner][group][status])
-                    group_summary[status] = count
-                    total_test_group_summary[status] += count
+                    if _SUMMARY_MAP_TEMPLATE.has_key(status):
+                        group_summary[status] = count
+                        total_test_group_summary[status] += count
                 info_dict[_TEST_RUNNER_KEY][runner][group][_SUMMARY_KEY] = group_summary
         info_dict[_TOTAL_SUMMARY_KEY] = total_test_group_summary
         return info_dict
