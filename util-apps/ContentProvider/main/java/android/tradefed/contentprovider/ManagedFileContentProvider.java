@@ -29,6 +29,8 @@ import android.webkit.MimeTypeMap;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -207,6 +209,11 @@ public class ManagedFileContentProvider extends ContentProvider {
     private File getFileForUri(@NonNull Uri uri) {
         // TODO: apply the /sdcard resolution to query() too.
         String uriPath = uri.getPath();
+        try {
+            uriPath = URLDecoder.decode(uriPath, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
         if (uriPath.startsWith("/sdcard/")) {
             uriPath =
                     uriPath.replaceAll(
