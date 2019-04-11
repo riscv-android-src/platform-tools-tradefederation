@@ -136,6 +136,7 @@ class ResultReporter(object):
         self.run_stats = RunStat()
         self.runners = OrderedDict()
         self.failed_tests = []
+        self.all_test_results = []
 
     def process_test_result(self, test):
         """Given the results of a single test, update stats and print results.
@@ -146,6 +147,7 @@ class ResultReporter(object):
         if test.runner_name not in self.runners:
             self.runners[test.runner_name] = OrderedDict()
         assert self.runners[test.runner_name] != FAILURE_FLAG
+        self.all_test_results.append(test)
         if test.group_name not in self.runners[test.runner_name]:
             self.runners[test.runner_name][test.group_name] = RunStat()
             self._print_group_title(test)
