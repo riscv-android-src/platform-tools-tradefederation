@@ -22,7 +22,9 @@ import com.android.tradefed.util.ArrayUtil;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Container for {@link ITestDevice} {@link Option}s
@@ -236,6 +238,14 @@ public class TestDeviceOptions {
             name = "base-host-image",
             description = "The base image to be used for the GCE VM to host emulator.")
     private String mBaseImage = null;
+
+    @Option(
+        name = "remote-fetch-file-pattern",
+        description =
+                "Only for remote VM devices. Allows to specify patterns to fetch file on the "
+                        + "remote VM via scp. Pattern must follow the scp notations."
+    )
+    private Set<String> mRemoteFetchFilePattern = new HashSet<>();
 
     // END ====================== Options Related to Virtual Devices ======================
 
@@ -599,6 +609,11 @@ public class TestDeviceOptions {
     /** Returns the base image name to be used for the current instance */
     public String getBaseImage() {
         return mBaseImage;
+    }
+
+    /** Returns the list of pattern to attempt to fetch via scp. */
+    public Set<String> getRemoteFetchFilePattern() {
+        return mRemoteFetchFilePattern;
     }
 
     public static String getCreateCommandByInstanceType(InstanceType type) {
