@@ -49,7 +49,7 @@ public class GceAvdInfoTest {
                         + "  }";
         GceAvdInfo avd = GceAvdInfo.parseGceInfoFromString(valid, null, 5555);
         assertNotNull(avd);
-        assertEquals(avd.hostAndPort().getHostText(), "104.154.62.236");
+        assertEquals(avd.hostAndPort().getHost(), "104.154.62.236");
         assertEquals(avd.instanceName(), "gce-x86-phone-userdebug-2299773-22cf");
         assertTrue(avd.getBuildVars().isEmpty());
     }
@@ -75,7 +75,7 @@ public class GceAvdInfoTest {
                         + "  }";
         GceAvdInfo avd = GceAvdInfo.parseGceInfoFromString(valid, null, 5555);
         assertNotNull(avd);
-        assertEquals(avd.hostAndPort().getHostText(), "104.154.62.236");
+        assertEquals(avd.hostAndPort().getHost(), "104.154.62.236");
         assertEquals(avd.instanceName(), "gce-x86-phone-userdebug-2299773-22cf");
         assertEquals(avd.getBuildVars().get("branch"), "git_master");
         assertEquals(avd.getBuildVars().get("build_id"), "5230832");
@@ -121,13 +121,13 @@ public class GceAvdInfoTest {
         GceAvdInfo avd1 = GceAvdInfo.parseGceInfoFromString(json1, null, 1111);
         GceAvdInfo avd2 = GceAvdInfo.parseGceInfoFromString(json2, null, 2222);
         assertNotNull(avd1);
-        assertEquals(avd1.hostAndPort().getHostText(), "1.1.1.1");
+        assertEquals(avd1.hostAndPort().getHost(), "1.1.1.1");
         assertEquals(avd1.instanceName(), "gce-x86-phone-userdebug-1111111-22cf");
         assertEquals(avd1.getBuildVars().get("branch"), "git_master");
         assertEquals(avd1.getBuildVars().get("build_id"), "1111111");
         assertEquals(avd1.getBuildVars().get("build_target"), "cf_x86_phone-userdebug");
         assertNotNull(avd2);
-        assertEquals(avd2.hostAndPort().getHostText(), "2.2.2.2");
+        assertEquals(avd2.hostAndPort().getHost(), "2.2.2.2");
         assertEquals(avd2.instanceName(), "gce-x86-phone-userdebug-2222222-22cf");
         assertEquals(avd2.getBuildVars().get("branch"), "git_master-release");
         assertEquals(avd2.getBuildVars().get("build_id"), "2222222");
@@ -228,7 +228,7 @@ public class GceAvdInfoTest {
                         + "  }";
         GceAvdInfo avd = GceAvdInfo.parseGceInfoFromString(validFail, null, 5555);
         assertNotNull(avd);
-        assertEquals(avd.hostAndPort().getHostText(), "104.154.62.236");
+        assertEquals(avd.hostAndPort().getHost(), "104.154.62.236");
         assertEquals(avd.instanceName(), "gce-x86-phone-userdebug-2299773-22ecc");
     }
 
@@ -281,7 +281,7 @@ public class GceAvdInfoTest {
                         + "  }";
         GceAvdInfo avd = GceAvdInfo.parseGceInfoFromString(validFail, null, 5555);
         assertNotNull(avd);
-        assertEquals(avd.hostAndPort().getHostText(), "104.154.62.236");
+        assertEquals(avd.hostAndPort().getHost(), "104.154.62.236");
         assertEquals(avd.instanceName(), "gce-x86-phone-userdebug-2299773-22ec");
         assertEquals(GceAvdInfo.GceStatus.BOOT_FAIL, avd.getStatus());
     }
