@@ -116,6 +116,14 @@ REBUILD_MODULE_INFO_FLAG = '--rebuild-module-info'
 # ANSI code shift for colorful print
 BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
 
+# Answers equivalent to YES!
+AFFIRMATIVES = ['y', 'Y', 'yes', 'Yes', 'YES', '']
+LD_RANGE = 2
+
+# Types of Levenshetine Distance Cost
+COST_TYPO = (1, 1, 1)
+COST_SEARCH = (8, 1, 5)
+
 # Value of TestInfo install_locations.
 DEVICELESS_TEST = 'host'
 DEVICE_TEST = 'device'
