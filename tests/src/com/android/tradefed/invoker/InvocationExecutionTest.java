@@ -37,7 +37,10 @@ import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
+import com.android.tradefed.log.ITestLogger;
+import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.targetprep.IHostCleaner;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
@@ -250,7 +253,7 @@ public class InvocationExecutionTest {
         mContext.addAllocatedDevice("default", mock(ITestDevice.class));
 
         mExec.doSetup(mContext, mConfig, mMockListener);
-        mExec.doTeardown(mContext, mConfig, null);
+        mExec.doTeardown(mContext, mConfig, null, null);
 
         // Pre multi preparers are always called before.
         InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
@@ -297,7 +300,7 @@ public class InvocationExecutionTest {
         mContext.addAllocatedDevice("default", mock(ITestDevice.class));
         // Ensure that the original error is the one passed around.
         Throwable exception = new Throwable("Original error");
-        mExec.doTeardown(mContext, mConfig, exception);
+        mExec.doTeardown(mContext, mConfig, null, exception);
 
         InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
 
@@ -312,6 +315,47 @@ public class InvocationExecutionTest {
         inOrder.verify(stub2).isDisabled();
         inOrder.verify(stub2).tearDown(mContext, exception);
         inOrder.verify(stub1).isDisabled();
+        inOrder.verify(stub1).tearDown(mContext, exception);
+    }
+
+    /** Interface to test a preparer receiving the logger. */
+    private interface ILoggerMultiTargetPreparer
+            extends IMultiTargetPreparer, ITestLoggerReceiver {}
+
+    /** Ensure that during tear down the original exception is kept and logger is received */
+    @Test
+    public void testDoTearDown_logger() throws Throwable {
+        ILoggerMultiTargetPreparer stub1 = mock(ILoggerMultiTargetPreparer.class);
+        IMultiTargetPreparer stub2 = mock(IMultiTargetPreparer.class);
+        IMultiTargetPreparer stub3 = mock(IMultiTargetPreparer.class);
+        IMultiTargetPreparer stub4 = mock(IMultiTargetPreparer.class);
+        mConfig.setMultiPreTargetPreparers(Arrays.asList(stub1, stub2));
+        mConfig.setMultiTargetPreparers(Arrays.asList(stub3, stub4));
+
+        ITargetCleaner cleaner = mock(ITargetCleaner.class);
+        IDeviceConfiguration holder = new DeviceConfigurationHolder("default");
+        holder.addSpecificConfig(cleaner);
+        mConfig.setDeviceConfig(holder);
+        mContext.addAllocatedDevice("default", mock(ITestDevice.class));
+        // Ensure that the original error is the one passed around.
+        Throwable exception = new Throwable("Original error");
+        ITestLogger logger = new CollectingTestListener();
+        mExec.doTeardown(mContext, mConfig, logger, exception);
+
+        InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
+
+        // tear down
+        inOrder.verify(stub4).isDisabled();
+        inOrder.verify(stub4).tearDown(mContext, exception);
+        inOrder.verify(stub3).isDisabled();
+        inOrder.verify(stub3).tearDown(mContext, exception);
+
+        inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any(), Mockito.any());
+
+        inOrder.verify(stub2).isDisabled();
+        inOrder.verify(stub2).tearDown(mContext, exception);
+        inOrder.verify(stub1).isDisabled();
+        inOrder.verify(stub1).setTestLogger(logger);
         inOrder.verify(stub1).tearDown(mContext, exception);
     }
 
@@ -336,7 +380,7 @@ public class InvocationExecutionTest {
         doThrow(new RuntimeException("Oups I failed")).when(stub3).tearDown(mContext, exception);
 
         try {
-            mExec.doTeardown(mContext, mConfig, exception);
+            mExec.doTeardown(mContext, mConfig, null, exception);
             fail("Should have thrown an exception");
         } catch (RuntimeException expected) {
             // Expected
