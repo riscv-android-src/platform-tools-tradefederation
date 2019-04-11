@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="src" path="proto-gen"/>
 	<classpathentry kind="src" path="res"/>
 	<classpathentry kind="src" path="hamcrest"/>
 	<classpathentry kind="src" path="jline"/>
@@ -22,7 +21,6 @@
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/external/junit-params/junit-params/linux_glibc_common/combined/junit-params.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/external/junit/junit/linux_glibc_common/combined/junit.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/external/perfetto/perfetto_config-full/linux_glibc_common/combined/perfetto_config-full.jar"/>
-	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/tools/tradefederation/core/tradefed-grpc-lib-1.0.1/linux_glibc_common/combined/tradefed-grpc-lib-1.0.1.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/platform_testing/libraries/aoa-helper/aoa-helper/linux_glibc_common/combined/aoa-helper.jar"/>
 	<classpathentry exported="true" kind="var" path="TRADEFED_ROOT/prebuilts/tools/common/google-api-java-client/1.23.0/google-api-java-client-min-repackaged-1.23.0.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/prebuilts/tools/common/google-api-services-compute/google-api-services-compute/linux_glibc_common/combined/google-api-services-compute.jar"/>
