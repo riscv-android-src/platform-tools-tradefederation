@@ -4340,8 +4340,9 @@ public class NativeDevice implements IManagedTestDevice {
         if (!getOptions().shouldUseContentProvider()) {
             return null;
         }
-        // Prevent usage of content provider before API 25 as it would not work well.
-        if (getApiLevel() < 25) {
+        // Prevent usage of content provider before API 28 as it would not work well since content
+        // tool is not working before P.
+        if (getApiLevel() < 28) {
             return null;
         }
         if (mContentProvider == null) {
