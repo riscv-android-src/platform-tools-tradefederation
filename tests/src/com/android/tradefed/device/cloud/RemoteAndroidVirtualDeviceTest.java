@@ -262,6 +262,11 @@ public class RemoteAndroidVirtualDeviceTest {
                     public void startLogcat() {
                         // ignore
                     }
+
+                    @Override
+                    GceManager getGceHandler() {
+                        return mGceHandler;
+                    }
                 };
         EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable(EasyMock.anyLong()))
                 .andReturn(mMockIDevice);
@@ -269,6 +274,8 @@ public class RemoteAndroidVirtualDeviceTest {
         replayMocks(mMockBuildInfo);
         testDevice.preInvocationSetup(mMockBuildInfo);
         verifyMocks(mMockBuildInfo);
+
+        Mockito.verify(mGceHandler).logStableHostImageInfos(mMockBuildInfo);
     }
 
     /**
