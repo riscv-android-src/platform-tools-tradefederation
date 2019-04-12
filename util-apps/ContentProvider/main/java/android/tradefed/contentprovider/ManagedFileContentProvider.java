@@ -31,9 +31,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -44,14 +44,21 @@ import java.util.Map;
  * <p>This implementation aims to be standard and work in all situations.
  */
 public class ManagedFileContentProvider extends ContentProvider {
-
+    public static final String COLUMN_NAME = "name";
     public static final String COLUMN_ABSOLUTE_PATH = "absolute_path";
-    public static final String COLUMN_URI = "uri";
+    public static final String COLUMN_DIRECTORY = "is_directory";
     public static final String COLUMN_MIME_TYPE = "mime_type";
     public static final String COLUMN_METADATA = "metadata";
+
     // TODO: Complete the list of columns
     public static final String[] COLUMNS =
-            new String[] {COLUMN_ABSOLUTE_PATH, COLUMN_URI, COLUMN_MIME_TYPE, COLUMN_METADATA};
+            new String[] {
+                COLUMN_NAME,
+                COLUMN_ABSOLUTE_PATH,
+                COLUMN_DIRECTORY,
+                COLUMN_MIME_TYPE,
+                COLUMN_METADATA
+            };
 
     private static String TAG = "ManagedFileContentProvider";
     private static MimeTypeMap sMimeMap = MimeTypeMap.getSingleton();
@@ -64,6 +71,19 @@ public class ManagedFileContentProvider extends ContentProvider {
         return true;
     }
 
+    /**
+     * Use a content URI with absolute device path embedded to get information about a file or a
+     * directory on the device.
+     *
+     * @param uri A content uri that contains the path to the desired file/directory.
+     * @param projection - not supported.
+     * @param selection - not supported.
+     * @param selectionArgs - not supported.
+     * @param sortOrder - not supported.
+     * @return A {@link Cursor} containing the results of the query. Cursor contains a single row
+     *     for files and for directories it returns one row for each {@link File} returned by {@link
+     *     File#listFiles()}.
+     */
     @Nullable
     @Override
     public Cursor query(
@@ -78,13 +98,7 @@ public class ManagedFileContentProvider extends ContentProvider {
             final MatrixCursor cursor = new MatrixCursor(COLUMNS, mFileTracker.size());
             for (Map.Entry<Uri, ContentValues> path : mFileTracker.entrySet()) {
                 String metadata = path.getValue().getAsString(COLUMN_METADATA);
-                cursor.addRow(
-                        new String[] {
-                            getFileForUri(path.getKey()).getAbsolutePath(),
-                            uri.toString(),
-                            getType(path.getKey()),
-                            metadata
-                        });
+                cursor.addRow(getRow(COLUMNS, getFileForUri(path.getKey()), metadata));
             }
             return cursor;
         }
@@ -94,47 +108,27 @@ public class ManagedFileContentProvider extends ContentProvider {
             return null;
         }
 
-        // If a particular file is requested, find it and return it.
-        List<String> filePaths = new ArrayList<>();
-        if (file.isDirectory()) {
-            readDirectory(filePaths, file);
-        } else {
-            // If not a directory, return a single row - the name of the file.
-            filePaths.add(file.getAbsolutePath());
+        if (!file.isDirectory()) {
+            // Just return the information about the file itself.
+            final MatrixCursor cursor = new MatrixCursor(COLUMNS, 1);
+            cursor.addRow(getRow(COLUMNS, file, /* metadata= */ null));
+            return cursor;
         }
 
-        // Add all the paths to the cursor.
-        final MatrixCursor cursor = new MatrixCursor(COLUMNS, filePaths.size());
-        for (String path : filePaths) {
-            // TODO: Return a properly formed uri for each filepath
-            cursor.addRow(
-                    new String[] {
-                        path,
-                        uri.toString(),
-                        getType(uri),
-                        /* metadata */
-                        null
-                    });
+        // Otherwise return the content of the directory - similar to doing ls command.
+        File[] files = file.listFiles();
+        sortFilesByAbsolutePath(files);
+        final MatrixCursor cursor = new MatrixCursor(COLUMNS, files.length + 1);
+        for (File child : files) {
+            cursor.addRow(getRow(COLUMNS, child, /* metadata= */ null));
         }
-
         return cursor;
     }
 
     @Nullable
     @Override
     public String getType(@NonNull Uri uri) {
-        final File file = getFileForUri(uri);
-
-        final int lastDot = file.getName().lastIndexOf('.');
-        if (lastDot >= 0) {
-            final String extension = file.getName().substring(lastDot + 1);
-            final String mime = sMimeMap.getMimeTypeFromExtension(extension);
-            if (mime != null) {
-                return mime;
-            }
-        }
-
-        return "application/octet-stream";
+        return getType(getFileForUri(uri));
     }
 
     @Nullable
@@ -206,6 +200,43 @@ public class ManagedFileContentProvider extends ContentProvider {
         return ParcelFileDescriptor.open(file, fileMode);
     }
 
+    private Object[] getRow(String[] columns, File file, String metadata) {
+        Object[] values = new Object[columns.length];
+        for (int i = 0; i < columns.length; i++) {
+            values[i] = getColumnValue(columns[i], file, metadata);
+        }
+        return values;
+    }
+
+    private Object getColumnValue(String columnName, File file, String metadata) {
+        Object value = null;
+        if (COLUMN_NAME.equals(columnName)) {
+            value = file.getName();
+        } else if (COLUMN_ABSOLUTE_PATH.equals(columnName)) {
+            value = file.getAbsolutePath();
+        } else if (COLUMN_DIRECTORY.equals(columnName)) {
+            value = file.isDirectory();
+        } else if (COLUMN_METADATA.equals(columnName)) {
+            value = metadata;
+        } else if (COLUMN_MIME_TYPE.equals(columnName)) {
+            value = file.isDirectory() ? null : getType(file);
+        }
+        return value;
+    }
+
+    private String getType(@NonNull File file) {
+        final int lastDot = file.getName().lastIndexOf('.');
+        if (lastDot >= 0) {
+            final String extension = file.getName().substring(lastDot + 1);
+            final String mime = sMimeMap.getMimeTypeFromExtension(extension);
+            if (mime != null) {
+                return mime;
+            }
+        }
+
+        return "application/octet-stream";
+    }
+
     private File getFileForUri(@NonNull Uri uri) {
         // TODO: apply the /sdcard resolution to query() too.
         String uriPath = uri.getPath();
@@ -220,16 +251,6 @@ public class ManagedFileContentProvider extends ContentProvider {
                             "/sdcard", Environment.getExternalStorageDirectory().getAbsolutePath());
         }
         return new File(uriPath);
-    }
-
-    private void readDirectory(List<String> files, File dir) {
-        for (File f : dir.listFiles()) {
-            if (f.isDirectory()) {
-                readDirectory(files, f);
-            } else {
-                files.add(f.getAbsolutePath());
-            }
-        }
     }
 
     /** Copied from FileProvider.java. */
@@ -281,5 +302,16 @@ public class ManagedFileContentProvider extends ContentProvider {
             count++;
         }
         return count;
+    }
+
+    private void sortFilesByAbsolutePath(File[] files) {
+        Arrays.sort(
+                files,
+                new Comparator<File>() {
+                    @Override
+                    public int compare(File f1, File f2) {
+                        return f1.getAbsolutePath().compareTo(f2.getAbsolutePath());
+                    }
+                });
     }
 }
