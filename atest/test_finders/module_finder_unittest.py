@@ -183,6 +183,8 @@ class ModuleFinderUnittests(unittest.TestCase):
                                            mock_checkoutput, mock_build,
                                            _vts):
         """Test find_test_by_module_and_class."""
+        # Native test was tested in test_find_test_by_cc_class_name().
+        self.mod_finder.module_info.is_native_test.return_value = False
         self.mod_finder.module_info.is_auto_gen_test_config.return_value = False
         self.mod_finder.module_info.is_robolectric_test.return_value = False
         self.mod_finder.module_info.has_test_config.return_value = True
@@ -220,6 +222,8 @@ class ModuleFinderUnittests(unittest.TestCase):
                                                   mock_checkoutput, mock_build,
                                                   _vts):
         """Test find_test_by_module_and_class for MODULE:CC_CLASS."""
+        # Native test was tested in test_find_test_by_cc_class_name()
+        self.mod_finder.module_info.is_native_test.return_value = False
         self.mod_finder.module_info.is_auto_gen_test_config.return_value = False
         self.mod_finder.module_info.is_robolectric_test.return_value = False
         self.mod_finder.module_info.has_test_config.return_value = True
