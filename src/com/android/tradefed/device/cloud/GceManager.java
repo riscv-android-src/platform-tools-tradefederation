@@ -590,6 +590,28 @@ public class GceManager {
         }
     }
 
+    /** Log the information related to the stable host image used. */
+    public void logStableHostImageInfos(IBuildInfo build) {
+        AcloudConfigParser config = AcloudConfigParser.parseConfig(getAvdConfigFile());
+        if (config == null) {
+            CLog.e("Failed to parse our acloud config.");
+            return;
+        }
+        if (build == null) {
+            return;
+        }
+        if (config.getValueForKey(AcloudKeys.STABLE_HOST_IMAGE_NAME) != null) {
+            build.addBuildAttribute(
+                    AcloudKeys.STABLE_HOST_IMAGE_NAME.toString(),
+                    config.getValueForKey(AcloudKeys.STABLE_HOST_IMAGE_NAME));
+        }
+        if (config.getValueForKey(AcloudKeys.STABLE_HOST_IMAGE_PROJECT) != null) {
+            build.addBuildAttribute(
+                    AcloudKeys.STABLE_HOST_IMAGE_PROJECT.toString(),
+                    config.getValueForKey(AcloudKeys.STABLE_HOST_IMAGE_PROJECT));
+        }
+    }
+
     /**
      * Returns the {@link TestDeviceOptions} associated with the device that the gce manager was
      * initialized with.
