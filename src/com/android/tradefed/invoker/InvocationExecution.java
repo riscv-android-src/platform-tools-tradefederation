@@ -746,7 +746,7 @@ public class InvocationExecution implements IInvocationExecution {
     }
 
     /** Returns the adb version in use for the invocation. */
-    String getAdbVersion() {
+    protected String getAdbVersion() {
         return GlobalConfiguration.getDeviceManagerInstance().getAdbVersion();
     }
 }

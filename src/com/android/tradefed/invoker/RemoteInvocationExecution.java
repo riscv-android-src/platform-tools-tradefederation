@@ -333,7 +333,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
     }
 
     @Override
-    String getAdbVersion() {
+    protected String getAdbVersion() {
         // Do not report the adb version from the parent, the remote child will remote its own.
         return null;
     }
