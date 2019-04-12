@@ -310,10 +310,13 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         module_info = self.find_test_by_module_name(module_name)
         if not module_info:
             return None
-        # Find by java class.
-        find_result = self.find_test_by_class_name(
-            class_name, module_info.test_name,
-            module_info.data.get(constants.TI_REL_CONFIG))
+        # If the target module is NATIVE_TEST, search CC classes only.
+        find_result = None
+        if not self.module_info.is_native_test(module_name):
+            # Find by java class.
+            find_result = self.find_test_by_class_name(
+                class_name, module_info.test_name,
+                module_info.data.get(constants.TI_REL_CONFIG))
         # Find by cc class.
         if not find_result:
             find_result = self.find_test_by_cc_class_name(
