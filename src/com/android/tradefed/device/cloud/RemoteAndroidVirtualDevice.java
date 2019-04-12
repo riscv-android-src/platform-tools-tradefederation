@@ -99,6 +99,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
             mGceHandler =
                     new GceManager(
                             getDeviceDescriptor(), getOptions(), info, testResourceBuildInfos);
+            getGceHandler().logStableHostImageInfos(info);
             mInitialSerial = getSerialNumber();
             setFastbootEnabled(false);
 

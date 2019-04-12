@@ -70,6 +70,7 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
         // We create a brand new GceManager each time to ensure clean state.
         mGceHandler =
                 new GceManager(getDeviceDescriptor(), getOptions(), info, testResourceBuildInfos);
+        getGceHandler().logStableHostImageInfos(info);
         setFastbootEnabled(false);
 
         // Launch GCE helper script.
