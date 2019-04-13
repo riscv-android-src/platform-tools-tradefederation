@@ -263,24 +263,23 @@ public final class TestsPoolPoller
     void HandleDeviceNotAvailable(DeviceNotAvailableException originalException, IRemoteTest test)
             throws DeviceNotAvailableException {
         try {
+            if (mDevice instanceof NestedRemoteDevice) {
+                // If it's not the last device, reset it.
+                if (((NestedRemoteDevice) mDevice).resetVirtualDevice(mBuildInfo)) {
+                    CLog.d("Successful virtual device reset.");
+                    return;
+                }
+                // Original exception will be thrown below
+                CLog.e("Virtual device %s reset failed.", mDevice.getSerialNumber());
+            }
             if (mTracker.getCount() > 1) {
                 CLog.d(
                         "Wait %s for device to maybe come back online.",
                         TimeUtil.formatElapsedTime(WAIT_RECOVERY_TIME));
-                if (mDevice instanceof NestedRemoteDevice) {
-                    // If it's not the last device, reset it.
-                    if (!((NestedRemoteDevice) mDevice).resetVirtualDevice()) {
-                        CLog.e("Virtual device %s reset failed.", mDevice.getSerialNumber());
-                        // Original exception will be thrown below
-                    }
-                } else {
-                    mDevice.waitForDeviceAvailable(WAIT_RECOVERY_TIME);
-                    mDevice.reboot();
-                    CLog.d(
-                            "TestPoller was recovered after %s went offline",
-                            mDevice.getSerialNumber());
-                    return;
-                }
+                mDevice.waitForDeviceAvailable(WAIT_RECOVERY_TIME);
+                mDevice.reboot();
+                CLog.d("TestPoller was recovered after %s went offline", mDevice.getSerialNumber());
+                return;
             }
         } catch (DeviceNotAvailableException e) {
             // ignore this exception
