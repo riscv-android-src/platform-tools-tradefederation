@@ -62,7 +62,6 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -3779,37 +3778,37 @@ public class TestDeviceTest extends TestCase {
         verifyMocks();
     }
 
-// FIXME: Delete this, not necessary
-// <<<<<<< HEAD
-// =======
-//
-//     /** Test that displays can be collected. */
-//     public void testListDisplayId() throws Exception {
-//         OutputStream stdout = null, stderr = null;
-//         CommandResult res = new CommandResult(CommandStatus.SUCCESS);
-//         res.setStdout("Display 0 color modes:\nDisplay 5 color modes:\n");
-//         EasyMock.expect(
-//                         mMockRunUtil.runTimedCmd(
-//                                 100L,
-//                                 stdout,
-//                                 stderr,
-//                                 "adb",
-//                                 "-s",
-//                                 "serial",
-//                                 "shell",
-//                                 "dumpsys",
-//                                 "SurfaceFlinger",
-//                                 "|",
-//                                 "grep",
-//                                 "'color",
-//                                 "modes:'"))
-//                 .andReturn(res);
-//         replayMocks();
-//         Set<Integer> displays = mTestDevice.listDisplayIds();
-//         assertEquals(2, displays.size());
-//         assertTrue(displays.contains(0));
-//         assertTrue(displays.contains(5));
-//         verifyMocks();
-//     }
-// >>>>>>> f39a78ced... Hook up pullFile to use content provider.
+    // FIXME: Delete this, not necessary
+    // <<<<<<< HEAD
+    // =======
+    //
+    //     /** Test that displays can be collected. */
+    //     public void testListDisplayId() throws Exception {
+    //         OutputStream stdout = null, stderr = null;
+    //         CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+    //         res.setStdout("Display 0 color modes:\nDisplay 5 color modes:\n");
+    //         EasyMock.expect(
+    //                         mMockRunUtil.runTimedCmd(
+    //                                 100L,
+    //                                 stdout,
+    //                                 stderr,
+    //                                 "adb",
+    //                                 "-s",
+    //                                 "serial",
+    //                                 "shell",
+    //                                 "dumpsys",
+    //                                 "SurfaceFlinger",
+    //                                 "|",
+    //                                 "grep",
+    //                                 "'color",
+    //                                 "modes:'"))
+    //                 .andReturn(res);
+    //         replayMocks();
+    //         Set<Integer> displays = mTestDevice.listDisplayIds();
+    //         assertEquals(2, displays.size());
+    //         assertTrue(displays.contains(0));
+    //         assertTrue(displays.contains(5));
+    //         verifyMocks();
+    //     }
+    // >>>>>>> f39a78ced... Hook up pullFile to use content provider.
 }
