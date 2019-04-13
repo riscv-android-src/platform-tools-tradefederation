@@ -39,6 +39,7 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.OutputStream;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -238,6 +239,25 @@ public class ContentProviderHandlerTest {
                 "\"content://android.tradefed.contentprovider/filepath%252Ffile%2520name"
                         + "%2520spaced%2520%28data%29\"",
                 espacedUrl);
+    }
+
+    @Test
+    public void testParseQueryResultRow() {
+        String row =
+                "Row: 1 name=name spaced with , ,comma, "
+                        + "absolute_path=/storage/emulated/0/Alarms/name spaced with , ,comma, "
+                        + "is_directory=true, mime_type=NULL, metadata=NULL";
+
+        HashMap<String, String> columnValues = mProvider.parseQueryResultRow(row);
+
+        assertEquals(
+                columnValues.get(ContentProviderHandler.COLUMN_NAME), "name spaced with , ,comma");
+        assertEquals(
+                columnValues.get(ContentProviderHandler.COLUMN_ABSOLUTE_PATH),
+                "/storage/emulated/0/Alarms/name spaced with , ,comma");
+        assertEquals(columnValues.get(ContentProviderHandler.COLUMN_DIRECTORY), "true");
+        assertEquals(columnValues.get(ContentProviderHandler.COLUMN_MIME_TYPE), "NULL");
+        assertEquals(columnValues.get(ContentProviderHandler.COLUMN_METADATA), "NULL");
     }
 
     private CommandResult mockSuccess() {

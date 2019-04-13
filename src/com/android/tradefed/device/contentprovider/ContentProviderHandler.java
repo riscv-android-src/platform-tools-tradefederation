@@ -23,6 +23,7 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.common.net.UrlEscapers;
 
@@ -34,7 +35,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.HashMap;
 import java.util.Set;
+import java.util.StringJoiner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Handler that abstract the content provider interactions and allow to use the device side content
@@ -44,6 +49,22 @@ import java.util.Set;
  * device.
  */
 public class ContentProviderHandler {
+    public static final String COLUMN_NAME = "name";
+    public static final String COLUMN_ABSOLUTE_PATH = "absolute_path";
+    public static final String COLUMN_DIRECTORY = "is_directory";
+    public static final String COLUMN_MIME_TYPE = "mime_type";
+    public static final String COLUMN_METADATA = "metadata";
+    public static final String QUERY_INFO_VALUE = "INFO";
+
+    // Has to be kept in sync with columns in ManagedFileContentProvider.java.
+    public static final String[] COLUMNS =
+            new String[] {
+                COLUMN_NAME,
+                COLUMN_ABSOLUTE_PATH,
+                COLUMN_DIRECTORY,
+                COLUMN_MIME_TYPE,
+                COLUMN_METADATA
+            };
 
     public static final String PACKAGE_NAME = "android.tradefed.contentprovider";
     public static final String CONTENT_PROVIDER_URI = "content://android.tradefed.contentprovider";
@@ -247,5 +268,34 @@ public class ContentProviderHandler {
             CLog.e(e);
         }
         return String.format("\"%s/%s\"", CONTENT_PROVIDER_URI, escapedFilePath);
+    }
+
+    /**
+     * Parses the String output of "adb shell content query" for a single row.
+     *
+     * @param row The entire row representing a single file/directory returned by the "adb shell
+     *     content query" command.
+     * @return Key-value map of column name to column value.
+     */
+    @VisibleForTesting
+    final HashMap<String, String> parseQueryResultRow(String row) {
+        HashMap<String, String> columnValues = new HashMap<>();
+
+        StringJoiner pattern = new StringJoiner(", ");
+        for (int i = 0; i < COLUMNS.length; i++) {
+            pattern.add(String.format("(%s=.*)", COLUMNS[i]));
+        }
+
+        Pattern p = Pattern.compile(pattern.toString());
+        Matcher m = p.matcher(row);
+        if (m.find()) {
+            for (int i = 1; i <= m.groupCount(); i++) {
+                String[] keyValue = m.group(i).split("=");
+                if (keyValue.length == 2) {
+                    columnValues.put(keyValue[0], keyValue[1]);
+                }
+            }
+        }
+        return columnValues;
     }
 }
