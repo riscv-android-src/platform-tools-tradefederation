@@ -1656,7 +1656,7 @@ public class TestDevice extends NativeDevice {
         }
         File dump = dumpAndPullHeap(pid, devicePath);
         // Clean the device.
-        executeShellCommand(String.format("rm %s", devicePath));
+        deleteFile(devicePath);
         return dump;
     }
 
