@@ -4027,7 +4027,9 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public void preInvocationSetup(IBuildInfo info)
             throws TargetSetupError, DeviceNotAvailableException {
-        // Default implementation empty on purpose
+        // Default implementation
+        mContentProvider = null;
+        mShouldSkipContentProviderSetup = false;
     }
 
     /**
@@ -4046,10 +4048,7 @@ public class NativeDevice implements IManagedTestDevice {
             if (mContentProvider == null) {
                 return;
             }
-            ContentProviderHandler handler = getContentProvider();
-            if (handler != null) {
-                handler.tearDown();
-            }
+            mContentProvider.tearDown();
         } catch (DeviceNotAvailableException e) {
             CLog.e(e);
         }

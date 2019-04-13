@@ -16,12 +16,14 @@
 package com.android.tradefed.device.cloud;
 
 import com.android.ddmlib.IDevice;
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceStateMonitor;
 import com.android.tradefed.device.TestDevice;
 import com.android.tradefed.invoker.RemoteInvocationExecution;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 
@@ -71,38 +73,56 @@ public class NestedRemoteDevice extends TestDevice {
      *
      * <p>TODO: Restore device setup
      */
-    public final boolean resetVirtualDevice() throws DeviceNotAvailableException {
+    public final boolean resetVirtualDevice(IBuildInfo info) throws DeviceNotAvailableException {
         String username = IP_TO_USER.get(getSerialNumber());
         // stop_cvd
         String stopCvdCommand = String.format("sudo runuser -l %s -c 'stop_cvd'", username);
         CommandResult stopCvdRes = getRunUtil().runTimedCmd(60000L, stopCvdCommand.split(" "));
         if (!CommandStatus.SUCCESS.equals(stopCvdRes.getStatus())) {
             CLog.e("%s", stopCvdRes.getStderr());
-            return false;
+            // Log 'adb devices' to confirm device is gone
+            CommandResult printAdbDevices = getRunUtil().runTimedCmd(60000L, "adb", "devices");
+            CLog.e("%s\n%s", printAdbDevices.getStdout(), printAdbDevices.getStderr());
+            // Proceed here, device could have been already gone.
         }
-        // Own the image files
-        String chownUserCommand = MultiUserSetupUtil.getChownCommand(username);
-        CommandResult chownRes = getRunUtil().runTimedCmd(60000L, "sh", "-c", chownUserCommand);
-        if (!CommandStatus.SUCCESS.equals(chownRes.getStatus())) {
-            CLog.e("%s", chownRes.getStderr());
-            return false;
+        // Synchronize this so multiple reset do not occur at the same time inside one VM.
+        synchronized (NestedRemoteDevice.class) {
+            // Own the image files
+            String chownUserCommand = MultiUserSetupUtil.getChownCommand(username);
+            CommandResult chownRes = getRunUtil().runTimedCmd(60000L, "sh", "-c", chownUserCommand);
+            if (!CommandStatus.SUCCESS.equals(chownRes.getStatus())) {
+                CLog.e("%s", chownRes.getStderr());
+                return false;
+            }
+            // Restart the device
+            List<String> createCommand = LaunchCvdHelper.createSimpleDeviceCommand(username, true);
+            CommandResult createRes =
+                    getRunUtil()
+                            .runTimedCmd(
+                                    RemoteInvocationExecution.LAUNCH_EXTRA_DEVICE,
+                                    "sh",
+                                    "-c",
+                                    Joiner.on(" ").join(createCommand));
+            if (!CommandStatus.SUCCESS.equals(createRes.getStatus())) {
+                CLog.e("%s", createRes.getStderr());
+                return false;
+            }
+            // Wait for the device to start for real.
+            getRunUtil().sleep(5000);
+            waitForDeviceAvailable();
+            reInitDevice(info);
+            return true;
         }
-        // Restart the device
-        List<String> createCommand = LaunchCvdHelper.createSimpleDeviceCommand(username, true);
-        CommandResult createRes =
-                getRunUtil()
-                        .runTimedCmd(
-                                RemoteInvocationExecution.LAUNCH_EXTRA_DEVICE,
-                                "sh",
-                                "-c",
-                                Joiner.on(" ").join(createCommand));
-        if (!CommandStatus.SUCCESS.equals(createRes.getStatus())) {
-            CLog.e("%s", createRes.getStderr());
-            return false;
+    }
+
+    private void reInitDevice(IBuildInfo info) throws DeviceNotAvailableException {
+        // Reset recovery since it's a new device
+        setRecoveryMode(RecoveryMode.AVAILABLE);
+        try {
+            preInvocationSetup(info);
+        } catch (TargetSetupError e) {
+            throw new DeviceNotAvailableException(
+                    "Failed re-init of device.", e, getSerialNumber());
         }
-        // Wait for the device to start for real.
-        getRunUtil().sleep(5000);
-        waitForDeviceAvailable();
-        return true;
     }
 }
