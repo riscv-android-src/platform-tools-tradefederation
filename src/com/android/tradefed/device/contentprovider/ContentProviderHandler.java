@@ -55,15 +55,16 @@ public class ContentProviderHandler {
     public static final String COLUMN_MIME_TYPE = "mime_type";
     public static final String COLUMN_METADATA = "metadata";
     public static final String QUERY_INFO_VALUE = "INFO";
+    public static final String NO_RESULTS_STRING = "No result found.";
 
     // Has to be kept in sync with columns in ManagedFileContentProvider.java.
     public static final String[] COLUMNS =
             new String[] {
-                COLUMN_NAME,
-                COLUMN_ABSOLUTE_PATH,
-                COLUMN_DIRECTORY,
-                COLUMN_MIME_TYPE,
-                COLUMN_METADATA
+                    COLUMN_NAME,
+                    COLUMN_ABSOLUTE_PATH,
+                    COLUMN_DIRECTORY,
+                    COLUMN_MIME_TYPE,
+                    COLUMN_METADATA
             };
 
     public static final String PACKAGE_NAME = "android.tradefed.contentprovider";
@@ -155,6 +156,66 @@ public class ContentProviderHandler {
                 "Failed to remove a file at %s using content provider. Error: '%s'",
                 deviceFilePath, deleteResult.getStderr());
         return false;
+    }
+
+    /**
+     * Recursively pull directory contents from device using content provider.
+     *
+     * @param deviceFilePath the absolute file path of the remote source
+     * @param localDir the local directory to pull files into
+     * @return <code>true</code> if file was pulled successfully. <code>false</code> otherwise.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     */
+    public boolean pullDir(String deviceFilePath, File localDir)
+            throws DeviceNotAvailableException {
+        if (!localDir.isDirectory()) {
+            CLog.e("Local path %s is not a directory", localDir.getAbsolutePath());
+            return false;
+        }
+
+        String contentUri = createEscapedContentUri(deviceFilePath);
+        String queryContentCommand =
+                String.format(
+                        "content query --user %d --uri %s", mDevice.getCurrentUser(), contentUri);
+
+        String listCommandResult = mDevice.executeShellCommand(queryContentCommand);
+
+        if (listCommandResult.equals(NO_RESULTS_STRING)) {
+            // Empty directory.
+            return true;
+        }
+
+        String[] listResult = listCommandResult.split("[\\r\\n]+");
+
+        for (String row : listResult) {
+            HashMap<String, String> columnValues = parseQueryResultRow(row);
+            boolean isDirectory = Boolean.valueOf(columnValues.get(COLUMN_DIRECTORY));
+            String name = columnValues.get(COLUMN_NAME);
+            String path = columnValues.get(COLUMN_ABSOLUTE_PATH);
+
+            File localChild = new File(localDir, name);
+            if (isDirectory) {
+                if (!localChild.mkdir()) {
+                    CLog.w(
+                            "Failed to create sub directory %s, aborting.",
+                            localChild.getAbsolutePath());
+                    return false;
+                }
+
+                if (!pullDir(path, localChild)) {
+                    CLog.w("Failed to pull sub directory %s from device, aborting", path);
+                    return false;
+                }
+            } else {
+                // handle regular file
+                if (!pullFile(path, localChild)) {
+                    CLog.w("Failed to pull file %s from device, aborting", path);
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /**

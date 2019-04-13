@@ -230,8 +230,100 @@ public class ContentProviderHandlerTest {
         }
     }
 
+    /** Test {@link ContentProviderHandler#pullDir(String, File)}. */
     @Test
-    public void testCreateUri() throws Exception {
+    public void testPullDir_EmptyDirectory() throws Exception {
+        File pullTo = FileUtil.createTempDir("content-provider-test");
+
+        doReturn("No result found.").when(mMockDevice).executeShellCommand(anyString());
+
+        try {
+            assertTrue(mProvider.pullDir("path/somewhere", pullTo));
+        } finally {
+            FileUtil.recursiveDelete(pullTo);
+        }
+    }
+
+    /**
+     * Test {@link ContentProviderHandler#pullDir(String, File)} to pull a directory that contains
+     * one text file.
+     */
+    @Test
+    public void testPullDir_OneFile() throws Exception {
+        File pullTo = FileUtil.createTempDir("content-provider-test");
+
+        String devicePath = "path/somewhere";
+        String fileName = "content-provider-file.txt";
+
+        doReturn(createMockFileRow(fileName, devicePath + "/" + fileName, "text/plain"))
+                .when(mMockDevice)
+                .executeShellCommand(anyString());
+        mockPullFileSuccess();
+
+        try {
+            // Assert that local directory is empty.
+            assertEquals(pullTo.listFiles().length, 0);
+            mProvider.pullDir(devicePath, pullTo);
+
+            // Assert that a file has been pulled inside the directory.
+            assertEquals(pullTo.listFiles().length, 1);
+            assertEquals(pullTo.listFiles()[0].getName(), fileName);
+        } finally {
+            FileUtil.recursiveDelete(pullTo);
+        }
+    }
+
+    /**
+     * Test {@link ContentProviderHandler#pullDir(String, File)} to pull a directory that contains
+     * another directory.
+     */
+    @Test
+    public void testPullDir_RecursiveSubDir() throws Exception {
+        File pullTo = FileUtil.createTempDir("content-provider-test");
+
+        String devicePath = "path/somewhere";
+        String subDirName = "test-subdir";
+        String subDirPath = devicePath + "/" + subDirName;
+        String fileName = "test-file.txt";
+
+        doReturn(99).when(mMockDevice).getCurrentUser();
+        // Mock the result for the directory.
+        doReturn(createMockDirRow(subDirName, subDirPath))
+                .when(mMockDevice)
+                .executeShellCommand(
+                        "content query --user 99 --uri "
+                                + ContentProviderHandler.createEscapedContentUri(devicePath));
+
+        // Mock the result for the subdir.
+        doReturn(createMockFileRow(fileName, subDirPath + "/" + fileName, "text/plain"))
+                .when(mMockDevice)
+                .executeShellCommand(
+                        "content query --user 99 --uri "
+                                + ContentProviderHandler.createEscapedContentUri(
+                                devicePath + "/" + subDirName));
+
+        mockPullFileSuccess();
+
+        try {
+            // Assert that local directory is empty.
+            assertEquals(pullTo.listFiles().length, 0);
+            mProvider.pullDir(devicePath, pullTo);
+
+            // Assert that a subdirectory has been created.
+            assertEquals(pullTo.listFiles().length, 1);
+            assertEquals(pullTo.listFiles()[0].getName(), subDirName);
+            assertTrue(pullTo.listFiles()[0].isDirectory());
+
+            // Assert that a file has been pulled inside the subdirectory.
+            assertEquals(pullTo.listFiles()[0].listFiles().length, 1);
+            assertEquals(pullTo.listFiles()[0].listFiles()[0].getName(), fileName);
+        } finally {
+            FileUtil.recursiveDelete(pullTo);
+        }
+    }
+
+    @Test
+    public void testCreateUri() {
         String espacedUrl =
                 ContentProviderHandler.createEscapedContentUri("filepath/file name spaced (data)");
         // We expect the full url to be quoted to avoid space issues and the URL to be encoded.
@@ -271,5 +363,17 @@ public class ContentProviderHandlerTest {
         doReturn(mockSuccess())
                 .when(mMockDevice)
                 .executeShellV2Command(anyString(), any(OutputStream.class));
+    }
+
+    private String createMockDirRow(String name, String path) {
+        return String.format(
+                "Row: 1 name=%s, absolute_path=%s, is_directory=%b, mime_type=NULL, metadata=NULL",
+                name, path, true);
+    }
+
+    private String createMockFileRow(String name, String path, String mimeType) {
+        return String.format(
+                "Row: 1 name=%s, absolute_path=%s, is_directory=%b, mime_type=%s, metadata=NULL",
+                name, path, false, mimeType);
     }
 }

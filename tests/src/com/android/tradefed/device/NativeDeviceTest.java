@@ -413,12 +413,12 @@ public class NativeDeviceTest {
         children.add(fakeFile);
         EasyMock.expect(fakeFile.isDirectory()).andReturn(false);
         EasyMock.expect(fakeFile.getName()).andReturn("fakeFile");
-        EasyMock.expect(fakeFile.getFullPath()).andReturn("/sdcard/screenshots/fakeFile");
+        EasyMock.expect(fakeFile.getFullPath()).andReturn("/some_device_path/fakeFile");
 
         children.add(fakeDir);
         EasyMock.expect(fakeDir.isDirectory()).andReturn(true);
         EasyMock.expect(fakeDir.getName()).andReturn("fakeDir");
-        EasyMock.expect(fakeDir.getFullPath()).andReturn("/sdcard/screenshots/fakeDir");
+        EasyMock.expect(fakeDir.getFullPath()).andReturn("/some_device_path/fakeDir");
         // #pullDir is being called on dir fakeDir to pull everything recursively.
         Collection<IFileEntry> fakeDirChildren = new ArrayList<>();
         EasyMock.expect(fakeDir.getChildren(false)).andReturn(fakeDirChildren);
@@ -426,7 +426,7 @@ public class NativeDeviceTest {
 
         EasyMock.replay(fakeEntry, fakeFile, fakeDir);
         try {
-            boolean res = mTestDevice.pullDir("/sdcard/screenshots/", dir);
+            boolean res = mTestDevice.pullDir("/some_device_path/", dir);
             assertTrue(res);
             assertEquals(2, dir.list().length);
             assertTrue(Arrays.asList(dir.list()).contains("fakeFile"));
@@ -487,12 +487,12 @@ public class NativeDeviceTest {
         children.add(fakeFile);
         EasyMock.expect(fakeFile.isDirectory()).andReturn(false);
         EasyMock.expect(fakeFile.getName()).andReturn("fakeFile");
-        EasyMock.expect(fakeFile.getFullPath()).andReturn("/sdcard/screenshots/fakeFile");
+        EasyMock.expect(fakeFile.getFullPath()).andReturn("/some_device_path/fakeFile");
 
         children.add(fakeDir);
         EasyMock.expect(fakeDir.isDirectory()).andReturn(true);
         EasyMock.expect(fakeDir.getName()).andReturn("fakeDir");
-        EasyMock.expect(fakeDir.getFullPath()).andReturn("/sdcard/screenshots/fakeDir");
+        EasyMock.expect(fakeDir.getFullPath()).andReturn("/some_device_path/fakeDir");
         // #pullDir is being called on dir fakeDir to pull everything recursively.
         Collection<IFileEntry> fakeDirChildren = new ArrayList<>();
         IFileEntry secondLevelChildren = EasyMock.createMock(IFileEntry.class);
@@ -503,11 +503,11 @@ public class NativeDeviceTest {
         EasyMock.expect(secondLevelChildren.isDirectory()).andReturn(false);
         EasyMock.expect(secondLevelChildren.getName()).andReturn("secondLevelChildren");
         EasyMock.expect(secondLevelChildren.getFullPath())
-                .andReturn("/sdcard/screenshots/fakeDir/secondLevelChildren");
+                .andReturn("/some_device_path/fakeDir/secondLevelChildren");
 
         EasyMock.replay(fakeEntry, fakeFile, fakeDir, secondLevelChildren);
         try {
-            boolean res = mTestDevice.pullDir("/sdcard/screenshots/", dir);
+            boolean res = mTestDevice.pullDir("/some_device_path/", dir);
             // If one of the pull fails, the full command is considered failed.
             assertFalse(res);
             assertEquals(2, dir.list().length);
