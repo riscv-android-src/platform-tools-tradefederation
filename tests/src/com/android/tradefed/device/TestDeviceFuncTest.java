@@ -209,7 +209,7 @@ public class TestDeviceFuncTest implements IDeviceTest {
             assertNotNull(externalStorePath);
             deviceFilePath = String.format("%s/%s", externalStorePath, "tmp_testPushPull.txt");
             // ensure file does not already exist
-            mTestDevice.executeShellCommand(String.format("rm %s", deviceFilePath));
+            mTestDevice.deleteFile(deviceFilePath);
             assertFalse(String.format("%s exists", deviceFilePath),
                     mTestDevice.doesFileExist(deviceFilePath));
 
@@ -224,7 +224,7 @@ public class TestDeviceFuncTest implements IDeviceTest {
                 tmpDestFile.delete();
             }
             if (deviceFilePath != null) {
-                mTestDevice.executeShellCommand(String.format("rm %s", deviceFilePath));
+                mTestDevice.deleteFile(deviceFilePath);
             }
         }
     }
@@ -386,9 +386,9 @@ public class TestDeviceFuncTest implements IDeviceTest {
         final String extStore = "/data/local";
 
         // Clean up after potential failed run
-        mTestDevice.executeShellCommand(String.format("rm %s/testdir", extStore));
-        mTestDevice.executeShellCommand(String.format("rm %s/testdir2/foo.txt", extStore));
-        mTestDevice.executeShellCommand(String.format("rmdir %s/testdir2", extStore));
+        mTestDevice.deleteFile(String.format("%s/testdir", extStore));
+        mTestDevice.deleteFile(String.format("%s/testdir2/foo.txt", extStore));
+        mTestDevice.deleteFile(String.format("%s/testdir2", extStore));
 
         try {
             assertEquals("",
@@ -402,9 +402,9 @@ public class TestDeviceFuncTest implements IDeviceTest {
 
             assertNotNull(mTestDevice.getFileEntry(String.format("%s/testdir/foo.txt", extStore)));
         } finally {
-            mTestDevice.executeShellCommand(String.format("rm %s/testdir", extStore));
-            mTestDevice.executeShellCommand(String.format("rm %s/testdir2/foo.txt", extStore));
-            mTestDevice.executeShellCommand(String.format("rmdir %s/testdir2", extStore));
+            mTestDevice.deleteFile(String.format("%s/testdir", extStore));
+            mTestDevice.deleteFile(String.format("%s/testdir2/foo.txt", extStore));
+            mTestDevice.deleteFile(String.format("%s/testdir2", extStore));
         }
     }
 
@@ -470,7 +470,7 @@ public class TestDeviceFuncTest implements IDeviceTest {
         } finally {
             if (expectedDeviceFilePath != null && externalStorePath != null) {
                 // note that expectedDeviceFilePath has externalStorePath prepended at definition
-                mTestDevice.executeShellCommand(String.format("rm -r %s", expectedDeviceFilePath));
+                mTestDevice.deleteFile(expectedDeviceFilePath);
             }
             FileUtil.recursiveDelete(tmpDir);
         }
@@ -496,8 +496,8 @@ public class TestDeviceFuncTest implements IDeviceTest {
 
         } finally {
             if (expectedDeviceFilePath != null && externalStorePath != null) {
-                mTestDevice.executeShellCommand(String.format("rm -r %s/%s", externalStorePath,
-                        expectedDeviceFilePath));
+                mTestDevice.deleteFile(
+                        String.format("%s/%s", externalStorePath, expectedDeviceFilePath));
             }
             FileUtil.recursiveDelete(rootDir);
         }
