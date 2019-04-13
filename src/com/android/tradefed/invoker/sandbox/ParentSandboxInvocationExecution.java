@@ -26,6 +26,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationExecution;
 import com.android.tradefed.invoker.TestInvocation.Stage;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.sandbox.SandboxInvocationRunner;
@@ -55,7 +56,11 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
     }
 
     @Override
-    public void doTeardown(IInvocationContext context, IConfiguration config, Throwable exception)
+    public void doTeardown(
+            IInvocationContext context,
+            IConfiguration config,
+            ITestLogger logger,
+            Throwable exception)
             throws Throwable {
         // Skip
         // If we are the parent invocation of the sandbox, setUp has been skipped since it's
@@ -65,7 +70,7 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
             return;
         }
         CLog.d("Using %s to run in the parent tear down.", SandboxOptions.PARENT_PREPARER_CONFIG);
-        super.doTeardown(context, mParentPreparerConfig, exception);
+        super.doTeardown(context, mParentPreparerConfig, logger, exception);
     }
 
     @Override

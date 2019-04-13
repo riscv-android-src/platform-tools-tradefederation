@@ -25,6 +25,7 @@ import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -48,6 +49,8 @@ import com.android.tradefed.testtype.IReportNotExecuted;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TimeUtil;
 
+import com.google.common.collect.Sets;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -56,8 +59,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-
-import io.netty.util.internal.ConcurrentSet;
 
 /**
  * Tests wrapper that allow to execute all the tests of a pool of tests. Tests can be shared by
@@ -109,7 +110,7 @@ public final class TestsPoolPoller
             CountDownLatch tracker) {
         this(tests, tracker);
         mTokenPool = tokenTests;
-        mRejectedToken = new ConcurrentSet<>();
+        mRejectedToken = Sets.newConcurrentHashSet();
     }
 
     /** Returns the first {@link IRemoteTest} from the pool or null if none remaining. */
@@ -262,6 +263,15 @@ public final class TestsPoolPoller
     void HandleDeviceNotAvailable(DeviceNotAvailableException originalException, IRemoteTest test)
             throws DeviceNotAvailableException {
         try {
+            if (mDevice instanceof NestedRemoteDevice) {
+                // If it's not the last device, reset it.
+                if (((NestedRemoteDevice) mDevice).resetVirtualDevice(mBuildInfo)) {
+                    CLog.d("Successful virtual device reset.");
+                    return;
+                }
+                // Original exception will be thrown below
+                CLog.e("Virtual device %s reset failed.", mDevice.getSerialNumber());
+            }
             if (mTracker.getCount() > 1) {
                 CLog.d(
                         "Wait %s for device to maybe come back online.",

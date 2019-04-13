@@ -112,9 +112,8 @@ public class ContentProviderHandlerTest {
                 .executeShellV2Command(
                         eq(
                                 "content delete --user 99 --uri "
-                                        + ContentProviderHandler.CONTENT_PROVIDER_URI
-                                        + "/"
-                                        + devicePath));
+                                        + ContentProviderHandler.createEscapedContentUri(
+                                                devicePath)));
         assertTrue(mProvider.deleteFile(devicePath));
     }
 
@@ -123,6 +122,7 @@ public class ContentProviderHandlerTest {
     public void testDeleteFile_fail() throws Exception {
         String devicePath = "path/somewhere/file.txt";
         CommandResult result = new CommandResult(CommandStatus.FAILED);
+        result.setStdout("");
         result.setStderr("couldn't find the file");
         doReturn(99).when(mMockDevice).getCurrentUser();
         doReturn(result)
@@ -130,9 +130,25 @@ public class ContentProviderHandlerTest {
                 .executeShellV2Command(
                         eq(
                                 "content delete --user 99 --uri "
-                                        + ContentProviderHandler.CONTENT_PROVIDER_URI
-                                        + "/"
-                                        + devicePath));
+                                        + ContentProviderHandler.createEscapedContentUri(
+                                                devicePath)));
+        assertFalse(mProvider.deleteFile(devicePath));
+    }
+
+    /** Test {@link ContentProviderHandler#deleteFile(String)}. */
+    @Test
+    public void testError() throws Exception {
+        String devicePath = "path/somewhere/file.txt";
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStdout("[ERROR] Unsupported operation: delete");
+        doReturn(99).when(mMockDevice).getCurrentUser();
+        doReturn(result)
+                .when(mMockDevice)
+                .executeShellV2Command(
+                        eq(
+                                "content delete --user 99 --uri "
+                                        + ContentProviderHandler.createEscapedContentUri(
+                                                devicePath)));
         assertFalse(mProvider.deleteFile(devicePath));
     }
 
@@ -148,9 +164,8 @@ public class ContentProviderHandlerTest {
                     .executeShellV2Command(
                             eq(
                                     "content write --user 99 --uri "
-                                            + ContentProviderHandler.CONTENT_PROVIDER_URI
-                                            + "/"
-                                            + devicePath),
+                                            + ContentProviderHandler.createEscapedContentUri(
+                                                    devicePath)),
                             eq(toPush));
             assertTrue(mProvider.pushFile(toPush, devicePath));
         } finally {
@@ -178,9 +193,7 @@ public class ContentProviderHandlerTest {
             assertEquals(
                     shellCommandCaptor.getValue(),
                     "content read --user 99 --uri "
-                            + ContentProviderHandler.CONTENT_PROVIDER_URI
-                            + "/"
-                            + devicePath);
+                            + ContentProviderHandler.createEscapedContentUri(devicePath));
         } finally {
             FileUtil.deleteFile(pullTo);
         }
@@ -216,9 +229,21 @@ public class ContentProviderHandlerTest {
         }
     }
 
+    @Test
+    public void testCreateUri() throws Exception {
+        String espacedUrl =
+                ContentProviderHandler.createEscapedContentUri("filepath/file name spaced (data)");
+        // We expect the full url to be quoted to avoid space issues and the URL to be encoded.
+        assertEquals(
+                "\"content://android.tradefed.contentprovider/filepath%252Ffile%2520name"
+                        + "%2520spaced%2520%28data%29\"",
+                espacedUrl);
+    }
+
     private CommandResult mockSuccess() {
         CommandResult result = new CommandResult(CommandStatus.SUCCESS);
         result.setStderr("");
+        result.setStdout("");
         return result;
     }
 

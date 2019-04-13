@@ -94,13 +94,13 @@ class AtestUtilsUnittests(unittest.TestCase):
         stream.isatty.return_value = False
         self.assertFalse(atest_utils._has_colors(stream))
 
-        # stream is a tty(terminal) and clolors < 2.
+        # stream is a tty(terminal) and colors < 2.
         stream = mock.Mock()
         stream.isatty.return_value = True
         mock_curses_tigetnum.return_value = 1
         self.assertFalse(atest_utils._has_colors(stream))
 
-        # stream is a tty(terminal) and clolors > 2.
+        # stream is a tty(terminal) and colors > 2.
         stream = mock.Mock()
         stream.isatty.return_value = True
         mock_curses_tigetnum.return_value = 256

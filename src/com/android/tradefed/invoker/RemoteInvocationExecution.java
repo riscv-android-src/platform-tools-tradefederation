@@ -317,7 +317,11 @@ public class RemoteInvocationExecution extends InvocationExecution {
     }
 
     @Override
-    public void doTeardown(IInvocationContext context, IConfiguration config, Throwable exception)
+    public void doTeardown(
+            IInvocationContext context,
+            IConfiguration config,
+            ITestLogger logger,
+            Throwable exception)
             throws Throwable {
         // Only run device post invocation teardown
         super.runDevicePostInvocationTearDown(context, config);
@@ -329,7 +333,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
     }
 
     @Override
-    String getAdbVersion() {
+    protected String getAdbVersion() {
         // Do not report the adb version from the parent, the remote child will remote its own.
         return null;
     }

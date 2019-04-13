@@ -305,7 +305,7 @@ public class GTest extends GTestBase implements IDeviceTest {
             // Pull the result file, may not exist if issue with the test.
             testDevice.pullFile(tmpResName, tmpOutput);
             // Clean the file on the device
-            testDevice.executeShellCommand("rm " + tmpResName);
+            testDevice.deleteFile(tmpResName);
             GTestXmlResultParser parser = createXmlParser(testRunName, listener);
             // Attempt to parse the file, doesn't matter if the content is invalid.
             if (tmpOutput.exists()) {

@@ -4027,7 +4027,9 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public void preInvocationSetup(IBuildInfo info)
             throws TargetSetupError, DeviceNotAvailableException {
-        // Default implementation empty on purpose
+        // Default implementation
+        mContentProvider = null;
+        mShouldSkipContentProviderSetup = false;
     }
 
     /**
@@ -4046,10 +4048,7 @@ public class NativeDevice implements IManagedTestDevice {
             if (mContentProvider == null) {
                 return;
             }
-            ContentProviderHandler handler = getContentProvider();
-            if (handler != null) {
-                handler.tearDown();
-            }
+            mContentProvider.tearDown();
         } catch (DeviceNotAvailableException e) {
             CLog.e(e);
         }
@@ -4340,8 +4339,9 @@ public class NativeDevice implements IManagedTestDevice {
         if (!getOptions().shouldUseContentProvider()) {
             return null;
         }
-        // Prevent usage of content provider before API 25 as it would not work well.
-        if (getApiLevel() < 25) {
+        // Prevent usage of content provider before API 28 as it would not work well since content
+        // tool is not working before P.
+        if (getApiLevel() < 28) {
             return null;
         }
         if (mContentProvider == null) {

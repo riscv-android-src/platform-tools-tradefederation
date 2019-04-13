@@ -4128,7 +4128,8 @@ public class TestDeviceTest extends TestCase {
         injectShellResponse("pidof system_server", "929");
         injectShellResponse("am dumpheap 929 /data/dump.hprof", "");
         injectShellResponse("ls \"/data/dump.hprof\"", "/data/dump.hprof");
-        injectShellResponse("rm /data/dump.hprof", "");
+        injectShellResponse("rm -rf \"/data/dump.hprof\"", "");
+
         EasyMock.replay(mMockIDevice, mMockRunUtil);
         File res = mTestDevice.dumpHeap("system_server", "/data/dump.hprof");
         assertNotNull(res);

@@ -32,7 +32,9 @@ public class AcloudConfigParser {
         SERVICE_ACCOUNT_PRIVATE_KEY("service_account_private_key_path"),
         ZONE("zone"),
         PROJECT("project"),
-        SERVICE_ACCOUNT_JSON_PRIVATE_KEY("service_account_json_private_key_path");
+        SERVICE_ACCOUNT_JSON_PRIVATE_KEY("service_account_json_private_key_path"),
+        STABLE_HOST_IMAGE_NAME("stable_host_image_name"),
+        STABLE_HOST_IMAGE_PROJECT("stable_host_image_project");
 
         private String mName;
 
