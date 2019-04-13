@@ -111,7 +111,6 @@ java_library_host {
     ],
     libs: [
         "loganalysis",
-        "tools-common-prebuilt",
     ],
     manifest: "MANIFEST.mf",
 }
@@ -164,7 +163,6 @@ droidstubs_host {
     libs: [
         "loganalysis",
         "tradefed",
-        "tools-common-prebuilt",
     ],
     args: tradefed_docs_only_args + "--package",
     create_doc_stubs: true,
@@ -178,7 +176,6 @@ droiddoc_host {
     libs: [
         "loganalysis",
         "tradefed",
-        "tools-common-prebuilt",
     ],
     custom_template: "droiddoc-templates-sdk",
     hdf: [
