@@ -23,10 +23,12 @@ import com.android.ddmlib.InstallException;
 import com.android.ddmlib.InstallReceiver;
 import com.android.ddmlib.RawImage;
 import com.android.ddmlib.ShellCommandUnresponsiveException;
+import com.android.ddmlib.SplitApkInstaller;
 import com.android.ddmlib.TimeoutException;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
+import com.android.sdklib.AndroidVersion;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice.ApexInfo;
 import com.android.tradefed.device.ITestDevice.MountPointInfo;
@@ -1736,6 +1738,55 @@ public class TestDeviceTest extends TestCase {
         EasyMock.expectLastCall();
         replayMocks();
         assertNull(mTestDevice.installPackage(new File(apexFile), true));
+    }
+
+    /** Test SplitApkInstaller with Split Apk Not Supported */
+    public void testInstallPackages_splitApkNotSupported() throws Exception {
+        List<File> mLocalApks = new ArrayList<File>();
+        for (int i = 0; i < 3; i++) {
+            mLocalApks.add(File.createTempFile("test", ".apk"));
+        }
+        List<String> mInstallOptions = new ArrayList<String>();
+        try {
+            EasyMock.expect(mMockIDevice.getVersion())
+                    .andStubReturn(
+                            new AndroidVersion(
+                                    AndroidVersion.ALLOW_SPLIT_APK_INSTALLATION.getApiLevel() - 1));
+            EasyMock.expectLastCall();
+            EasyMock.replay(mMockIDevice);
+            SplitApkInstaller.create(mMockIDevice, mLocalApks, true, mInstallOptions);
+            fail("IllegalArgumentException expected");
+        } catch (IllegalArgumentException e) {
+            // expected
+        } finally {
+            EasyMock.verify(mMockIDevice);
+            for (File apkFile : mLocalApks) {
+                apkFile.delete();
+            }
+        }
+    }
+
+    /** Test SplitApkInstaller with Split Apk Supported */
+    public void testInstallPackages_splitApkSupported() throws Exception {
+        List<File> mLocalApks = new ArrayList<File>();
+        for (int i = 0; i < 3; i++) {
+            mLocalApks.add(File.createTempFile("test", ".apk"));
+        }
+        List<String> mInstallOptions = new ArrayList<String>();
+        try {
+            EasyMock.expect(mMockIDevice.getVersion())
+                    .andStubReturn(
+                            new AndroidVersion(
+                                    AndroidVersion.ALLOW_SPLIT_APK_INSTALLATION.getApiLevel()));
+            EasyMock.expectLastCall();
+            EasyMock.replay(mMockIDevice);
+            SplitApkInstaller.create(mMockIDevice, mLocalApks, true, mInstallOptions);
+            EasyMock.verify(mMockIDevice);
+        } finally {
+            for (File apkFile : mLocalApks) {
+                apkFile.delete();
+            }
+        }
     }
 
     /**
