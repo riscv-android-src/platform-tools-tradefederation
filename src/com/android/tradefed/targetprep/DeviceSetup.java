@@ -892,7 +892,8 @@ public class DeviceSetup extends BaseTargetPreparer implements ITargetCleaner {
             return;
         }
         for (Map.Entry<String, String> ssidToPsk : mWifiSsidToPsk.entrySet()) {
-            if (device.connectToWifiNetwork(ssidToPsk.getKey(), ssidToPsk.getValue())) {
+            String psk = "".equals(ssidToPsk.getValue()) ? null : ssidToPsk.getValue();
+            if (device.connectToWifiNetwork(ssidToPsk.getKey(), psk)) {
                 return;
             }
         }
