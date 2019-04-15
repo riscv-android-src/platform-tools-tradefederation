@@ -235,6 +235,7 @@ import com.android.tradefed.testtype.JarHostTestTest;
 import com.android.tradefed.testtype.JavaCodeCoverageListenerTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestParserTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestTest;
+import com.android.tradefed.testtype.NativeCodeCoverageListenerTest;
 import com.android.tradefed.testtype.NativeStressTestParserTest;
 import com.android.tradefed.testtype.NativeStressTestTest;
 import com.android.tradefed.testtype.NoisyDryRunTestTest;
@@ -282,6 +283,7 @@ import com.android.tradefed.util.ArrayUtilTest;
 import com.android.tradefed.util.BluetoothUtilsTest;
 import com.android.tradefed.util.BugreportTest;
 import com.android.tradefed.util.BuildTestsZipUtilsTest;
+import com.android.tradefed.util.BundletoolUtilTest;
 import com.android.tradefed.util.ByteArrayListTest;
 import com.android.tradefed.util.ClassPathScannerTest;
 import com.android.tradefed.util.ConditionPriorityBlockingQueueTest;
@@ -647,6 +649,7 @@ import org.junit.runners.Suite.SuiteClasses;
     JavaCodeCoverageListenerTest.class,
     NativeBenchmarkTestParserTest.class,
     NativeBenchmarkTestTest.class,
+    NativeCodeCoverageListenerTest.class,
     NativeStressTestParserTest.class,
     NativeStressTestTest.class,
     NoisyDryRunTestTest.class,
@@ -711,6 +714,7 @@ import org.junit.runners.Suite.SuiteClasses;
     BluetoothUtilsTest.class,
     BugreportTest.class,
     BuildTestsZipUtilsTest.class,
+    BundletoolUtilTest.class,
     ByteArrayListTest.class,
     ClassPathScannerTest.class,
     ConditionPriorityBlockingQueueTest.class,

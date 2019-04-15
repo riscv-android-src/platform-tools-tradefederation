@@ -157,13 +157,11 @@ public class ManagedFileContentProvider extends ContentProvider {
     @Override
     public int delete(
             @NonNull Uri uri, @Nullable String selection, @Nullable String[] selectionArgs) {
-        ContentValues values = mFileTracker.remove(uri);
-        if (values == null) {
-            return 0;
-        }
+        // Stop Tracking the File of directory if it was tracked and delete it from the disk
+        mFileTracker.remove(uri);
         File file = getFileForUri(uri);
         int num = recursiveDelete(file);
-        return 1;
+        return num;
     }
 
     @Override
