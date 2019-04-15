@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.result.suite;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -46,17 +47,17 @@ public class SuiteResultReporter extends CollectingTestListener {
 
     public static final String SUITE_REPORTER_SOURCE = SuiteResultReporter.class.getName();
 
-    private long mStartTime = 0l;
-    private long mElapsedTime = 0l;
+    private long mStartTime = 0L;
+    private long mEndTime = 0L;
 
     private int mTotalModules = 0;
     private int mCompleteModules = 0;
 
-    private long mTotalTests = 0l;
-    private long mPassedTests = 0l;
-    private long mFailedTests = 0l;
-    private long mSkippedTests = 0l;
-    private long mAssumeFailureTests = 0l;
+    private long mTotalTests = 0L;
+    private long mPassedTests = 0L;
+    private long mFailedTests = 0L;
+    private long mSkippedTests = 0L;
+    private long mAssumeFailureTests = 0L;
 
     // Retry information
     private long mTotalRetrySuccess = 0L;
@@ -84,7 +85,7 @@ public class SuiteResultReporter extends CollectingTestListener {
     @Override
     public void invocationStarted(IInvocationContext context) {
         super.invocationStarted(context);
-        mStartTime = System.currentTimeMillis();
+        mStartTime = getCurrentTime();
     }
 
     @Override
@@ -114,8 +115,8 @@ public class SuiteResultReporter extends CollectingTestListener {
 
     @Override
     public void invocationEnded(long elapsedTime) {
+        mEndTime = getCurrentTime();
         super.invocationEnded(elapsedTime);
-        mElapsedTime = elapsedTime;
 
         // finalize and print results - general
         Collection<TestRunResult> results = getMergedTestRunResults();
@@ -172,8 +173,10 @@ public class SuiteResultReporter extends CollectingTestListener {
         printModuleCheckersMetric(moduleCheckers);
         printModuleRetriesInformation();
         mSummary.append("=============== Summary ===============\n");
+        // Print the time from invocation start to end
         mSummary.append(
-                String.format("Total Run time: %s\n", TimeUtil.formatElapsedTime(mElapsedTime)));
+                String.format(
+                        "Total Run time: %s\n", TimeUtil.formatElapsedTime(mEndTime - mStartTime)));
         mSummary.append(
                 String.format("%s/%s modules completed\n", mCompleteModules, mTotalModules));
         if (!mFailedModule.isEmpty()) {
@@ -399,13 +402,18 @@ public class SuiteResultReporter extends CollectingTestListener {
         return summary;
     }
 
-    /** Returns the start time of the run. */
+    /** Returns the start time of the invocation. */
     protected long getStartTime() {
         return mStartTime;
     }
 
-    /** Returns the elapsed time of the full run. */
-    protected long getElapsedTime() {
-        return mElapsedTime;
+    /** Returns the end time of the invocation. */
+    protected long getEndTime() {
+        return mEndTime;
+    }
+
+    @VisibleForTesting
+    protected long getCurrentTime() {
+        return System.currentTimeMillis();
     }
 }

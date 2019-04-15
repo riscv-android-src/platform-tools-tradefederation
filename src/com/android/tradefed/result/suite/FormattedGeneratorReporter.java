@@ -74,7 +74,7 @@ public abstract class FormattedGeneratorReporter extends SuiteResultReporter {
         holder.failedTests = getFailedTests();
 
         holder.startTime = getStartTime();
-        holder.endTime = getElapsedTime() + getStartTime();
+        holder.endTime = getEndTime();
 
         return holder;
     }
