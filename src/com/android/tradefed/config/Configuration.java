@@ -691,6 +691,7 @@ public class Configuration implements IConfiguration {
                 clone.setConfigurationObjectListNoThrow(entry.getKey(), entry.getValue());
             }
         }
+        clone.setCommandLine(this.mCommandLine);
         return clone;
     }
 
