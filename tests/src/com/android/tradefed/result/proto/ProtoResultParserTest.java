@@ -16,7 +16,6 @@
 package com.android.tradefed.result.proto;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.config.ConfigurationDef;
@@ -56,6 +55,7 @@ public class ProtoResultParserTest {
     private TestProtoParser mTestParser;
     private FinalTestProtoParser mFinalTestParser;
     private IInvocationContext mInvocationContext;
+    private IInvocationContext mMainInvocationContext;
 
     private class TestProtoParser extends ProtoResultReporter {
 
@@ -115,7 +115,8 @@ public class ProtoResultParserTest {
     @Before
     public void setUp() {
         mMockListener = EasyMock.createStrictMock(ILogSaverListener.class);
-        mParser = new ProtoResultParser(mMockListener, true);
+        mMainInvocationContext = new InvocationContext();
+        mParser = new ProtoResultParser(mMockListener, mMainInvocationContext, true);
         mTestParser = new TestProtoParser();
         mFinalTestParser = new FinalTestProtoParser();
         mInvocationContext = new InvocationContext();
@@ -123,7 +124,11 @@ public class ProtoResultParserTest {
         BuildInfo info = new BuildInfo();
         mInvocationContext.addAllocatedDevice(
                 ConfigurationDef.DEFAULT_DEVICE_NAME, EasyMock.createMock(ITestDevice.class));
+        mMainInvocationContext.addAllocatedDevice(
+                ConfigurationDef.DEFAULT_DEVICE_NAME, EasyMock.createMock(ITestDevice.class));
         mInvocationContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, info);
+        mMainInvocationContext.addDeviceBuildInfo(
+                ConfigurationDef.DEFAULT_DEVICE_NAME, new BuildInfo());
     }
 
     @Test
@@ -200,8 +205,7 @@ public class ProtoResultParserTest {
         assertEquals(logFile.getSize(), capturedFile.getSize());
 
         // Check Context
-        assertNotNull(mParser.getInvocationContext());
-        IInvocationContext context = mParser.getInvocationContext();
+        IInvocationContext context = mMainInvocationContext;
         assertEquals(
                 "build_value", context.getBuildInfos().get(0).getBuildAttributes().get(TEST_KEY));
         assertEquals("context_value", context.getAttributes().get(CONTEXT_TEST_KEY).get(0));
@@ -389,7 +393,7 @@ public class ProtoResultParserTest {
     @Test
     public void testEvents_subprocess() throws Exception {
         // In subprocess, we do not report invocationStart/end again
-        mParser = new ProtoResultParser(mMockListener, false);
+        mParser = new ProtoResultParser(mMockListener, mMainInvocationContext, false);
 
         TestDescription test1 = new TestDescription("class1", "test1");
         TestDescription test2 = new TestDescription("class1", "test2");
@@ -472,8 +476,7 @@ public class ProtoResultParserTest {
             assertEquals(logFile.getSize(), capturedFile.getSize());
 
             // Check Context
-            assertNotNull(mParser.getInvocationContext());
-            IInvocationContext context = mParser.getInvocationContext();
+            IInvocationContext context = mMainInvocationContext;
             assertEquals(
                     "build_value",
                     context.getBuildInfos().get(0).getBuildAttributes().get(TEST_KEY));
