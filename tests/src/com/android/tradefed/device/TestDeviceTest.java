@@ -4261,4 +4261,43 @@ public class TestDeviceTest extends TestCase {
         assertTrue(displays.contains(5));
         verifyMocks();
     }
+
+    /** Test for {@link TestDevice#getScreenshot(int)}. */
+    public void testScreenshotByDisplay() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public File pullFile(String remoteFilePath) throws DeviceNotAvailableException {
+                        assertEquals("/data/local/tmp/display_0.png", remoteFilePath);
+                        return new File("fakewhatever");
+                    }
+                };
+        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+        OutputStream outStream = null;
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                120000L,
+                                outStream,
+                                outStream,
+                                "adb",
+                                "-s",
+                                "serial",
+                                "shell",
+                                "screencap",
+                                "-p",
+                                "-d",
+                                "0",
+                                "/data/local/tmp/display_0.png"))
+                .andReturn(res);
+        mMockIDevice.executeShellCommand(
+                EasyMock.eq("rm -rf \"/data/local/tmp/display_0.png\""),
+                EasyMock.anyObject(),
+                EasyMock.anyLong(),
+                EasyMock.anyObject());
+        replayMocks();
+        InputStreamSource source = mTestDevice.getScreenshot(0);
+        assertNotNull(source);
+        StreamUtil.close(source);
+        verifyMocks();
+    }
 }
