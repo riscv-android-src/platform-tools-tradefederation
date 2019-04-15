@@ -46,6 +46,9 @@ public class ConfigurationDescriptor implements Serializable, Cloneable {
 
     private static final long serialVersionUID = BuildSerializedVersion.VERSION;
 
+    /** Metadata key for a config to specify that it was sharded. */
+    public static final String LOCAL_SHARDED_KEY = "sharded";
+
     @Option(name = "test-suite-tag", description = "A membership tag to suite. Can be repeated.")
     private List<String> mSuiteTags = new ArrayList<>();
 
@@ -114,6 +117,16 @@ public class ConfigurationDescriptor implements Serializable, Cloneable {
     @VisibleForTesting
     public void setMetaData(MultiMap<String, String> metadata) {
         mMetaData = metadata;
+    }
+
+    /**
+     * Add a value for a given key to the metadata entries.
+     *
+     * @param key {@link String} of the key to add values to.
+     * @param value A{@link String} of the additional value.
+     */
+    public void addMetadata(String key, String value) {
+        mMetaData.put(key, value);
     }
 
     /**
