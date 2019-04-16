@@ -52,7 +52,7 @@ public class NoisyDryRunTest implements IRemoteTest {
     private static final long SLEEP_INTERVAL_MILLI_SEC = 5 * 1000;
 
     @Option(name = "cmdfile", description = "The cmdfile to run noisy dry run on.")
-    private String mCmdfile = null;
+    private File mCmdfile = null;
 
     @Option(name = "timeout",
             description = "The timeout to wait cmd file be ready.",
@@ -67,14 +67,13 @@ public class NoisyDryRunTest implements IRemoteTest {
         }
     }
 
-    private List<CommandLine> testCommandFile(ITestInvocationListener listener, String filename) {
+    private List<CommandLine> testCommandFile(ITestInvocationListener listener, File file) {
         listener.testRunStarted(NoisyDryRunTest.class.getCanonicalName() + "_parseFile", 1);
         TestDescription parseFileTest =
                 new TestDescription(NoisyDryRunTest.class.getCanonicalName(), "parseFile");
         listener.testStarted(parseFileTest);
         CommandFileParser parser = new CommandFileParser();
         try {
-            File file = new File(filename);
             checkFileWithTimeout(file);
             return parser.parseFile(file);
         } catch (IOException | ConfigurationException e) {
