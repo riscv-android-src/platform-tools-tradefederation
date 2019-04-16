@@ -17,6 +17,7 @@ package com.android.tradefed.invoker.shard;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
@@ -224,6 +225,9 @@ public class ShardHelper implements IShardHelper {
             }
             // Sharding was done, no need for children to look into it.
             clonedConfig.getCommandOptions().setShardCount(null);
+            clonedConfig
+                    .getConfigurationDescription()
+                    .addMetadata(ConfigurationDescriptor.LOCAL_SHARDED_KEY, "true");
             // Validate and download the dynamic options
             validateOptions(clonedConfig);
         } catch (ConfigurationException e) {
