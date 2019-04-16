@@ -60,6 +60,7 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.time.Clock;
 import java.util.ArrayList;
@@ -618,6 +619,17 @@ public class NativeDeviceTest {
             return;
         }
         fail("stopUser should have thrown an exception.");
+    }
+
+    /** Unit test for {@link NativeDevice#startUser(int, boolean)}. */
+    @Test
+    public void testStartUserFlags_exception() throws Exception {
+        try {
+            mTestDevice.startUser(0, true);
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("startUser should have thrown an exception.");
     }
 
     /** Unit test for {@link NativeDevice#isUserRunning(int)}. */
@@ -1199,34 +1211,44 @@ public class NativeDeviceTest {
     /** Unit test for {@link NativeDevice#getBugreportz()}. */
     @Test
     public void testGetBugreportz() throws IOException {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public void executeShellCommand(
-                    String command, IShellOutputReceiver receiver,
-                    long maxTimeToOutputShellResponse, TimeUnit timeUnit, int retryAttempts)
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public void executeShellCommand(
+                            String command,
+                            IShellOutputReceiver receiver,
+                            long maxTimeToOutputShellResponse,
+                            TimeUnit timeUnit,
+                            int retryAttempts)
                             throws DeviceNotAvailableException {
-                String fakeRep = "OK:/data/0/com.android.shell/bugreports/bugreport1970-10-27.zip";
-                receiver.addOutput(fakeRep.getBytes(), 0, fakeRep.getBytes().length);
-            }
-            @Override
-            public boolean doesFileExist(String destPath) throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public boolean pullFile(String remoteFilePath, File localFile)
-                    throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                assertEquals("rm /data/0/com.android.shell/bugreports/*", command);
-                return null;
-            }
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return 24;
-            }
-        };
+                        String fakeRep =
+                                "OK:/data/0/com.android.shell/bugreports/bugreport1970-10-27.zip";
+                        receiver.addOutput(fakeRep.getBytes(), 0, fakeRep.getBytes().length);
+                    }
+
+                    @Override
+                    public boolean doesFileExist(String destPath)
+                            throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean pullFile(String remoteFilePath, File localFile)
+                            throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public void deleteFile(String deviceFilePath)
+                            throws DeviceNotAvailableException {
+                        assertEquals("/data/0/com.android.shell/bugreports/*", deviceFilePath);
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 24;
+                    }
+                };
         FileInputStreamSource f = null;
         try {
             f = (FileInputStreamSource) mTestDevice.getBugreportz();
@@ -1853,7 +1875,7 @@ public class NativeDeviceTest {
                     public String executeShellCommand(String command)
                             throws DeviceNotAvailableException {
                         CLog.e("%s", command);
-                        assertEquals("date -u 102010212016.21", command);
+                        assertEquals("TZ=UTC date -u 102010212016.21", command);
                         return command;
                     }
                 };
@@ -1884,7 +1906,7 @@ public class NativeDeviceTest {
                     public String executeShellCommand(String command)
                             throws DeviceNotAvailableException {
                         CLog.e("%s", command);
-                        assertEquals("date -u 1476958881", command);
+                        assertEquals("TZ=UTC date -u 1476958881", command);
                         return command;
                     }
                 };
@@ -2369,11 +2391,13 @@ public class NativeDeviceTest {
     /** Test when {@link NativeDevice#executeShellV2Command(String)} returns a success. */
     @Test
     public void testExecuteShellV2Command() throws Exception {
+        OutputStream stdout = null, stderr = null;
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.SUCCESS);
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
-                                100, "adb", "-s", "serial", "shell", "some", "command"))
+                                100, stdout, stderr, "adb", "-s", "serial", "shell", "some",
+                                "command"))
                 .andReturn(res);
         EasyMock.replay(mMockRunUtil, mMockIDevice);
         assertNotNull(mTestDevice.executeShellV2Command("some command"));
@@ -2386,12 +2410,14 @@ public class NativeDeviceTest {
      */
     @Test
     public void testExecuteShellV2Command_timeout() throws Exception {
+        OutputStream stdout = null, stderr = null;
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.TIMED_OUT);
         res.setStderr("timed out");
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
-                                200L, "adb", "-s", "serial", "shell", "some", "command"))
+                                200L, stdout, stderr, "adb", "-s", "serial", "shell", "some",
+                                "command"))
                 .andReturn(res)
                 .times(2);
         EasyMock.replay(mMockRunUtil, mMockIDevice);
@@ -2410,12 +2436,14 @@ public class NativeDeviceTest {
      */
     @Test
     public void testExecuteShellV2Command_fail() throws Exception {
+        OutputStream stdout = null, stderr = null;
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.FAILED);
         res.setStderr("timed out");
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
-                                200L, "adb", "-s", "serial", "shell", "some", "command"))
+                                200L, stdout, stderr, "adb", "-s", "serial", "shell", "some",
+                                "command"))
                 .andReturn(res)
                 .times(1);
         EasyMock.replay(mMockRunUtil, mMockIDevice);
@@ -2430,6 +2458,7 @@ public class NativeDeviceTest {
     /** Unit test for {@link INativeDevice#setProperty(String, String)}. */
     @Test
     public void testSetProperty() throws DeviceNotAvailableException {
+        OutputStream stdout = null, stderr = null;
         mTestDevice =
                 new TestableAndroidNativeDevice() {
                     @Override
@@ -2441,7 +2470,8 @@ public class NativeDeviceTest {
         res.setStatus(CommandStatus.SUCCESS);
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
-                                120000, "adb", "-s", "serial", "shell", "setprop", "test", "value"))
+                                120000, stdout, stderr, "adb", "-s", "serial", "shell", "setprop",
+                                "test", "value"))
                 .andReturn(res);
         EasyMock.replay(mMockRunUtil, mMockIDevice);
         assertTrue(mTestDevice.setProperty("test", "value"));

@@ -27,6 +27,8 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
@@ -47,16 +49,22 @@ public class InstallApexModuleTargetPreparerTest {
     private IBuildInfo mMockBuildInfo;
     private ITestDevice mMockDevice;
     private File mFakeApex;
+    private File mFakeApk;
     private static final String APEX_PACKAGE_NAME = "com.android.FAKE_APEX_PACKAGE_NAME";
+    private static final String APK_PACKAGE_NAME = "com.android.FAKE_APK_PACKAGE_NAME";
     private static final String APEX_PACKAGE_KEYWORD = "FAKE_APEX_PACKAGE_NAME";
     private static final long APEX_VERSION = 1;
     private static final String APEX_NAME = "fakeApex.apex";
-    private static final String REMOVE_EXISITING_APEX_UNDER_DATA_COMMAND =
+    private static final String APK_NAME = "fakeApk.apk";
+    private static final String REMOVE_EXISTING_APEX_UNDER_DATA_COMMAND =
             "rm -rf /data/apex/active/*FAKE_APEX_PACKAGE_NAME*";
+    private static final String REMOVE_EXISTING_APEX_UNDER_STAGING_COMMAND =
+            "rm -rf /data/app-staging/*";
 
     @Before
     public void setUp() throws Exception {
         mFakeApex = FileUtil.createTempFile("fakeApex", ".apex");
+        mFakeApk = FileUtil.createTempFile("fakeApk", ".apk");
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(SERIAL);
@@ -71,15 +79,27 @@ public class InstallApexModuleTargetPreparerTest {
 
                     @Override
                     protected File getLocalPathForFilename(
-                            IBuildInfo buildInfo, String apexFileName, ITestDevice device)
+                            IBuildInfo buildInfo, String appFileName, ITestDevice device)
                             throws TargetSetupError {
-                        return mFakeApex;
+                        if (appFileName.endsWith(".apex")) {
+                            return mFakeApex;
+                        }
+                        if (appFileName.endsWith(".apk")) {
+                            return mFakeApk;
+                        }
+                        return null;
                     }
 
                     @Override
                     protected String parsePackageName(
-                            File testApexFile, DeviceDescriptor deviceDescriptor) {
-                        return APEX_PACKAGE_NAME;
+                            File testAppFile, DeviceDescriptor deviceDescriptor) {
+                        if (testAppFile.getName().endsWith(".apex")) {
+                            return APEX_PACKAGE_NAME;
+                        }
+                        if (testAppFile.getName().endsWith(".apk")) {
+                            return APK_PACKAGE_NAME;
+                        }
+                        return null;
                     }
 
                     @Override
@@ -95,13 +115,19 @@ public class InstallApexModuleTargetPreparerTest {
     @After
     public void tearDown() throws Exception {
         FileUtil.deleteFile(mFakeApex);
+        FileUtil.deleteFile(mFakeApk);
     }
 
     @Test
     public void testSetupSuccess_removeExistingStagedApexSuccess() throws Exception {
         CommandResult resRemoveExistingApex = new CommandResult();
         resRemoveExistingApex.setStatus(CommandStatus.SUCCESS);
-        EasyMock.expect(mMockDevice.executeShellV2Command(REMOVE_EXISITING_APEX_UNDER_DATA_COMMAND))
+        EasyMock.expect(mMockDevice.executeShellV2Command(REMOVE_EXISTING_APEX_UNDER_DATA_COMMAND))
+                .andReturn(resRemoveExistingApex)
+                .once();
+        EasyMock.expect(
+                        mMockDevice.executeShellV2Command(
+                                REMOVE_EXISTING_APEX_UNDER_STAGING_COMMAND))
                 .andReturn(resRemoveExistingApex)
                 .once();
         mockSuccessfulInstallPackageAndReboot();
@@ -118,7 +144,7 @@ public class InstallApexModuleTargetPreparerTest {
     public void testSetupFail_removeExistingStagedApexFail() throws Exception {
         CommandResult resRemoveExistingApex = new CommandResult();
         resRemoveExistingApex.setStatus(CommandStatus.FAILED);
-        EasyMock.expect(mMockDevice.executeShellV2Command(REMOVE_EXISITING_APEX_UNDER_DATA_COMMAND))
+        EasyMock.expect(mMockDevice.executeShellV2Command(REMOVE_EXISTING_APEX_UNDER_DATA_COMMAND))
                 .andReturn(resRemoveExistingApex);
         try {
             EasyMock.replay(mMockBuildInfo, mMockDevice);
@@ -139,7 +165,12 @@ public class InstallApexModuleTargetPreparerTest {
     public void testSetupSuccess_getActivatedPackageSuccess() throws Exception {
         CommandResult resRemoveExistingApex = new CommandResult();
         resRemoveExistingApex.setStatus(CommandStatus.SUCCESS);
-        EasyMock.expect(mMockDevice.executeShellV2Command(REMOVE_EXISITING_APEX_UNDER_DATA_COMMAND))
+        EasyMock.expect(mMockDevice.executeShellV2Command(REMOVE_EXISTING_APEX_UNDER_DATA_COMMAND))
+                .andReturn(resRemoveExistingApex)
+                .once();
+        EasyMock.expect(
+                        mMockDevice.executeShellV2Command(
+                                REMOVE_EXISTING_APEX_UNDER_STAGING_COMMAND))
                 .andReturn(resRemoveExistingApex)
                 .once();
         mockSuccessfulInstallPackageAndReboot();
@@ -156,7 +187,12 @@ public class InstallApexModuleTargetPreparerTest {
     public void testSetupFail_getActivatedPackageFail() throws Exception {
         CommandResult resRemoveExistingApex = new CommandResult();
         resRemoveExistingApex.setStatus(CommandStatus.SUCCESS);
-        EasyMock.expect(mMockDevice.executeShellV2Command(REMOVE_EXISITING_APEX_UNDER_DATA_COMMAND))
+        EasyMock.expect(mMockDevice.executeShellV2Command(REMOVE_EXISTING_APEX_UNDER_DATA_COMMAND))
+                .andReturn(resRemoveExistingApex)
+                .once();
+        EasyMock.expect(
+                        mMockDevice.executeShellV2Command(
+                                REMOVE_EXISTING_APEX_UNDER_STAGING_COMMAND))
                 .andReturn(resRemoveExistingApex)
                 .once();
         mockSuccessfulInstallPackageAndReboot();
@@ -179,7 +215,12 @@ public class InstallApexModuleTargetPreparerTest {
     public void testSetupFail_apexActivationFail() throws Exception {
         CommandResult resRemoveExistingApex = new CommandResult();
         resRemoveExistingApex.setStatus(CommandStatus.SUCCESS);
-        EasyMock.expect(mMockDevice.executeShellV2Command(REMOVE_EXISITING_APEX_UNDER_DATA_COMMAND))
+        EasyMock.expect(mMockDevice.executeShellV2Command(REMOVE_EXISTING_APEX_UNDER_DATA_COMMAND))
+                .andReturn(resRemoveExistingApex)
+                .once();
+        EasyMock.expect(
+                        mMockDevice.executeShellV2Command(
+                                REMOVE_EXISTING_APEX_UNDER_STAGING_COMMAND))
                 .andReturn(resRemoveExistingApex)
                 .once();
         mockSuccessfulInstallPackageAndReboot();
@@ -205,7 +246,12 @@ public class InstallApexModuleTargetPreparerTest {
     public void testSetupAndTearDown() throws Exception {
         CommandResult resRemoveExistingApex = new CommandResult();
         resRemoveExistingApex.setStatus(CommandStatus.SUCCESS);
-        EasyMock.expect(mMockDevice.executeShellV2Command(REMOVE_EXISITING_APEX_UNDER_DATA_COMMAND))
+        EasyMock.expect(mMockDevice.executeShellV2Command(REMOVE_EXISTING_APEX_UNDER_DATA_COMMAND))
+                .andReturn(resRemoveExistingApex)
+                .times(2);
+        EasyMock.expect(
+                        mMockDevice.executeShellV2Command(
+                                REMOVE_EXISTING_APEX_UNDER_STAGING_COMMAND))
                 .andReturn(resRemoveExistingApex)
                 .times(2);
         mockSuccessfulInstallPackageAndReboot();
@@ -236,9 +282,48 @@ public class InstallApexModuleTargetPreparerTest {
                         testApex2PackageName));
     }
 
+    @Test
+    public void testSetupAndTearDown_MultiInstall() throws Exception {
+        mInstallApexModuleTargetPreparer.addTestFileName(APK_NAME);
+        CommandResult resRemoveExistingApex = new CommandResult();
+        resRemoveExistingApex.setStatus(CommandStatus.SUCCESS);
+        EasyMock.expect(mMockDevice.executeShellV2Command(REMOVE_EXISTING_APEX_UNDER_DATA_COMMAND))
+                .andReturn(resRemoveExistingApex)
+                .times(2);
+        EasyMock.expect(
+                        mMockDevice.executeShellV2Command(
+                                REMOVE_EXISTING_APEX_UNDER_STAGING_COMMAND))
+                .andReturn(resRemoveExistingApex)
+                .times(2);
+        mockSuccessfulInstallMultiPackageAndReboot();
+        Set<ApexInfo> activatedApex = new HashSet<ApexInfo>();
+        activatedApex.add(new ApexInfo("com.android.FAKE_APEX_PACKAGE_NAME", 1));
+        EasyMock.expect(mMockDevice.getActiveApexes()).andReturn(activatedApex);
+        EasyMock.expect(mMockDevice.uninstallPackage(APK_PACKAGE_NAME)).andReturn(null).once();
+        mMockDevice.reboot();
+        EasyMock.expectLastCall();
+
+        EasyMock.replay(mMockBuildInfo, mMockDevice);
+        mInstallApexModuleTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
+        mInstallApexModuleTargetPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
+        EasyMock.verify(mMockBuildInfo, mMockDevice);
+    }
+
     private void mockSuccessfulInstallPackageAndReboot() throws Exception {
         EasyMock.expect(mMockDevice.installPackage((File) EasyMock.anyObject(), EasyMock.eq(true)))
                 .andReturn(null)
+                .once();
+        mMockDevice.reboot();
+        EasyMock.expectLastCall().once();
+    }
+
+    private void mockSuccessfulInstallMultiPackageAndReboot() throws Exception {
+        List<String> trainInstallCmd = new ArrayList<>();
+        trainInstallCmd.add("install-multi-package");
+        trainInstallCmd.add(mFakeApex.getAbsolutePath());
+        trainInstallCmd.add(mFakeApk.getAbsolutePath());
+        EasyMock.expect(mMockDevice.executeAdbCommand(trainInstallCmd.toArray(new String[0])))
+                .andReturn("Success")
                 .once();
         mMockDevice.reboot();
         EasyMock.expectLastCall().once();

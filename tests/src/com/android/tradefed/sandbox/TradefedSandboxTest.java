@@ -195,6 +195,7 @@ public class TradefedSandboxTest {
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         EasyMock.expect(mMockConfig.getCommandLine()).andReturn("empty --arg 1");
+        EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
         System.setProperty(TF_JAR_DIR, "");
         EasyMock.replay(mMockConfig, mMockListener, mMockRunUtil);
         Exception res = mSandbox.prepareEnvironment(mMockContext, mMockConfig, mMockListener);

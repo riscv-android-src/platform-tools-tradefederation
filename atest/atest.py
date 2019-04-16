@@ -33,6 +33,7 @@ import time
 import platform
 
 import atest_arg_parser
+import atest_execution_info
 import atest_metrics
 import atest_utils
 import cli_translator
@@ -41,14 +42,10 @@ import constants
 import module_info
 import result_reporter
 import test_runner_handler
+
+from metrics import metrics
+from metrics import metrics_utils
 from test_runners import regression_test_runner
-# TODO: Delete SEND_CC_LOG and try/except when no proto ImportError happened.
-SEND_CC_LOG = True
-try:
-    from metrics import metrics
-    from metrics import metrics_utils
-except ImportError:
-    SEND_CC_LOG = False
 
 EXPECTED_VARS = frozenset([
     constants.ANDROID_BUILD_TOP,
@@ -200,22 +197,21 @@ def _validate_exec_mode(args, test_infos, host_tests=None):
             tests can be either deviceless or device tests.
     """
     all_device_modes = [x.get_supported_exec_mode() for x in test_infos]
+    err_msg = None
     # In the case of '$atest <device-only> --host', exit.
     if (host_tests or args.host) and constants.DEVICE_TEST in all_device_modes:
         err_msg = ('Test side and option(--host) conflict. Please remove '
                    '--host if the test run on device side.')
-        logging.error(err_msg)
-        sys.exit(constants.EXIT_CODE_ERROR)
     # In the case of '$atest <host-only> <device-only> --host' or
     # '$atest <host-only> <device-only>', exit.
     if (constants.DEVICELESS_TEST in all_device_modes and
             constants.DEVICE_TEST in all_device_modes):
         err_msg = 'There are host-only and device-only tests in command.'
-        logging.error(err_msg)
-        sys.exit(constants.EXIT_CODE_ERROR)
     if host_tests is False and constants.DEVICELESS_TEST in all_device_modes:
         err_msg = 'There are host-only tests in command.'
+    if err_msg:
         logging.error(err_msg)
+        metrics_utils.send_exit_event(constants.EXIT_CODE_ERROR, logs=err_msg)
         sys.exit(constants.EXIT_CODE_ERROR)
     # In the case of '$atest <host-only>', we add --host to run on host-side.
     # The option should only be overriden if `host_tests` is not set.
@@ -454,6 +450,7 @@ def _run_test_mapping_tests(results_dir, test_infos, extra_args):
         logging.debug('\n'.join([str(info) for info in tests]))
         tests_exit_code, reporter = test_runner_handler.run_all_tests(
             results_dir, tests, args, delay_print_summary=True)
+        atest_execution_info.AtestExecutionInfo.result_reporters.append(reporter)
         test_results.append((tests_exit_code, reporter, test_type))
 
     all_tests_exit_code = constants.EXIT_CODE_SUCCESS
@@ -485,7 +482,6 @@ def _dry_run(results_dir, extra_args, test_infos):
         results_dir: Path for saving atest logs.
         extra_args: Dict of extra args for test runners to utilize.
         test_infos: A list of TestInfos.
-
     """
     for test_runner, tests in test_runner_handler.group_tests_by_test_runners(test_infos):
         runner = test_runner(results_dir)
@@ -494,14 +490,28 @@ def _dry_run(results_dir, extra_args, test_infos):
             print('Would run test via command: %s'
                   % (atest_utils.colorize(run_cmd, constants.GREEN)))
 
+def _print_testable_modules(mod_info, suite):
+    """Print the testable modules for a given suite.
+
+    Args:
+        mod_info: ModuleInfo object.
+        suite: A string of suite name.
+    """
+    testable_modules = mod_info.get_testable_modules(suite)
+    print('\n%s' % atest_utils.colorize('%s Testable %s modules' % (
+        len(testable_modules), suite), constants.CYAN))
+    print('-------')
+    for module in sorted(testable_modules):
+        print('\t%s' % module)
 
 # pylint: disable=too-many-statements
 # pylint: disable=too-many-branches
-def main(argv):
+def main(argv, results_dir):
     """Entry point of atest script.
 
     Args:
         argv: A list of arguments.
+        results_dir: A directory which stores the ATest execution information.
 
     Returns:
         Exit code.
@@ -510,41 +520,35 @@ def main(argv):
     _configure_logging(args.verbose)
     _validate_args(args)
     atest_metrics.log_start_event()
-    if SEND_CC_LOG:
-        metrics_utils.get_start_time()
-        metrics.AtestStartEvent(
-            command_line=' '.join(argv),
-            test_references=args.tests,
-            cwd=os.getcwd(),
-            os=platform.platform())
-    results_dir = make_test_run_dir()
+    metrics_utils.get_start_time()
+    metrics.AtestStartEvent(
+        command_line=' '.join(argv),
+        test_references=args.tests,
+        cwd=os.getcwd(),
+        os=platform.platform())
     mod_info = module_info.ModuleInfo(force_build=args.rebuild_module_info)
     translator = cli_translator.CLITranslator(module_info=mod_info)
+    if args.list_modules:
+        _print_testable_modules(mod_info, args.list_modules)
+        return constants.EXIT_CODE_SUCCESS
     build_targets = set()
     test_infos = set()
     if _will_run_tests(args):
         build_targets, test_infos = translator.translate(args)
         if not test_infos:
-            if SEND_CC_LOG:
-                metrics_utils.send_exit_event(constants.EXIT_CODE_TEST_NOT_FOUND)
             return constants.EXIT_CODE_TEST_NOT_FOUND
         if not is_from_test_mapping(test_infos):
             _validate_exec_mode(args, test_infos)
         else:
             _validate_tm_tests_exec_mode(args, test_infos)
     if args.info:
-        if SEND_CC_LOG:
-            metrics_utils.send_exit_event(constants.EXIT_CODE_SUCCESS)
         return _print_test_info(mod_info, test_infos)
     build_targets |= test_runner_handler.get_test_runner_reqs(mod_info,
                                                               test_infos)
     extra_args = get_extra_args(args)
     if args.dry_run:
         _dry_run(results_dir, extra_args, test_infos)
-        if SEND_CC_LOG:
-            metrics_utils.send_exit_event(constants.EXIT_CODE_SUCCESS)
         return constants.EXIT_CODE_SUCCESS
-
     if args.detect_regression:
         build_targets |= (regression_test_runner.RegressionTestRunner('')
                           .get_test_runner_build_reqs())
@@ -554,20 +558,25 @@ def main(argv):
         # Add module-info.json target to the list of build targets to keep the
         # file up to date.
         build_targets.add(mod_info.module_info_target)
+        build_start = time.time()
         success = atest_utils.build(build_targets, args.verbose)
+        metrics.BuildFinishEvent(
+            duration=metrics_utils.convert_duration(time.time() - build_start),
+            success=success,
+            targets=build_targets)
         if not success:
-            if SEND_CC_LOG:
-                metrics_utils.send_exit_event(constants.EXIT_CODE_BUILD_FAILURE)
             return constants.EXIT_CODE_BUILD_FAILURE
     elif constants.TEST_STEP not in steps:
         logging.warn('Install step without test step currently not '
                      'supported, installing AND testing instead.')
         steps.append(constants.TEST_STEP)
     tests_exit_code = constants.EXIT_CODE_SUCCESS
+    test_start = time.time()
     if constants.TEST_STEP in steps:
         if not is_from_test_mapping(test_infos):
-            tests_exit_code, _ = test_runner_handler.run_all_tests(
+            tests_exit_code, reporter = test_runner_handler.run_all_tests(
                 results_dir, test_infos, extra_args)
+            atest_execution_info.AtestExecutionInfo.result_reporters.append(reporter)
         else:
             tests_exit_code = _run_test_mapping_tests(
                 results_dir, test_infos, extra_args)
@@ -575,14 +584,22 @@ def main(argv):
         regression_args = _get_regression_detection_args(args, results_dir)
         # TODO(b/110485713): Should not call run_tests here.
         reporter = result_reporter.ResultReporter()
+        atest_execution_info.AtestExecutionInfo.result_reporters.append(reporter)
         tests_exit_code |= regression_test_runner.RegressionTestRunner(
             '').run_tests(
                 None, regression_args, reporter)
+    metrics.RunTestsFinishEvent(
+        duration=metrics_utils.convert_duration(time.time() - test_start))
     if tests_exit_code != constants.EXIT_CODE_SUCCESS:
         tests_exit_code = constants.EXIT_CODE_TEST_FAILURE
-    if SEND_CC_LOG:
-        metrics_utils.send_exit_event(tests_exit_code)
     return tests_exit_code
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))
+    RESULTS_DIR = make_test_run_dir()
+    with atest_execution_info.AtestExecutionInfo(sys.argv[1:],
+                                                 RESULTS_DIR) as result_file:
+        EXIT_CODE = main(sys.argv[1:], RESULTS_DIR)
+        metrics_utils.send_exit_event(EXIT_CODE)
+        if result_file:
+            print('Execution detail has saved in %s' % result_file.name)
+    sys.exit(EXIT_CODE)

@@ -237,7 +237,7 @@ def _has_colors(stream):
 
 
 def colorize(text, color, highlight=False):
-    """ Convert to coloful string with ANSI escape code.
+    """ Convert to colorful string with ANSI escape code.
 
     Args:
         text: A string to print.
@@ -246,7 +246,7 @@ def colorize(text, color, highlight=False):
         highlight: True to print with highlight.
 
     Returns:
-        Coloful string with ANSI escape code.
+        Colorful string with ANSI escape code.
     """
     clr_pref = '\033[1;'
     clr_suff = '\033[0m'
@@ -286,11 +286,20 @@ def is_external_run():
         True if this is an external run, False otherwise.
     """
     try:
-        output = subprocess.check_output(['git', 'config', '--get', 'user.email'])
+        output = subprocess.check_output(['git', 'config', '--get', 'user.email'],
+                                         universal_newlines=True)
         if output and output.strip().endswith(constants.INTERNAL_EMAIL):
             return False
+    except OSError:
+        # OSError can be raised when running atest_unittests on a host
+        # without git being set up.
+        # This happens before atest._configure_logging is called to set up
+        # logging. Therefore, use print to log the error message, instead of
+        # logging.debug.
+        print('Unable to determine if this is an external run, git is not found.')
     except subprocess.CalledProcessError:
-        return True
+        print('Unable to determine if this is an external run, email is not '
+              'found in git config.')
     return True
 
 
@@ -310,7 +319,7 @@ def print_data_collection_notice():
                   constants.PRIVACY_POLICY_URL,
                   constants.TERMS_SERVICE_URL
                  )
-    print('\n------------------')
+    print('\n==================')
     colorful_print("Notice:", constants.RED)
     colorful_print("%s" % notice, constants.GREEN)
-    print('------------------\n')
+    print('==================\n')

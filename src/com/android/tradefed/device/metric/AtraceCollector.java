@@ -272,7 +272,7 @@ public class AtraceCollector extends BaseDeviceMetricCollector {
                 }
 
                 if (!mPreserveOndeviceLog) {
-                    device.executeShellCommand("rm -f " + fullLogPath());
+                    device.deleteFile(fullLogPath());
                 }
                 else {
                     CLog.w("preserving ondevice atrace log: %s", fullLogPath());

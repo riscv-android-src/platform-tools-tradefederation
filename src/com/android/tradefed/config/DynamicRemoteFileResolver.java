@@ -189,7 +189,7 @@ public class DynamicRemoteFileResolver {
     }
 
     @VisibleForTesting
-    IRemoteFileResolver getResolver(String protocol) {
+    protected IRemoteFileResolver getResolver(String protocol) {
         if (updateProtocols()) {
             IGlobalConfiguration globalConfig = getGlobalConfig();
             Object o = globalConfig.getConfigurationObject(DYNAMIC_RESOLVER);
@@ -207,7 +207,7 @@ public class DynamicRemoteFileResolver {
     }
 
     @VisibleForTesting
-    boolean updateProtocols() {
+    protected boolean updateProtocols() {
         return sIsUpdateDone.compareAndSet(false, true);
     }
 

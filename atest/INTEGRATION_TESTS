@@ -67,6 +67,8 @@ VtsCodelabHelloWorldTest
 ###[Test Finder: MODULE, Test Runner: RobolectricTestRunner]#####
 ###Purpose: Test with finder: MODULE and runner: RobolectricTestRunner###
 CarMessengerRoboTests
+###Purpose: Test with input path for RobolectricTest###
+packages/apps/Car/Messenger/tests/robotests/src/com/android/car/messenger/tts/TTSHelperTest.java
 
 
 ###[Test Finder: SUITE_PLAN, Test Runner: SuitePlanTestRunner]###

@@ -62,6 +62,7 @@ import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
+import com.google.api.client.repackaged.com.google.common.base.Joiner;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.PrintWriter;
@@ -336,7 +337,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
 
         CLog.d("Running module %s", getId());
-        Exception preparationException = null;
+        Throwable preparationException = null;
         // Setup
         long prepStartTime = getCurrentTime();
 
@@ -625,11 +626,12 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
         int numResults = 0;
         Map<String, LogFile> aggLogFiles = new LinkedHashMap<>();
+        List<String> runFailureMessages = new ArrayList<>();
         for (TestRunResult runResult : listResults) {
             numResults += runResult.getTestResults().size();
             forwardTestResults(runResult.getTestResults(), listener);
             if (runResult.isRunFailure()) {
-                listener.testRunFailed(runResult.getRunFailureMessage());
+                runFailureMessages.add(runResult.getRunFailureMessage());
                 mIsFailedModule = true;
             }
             elapsedTime += runResult.getElapsedTime();
@@ -661,14 +663,17 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     String.format(
                             "Module %s only ran %d out of %d expected tests.",
                             getId(), numResults, totalExpectedTests);
-            listener.testRunFailed(error);
+            runFailureMessages.add(error);
             CLog.e(error);
             mIsFailedModule = true;
         }
 
-        if (!mIsFailedModule && tearDownException != null) {
-            // If no error was reported yet, report the teardown exception.
-            listener.testRunFailed(tearDownException.getMessage());
+        if (tearDownException != null) {
+            runFailureMessages.add(tearDownException.getMessage());
+        }
+        // If there is any errors report them all at once
+        if (!runFailureMessages.isEmpty()) {
+            listener.testRunFailed(Joiner.on(TestRunResult.ERROR_DIVIDER).join(runFailureMessages));
         }
 
         // Provide a strong association of the run to its logs.
@@ -718,7 +723,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     /** Run all the prepare steps. */
-    private Exception runPreparerSetup(
+    private Throwable runPreparerSetup(
             ITestDevice device, IBuildInfo build, ITargetPreparer preparer, ITestLogger logger) {
         if (preparer.isDisabled()) {
             // If disabled skip completely.
@@ -736,7 +741,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             }
             preparer.setUp(device, build);
             return null;
-        } catch (BuildError | TargetSetupError | DeviceNotAvailableException | RuntimeException e) {
+        } catch (BuildError
+                | TargetSetupError
+                | DeviceNotAvailableException
+                | RuntimeException
+                | AssertionError e) {
+            // We catch all the TargetPreparer possible exception + RuntimeException to avoid
+            // specific issues + AssertionError since it's widely used in tests and doesn't notify
+            // something very wrong with the harness.
             CLog.e("Unexpected Exception from preparer: %s", preparer.getClass().getName());
             CLog.e(e);
             return e;
@@ -744,7 +756,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     /** Run all multi target preparer step. */
-    private Exception runMultiPreparerSetup(IMultiTargetPreparer preparer, ITestLogger logger) {
+    private Throwable runMultiPreparerSetup(IMultiTargetPreparer preparer, ITestLogger logger) {
         if (preparer.isDisabled()) {
             // If disabled skip completely.
             return null;
@@ -761,7 +773,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             }
             preparer.setUp(mModuleInvocationContext);
             return null;
-        } catch (BuildError | TargetSetupError | DeviceNotAvailableException | RuntimeException e) {
+        } catch (BuildError
+                | TargetSetupError
+                | DeviceNotAvailableException
+                | RuntimeException
+                | AssertionError e) {
+            // We catch all the MultiTargetPreparer possible exception + RuntimeException to avoid
+            // specific issues + AssertionError since it's widely used in tests and doesn't notify
+            // something very wrong with the harness.
             CLog.e("Unexpected Exception from preparer: %s", preparer.getClass().getName());
             CLog.e(e);
             return e;
@@ -769,7 +788,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     /** Run all the tear down steps from preparers. */
-    private void runTearDown(Exception setupException) throws DeviceNotAvailableException {
+    private void runTearDown(Throwable setupException) throws DeviceNotAvailableException {
         // Tear down
         List<IMultiTargetPreparer> cleanerList = new ArrayList<>(mMultiPreparers);
         Collections.reverse(cleanerList);
@@ -904,6 +923,15 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     /** Returns the {@link IInvocationContext} associated with the module. */
     public IInvocationContext getModuleInvocationContext() {
         return mModuleInvocationContext;
+    }
+
+    /** Report completely not executed modules. */
+    public final void reportNotExecuted(ITestInvocationListener listener, String message) {
+        listener.testModuleStarted(getModuleInvocationContext());
+        listener.testRunStarted(getId(), 0);
+        listener.testRunFailed(message);
+        listener.testRunEnded(0, new HashMap<String, Metric>());
+        listener.testModuleEnded();
     }
 
     /**

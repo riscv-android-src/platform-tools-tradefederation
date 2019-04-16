@@ -34,6 +34,7 @@ import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.device.contentprovider.ContentProviderHandler;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -63,12 +64,14 @@ import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.ZipUtil2;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 
 import org.apache.commons.compress.archivers.zip.ZipFile;
 
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Clock;
@@ -97,6 +100,7 @@ import javax.annotation.concurrent.GuardedBy;
  */
 public class NativeDevice implements IManagedTestDevice {
 
+    private static final String SD_CARD = "/sdcard/";
     /**
      * Allow pauses of up to 2 minutes while receiving bugreport.
      * <p/>
@@ -209,6 +213,11 @@ public class NativeDevice implements IManagedTestDevice {
     private String mLastConnectedWifiPsk = null;
     private boolean mNetworkMonitorEnabled = false;
 
+    private ContentProviderHandler mContentProvider = null;
+    private boolean mShouldSkipContentProviderSetup = false;
+    /** Keep track of the last time Tradefed itself triggered a reboot. */
+    private long mLastTradefedRebootTime = 0L;
+
     /**
      * Interface for a generic device communication attempt.
      */
@@ -262,15 +271,24 @@ public class NativeDevice implements IManagedTestDevice {
 
         private String[] mCmd;
         private long mTimeout;
+        private File mPipeAsInput; // Used in pushFile, uses local file as input to "content write"
+        private OutputStream mPipeToOutput; // Used in pullFile, to pipe content from "content read"
 
-        AdbShellAction(String[] cmd, long timeout) {
+        AdbShellAction(String[] cmd, File pipeAsInput, OutputStream pipeToOutput, long timeout) {
             mCmd = cmd;
+            mPipeAsInput = pipeAsInput;
+            mPipeToOutput = pipeToOutput;
             mTimeout = timeout;
         }
 
         @Override
         public boolean run() throws TimeoutException, IOException {
-            mResult = getRunUtil().runTimedCmd(mTimeout, mCmd);
+            if (mPipeAsInput != null) {
+                mResult = getRunUtil().runTimedCmdWithInputRedirect(mTimeout, mPipeAsInput, mCmd);
+            } else {
+                mResult =
+                        getRunUtil().runTimedCmd(mTimeout, mPipeToOutput, /* stderr= */ null, mCmd);
+            }
             if (mResult.getStatus() == CommandStatus.EXCEPTION) {
                 throw new IOException(mResult.getStderr());
             } else if (mResult.getStatus() == CommandStatus.TIMED_OUT) {
@@ -389,10 +407,6 @@ public class NativeDevice implements IManagedTestDevice {
         return getIDevice().getSerialNumber();
     }
 
-    private boolean nullOrEmpty(String string) {
-        return string == null || string.isEmpty();
-    }
-
     /**
      * Fetch a device property, from the ddmlib cache by default, and falling back to either `adb
      * shell getprop` or `fastboot getvar` depending on whether the device is in Fastboot or not.
@@ -487,16 +501,20 @@ public class NativeDevice implements IManagedTestDevice {
      */
     private String internalGetProductType(int retryAttempts) throws DeviceNotAvailableException {
         String productType = internalGetProperty(DeviceProperties.BOARD, "product", "Product type");
+        // fallback to ro.hardware for legacy devices
+        if (Strings.isNullOrEmpty(productType)) {
+            productType = internalGetProperty(DeviceProperties.HARDWARE, "product", "Product type");
+        }
 
         // Things will likely break if we don't have a valid product type.  Try recovery (in case
         // the device is only partially booted for some reason), and if that doesn't help, bail.
-        if (nullOrEmpty(productType)) {
+        if (Strings.isNullOrEmpty(productType)) {
             if (retryAttempts > 0) {
                 recoverDevice();
                 productType = internalGetProductType(retryAttempts - 1);
             }
 
-            if (nullOrEmpty(productType)) {
+            if (Strings.isNullOrEmpty(productType)) {
                 throw new DeviceNotAvailableException(String.format(
                         "Could not determine product type for device %s.", getSerialNumber()),
                         getSerialNumber());
@@ -703,10 +721,37 @@ public class NativeDevice implements IManagedTestDevice {
 
     /** {@inheritDoc} */
     @Override
+    public CommandResult executeShellV2Command(String cmd, File pipeAsInput)
+            throws DeviceNotAvailableException {
+        return executeShellV2Command(
+                cmd,
+                pipeAsInput,
+                null,
+                getCommandTimeout(),
+                TimeUnit.MILLISECONDS,
+                MAX_RETRY_ATTEMPTS);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public CommandResult executeShellV2Command(String cmd, OutputStream pipeToOutput)
+            throws DeviceNotAvailableException {
+        return executeShellV2Command(
+                cmd,
+                null,
+                pipeToOutput,
+                getCommandTimeout(),
+                TimeUnit.MILLISECONDS,
+                MAX_RETRY_ATTEMPTS);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public CommandResult executeShellV2Command(
             String cmd, final long maxTimeoutForCommand, final TimeUnit timeUnit)
             throws DeviceNotAvailableException {
-        return executeShellV2Command(cmd, maxTimeoutForCommand, timeUnit, MAX_RETRY_ATTEMPTS);
+        return executeShellV2Command(
+                cmd, null, null, maxTimeoutForCommand, timeUnit, MAX_RETRY_ATTEMPTS);
     }
 
     /** {@inheritDoc} */
@@ -714,9 +759,25 @@ public class NativeDevice implements IManagedTestDevice {
     public CommandResult executeShellV2Command(
             String cmd, final long maxTimeoutForCommand, final TimeUnit timeUnit, int retryAttempts)
             throws DeviceNotAvailableException {
+        return executeShellV2Command(
+                cmd, null, null, maxTimeoutForCommand, timeUnit, retryAttempts);
+    }
+
+    private CommandResult executeShellV2Command(
+            String cmd,
+            File pipeAsInput,
+            OutputStream pipeToOutput,
+            final long maxTimeoutForCommand,
+            final TimeUnit timeUnit,
+            int retryAttempts)
+            throws DeviceNotAvailableException {
         final String[] fullCmd = buildAdbShellCommand(cmd);
         AdbShellAction adbActionV2 =
-                new AdbShellAction(fullCmd, timeUnit.toMillis(maxTimeoutForCommand));
+                new AdbShellAction(
+                        fullCmd,
+                        pipeAsInput,
+                        pipeToOutput,
+                        timeUnit.toMillis(maxTimeoutForCommand));
         performDeviceAction(String.format("adb %s", fullCmd[4]), adbActionV2, retryAttempts);
         return adbActionV2.mResult;
     }
@@ -913,6 +974,13 @@ public class NativeDevice implements IManagedTestDevice {
     public boolean pullFile(final String remoteFilePath, final File localFile)
             throws DeviceNotAvailableException {
 
+        if (remoteFilePath.startsWith(SD_CARD)) {
+            ContentProviderHandler handler = getContentProvider();
+            if (handler != null) {
+                return handler.pullFile(remoteFilePath, localFile);
+            }
+        }
+
         DeviceAction pullAction = new DeviceAction() {
             @Override
             public boolean run() throws TimeoutException, IOException, AdbCommandRejectedException,
@@ -1014,6 +1082,13 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean pushFile(final File localFile, final String remoteFilePath)
             throws DeviceNotAvailableException {
+        if (remoteFilePath.startsWith(SD_CARD)) {
+            ContentProviderHandler handler = getContentProvider();
+            if (handler != null) {
+                return handler.pushFile(localFile, remoteFilePath);
+            }
+        }
+
         DeviceAction pushAction =
                 new DeviceAction() {
                     @Override
@@ -1079,13 +1154,26 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public boolean doesFileExist(String destPath) throws DeviceNotAvailableException {
-        String lsGrep = executeShellCommand(String.format("ls \"%s\"", destPath));
+    public boolean doesFileExist(String deviceFilePath) throws DeviceNotAvailableException {
+        String lsGrep = executeShellCommand(String.format("ls \"%s\"", deviceFilePath));
         return !lsGrep.contains("No such file or directory");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void deleteFile(String deviceFilePath) throws DeviceNotAvailableException {
+        if (deviceFilePath.startsWith(SD_CARD)) {
+            ContentProviderHandler handler = getContentProvider();
+            if (handler != null) {
+                if (handler.deleteFile(deviceFilePath)) {
+                    return;
+                }
+            }
+        }
+        // Fallback to the direct command if content provider is unsuccessful
+        executeShellCommand(String.format("rm -rf \"%s\"", deviceFilePath));
     }
 
     /**
@@ -1815,7 +1903,11 @@ public class NativeDevice implements IManagedTestDevice {
     /** Builds the OS command for the given adb shell command session and args */
     private String[] buildAdbShellCommand(String command) {
         // TODO: implement the shell v2 support in ddmlib itself.
-        String[] commandArgs = QuotationAwareTokenizer.tokenizeLine(command);
+        String[] commandArgs =
+                QuotationAwareTokenizer.tokenizeLine(
+                        command,
+                        /** No logging */
+                        false);
         return ArrayUtil.buildArray(
                 new String[] {"adb", "-s", getSerialNumber(), "shell"}, commandArgs);
     }
@@ -2311,7 +2403,7 @@ public class NativeDevice implements IManagedTestDevice {
                             remoteFilePath.substring(0, remoteFilePath.lastIndexOf('/'));
                     if (!bugreportDir.isEmpty()) {
                         // clean bugreport files directory on device
-                        executeShellCommand(String.format("rm %s/*", bugreportDir));
+                        deleteFile(String.format("%s/*", bugreportDir));
                     }
 
                     return zipFile;
@@ -2365,6 +2457,12 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public InputStreamSource getScreenshot(String format, boolean rescale)
             throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Screenshot");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public InputStreamSource getScreenshot(int displayId) throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("No support for Screenshot");
     }
 
@@ -2694,6 +2792,8 @@ public class NativeDevice implements IManagedTestDevice {
             throw new UnsupportedOperationException(
                     "Fastboot is not available and cannot reboot into bootloader");
         }
+        // If we go to bootloader, it's probably for flashing so ensure we re-check the provider
+        mShouldSkipContentProviderSetup = false;
         CLog.i("Rebooting device %s in state %s into bootloader", getSerialNumber(),
                 getDeviceState());
         if (TestDeviceState.FASTBOOT.equals(getDeviceState())) {
@@ -2745,11 +2845,8 @@ public class NativeDevice implements IManagedTestDevice {
         doReboot();
         RecoveryMode cachedRecoveryMode = getRecoveryMode();
         setRecoveryMode(RecoveryMode.ONLINE);
-        if (mStateMonitor.waitForDeviceOnline() != null) {
-            enableAdbRoot();
-        } else {
-            recoverDevice();
-        }
+        waitForDeviceOnline();
+        enableAdbRoot();
         setRecoveryMode(cachedRecoveryMode);
     }
 
@@ -2785,6 +2882,9 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @VisibleForTesting
     void doReboot() throws DeviceNotAvailableException, UnsupportedOperationException {
+        // Track Tradefed reboot time
+        mLastTradefedRebootTime = System.currentTimeMillis();
+
         if (TestDeviceState.FASTBOOT == getDeviceState()) {
             CLog.i("device %s in fastboot. Rebooting to userspace.", getSerialNumber());
             executeFastbootCommand("reboot");
@@ -3318,6 +3418,18 @@ public class NativeDevice implements IManagedTestDevice {
         return mFastbootPath;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public String getFastbootVersion() {
+        try {
+            CommandResult res = executeFastbootCommand("--version");
+            return res.getStdout().trim();
+        } catch (DeviceNotAvailableException e) {
+            // Ignored for host side request
+        }
+        return null;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -3593,7 +3705,8 @@ public class NativeDevice implements IManagedTestDevice {
             dateString = sdf.format(date);
         }
         // best effort, no verification
-        executeShellCommand("date -u " + dateString);
+        // Use TZ= to default to UTC timezone (b/128353510 for background)
+        executeShellCommand("TZ=UTC date -u " + dateString);
     }
 
     /**
@@ -3650,6 +3763,12 @@ public class NativeDevice implements IManagedTestDevice {
         throw new UnsupportedOperationException("No support for user's feature.");
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public int createUserNoThrow(String name) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -3680,6 +3799,12 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public boolean startUser(int userId) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean startUser(int userId, boolean waitFlag) throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("No support for user's feature.");
     }
 
@@ -3731,6 +3856,13 @@ public class NativeDevice implements IManagedTestDevice {
     public int getCurrentUser() throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("No support for user's feature.");
     }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean isUserSecondary(int userId) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
 
     /**
      * {@inheritDoc}
@@ -3901,7 +4033,9 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public void preInvocationSetup(IBuildInfo info)
             throws TargetSetupError, DeviceNotAvailableException {
-        // Default implementation empty on purpose
+        // Default implementation
+        mContentProvider = null;
+        mShouldSkipContentProviderSetup = false;
     }
 
     /**
@@ -3909,7 +4043,21 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public void postInvocationTearDown() {
-        // Default implementation empty on purpose
+        // Default implementation
+        if (getIDevice() instanceof StubDevice) {
+            return;
+        }
+        // Reset the Content Provider bit.
+        mShouldSkipContentProviderSetup = false;
+        try {
+            // If we never installed it, don't even bother checking for it during tear down.
+            if (mContentProvider == null) {
+                return;
+            }
+            mContentProvider.tearDown();
+        } catch (DeviceNotAvailableException e) {
+            CLog.e(e);
+        }
     }
 
     /**
@@ -4158,6 +4306,18 @@ public class NativeDevice implements IManagedTestDevice {
         return null;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Set<Integer> listDisplayIds() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("dumpsys SurfaceFlinger is not supported.");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public long getLastExpectedRebootTimeMillis() {
+        return mLastTradefedRebootTime;
+    }
+
     /** Validate that pid is an integer and not empty. */
     private boolean checkValidPid(String output) {
         if (output.isEmpty()) {
@@ -4176,5 +4336,31 @@ public class NativeDevice implements IManagedTestDevice {
     @VisibleForTesting
     IHostOptions getHostOptions() {
         return GlobalConfiguration.getInstance().getHostOptions();
+    }
+
+    /** Returns the {@link ContentProviderHandler} or null if not available. */
+    @VisibleForTesting
+    ContentProviderHandler getContentProvider() throws DeviceNotAvailableException {
+        // If disabled at the device level, don't attempt any checks.
+        if (!getOptions().shouldUseContentProvider()) {
+            return null;
+        }
+        // Prevent usage of content provider before API 28 as it would not work well since content
+        // tool is not working before P.
+        if (getApiLevel() < 28) {
+            return null;
+        }
+        if (mContentProvider == null) {
+            mContentProvider = new ContentProviderHandler(this);
+        }
+        if (!mShouldSkipContentProviderSetup) {
+            boolean res = mContentProvider.setUp();
+            if (!res) {
+                // TODO: once CP becomes a requirement, throw/fail the test if CP can't be found
+                return null;
+            }
+            mShouldSkipContentProviderSetup = true;
+        }
+        return mContentProvider;
     }
 }

@@ -84,6 +84,8 @@ public class TestInvocation implements ITestInvocation {
     private static final String BATTERY_ATTRIBUTE_FORMAT_KEY = "%s-battery-%s";
 
     static final String TRADEFED_LOG_NAME = "host_log";
+    /** Suffix used on host_log for the part before sharding occurs. */
+    static final String BEFORE_SHARDING_SUFFIX = "_before_sharding";
     static final String DEVICE_LOG_NAME_PREFIX = "device_logcat_";
     static final String EMULATOR_LOG_NAME_PREFIX = "emulator_log_";
     static final String BUILD_ERROR_BUGREPORT_NAME = "build_error_bugreport";
@@ -302,7 +304,7 @@ public class TestInvocation implements ITestInvocation {
             }
             mStatus = "tearing down";
             try {
-                invocationPath.doTeardown(context, config, exception);
+                invocationPath.doTeardown(context, config, listener, exception);
             } catch (Throwable e) {
                 tearDownException = e;
                 CLog.e("Exception when tearing down invocation: %s", tearDownException.toString());
@@ -336,7 +338,7 @@ public class TestInvocation implements ITestInvocation {
                             "====================================================================="
                                     + "====");
                 }
-                reportHostLog(listener, config.getLogOutput());
+                reportHostLog(listener, config);
                 elapsedTime = System.currentTimeMillis() - startTime;
                 if (!resumed) {
                     listener.invocationEnded(elapsedTime);
@@ -450,9 +452,18 @@ public class TestInvocation implements ITestInvocation {
         }
     }
 
-    private void reportHostLog(ITestInvocationListener listener, ILeveledLogOutput logger) {
+    private void reportHostLog(ITestInvocationListener listener, IConfiguration config) {
+        reportHostLog(listener, config, TRADEFED_LOG_NAME);
+    }
+
+    private void reportHostLog(
+            ITestInvocationListener listener, IConfiguration config, String name) {
+        ILeveledLogOutput logger = config.getLogOutput();
         try (InputStreamSource globalLogSource = logger.getLog()) {
-            listener.testLog(TRADEFED_LOG_NAME, LogDataType.TEXT, globalLogSource);
+            if (config.getCommandOptions().getHostLogSuffix() != null) {
+                name += config.getCommandOptions().getHostLogSuffix();
+            }
+            listener.testLog(name, LogDataType.TEXT, globalLogSource);
         }
         // once tradefed log is reported, all further log calls for this invocation can get lost
         // unregister logger so future log calls get directed to the tradefed global log
@@ -575,7 +586,7 @@ public class TestInvocation implements ITestInvocation {
         for (ITestDevice device : context.getDevices()) {
             invocationPath.reportLogs(device, listener, Stage.ERROR);
         }
-        reportHostLog(listener, config.getLogOutput());
+        reportHostLog(listener, config);
         listener.invocationEnded(0L);
         return false;
     }
@@ -692,7 +703,7 @@ public class TestInvocation implements ITestInvocation {
                             for (ITestDevice device : context.getDevices()) {
                                 invocationPath.reportLogs(device, listener, Stage.ERROR);
                             }
-                            reportHostLog(listener, config.getLogOutput());
+                            reportHostLog(listener, config);
                             listener.invocationEnded(0L);
                         }
                         return;
@@ -704,6 +715,8 @@ public class TestInvocation implements ITestInvocation {
                     CLog.i(
                             "Invocation for %s has been sharded, rescheduling",
                             context.getSerials());
+                    // Log the chunk of parent host_log before sharding
+                    reportHostLog(listener, config, TRADEFED_LOG_NAME + BEFORE_SHARDING_SUFFIX);
                     return;
                 }
             }

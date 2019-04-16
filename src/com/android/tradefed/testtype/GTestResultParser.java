@@ -18,11 +18,9 @@ package com.android.tradefed.testtype;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.MultiLineReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
-import com.android.tradefed.testtype.testdefs.XmlDefsTest;
 
 import com.google.common.base.Joiner;
 
@@ -117,8 +115,6 @@ public class GTestResultParser extends MultiLineReceiver {
 
     /** True if current test run has been canceled by user. */
     private boolean mIsCancelled = false;
-
-    private String mCoverageTarget = null;
 
     /** Whether or not to prepend filename to classname. */
     private boolean mPrependFileName = false;
@@ -310,11 +306,8 @@ public class GTestResultParser extends MultiLineReceiver {
                                                 + Prefixes.SKIPPED_TEST_MARKER.length())
                                 .trim();
                 if (!testInProgress()) {
-                    // If we are missing the RUN tag, skip it wrong format
-                    CLog.e(
-                            "Found %s without %s before, Ensure you are using GTest format",
-                            line, Prefixes.START_TEST_MARKER);
-                    return;
+                    // Alternative format does not have a RUN tag, so we fake it.
+                    fakeRunMarker(message);
                 }
                 processSkippedTag(message);
                 clearCurrentTestResult();
@@ -465,12 +458,6 @@ public class GTestResultParser extends MultiLineReceiver {
      */
     private HashMap<String, Metric> getRunMetrics() {
         HashMap<String, Metric> metricsMap = new HashMap<>();
-        if (mCoverageTarget != null) {
-            Measurements measure =
-                    Measurements.newBuilder().setSingleString(mCoverageTarget).build();
-            Metric m = Metric.newBuilder().setMeasurements(measure).build();
-            metricsMap.put(XmlDefsTest.COVERAGE_TARGET_KEY, m);
-        }
         return metricsMap;
     }
 
@@ -790,16 +777,5 @@ public class GTestResultParser extends MultiLineReceiver {
                 listener.testRunEnded(0L, new HashMap<String, Metric>());
             }
         }
-    }
-
-    /**
-     * Sets the coverage target for this test.
-     * <p/>
-     * Will be sent as a metric to test listeners.
-     *
-     * @param coverageTarget the coverage target
-     */
-    public void setCoverageTarget(String coverageTarget) {
-        mCoverageTarget = coverageTarget;
     }
 }

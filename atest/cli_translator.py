@@ -31,12 +31,10 @@ import atest_utils
 import constants
 import test_finder_handler
 import test_mapping
-# TODO: Delete SEND_CC_LOG and try/except when no proto ImportError happened.
-SEND_CC_LOG = True
-try:
-    from metrics import metrics_utils
-except ImportError:
-    SEND_CC_LOG = False
+
+from metrics import metrics
+from metrics import metrics_utils
+from test_finders import module_finder
 
 TEST_MAPPING = 'TEST_MAPPING'
 
@@ -66,6 +64,7 @@ class CLITranslator(object):
         """
         self.mod_info = module_info
 
+    # pylint: disable=too-many-locals
     def _get_test_infos(self, tests, test_mapping_test_details=None):
         """Return set of TestInfos based on passed in tests.
 
@@ -81,7 +80,10 @@ class CLITranslator(object):
         if not test_mapping_test_details:
             test_mapping_test_details = [None] * len(tests)
         for test, tm_test_detail in zip(tests, test_mapping_test_details):
+            test_find_starts = time.time()
             test_found = False
+            test_finders = []
+            test_info_str = ''
             find_test_err_msg = None
             for finder in test_finder_handler.get_find_methods_for_test(
                     self.mod_info, test):
@@ -105,10 +107,24 @@ class CLITranslator(object):
                     print("Found '%s' as %s" % (
                         atest_utils.colorize(test, constants.GREEN),
                         finder_info))
+                    test_finders.append(finder_info)
+                    test_info_str = str(test_info)
                     break
             if not test_found:
                 print('No test found for: %s' %
                       atest_utils.colorize(test, constants.RED))
+                # Currently we focus on guessing module names. Append names on
+                # results if more finders support fuzzy searching.
+                mod_finder = module_finder.ModuleFinder(self.mod_info)
+                results = mod_finder.get_fuzzy_searching_results(test)
+                if len(results) == 1 and self._confirm_running(results):
+                    test_info = mod_finder.find_test_by_module_name(results[0])
+                    test_infos.add(test_info)
+                    continue
+                elif len(results) > 1:
+                    self._print_fuzzy_searching_results(results)
+                else:
+                    print('No matching result for {0}.'.format(test))
                 if find_test_err_msg:
                     print('%s\n' % (atest_utils.colorize(
                         find_test_err_msg, constants.MAGENTA)))
@@ -118,7 +134,42 @@ class CLITranslator(object):
                           '\n' % (atest_utils.colorize(
                               constants.REBUILD_MODULE_INFO_FLAG,
                               constants.RED)))
+            metrics.FindTestFinishEvent(
+                duration=metrics_utils.convert_duration(
+                    time.time() - test_find_starts),
+                success=test_found,
+                test_reference=test,
+                test_finders=test_finders,
+                test_info=test_info_str)
         return test_infos
+
+    def _confirm_running(self, results):
+        """Listen to an answer from raw input.
+
+        Args:
+            results: A list of results.
+
+        Returns:
+            True is the answer is affirmative.
+        """
+        decision = raw_input('Did you mean {0}? [Y/n] '.format(
+            atest_utils.colorize(results[0], constants.GREEN)))
+        return decision in constants.AFFIRMATIVES
+
+    def _print_fuzzy_searching_results(self, results):
+        """Print modules when fuzzy searching gives multiple results.
+
+        If the result is lengthy, just print the first 10 items only since we
+        have already given enough-accurate result.
+
+        Args:
+            results: A list of guessed testable module names.
+
+        """
+        atest_utils.colorful_print('Did you mean the following modules?',
+                                   constants.WHITE)
+        for mod in results[:10]:
+            atest_utils.colorful_print(mod, constants.GREEN)
 
     def _read_tests_in_test_mapping(self, test_mapping_file):
         """Read tests from a TEST_MAPPING file.
@@ -347,8 +398,7 @@ class CLITranslator(object):
                 logging.warn(
                     'All available tests in TEST_MAPPING files are:\n%s',
                     tests)
-            if SEND_CC_LOG:
-                metrics_utils.send_exit_event(constants.EXIT_CODE_TEST_NOT_FOUND)
+            metrics_utils.send_exit_event(constants.EXIT_CODE_TEST_NOT_FOUND)
             sys.exit(constants.EXIT_CODE_TEST_NOT_FOUND)
 
         logging.debug(

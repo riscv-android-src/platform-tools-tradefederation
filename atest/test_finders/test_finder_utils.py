@@ -16,7 +16,9 @@
 Utils for finder classes.
 """
 
+from __future__ import print_function
 import logging
+import multiprocessing
 import os
 import re
 import subprocess
@@ -54,7 +56,12 @@ _DEVICE_PATH_RE = re.compile(r'.*\/target\/.*', re.I)
 
 FIND_REFERENCE_TYPE = atest_enum.AtestEnum(['CLASS', 'QUALIFIED_CLASS',
                                             'PACKAGE', 'INTEGRATION', 'CC_CLASS'])
-
+# Get cpu count.
+_CPU_COUNT = 1
+try:
+    _CPU_COUNT = multiprocessing.cpu_count()
+except NotImplementedError:
+    pass
 # Unix find commands for searching for test files based on test type input.
 # Note: Find (unlike grep) exits with status 0 if nothing found.
 FIND_CMDS = {
@@ -69,7 +76,8 @@ FIND_CMDS = {
                                      r"'*{2}.xml' -print",
     FIND_REFERENCE_TYPE.CC_CLASS: r"find {0} -type d {1} -prune -o -type f "
                                   r"\( -name '*.cpp' -o -name '*.cc' \)"
-                                  r" -exec grep -H -E 'TEST(_F)?\({2},' {{}} + || true"
+                                  r" | xargs -P " + str(_CPU_COUNT) +
+                                  r" grep -s -H -E 'TEST(_F)?\({2},' {{}} + || true"
 }
 
 # XML parsing related constants.
@@ -230,7 +238,7 @@ def extract_test_from_tests(tests):
         tests: A string list which contains multiple test paths.
 
     Returns:
-        A string of the test path or None if tests is ''.
+        A string of the test path or None if tests is out-of-index or ''.
     """
     count = len(tests)
     test_index = 0
@@ -238,8 +246,16 @@ def extract_test_from_tests(tests):
         return None
     elif count > 1:
         numbered_list = ['%s: %s' % (i, t) for i, t in enumerate(tests)]
-        print 'Multiple tests found:\n%s' % '\n'.join(numbered_list)
-        test_index = int(raw_input('Please enter number of test to use: '))
+        print('Multiple tests found:\n{0}'.format('\n'.join(numbered_list)))
+        try:
+            test_index = int(raw_input('Please enter number of test to use '
+                                       'or hit return to keep searching: '))
+            if test_index not in range(count):
+                logging.warn('The input %s is out-of-range(%s).',
+                             test_index, (count-1))
+                return None
+        except ValueError:
+            return None
     return tests[test_index]
 
 
@@ -380,21 +396,6 @@ def is_equal_or_sub_dir(sub_dir, parent_dir):
     return os.path.commonprefix([sub_dir, parent_dir]) == parent_dir
 
 
-def is_robolectric_module(mod_info):
-    """Check if a module is a robolectric module.
-
-    Args:
-        mod_info: ModuleInfo to check.
-
-    Returns:
-        True if module is a robolectric module, False otherwise.
-    """
-    if mod_info:
-        return (mod_info.get(constants.MODULE_CLASS, [None])[0] ==
-                constants.MODULE_CLASS_ROBOLECTRIC)
-    return False
-
-
 def find_parent_module_dir(root_dir, start_dir, module_info):
     """From current dir search up file tree until root dir for module dir.
 
@@ -424,7 +425,7 @@ def find_parent_module_dir(root_dir, start_dir, module_info):
             return rel_dir
         # Check module_info if auto_gen config or robo (non-config) here
         for mod in module_info.path_to_module_info.get(rel_dir, []):
-            if is_robolectric_module(mod):
+            if module_info.is_robolectric_module(mod):
                 return rel_dir
             for test_config in mod.get(constants.MODULE_TEST_CONFIG, []):
                 if os.path.isfile(os.path.join(root_dir, test_config)):
@@ -824,3 +825,46 @@ def get_install_locations(installed_paths):
         elif _DEVICE_PATH_RE.match(path):
             install_locations.add(constants.DEVICE_TEST)
     return install_locations
+
+
+def get_levenshtein_distance(test_name, module_name, dir_costs=constants.COST_TYPO):
+    """Return an edit distance between test_name and module_name.
+
+    Levenshtein Distance has 3 actions: delete, insert and replace.
+    dis_costs makes each action weigh differently.
+
+    Args:
+        test_name: A keyword from the users.
+        module_name: A testable module name.
+        dir_costs: A tuple which contains 3 integer, where dir represents
+                   Deletion, Insertion and Replacement respectively.
+                   For guessing typos: (1, 1, 1) gives the best result.
+                   For searching keywords, (8, 1, 5) gives the best result.
+
+    Returns:
+        An edit distance integer between test_name and module_name.
+    """
+    rows = len(test_name) + 1
+    cols = len(module_name) + 1
+    deletion, insertion, replacement = dir_costs
+
+    # Creating a Dynamic Programming Matrix and weighting accordingly.
+    dp_matrix = [[0 for _ in range(cols)] for _ in range(rows)]
+    # Weigh rows/deletion
+    for row in range(1, rows):
+        dp_matrix[row][0] = row * deletion
+    # Weigh cols/insertion
+    for col in range(1, cols):
+        dp_matrix[0][col] = col * insertion
+    # The core logic of LD
+    for col in range(1, cols):
+        for row in range(1, rows):
+            if test_name[row-1] == module_name[col-1]:
+                cost = 0
+            else:
+                cost = replacement
+            dp_matrix[row][col] = min(dp_matrix[row-1][col] + deletion,
+                                      dp_matrix[row][col-1] + insertion,
+                                      dp_matrix[row-1][col-1] + cost)
+
+    return dp_matrix[row][col]

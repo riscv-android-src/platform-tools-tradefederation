@@ -20,6 +20,7 @@ import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.ArrayUtil;
@@ -88,8 +89,13 @@ public abstract class GTestBase
             isTimeVal = true)
     private long mMaxTestTimeMs = 1 * 60 * 1000L;
 
-    @Option(name = "send-coverage", description = "Send coverage target info to test listeners.")
-    private boolean mSendCoverage = true;
+    @Option(
+        name = "native-coverage",
+        description =
+                "Collect code coverage for this test run. Note that the build under test must be a "
+                        + "coverage build or else this will fail."
+    )
+    private boolean mCoverage = false;
 
     @Option(
             name = "prepend-filename",
@@ -146,9 +152,6 @@ public abstract class GTestBase
                             + "the json filter file associated with the binary, the filter file will have "
                             + "the same name as the binary with the .json extension.")
     private String mTestFilterKey = null;
-
-    /** coverage target value. Just report all gtests as 'native' for now */
-    protected static final String COVERAGE_TARGET = "Native";
 
     // GTest flags...
     protected static final String GTEST_FLAG_PRINT_TIME = "--gtest_print_time";
@@ -460,10 +463,6 @@ public abstract class GTestBase
         } else {
             GTestResultParser resultParser = new GTestResultParser(runName, listener);
             resultParser.setPrependFileName(mPrependFileName);
-            // TODO: find a better solution for sending coverage info
-            if (mSendCoverage) {
-                resultParser.setCoverageTarget(COVERAGE_TARGET);
-            }
             receiver = resultParser;
         }
         return receiver;
@@ -503,11 +502,30 @@ public abstract class GTestBase
         if (shardCountHint <= 1 || mIsSharded) {
             return null;
         }
+        if (mCollectTestsOnly) {
+            // GTest cannot shard and use collect tests only, so prevent sharding in this case.
+            return null;
+        }
         Collection<IRemoteTest> tests = new ArrayList<>();
         for (int i = 0; i < shardCountHint; i++) {
             tests.add(getTestShard(shardCountHint, i));
         }
         return tests;
+    }
+
+    /**
+     * Adds a {@link NativeCodeCoverageListener} to the chain if code coverage is enabled.
+     *
+     * @param device the device to pull the coverage results from
+     * @param listener the original listener
+     * @return a chained listener if code coverage is enabled, otherwise the original listener
+     */
+    protected ITestInvocationListener addNativeCoverageListenerIfEnabled(
+            ITestDevice device, ITestInvocationListener listener) {
+        if (mCoverage) {
+            return new NativeCodeCoverageListener(device, listener);
+        }
+        return listener;
     }
 
     /**

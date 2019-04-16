@@ -50,14 +50,14 @@ import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget
 import com.android.tradefed.util.StringEscapeUtils;
 
 import com.google.common.annotations.VisibleForTesting;
-
-import org.junit.Assert;
+import com.google.common.collect.Sets;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -716,13 +716,24 @@ public class InstrumentationTest
         ListInstrumentationParser parser = getListInstrumentationParser();
         getDevice().executeShellCommand("pm list instrumentation", parser);
 
+        Set<String> candidates = new LinkedHashSet<>();
         for (InstrumentationTarget target : parser.getInstrumentationTargets()) {
             if (mPackageName.equals(target.packageName)) {
-                return target.runnerName;
+                candidates.add(target.runnerName);
             }
         }
-        CLog.w("Unable to determine runner name for package: %s", mPackageName);
-        return null;
+        if (candidates.isEmpty()) {
+            CLog.w("Unable to determine runner name for package: %s", mPackageName);
+            return null;
+        }
+        // Bias toward using one of the AJUR runner when available, otherwise use the first runner
+        // available.
+        Set<String> intersection =
+                Sets.intersection(candidates, ListInstrumentationParser.SHARDABLE_RUNNERS);
+        if (intersection.isEmpty()) {
+            return candidates.iterator().next();
+        }
+        return intersection.iterator().next();
     }
 
     /**
@@ -734,9 +745,15 @@ public class InstrumentationTest
         checkArgument(mPackageName != null, "Package name has not been set.");
         // Install the apk before checking the runner
         if (mInstallFile != null) {
-            Assert.assertNull(
+            String installOutput =
                     mDevice.installPackage(
-                            mInstallFile, true, mInstallArgs.toArray(new String[] {})));
+                            mInstallFile, true, mInstallArgs.toArray(new String[] {}));
+            if (installOutput != null) {
+                throw new RuntimeException(
+                        String.format(
+                                "Error while installing '%s': %s",
+                                mInstallFile.getName(), installOutput));
+            }
         }
         if (mRunnerName == null) {
             setRunnerName(queryRunnerName());
@@ -845,7 +862,7 @@ public class InstrumentationTest
         // Reruns do not create new listeners.
         if (!mIsRerun) {
             listener = addBugreportListenerIfEnabled(listener);
-            listener = addCoverageListenerIfEnabled(listener);
+            listener = addJavaCoverageListenerIfEnabled(listener);
 
             // TODO: Convert to device-side collectors when possible.
             for (IMetricCollector collector : mCollectors) {
@@ -904,9 +921,9 @@ public class InstrumentationTest
      * Returns a listener that will collect coverage measurements, or the original {@code listener}
      * if this feature is disabled.
      */
-    ITestInvocationListener addCoverageListenerIfEnabled(ITestInvocationListener listener) {
+    ITestInvocationListener addJavaCoverageListenerIfEnabled(ITestInvocationListener listener) {
         if (mCoverage) {
-            listener = new CodeCoverageListener(getDevice(), mMergeCoverageMeasurements, listener);
+            return new JavaCodeCoverageListener(getDevice(), mMergeCoverageMeasurements, listener);
         }
         return listener;
     }
@@ -1145,5 +1162,10 @@ public class InstrumentationTest
      */
     public boolean getDebug() {
         return mDebug;
+    }
+
+    /** Set wether or not to use the isolated storage. */
+    public void setIsolatedStorage(boolean isolatedStorage) {
+        mIsolatedStorage = isolatedStorage;
     }
 }

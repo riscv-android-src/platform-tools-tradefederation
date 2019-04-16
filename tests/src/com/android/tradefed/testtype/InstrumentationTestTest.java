@@ -640,6 +640,33 @@ public class InstrumentationTestTest {
     }
 
     @Test
+    public void testQueryMultipleRunnerName() throws DeviceNotAvailableException {
+        Mockito.reset(mMockListInstrumentationParser);
+        InstrumentationTarget target1 =
+                new InstrumentationTarget(
+                        TEST_PACKAGE_VALUE,
+                        "android.test.InstrumentationTestRunner",
+                        TEST_PACKAGE_VALUE);
+        InstrumentationTarget target2 =
+                new InstrumentationTarget(
+                        TEST_PACKAGE_VALUE,
+                        "androidx.test.runner.AndroidJUnitRunner",
+                        TEST_PACKAGE_VALUE);
+        doReturn(ImmutableList.of(target1, target2))
+                .when(mMockListInstrumentationParser)
+                .getInstrumentationTargets();
+
+        mInstrumentationTest = Mockito.spy(new InstrumentationTest());
+        mInstrumentationTest.setPackageName(TEST_PACKAGE_VALUE);
+        mInstrumentationTest.setRunnerName(TEST_RUNNER_VALUE);
+        mInstrumentationTest.setDevice(mMockTestDevice);
+        mInstrumentationTest.setListInstrumentationParser(mMockListInstrumentationParser);
+
+        String queriedRunner = mInstrumentationTest.queryRunnerName();
+        assertThat(queriedRunner).isEqualTo("androidx.test.runner.AndroidJUnitRunner");
+    }
+
+    @Test
     public void testQueryRunnerName_noMatch() throws DeviceNotAvailableException {
         mInstrumentationTest.setPackageName("noMatchPackage");
         String queriedRunner = mInstrumentationTest.queryRunnerName();
@@ -828,8 +855,8 @@ public class InstrumentationTestTest {
         mInstrumentationTest.setCoverage(true);
 
         ITestInvocationListener listener =
-                mInstrumentationTest.addCoverageListenerIfEnabled(mMockListener);
-        assertThat(listener).isInstanceOf(CodeCoverageListener.class);
+                mInstrumentationTest.addJavaCoverageListenerIfEnabled(mMockListener);
+        assertThat(listener).isInstanceOf(JavaCodeCoverageListener.class);
     }
 
     @Test
@@ -837,7 +864,7 @@ public class InstrumentationTestTest {
         mInstrumentationTest.setCoverage(false);
 
         ITestInvocationListener listener =
-                mInstrumentationTest.addCoverageListenerIfEnabled(mMockListener);
+                mInstrumentationTest.addJavaCoverageListenerIfEnabled(mMockListener);
         assertThat(listener).isSameAs(mMockListener);
     }
 

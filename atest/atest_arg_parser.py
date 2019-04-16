@@ -54,6 +54,7 @@ class AtestArgParser(argparse.ArgumentParser):
                                'previous test run to disable cleanup, for -t to work. '
                                'Otherwise, device will need to be setup again with -i.')
         self.add_argument('-s', '--serial', help='The device to run the test on.')
+        self.add_argument('-L', '--list-modules', help='List testable modules for the given suite.')
         self.add_argument('-d', '--disable-teardown', action='store_true',
                           help='Disables test teardown and cleanup.')
         self.add_argument('-m', constants.REBUILD_MODULE_INFO_FLAG, action='store_true',

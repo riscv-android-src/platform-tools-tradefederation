@@ -16,6 +16,7 @@
 
 """Unittests for atest_utils."""
 
+import subprocess
 import sys
 import unittest
 import mock
@@ -93,13 +94,13 @@ class AtestUtilsUnittests(unittest.TestCase):
         stream.isatty.return_value = False
         self.assertFalse(atest_utils._has_colors(stream))
 
-        # stream is a tty(terminal) and clolors < 2.
+        # stream is a tty(terminal) and colors < 2.
         stream = mock.Mock()
         stream.isatty.return_value = True
         mock_curses_tigetnum.return_value = 1
         self.assertFalse(atest_utils._has_colors(stream))
 
-        # stream is a tty(terminal) and clolors > 2.
+        # stream is a tty(terminal) and colors > 2.
         stream = mock.Mock()
         stream.isatty.return_value = True
         mock_curses_tigetnum.return_value = 256
@@ -192,6 +193,19 @@ class AtestUtilsUnittests(unittest.TestCase):
         self.assertEqual(capture_output.getvalue(),
                          green_wrap_no_highlight_string)
 
+    @mock.patch('subprocess.check_output')
+    def test_is_external_run(self, mock_output):
+        """Test method is_external_run."""
+        mock_output.return_value = ''
+        self.assertTrue(atest_utils.is_external_run())
+        mock_output.return_value = 'test@other.com'
+        self.assertTrue(atest_utils.is_external_run())
+        mock_output.return_value = 'test@google.com'
+        self.assertFalse(atest_utils.is_external_run())
+        mock_output.side_effect = OSError()
+        self.assertTrue(atest_utils.is_external_run())
+        mock_output.side_effect = subprocess.CalledProcessError(1, 'cmd')
+        self.assertTrue(atest_utils.is_external_run())
 
     @mock.patch('atest_utils.is_external_run')
     def test_print_data_collection_notice(self, mock_is_external_run):
@@ -199,14 +213,14 @@ class AtestUtilsUnittests(unittest.TestCase):
 
         # is_external_run return False.
         mock_is_external_run.return_value = True
-        notice_str = ('\n------------------\nNotice:\n'
+        notice_str = ('\n==================\nNotice:\n'
                       '  We collect anonymous usage statistics'
                       ' in accordance with our'
                       ' Content Licenses (https://source.android.com/setup/start/licenses),'
                       ' Contributor License Agreement (https://opensource.google.com/docs/cla/),'
                       ' Privacy Policy (https://policies.google.com/privacy) and'
                       ' Terms of Service (https://policies.google.com/terms).'
-                      '\n------------------\n\n')
+                      '\n==================\n\n')
         capture_output = StringIO()
         sys.stdout = capture_output
         atest_utils.print_data_collection_notice()
@@ -216,14 +230,14 @@ class AtestUtilsUnittests(unittest.TestCase):
 
         # is_external_run return False.
         mock_is_external_run.return_value = False
-        notice_str = ('\n------------------\nNotice:\n'
+        notice_str = ('\n==================\nNotice:\n'
                       '  We collect usage statistics'
                       ' in accordance with our'
                       ' Content Licenses (https://source.android.com/setup/start/licenses),'
                       ' Contributor License Agreement (https://cla.developers.google.com/),'
                       ' Privacy Policy (https://policies.google.com/privacy) and'
                       ' Terms of Service (https://policies.google.com/terms).'
-                      '\n------------------\n\n')
+                      '\n==================\n\n')
         capture_output = StringIO()
         sys.stdout = capture_output
         atest_utils.print_data_collection_notice()

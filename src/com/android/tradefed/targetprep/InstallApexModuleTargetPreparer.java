@@ -32,6 +32,7 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -42,49 +43,37 @@ import java.util.Set;
 public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
 
     private static final String APEX_DATA_DIR = "/data/apex/active";
+    private static final String STAGING_DATA_DIR = "/data/app-staging";
+    private static final String APEX_SUFFIX = ".apex";
+    private static final String TRAIN_WITH_APEX_INSTALL_CMD = "install-multi-package";
 
     private List<ApexInfo> mTestApexInfoList;
+    private List<String> mApkInstalled;
 
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, DeviceNotAvailableException {
 
-        if (getTestsFileName().isEmpty()) {
-            throw new TargetSetupError("No apex file specified.", device.getDeviceDescriptor());
-        }
-
+        mApkInstalled = new ArrayList<>();
         mTestApexInfoList = new ArrayList<ApexInfo>();
 
-        // Clean up data/apex/active.
-        // TODO: check if also need to clean up data/staging (chenzhu@, dariofreni@)
-        for (String apexFilename : getTestsFileName()) {
-            File apexFile = getLocalPathForFilename(buildInfo, apexFilename, device);
-            ApexInfo apexInfo = retrieveApexInfo(apexFile, device.getDeviceDescriptor());
-            mTestApexInfoList.add(apexInfo);
-            CommandResult result =
-                    device.executeShellV2Command(
-                            "rm -rf "
-                                    + APEX_DATA_DIR
-                                    + "/*"
-                                    + getModuleKeywordFromApexPackageName(apexInfo.name)
-                                    + "*");
-            if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
-                throw new TargetSetupError(
-                        String.format(
-                                "Failed to clean up %s under %s on device %s."
-                                        + "Output: %s Error: %s",
-                                apexInfo.name,
-                                APEX_DATA_DIR,
-                                device.getSerialNumber(),
-                                result.getStdout(),
-                                result.getStderr()),
-                        device.getDeviceDescriptor());
-            }
+        if (getTestsFileName().isEmpty()) {
+            CLog.i("No apk/apex module file to install. Skipping.");
+            return;
         }
 
-        // Install the apex files.
-        super.setUp(device, buildInfo);
-        // Activate the staged apex files.
+        // Clean up data/apex/active and data/app-staging.
+        cleanUpStagedAndActiveSession(device, buildInfo);
+
+        List<String> testAppFileNames = getTestsFileName();
+        if (!containsApex(testAppFileNames)) {
+            super.installer(device, buildInfo, testAppFileNames);
+            return;
+        }
+
+        // Test apps contain at least 1 apex.
+        installer(device, buildInfo, testAppFileNames);
+        // Reboot to activate the staged apex files if app list contains apex file.
         device.reboot();
 
         Set<ApexInfo> activatedApexes = device.getActiveApexes();
@@ -95,7 +84,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                             device.getSerialNumber()),
                     device.getDeviceDescriptor());
         }
-        
+
         List<ApexInfo> failToActivateApex = new ArrayList<ApexInfo>();
 
         for (ApexInfo testApexInfo : mTestApexInfoList) {
@@ -115,14 +104,71 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                             listApexInfo(failToActivateApex).toString(), device.getSerialNumber()),
                     device.getDeviceDescriptor());
         }
-        CLog.i("Apex module is installed successfully");
+        CLog.i("Installation succeed.");
+    }
+
+    // TODO(b/124461631): Remove after ddmlib supports install-multi-package.
+    @Override
+    protected void installer(ITestDevice device, IBuildInfo buildInfo, List<String> appNames)
+            throws TargetSetupError, DeviceNotAvailableException {
+        if (appNames.size() > 1) {
+            installMultiPackageContainingApex(device, buildInfo, appNames);
+        } else {
+            // Single apex file install.
+            super.installer(device, buildInfo, appNames);
+        }
+    }
+
+    /**
+     * Attempt to install a mainline train containing apex on the device.
+     *
+     * @param device the {@link ITestDevice} to install the train
+     * @param buildInfo build artifact information
+     * @param moduleFilenames List of String. The list of filenames of the mainline modules to be
+     *     installed.
+     */
+    protected void installMultiPackageContainingApex(
+            ITestDevice device, IBuildInfo buildInfo, Collection<String> moduleFilenames)
+            throws TargetSetupError, DeviceNotAvailableException {
+
+        List<String> apkPackageNames = new ArrayList<>();
+        List<String> trainInstallCmd = new ArrayList<>();
+
+        trainInstallCmd.add(TRAIN_WITH_APEX_INSTALL_CMD);
+
+        for (String fileName : moduleFilenames) {
+            File moduleFile = getLocalPathForFilename(buildInfo, fileName, device);
+            if (moduleFile == null) {
+                throw new TargetSetupError(
+                        String.format("File %s not found.", fileName),
+                        device.getDeviceDescriptor());
+            }
+            trainInstallCmd.add(moduleFile.getAbsolutePath());
+            if (fileName.endsWith(".apk")) {
+                String packageName = parsePackageName(moduleFile, device.getDeviceDescriptor());
+                apkPackageNames.add(packageName);
+            }
+        }
+        String log = device.executeAdbCommand(trainInstallCmd.toArray(new String[0]));
+        if (log.contains("Success")) {
+            CLog.d("Train is staged successfully. Output: %s.", log);
+        } else {
+            throw new TargetSetupError(
+                    String.format(
+                            "Failed to install %s on %s. Error log: '%s'",
+                            moduleFilenames.toString(), device.getSerialNumber(), log),
+                    device.getDeviceDescriptor());
+        }
+        mApkInstalled.addAll(apkPackageNames);
     }
 
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
-        super.tearDown(device, buildInfo, e);
         if (!(e instanceof DeviceNotAvailableException)) {
+            for (String apkPkgName : mApkInstalled) {
+                super.uninstallPackage(device, apkPkgName);
+            }
             for (ApexInfo apexInfo : mTestApexInfoList) {
                 CommandResult result =
                         device.executeShellV2Command(
@@ -135,7 +181,10 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                     CLog.i("Failed to remove %s from %s", apexInfo.name, APEX_DATA_DIR);
                 }
             }
-            device.reboot();
+            device.executeShellV2Command("rm -rf " + STAGING_DATA_DIR + "/*");
+            if (!mTestApexInfoList.isEmpty()) {
+                device.reboot();
+            }
         }
     }
 
@@ -174,6 +223,56 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             res.add(testApexInfo.toString());
         }
         return res;
+    }
+
+    /* Check if the app file is apex or not */
+    private boolean isApex(File file) {
+        if (file.getName().endsWith(APEX_SUFFIX)) {
+            return true;
+        }
+        return false;
+    }
+
+    /** Check if the apps need to be installed contains apex. */
+    private boolean containsApex(Collection<String> testFileNames) {
+        for (String filename : testFileNames) {
+            if (filename.endsWith(APEX_SUFFIX)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Clean up data/apex/active and data/app-staging. */
+    private void cleanUpStagedAndActiveSession(ITestDevice device, IBuildInfo buildInfo)
+            throws TargetSetupError, DeviceNotAvailableException {
+        for (String appFilename : getTestsFileName()) {
+            File appFile = getLocalPathForFilename(buildInfo, appFilename, device);
+            if (isApex(appFile)) {
+                ApexInfo apexInfo = retrieveApexInfo(appFile, device.getDeviceDescriptor());
+                mTestApexInfoList.add(apexInfo);
+                CommandResult result =
+                        device.executeShellV2Command(
+                                "rm -rf "
+                                        + APEX_DATA_DIR
+                                        + "/*"
+                                        + getModuleKeywordFromApexPackageName(apexInfo.name)
+                                        + "*");
+                if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+                    throw new TargetSetupError(
+                            String.format(
+                                    "Failed to clean up %s under %s on device %s."
+                                            + "Output: %s Error: %s",
+                                    apexInfo.name,
+                                    APEX_DATA_DIR,
+                                    device.getSerialNumber(),
+                                    result.getStdout(),
+                                    result.getStderr()),
+                            device.getDeviceDescriptor());
+                }
+                device.executeShellV2Command("rm -rf " + STAGING_DATA_DIR + "/*");
+            }
+        }
     }
 }
 

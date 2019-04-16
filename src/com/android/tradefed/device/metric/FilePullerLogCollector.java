@@ -15,38 +15,21 @@
  */
 package com.android.tradefed.device.metric;
 
-import com.android.tradefed.config.Option;
-import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
-import java.util.Map;
 
 /**
  * Logger of the file reported by the device-side. This logger is allowed to live inside a module
  * (AndroidTest.xml). TODO: When device-side reporting gets better, fix the LogDataType to be more
  * accurate.
  */
+@OptionClass(alias = "file-puller-log-collector")
 public class FilePullerLogCollector extends FilePullerDeviceMetricCollector {
-
-    @Option(
-        name = "collect-on-run-ended-only",
-        description =
-                "Attempt to collect the files on test run end only instead of on both test cases "
-                        + "and test run ended."
-    )
-    private boolean mCollectOnRunEndedOnly = false;
-
-    @Override
-    public void onTestEnd(DeviceMetricData testData, Map<String, Metric> currentTestCaseMetrics) {
-        if (mCollectOnRunEndedOnly) {
-            return;
-        }
-        super.onTestEnd(testData, currentTestCaseMetrics);
-    }
 
     @Override
     public final void processMetricFile(String key, File metricFile, DeviceMetricData runData) {
@@ -80,5 +63,12 @@ public class FilePullerLogCollector extends FilePullerDeviceMetricCollector {
         }
     }
 
+    /**
+     * Possible processing of a pulled file to extract some metrics.
+     *
+     * @param key Key of the file pulled
+     * @param metricFile The {@link File} that was pulled.
+     * @param runData The metric storage were to put extracted metrics.
+     */
     protected void postProcessMetricFile(String key, File metricFile, DeviceMetricData runData) {}
 }

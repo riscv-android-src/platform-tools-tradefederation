@@ -50,7 +50,7 @@ class MetricsBase(object):
         _user_key = str(asuite_metrics._get_grouping_key())
     #pylint: disable=broad-except
     except Exception:
-        _user_key = _run_id
+        _user_key = constants.DUMMY_UUID
     _user_type = (EXTERNAL_USER if atest_utils.is_external_run()
                   else INTERNAL_USER)
     _log_source = ATEST_LOG_SOURCE[_user_type]

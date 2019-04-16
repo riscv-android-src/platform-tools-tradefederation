@@ -52,12 +52,14 @@ python_binary_host {
     exclude_srcs: [
         "*_unittest.py",
         "*/*_unittest.py",
-	"proto/*_pb2.py",
+        "proto/*_pb2.py",
         "proto/__init__.py",
     ],
     libs: [
-	"atest_proto",
+        "atest_proto",
     ],
+    // Make atest's built name to atest-dev
+    stem: "atest-dev",
     defaults: ["atest_py2_default"],
 }
 

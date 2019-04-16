@@ -26,6 +26,9 @@ RESULT_SERVER_TIMEOUT = 5
 # Result arguments if tests are configured in TEST_MAPPING.
 TEST_MAPPING_RESULT_SERVER_ARGS = []
 
+# Google service key for gts tests.
+GTS_GOOGLE_SERVICE_ACCOUNT = ''
+
 # Arg constants.
 WAIT_FOR_DEBUGGER = 'WAIT_FOR_DEBUGGER'
 DISABLE_INSTALL = 'DISABLE_INSTALL'
@@ -67,6 +70,7 @@ ANDROID_BUILD_TOP = 'ANDROID_BUILD_TOP'
 ANDROID_OUT = 'OUT'
 ANDROID_OUT_DIR = 'OUT_DIR'
 ANDROID_HOST_OUT = 'ANDROID_HOST_OUT'
+ANDROID_PRODUCT_OUT = 'ANDROID_PRODUCT_OUT'
 
 # Test Info data keys
 # Value of include-filter option.
@@ -112,6 +116,14 @@ REBUILD_MODULE_INFO_FLAG = '--rebuild-module-info'
 # ANSI code shift for colorful print
 BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
 
+# Answers equivalent to YES!
+AFFIRMATIVES = ['y', 'Y', 'yes', 'Yes', 'YES', '']
+LD_RANGE = 2
+
+# Types of Levenshetine Distance Cost
+COST_TYPO = (1, 1, 1)
+COST_SEARCH = (8, 1, 5)
+
 # Value of TestInfo install_locations.
 DEVICELESS_TEST = 'host'
 DEVICE_TEST = 'device'
@@ -129,6 +141,7 @@ CONTRIBUTOR_AGREEMENT_URL = {
 }
 PRIVACY_POLICY_URL = 'https://policies.google.com/privacy'
 TERMS_SERVICE_URL = 'https://policies.google.com/terms'
+DUMMY_UUID = '00000000-0000-4000-8000-000000000000'
 
 # VTS plans
 VTS_STAGING_PLAN = 'vts-staging-default'

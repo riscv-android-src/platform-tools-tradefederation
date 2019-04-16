@@ -15,23 +15,32 @@
  */
 package com.android.tradefed.testtype;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 
 import org.easymock.EasyMock;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /** Unit tests for {@link GTestBase}. */
 @RunWith(JUnit4.class)
 public class GTestBaseTest {
+
+    @Mock ITestDevice mMockTestDevice;
+    @Mock ITestInvocationListener mMockListener;
 
     private OptionSetter mSetter;
     /** Very basic implementation of {@link GTestBase} to test it. */
@@ -45,6 +54,11 @@ public class GTestBaseTest {
         public void run(ITestInvocationListener listener) {
             return;
         }
+    }
+
+    @Before
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
     }
 
     /** Test get the filters string. */
@@ -143,5 +157,39 @@ public class GTestBaseTest {
         filters = gTestBase.getGTestFilters(moduleName);
         assertEquals(String.format("--gtest_filter=%s", "filter1:filter2:filter3"), filters);
         assertEquals(0, gTestBase.getShardCount());
+    }
+
+    /** GTest should never shard if collect-tests-only is set to true. */
+    @Test
+    public void testGTestSharding_CollectOnly() throws Exception {
+        GTestBase gTestBase = new GTestBaseImpl();
+        gTestBase.setCollectTestsOnly(true);
+        assertNull(gTestBase.split(5));
+    }
+
+    /** Test that native coverage enabled will add the code coverage listener. */
+    @Test
+    public void testCoverage_addsCodeCoverageListener() throws ConfigurationException {
+        GTestBase gTestBase = new GTestBaseImpl();
+        mSetter = new OptionSetter(gTestBase);
+        mSetter.setOptionValue("native-coverage", "true");
+
+        ITestInvocationListener listener =
+                gTestBase.addNativeCoverageListenerIfEnabled(mMockTestDevice, mMockListener);
+
+        assertThat(listener).isInstanceOf(NativeCodeCoverageListener.class);
+    }
+
+    /** Test that when native coverage is disabled, the code coverage listener is not added. */
+    @Test
+    public void testNoCoverage_doesNotAddCodeCoverageListener() throws ConfigurationException {
+        GTestBase gTestBase = new GTestBaseImpl();
+        mSetter = new OptionSetter(gTestBase);
+        mSetter.setOptionValue("native-coverage", "false");
+
+        ITestInvocationListener listener =
+                gTestBase.addNativeCoverageListenerIfEnabled(mMockTestDevice, mMockListener);
+
+        assertThat(listener).isSameAs(mMockListener);
     }
 }

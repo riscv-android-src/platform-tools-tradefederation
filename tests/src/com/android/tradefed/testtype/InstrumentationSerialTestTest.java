@@ -128,7 +128,7 @@ public class InstrumentationSerialTestTest {
             }
         };
         // expect two attempts, plus 1 additional run to mark the test as failed
-        int expectedAttempts = InstrumentationSerialTest.FAILED_RUN_TEST_ATTEMPTS+1;
+        int expectedAttempts = InstrumentationSerialTest.FAILED_RUN_TEST_ATTEMPTS;
         mMockListener.testRunStarted(packageName, 0);
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunStarted(packageName, 0, 1);
@@ -138,7 +138,7 @@ public class InstrumentationSerialTestTest {
         mMockListener.testRunFailed(runFailureMsg);
         EasyMock.expectLastCall().times(expectedAttempts);
         mMockListener.testRunEnded(0, new HashMap<String, Metric>());
-        EasyMock.expectLastCall().times(expectedAttempts - 1);
+        EasyMock.expectLastCall().times(expectedAttempts);
         mMockListener.testRunEnded(0, new HashMap<String, Metric>());
 
         // now expect test to be marked as failed

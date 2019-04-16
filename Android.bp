@@ -24,6 +24,7 @@ java_defaults {
       "-Xep:ConstantField:ERROR",
       "-Xep:DeadException:ERROR",
       "-Xep:EqualsIncompatibleType:ERROR",
+      "-Xep:ExtendingJUnitAssert:ERROR",
       "-Xep:FormatString:ERROR",
       "-Xep:GetClassOnClass:ERROR",
       "-Xep:IdentityBinaryExpression:ERROR",
@@ -32,9 +33,11 @@ java_defaults {
       "-Xep:JUnitAmbiguousTestClass:ERROR",
       "-Xep:MissingFail:ERROR",
       "-Xep:MissingOverride:ERROR",
+      "-Xep:ModifiedButNotUsed:ERROR",
       "-Xep:MustBeClosedChecker:ERROR",
       "-Xep:Overrides:ERROR",
       "-Xep:PackageLocation:ERROR",
+      "-Xep:ParameterName:ERROR",
       "-Xep:ReferenceEquality:ERROR",
       "-Xep:RemoveUnusedImports:ERROR",
       "-Xep:ReturnValueIgnored:ERROR",
@@ -103,7 +106,6 @@ java_library_host {
         "platform-test-annotations",
         "test-composers",
         "tf-remote-client",
-        "tradefed-grpc-lib-1.0.1",
         "tradefed-protos",
     ],
     libs: [
@@ -111,38 +113,6 @@ java_library_host {
         "tools-common-prebuilt",
     ],
     manifest: "MANIFEST.mf",
-}
-
-// Use 1.0.1 version of GRPC to be compatible of current guava version
-java_library_host {
-   name: "tradefed-grpc-lib-1.0.1",
-   srcs: [
-        "proto-gen/**/*.java",
-   ],
-   libs: [
-       "tradefed-protos",
-       "guava",
-   ],
-   openjdk9: {
-       javacflags: [
-           "--add-modules=java.xml.ws.annotation",
-       ],
-   },
-   static_libs: [
-       "grpc-java-context-1.0.1",
-       "grpc-java-core-1.0.1",
-       "grpc-java-netty-1.0.1",
-       "grpc-java-protobuf-1.0.1",
-       "grpc-java-protobuf-lite-1.0.1",
-       "grpc-java-stub-1.0.1",
-       "netty-buffer-java-4.1.3.Final",
-       "netty-codec-java-4.1.3.Final",
-       "netty-codec-http2-java-4.1.3.Final",
-       "netty-common-java-4.1.3.Final",
-       "netty-handler-java-4.1.3.Final",
-       "netty-resolver-java-4.1.3.Final",
-       "netty-transport-java-4.1.3.Final",
-   ]
 }
 
 // Turn off various doclava warnings when generating

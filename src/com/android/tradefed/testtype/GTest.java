@@ -206,7 +206,7 @@ public class GTest extends GTestBase implements IDeviceTest {
                 getMaxTestTimeMs() /* maxTimeToShellOutputResponse */,
                 TimeUnit.MILLISECONDS,
                 0 /* retry attempts */);
-        testDevice.executeShellCommand(String.format("rm %s", tmpFileDevice));
+        testDevice.deleteFile(tmpFileDevice);
     }
 
     @Override
@@ -305,7 +305,7 @@ public class GTest extends GTestBase implements IDeviceTest {
             // Pull the result file, may not exist if issue with the test.
             testDevice.pullFile(tmpResName, tmpOutput);
             // Clean the file on the device
-            testDevice.executeShellCommand("rm " + tmpResName);
+            testDevice.deleteFile(tmpResName);
             GTestXmlResultParser parser = createXmlParser(testRunName, listener);
             // Attempt to parse the file, doesn't matter if the content is invalid.
             if (tmpOutput.exists()) {
@@ -343,6 +343,8 @@ public class GTest extends GTestBase implements IDeviceTest {
         if (mStopRuntime) {
             mDevice.executeShellCommand("stop");
         }
+        // Insert the coverage listener if code coverage collection is enabled.
+        listener = addNativeCoverageListenerIfEnabled(mDevice, listener);
         Throwable throwable = null;
         try {
             doRunAllTestsInSubdirectory(testPath, mDevice, listener);

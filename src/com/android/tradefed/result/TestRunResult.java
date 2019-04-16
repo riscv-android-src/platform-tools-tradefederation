@@ -40,6 +40,7 @@ import java.util.Set;
  */
 public class TestRunResult {
 
+    public static final String ERROR_DIVIDER = "\n====Next Error====\n";
     private String mTestRunName;
     // Uses a LinkedHashMap to have predictable iteration order
     private Map<TestDescription, TestResult> mTestResults =
@@ -193,6 +194,16 @@ public class TestRunResult {
     }
 
     /**
+     * Reset the run failure status.
+     *
+     * <p>Resetting the run failure status is sometimes required when retrying. This should be done
+     * with care to avoid clearing a real failure.
+     */
+    public void resetRunFailure() {
+        mRunFailureError = null;
+    }
+
+    /**
      * Notify that a test run started.
      *
      * @param runName the name associated to the test run for tracking purpose.
@@ -275,7 +286,16 @@ public class TestRunResult {
     }
 
     public void testRunFailed(String errorMessage) {
-        mRunFailureError = errorMessage;
+        if (errorMessage == null) {
+            // Null as an error message is a reset.
+            errorMessage = "testRunFailed(null) was called.";
+        }
+
+        if (mRunFailureError != null) {
+            mRunFailureError += (ERROR_DIVIDER + errorMessage);
+        } else {
+            mRunFailureError = errorMessage;
+        }
     }
 
     public void testRunStopped(long elapsedTime) {
