@@ -17,25 +17,22 @@ Atest Tradefed test runner class.
 """
 
 from __future__ import print_function
-from collections import deque
-from datetime import timedelta
-import errno
 import json
 import logging
 import os
 import re
-import signal
 import socket
 import subprocess
-import sys
+
+from functools import partial
 
 # pylint: disable=import-error
 import atest_utils
 import constants
+from event_handler import EventHandler
 from test_finders import test_info
 from test_runners import test_runner_base
 
-OLD_OUTPUT_ENV_VAR = 'ATEST_OLD_OUTPUT'
 POLL_FREQ_SECS = 10
 SOCKET_HOST = '127.0.0.1'
 SOCKET_QUEUE_MAX = 1
@@ -43,49 +40,14 @@ SOCKET_BUFFER = 4096
 # Socket Events of form FIRST_EVENT {JSON_DATA}\nSECOND_EVENT {JSON_DATA}
 # EVENT_RE has groups for the name and the data. "." does not match \n.
 EVENT_RE = re.compile(r'^(?P<event_name>[A-Z_]+) (?P<json_data>{.*})(?:\n|$)')
-EVENT_NAMES = {'module_started': 'TEST_MODULE_STARTED',
-               'module_ended': 'TEST_MODULE_ENDED',
-               'run_started': 'TEST_RUN_STARTED',
-               'run_ended': 'TEST_RUN_ENDED',
-               # Next three are test-level events
-               'test_started': 'TEST_STARTED',
-               'test_failed': 'TEST_FAILED',
-               'test_ended': 'TEST_ENDED',
-               # Last two failures are runner-level, not test-level.
-               # Invocation failure is broader than run failure.
-               'run_failed': 'TEST_RUN_FAILED',
-               'invocation_failed': 'INVOCATION_FAILED',
-               'test_ignored': 'TEST_IGNORED'}
-EVENT_PAIRS = {EVENT_NAMES['module_started']: EVENT_NAMES['module_ended'],
-               EVENT_NAMES['run_started']: EVENT_NAMES['run_ended'],
-               EVENT_NAMES['test_started']: EVENT_NAMES['test_ended']}
-START_EVENTS = list(EVENT_PAIRS.keys())
-END_EVENTS = list(EVENT_PAIRS.values())
-TEST_NAME_TEMPLATE = '%s#%s'
+
 EXEC_DEPENDENCIES = ('adb', 'aapt')
-
-CONNECTION_STATE = {
-    'current_test': None,
-    'last_failed': None,
-    'last_ignored': None,
-    'current_group': None,
-    'current_group_total': None,
-    'test_count': 0,
-    'test_start_time': None
-}
-
-# time in millisecond.
-ONE_SECOND = 1000
-ONE_MINUTE = 60000
-ONE_HOUR = 3600000
-
-class TradeFedExitError(Exception):
-    """Raised when TradeFed exists before test run has finished."""
 
 TRADEFED_EXIT_MSG = ('TradeFed subprocess exited early with exit code=%s.')
 
-EVENTS_NOT_BALANCED = ('Error: Saw %s Start event and %s End event. These '
-                       'should be equal!')
+
+class TradeFedExitError(Exception):
+    """Raised when TradeFed exists before test run has finished."""
 
 
 class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
@@ -105,6 +67,30 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                              'template': self._TF_TEMPLATE,
                              'args': ''}
         self.is_verbose = logging.getLogger().isEnabledFor(logging.DEBUG)
+        self.root_dir = os.environ.get(constants.ANDROID_BUILD_TOP)
+
+    def _try_set_gts_authentication_key(self):
+        """Set GTS authentication key if it is available or exists.
+
+        Strategy:
+            Get APE_API_KEY from os.environ:
+                - If APE_API_KEY is already set by user -> do nothing.
+            Get the APE_API_KEY from constants:
+                - If the key file exists -> set to env var.
+            If APE_API_KEY isn't set and the key file doesn't exist:
+                - Warn user some GTS tests may fail without authentication.
+        """
+        if os.environ.get('APE_API_KEY'):
+            logging.debug('APE_API_KEY is set by developer.')
+            return
+        ape_api_key = constants.GTS_GOOGLE_SERVICE_ACCOUNT
+        key_path = os.path.join(self.root_dir, ape_api_key)
+        if ape_api_key and os.path.exists(key_path):
+            logging.debug('Set APE_API_KEY: %s', ape_api_key)
+            os.environ['APE_API_KEY'] = ape_api_key
+        else:
+            logging.debug('APE_API_KEY not set, some GTS tests may fail'
+                          'without authentication.')
 
     def run_tests(self, test_infos, extra_args, reporter):
         """Run the list of test_infos. See base class for more.
@@ -117,7 +103,9 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         Returns:
             0 if tests succeed, non-zero otherwise.
         """
-        if os.getenv(OLD_OUTPUT_ENV_VAR):
+        # Set google service key if it's available or found before running tests.
+        self._try_set_gts_authentication_key()
+        if os.getenv(test_runner_base.OLD_OUTPUT_ENV_VAR):
             return self.run_tests_raw(test_infos, extra_args, reporter)
         return self.run_tests_pretty(test_infos, extra_args, reporter)
 
@@ -142,8 +130,6 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             ret_code |= self.wait_for_subprocess(subproc)
         return ret_code
 
-    # pylint: disable=broad-except
-    # pylint: disable=too-many-locals
     def run_tests_pretty(self, test_infos, extra_args, reporter):
         """Run the list of test_infos. See base class for more.
 
@@ -162,42 +148,26 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             run_cmds = self.generate_run_commands(test_infos, extra_args,
                                                   server.getsockname()[1])
             subproc = self.run(run_cmds[0], output_to_stdout=self.is_verbose)
-            try:
-                signal.signal(signal.SIGINT, self._signal_passer(subproc))
-                conn, addr = self._exec_with_tf_polling(server.accept, subproc)
-                logging.debug('Accepted connection from %s', addr)
-                self._process_connection(conn, reporter)
-            except Exception as error:
-                # exc_info=1 tells logging to log the stacktrace
-                logging.debug('Caught exception:', exc_info=1)
-                # Remember our current exception scope, before new try block
-                # Python3 will make this easier, the error itself stores
-                # the scope via error.__traceback__ and it provides a
-                # "raise from error" pattern.
-                # https://docs.python.org/3.5/reference/simple_stmts.html#raise
-                exc_type, exc_msg, traceback_obj = sys.exc_info()
-                # If atest crashes, try to kill TF subproc group as well.
-                try:
-                    logging.debug('Killing TF subproc: %s', subproc.pid)
-                    os.killpg(os.getpgid(subproc.pid), signal.SIGINT)
-                except OSError:
-                    # this wipes our previous stack context, which is why
-                    # we have to save it above.
-                    logging.debug('Subproc already terminated, skipping')
-                finally:
-                    if self.test_log_file:
-                        with open(self.test_log_file.name, 'r') as f:
-                            intro_msg = "Unexpected Tradefed Issue. Raw Output:"
-                            print(atest_utils.colorize(intro_msg, constants.RED))
-                            print(f.read())
-                    # Ignore socket.recv() raising due to ctrl-c
-                    if not error.args or error.args[0] != errno.EINTR:
-                        raise exc_type, exc_msg, traceback_obj
-            finally:
-                server.close()
-                subproc.wait()
-                ret_code |= subproc.returncode
+            event_handler = EventHandler(reporter, self.NAME)
+            self.handle_subprocess(subproc, partial(self._start_monitor,
+                                                    server,
+                                                    subproc,
+                                                    event_handler))
+            server.close()
+            ret_code |= self.wait_for_subprocess(subproc)
         return ret_code
+
+    def _start_monitor(self, server, tf_subproc, event_handler):
+        """Polling and process event.
+
+        Args:
+            server: Socket server object.
+            tf_subproc: The tradefed subprocess to poll.
+            event_handler: EventHandler object.
+        """
+        conn, addr = self._exec_with_tf_polling(server.accept, tf_subproc)
+        logging.debug('Accepted connection from %s', addr)
+        self._process_connection(conn, event_handler)
 
     def _start_socket_server(self):
         """Start a TCP server."""
@@ -228,7 +198,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                     raise TradeFedExitError(TRADEFED_EXIT_MSG
                                             % tf_subproc.returncode)
 
-    def _process_connection(self, conn, reporter):
+    def _process_connection(self, conn, event_handler):
         """Process a socket connection from TradeFed.
 
         Expect data of form EVENT_NAME {JSON_DATA}.  Multiple events will be
@@ -237,12 +207,10 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
 
         Args:
             conn: A socket connection.
-            reporter: A result_report.ResultReporter
+            event_handler: EventHandler object.
         """
-        connection_state = CONNECTION_STATE.copy()
         conn.settimeout(None)
         buf = ''
-        event_stack = deque()
         while True:
             logging.debug('Waiting to receive data')
             data = conn.recv(SOCKET_BUFFER)
@@ -259,168 +227,13 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                             break
                         event_name = match.group('event_name')
                         buf = buf[match.end():]
-                        self._process_event(event_name, event_data, reporter,
-                                            connection_state, event_stack)
+                        event_handler.process_event(event_name, event_data)
                         continue
                     break
             else:
                 # client sent empty string, so no more data.
                 conn.close()
                 break
-
-    def _check_events_are_balanced(self, event_name, reporter, state,
-                                   event_stack):
-        """Check Start events and End events. They should be balanced.
-
-        If they are not balanced, print the error message in
-        state['last_failed'], then raise TradeFedExitError.
-
-        Args:
-            event_name: A string of the event name.
-            reporter: A ResultReporter instance.
-            state: A dict of the state of the test run.
-            event_stack: A collections.deque(stack) of the events for pairing
-                         START and END events.
-        Raises:
-            TradeFedExitError if we doesn't have a balance of START/END events.
-        """
-        start_event = event_stack.pop() if event_stack else None
-        if not start_event or EVENT_PAIRS[start_event] != event_name:
-            # Here bubble up the failed trace in the situation having
-            # TEST_FAILED but never receiving TEST_ENDED.
-            if state['last_failed'] and (start_event ==
-                                         EVENT_NAMES['test_started']):
-                reporter.process_test_result(test_runner_base.TestResult(
-                    runner_name=self.NAME,
-                    group_name=state['current_group'],
-                    test_name=state['last_failed']['name'],
-                    status=test_runner_base.FAILED_STATUS,
-                    details=state['last_failed']['trace'],
-                    test_count=state['test_count'],
-                    test_time='',
-                    runner_total=None,
-                    group_total=state['current_group_total']))
-            raise TradeFedExitError(EVENTS_NOT_BALANCED % (start_event,
-                                                           event_name))
-
-    def _print_duration(self, duration):
-        """Convert duration from ms to 3h2m43.034s.
-
-        Args:
-            duration: millisecond
-
-        Returns:
-            string in h:m:s, m:s, s or millis, depends on the duration.
-        """
-        delta = timedelta(milliseconds=duration)
-        timestamp = str(delta).split(':') # hh:mm:microsec
-
-        if duration < ONE_SECOND:
-            return "({}ms)".format(duration)
-        elif duration < ONE_MINUTE:
-            return "({:.3f}s)".format(float(timestamp[2]))
-        elif duration < ONE_HOUR:
-            return "({0}m{1:.3f}s)".format(timestamp[1], float(timestamp[2]))
-        return "({0}h{1}m{2:.3f}s)".format(timestamp[0],
-                                           timestamp[1], float(timestamp[2]))
-
-    # pylint: disable=too-many-branches
-    def _process_event(self, event_name, event_data, reporter, state,
-                       event_stack):
-        """Process the events of the test run and call reporter with results.
-
-        Args:
-            event_name: A string of the event name.
-            event_data: A dict of event data.
-            reporter: A ResultReporter instance.
-            state: A dict of the state of the test run.
-            event_stack: A collections.deque(stack) of the events for pairing
-                         START and END events.
-        """
-        logging.debug('Processing %s %s', event_name, event_data)
-        if event_name in START_EVENTS:
-            event_stack.append(event_name)
-        elif event_name in END_EVENTS:
-            self._check_events_are_balanced(event_name, reporter, state,
-                                            event_stack)
-        if event_name == EVENT_NAMES['module_started']:
-            state['current_group'] = event_data['moduleName']
-            state['last_failed'] = None
-            state['current_test'] = None
-        elif event_name == EVENT_NAMES['run_started']:
-            # Technically there can be more than one run per module.
-            state['current_group_total'] = event_data['testCount']
-            state['test_count'] = 0
-            state['last_failed'] = None
-            state['current_test'] = None
-        elif event_name == EVENT_NAMES['test_started']:
-            name = TEST_NAME_TEMPLATE % (event_data['className'],
-                                         event_data['testName'])
-            state['current_test'] = name
-            state['test_count'] += 1
-            state['test_start_time'] = event_data['start_time']
-        elif event_name == EVENT_NAMES['test_failed']:
-            state['last_failed'] = {'name': TEST_NAME_TEMPLATE % (
-                event_data['className'],
-                event_data['testName']),
-                                    'trace': event_data['trace']}
-        elif event_name == EVENT_NAMES['test_ignored']:
-            name = TEST_NAME_TEMPLATE % (event_data['className'],
-                                         event_data['testName'])
-            state['last_ignored'] = name
-        elif event_name == EVENT_NAMES['run_failed']:
-            # Module and Test Run probably started, but failure occurred.
-            reporter.process_test_result(test_runner_base.TestResult(
-                runner_name=self.NAME,
-                group_name=state['current_group'],
-                test_name=state['current_test'],
-                status=test_runner_base.ERROR_STATUS,
-                details=event_data['reason'],
-                test_count=state['test_count'],
-                test_time='',
-                runner_total=None,
-                group_total=state['current_group_total']))
-        elif event_name == EVENT_NAMES['invocation_failed']:
-            # Broadest possible failure. May not even start the module/test run.
-            reporter.process_test_result(test_runner_base.TestResult(
-                runner_name=self.NAME,
-                group_name=state['current_group'],
-                test_name=state['current_test'],
-                status=test_runner_base.ERROR_STATUS,
-                details=event_data['cause'],
-                test_count=state['test_count'],
-                test_time='',
-                runner_total=None,
-                group_total=state['current_group_total']))
-        elif event_name == EVENT_NAMES['test_ended']:
-            name = TEST_NAME_TEMPLATE % (event_data['className'],
-                                         event_data['testName'])
-            if state['test_start_time']:
-                test_time = self._print_duration(event_data['end_time'] -
-                                                 state['test_start_time'])
-            else:
-                test_time = ''
-            if state['last_failed'] and name == state['last_failed']['name']:
-                status = test_runner_base.FAILED_STATUS
-                trace = state['last_failed']['trace']
-                state['last_failed'] = None
-            elif state['last_ignored'] and name == state['last_ignored']:
-                status = test_runner_base.IGNORED_STATUS
-                state['last_ignored'] = None
-                trace = None
-            else:
-                status = test_runner_base.PASSED_STATUS
-                trace = None
-            reporter.process_test_result(test_runner_base.TestResult(
-                runner_name=self.NAME,
-                group_name=state['current_group'],
-                test_name=name,
-                status=status,
-                details=trace,
-                test_count=state['test_count'],
-                test_time=test_time,
-                runner_total=None,
-                group_total=state['current_group_total']))
 
     def host_env_check(self):
         """Check that host env has everything we need.
@@ -564,8 +377,9 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
 
         # TODO(b/122889707) Remove this after finding the root cause.
         env_serial = os.environ.get(constants.ANDROID_SERIAL)
-        # Use the env variable ANDROID_SERIAL if it's set by user.
-        if env_serial and '--serial' not in args_to_add:
+        # Use the env variable ANDROID_SERIAL if it's set by user but only when
+        # the target tests are not deviceless tests.
+        if env_serial and '--serial' not in args_to_add and '-n' not in args_to_add:
             args_to_add.append("--serial")
             args_to_add.append(env_serial)
 

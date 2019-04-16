@@ -36,6 +36,7 @@ import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.DeviceConfigurationHolder;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
@@ -261,7 +262,7 @@ public class TestInvocationTest {
                             }
 
                             @Override
-                            String getAdbVersion() {
+                            protected String getAdbVersion() {
                                 return null;
                             }
                         };
@@ -1234,6 +1235,12 @@ public class TestInvocationTest {
      */
     @Test
     public void testInvoke_shardableTest_legacy() throws Throwable {
+        try {
+            GlobalConfiguration.createGlobalConfiguration(new String[] {"empty"});
+        } catch (IllegalStateException e) {
+            // Avoid exception in case of multi-init
+        }
+
         String command = "empty --test-tag t";
         String[] commandLine = {"empty", "--test-tag", "t"};
         int shardCount = 2;
@@ -1253,6 +1260,24 @@ public class TestInvocationTest {
                 .times(2);
         setupInvoke();
         setupNShardInvocation(shardCount, command);
+        // Ensure that the host_log gets logged after sharding.
+        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
+        String logName = "host_log_before_sharding";
+        mMockTestListener.testLog(
+                EasyMock.eq(logName), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+        mMockSummaryListener.testLog(
+                EasyMock.eq(logName), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(logName),
+                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.anyObject()))
+                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
+        mMockLogRegistry.unregisterLogger();
+        EasyMock.expectLastCall();
+        mMockLogger.closeLog();
+        EasyMock.expectLastCall();
+
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         replayMocks(test, mockRescheduler, shard1, shard2, mGlobalConfiguration);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
@@ -1558,7 +1583,7 @@ public class TestInvocationTest {
                             }
 
                             @Override
-                            String getAdbVersion() {
+                            protected String getAdbVersion() {
                                 return null;
                             }
                         };
@@ -1638,7 +1663,7 @@ public class TestInvocationTest {
                                 }
 
                                 @Override
-                                String getAdbVersion() {
+                                protected String getAdbVersion() {
                                     return null;
                                 }
                             };
@@ -1730,7 +1755,7 @@ public class TestInvocationTest {
                                 }
 
                                 @Override
-                                String getAdbVersion() {
+                                protected String getAdbVersion() {
                                     return null;
                                 }
                             };

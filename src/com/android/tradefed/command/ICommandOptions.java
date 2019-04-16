@@ -190,4 +190,10 @@ public interface ICommandOptions {
 
     /** Whether or not to capture a logcat on test case failure */
     public boolean captureLogcatOnFailure();
+
+    /** Returns the suffix to append to the Tradefed host_log or null if no prefix. */
+    public String getHostLogSuffix();
+
+    /** Sets the suffix to append to Tradefed host_log. */
+    public void setHostLogSuffix(String suffix);
 }

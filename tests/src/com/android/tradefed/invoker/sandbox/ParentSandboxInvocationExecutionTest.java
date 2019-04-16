@@ -79,7 +79,7 @@ public class ParentSandboxInvocationExecutionTest {
     @Test
     public void testDefaultSkipSetup_tearDown() throws Throwable {
         mParentSandbox.doSetup(mContext, mConfig, null);
-        mParentSandbox.doTeardown(mContext, mConfig, null);
+        mParentSandbox.doTeardown(mContext, mConfig, null, null);
         mParentSandbox.doCleanUp(mContext, mConfig, null);
 
         verify(mMockFactory, times(0)).createConfigurationFromArgs(Mockito.any());
@@ -99,7 +99,7 @@ public class ParentSandboxInvocationExecutionTest {
                 .createConfigurationFromArgs(new String[] {"parent-config"});
 
         mParentSandbox.doSetup(mContext, mConfig, null);
-        mParentSandbox.doTeardown(mContext, mConfig, null);
+        mParentSandbox.doTeardown(mContext, mConfig, null, null);
         mParentSandbox.doCleanUp(mContext, mConfig, null);
 
         verify(mMockFactory, times(1)).createConfigurationFromArgs(Mockito.any());
@@ -123,7 +123,7 @@ public class ParentSandboxInvocationExecutionTest {
         doReturn(new StubDevice("stub")).when(mMockDevice).getIDevice();
 
         mParentSandbox.doSetup(mContext, mConfig, null);
-        mParentSandbox.doTeardown(mContext, mConfig, null);
+        mParentSandbox.doTeardown(mContext, mConfig, null, null);
         mParentSandbox.doCleanUp(mContext, mConfig, null);
         mParentSandbox.reportLogs(
                 mMockDevice, configParent.getTestInvocationListeners().get(0), Stage.ERROR);

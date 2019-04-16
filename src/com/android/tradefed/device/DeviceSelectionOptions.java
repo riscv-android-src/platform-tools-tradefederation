@@ -22,6 +22,8 @@ import com.android.tradefed.device.DeviceManager.FastbootDevice;
 import com.android.tradefed.device.cloud.VmRemoteDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 
+import com.google.common.base.Strings;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -628,6 +630,10 @@ public class DeviceSelectionOptions implements IDeviceSelection {
     @Override
     public String getDeviceProductType(IDevice device) {
         String prop = getProperty(device, DeviceProperties.BOARD);
+        // fallback to ro.hardware for legacy devices
+        if (Strings.isNullOrEmpty(prop)) {
+            prop = getProperty(device, DeviceProperties.HARDWARE);
+        }
         if (prop != null) {
             prop = prop.toLowerCase();
         }

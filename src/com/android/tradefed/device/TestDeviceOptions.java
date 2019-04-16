@@ -22,7 +22,9 @@ import com.android.tradefed.util.ArrayUtil;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Container for {@link ITestDevice} {@link Option}s
@@ -41,6 +43,8 @@ public class TestDeviceOptions {
         REMOTE_NESTED_AVD,
         /** An android emulator. */
         EMULATOR,
+        /** Chrome OS VM (betty) */
+        CHEEPS,
     }
 
     public static final int DEFAULT_ADB_PORT = 5555;
@@ -136,6 +140,14 @@ public class TestDeviceOptions {
             "the minimum battery level required to continue the invocation. Scale: 0-100")
     private Integer mCutoffBattery = null;
 
+    @Option(
+        name = "use-content-provider",
+        description =
+                "Allow to disable the use of the content provider at the device level. "
+                        + "This results in falling back to standard adb push/pull."
+    )
+    private boolean mUseContentProvider = true;
+
     // ====================== Options Related to Virtual Devices ======================
     @Option(
             name = INSTANCE_TYPE_OPTION,
@@ -226,6 +238,14 @@ public class TestDeviceOptions {
             name = "base-host-image",
             description = "The base image to be used for the GCE VM to host emulator.")
     private String mBaseImage = null;
+
+    @Option(
+        name = "remote-fetch-file-pattern",
+        description =
+                "Only for remote VM devices. Allows to specify patterns to fetch file on the "
+                        + "remote VM via scp. Pattern must follow the scp notations."
+    )
+    private Set<String> mRemoteFetchFilePattern = new HashSet<>();
 
     // END ====================== Options Related to Virtual Devices ======================
 
@@ -458,6 +478,11 @@ public class TestDeviceOptions {
         return mInstanceType;
     }
 
+    /** Returns whether or not the Tradefed content provider can be used to push/pull files. */
+    public boolean shouldUseContentProvider() {
+        return mUseContentProvider;
+    }
+
     // =========================== Getter and Setter for Virtual Devices
     /** Return the Gce Avd timeout for the instance to come online. */
     public long getGceCmdTimeout() {
@@ -586,8 +611,14 @@ public class TestDeviceOptions {
         return mBaseImage;
     }
 
+    /** Returns the list of pattern to attempt to fetch via scp. */
+    public Set<String> getRemoteFetchFilePattern() {
+        return mRemoteFetchFilePattern;
+    }
+
     public static String getCreateCommandByInstanceType(InstanceType type) {
         switch (type) {
+            case CHEEPS:
             case GCE:
             case REMOTE_AVD:
                 return "create";

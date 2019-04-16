@@ -476,6 +476,19 @@ public class ConfigurationFactoryTest extends TestCase {
         assertEquals("valueFromTemplateIncludeConfig", fromTemplateIncludeConfig.mOption);
     }
 
+    public void testCreateConfigurationFromArgs_repeatedTemplate() throws Exception {
+        try {
+            mFactory.createConfigurationFromArgs(
+                    new String[] {"repeated-template", "--template:map", "target", "empty"});
+            fail("Should have thrown an exception.");
+        } catch (ConfigurationException expected) {
+            assertEquals(
+                    "Failed to parse config xml 'repeated-template'. Reason: Template named "
+                            + "'target' appeared more than once.",
+                    expected.getMessage());
+        }
+    }
+
     /** Test loading a config that uses template-include to include another config. */
     public void testCreateConfigurationFromArgs_templateInclude_multiKey() throws Exception {
         try {
@@ -759,7 +772,8 @@ public class ConfigurationFactoryTest extends TestCase {
         final String configName = "template-collision-include-config";
         final String depTargetName = "template-include-config-with-default";
         final String expError =
-                "Only one config object allowed for logger, but multiple were specified.";
+                "Failed to parse config xml 'template-collision-include-config'. Reason: "
+                        + "Template named 'target' appeared more than once.";
         try {
             mFactory.createConfigurationFromArgs(new String[]{configName,
                     "--template:map", "target-col", depTargetName,
@@ -872,8 +886,6 @@ public class ConfigurationFactoryTest extends TestCase {
         final String configName = "template-include-config-with-default";
         final String targetName = "local-config";
         final String nameTemplate = "target";
-        Map<String, String> expected = new HashMap<String,String>();
-        expected.put(nameTemplate, targetName);
         IConfiguration tmp = null;
         try {
             tmp = mFactory.createConfigurationFromArgs(new String[]{configName,

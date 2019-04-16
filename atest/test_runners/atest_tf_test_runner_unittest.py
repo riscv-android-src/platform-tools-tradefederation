@@ -29,8 +29,8 @@ import constants
 import unittest_constants as uc
 import unittest_utils
 import atest_tf_test_runner as atf_tr
+import event_handler
 from test_finders import test_info
-from test_runners import test_runner_base
 
 if sys.version_info[0] == 2:
     from StringIO import StringIO
@@ -42,7 +42,7 @@ else:
 TEST_INFO_DIR = '/tmp/atest_run_1510085893_pi_Nbi'
 METRICS_DIR = '%s/baseline-metrics' % TEST_INFO_DIR
 METRICS_DIR_ARG = '--metrics-folder %s ' % METRICS_DIR
-RUN_CMD_ARGS = '{metrics}--log-level WARN'
+RUN_CMD_ARGS = '{metrics}--log-level WARN{serial}'
 RUN_CMD = atf_tr.AtestTradefedTestRunner._RUN_CMD.format(
     exe=atf_tr.AtestTradefedTestRunner.EXECUTABLE,
     template=atf_tr.AtestTradefedTestRunner._TF_TEMPLATE,
@@ -122,54 +122,6 @@ EVENTS_NORMAL = [
     ('TEST_FAILED', {'className':'someClassName2', 'testName':'someTestName2',
                      'trace': 'someTrace'}),
     ('TEST_ENDED', {'end_time':9876450, 'className':'someClassName2',
-                    'testName':'someTestName2'}),
-    ('TEST_RUN_ENDED', {}),
-    ('TEST_MODULE_ENDED', {'foo': 'bar'}),
-]
-
-EVENTS_RUN_FAILURE = [
-    ('TEST_MODULE_STARTED', {
-        'moduleContextFileName': 'serial-util11462169742772610436.ser',
-        'moduleName': 'someTestModule'}),
-    ('TEST_RUN_STARTED', {'testCount': 2}),
-    ('TEST_STARTED', {'start_time':10, 'className': 'someClassName',
-                      'testName':'someTestName'}),
-    ('TEST_RUN_FAILED', {'reason': 'someRunFailureReason'})
-]
-
-EVENTS_INVOCATION_FAILURE = [
-    ('INVOCATION_FAILED', {'cause': 'someInvocationFailureReason'})
-]
-
-EVENTS_NOT_BALANCED_BEFORE_RAISE = [
-    ('TEST_MODULE_STARTED', {
-        'moduleContextFileName':'serial-util1146216{974}2772610436.ser',
-        'moduleName':'someTestModule'}),
-    ('TEST_RUN_STARTED', {'testCount': 2}),
-    ('TEST_STARTED', {'start_time':10, 'className':'someClassName',
-                      'testName':'someTestName'}),
-    ('TEST_ENDED', {'end_time':18, 'className':'someClassName',
-                    'testName':'someTestName'}),
-    ('TEST_STARTED', {'start_time':19, 'className':'someClassName',
-                      'testName':'someTestName'}),
-    ('TEST_FAILED', {'className':'someClassName2', 'testName':'someTestName2',
-                     'trace': 'someTrace'}),
-]
-
-EVENTS_IGNORE = [
-    ('TEST_MODULE_STARTED', {
-        'moduleContextFileName':'serial-util1146216{974}2772610436.ser',
-        'moduleName':'someTestModule'}),
-    ('TEST_RUN_STARTED', {'testCount': 2}),
-    ('TEST_STARTED', {'start_time':8, 'className':'someClassName',
-                      'testName':'someTestName'}),
-    ('TEST_ENDED', {'end_time':18, 'className':'someClassName',
-                    'testName':'someTestName'}),
-    ('TEST_STARTED', {'start_time':28, 'className':'someClassName2',
-                      'testName':'someTestName2'}),
-    ('TEST_IGNORED', {'className':'someClassName2', 'testName':'someTestName2',
-                      'trace': 'someTrace'}),
-    ('TEST_ENDED', {'end_time':90, 'className':'someClassName2',
                     'testName':'someTestName2'}),
     ('TEST_RUN_ENDED', {}),
     ('TEST_MODULE_ENDED', {'foo': 'bar'}),
@@ -255,7 +207,25 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         self.assertGreaterEqual(port, 1024)
         server.close()
 
-    @mock.patch.object(atf_tr.AtestTradefedTestRunner, '_process_event')
+    @mock.patch('os.path.exists')
+    @mock.patch.dict('os.environ', {'APE_API_KEY':'/tmp/123.json'})
+    def test_try_set_gts_authentication_key_is_set_by_user(self, mock_exist):
+        """Test try_set_authentication_key_is_set_by_user method."""
+        # Test key is set by user.
+        self.tr._try_set_gts_authentication_key()
+        mock_exist.assert_not_called()
+
+    @mock.patch('constants.GTS_GOOGLE_SERVICE_ACCOUNT')
+    @mock.patch('os.path.exists')
+    def test_try_set_gts_authentication_key_not_set(self, mock_exist, mock_key):
+        """Test try_set_authentication_key_not_set method."""
+        # Test key neither exists nor set by user.
+        mock_exist.return_value = False
+        mock_key.return_value = ''
+        self.tr._try_set_gts_authentication_key()
+        self.assertEquals(os.environ.get('APE_API_KEY'), None)
+
+    @mock.patch.object(event_handler.EventHandler, 'process_event')
     def test_process_connection(self, mock_pe):
         """Test _process_connection method."""
         mock_socket = mock.Mock()
@@ -263,12 +233,12 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
                        for name, data in EVENTS_NORMAL]
         socket_data.append('')
         mock_socket.recv.side_effect = socket_data
-        self.tr._process_connection(mock_socket, 'fake reporter')
-        calls = [mock.call(name, data, 'fake reporter', mock.ANY, mock.ANY)
-                 for name, data in EVENTS_NORMAL]
+        self.tr._process_connection(mock_socket, mock_pe)
+
+        calls = [mock.call.process_event(name, data) for name, data in EVENTS_NORMAL]
         mock_pe.assert_has_calls(calls)
 
-    @mock.patch.object(atf_tr.AtestTradefedTestRunner, '_process_event')
+    @mock.patch.object(event_handler.EventHandler, 'process_event')
     def test_process_connection_multiple_lines_in_single_recv(self, mock_pe):
         """Test _process_connection when recv reads multiple lines in one go."""
         mock_socket = mock.Mock()
@@ -276,12 +246,11 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
                                      for name, data in EVENTS_NORMAL])
         socket_data = [squashed_events, '']
         mock_socket.recv.side_effect = socket_data
-        self.tr._process_connection(mock_socket, 'fake reporter')
-        calls = [mock.call(name, data, 'fake reporter', mock.ANY, mock.ANY)
-                 for name, data in EVENTS_NORMAL]
+        self.tr._process_connection(mock_socket, mock_pe)
+        calls = [mock.call.process_event(name, data) for name, data in EVENTS_NORMAL]
         mock_pe.assert_has_calls(calls)
 
-    @mock.patch.object(atf_tr.AtestTradefedTestRunner, '_process_event')
+    @mock.patch.object(event_handler.EventHandler, 'process_event')
     def test_process_connection_with_buffering(self, mock_pe):
         """Test _process_connection when events overflow socket buffer size"""
         mock_socket = mock.Mock()
@@ -294,151 +263,14 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         # test non-try block buffering with second event
         socket_data.extend([socket_events[1][:-4], socket_events[1][-4:], ''])
         mock_socket.recv.side_effect = socket_data
-        self.tr._process_connection(mock_socket, 'fake reporter')
-        calls = [mock.call(name, data, 'fake reporter', mock.ANY, mock.ANY)
-                 for name, data in module_events]
+        self.tr._process_connection(mock_socket, mock_pe)
+        calls = [mock.call.process_event(name, data) for name, data in module_events]
         mock_pe.assert_has_calls(calls)
 
-    def test_process_event_normal_results(self):
-        """Test _process_event method for normal test results."""
-        mock_reporter = mock.Mock()
-        state = atf_tr.CONNECTION_STATE.copy()
-        stack = []
-        for name, data in EVENTS_NORMAL:
-            self.tr._process_event(name, data, mock_reporter, state, stack)
-        call1 = mock.call(test_runner_base.TestResult(
-            runner_name=self.tr.NAME,
-            group_name='someTestModule',
-            test_name='someClassName#someTestName',
-            status=test_runner_base.PASSED_STATUS,
-            details=None,
-            test_count=1,
-            test_time='(996ms)',
-            runner_total=None,
-            group_total=2
-        ))
-        call2 = mock.call(test_runner_base.TestResult(
-            runner_name=self.tr.NAME,
-            group_name='someTestModule',
-            test_name='someClassName2#someTestName2',
-            status=test_runner_base.FAILED_STATUS,
-            details='someTrace',
-            test_count=2,
-            test_time='(2h44m36.402s)',
-            runner_total=None,
-            group_total=2
-        ))
-        mock_reporter.process_test_result.assert_has_calls([call1, call2])
-
-    def test_process_event_run_failure(self):
-        """Test _process_event method run failure."""
-        mock_reporter = mock.Mock()
-        state = atf_tr.CONNECTION_STATE.copy()
-        stack = []
-        for name, data in EVENTS_RUN_FAILURE:
-            self.tr._process_event(name, data, mock_reporter, state, stack)
-        call = mock.call(test_runner_base.TestResult(
-            runner_name=self.tr.NAME,
-            group_name='someTestModule',
-            test_name='someClassName#someTestName',
-            status=test_runner_base.ERROR_STATUS,
-            details='someRunFailureReason',
-            test_count=1,
-            test_time='',
-            runner_total=None,
-            group_total=2
-        ))
-        mock_reporter.process_test_result.assert_has_calls([call])
-
-    def test_process_event_invocation_failure(self):
-        """Test _process_event method with invocation failure."""
-        mock_reporter = mock.Mock()
-        state = atf_tr.CONNECTION_STATE.copy()
-        stack = []
-        for name, data in EVENTS_INVOCATION_FAILURE:
-            self.tr._process_event(name, data, mock_reporter, state, stack)
-        call = mock.call(test_runner_base.TestResult(
-            runner_name=self.tr.NAME,
-            group_name=None,
-            test_name=None,
-            status=test_runner_base.ERROR_STATUS,
-            details='someInvocationFailureReason',
-            test_count=0,
-            test_time='',
-            runner_total=None,
-            group_total=None
-        ))
-        mock_reporter.process_test_result.assert_has_calls([call])
-
-    def test_process_event_not_balanced(self):
-        """Test _process_event method with start/end event name not balanced."""
-        mock_reporter = mock.Mock()
-        state = atf_tr.CONNECTION_STATE.copy()
-        stack = []
-        for name, data in EVENTS_NOT_BALANCED_BEFORE_RAISE:
-            self.tr._process_event(name, data, mock_reporter, state, stack)
-        call = mock.call(test_runner_base.TestResult(
-            runner_name=self.tr.NAME,
-            group_name='someTestModule',
-            test_name='someClassName#someTestName',
-            status=test_runner_base.PASSED_STATUS,
-            details=None,
-            test_count=1,
-            test_time='(8ms)',
-            runner_total=None,
-            group_total=2
-        ))
-        mock_reporter.process_test_result.assert_has_calls([call])
-        # Event pair: TEST_STARTED -> TEST_RUN_ENDED
-        # It should raise TradeFedExitError in _check_events_are_balanced()
-        name = 'TEST_RUN_ENDED'
-        data = {}
-        self.assertRaises(atf_tr.TradeFedExitError,
-                          self.tr._check_events_are_balanced,
-                          name, mock_reporter, state, stack)
-        # Event pair: TEST_RUN_STARTED -> TEST_MODULE_ENDED
-        # It should raise TradeFedExitError in _check_events_are_balanced()
-        name = 'TEST_MODULE_ENDED'
-        data = {'foo': 'bar'}
-        self.assertRaises(atf_tr.TradeFedExitError,
-                          self.tr._check_events_are_balanced,
-                          name, mock_reporter, state, stack)
-
-    def test_process_event_ignore(self):
-        """Test _process_event method for normal test results."""
-        mock_reporter = mock.Mock()
-        state = atf_tr.CONNECTION_STATE.copy()
-        stack = []
-        for name, data in EVENTS_IGNORE:
-            self.tr._process_event(name, data, mock_reporter, state, stack)
-        call1 = mock.call(test_runner_base.TestResult(
-            runner_name=self.tr.NAME,
-            group_name='someTestModule',
-            test_name='someClassName#someTestName',
-            status=test_runner_base.PASSED_STATUS,
-            details=None,
-            test_count=1,
-            test_time='(10ms)',
-            runner_total=None,
-            group_total=2
-        ))
-        call2 = mock.call(test_runner_base.TestResult(
-            runner_name=self.tr.NAME,
-            group_name='someTestModule',
-            test_name='someClassName2#someTestName2',
-            status=test_runner_base.IGNORED_STATUS,
-            details=None,
-            test_count=2,
-            test_time='(62ms)',
-            runner_total=None,
-            group_total=2
-        ))
-        mock_reporter.process_test_result.assert_has_calls([call1, call2])
-
-
+    @mock.patch('os.environ.get', return_value=None)
     @mock.patch.object(atf_tr.AtestTradefedTestRunner, '_generate_metrics_folder')
     @mock.patch('atest_utils.get_result_server_args')
-    def test_generate_run_commands(self, mock_resultargs, mock_mertrics):
+    def test_generate_run_commands_without_serial_env(self, mock_resultargs, mock_mertrics, _):
         """Test generate_run_command method."""
         # Basic Run Cmd
         mock_resultargs.return_value = []
@@ -446,12 +278,12 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         unittest_utils.assert_strict_equal(
             self,
             self.tr.generate_run_commands([], {}),
-            [RUN_CMD.format(metrics='')])
+            [RUN_CMD.format(metrics='', serial='')])
         mock_mertrics.return_value = METRICS_DIR
         unittest_utils.assert_strict_equal(
             self,
             self.tr.generate_run_commands([], {}),
-            [RUN_CMD.format(metrics=METRICS_DIR_ARG)])
+            [RUN_CMD.format(metrics=METRICS_DIR_ARG, serial='')])
         # Run cmd with result server args.
         result_arg = '--result_arg'
         mock_resultargs.return_value = [result_arg]
@@ -459,7 +291,38 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         unittest_utils.assert_strict_equal(
             self,
             self.tr.generate_run_commands([], {}),
-            [RUN_CMD.format(metrics='') + ' ' + result_arg])
+            [RUN_CMD.format(metrics='', serial='') + ' ' + result_arg])
+
+    @mock.patch('os.environ.get')
+    @mock.patch.object(atf_tr.AtestTradefedTestRunner, '_generate_metrics_folder')
+    @mock.patch('atest_utils.get_result_server_args')
+    def test_generate_run_commands_with_serial_env(self, mock_resultargs, mock_mertrics, mock_env):
+        """Test generate_run_command method."""
+        # Basic Run Cmd
+        env_device_serial = 'env-device-0'
+        mock_resultargs.return_value = []
+        mock_mertrics.return_value = ''
+        mock_env.return_value = env_device_serial
+        env_serial_arg = ' --serial %s' % env_device_serial
+        # Serial env be set and without --serial arg.
+        unittest_utils.assert_strict_equal(
+            self,
+            self.tr.generate_run_commands([], {}),
+            [RUN_CMD.format(metrics='', serial=env_serial_arg)])
+        # Serial env be set but with --serial arg.
+        arg_device_serial = 'arg-device-0'
+        arg_serial_arg = ' --serial %s' % arg_device_serial
+        unittest_utils.assert_strict_equal(
+            self,
+            self.tr.generate_run_commands([], {constants.SERIAL:arg_device_serial}),
+            [RUN_CMD.format(metrics='', serial=arg_serial_arg)])
+        # Serial env be set but with -n arg
+        unittest_utils.assert_strict_equal(
+            self,
+            self.tr.generate_run_commands([], {constants.HOST}),
+            [RUN_CMD.format(metrics='', serial='') +
+             ' -n --prioritize-host-config --skip-host-arch-check'])
+
 
     def test_flatten_test_filters(self):
         """Test _flatten_test_filters method."""
@@ -552,6 +415,7 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         unittest_utils.assert_equal_testinfo_sets(
             self, test_infos, {uc.INT_INFO, MODULE2_INFO,
                                METHOD_METHOD2_AND_CLASS2_METHOD})
+
 
 
 if __name__ == '__main__':

@@ -306,6 +306,9 @@ public abstract class ITestSuite
     // Guice object
     private Injector mInjector;
 
+    // Current modules to run, null if not started to run yet.
+    private List<ModuleDefinition> mRunModules = null;
+
     /**
      * Get the current Guice {@link Injector} from the invocation. It should allow us to continue
      * the object injection of modules.
@@ -464,9 +467,9 @@ public abstract class ITestSuite
         checkClassLoad(mAllowedRunners, RUNNER_WHITELIST);
         checkClassLoad(mAllowedPreparers, PREPARER_WHITELIST);
 
-        List<ModuleDefinition> runModules = createExecutionList();
+        mRunModules = createExecutionList();
         // Check if we have something to run.
-        if (runModules.isEmpty()) {
+        if (mRunModules.isEmpty()) {
             CLog.i("No tests to be run.");
             return;
         }
@@ -498,38 +501,37 @@ public abstract class ITestSuite
         List<ITestInvocationListener> moduleListeners = createModuleListeners();
 
         // Only print the running log if we are going to run something.
-        if (runModules.get(0).hasTests()) {
+        if (mRunModules.get(0).hasTests()) {
             CLog.logAndDisplay(
                     LogLevel.INFO,
                     "%s running %s modules: %s",
                     mDevice.getSerialNumber(),
-                    runModules.size(),
-                    runModules);
+                    mRunModules.size(),
+                    mRunModules);
         }
 
         /** Run all the module, make sure to reduce the list to release resources as we go. */
         try {
-            while (!runModules.isEmpty()) {
-                ModuleDefinition module = runModules.remove(0);
+            while (!mRunModules.isEmpty()) {
+                ModuleDefinition module = mRunModules.remove(0);
                 // Before running the module we ensure it has tests at this point or skip completely
                 // to avoid running SystemCheckers and preparation for nothing.
                 if (module.hasTests()) {
                     continue;
                 }
 
+                // Populate the module context with devices and builds
+                for (String deviceName : mContext.getDeviceConfigNames()) {
+                    module.getModuleInvocationContext()
+                            .addAllocatedDevice(deviceName, mContext.getDevice(deviceName));
+                    module.getModuleInvocationContext()
+                            .addDeviceBuildInfo(deviceName, mContext.getBuildInfo(deviceName));
+                }
+                listener.testModuleStarted(module.getModuleInvocationContext());
+                // Trigger module start on module level listener too
+                new ResultForwarder(moduleListeners)
+                        .testModuleStarted(module.getModuleInvocationContext());
                 try {
-                    // Populate the module context with devices and builds
-                    for (String deviceName : mContext.getDeviceConfigNames()) {
-                        module.getModuleInvocationContext()
-                                .addAllocatedDevice(deviceName, mContext.getDevice(deviceName));
-                        module.getModuleInvocationContext()
-                                .addDeviceBuildInfo(deviceName, mContext.getBuildInfo(deviceName));
-                    }
-                    listener.testModuleStarted(module.getModuleInvocationContext());
-                    // Trigger module start on module level listener too
-                    new ResultForwarder(moduleListeners)
-                            .testModuleStarted(module.getModuleInvocationContext());
-
                     runSingleModule(module, listener, moduleListeners, failureListener);
                 } finally {
                     // Trigger module end on module level listener too
@@ -542,14 +544,8 @@ public abstract class ITestSuite
         } catch (DeviceNotAvailableException e) {
             CLog.e(
                     "A DeviceNotAvailableException occurred, following modules did not run: %s",
-                    runModules);
-            for (ModuleDefinition module : runModules) {
-                listener.testModuleStarted(module.getModuleInvocationContext());
-                listener.testRunStarted(module.getId(), 0);
-                listener.testRunFailed("Module did not run due to device not available.");
-                listener.testRunEnded(0, new HashMap<String, Metric>());
-                listener.testModuleEnded();
-            }
+                    mRunModules);
+            reportNotExecuted(listener, "Module did not run due to device not available.");
             throw e;
         }
     }
@@ -623,6 +619,7 @@ public abstract class ITestSuite
         long startTime = System.currentTimeMillis();
         CLog.i("Running system status checker before module execution: %s", moduleName);
         Map<String, String> failures = new LinkedHashMap<>();
+        boolean bugreportNeeded = false;
         for (ISystemStatusChecker checker : checkers) {
             // Check if the status checker should be skipped.
             if (mSystemStatusCheckBlacklist.contains(checker.getClass().getName())) {
@@ -638,18 +635,19 @@ public abstract class ITestSuite
             } catch (RuntimeException e) {
                 // Catch RuntimeException to avoid leaking throws that go to the invocation.
                 result.setErrorMessage(e.getMessage());
+                result.setBugreportNeeded(true);
             }
             if (!CheckStatus.SUCCESS.equals(result.getStatus())) {
                 String errorMessage =
                         (result.getErrorMessage() == null) ? "" : result.getErrorMessage();
                 failures.put(checker.getClass().getCanonicalName(), errorMessage);
+                bugreportNeeded = bugreportNeeded | result.isBugreportNeeded();
                 CLog.w("System status checker [%s] failed.", checker.getClass().getCanonicalName());
             }
         }
         if (!failures.isEmpty()) {
-            CLog.w("There are failed system status checkers: %s capturing a bugreport",
-                    failures.toString());
-            if (!(device.getIDevice() instanceof StubDevice)) {
+            CLog.w("There are failed system status checkers: %s", failures.toString());
+            if (bugreportNeeded && !(device.getIDevice() instanceof StubDevice)) {
                 device.logBugreport(
                         String.format("bugreport-checker-pre-module-%s", moduleName), listener);
             }
@@ -672,6 +670,7 @@ public abstract class ITestSuite
         long startTime = System.currentTimeMillis();
         CLog.i("Running system status checker after module execution: %s", moduleName);
         Map<String, String> failures = new LinkedHashMap<>();
+        boolean bugreportNeeded = false;
         for (ISystemStatusChecker checker : checkers) {
             // Check if the status checker should be skipped.
             if (mSystemStatusCheckBlacklist.contains(checker.getClass().getName())) {
@@ -684,18 +683,19 @@ public abstract class ITestSuite
             } catch (RuntimeException e) {
                 // Catch RuntimeException to avoid leaking throws that go to the invocation.
                 result.setErrorMessage(e.getMessage());
+                result.setBugreportNeeded(true);
             }
             if (!CheckStatus.SUCCESS.equals(result.getStatus())) {
                 String errorMessage =
                         (result.getErrorMessage() == null) ? "" : result.getErrorMessage();
                 failures.put(checker.getClass().getCanonicalName(), errorMessage);
+                bugreportNeeded = bugreportNeeded | result.isBugreportNeeded();
                 CLog.w("System status checker [%s] failed", checker.getClass().getCanonicalName());
             }
         }
         if (!failures.isEmpty()) {
-            CLog.w("There are failed system status checkers: %s capturing a bugreport",
-                    failures.toString());
-            if (!(device.getIDevice() instanceof StubDevice)) {
+            CLog.w("There are failed system status checkers: %s", failures.toString());
+            if (bugreportNeeded && !(device.getIDevice() instanceof StubDevice)) {
                 device.logBugreport(
                         String.format("bugreport-checker-post-module-%s", moduleName), listener);
             }
@@ -785,6 +785,9 @@ public abstract class ITestSuite
                 }
                 if (test instanceof IInvocationContextReceiver) {
                     ((IInvocationContextReceiver) test).setInvocationContext(mContext);
+                }
+                if (test instanceof ITestCollector) {
+                    ((ITestCollector) test).setCollectTestsOnly(mCollectTestsOnly);
                 }
             }
         }
@@ -905,15 +908,18 @@ public abstract class ITestSuite
     /** {@inheritDoc} */
     @Override
     public void reportNotExecuted(ITestInvocationListener listener, String message) {
-        List<ModuleDefinition> runModules = createExecutionList();
+        // If the runner is already in progress, report the remaining tests as not executed.
+        List<ModuleDefinition> runModules = null;
+        if (mRunModules != null) {
+            runModules = new ArrayList<>(mRunModules);
+        }
+        if (runModules == null) {
+            runModules = createExecutionList();
+        }
 
         while (!runModules.isEmpty()) {
             ModuleDefinition module = runModules.remove(0);
-            listener.testModuleStarted(module.getModuleInvocationContext());
-            listener.testRunStarted(module.getId(), 0);
-            listener.testRunFailed(message);
-            listener.testRunEnded(0, new HashMap<String, Metric>());
-            listener.testModuleEnded();
+            module.reportNotExecuted(listener, message);
         }
     }
 

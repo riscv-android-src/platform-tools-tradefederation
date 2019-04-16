@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.device;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
@@ -22,8 +23,11 @@ import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.device.DeviceManager.FastbootDevice;
 import com.android.tradefed.device.cloud.ManagedRemoteDevice;
+import com.android.tradefed.device.cloud.NestedDeviceStateMonitor;
+import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.device.cloud.VmRemoteDevice;
+import com.android.tradefed.invoker.RemoteInvocationExecution;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
@@ -80,12 +84,30 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
                             new DeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
                             mAllocationMonitor);
             testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
-        } else if (idevice instanceof TcpDevice || isTcpDeviceSerial(idevice.getSerialNumber())) {
+        } else if (idevice instanceof TcpDevice) {
             // Special device for Tcp device for custom handling.
             testDevice = new RemoteAndroidDevice(idevice,
                     new DeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
                     mAllocationMonitor);
             testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+        } else if (isTcpDeviceSerial(idevice.getSerialNumber())) {
+            if (isRemoteEnvironment()) {
+                // If we are in a remote environment, treat the device as such
+                testDevice =
+                        new NestedRemoteDevice(
+                                idevice,
+                                new NestedDeviceStateMonitor(
+                                        mDeviceManager, idevice, mFastbootEnabled),
+                                mAllocationMonitor);
+            } else {
+                // Handle device connected via 'adb connect'
+                testDevice =
+                        new RemoteAndroidDevice(
+                                idevice,
+                                new DeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
+                                mAllocationMonitor);
+                testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+            }
         } else if (!checkFrameworkSupport(idevice)) {
             // Iot device instance tier 1 (no framework support)
             testDevice =
@@ -156,18 +178,26 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
         return true;
     }
 
-    /**
-     * Return the default {@link IRunUtil} instance.
-     * Exposed for testing.
-     */
+    /** Return the default {@link IRunUtil} instance. */
+    @VisibleForTesting
     protected IRunUtil getRunUtil() {
         return RunUtil.getDefault();
     }
 
     /**
-     * Create a {@link CollectingOutputReceiver}.
-     * Exposed for testing.
+     * Return true if we are currently running in a remote environment. This will alter the device
+     * behavior.
      */
+    @VisibleForTesting
+    protected boolean isRemoteEnvironment() {
+        if ("1".equals(System.getenv(RemoteInvocationExecution.REMOTE_VM_VARIABLE))) {
+            return true;
+        }
+        return false;
+    }
+
+    /** Create a {@link CollectingOutputReceiver}. */
+    @VisibleForTesting
     protected CollectingOutputReceiver createOutputReceiver() {
         return new CollectingOutputReceiver();
     }

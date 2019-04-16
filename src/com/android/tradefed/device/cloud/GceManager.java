@@ -209,7 +209,7 @@ public class GceManager {
     }
 
     /** Build and return the command to launch GCE. Exposed for testing. */
-    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) throws IOException {
+    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
         List<String> gceArgs =
                 ArrayUtil.list(getTestDeviceOptions().getAvdDriverBinary().getAbsolutePath());
         gceArgs.add(
@@ -217,6 +217,13 @@ public class GceManager {
                         getTestDeviceOptions().getInstanceType()));
         // Handle the build id related params
         List<String> gceDriverParams = getTestDeviceOptions().getGceDriverParams();
+
+        if (TestDeviceOptions.InstanceType.CHEEPS.equals(
+                getTestDeviceOptions().getInstanceType())) {
+            gceArgs.add("--avd-type");
+            gceArgs.add("cheeps");
+        }
+
         // If args passed by gce-driver-param do not contain build_id or branch,
         // use build_id and branch from device BuildInfo
         if (!gceDriverParams.contains("--build_id") && !gceDriverParams.contains("--branch")) {
@@ -437,6 +444,18 @@ public class GceManager {
                 RemoteFileUtil.fetchRemoteFile(
                         gceAvd, options, runUtil, REMOTE_FILE_OP_TIMEOUT, remoteFilePath);
         if (remoteFile != null) {
+            // If we happened to fetch a directory, log all the subfiles
+            logFile(remoteFile, baseName, logger, type);
+        }
+    }
+
+    private static void logFile(
+            File remoteFile, String baseName, ITestLogger logger, LogDataType type) {
+        if (remoteFile.isDirectory()) {
+            for (File f : remoteFile.listFiles()) {
+                logFile(f, null, logger, type);
+            }
+        } else {
             try (InputStreamSource remoteFileStream = new FileInputStreamSource(remoteFile, true)) {
                 String name = baseName;
                 if (name == null) {
@@ -568,6 +587,28 @@ public class GceManager {
         try (ByteArrayInputStreamSource source =
                 new ByteArrayInputStreamSource(output.getBytes())) {
             logger.testLog("gce_full_serial_log", LogDataType.TEXT, source);
+        }
+    }
+
+    /** Log the information related to the stable host image used. */
+    public void logStableHostImageInfos(IBuildInfo build) {
+        AcloudConfigParser config = AcloudConfigParser.parseConfig(getAvdConfigFile());
+        if (config == null) {
+            CLog.e("Failed to parse our acloud config.");
+            return;
+        }
+        if (build == null) {
+            return;
+        }
+        if (config.getValueForKey(AcloudKeys.STABLE_HOST_IMAGE_NAME) != null) {
+            build.addBuildAttribute(
+                    AcloudKeys.STABLE_HOST_IMAGE_NAME.toString(),
+                    config.getValueForKey(AcloudKeys.STABLE_HOST_IMAGE_NAME));
+        }
+        if (config.getValueForKey(AcloudKeys.STABLE_HOST_IMAGE_PROJECT) != null) {
+            build.addBuildAttribute(
+                    AcloudKeys.STABLE_HOST_IMAGE_PROJECT.toString(),
+                    config.getValueForKey(AcloudKeys.STABLE_HOST_IMAGE_PROJECT));
         }
     }
 

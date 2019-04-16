@@ -32,6 +32,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.sandbox.ISandbox;
 import com.android.tradefed.sandbox.TradefedSandbox;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
@@ -51,7 +52,7 @@ public class NoisyDryRunTest implements IRemoteTest {
     private static final long SLEEP_INTERVAL_MILLI_SEC = 5 * 1000;
 
     @Option(name = "cmdfile", description = "The cmdfile to run noisy dry run on.")
-    private String mCmdfile = null;
+    private File mCmdfile = null;
 
     @Option(name = "timeout",
             description = "The timeout to wait cmd file be ready.",
@@ -66,14 +67,13 @@ public class NoisyDryRunTest implements IRemoteTest {
         }
     }
 
-    private List<CommandLine> testCommandFile(ITestInvocationListener listener, String filename) {
+    private List<CommandLine> testCommandFile(ITestInvocationListener listener, File file) {
         listener.testRunStarted(NoisyDryRunTest.class.getCanonicalName() + "_parseFile", 1);
         TestDescription parseFileTest =
                 new TestDescription(NoisyDryRunTest.class.getCanonicalName(), "parseFile");
         listener.testStarted(parseFileTest);
         CommandFileParser parser = new CommandFileParser();
         try {
-            File file = new File(filename);
             checkFileWithTimeout(file);
             return parser.parseFile(file);
         } catch (IOException | ConfigurationException e) {
@@ -94,14 +94,33 @@ public class NoisyDryRunTest implements IRemoteTest {
     @VisibleForTesting
     void checkFileWithTimeout(File file) throws IOException {
         long timeout = currentTimeMillis() + mTimeoutMilliSec;
-        while (!file.exists() && currentTimeMillis() < timeout) {
-            CLog.w("%s doesn't exist, wait and recheck.", file.getAbsoluteFile());
+        boolean canRead = false;
+        while (!(canRead = checkFile(file)) && currentTimeMillis() < timeout) {
+            CLog.w("Can not read %s, wait and recheck.", file.getAbsoluteFile());
             sleep();
         }
-        if (!file.exists()) {
-            throw new IOException(
-                    String.format("%s doesn't exist.", file.getAbsoluteFile()));
+        if (!canRead) {
+            throw new IOException(String.format("Can not read %s.", file.getAbsoluteFile()));
         }
+    }
+
+    /** Check if the file is readable or not. */
+    private boolean checkFile(File file) {
+        if (!file.exists()) {
+            CLog.w("%s doesn't exist.", file.getAbsoluteFile());
+            return false;
+        }
+        if (!file.canRead()) {
+            CLog.w("No read access to %s.", file.getAbsoluteFile());
+            return false;
+        }
+        try {
+            FileUtil.readStringFromFile(file);
+        } catch (IOException e) {
+            CLog.w("Fail to read %s.", file.getAbsoluteFile());
+            return false;
+        }
+        return true;
     }
 
     @VisibleForTesting
@@ -136,7 +155,8 @@ public class NoisyDryRunTest implements IRemoteTest {
                     IConfiguration config =
                             ConfigurationFactory.getInstance()
                                     .createConfigurationFromArgs(args, null, new DryRunKeyStore());
-                    config.validateOptions();
+                    // Do not resolve dynamic files
+                    config.validateOptions(false);
                 }
             } catch (ConfigurationException e) {
                 String errorMessage = String.format("Failed to parse command line: %s.", cmdLine);
@@ -161,7 +181,8 @@ public class NoisyDryRunTest implements IRemoteTest {
                 SandboxConfigurationFactory.getInstance()
                         .createConfigurationFromArgs(
                                 args, new DryRunKeyStore(), createSandbox(), createRunUtil());
-        config.validateOptions();
+        // Do not resolve dynamic files
+        config.validateOptions(false);
     }
 
     /** Returns a {@link IRunUtil} implementation. */

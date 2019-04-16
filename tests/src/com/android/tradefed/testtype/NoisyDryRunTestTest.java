@@ -189,7 +189,7 @@ public class NoisyDryRunTestTest {
             }
         };
         OptionSetter setter = new OptionSetter(noisyDryRunTest);
-        setter.setOptionValue("timeout", "100");
+        setter.setOptionValue("timeout", "7000");
         noisyDryRunTest.checkFileWithTimeout(mFile);
     }
 
@@ -215,7 +215,7 @@ public class NoisyDryRunTestTest {
             noisyDryRunTest.checkFileWithTimeout(missingFile);
             fail("Should have thrown IOException");
         } catch (IOException e) {
-            assertEquals(missingFile.getAbsoluteFile() + " doesn't exist.", e.getMessage());
+            assertEquals("Can not read " + missingFile.getAbsoluteFile() + ".", e.getMessage());
             assertTrue(true);
         }
     }

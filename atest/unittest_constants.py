@@ -31,6 +31,7 @@ ROOT = '/'
 MODULE_DIR = 'foo/bar/jank'
 MODULE2_DIR = 'foo/bar/hello'
 MODULE_NAME = 'CtsJankDeviceTestCases'
+TYPO_MODULE_NAME = 'CtsJankDeviceTestCase'
 MODULE2_NAME = 'HelloWorldTests'
 CLASS_NAME = 'CtsDeviceJankUi'
 FULL_CLASS_NAME = 'android.jank.cts.ui.CtsDeviceJankUi'
@@ -208,3 +209,12 @@ FIND_PATH_FILENAME_CC = 'hello_world_test'
 FIND_PATH_TESTCASE_CC = 'HelloWorldTest'
 FIND_PATH_FOLDER = 'class_file_path_testing'
 FIND_PATH = os.path.join(TEST_DATA_DIR, FIND_PATH_FOLDER)
+
+DEFAULT_INSTALL_PATH = ['/path/to/install']
+# Module names
+MOD1 = 'mod1'
+MOD2 = 'mod2'
+MOD3 = 'mod3'
+FUZZY_MOD1 = 'Mod1'
+FUZZY_MOD2 = 'nod2'
+FUZZY_MOD3 = 'mod3mod3'

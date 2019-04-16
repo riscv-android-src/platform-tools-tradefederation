@@ -28,6 +28,7 @@ import org.junit.runners.JUnit4;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
 
 /** Unit tests for {@link ConfigurationXmlParser}. */
@@ -193,6 +194,7 @@ public class ConfigurationXmlParserTest {
                 EasyMock.eq("foo"),
                 EasyMock.eq(includedName),
                 EasyMock.anyObject(),
+                EasyMock.anyObject(),
                 EasyMock.anyObject());
         EasyMock.replay(mMockLoader);
         final String config = "<include name=\"includeme\" />";
@@ -206,7 +208,12 @@ public class ConfigurationXmlParserTest {
         ConfigurationDef parent = new ConfigurationDef("name");
         ConfigurationException exception = new ConfigurationException("I don't exist");
         mMockLoader.loadIncludedConfiguration(
-                parent, "name", includedName, null, Collections.<String, String>emptyMap());
+                parent,
+                "name",
+                includedName,
+                null,
+                Collections.<String, String>emptyMap(),
+                new HashSet<>());
         EasyMock.expectLastCall().andThrow(exception);
         EasyMock.replay(mMockLoader);
         final String config = String.format("<include name=\"%s\" />", includedName);
@@ -432,6 +439,27 @@ public class ConfigurationXmlParserTest {
         final String normalConfig =
                 "<configuration description=\"desc\" >\n"
                         + "  <include name=\"default\" other=\"test\">\n"
+                        + "</configuration>";
+        final String configName = "config";
+        ConfigurationDef configDef = new ConfigurationDef(configName);
+        try {
+            xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
+            fail("An exception should have been thrown.");
+        } catch (ConfigurationException expected) {
+            assertEquals(expectedException, expected.getMessage());
+        }
+    }
+
+    /** Prevent template-include with the same name from appearing. */
+    @Test
+    public void testParse_repeatedTemplateName() {
+        String expectedException =
+                "Failed to parse config xml 'config'. Reason: Template named 'preparers' "
+                        + "appeared more than once.";
+        final String normalConfig =
+                "<configuration description=\"desc\" >\n"
+                        + "  <template-include name=\"preparers\" default=\"empty\"/>\n"
+                        + "  <template-include name=\"preparers\" default=\"empty\"/>\n"
                         + "</configuration>";
         final String configName = "config";
         ConfigurationDef configDef = new ConfigurationDef(configName);

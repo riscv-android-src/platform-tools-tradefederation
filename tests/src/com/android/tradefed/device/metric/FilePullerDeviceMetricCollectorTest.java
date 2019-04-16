@@ -114,7 +114,7 @@ public class FilePullerDeviceMetricCollectorTest {
 
     /**
      * Test {@link FilePullerDeviceMetricCollector#processMetricFile(String, File,
-     * Map<String, Metric>)} is called on test case end and test run ended.
+     * DeviceMetricData)} is called on test case end and test run ended.
      */
     @Test
     public void testMetricFileProcessingFlow() throws Exception {

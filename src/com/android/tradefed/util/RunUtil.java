@@ -250,8 +250,8 @@ public class RunUtil implements IRunUtil {
                 new RunnableResult(
                         /* input= */ null,
                         createProcessBuilder(command),
-                        /* stdout= */ null,
-                        /* stderr= */ null,
+                        /* stdoutStream= */ null,
+                        /* stderrStream= */ null,
                         inputRedirect);
         CommandStatus status = runTimed(timeout, osRunnable, true);
         CommandResult result = osRunnable.getResult();
@@ -672,6 +672,7 @@ public class RunUtil implements IRunUtil {
                         CLog.d("stderr read thread %s still alive.", stderrThread.toString());
                     }
                 } finally {
+                    rc = (rc != null) ? rc : 1; // In case of interruption ReturnCode is null
                     mCommandResult.setExitCode(rc);
 
                     // Write out the streams to the result.

@@ -49,6 +49,7 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.KeyguardStatusChecker;
 import com.android.tradefed.suite.checker.StatusCheckerResult;
@@ -431,6 +432,7 @@ public class ITestSuiteTest {
         mTestSuite.setSystemStatusChecker(sysChecker);
         StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
         result.setErrorMessage("some failures.");
+        result.setBugreportNeeded(true);
         EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
                 .andReturn(result);
         EasyMock.expect(
@@ -471,7 +473,7 @@ public class ITestSuiteTest {
         mTestSuite.run(mMockListener);
         verifyMocks();
     }
-
+    
     /**
      * Test for {@link ITestSuite#run(ITestInvocationListener)} when the System status checker is
      * passing pre-check but failing post-check and we enable reporting a failure for it.
@@ -485,14 +487,47 @@ public class ITestSuiteTest {
         mTestSuite.setSystemStatusChecker(sysChecker);
         EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
                 .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+
+        // No bugreport is captured if not explicitly requested
+        StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
+        result.setErrorMessage("some failures.");
+        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
+                .andReturn(result);
+        expectTestRun(mMockListener);
+
+        mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_PRE + "_test", 0);
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+
+        mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_POST + "_test", 0);
+        mMockListener.testRunFailed(EasyMock.contains("some failures."));
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+
+        replayMocks();
+        mTestSuite.run(mMockListener);
+        verifyMocks();
+    }
+
+    @Test
+    public void testRun_failedSystemChecker_reportFailure_bugreport() throws Exception {
+        OptionSetter setter = new OptionSetter(mTestSuite);
+        setter.setOptionValue("report-system-checkers", "true");
+        List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
+        sysChecker.add(mMockSysChecker);
+        mTestSuite.setSystemStatusChecker(sysChecker);
+        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
+                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
         EasyMock.expect(
                         mMockDevice.logBugreport(
                                 EasyMock.anyObject(), EasyMock.same(mMockListener)))
                 .andReturn(true)
                 .times(1);
 
+        // No bugreport is captured if not explicitly requested
         StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
         result.setErrorMessage("some failures.");
+        result.setBugreportNeeded(true);
         EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
                 .andReturn(result);
         expectTestRun(mMockListener);
@@ -550,7 +585,10 @@ public class ITestSuiteTest {
                                     ConfigurationFactory.getInstance()
                                             .createConfigurationFromArgs(
                                                     new String[] {EMPTY_CONFIG});
-                            fake.setTest(new StubCollectingTest(new DeviceUnresponsiveException()));
+                            fake.setTest(
+                                    new StubCollectingTest(
+                                            new DeviceUnresponsiveException(
+                                                    "unresponsive", "serial")));
                             testConfig.put(TEST_CONFIG_NAME, fake);
                         } catch (ConfigurationException e) {
                             CLog.e(e);
@@ -571,7 +609,10 @@ public class ITestSuiteTest {
         mMockListener.testModuleStarted(EasyMock.anyObject());
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         EasyMock.expectLastCall().times(1);
-        mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
+        mMockListener.testRunFailed(
+                "unresponsive"
+                        + TestRunResult.ERROR_DIVIDER
+                        + "Module test only ran 0 out of 1 expected tests.");
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(1);
@@ -624,7 +665,10 @@ public class ITestSuiteTest {
         EasyMock.expectLastCall().times(2);
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         EasyMock.expectLastCall().times(1);
-        mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
+        mMockListener.testRunFailed(
+                "Run in progress was not completed due to: I failed"
+                        + TestRunResult.ERROR_DIVIDER
+                        + "Module test only ran 0 out of 1 expected tests.");
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(1);
@@ -665,7 +709,7 @@ public class ITestSuiteTest {
                                     ConfigurationFactory.getInstance()
                                             .createConfigurationFromArgs(
                                                     new String[] {EMPTY_CONFIG});
-                            fake.setTest(new StubCollectingTest(new RuntimeException()));
+                            fake.setTest(new StubCollectingTest(new RuntimeException("runtime")));
                             testConfig.put(TEST_CONFIG_NAME, fake);
                         } catch (ConfigurationException e) {
                             CLog.e(e);
@@ -686,7 +730,10 @@ public class ITestSuiteTest {
         mMockListener.testModuleStarted(EasyMock.anyObject());
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         EasyMock.expectLastCall().times(1);
-        mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
+        mMockListener.testRunFailed(
+                "runtime"
+                        + TestRunResult.ERROR_DIVIDER
+                        + "Module test only ran 0 out of 1 expected tests.");
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(1);
@@ -1455,9 +1502,6 @@ public class ITestSuiteTest {
     public void testNoAbi() throws Exception {
         EasyMock.reset(mMockDevice);
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(new TcpDevice("tcp-device-0"));
-        Set<String> expectedAbis = new HashSet<>();
-        expectedAbis.add("arm64-v8a");
-        expectedAbis.add("armeabi-v7a");
 
         EasyMock.expect(mMockDevice.getProperty("ro.product.cpu.abilist")).andReturn(null);
         EasyMock.expect(mMockDevice.getProperty("ro.product.cpu.abi")).andReturn(null);

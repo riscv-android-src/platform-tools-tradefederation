@@ -87,6 +87,10 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
                     "At least one of the options, --test-mapping-test-group or --include-filter, "
                             + "should be set.");
         }
+        if (mTestGroup == null && !mKeywords.isEmpty()) {
+            throw new RuntimeException(
+                    "Must specify --test-mapping-test-group when applying --test-mapping-keyword.");
+        }
         if (mTestGroup != null && !includeFilter.isEmpty()) {
             throw new RuntimeException(
                     "If options --test-mapping-test-group is set, option --include-filter should "
@@ -95,7 +99,8 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
 
         if (mTestGroup != null) {
             Set<TestInfo> testsToRun =
-                    TestMapping.getTests(getBuildInfo(), mTestGroup, getPrioritizeHostConfig());
+                    TestMapping.getTests(
+                            getBuildInfo(), mTestGroup, getPrioritizeHostConfig(), mKeywords);
             if (testsToRun.isEmpty()) {
                 throw new RuntimeException(
                         String.format("No test found for the given group: %s.", mTestGroup));
@@ -110,18 +115,17 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
             // module-arg options compiled from test options for each test.
             Set<String> moduleArgs = new HashSet<>();
             for (TestInfo test : testsToRun) {
-                boolean hasFilters = false;
+                boolean hasIncludeFilters = false;
                 for (TestOption option : test.getOptions()) {
                     switch (option.getName()) {
                             // Handle include and exclude filter at the suite level to hide each
                             // test runner specific implementation and option names related to filtering
                         case TEST_MAPPING_INCLUDE_FILTER:
-                            hasFilters = true;
+                            hasIncludeFilters = true;
                             mappingIncludeFilters.add(
                                     String.format("%s %s", test.getName(), option.getValue()));
                             break;
                         case TEST_MAPPING_EXCLUDE_FILTER:
-                            hasFilters = true;
                             mappingExcludeFilters.add(
                                     String.format("%s %s", test.getName(), option.getValue()));
                             break;
@@ -135,7 +139,7 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
                             break;
                     }
                 }
-                if (!hasFilters) {
+                if (!hasIncludeFilters) {
                     testNames.add(test.getName());
                 }
             }

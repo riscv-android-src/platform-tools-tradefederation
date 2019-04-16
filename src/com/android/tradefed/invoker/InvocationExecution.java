@@ -294,6 +294,7 @@ public class InvocationExecution implements IInvocationExecution {
     private Throwable runMultiTargetPreparersTearDown(
             List<IMultiTargetPreparer> multiPreparers,
             IInvocationContext context,
+            ITestLogger logger,
             Throwable throwable,
             String description)
             throws Throwable {
@@ -306,6 +307,9 @@ public class InvocationExecution implements IInvocationExecution {
             if (multipreparer.isDisabled() || multipreparer.isTearDownDisabled()) {
                 CLog.d("%s has been disabled. skipping.", multipreparer);
                 continue;
+            }
+            if (multipreparer instanceof ITestLoggerReceiver) {
+                ((ITestLoggerReceiver) multipreparer).setTestLogger(logger);
             }
             CLog.d("Starting %s '%s'", description, multipreparer);
             try {
@@ -326,14 +330,22 @@ public class InvocationExecution implements IInvocationExecution {
     }
 
     @Override
-    public void doTeardown(IInvocationContext context, IConfiguration config, Throwable exception)
+    public void doTeardown(
+            IInvocationContext context,
+            IConfiguration config,
+            ITestLogger logger,
+            Throwable exception)
             throws Throwable {
         Throwable deferredThrowable = null;
 
         List<IMultiTargetPreparer> multiPreparers = config.getMultiTargetPreparers();
         deferredThrowable =
                 runMultiTargetPreparersTearDown(
-                        multiPreparers, context, exception, "multi target preparer teardown");
+                        multiPreparers,
+                        context,
+                        logger,
+                        exception,
+                        "multi target preparer teardown");
 
         // Clear wifi settings, to prevent wifi errors from interfering with teardown process.
         for (String deviceName : context.getDeviceConfigNames()) {
@@ -350,6 +362,11 @@ public class InvocationExecution implements IInvocationExecution {
                     if (cleaner.isDisabled() || cleaner.isTearDownDisabled()) {
                         CLog.d("%s has been disabled. skipping.", cleaner);
                         continue;
+                    }
+                    // If setup hit a targetSetupError, the setUp() and setTestLogger might not have
+                    // run, ensure we still have the logger.
+                    if (preparer instanceof ITestLoggerReceiver) {
+                        ((ITestLoggerReceiver) preparer).setTestLogger(logger);
                     }
                     try {
                         CLog.d(
@@ -381,6 +398,7 @@ public class InvocationExecution implements IInvocationExecution {
                 runMultiTargetPreparersTearDown(
                         multiPrePreparers,
                         context,
+                        logger,
                         exception,
                         "multi pre target preparer teardown");
         if (deferredThrowable == null) {
@@ -416,56 +434,70 @@ public class InvocationExecution implements IInvocationExecution {
     public void runTests(
             IInvocationContext context, IConfiguration config, ITestInvocationListener listener)
             throws Throwable {
-        for (IRemoteTest test : config.getTests()) {
-            // For compatibility of those receivers, they are assumed to be single device alloc.
-            if (test instanceof IDeviceTest) {
-                ((IDeviceTest) test).setDevice(context.getDevices().get(0));
-            }
-            if (test instanceof IBuildReceiver) {
-                ((IBuildReceiver) test).setBuild(context.getBuildInfo(context.getDevices().get(0)));
-            }
-            if (test instanceof ISystemStatusCheckerReceiver) {
-                ((ISystemStatusCheckerReceiver) test)
-                        .setSystemStatusChecker(config.getSystemStatusCheckers());
-            }
-
-            // TODO: consider adding receivers for only the list of ITestDevice and IBuildInfo.
-            if (test instanceof IMultiDeviceTest) {
-                ((IMultiDeviceTest) test).setDeviceInfos(context.getDeviceBuildMap());
-            }
-            if (test instanceof IInvocationContextReceiver) {
-                ((IInvocationContextReceiver) test).setInvocationContext(context);
-            }
-
-            updateAutoCollectors(config);
-
-            // We clone the collectors for each IRemoteTest to ensure no state conflicts.
-            List<IMetricCollector> clonedCollectors = new ArrayList<>();
-            // Add automated collectors
-            for (AutoLogCollector auto : config.getCommandOptions().getAutoLogCollectors()) {
-                clonedCollectors.add(auto.getInstanceForValue());
-            }
-
-            // Add the collector from the configuration
-            clonedCollectors.addAll(CollectorHelper.cloneCollectors(config.getMetricCollectors()));
-            if (test instanceof IMetricCollectorReceiver) {
-                ((IMetricCollectorReceiver) test).setMetricCollectors(clonedCollectors);
-                // If test can receive collectors then let it handle the how to set them up
-                test.run(listener);
-            } else {
-                // Wrap collectors in each other and collection will be sequential, do this in the
-                // loop to ensure they are always initialized against the right context.
-                ITestInvocationListener listenerWithCollectors = listener;
-                for (IMetricCollector collector : clonedCollectors) {
-                    if (collector.isDisabled()) {
-                        CLog.d("%s has been disabled. Skipping.", collector);
-                    } else {
-                        listenerWithCollectors = collector.init(context, listenerWithCollectors);
-                    }
+        List<IRemoteTest> remainingTests = new ArrayList<>(config.getTests());
+        UnexecutedTestReporterThread reporterThread =
+                new UnexecutedTestReporterThread(listener, remainingTests);
+        Runtime.getRuntime().addShutdownHook(reporterThread);
+        try {
+            for (IRemoteTest test : config.getTests()) {
+                // For compatibility of those receivers, they are assumed to be single device alloc.
+                if (test instanceof IDeviceTest) {
+                    ((IDeviceTest) test).setDevice(context.getDevices().get(0));
                 }
-                test.run(listenerWithCollectors);
+                if (test instanceof IBuildReceiver) {
+                    ((IBuildReceiver) test)
+                            .setBuild(context.getBuildInfo(context.getDevices().get(0)));
+                }
+                if (test instanceof ISystemStatusCheckerReceiver) {
+                    ((ISystemStatusCheckerReceiver) test)
+                            .setSystemStatusChecker(config.getSystemStatusCheckers());
+                }
+
+                // TODO: consider adding receivers for only the list of ITestDevice and IBuildInfo.
+                if (test instanceof IMultiDeviceTest) {
+                    ((IMultiDeviceTest) test).setDeviceInfos(context.getDeviceBuildMap());
+                }
+                if (test instanceof IInvocationContextReceiver) {
+                    ((IInvocationContextReceiver) test).setInvocationContext(context);
+                }
+
+                updateAutoCollectors(config);
+
+                // We clone the collectors for each IRemoteTest to ensure no state conflicts.
+                List<IMetricCollector> clonedCollectors = new ArrayList<>();
+                // Add automated collectors
+                for (AutoLogCollector auto : config.getCommandOptions().getAutoLogCollectors()) {
+                    clonedCollectors.add(auto.getInstanceForValue());
+                }
+
+                // Add the collector from the configuration
+                clonedCollectors.addAll(
+                        CollectorHelper.cloneCollectors(config.getMetricCollectors()));
+                if (test instanceof IMetricCollectorReceiver) {
+                    ((IMetricCollectorReceiver) test).setMetricCollectors(clonedCollectors);
+                    // If test can receive collectors then let it handle the how to set them up
+                    test.run(listener);
+                } else {
+                    // Wrap collectors in each other and collection will be sequential, do this in the
+                    // loop to ensure they are always initialized against the right context.
+                    ITestInvocationListener listenerWithCollectors = listener;
+                    for (IMetricCollector collector : clonedCollectors) {
+                        if (collector.isDisabled()) {
+                            CLog.d("%s has been disabled. Skipping.", collector);
+                        } else {
+                            listenerWithCollectors =
+                                    collector.init(context, listenerWithCollectors);
+                        }
+                    }
+                    test.run(listenerWithCollectors);
+                }
+                remainingTests.remove(test);
             }
+        } finally {
+            // TODO: Look if this can be improved to DeviceNotAvailableException too.
+            Runtime.getRuntime().removeShutdownHook(reporterThread);
         }
+
     }
 
     @Override
@@ -714,7 +746,7 @@ public class InvocationExecution implements IInvocationExecution {
     }
 
     /** Returns the adb version in use for the invocation. */
-    String getAdbVersion() {
+    protected String getAdbVersion() {
         return GlobalConfiguration.getDeviceManagerInstance().getAdbVersion();
     }
 }

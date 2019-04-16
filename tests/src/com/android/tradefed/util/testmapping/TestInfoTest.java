@@ -21,6 +21,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /** Unit tests for {@link TestOption}. */
 @RunWith(JUnit4.class)
 public class TestInfoTest {
@@ -28,7 +31,10 @@ public class TestInfoTest {
     /** Test for {@link TestInfo#addOption()} implementation. */
     @Test
     public void testAddOption() throws Exception {
-        TestInfo info = new TestInfo("test1", "folder1", false);
+        Set<String> keywords = new HashSet<>();
+        keywords.add("key1");
+        keywords.add("key2");
+        TestInfo info = new TestInfo("test1", "folder1", false, keywords);
         info.addOption(new TestOption("option2", "value2"));
         info.addOption(new TestOption("option1", "value1"));
         // Confirm the options are sorted.
@@ -36,7 +42,13 @@ public class TestInfoTest {
         assertEquals("value1", info.getOptions().get(0).getValue());
         assertEquals("option2", info.getOptions().get(1).getName());
         assertEquals("value2", info.getOptions().get(1).getValue());
-        assertEquals("test1: Options: option1:value1,option2:value2", info.toString());
+        assertEquals(
+                "test1\n\t" +
+                "Options: option1:value1,option2:value2\n\t" +
+                "Keywords: key1,key2\n\t" +
+                "Sources: folder1\n\t" +
+                "Host: false",
+                info.toString());
         assertEquals("test1 - false", info.getNameAndHostOnly());
     }
 }

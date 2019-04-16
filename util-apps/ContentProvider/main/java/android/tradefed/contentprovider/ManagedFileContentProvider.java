@@ -29,6 +29,8 @@ import android.webkit.MimeTypeMap;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -157,14 +159,11 @@ public class ManagedFileContentProvider extends ContentProvider {
     @Override
     public int delete(
             @NonNull Uri uri, @Nullable String selection, @Nullable String[] selectionArgs) {
-        // TODO: Support deleting a file created via content write
-        ContentValues values = mFileTracker.remove(uri);
-        if (values == null) {
-            return 0;
-        }
+        // Stop Tracking the File of directory if it was tracked and delete it from the disk
+        mFileTracker.remove(uri);
         File file = getFileForUri(uri);
         int num = recursiveDelete(file);
-        return 1;
+        return num;
     }
 
     @Override
@@ -192,7 +191,6 @@ public class ManagedFileContentProvider extends ContentProvider {
     @Override
     public ParcelFileDescriptor openFile(@NonNull Uri uri, @NonNull String mode)
             throws FileNotFoundException {
-        // TODO: Track the file created via this callback (content write)
         final File file = getFileForUri(uri);
         final int fileMode = modeToMode(mode);
 
@@ -200,6 +198,10 @@ public class ManagedFileContentProvider extends ContentProvider {
             // If the file is being created, create all its parent directories that don't already
             // exist.
             file.getParentFile().mkdirs();
+            if (!mFileTracker.containsKey(uri)) {
+                // Track the file, if not already tracked.
+                mFileTracker.put(uri, new ContentValues());
+            }
         }
         return ParcelFileDescriptor.open(file, fileMode);
     }
@@ -207,6 +209,11 @@ public class ManagedFileContentProvider extends ContentProvider {
     private File getFileForUri(@NonNull Uri uri) {
         // TODO: apply the /sdcard resolution to query() too.
         String uriPath = uri.getPath();
+        try {
+            uriPath = URLDecoder.decode(uriPath, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
         if (uriPath.startsWith("/sdcard/")) {
             uriPath =
                     uriPath.replaceAll(

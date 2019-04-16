@@ -17,6 +17,7 @@ package com.android.tradefed.invoker.shard;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
@@ -64,6 +65,8 @@ public class ShardHelper implements IShardHelper {
         CONFIG_OBJ_TO_CLONE.add(Configuration.MULTI_PREPARER_TYPE_NAME);
         CONFIG_OBJ_TO_CLONE.add(Configuration.CMD_OPTIONS_TYPE_NAME);
         CONFIG_OBJ_TO_CLONE.add(Configuration.LOGGER_TYPE_NAME);
+        // Deep clone of log_saver to ensure each shard manages its own logs
+        CONFIG_OBJ_TO_CLONE.add(Configuration.LOG_SAVER_TYPE_NAME);
     }
 
     /**
@@ -123,7 +126,7 @@ public class ShardHelper implements IShardHelper {
                     TestsPoolPoller poller =
                             new TestsPoolPoller(shardableTests, tokenPool, tracker);
                     shardConfig.setTest(poller);
-                    rescheduleConfig(shardConfig, config, context, rescheduler, resultCollector);
+                    rescheduleConfig(shardConfig, config, context, rescheduler, resultCollector, i);
                 }
             } else {
                 CountDownLatch tracker = new CountDownLatch(shardableTests.size());
@@ -131,6 +134,7 @@ public class ShardHelper implements IShardHelper {
                 if (config.getCommandOptions().shouldUseTokenSharding()) {
                     tokenPool = extractTokenTests(shardableTests);
                 }
+                int i = 0;
                 for (IRemoteTest testShard : shardableTests) {
                     CLog.d("Rescheduling sharded config...");
                     IConfiguration shardConfig = config.clone();
@@ -141,7 +145,8 @@ public class ShardHelper implements IShardHelper {
                     } else {
                         shardConfig.setTest(testShard);
                     }
-                    rescheduleConfig(shardConfig, config, context, rescheduler, resultCollector);
+                    rescheduleConfig(shardConfig, config, context, rescheduler, resultCollector, i);
+                    i++;
                 }
             }
         }
@@ -154,19 +159,30 @@ public class ShardHelper implements IShardHelper {
         return true;
     }
 
-    public void rescheduleConfig(
+    private void rescheduleConfig(
             IConfiguration shardConfig,
             IConfiguration config,
             IInvocationContext context,
             IRescheduler rescheduler,
-            ShardMasterResultForwarder resultCollector) {
+            ShardMasterResultForwarder resultCollector,
+            int index) {
         cloneConfigObject(config, shardConfig);
         ShardBuildCloner.cloneBuildInfos(config, shardConfig, context);
 
         shardConfig.setTestInvocationListeners(
                 buildShardListeners(resultCollector, config.getTestInvocationListeners()));
 
-        // use the same {@link ITargetPreparer}, {@link IDeviceRecovery} etc as original config
+        // Set the host_log suffix to avoid similar names
+        String suffix = String.format("_shard_index_%s", index);
+        if (shardConfig.getCommandOptions().getHostLogSuffix() != null) {
+            suffix = shardConfig.getCommandOptions().getHostLogSuffix() + suffix;
+        }
+        shardConfig.getCommandOptions().setHostLogSuffix(suffix);
+
+        // Use the same {@link ITargetPreparer}, {@link IDeviceRecovery} etc as original config
+        // Make sure we don't run as sandboxed in shards, only parent invocation needs to
+        // run as sandboxed
+        shardConfig.getConfigurationDescription().setSandboxed(false);
         rescheduler.scheduleConfig(shardConfig);
     }
 
@@ -209,6 +225,9 @@ public class ShardHelper implements IShardHelper {
             }
             // Sharding was done, no need for children to look into it.
             clonedConfig.getCommandOptions().setShardCount(null);
+            clonedConfig
+                    .getConfigurationDescription()
+                    .addMetadata(ConfigurationDescriptor.LOCAL_SHARDED_KEY, "true");
             // Validate and download the dynamic options
             validateOptions(clonedConfig);
         } catch (ConfigurationException e) {

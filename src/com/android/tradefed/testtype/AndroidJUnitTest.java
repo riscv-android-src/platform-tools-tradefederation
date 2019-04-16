@@ -20,6 +20,7 @@ import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -47,6 +48,7 @@ import java.util.Set;
  * A Test that runs an instrumentation test package on given device using the
  * android.support.test.runner.AndroidJUnitRunner.
  */
+@OptionClass(alias = "android-junit")
 public class AndroidJUnitTest extends InstrumentationTest
         implements IRuntimeHintProvider,
                 ITestFileFilterReceiver,
@@ -469,8 +471,7 @@ public class AndroidJUnitTest extends InstrumentationTest
     }
 
     private void removeTestFilterDir() throws DeviceNotAvailableException {
-        ITestDevice device = getDevice();
-        device.executeShellCommand(String.format("rm -r %s", mTestFilterDir));
+        getDevice().deleteFile(mTestFilterDir);
     }
 
     private void reportEarlyFailure(ITestInvocationListener listener, String errorMessage) {
