@@ -29,6 +29,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInvocation;
@@ -792,8 +793,9 @@ public class ModuleDefinitionTest {
         mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
         EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
         mMockCleaner.tearDown(
-                EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
-        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
+                EasyMock.eq(mMockDevice),
+                EasyMock.eq(mMockBuildInfo),
+                EasyMock.isA(DeviceNotAvailableException.class));
         mMockListener.testRunStarted(MODULE_NAME, testCount);
         for (int i = 0; i < 3; i++) {
             mMockListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
@@ -806,6 +808,12 @@ public class ModuleDefinitionTest {
         mMockListener.testRunFailed(EasyMock.anyObject());
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        // Recovery is disabled during tearDown
+        EasyMock.expect(mMockDevice.getRecoveryMode()).andReturn(RecoveryMode.AVAILABLE);
+        mMockDevice.setRecoveryMode(RecoveryMode.NONE);
+        mMockDevice.setRecoveryMode(RecoveryMode.AVAILABLE);
+
+        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("serial");
         replayMocks();
         try {
             mModule.run(mMockListener);
