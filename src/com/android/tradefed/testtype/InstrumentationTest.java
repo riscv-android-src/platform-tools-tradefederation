@@ -655,7 +655,7 @@ public class InstrumentationTest
         }
         // isolated-storage flag only exists in Q and after.
         if (!mIsolatedStorage && (getDevice().getApiLevel() >= 29
-                || "Q".equals(getDevice().getProperty("ro.build.version.release")))) {
+                || "Q".equals(getDevice().getProperty("ro.build.version.codename")))) {
             runOptions += "--no-isolated-storage ";
         }
         if (abiName != null) {
