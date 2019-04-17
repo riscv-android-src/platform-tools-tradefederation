@@ -103,7 +103,36 @@ public class BaseTestSuiteTest {
         }
     }
 
-    /** Test that a partial name anywhere in the module name can be matched. */
+    /** Test that a module name can be matched and accept its parameterized version of args. */
+    @Test
+    public void testSetupFilters_match_parameterized() throws Exception {
+        File tmpDir = FileUtil.createTempDir(TEST_MODULE);
+        File moduleConfig = new File(tmpDir, "CtsGestureTestCases.config");
+        moduleConfig.createNewFile();
+        try {
+            OptionSetter setter = new OptionSetter(mRunner);
+            setter.setOptionValue("module", "Gesture");
+            Set<String> excludeFilter = new HashSet<>();
+            excludeFilter.add("arm64-v8a CtsGestureTestCases[instant]");
+            mRunner.setExcludeFilter(excludeFilter);
+            mRunner.setupFilters(tmpDir);
+            assertEquals(1, mRunner.getIncludeFilter().size());
+            assertThat(
+                    mRunner.getIncludeFilter(),
+                    hasItem(
+                            new SuiteTestFilter(
+                                            mRunner.getRequestedAbi(), "CtsGestureTestCases", null)
+                                    .toString()));
+            assertThat(
+                    mRunner.getExcludeFilter(),
+                    hasItem(
+                            new SuiteTestFilter("arm64-v8a", "CtsGestureTestCases[instant]", null)
+                                    .toString()));
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
     @Test
     public void testSetupFilters_match() throws Exception {
         File tmpDir = FileUtil.createTempDir(TEST_MODULE);
