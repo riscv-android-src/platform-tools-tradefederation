@@ -267,6 +267,29 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
+    public void testSetup_wifi_multiple_network_names_unsecured() throws Exception {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doSettingExpectations("global", "wifi_on", "1");
+        doCommandsExpectations("svc wifi enable");
+        EasyMock.expect(mMockDevice.connectToWifiNetwork("old_network", null)).andReturn(false);
+        EasyMock.expect(mMockDevice.connectToWifiNetwork("network", null)).andReturn(false);
+        EasyMock.expect(mMockDevice.connectToWifiNetwork("new_network", null)).andReturn(true);
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setWifiNetwork("old_network");
+        mDeviceSetup.setWifiPsk(null);
+        LinkedHashMap<String, String> ssidToPsk = new LinkedHashMap<>();
+        ssidToPsk.put("network", "");
+        ssidToPsk.put("new_network", "");
+        mDeviceSetup.setWifiSsidToPsk(ssidToPsk);
+
+        mDeviceSetup.setWifi(BinaryState.ON);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
     public void testSetup_wifi_watchdog_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
