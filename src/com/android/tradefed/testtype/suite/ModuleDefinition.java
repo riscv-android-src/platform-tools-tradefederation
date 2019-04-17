@@ -337,7 +337,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
 
         CLog.d("Running module %s", getId());
+        // Exception generated during setUp or run of the tests
         Throwable preparationException = null;
+        DeviceNotAvailableException runException = null;
         // Setup
         long prepStartTime = getCurrentTime();
 
@@ -462,6 +464,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 try {
                     retriableTest.run(listener);
                 } catch (DeviceNotAvailableException dnae) {
+                    runException = dnae;
                     // We do special logging of some information in Context of the module for easier
                     // debugging.
                     CLog.e(
@@ -503,8 +506,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             long cleanStartTime = getCurrentTime();
             RuntimeException tearDownException = null;
             try {
+                Throwable exception = (runException != null) ? runException : preparationException;
                 // Tear down
-                runTearDown(preparationException);
+                runTearDown(exception);
             } catch (DeviceNotAvailableException dnae) {
                 CLog.e(
                         "Module %s failed during tearDown with: %s",
@@ -788,7 +792,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     /** Run all the tear down steps from preparers. */
-    private void runTearDown(Throwable setupException) throws DeviceNotAvailableException {
+    private void runTearDown(Throwable exception) throws DeviceNotAvailableException {
         // Tear down
         List<IMultiTargetPreparer> cleanerList = new ArrayList<>(mMultiPreparers);
         Collections.reverse(cleanerList);
@@ -798,7 +802,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 continue;
             }
             CLog.d("Multi cleaner: %s", multiCleaner.getClass().getSimpleName());
-            multiCleaner.tearDown(mModuleInvocationContext, setupException);
+            multiCleaner.tearDown(mModuleInvocationContext, exception);
         }
 
         for (int i = 0; i < mModuleInvocationContext.getDeviceConfigNames().size(); i++) {
@@ -835,15 +839,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     try {
                         // If an exception was generated in setup with a DNAE do not attempt any
                         // recovery again in case we hit the device not available again.
-                        if (setupException != null
-                                && setupException instanceof DeviceNotAvailableException) {
+                        if (exception != null && exception instanceof DeviceNotAvailableException) {
                             origMode = device.getRecoveryMode();
                             device.setRecoveryMode(RecoveryMode.NONE);
                         }
                         cleaner.tearDown(
                                 device,
                                 mModuleInvocationContext.getBuildInfo(deviceName),
-                                setupException);
+                                exception);
                     } finally {
                         if (origMode != null) {
                             device.setRecoveryMode(origMode);
