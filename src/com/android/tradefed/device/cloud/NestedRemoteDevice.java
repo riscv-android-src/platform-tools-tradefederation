@@ -70,8 +70,6 @@ public class NestedRemoteDevice extends TestDevice {
 
     /**
      * Teardown and restore the virtual device so testing can proceed.
-     *
-     * <p>TODO: Restore device setup
      */
     public final boolean resetVirtualDevice(IBuildInfo info) throws DeviceNotAvailableException {
         String username = IP_TO_USER.get(getSerialNumber());
@@ -110,19 +108,23 @@ public class NestedRemoteDevice extends TestDevice {
             // Wait for the device to start for real.
             getRunUtil().sleep(5000);
             waitForDeviceAvailable();
-            reInitDevice(info);
-            return true;
+            // Re-init the freshly started device.
+            return reInitDevice(info);
         }
     }
 
-    private void reInitDevice(IBuildInfo info) throws DeviceNotAvailableException {
+    /** TODO: Re-run the target_preparation. */
+    private boolean reInitDevice(IBuildInfo info) throws DeviceNotAvailableException {
         // Reset recovery since it's a new device
         setRecoveryMode(RecoveryMode.AVAILABLE);
         try {
             preInvocationSetup(info);
         } catch (TargetSetupError e) {
-            throw new DeviceNotAvailableException(
-                    "Failed re-init of device.", e, getSerialNumber());
+            CLog.e("Failed to re-init the device %s", getSerialNumber());
+            CLog.e(e);
+            return false;
         }
+        // Success
+        return true;
     }
 }
