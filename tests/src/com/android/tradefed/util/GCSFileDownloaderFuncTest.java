@@ -162,7 +162,7 @@ public class GCSFileDownloaderFuncTest {
     public void testDownloadFile_streamOutput_notExist() throws Exception {
         try {
             mDownloader.downloadFile(BUCKET_NAME, mRemoteRoot + "/" + "non_exist_file");
-            Assert.fail("Should throw IOExcepiton.");
+            Assert.fail("Should throw IOException.");
         } catch (IOException e) {
             // Expect IOException
         }
