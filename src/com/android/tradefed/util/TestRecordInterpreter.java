@@ -32,7 +32,7 @@ public class TestRecordInterpreter {
      */
     public static CollectingTestListener interpreteRecord(TestRecord record) {
         CollectingTestListener listener = new CollectingTestListener();
-        ProtoResultParser parser = new ProtoResultParser(listener, true);
+        ProtoResultParser parser = new ProtoResultParser(listener, null, true);
         parser.processFinalizedProto(record);
         return listener;
     }

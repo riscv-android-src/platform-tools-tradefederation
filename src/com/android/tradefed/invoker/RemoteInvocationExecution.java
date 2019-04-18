@@ -301,7 +301,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
             }
 
             resetAdb(info, options, runUtil);
-            runRemote(listener, configFile, info, options, runUtil, config, globalConfig);
+            runRemote(listener, context, configFile, info, options, runUtil, config, globalConfig);
             collectAdbLogs(info, options, runUtil, listener);
         } finally {
             FileUtil.recursiveDelete(configFile);
@@ -340,6 +340,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
     private void runRemote(
             ITestInvocationListener currentInvocationListener,
+            IInvocationContext context,
             File configFile,
             GceAvdInfo info,
             TestDeviceOptions options,
@@ -429,7 +430,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
         if (resultFile != null) {
             // Report result to listener.
             ProtoResultParser parser =
-                    new ProtoResultParser(currentInvocationListener, false, "remote-");
+                    new ProtoResultParser(currentInvocationListener, context, false, "remote-");
             parser.processFinalizedProto(TestRecordProtoUtil.readFromFile(resultFile));
         }
     }
