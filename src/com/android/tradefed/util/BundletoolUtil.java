@@ -169,6 +169,7 @@ public class BundletoolUtil {
                             Arrays.toString(installApksCmd), res.getStderr()),
                     device.getDeviceDescriptor());
         }
+        CLog.i("%s is installed successfully", apks.getName());
         return;
     }
 
