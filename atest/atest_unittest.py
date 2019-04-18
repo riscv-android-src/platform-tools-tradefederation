@@ -230,23 +230,23 @@ class AtestUnittests(unittest.TestCase):
             'mod', '', set(), data={}, module_class=["NATIVE_TESTS"],
             install_locations=set(['host', 'device']))
 
-        # $atest <host-only>
+        # $atest <Both-support>
         test_infos = [host_test_info]
         atest._validate_exec_mode(parsed_args, test_infos)
-        self.assertTrue(parsed_args.host)
+        self.assertFalse(parsed_args.host)
 
-        # $atest <host-only> with host_tests set to True
+        # $atest <Both-support> with host_tests set to True
         parsed_args = atest._parse_args([])
         test_infos = [host_test_info]
         atest._validate_exec_mode(parsed_args, test_infos, host_tests=True)
         # Make sure the host option is not set.
         self.assertFalse(parsed_args.host)
 
-        # $atest <host-only> with host_tests set to False
+        # $atest <Both-support> with host_tests set to False
         parsed_args = atest._parse_args([])
         test_infos = [host_test_info]
-        self.assertRaises(SystemExit, atest._validate_exec_mode,
-                          parsed_args, test_infos, host_tests=False)
+        atest._validate_exec_mode(parsed_args, test_infos, host_tests=False)
+        self.assertFalse(parsed_args.host)
 
         # $atest <device-only> with host_tests set to False
         parsed_args = atest._parse_args([])
@@ -266,18 +266,6 @@ class AtestUnittests(unittest.TestCase):
         test_infos = [both_test_info]
         atest._validate_exec_mode(parsed_args, test_infos)
         self.assertFalse(parsed_args.host)
-
-        # $atest <host-only> <both-support>
-        parsed_args = atest._parse_args([])
-        test_infos = [both_test_info, host_test_info]
-        atest._validate_exec_mode(parsed_args, test_infos)
-        self.assertTrue(parsed_args.host)
-
-        # $atest <device-only> <host-only>
-        parsed_args = atest._parse_args([])
-        test_infos = [device_test_info, host_test_info]
-        self.assertRaises(SystemExit, atest._validate_exec_mode,
-                          parsed_args, test_infos)
 
         # $atest <no_install_test_info>
         parsed_args = atest._parse_args([])
