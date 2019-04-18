@@ -132,7 +132,13 @@ class TFIntegrationFinder(test_finder_base.TestFinderBase):
             i = i + 1
 
     def _search_integration_dirs(self, name):
-        """Search integration dirs for name and return full path."""
+        """Search integration dirs for name and return full path.
+        Args:
+            name: A string of integration name as seen in tf's list configs.
+
+        Returns:
+            A string of test path if test found, else None.
+        """
         for integration_dir in self.integration_dirs:
             abs_path = os.path.join(self.root_dir, integration_dir)
             test_file = test_finder_utils.run_find_cmd(
@@ -159,6 +165,20 @@ class TFIntegrationFinder(test_finder_base.TestFinderBase):
             return None
         # Don't use names that simply match the path,
         # must be the actual name used by TF to run the test.
+        t_info = self._get_test_info(name, test_file, class_name)
+        return t_info
+
+    def _get_test_info(self, name, test_file, class_name):
+        """Find the test info matching the given test_file and class_name.
+
+        Args:
+            name: A string of integration name as seen in tf's list configs.
+            test_file: A string of test_file full path.
+            class_name: A string of user's input.
+
+        Returns:
+            A populated TestInfo namedtuple if test found, else None.
+        """
         match = _INT_NAME_RE.match(test_file)
         if not match:
             logging.error('Integration test outside config dir: %s',
@@ -170,7 +190,6 @@ class TFIntegrationFinder(test_finder_base.TestFinderBase):
                          'did you mean: %s?', name, int_name)
             return None
         rel_config = os.path.relpath(test_file, self.root_dir)
-
         filters = frozenset()
         if class_name:
             class_name, methods = test_finder_utils.split_methods(class_name)

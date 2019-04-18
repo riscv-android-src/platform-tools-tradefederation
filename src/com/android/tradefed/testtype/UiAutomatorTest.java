@@ -242,12 +242,8 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
                 runOptions += "--no-hidden-api-checks ";
             }
             // isolated-storage flag only exists in Q and after.
-            String release = getDevice().getProperty("ro.build.version.release");
-            if (!mIsolatedStorage
-                    && (getDevice().getApiLevel() >= 29
-                            || "Q".equals(release)
-                            || "R".equals(release)
-                            || "10".equals(release))) {
+            if (!mIsolatedStorage && (getDevice().getApiLevel() >= 29
+                    || "Q".equals(getDevice().getProperty("ro.build.version.release")))) {
                 runOptions += "--no-isolated-storage ";
             }
             // Set the run options if any.
