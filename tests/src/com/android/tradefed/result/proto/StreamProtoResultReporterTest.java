@@ -45,19 +45,22 @@ public class StreamProtoResultReporterTest {
 
     private StreamProtoResultReporter mReporter;
     private IInvocationContext mInvocationContext;
+    private IInvocationContext mMainInvocationContext;
     private ITestInvocationListener mMockListener;
 
     @Before
     public void setUp() {
         mReporter = new StreamProtoResultReporter();
         mInvocationContext = new InvocationContext();
+        mMainInvocationContext = new InvocationContext();
         mInvocationContext.setConfigurationDescriptor(new ConfigurationDescriptor());
         mMockListener = EasyMock.createStrictMock(ITestInvocationListener.class);
     }
 
     @Test
     public void testStream() throws Exception {
-        StreamProtoReceiver receiver = new StreamProtoReceiver(mMockListener, true);
+        StreamProtoReceiver receiver =
+                new StreamProtoReceiver(mMockListener, mMainInvocationContext, true);
         OptionSetter setter = new OptionSetter(mReporter);
         try {
             setter.setOptionValue(
@@ -123,6 +126,7 @@ public class StreamProtoResultReporterTest {
         StreamProtoReceiver receiver =
                 new StreamProtoReceiver(
                         mMockListener,
+                        mMainInvocationContext,
                         /** No invocation reporting */
                         false);
         OptionSetter setter = new OptionSetter(mReporter);
