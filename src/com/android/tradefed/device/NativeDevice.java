@@ -4066,7 +4066,9 @@ public class NativeDevice implements IManagedTestDevice {
             if (mContentProvider == null) {
                 return;
             }
-            mContentProvider.tearDown();
+            if (TestDeviceState.ONLINE.equals(getDeviceState())) {
+                mContentProvider.tearDown();
+            }
         } catch (DeviceNotAvailableException e) {
             CLog.e(e);
         }
