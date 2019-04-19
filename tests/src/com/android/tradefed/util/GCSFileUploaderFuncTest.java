@@ -71,7 +71,7 @@ public class GCSFileUploaderFuncTest {
     }
 
     @Before
-    public void setUp() throws IOException {
+    public void setUp() {
         mUploader = new GCSFileUploader();
         mDownloader = new GCSFileDownloader();
     }
