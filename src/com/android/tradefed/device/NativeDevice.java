@@ -1173,7 +1173,7 @@ public class NativeDevice implements IManagedTestDevice {
             }
         }
         // Fallback to the direct command if content provider is unsuccessful
-        executeShellCommand(String.format("rm -rf \"%s\"", deviceFilePath));
+        executeShellCommand(String.format("rm -rf %s", deviceFilePath));
     }
 
     /**
