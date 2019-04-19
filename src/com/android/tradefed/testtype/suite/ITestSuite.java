@@ -261,6 +261,12 @@ public abstract class ITestSuite
     private Set<String> mAllowedPreparers = new HashSet<>();
 
     @Option(
+        name = "intra-module-sharding",
+        description = "Whether or not to allow intra-module sharding."
+    )
+    private boolean mIntraModuleSharding = true;
+
+    @Option(
         name = "reboot-before-test",
         description = "Reboot the device before the test suite starts."
     )
@@ -744,7 +750,7 @@ public abstract class ITestSuite
         // The test pool mechanism prevent this from creating too much overhead.
         List<ModuleDefinition> splitModules =
                 ModuleSplitter.splitConfiguration(
-                        runConfig, shardCountHint, mShouldMakeDynamicModule);
+                        runConfig, shardCountHint, mShouldMakeDynamicModule, mIntraModuleSharding);
         runConfig.clear();
         runConfig = null;
 
