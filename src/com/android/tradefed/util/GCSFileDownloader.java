@@ -92,7 +92,7 @@ public class GCSFileDownloader implements IFileDownloader {
     }
 
     @VisibleForTesting
-    Storage getStorage(Collection<String> scopes) throws IOException {
+    protected Storage getStorage(Collection<String> scopes) throws IOException {
         GoogleCredential credential = null;
         try {
             if (mStorage == null) {
