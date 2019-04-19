@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="guava-failureaccess"/>
 	<classpathentry kind="src" path="guava-annot"/>
 	<classpathentry kind="src" path="jsr305"/>
 	<classpathentry kind="src" path="guava"/>

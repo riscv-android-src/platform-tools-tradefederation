@@ -340,7 +340,8 @@ public class ITestSuiteTest {
     private void expectTestRun(
             ITestInvocationListener listener, String message, boolean testFailed) {
         listener.testModuleStarted(EasyMock.anyObject());
-        listener.testRunStarted(TEST_CONFIG_NAME, 1);
+        listener.testRunStarted(
+                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
         listener.testStarted(test, 0);
         if (testFailed) {
@@ -495,11 +496,19 @@ public class ITestSuiteTest {
                 .andReturn(result);
         expectTestRun(mMockListener);
 
-        mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_PRE + "_test", 0);
+        mMockListener.testRunStarted(
+                EasyMock.eq(ITestSuite.MODULE_CHECKER_PRE + "_test"),
+                EasyMock.eq(0),
+                EasyMock.eq(0),
+                EasyMock.anyLong());
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
-        mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_POST + "_test", 0);
+        mMockListener.testRunStarted(
+                EasyMock.eq(ITestSuite.MODULE_CHECKER_POST + "_test"),
+                EasyMock.eq(0),
+                EasyMock.eq(0),
+                EasyMock.anyLong());
         mMockListener.testRunFailed(EasyMock.contains("some failures."));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
@@ -532,11 +541,19 @@ public class ITestSuiteTest {
                 .andReturn(result);
         expectTestRun(mMockListener);
 
-        mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_PRE + "_test", 0);
+        mMockListener.testRunStarted(
+                EasyMock.eq(ITestSuite.MODULE_CHECKER_PRE + "_test"),
+                EasyMock.eq(0),
+                EasyMock.eq(0),
+                EasyMock.anyLong());
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
-        mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_POST + "_test", 0);
+        mMockListener.testRunStarted(
+                EasyMock.eq(ITestSuite.MODULE_CHECKER_POST + "_test"),
+                EasyMock.eq(0),
+                EasyMock.eq(0),
+                EasyMock.anyLong());
         mMockListener.testRunFailed(EasyMock.contains("some failures."));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
@@ -607,7 +624,8 @@ public class ITestSuiteTest {
         setter.setOptionValue("reboot-per-module", "true");
         EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("user");
         mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
+        mMockListener.testRunStarted(
+                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed(
                 "unresponsive"
@@ -663,7 +681,8 @@ public class ITestSuiteTest {
         EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("user");
         mMockListener.testModuleStarted(EasyMock.anyObject());
         EasyMock.expectLastCall().times(2);
-        mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
+        mMockListener.testRunStarted(
+                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed(
                 "Run in progress was not completed due to: I failed"
@@ -674,7 +693,8 @@ public class ITestSuiteTest {
         EasyMock.expectLastCall().times(1);
 
         // The module that didn't run is reported too.
-        mMockListener.testRunStarted("NOT_RUN", 0);
+        mMockListener.testRunStarted(
+                EasyMock.eq("NOT_RUN"), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testRunFailed("Module did not run due to device not available.");
         mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
 
@@ -728,7 +748,8 @@ public class ITestSuiteTest {
         setter.setOptionValue("reboot-per-module", "true");
         EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("user");
         mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
+        mMockListener.testRunStarted(
+                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed(
                 "runtime"
@@ -1177,7 +1198,8 @@ public class ITestSuiteTest {
 
         Capture<HashMap<String, Metric>> c = new Capture<>();
         mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
+        mMockListener.testRunStarted(
+                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
         mMockListener.testStarted(test, 0);
         mMockListener.testEnded(test, 5, new HashMap<String, Metric>());

@@ -717,7 +717,7 @@ public abstract class ITestSuite
             return;
         }
         // Avoid messing with the final test count by making them empty runs.
-        listener.testRunStarted(identifier + "_" + moduleName, 0);
+        listener.testRunStarted(identifier + "_" + moduleName, 0, 0, System.currentTimeMillis());
         if (!failures.isEmpty()) {
             listener.testRunFailed(String.format("%s failed '%s' checkers", moduleName, failures));
         }

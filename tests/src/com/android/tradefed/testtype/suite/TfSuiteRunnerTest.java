@@ -213,8 +213,9 @@ public class TfSuiteRunnerTest {
         mRunner.setInvocationContext(new InvocationContext());
         // runs the expanded suite
         listener.testModuleStarted(EasyMock.anyObject());
-        listener.testRunStarted("suite/stub1", 0);
-        listener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        listener.testRunStarted(
+                EasyMock.eq("suite/stub1"), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
+        listener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         listener.testModuleEnded();
         EasyMock.replay(listener);
         mRunner.run(listener);
