@@ -1661,12 +1661,13 @@ public class TestDevice extends NativeDevice {
      */
     private void checkApiLevelAgainstNextRelease(String feature, int strictMinLevel)
             throws DeviceNotAvailableException {
-        String codeName = getProperty(BUILD_CODENAME_PROP).trim();
-        int apiLevel = getApiLevel() + ("REL".equals(codeName) ? 0 : 1);
-        if (apiLevel < strictMinLevel){
-            throw new IllegalArgumentException(String.format("%s not supported on %s. "
-                    + "Must be API %d.", feature, getSerialNumber(), strictMinLevel));
+        if (checkApiLevelAgainstNextRelease(strictMinLevel)) {
+            return;
         }
+        throw new IllegalArgumentException(
+                String.format(
+                        "%s not supported on %s. Must be API %d.",
+                        feature, getSerialNumber(), strictMinLevel));
     }
 
     @Override
