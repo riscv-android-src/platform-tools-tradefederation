@@ -3604,6 +3604,18 @@ public class NativeDevice implements IManagedTestDevice {
         return apiLevel;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public boolean checkApiLevelAgainstNextRelease(int strictMinLevel)
+            throws DeviceNotAvailableException {
+        String codeName = getProperty(BUILD_CODENAME_PROP).trim();
+        int apiLevel = getApiLevel() + ("REL".equals(codeName) ? 0 : 1);
+        if (strictMinLevel > apiLevel) {
+            return false;
+        }
+        return true;
+    }
+
     private int getApiLevelSafe() {
         try {
             return getApiLevel();
