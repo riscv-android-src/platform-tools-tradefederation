@@ -477,8 +477,14 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         Returns:
             A populated TestInfo namedtuple if test found, else None.
         """
-        return self.find_test_by_class_name(class_name, module_name,
-                                            rel_config, is_native_test=True)
+        # Check if class_name is prepended with file name. If so, trim the
+        # prefix and keep only the class_name.
+        if '.' in class_name:
+            # Assume the class name has a format of file_name.class_name
+            class_name = class_name[class_name.rindex('.')+1:]
+            logging.info('Search with updated class name: %s', class_name)
+        return self.find_test_by_class_name(
+            class_name, module_name, rel_config, is_native_test=True)
 
     def get_testable_modules_with_ld(self, user_input, ld_range=0):
         """Calculate the edit distances of the input and testable modules.
