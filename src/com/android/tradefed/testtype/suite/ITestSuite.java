@@ -67,6 +67,7 @@ import com.google.inject.Injector;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -75,6 +76,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
 import java.util.Set;
 
 /**
@@ -194,6 +196,18 @@ public abstract class ITestSuite
         description = "Whether reporting system checkers as test or not."
     )
     private boolean mReportSystemChecker = false;
+
+    @Option(
+        name = "random-order",
+        description = "Whether randomizing the order of the modules to be ran or not."
+    )
+    private boolean mRandomOrder = false;
+
+    @Option(
+        name = "random-seed",
+        description = "Seed to randomize the order of the modules."
+    )
+    private long mRandomSeed = -1;
 
     @Option(
         name = "collect-tests-only",
@@ -418,10 +432,33 @@ public abstract class ITestSuite
             module.setBuild(mBuildInfo);
             runModules.add(module);
         }
+
+        /** Randomize all the modules to be ran if random-order is set and no sharding.*/
+        if (mRandomOrder) {
+            randomizeTestModules(runModules, mRandomSeed);
+        }
+
         CLog.logAndDisplay(LogLevel.DEBUG, "[Total Unique Modules = %s]", runModules.size());
         // Free the map once we are done with it.
         runConfig = null;
         return runModules;
+    }
+
+    /**
+     * Helper method that handle randomizing the order of the modules.
+     *
+     * @param runModules The {@code List<ModuleDefinition>} of the test modules to be ran.
+     * @param randomSeed The {@code long} seed used to randomize the order of test modules, use the
+     *     current time as seed if no specified seed provided.
+     */
+    @VisibleForTesting
+    void randomizeTestModules(List<ModuleDefinition> runModules, long randomSeed) {
+        // Use current time as seed if no specified seed provided.
+        if (randomSeed == -1) {
+            randomSeed = System.currentTimeMillis();
+        }
+        CLog.i("Randomizing all the modules with seed: %s", randomSeed);
+        Collections.shuffle(runModules, new Random(randomSeed));
     }
 
     private void checkClassLoad(Set<String> classes, String type) {
