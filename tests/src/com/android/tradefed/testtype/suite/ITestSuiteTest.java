@@ -83,6 +83,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 /** Unit tests for {@link ITestSuite}. */
@@ -310,6 +312,24 @@ public class ITestSuiteTest {
                     Metric.newBuilder()
                             .setMeasurements(Measurements.newBuilder().setSingleString(mValue)));
         }
+    }
+
+    /** Helper to get test modules to be ran.*/
+    private List<ModuleDefinition> getRunModules(
+            LinkedHashMap<String, IConfiguration> testConfigs) {
+        List<ModuleDefinition> runModules = new ArrayList<>();
+        for (Entry<String, IConfiguration> config : testConfigs.entrySet()) {
+            Map<String, List<ITargetPreparer>> preparersPerDevice = null;
+            ModuleDefinition module =
+                new ModuleDefinition(
+                    config.getKey(),
+                    config.getValue().getTests(),
+                    preparersPerDevice,
+                    config.getValue().getMultiTargetPreparers(),
+                    config.getValue());
+            runModules.add(module);
+        }
+        return runModules;
     }
 
     /**
@@ -1526,4 +1546,41 @@ public class ITestSuiteTest {
         mInjector.injectMembers(mTestSuite);
         assertNotNull(mTestSuite.getInjector());
     }
+
+    /**
+     * Test for {@link ITestSuite#randomizeTestModules(List<ModuleDefinition>, long)}
+     * to make sure the order won't change using the same seed.
+     */
+    @Test
+    public void testRandomizeTestModulesWithSameSeed() throws Exception {
+        mTestSuite = new TestSuiteImpl(5);
+        LinkedHashMap<String, IConfiguration> testConfigs = mTestSuite.loadTests();
+        List<ModuleDefinition> runModules = getRunModules(testConfigs);
+        List<ModuleDefinition> runModules2 = getRunModules(testConfigs);
+
+        mTestSuite.randomizeTestModules(runModules, 100L);
+        mTestSuite.randomizeTestModules(runModules2, 100L);
+        assertTrue(runModules.toString().equals(runModules2.toString()));
+
+        mTestSuite.randomizeTestModules(runModules, 400L);
+        mTestSuite.randomizeTestModules(runModules2, 400L);
+        assertTrue(runModules.toString().equals(runModules2.toString()));
+    }
+
+    /**
+     * Test for {@link ITestSuite#randomizeTestModules(List<ModuleDefinition>, long)}
+     * to make sure the order will change using different seed.
+     */
+    @Test
+    public void testRandomizeTestModulesWithDifferentSeed() throws Exception {
+        mTestSuite = new TestSuiteImpl(5);
+        LinkedHashMap<String, IConfiguration> testConfigs = mTestSuite.loadTests();
+        List<ModuleDefinition> runModules = getRunModules(testConfigs);
+        List<ModuleDefinition> runModules2 = getRunModules(testConfigs);
+
+        mTestSuite.randomizeTestModules(runModules, 100L);
+        mTestSuite.randomizeTestModules(runModules2, 10000L);
+        assertFalse(runModules.toString().equals(runModules2.toString()));
+    }
+
 }
