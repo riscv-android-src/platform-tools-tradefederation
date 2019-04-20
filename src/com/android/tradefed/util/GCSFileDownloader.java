@@ -20,10 +20,7 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IFileDownloader;
 import com.android.tradefed.log.LogUtil.CLog;
 
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
-import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.storage.Storage;
 import com.google.api.services.storage.model.Objects;
 import com.google.api.services.storage.model.StorageObject;
@@ -36,7 +33,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Paths;
-import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -48,7 +44,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /** File downloader to download file from google cloud storage (GCS). */
-public class GCSFileDownloader implements IFileDownloader {
+public class GCSFileDownloader extends GCSCommon implements IFileDownloader {
     public static final String GCS_PREFIX = "gs://";
     public static final String GCS_APPROX_PREFIX = "gs:/";
 
@@ -56,14 +52,10 @@ public class GCSFileDownloader implements IFileDownloader {
     private static final String PATH_SEP = "/";
     private static final Collection<String> SCOPES =
             Collections.singleton("https://www.googleapis.com/auth/devstorage.read_only");
-    private static final int DEFAULT_TIMEOUT = 10 * 60 * 1000; // 10minutes
     private static final long LIST_BATCH_SIZE = 100;
 
-    private File mJsonKeyFile = null;
-    private Storage mStorage;
-
     public GCSFileDownloader(File jsonKeyFile) {
-        mJsonKeyFile = jsonKeyFile;
+        super(jsonKeyFile);
     }
 
     public GCSFileDownloader() {}
@@ -88,48 +80,6 @@ public class GCSFileDownloader implements IFileDownloader {
         } finally {
             StreamUtil.close(remoteInput);
             StreamUtil.close(tmpStream);
-        }
-    }
-
-    @VisibleForTesting
-    Storage getStorage(Collection<String> scopes) throws IOException {
-        GoogleCredential credential = null;
-        try {
-            if (mStorage == null) {
-                if (mJsonKeyFile != null && mJsonKeyFile.exists()) {
-                    CLog.d("Using json key file %s.", mJsonKeyFile);
-                    credential =
-                            GoogleApiClientUtil.createCredentialFromJsonKeyFile(
-                                    mJsonKeyFile, scopes);
-                } else {
-                    CLog.d("Using local authentication.");
-                    try {
-                        credential = GoogleCredential.getApplicationDefault().createScoped(scopes);
-                    } catch (IOException e) {
-                        CLog.e(e.getMessage());
-                        CLog.e(
-                                "Try 'gcloud auth application-default login' to login for "
-                                        + "personal account; Or 'export "
-                                        + "GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json' "
-                                        + "for service account.");
-                        throw e;
-                    }
-                }
-                mStorage =
-                        new Storage.Builder(
-                                        GoogleNetHttpTransport.newTrustedTransport(),
-                                        JacksonFactory.getDefaultInstance(),
-                                        GoogleApiClientUtil.configureRetryStrategy(
-                                                GoogleApiClientUtil.setHttpTimeout(
-                                                        credential,
-                                                        DEFAULT_TIMEOUT,
-                                                        DEFAULT_TIMEOUT)))
-                                .setApplicationName(GoogleApiClientUtil.APP_NAME)
-                                .build();
-            }
-            return mStorage;
-        } catch (GeneralSecurityException e) {
-            throw new IOException(e);
         }
     }
 

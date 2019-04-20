@@ -1173,7 +1173,7 @@ public class NativeDevice implements IManagedTestDevice {
             }
         }
         // Fallback to the direct command if content provider is unsuccessful
-        executeShellCommand(String.format("rm -rf \"%s\"", deviceFilePath));
+        executeShellCommand(String.format("rm -rf %s", deviceFilePath));
     }
 
     /**
@@ -1494,6 +1494,13 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean pullDir(String deviceFilePath, File localDir)
             throws DeviceNotAvailableException {
+        if (deviceFilePath.startsWith(SD_CARD)) {
+            ContentProviderHandler handler = getContentProvider();
+            if (handler != null) {
+                return handler.pullDir(deviceFilePath, localDir);
+            }
+        }
+
         if (!localDir.isDirectory()) {
             CLog.e("Local path %s is not a directory", localDir.getAbsolutePath());
             return false;
@@ -3604,6 +3611,18 @@ public class NativeDevice implements IManagedTestDevice {
         return apiLevel;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public boolean checkApiLevelAgainstNextRelease(int strictMinLevel)
+            throws DeviceNotAvailableException {
+        String codeName = getProperty(BUILD_CODENAME_PROP).trim();
+        int apiLevel = getApiLevel() + ("REL".equals(codeName) ? 0 : 1);
+        if (strictMinLevel > apiLevel) {
+            return false;
+        }
+        return true;
+    }
+
     private int getApiLevelSafe() {
         try {
             return getApiLevel();
@@ -4054,7 +4073,9 @@ public class NativeDevice implements IManagedTestDevice {
             if (mContentProvider == null) {
                 return;
             }
-            mContentProvider.tearDown();
+            if (TestDeviceState.ONLINE.equals(getDeviceState())) {
+                mContentProvider.tearDown();
+            }
         } catch (DeviceNotAvailableException e) {
             CLog.e(e);
         }

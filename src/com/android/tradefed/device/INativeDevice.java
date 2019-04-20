@@ -1114,6 +1114,17 @@ public interface INativeDevice {
     public int getApiLevel() throws DeviceNotAvailableException;
 
     /**
+     * Check whether or not a feature is currently supported given a minimally supported level. This
+     * method takes into account unreleased features yet, before API level is raised.
+     *
+     * @param strictMinLevel The strict min possible level that supports the feature.
+     * @return True if the level is supported. False otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    public boolean checkApiLevelAgainstNextRelease(int strictMinLevel)
+            throws DeviceNotAvailableException;
+
+    /**
      * Helper to get the time difference between the device and a given {@link Date}. Use Epoch time
      * internally.
      *
