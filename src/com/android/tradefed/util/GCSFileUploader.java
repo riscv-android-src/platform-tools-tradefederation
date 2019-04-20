@@ -29,7 +29,7 @@ import java.util.Collection;
 import java.util.Collections;
 
 /** File uploader to upload file data to google cloud storage (GCS). */
-public class GCSFileUploader extends GCSFileDownloader {
+public class GCSFileUploader extends GCSCommon {
     private static final Collection<String> WRITE_SCOPE =
             Collections.singleton("https://www.googleapis.com/auth/devstorage.read_write");
 
