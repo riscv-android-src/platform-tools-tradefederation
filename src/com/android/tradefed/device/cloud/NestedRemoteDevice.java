@@ -22,13 +22,18 @@ import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceStateMonitor;
 import com.android.tradefed.device.TestDevice;
 import com.android.tradefed.invoker.RemoteInvocationExecution;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
+import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 
 import com.google.common.base.Joiner;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +57,9 @@ public class NestedRemoteDevice extends TestDevice {
         IP_TO_USER.put("127.0.0.1:6526", "vsoc-07");
     }
 
+    /** When calling launch_cvd, the launcher.log is populated. */
+    private static final String LAUNCHER_LOG_PATH = "/home/%s/cuttlefish_runtime/launcher.log";
+
     /**
      * Creates a {@link NestedRemoteDevice}.
      *
@@ -68,10 +76,9 @@ public class NestedRemoteDevice extends TestDevice {
         }
     }
 
-    /**
-     * Teardown and restore the virtual device so testing can proceed.
-     */
-    public final boolean resetVirtualDevice(IBuildInfo info) throws DeviceNotAvailableException {
+    /** Teardown and restore the virtual device so testing can proceed. */
+    public final boolean resetVirtualDevice(ITestLogger logger, IBuildInfo info)
+            throws DeviceNotAvailableException {
         String username = IP_TO_USER.get(getSerialNumber());
         // stop_cvd
         String stopCvdCommand = String.format("sudo runuser -l %s -c 'stop_cvd'", username);
@@ -96,6 +103,7 @@ public class NestedRemoteDevice extends TestDevice {
                                     Joiner.on(" ").join(createCommand));
             if (!CommandStatus.SUCCESS.equals(createRes.getStatus())) {
                 CLog.e("%s", createRes.getStderr());
+                captureLauncherLog(username, logger);
                 return false;
             }
             // Wait for the device to start for real.
@@ -119,5 +127,18 @@ public class NestedRemoteDevice extends TestDevice {
         }
         // Success
         return true;
+    }
+
+    /** Capture and log the launcher.log to debug why the device didn't start properly. */
+    private void captureLauncherLog(String username, ITestLogger logger) {
+        String logName = String.format("launcher_log_failure_%s", username);
+        File launcherLog = new File(String.format(LAUNCHER_LOG_PATH, username));
+        if (!launcherLog.exists()) {
+            CLog.e("%s doesn't exists, skip logging it.", launcherLog.getAbsolutePath());
+            return;
+        }
+        try (InputStreamSource source = new FileInputStreamSource(launcherLog)) {
+            logger.testLog(logName, LogDataType.TEXT, source);
+        }
     }
 }
