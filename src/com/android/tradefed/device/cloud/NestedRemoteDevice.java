@@ -85,13 +85,6 @@ public class NestedRemoteDevice extends TestDevice {
         }
         // Synchronize this so multiple reset do not occur at the same time inside one VM.
         synchronized (NestedRemoteDevice.class) {
-            // Own the image files
-            String chownUserCommand = MultiUserSetupUtil.getChownCommand(username);
-            CommandResult chownRes = getRunUtil().runTimedCmd(60000L, "sh", "-c", chownUserCommand);
-            if (!CommandStatus.SUCCESS.equals(chownRes.getStatus())) {
-                CLog.e("%s", chownRes.getStderr());
-                return false;
-            }
             // Restart the device
             List<String> createCommand = LaunchCvdHelper.createSimpleDeviceCommand(username, true);
             CommandResult createRes =
