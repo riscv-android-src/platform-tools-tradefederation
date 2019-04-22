@@ -20,8 +20,24 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 
+import java.util.Arrays;
+import java.util.List;
+
 /** Utility to create another user in Cuttlefish VM. New user will allow to run a second device. */
 public class MultiUserSetupUtil {
+
+    /** Files that must be copied between users to avoid conflicting ownership */
+    private static final List<String> FILE_TO_BE_COPIED =
+            Arrays.asList(
+                    "android-info.txt",
+                    "boot.img",
+                    "cache.img",
+                    "product.img",
+                    "system.img",
+                    "vendor.img");
+
+    /** Files that can simply be shared between the different users */
+    private static final List<String> FILE_TO_BE_LINKED = Arrays.asList("bin", "config", "lib64");
 
     /** Setup a new remote user on an existing Cuttlefish VM. */
     public static CommandResult prepareRemoteUser(
@@ -31,27 +47,13 @@ public class MultiUserSetupUtil {
             IRunUtil runUtil,
             long timeoutMs) {
         // First create the user
-        String createUserCommand = "sudo useradd " + username + " -G sudo -m -s /bin/bash -p '*'";
+        String createUserCommand =
+                "sudo useradd " + username + " -G sudo,kvm,cvdnetwork -m -s /bin/bash -p '*'";
         CommandResult createUserRes =
                 RemoteSshUtil.remoteSshCommandExec(
                         remoteInstance, options, runUtil, timeoutMs, createUserCommand.split(" "));
         if (!CommandStatus.SUCCESS.equals(createUserRes.getStatus())) {
             return createUserRes;
-        }
-        // Second setup the user
-        String kvmGroup = "sudo usermod -aG kvm " + username;
-        CommandResult kvmRes =
-                RemoteSshUtil.remoteSshCommandExec(
-                        remoteInstance, options, runUtil, timeoutMs, kvmGroup.split(" "));
-        if (!CommandStatus.SUCCESS.equals(kvmRes.getStatus())) {
-            return kvmRes;
-        }
-        String cvdNetwork = "sudo usermod -aG cvdnetwork " + username;
-        CommandResult cvdRes =
-                RemoteSshUtil.remoteSshCommandExec(
-                        remoteInstance, options, runUtil, timeoutMs, cvdNetwork.split(" "));
-        if (!CommandStatus.SUCCESS.equals(cvdRes.getStatus())) {
-            return cvdRes;
         }
         return null;
     }
@@ -64,29 +66,39 @@ public class MultiUserSetupUtil {
             TestDeviceOptions options,
             IRunUtil runUtil,
             long timeoutMs) {
-        // Copy main user directory to
-        String copyDevice = "sudo ln -s /home/" + mainRootUser + "/* /home/" + username + "/";
-        CommandResult copyRes =
-                RemoteSshUtil.remoteSshCommandExec(
-                        remoteInstance, options, runUtil, timeoutMs, copyDevice.split(" "));
-        if (!CommandStatus.SUCCESS.equals(copyRes.getStatus())) {
-            return copyRes;
+        StringBuilder copyCommandBuilder = new StringBuilder("sudo cp ");
+        for (String file : FILE_TO_BE_COPIED) {
+            copyCommandBuilder.append(" /home/" + mainRootUser + "/" + file);
         }
-        // Delete the 'cuttlefish_runtime' link, it needs to be recreated
-        String deleteRuntime = "sudo rm -r /home/" + username + "/cuttlefish_runtime";
-        CommandResult deleteRes =
+        copyCommandBuilder.append(" /home/" + username + "/");
+        CommandResult cpRes =
                 RemoteSshUtil.remoteSshCommandExec(
-                        remoteInstance, options, runUtil, timeoutMs, deleteRuntime.split(" "));
-        if (!CommandStatus.SUCCESS.equals(deleteRes.getStatus())) {
-            return copyRes;
+                        remoteInstance,
+                        options,
+                        runUtil,
+                        timeoutMs,
+                        copyCommandBuilder.toString().split(" "));
+        if (!CommandStatus.SUCCESS.equals(cpRes.getStatus())) {
+            return cpRes;
         }
-        // Permission
+        // Own the copied files
         String chownUser = getChownCommand(username);
         CommandResult chownRes =
                 RemoteSshUtil.remoteSshCommandExec(
                         remoteInstance, options, runUtil, timeoutMs, chownUser);
         if (!CommandStatus.SUCCESS.equals(chownRes.getStatus())) {
             return chownRes;
+        }
+        // Link files that can be shared between users
+        for (String file : FILE_TO_BE_LINKED) {
+            String copyDevice =
+                    "sudo ln -s /home/" + mainRootUser + "/" + file + " /home/" + username + "/";
+            CommandResult copyRes =
+                    RemoteSshUtil.remoteSshCommandExec(
+                            remoteInstance, options, runUtil, timeoutMs, copyDevice.split(" "));
+            if (!CommandStatus.SUCCESS.equals(copyRes.getStatus())) {
+                return copyRes;
+            }
         }
         return null;
     }
