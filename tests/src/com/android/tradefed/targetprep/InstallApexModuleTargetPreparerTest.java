@@ -25,6 +25,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.ApexInfo;
+import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.FileUtil;
 
 import com.android.tradefed.util.BundletoolUtil;
@@ -67,9 +68,9 @@ public class InstallApexModuleTargetPreparerTest {
     private static final String SPLIT_APEX_APKS_NAME = "fakeApex.apks";
     private static final String SPLIT_APK__APKS_NAME = "fakeApk.apks";
     private static final String BUNDLETOOL_JAR_NAME = "bundletool.jar";
-    private static final String APEX_DATA_DIR = "/data/apex/active/*";
-    private static final String STAGING_DATA_DIR = "/data/app-staging/*";
-    private static final String SESSION_DATA_DIR = "/data/apex/sessions/*";
+    private static final String APEX_DATA_DIR = "/data/apex/active/";
+    private static final String STAGING_DATA_DIR = "/data/app-staging/";
+    private static final String SESSION_DATA_DIR = "/data/apex/sessions/";
 
     @Before
     public void setUp() throws Exception {
@@ -157,12 +158,19 @@ public class InstallApexModuleTargetPreparerTest {
     @Test
     public void testSetupSuccess_removeExistingStagedApexSuccess() throws Exception {
         mInstallApexModuleTargetPreparer.addTestFileName(APEX_NAME);
-        mMockDevice.deleteFile(APEX_DATA_DIR);
+        mMockDevice.deleteFile(APEX_DATA_DIR + "*");
         EasyMock.expectLastCall().times(1);
-        mMockDevice.deleteFile(SESSION_DATA_DIR);
+        mMockDevice.deleteFile(SESSION_DATA_DIR + "*");
         EasyMock.expectLastCall().times(1);
-        mMockDevice.deleteFile(STAGING_DATA_DIR);
+        mMockDevice.deleteFile(STAGING_DATA_DIR + "*");
         EasyMock.expectLastCall().times(1);
+        CommandResult res = new CommandResult();
+        res.setStdout("test.apex");
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + APEX_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + SESSION_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + STAGING_DATA_DIR)).andReturn(res);
+        mMockDevice.reboot();
+        EasyMock.expectLastCall();
         mockSuccessfulInstallPackageAndReboot();
         Set<ApexInfo> activatedApex = new HashSet<ApexInfo>();
         activatedApex.add(new ApexInfo("com.android.FAKE_APEX_PACKAGE_NAME", 1));
@@ -174,14 +182,38 @@ public class InstallApexModuleTargetPreparerTest {
     }
 
     @Test
+    public void testSetupSuccess_noDataUnderApexDataDirs() throws Exception {
+        mInstallApexModuleTargetPreparer.addTestFileName(APEX_NAME);
+        CommandResult res = new CommandResult();
+        res.setStdout("");
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + APEX_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + SESSION_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + STAGING_DATA_DIR)).andReturn(res);
+        mockSuccessfulInstallPackageAndReboot();
+        Set<ApexInfo> activatedApex = new HashSet<ApexInfo>();
+        activatedApex.add(new ApexInfo("com.android.FAKE_APEX_PACKAGE_NAME", 1));
+        EasyMock.expect(mMockDevice.getActiveApexes()).andReturn(activatedApex);
+        EasyMock.replay(mMockBuildInfo, mMockDevice);
+        mInstallApexModuleTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
+        EasyMock.verify(mMockBuildInfo, mMockDevice);
+    }
+
+    @Test
     public void testSetupSuccess_getActivatedPackageSuccess() throws Exception {
         mInstallApexModuleTargetPreparer.addTestFileName(APEX_NAME);
-        mMockDevice.deleteFile(APEX_DATA_DIR);
+        mMockDevice.deleteFile(APEX_DATA_DIR + "*");
         EasyMock.expectLastCall().times(1);
-        mMockDevice.deleteFile(SESSION_DATA_DIR);
+        mMockDevice.deleteFile(SESSION_DATA_DIR + "*");
         EasyMock.expectLastCall().times(1);
-        mMockDevice.deleteFile(STAGING_DATA_DIR);
+        mMockDevice.deleteFile(STAGING_DATA_DIR + "*");
         EasyMock.expectLastCall().times(1);
+        CommandResult res = new CommandResult();
+        res.setStdout("test.apex");
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + APEX_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + SESSION_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + STAGING_DATA_DIR)).andReturn(res);
+        mMockDevice.reboot();
+        EasyMock.expectLastCall();
         mockSuccessfulInstallPackageAndReboot();
         Set<ApexInfo> activatedApex = new HashSet<ApexInfo>();
         activatedApex.add(new ApexInfo("com.android.FAKE_APEX_PACKAGE_NAME", 1));
@@ -195,12 +227,19 @@ public class InstallApexModuleTargetPreparerTest {
     @Test
     public void testSetupFail_getActivatedPackageFail() throws Exception {
         mInstallApexModuleTargetPreparer.addTestFileName(APEX_NAME);
-        mMockDevice.deleteFile(APEX_DATA_DIR);
+        mMockDevice.deleteFile(APEX_DATA_DIR + "*");
         EasyMock.expectLastCall().times(1);
-        mMockDevice.deleteFile(SESSION_DATA_DIR);
+        mMockDevice.deleteFile(SESSION_DATA_DIR + "*");
         EasyMock.expectLastCall().times(1);
-        mMockDevice.deleteFile(STAGING_DATA_DIR);
+        mMockDevice.deleteFile(STAGING_DATA_DIR + "*");
         EasyMock.expectLastCall().times(1);
+        CommandResult res = new CommandResult();
+        res.setStdout("test.apex");
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + APEX_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + SESSION_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + STAGING_DATA_DIR)).andReturn(res);
+        mMockDevice.reboot();
+        EasyMock.expectLastCall();
         mockSuccessfulInstallPackageAndReboot();
         EasyMock.expect(mMockDevice.getActiveApexes()).andReturn(new HashSet<ApexInfo>());
 
@@ -220,12 +259,19 @@ public class InstallApexModuleTargetPreparerTest {
     @Test
     public void testSetupFail_apexActivationFail() throws Exception {
         mInstallApexModuleTargetPreparer.addTestFileName(APEX_NAME);
-        mMockDevice.deleteFile(APEX_DATA_DIR);
+        mMockDevice.deleteFile(APEX_DATA_DIR + "*");
         EasyMock.expectLastCall().times(1);
-        mMockDevice.deleteFile(SESSION_DATA_DIR);
+        mMockDevice.deleteFile(SESSION_DATA_DIR + "*");
         EasyMock.expectLastCall().times(1);
-        mMockDevice.deleteFile(STAGING_DATA_DIR);
+        mMockDevice.deleteFile(STAGING_DATA_DIR + "*");
         EasyMock.expectLastCall().times(1);
+        CommandResult res = new CommandResult();
+        res.setStdout("test.apex");
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + APEX_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + SESSION_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + STAGING_DATA_DIR)).andReturn(res);
+        mMockDevice.reboot();
+        EasyMock.expectLastCall();
         mockSuccessfulInstallPackageAndReboot();
         Set<ApexInfo> activatedApex = new HashSet<ApexInfo>();
         activatedApex.add(new ApexInfo("com.android.FAKE_APEX_PACKAGE_NAME_TO_FAIL", 1));
@@ -248,12 +294,19 @@ public class InstallApexModuleTargetPreparerTest {
     @Test
     public void testSetupAndTearDown() throws Exception {
         mInstallApexModuleTargetPreparer.addTestFileName(APEX_NAME);
-        mMockDevice.deleteFile(APEX_DATA_DIR);
+        mMockDevice.deleteFile(APEX_DATA_DIR + "*");
         EasyMock.expectLastCall().times(2);
-        mMockDevice.deleteFile(SESSION_DATA_DIR);
+        mMockDevice.deleteFile(SESSION_DATA_DIR + "*");
         EasyMock.expectLastCall().times(2);
-        mMockDevice.deleteFile(STAGING_DATA_DIR);
+        mMockDevice.deleteFile(STAGING_DATA_DIR + "*");
         EasyMock.expectLastCall().times(2);
+        CommandResult res = new CommandResult();
+        res.setStdout("test.apex");
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + APEX_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + SESSION_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + STAGING_DATA_DIR)).andReturn(res);
+        mMockDevice.reboot();
+        EasyMock.expectLastCall();
         mockSuccessfulInstallPackageAndReboot();
         Set<ApexInfo> activatedApex = new HashSet<ApexInfo>();
         activatedApex.add(new ApexInfo("com.android.FAKE_APEX_PACKAGE_NAME", 1));
@@ -286,12 +339,19 @@ public class InstallApexModuleTargetPreparerTest {
     public void testSetupAndTearDown_MultiInstall() throws Exception {
         mInstallApexModuleTargetPreparer.addTestFileName(APEX_NAME);
         mInstallApexModuleTargetPreparer.addTestFileName(APK_NAME);
-        mMockDevice.deleteFile(APEX_DATA_DIR);
+        mMockDevice.deleteFile(APEX_DATA_DIR + "*");
         EasyMock.expectLastCall().times(2);
-        mMockDevice.deleteFile(SESSION_DATA_DIR);
+        mMockDevice.deleteFile(SESSION_DATA_DIR + "*");
         EasyMock.expectLastCall().times(2);
-        mMockDevice.deleteFile(STAGING_DATA_DIR);
+        mMockDevice.deleteFile(STAGING_DATA_DIR + "*");
         EasyMock.expectLastCall().times(2);
+        CommandResult res = new CommandResult();
+        res.setStdout("test.apex");
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + APEX_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + SESSION_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + STAGING_DATA_DIR)).andReturn(res);
+        mMockDevice.reboot();
+        EasyMock.expectLastCall();
         mockSuccessfulInstallMultiPackageAndReboot();
         Set<ApexInfo> activatedApex = new HashSet<ApexInfo>();
         activatedApex.add(new ApexInfo("com.android.FAKE_APEX_PACKAGE_NAME", 1));
@@ -325,12 +385,22 @@ public class InstallApexModuleTargetPreparerTest {
         mBundletoolJar = File.createTempFile("bundletool", ".jar");
         File splitApk2 = File.createTempFile("fakeSplitApk2", ".apk", fakeSplitApkApks);
         try {
-            mMockDevice.deleteFile(APEX_DATA_DIR);
+            mMockDevice.deleteFile(APEX_DATA_DIR + "*");
             EasyMock.expectLastCall().times(2);
-            mMockDevice.deleteFile(SESSION_DATA_DIR);
+            mMockDevice.deleteFile(SESSION_DATA_DIR + "*");
             EasyMock.expectLastCall().times(2);
-            mMockDevice.deleteFile(STAGING_DATA_DIR);
+            mMockDevice.deleteFile(STAGING_DATA_DIR + "*");
             EasyMock.expectLastCall().times(2);
+            CommandResult res = new CommandResult();
+            res.setStdout("test.apex");
+            EasyMock.expect(mMockDevice.executeShellV2Command("ls " + APEX_DATA_DIR))
+                    .andReturn(res);
+            EasyMock.expect(mMockDevice.executeShellV2Command("ls " + SESSION_DATA_DIR))
+                    .andReturn(res);
+            EasyMock.expect(mMockDevice.executeShellV2Command("ls " + STAGING_DATA_DIR))
+                    .andReturn(res);
+            mMockDevice.reboot();
+            EasyMock.expectLastCall();
             when(mMockBundletoolUtil.generateDeviceSpecFile(Mockito.any(ITestDevice.class)))
                     .thenReturn("serial.json");
 

@@ -46,9 +46,9 @@ import java.util.Set;
 @OptionClass(alias = "mainline-module-installer")
 public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
 
-    private static final String APEX_DATA_DIR = "/data/apex/active/*";
-    private static final String STAGING_DATA_DIR = "/data/app-staging/*";
-    private static final String SESSION_DATA_DIR = "/data/apex/sessions/*";
+    private static final String APEX_DATA_DIR = "/data/apex/active/";
+    private static final String STAGING_DATA_DIR = "/data/app-staging/";
+    private static final String SESSION_DATA_DIR = "/data/apex/sessions/";
     private static final String APEX_SUFFIX = ".apex";
     private static final String APK_SUFFIX = ".apk";
     private static final String SPLIT_APKS_SUFFIX = ".apks";
@@ -146,9 +146,9 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             for (String apkPkgName : mApkInstalled) {
                 super.uninstallPackage(device, apkPkgName);
             }
-            device.deleteFile(APEX_DATA_DIR);
-            device.deleteFile(STAGING_DATA_DIR);
-            device.deleteFile(SESSION_DATA_DIR);
+            device.deleteFile(APEX_DATA_DIR + "*");
+            device.deleteFile(STAGING_DATA_DIR + "*");
+            device.deleteFile(SESSION_DATA_DIR + "*");
             if (!mTestApexInfoList.isEmpty()) {
                 device.reboot();
             }
@@ -411,9 +411,22 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      */
     private void cleanUpStagedAndActiveSession(ITestDevice device)
             throws DeviceNotAvailableException {
-        device.deleteFile(APEX_DATA_DIR);
-        device.deleteFile(STAGING_DATA_DIR);
-        device.deleteFile(SESSION_DATA_DIR);
+        boolean reboot = false;
+        if (!device.executeShellV2Command("ls " + APEX_DATA_DIR).getStdout().isEmpty()) {
+            device.deleteFile(APEX_DATA_DIR + "*");
+            reboot = true;
+        }
+        if (!device.executeShellV2Command("ls " + STAGING_DATA_DIR).getStdout().isEmpty()) {
+            device.deleteFile(STAGING_DATA_DIR + "*");
+            reboot = true;
+        }
+        if (!device.executeShellV2Command("ls " + SESSION_DATA_DIR).getStdout().isEmpty()) {
+            device.deleteFile(SESSION_DATA_DIR + "*");
+            reboot = true;
+        }
+        if (reboot) {
+            device.reboot();
+        }
     }
 
     /**
