@@ -17,8 +17,16 @@
 import json
 import logging
 import os
-import urllib2
 import uuid
+
+try:
+    # PYTHON2
+    from urllib2 import Request
+    from urllib2 import urlopen
+except ImportError:
+    # PYTHON3
+    from urllib.request import Request
+    from urllib.request import urlopen
 
 import constants
 
@@ -54,9 +62,9 @@ def log_event(metrics_url, dummy_key_fallback=True, **kwargs):
         if kwargs:
             data.update(kwargs)
         data = json.dumps(data)
-        request = urllib2.Request(metrics_url, data=data,
-                                  headers=_JSON_HEADERS)
-        response = urllib2.urlopen(request, timeout=_METRICS_TIMEOUT)
+        request = Request(metrics_url, data=data,
+                          headers=_JSON_HEADERS)
+        response = urlopen(request, timeout=_METRICS_TIMEOUT)
         content = response.read()
         if content != _METRICS_RESPONSE:
             raise Exception('Unexpected metrics response: %s' % content)
