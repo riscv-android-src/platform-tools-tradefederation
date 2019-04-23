@@ -60,6 +60,7 @@ import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.StringEscapeUtils;
 import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.ZipUtil2;
 
@@ -1173,7 +1174,10 @@ public class NativeDevice implements IManagedTestDevice {
             }
         }
         // Fallback to the direct command if content provider is unsuccessful
-        executeShellCommand(String.format("rm -rf %s", deviceFilePath));
+        String path = StringEscapeUtils.escapeShell(deviceFilePath);
+        // Escape spaces to handle filename with spaces
+        path = path.replaceAll(" ", "\\ ");
+        executeShellCommand(String.format("rm -rf %s", StringEscapeUtils.escapeShell(path)));
     }
 
     /**
