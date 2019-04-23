@@ -62,6 +62,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.Semaphore;
 
 /** Implementation of {@link InvocationExecution} that drives a remote execution. */
 public class RemoteInvocationExecution extends InvocationExecution {
@@ -69,7 +70,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
     public static final long PUSH_TF_TIMEOUT = 150000L;
     public static final long PULL_RESULT_TIMEOUT = 180000L;
     public static final long REMOTE_PROCESS_RUNNING_WAIT = 15000L;
-    public static final long LAUNCH_EXTRA_DEVICE = 7 * 60 * 1000L;
+    public static final long LAUNCH_EXTRA_DEVICE = 10 * 60 * 1000L;
     public static final long NEW_USER_TIMEOUT = 5 * 60 * 1000L;
     public static final String REMOTE_VM_VARIABLE = "REMOTE_VM_ENV";
 
@@ -79,9 +80,11 @@ public class RemoteInvocationExecution extends InvocationExecution {
     public static final String STDERR_FILE = "screen-VM_tradefed-stderr.txt";
     public static final String REMOTE_CONFIG = "configuration";
     public static final String GLOBAL_REMOTE_CONFIG = "global-remote-configuration";
+    public static final String SHARDING_DEVICE_SETUP_TIME = "sharding-device-setup-ms";
 
     private static final int MAX_CONNECTION_REFUSED_COUNT = 3;
     private static final int MAX_PUSH_TF_ATTEMPTS = 3;
+    private static final int MAX_WORKER_THREAD = 3;
 
     private String mRemoteTradefedDir = null;
     private String mRemoteFinalResult = null;
@@ -127,83 +130,42 @@ public class RemoteInvocationExecution extends InvocationExecution {
         if (config.getCommandOptions().getShardCount() != null
                 && config.getCommandOptions().getShardIndex() == null) {
             if (config.getCommandOptions().getShardCount() > 1) {
+                boolean parallel = config.getCommandOptions().shouldUseParallelRemoteSetup();
+                long startTime = System.currentTimeMillis();
                 // For each device after the first one we need to start a new device.
-                for (int i = 2; i < config.getCommandOptions().getShardCount() + 1; i++) {
-                    String useridString = MultiUserSetupUtil.getUserNumber(i);
-                    String username = String.format("vsoc-%s", useridString);
-                    CommandResult userSetup =
-                            MultiUserSetupUtil.prepareRemoteUser(
-                                    username, info, options, runUtil, NEW_USER_TIMEOUT);
-                    if (userSetup != null) {
-                        String errorMsg =
-                                String.format("Failed to setup user: %s", userSetup.getStderr());
-                        CLog.e(errorMsg);
-                        listener.invocationFailed(new RuntimeException(errorMsg));
-                        return;
+                if (!parallel) {
+                    for (int i = 2; i < config.getCommandOptions().getShardCount() + 1; i++) {
+                        boolean res = startDevice(listener, i, info, options, runUtil, null);
+                        if (!res) {
+                            return;
+                        }
+                    }
+                } else {
+                    // Parallel setup of devices
+                    Semaphore token = new Semaphore(MAX_WORKER_THREAD);
+                    List<StartDeviceThread> threads = new ArrayList<>();
+                    for (int i = 2; i < config.getCommandOptions().getShardCount() + 1; i++) {
+                        StartDeviceThread sdt =
+                                new StartDeviceThread(listener, i, info, options, runUtil, token);
+                        threads.add(sdt);
+                        sdt.start();
                     }
 
-                    CommandResult homeDirSetup =
-                            MultiUserSetupUtil.prepareRemoteHomeDir(
-                                    options.getInstanceUser(),
-                                    username,
-                                    info,
-                                    options,
-                                    runUtil,
-                                    NEW_USER_TIMEOUT);
-                    if (homeDirSetup != null) {
-                        String errorMsg =
-                                String.format(
-                                        "Failed to setup home dir: %s", homeDirSetup.getStderr());
-                        CLog.e(errorMsg);
-                        listener.invocationFailed(new RuntimeException(errorMsg));
-                        return;
+                    boolean res = true;
+                    for (StartDeviceThread t : threads) {
+                        t.join();
+                        res = res & t.getFinalStatus();
                     }
-
-                    // Create the cvd user if missing
-                    CommandResult cvdSetup =
-                            MultiUserSetupUtil.addExtraCvdUser(
-                                    i, info, options, runUtil, NEW_USER_TIMEOUT);
-                    if (cvdSetup != null) {
-                        String errorMsg =
-                                String.format("Failed to setup user: %s", cvdSetup.getStderr());
-                        CLog.e(errorMsg);
-                        listener.invocationFailed(new RuntimeException(errorMsg));
-                        return;
-                    }
-
-                    // Setup the tuntap interface if needed
-                    CommandResult tapSetup =
-                            MultiUserSetupUtil.setupNetworkInterface(
-                                    i, info, options, runUtil, NEW_USER_TIMEOUT);
-                    if (tapSetup != null) {
-                        String errorMsg =
-                                String.format(
-                                        "Failed to setup network interface: %s",
-                                        tapSetup.getStderr());
-                        CLog.e(errorMsg);
-                        listener.invocationFailed(new RuntimeException(errorMsg));
-                        return;
-                    }
-
-                    List<String> startCommand =
-                            LaunchCvdHelper.createSimpleDeviceCommand(username, true);
-                    CommandResult startDeviceRes =
-                            GceManager.remoteSshCommandExecution(
-                                    info,
-                                    options,
-                                    runUtil,
-                                    LAUNCH_EXTRA_DEVICE,
-                                    Joiner.on(" ").join(startCommand));
-                    if (!CommandStatus.SUCCESS.equals(startDeviceRes.getStatus())) {
-                        String errorMsg =
-                                String.format(
-                                        "Failed to start %s: %s",
-                                        username, startDeviceRes.getStderr());
-                        CLog.e(errorMsg);
-                        listener.invocationFailed(new RuntimeException(errorMsg));
+                    if (!res) {
                         return;
                     }
                 }
+
+                // Log the overhead to start the device
+                long elapsedTime = System.currentTimeMillis() - startTime;
+                context.getBuildInfos()
+                        .get(0)
+                        .addBuildAttribute(SHARDING_DEVICE_SETUP_TIME, Long.toString(elapsedTime));
             }
         }
 
@@ -590,5 +552,150 @@ public class RemoteInvocationExecution extends InvocationExecution {
             logger.testLog(REMOTE_CONFIG, LogDataType.XML, source);
         }
         return configFile;
+    }
+
+    /**
+     * Method that handles starting an extra Android Virtual Device inside a given remote VM.
+     *
+     * @param listener The invocation {@link ITestInvocationListener}.
+     * @param userId The username id to associate the device with.
+     * @param info The {@link GceAvdInfo} describing the remote VM.
+     * @param options The {@link TestDeviceOptions} of the virtual device.
+     * @param runUtil A {@link IRunUtil} to run host commands
+     * @return True if the device is started successfully, false otherwise.
+     */
+    private boolean startDevice(
+            ITestInvocationListener listener,
+            int userId,
+            GceAvdInfo info,
+            TestDeviceOptions options,
+            IRunUtil runUtil,
+            Semaphore token)
+            throws InterruptedException {
+        String useridString = MultiUserSetupUtil.getUserNumber(userId);
+        String username = String.format("vsoc-%s", useridString);
+        CommandResult userSetup =
+                MultiUserSetupUtil.prepareRemoteUser(
+                        username, info, options, runUtil, NEW_USER_TIMEOUT);
+        if (userSetup != null) {
+            String errorMsg = String.format("Failed to setup user: %s", userSetup.getStderr());
+            CLog.e(errorMsg);
+            listener.invocationFailed(new RuntimeException(errorMsg));
+            return false;
+        }
+
+        CommandResult homeDirSetup =
+                MultiUserSetupUtil.prepareRemoteHomeDir(
+                        options.getInstanceUser(),
+                        username,
+                        info,
+                        options,
+                        runUtil,
+                        NEW_USER_TIMEOUT);
+        if (homeDirSetup != null) {
+            String errorMsg =
+                    String.format("Failed to setup home dir: %s", homeDirSetup.getStderr());
+            CLog.e(errorMsg);
+            listener.invocationFailed(new RuntimeException(errorMsg));
+            return false;
+        }
+
+        // Create the cvd user if missing
+        CommandResult cvdSetup =
+                MultiUserSetupUtil.addExtraCvdUser(
+                        userId, info, options, runUtil, NEW_USER_TIMEOUT);
+        if (cvdSetup != null) {
+            String errorMsg = String.format("Failed to setup user: %s", cvdSetup.getStderr());
+            CLog.e(errorMsg);
+            listener.invocationFailed(new RuntimeException(errorMsg));
+            return false;
+        }
+
+        // Setup the tuntap interface if needed
+        CommandResult tapSetup =
+                MultiUserSetupUtil.setupNetworkInterface(
+                        userId, info, options, runUtil, NEW_USER_TIMEOUT);
+        if (tapSetup != null) {
+            String errorMsg =
+                    String.format("Failed to setup network interface: %s", tapSetup.getStderr());
+            CLog.e(errorMsg);
+            listener.invocationFailed(new RuntimeException(errorMsg));
+            return false;
+        }
+
+        List<String> startCommand = LaunchCvdHelper.createSimpleDeviceCommand(username, true);
+        if (token != null) {
+            token.acquire();
+        }
+        CommandResult startDeviceRes = null;
+        try {
+            startDeviceRes =
+                    GceManager.remoteSshCommandExecution(
+                            info,
+                            options,
+                            runUtil,
+                            LAUNCH_EXTRA_DEVICE,
+                            Joiner.on(" ").join(startCommand));
+        } finally {
+            if (token != null) {
+                token.release();
+            }
+        }
+        if (!CommandStatus.SUCCESS.equals(startDeviceRes.getStatus())) {
+            String errorMsg =
+                    String.format("Failed to start %s: %s", username, startDeviceRes.getStderr());
+            CLog.e(errorMsg);
+            listener.invocationFailed(new RuntimeException(errorMsg));
+            return false;
+        }
+        return true;
+    }
+
+    /** Thread class that allows to start a device asynchronously. */
+    private class StartDeviceThread extends Thread {
+
+        private ITestInvocationListener mListener;
+        private int mUserId;
+        private GceAvdInfo mInfo;
+        private TestDeviceOptions mOptions;
+        private IRunUtil mRunUtil;
+        private Semaphore mToken;
+
+        private boolean mFinalResult = false;
+
+        public StartDeviceThread(
+                ITestInvocationListener listener,
+                int userId,
+                GceAvdInfo info,
+                TestDeviceOptions options,
+                IRunUtil runUtil,
+                Semaphore token) {
+            super();
+            setDaemon(true);
+            setName(String.format("start-device-thread-vsoc-%s", userId));
+            mListener = listener;
+            mUserId = userId;
+            mInfo = info;
+            mOptions = options;
+            mRunUtil = runUtil;
+            mToken = token;
+        }
+
+        @Override
+        public void run() {
+            try {
+                mFinalResult = startDevice(mListener, mUserId, mInfo, mOptions, mRunUtil, mToken);
+            } catch (InterruptedException e) {
+                CLog.e(e);
+            }
+        }
+
+        /**
+         * Returns the final status of the startDevice. Returns true if it succeeded, false
+         * otherwise.
+         */
+        boolean getFinalStatus() {
+            return mFinalResult;
+        }
     }
 }
