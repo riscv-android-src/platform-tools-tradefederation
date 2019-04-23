@@ -16,15 +16,7 @@
 
 package com.android.tradefed.util;
 
-import com.android.tradefed.config.ConfigurationException;
-
 import com.google.api.services.storage.Storage;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Collections;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -33,20 +25,91 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Collections;
+
 /** {@link GCSFileUploader} functional test. */
 @RunWith(JUnit4.class)
 public class GCSFileUploaderFuncTest {
     private static final String BUCKET_NAME = "tradefed_function_test";
-    private static final String FILE_NAME = "test_file.txt";
     private static final String FILE_DATA = "Simple test string to write to file.";
     private static final String FILE_MIME_TYPE = "text/plain";
     private static final boolean ENABLE_OVERWRITE = true;
     private static final boolean DISABLE_OVERWRITE = false;
 
+    private File mTestFile;
+
     private GCSFileUploader mUploader;
     private GCSFileDownloader mDownloader;
 
-    private static byte[] toByteArray(InputStream in) throws IOException {
+    @Before
+    public void setUp() throws Exception {
+        mUploader = new GCSFileUploader();
+        mDownloader = new GCSFileDownloader();
+        mTestFile = FileUtil.createTempFile("test-upload-file", ".txt");
+    }
+
+    @After
+    public void tearDown() throws IOException {
+        try {
+            Storage storage =
+                    mUploader.getStorage(
+                            Collections.singleton(
+                                    "https://www.googleapis.com/auth/devstorage.read_write"));
+            storage.objects().delete(BUCKET_NAME, mTestFile.getName()).execute();
+        } finally {
+            FileUtil.recursiveDelete(mTestFile);
+        }
+    }
+
+    @Test
+    public void testUploadFile_roundTrip() throws Exception {
+        InputStream uploadFileStream = new ByteArrayInputStream(FILE_DATA.getBytes());
+        mUploader.uploadFile(
+                BUCKET_NAME,
+                mTestFile.getName(),
+                uploadFileStream,
+                FILE_MIME_TYPE,
+                ENABLE_OVERWRITE);
+        String readBack = new String(toByteArray(pullFileFromGcs(mTestFile.getName())));
+        Assert.assertEquals(FILE_DATA, readBack);
+    }
+
+    @Test
+    public void testUploadFile_overwrite() throws Exception {
+        InputStream uploadFileStream = new ByteArrayInputStream(FILE_DATA.getBytes());
+        mUploader.uploadFile(
+                BUCKET_NAME,
+                mTestFile.getName(),
+                uploadFileStream,
+                FILE_MIME_TYPE,
+                DISABLE_OVERWRITE);
+
+        try {
+            mUploader.uploadFile(
+                    BUCKET_NAME,
+                    mTestFile.getName(),
+                    uploadFileStream,
+                    FILE_MIME_TYPE,
+                    DISABLE_OVERWRITE);
+            Assert.fail("Should throw IOException.");
+        } catch (IOException e) {
+            // Expect IOException
+        }
+
+        mUploader.uploadFile(
+                BUCKET_NAME,
+                mTestFile.getName(),
+                uploadFileStream,
+                FILE_MIME_TYPE,
+                ENABLE_OVERWRITE);
+    }
+
+    private byte[] toByteArray(InputStream in) throws IOException {
 
         ByteArrayOutputStream os = new ByteArrayOutputStream();
 
@@ -62,53 +125,7 @@ public class GCSFileUploaderFuncTest {
         return os.toByteArray();
     }
 
-    private InputStream pullFileFromGcs(String gcsFilePath) throws ConfigurationException {
-        try {
-            return mDownloader.downloadFile(BUCKET_NAME, gcsFilePath);
-        } catch (IOException e) {
-            throw new ConfigurationException(e.getMessage(), e.getCause());
-        }
-    }
-
-    @Before
-    public void setUp() {
-        mUploader = new GCSFileUploader();
-        mDownloader = new GCSFileDownloader();
-    }
-
-    @After
-    public void tearDown() throws IOException {
-        Storage storage =
-                mUploader.getStorage(
-                        Collections.singleton(
-                                "https://www.googleapis.com/auth/devstorage.read_write"));
-        storage.objects().delete(BUCKET_NAME, FILE_NAME).execute();
-    }
-
-    @Test
-    public void testUploadFile_roundTrip() throws Exception {
-        InputStream uploadFileStream = new ByteArrayInputStream(FILE_DATA.getBytes());
-        mUploader.uploadFile(
-                BUCKET_NAME, FILE_NAME, uploadFileStream, FILE_MIME_TYPE, ENABLE_OVERWRITE);
-        String readBack = new String(toByteArray(pullFileFromGcs(FILE_NAME)));
-        Assert.assertEquals(FILE_DATA, readBack);
-    }
-
-    @Test
-    public void testUploadFile_overwrite() throws Exception {
-        InputStream uploadFileStream = new ByteArrayInputStream(FILE_DATA.getBytes());
-        mUploader.uploadFile(
-                BUCKET_NAME, FILE_NAME, uploadFileStream, FILE_MIME_TYPE, DISABLE_OVERWRITE);
-
-        try {
-            mUploader.uploadFile(
-                    BUCKET_NAME, FILE_NAME, uploadFileStream, FILE_MIME_TYPE, DISABLE_OVERWRITE);
-            Assert.fail("Should throw IOException.");
-        } catch (IOException e) {
-            // Expect IOException
-        }
-
-        mUploader.uploadFile(
-                BUCKET_NAME, FILE_NAME, uploadFileStream, FILE_MIME_TYPE, ENABLE_OVERWRITE);
+    private InputStream pullFileFromGcs(String gcsFilePath) throws IOException {
+        return mDownloader.downloadFile(BUCKET_NAME, gcsFilePath);
     }
 }
