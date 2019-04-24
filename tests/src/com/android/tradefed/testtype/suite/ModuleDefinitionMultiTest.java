@@ -123,7 +123,8 @@ public class ModuleDefinitionMultiTest {
         mModule.getModuleInvocationContext().addAllocatedDevice(DEVICE_NAME_2, mDevice2);
         mModule.getModuleInvocationContext().addDeviceBuildInfo(DEVICE_NAME_2, mBuildInfo2);
 
-        mListener.testRunStarted(MODULE_NAME, 0);
+        mListener.testRunStarted(
+                EasyMock.eq(MODULE_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
         mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         // Target preparation is triggered against the preparer in the second device.
@@ -157,7 +158,8 @@ public class ModuleDefinitionMultiTest {
         mModule.getModuleInvocationContext().addAllocatedDevice(DEVICE_NAME_2, mDevice2);
         mModule.getModuleInvocationContext().addDeviceBuildInfo(DEVICE_NAME_2, mBuildInfo2);
 
-        mListener.testRunStarted(MODULE_NAME, 0);
+        mListener.testRunStarted(
+                EasyMock.eq(MODULE_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
         mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         // Target preparation is of first device in module configuration is triggered against the

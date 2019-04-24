@@ -73,7 +73,8 @@ public class StreamProtoResultReporterTest {
             mMockListener.invocationStarted(EasyMock.anyObject());
 
             mMockListener.testModuleStarted(EasyMock.anyObject());
-            mMockListener.testRunStarted("run1", 2);
+            mMockListener.testRunStarted(
+                    EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
             mMockListener.testStarted(test1, 5L);
             mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
 
@@ -139,7 +140,8 @@ public class StreamProtoResultReporterTest {
             metrics.put("metric1", TfMetricProtoUtil.stringToMetric("value1"));
             // Verify mocks
             mMockListener.testModuleStarted(EasyMock.anyObject());
-            mMockListener.testRunStarted("run1", 2);
+            mMockListener.testRunStarted(
+                    EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
             mMockListener.testStarted(test1, 5L);
             mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
 
