@@ -273,8 +273,7 @@ public final class TestsPoolPoller
                 }
                 // Original exception will be thrown below
                 CLog.e("Virtual device %s reset failed.", mDevice.getSerialNumber());
-            }
-            if (mTracker.getCount() > 1) {
+            } else if (mTracker.getCount() > 1) {
                 CLog.d(
                         "Wait %s for device to maybe come back online.",
                         TimeUtil.formatElapsedTime(WAIT_RECOVERY_TIME));
