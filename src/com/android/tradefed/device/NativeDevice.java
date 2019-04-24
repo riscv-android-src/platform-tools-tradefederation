@@ -125,8 +125,8 @@ public class NativeDevice implements IManagedTestDevice {
     /** the default number of command retry attempts to perform */
     protected static final int MAX_RETRY_ATTEMPTS = 2;
 
-    /** Value returned for any invalid/not found user id: UserHandle defined the -10000 value **/
-    protected static final int INVALID_USER_ID = -10000;
+    /** Value returned for any invalid/not found user id: UserHandle defined the -10000 value */
+    public static final int INVALID_USER_ID = -10000;
 
     /** regex to match input dispatch readiness line **/
     static final Pattern INPUT_DISPATCH_STATE_REGEX =
