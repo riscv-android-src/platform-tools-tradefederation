@@ -258,15 +258,20 @@ public class TestsPoolPollerTest {
         }
         // We expect all the non-executed tests to be reported.
         Mockito.verify(mListener, Mockito.times(1))
-                .testRunStarted(Mockito.eq("test"), Mockito.eq(0));
+                .testRunStarted(
+                        Mockito.eq("test"), Mockito.eq(0), Mockito.eq(0), Mockito.anyLong());
         Mockito.verify(mListener, Mockito.times(1))
-                .testRunStarted(Mockito.eq("test1"), Mockito.eq(0));
+                .testRunStarted(
+                        Mockito.eq("test1"), Mockito.eq(0), Mockito.eq(0), Mockito.anyLong());
         Mockito.verify(mListener, Mockito.times(1))
-                .testRunStarted(Mockito.eq("test2"), Mockito.eq(0));
+                .testRunStarted(
+                        Mockito.eq("test2"), Mockito.eq(0), Mockito.eq(0), Mockito.anyLong());
         Mockito.verify(mListener, Mockito.times(1))
-                .testRunStarted(Mockito.eq("test3"), Mockito.eq(0));
+                .testRunStarted(
+                        Mockito.eq("test3"), Mockito.eq(0), Mockito.eq(0), Mockito.anyLong());
         Mockito.verify(mListener, Mockito.times(1))
-                .testRunStarted(Mockito.eq("test4"), Mockito.eq(0));
+                .testRunStarted(
+                        Mockito.eq("test4"), Mockito.eq(0), Mockito.eq(0), Mockito.anyLong());
         Mockito.verify(mListener, Mockito.times(5))
                 .testRunFailed(IReportNotExecuted.NOT_EXECUTED_FAILURE);
         Mockito.verify(mListener, Mockito.times(5))
