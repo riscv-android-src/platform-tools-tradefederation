@@ -29,12 +29,15 @@ import com.android.tradefed.util.keystore.KeyStoreException;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Special Configuration factory to handle creation of configurations for Sandboxing purpose.
@@ -215,14 +218,31 @@ public class SandboxConfigurationFactory extends ConfigurationFactory {
                 @Override
                 protected void injectOptions(IConfiguration config, List<OptionDef> optionList)
                         throws ConfigurationException {
+                    List<OptionDef> individualAttempt = new ArrayList<>();
                     if (mCommand.equals(DumpCmd.RUN_CONFIG) || mCommand.equals(DumpCmd.TEST_MODE)) {
-                        optionList.removeIf(
-                                o ->
-                                        (o.applicableObjectType != null
-                                                && !OPTION_IGNORED_ELEMENTS.contains(
-                                                        o.applicableObjectType)));
+                        individualAttempt =
+                                optionList
+                                        .stream()
+                                        .filter(
+                                                o ->
+                                                        (o.applicableObjectType != null
+                                                                && !OPTION_IGNORED_ELEMENTS
+                                                                        .contains(
+                                                                                o.applicableObjectType)))
+                                        .collect(Collectors.toList());
+                        optionList.removeAll(individualAttempt);
                     }
                     super.injectOptions(config, optionList);
+                    // Try individually each "filtered-option", they will not stop the run if they
+                    // cannot be set since they are not part of the versioned process.
+                    for (OptionDef item : individualAttempt) {
+                        List<OptionDef> tmpList = Arrays.asList(item);
+                        try {
+                            super.injectOptions(config, tmpList);
+                        } catch (ConfigurationException e) {
+                            // Ignore
+                        }
+                    }
                 }
             };
         }
