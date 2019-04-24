@@ -279,6 +279,8 @@ public class ITestSuiteTest {
         mTestSuite.setConfiguration(mStubMainConfiguration);
         mContext = new InvocationContext();
         mTestSuite.setInvocationContext(mContext);
+        mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
+        mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockBuildInfo);
         mListCollectors = new ArrayList<>();
         mListCollectors.add(new TestMetricCollector("metric1", "value1"));
         mListCollectors.add(new TestMetricCollector("metric2", "value2"));
@@ -651,6 +653,11 @@ public class ITestSuiteTest {
                 "unresponsive"
                         + TestRunResult.ERROR_DIVIDER
                         + "Module test only ran 0 out of 1 expected tests.");
+        EasyMock.expect(
+                        mMockDevice.logBugreport(
+                                EasyMock.eq("module-test-failure-SERIAL-bugreport"),
+                                EasyMock.anyObject()))
+                .andReturn(true);
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(1);
@@ -775,6 +782,11 @@ public class ITestSuiteTest {
                 "runtime"
                         + TestRunResult.ERROR_DIVIDER
                         + "Module test only ran 0 out of 1 expected tests.");
+        EasyMock.expect(
+                        mMockDevice.logBugreport(
+                                EasyMock.eq("module-test-failure-SERIAL-bugreport"),
+                                EasyMock.anyObject()))
+                .andReturn(true);
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(1);

@@ -29,12 +29,14 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NullDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.shard.token.ITokenRequest;
 import com.android.tradefed.invoker.shard.token.TokenProperty;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -279,6 +281,12 @@ public abstract class ITestSuite
         description = "Whether or not to allow intra-module sharding."
     )
     private boolean mIntraModuleSharding = true;
+
+    @Option(
+        name = "isolated-module",
+        description = "Whether or not to attempt the module isolation between modules"
+    )
+    private boolean mIsolatedModule = false;
 
     @Option(
         name = "reboot-before-test",
@@ -583,6 +591,8 @@ public abstract class ITestSuite
                     // execution
                     listener.testModuleEnded();
                 }
+                // Module isolation routine
+                moduleIsolation(mContext, listener);
             }
         } catch (DeviceNotAvailableException e) {
             CLog.e(
@@ -600,6 +610,31 @@ public abstract class ITestSuite
      */
     protected List<ITestInvocationListener> createModuleListeners() {
         return new ArrayList<>();
+    }
+
+    /**
+     * Routine that attempt to reset a device between modules in order to provide isolation.
+     *
+     * @param context The invocation context.
+     * @param logger A logger where extra logs can be saved.
+     * @throws DeviceNotAvailableException
+     */
+    private void moduleIsolation(IInvocationContext context, ITestLogger logger)
+            throws DeviceNotAvailableException {
+        // TODO: we can probably make it smarter: Did any test ran for example?
+        ITestDevice device = context.getDevices().get(0);
+        if (mIsolatedModule && (device instanceof NestedRemoteDevice)) {
+            boolean res =
+                    ((NestedRemoteDevice) device)
+                            .resetVirtualDevice(logger, context.getBuildInfos().get(0));
+            if (!res) {
+                String serial = device.getSerialNumber();
+                throw new DeviceNotAvailableException(
+                        String.format(
+                                "Failed to reset the AVD '%s' during module isolation.", serial),
+                        serial);
+            }
+        }
     }
 
     /**
