@@ -23,6 +23,7 @@ import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceStateMonitor;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
@@ -42,6 +43,7 @@ public class NestedRemoteDeviceTest {
     private IDeviceStateMonitor mMockStateMonitor;
     private IDeviceMonitor mMockMonitor;
     private IRunUtil mMockRunUtil;
+    private ITestLogger mMockLogger;
 
     @Before
     public void setUp() {
@@ -49,6 +51,7 @@ public class NestedRemoteDeviceTest {
         mMockStateMonitor = Mockito.mock(IDeviceStateMonitor.class);
         mMockMonitor = Mockito.mock(IDeviceMonitor.class);
         mMockRunUtil = Mockito.mock(IRunUtil.class);
+        mMockLogger = Mockito.mock(ITestLogger.class);
         mDevice =
                 new NestedRemoteDevice(mMockIDevice, mMockStateMonitor, mMockMonitor) {
                     @Override
@@ -65,6 +68,6 @@ public class NestedRemoteDeviceTest {
         doReturn(stopCvdRes).when(mMockRunUtil).runTimedCmd(Mockito.anyLong(), Mockito.any());
         doReturn(mMockIDevice).when(mMockStateMonitor).waitForDeviceAvailable();
 
-        assertTrue(mDevice.resetVirtualDevice(new BuildInfo()));
+        assertTrue(mDevice.resetVirtualDevice(mMockLogger, new BuildInfo()));
     }
 }
