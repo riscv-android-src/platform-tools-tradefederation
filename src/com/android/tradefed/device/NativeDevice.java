@@ -2036,8 +2036,14 @@ public class NativeDevice implements IManagedTestDevice {
         } catch (DeviceUnresponsiveException due) {
             RecoveryMode previousRecoveryMode = mRecoveryMode;
             mRecoveryMode = RecoveryMode.NONE;
-            boolean enabled = enableAdbRoot();
-            CLog.d("Device Unresponsive during recovery, is root still enabled: %s", enabled);
+            try {
+                boolean enabled = enableAdbRoot();
+                CLog.d("Device Unresponsive during recovery, is root still enabled: %s", enabled);
+            } catch (DeviceUnresponsiveException e) {
+                // Ignore exception thrown here to rethrow original exception.
+                CLog.e("Exception occurred during recovery adb root:");
+                CLog.e(e);
+            }
             mRecoveryMode = previousRecoveryMode;
             throw due;
         }
