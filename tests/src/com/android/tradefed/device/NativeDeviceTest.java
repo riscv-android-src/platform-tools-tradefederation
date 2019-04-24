@@ -1181,34 +1181,44 @@ public class NativeDeviceTest extends TestCase {
      * Unit test for {@link NativeDevice#getBugreportz()}.
      */
     public void testGetBugreportz() throws IOException {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public void executeShellCommand(
-                    String command, IShellOutputReceiver receiver,
-                    long maxTimeToOutputShellResponse, TimeUnit timeUnit, int retryAttempts)
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public void executeShellCommand(
+                            String command,
+                            IShellOutputReceiver receiver,
+                            long maxTimeToOutputShellResponse,
+                            TimeUnit timeUnit,
+                            int retryAttempts)
                             throws DeviceNotAvailableException {
-                String fakeRep = "OK:/data/0/com.android.shell/bugreports/bugreport1970-10-27.zip";
-                receiver.addOutput(fakeRep.getBytes(), 0, fakeRep.getBytes().length);
-            }
-            @Override
-            public boolean doesFileExist(String destPath) throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public boolean pullFile(String remoteFilePath, File localFile)
-                    throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                assertEquals("rm /data/0/com.android.shell/bugreports/*", command);
-                return null;
-            }
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return 24;
-            }
-        };
+                        String fakeRep =
+                                "OK:/data/0/com.android.shell/bugreports/bugreport1970-10-27.zip";
+                        receiver.addOutput(fakeRep.getBytes(), 0, fakeRep.getBytes().length);
+                    }
+
+                    @Override
+                    public boolean doesFileExist(String destPath)
+                            throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean pullFile(String remoteFilePath, File localFile)
+                            throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public void deleteFile(String deviceFilePath)
+                            throws DeviceNotAvailableException {
+                        assertEquals("/data/0/com.android.shell/bugreports/*", deviceFilePath);
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 24;
+                    }
+                };
         FileInputStreamSource f = null;
         try {
             f = (FileInputStreamSource) mTestDevice.getBugreportz();

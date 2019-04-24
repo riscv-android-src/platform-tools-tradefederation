@@ -525,7 +525,7 @@ public class GTest
         testDevice.executeShellCommand(String.format("sh %s", tmpFileDevice),
                 resultParser, mMaxTestTimeMs /* maxTimeToShellOutputResponse */,
                 TimeUnit.MILLISECONDS, 0 /* retry attempts */);
-        testDevice.executeShellCommand(String.format("rm %s", tmpFileDevice));
+        testDevice.deleteFile(tmpFileDevice);
     }
 
     /**
