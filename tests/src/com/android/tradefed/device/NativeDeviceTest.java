@@ -311,7 +311,7 @@ public class NativeDeviceTest extends TestCase {
         // Empty list of childen
         EasyMock.replay(fakeEntry);
         try {
-            boolean res = mTestDevice.pullDir("/sdcard/screenshots/", dir);
+            boolean res = mTestDevice.pullDir("/some_device_path/screenshots/", dir);
             assertTrue(res);
             assertTrue(dir.list().length == 0);
         } finally {

@@ -2730,7 +2730,8 @@ public class NativeDevice implements IManagedTestDevice {
         final String wifiSsid = mLastConnectedWifiSsid;
         if (!connectToWifiNetworkIfNeeded(mLastConnectedWifiSsid, mLastConnectedWifiPsk)) {
             throw new NetworkNotAvailableException(
-                    String.format("Failed to connect to wifi network %s on %s after reboot",
+                    String.format(
+                            "Failed to connect to wifi network %s on %s after reboot",
                             wifiSsid, getSerialNumber()));
         }
     }
