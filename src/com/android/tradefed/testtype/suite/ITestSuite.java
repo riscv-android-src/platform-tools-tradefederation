@@ -275,6 +275,12 @@ public abstract class ITestSuite
     private Set<String> mAllowedPreparers = new HashSet<>();
 
     @Option(
+        name = "intra-module-sharding",
+        description = "Whether or not to allow intra-module sharding."
+    )
+    private boolean mIntraModuleSharding = true;
+
+    @Option(
         name = "reboot-before-test",
         description = "Reboot the device before the test suite starts."
     )
@@ -754,7 +760,7 @@ public abstract class ITestSuite
             return;
         }
         // Avoid messing with the final test count by making them empty runs.
-        listener.testRunStarted(identifier + "_" + moduleName, 0);
+        listener.testRunStarted(identifier + "_" + moduleName, 0, 0, System.currentTimeMillis());
         if (!failures.isEmpty()) {
             listener.testRunFailed(String.format("%s failed '%s' checkers", moduleName, failures));
         }
@@ -781,7 +787,7 @@ public abstract class ITestSuite
         // The test pool mechanism prevent this from creating too much overhead.
         List<ModuleDefinition> splitModules =
                 ModuleSplitter.splitConfiguration(
-                        runConfig, shardCountHint, mShouldMakeDynamicModule);
+                        runConfig, shardCountHint, mShouldMakeDynamicModule, mIntraModuleSharding);
         runConfig.clear();
         runConfig = null;
 

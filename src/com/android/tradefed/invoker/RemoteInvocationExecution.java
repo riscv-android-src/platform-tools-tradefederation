@@ -69,7 +69,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
     public static final long PUSH_TF_TIMEOUT = 150000L;
     public static final long PULL_RESULT_TIMEOUT = 180000L;
     public static final long REMOTE_PROCESS_RUNNING_WAIT = 15000L;
-    public static final long LAUNCH_EXTRA_DEVICE = 5 * 60 * 1000L;
+    public static final long LAUNCH_EXTRA_DEVICE = 7 * 60 * 1000L;
     public static final long NEW_USER_TIMEOUT = 5 * 60 * 1000L;
     public static final String REMOTE_VM_VARIABLE = "REMOTE_VM_ENV";
 

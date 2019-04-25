@@ -132,7 +132,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private long mElapsedPreparation = 0l;
     private long mElapsedTearDown = 0l;
 
-    private long mElapsedTest = 0l;
+    private long mStartTestTime = 0l;
 
     // Tracking of retry performance
     private long mRetryTime = 0L;
@@ -406,7 +406,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 ITestInvocationListener forwarder = new ResultForwarder(allListeners);
                 // For reporting purpose we create a failure placeholder with the error stack
                 // similar to InitializationError of JUnit.
-                forwarder.testRunStarted(getId(), 1);
+                forwarder.testRunStarted(getId(), 1, 0, System.currentTimeMillis());
                 StringWriter sw = new StringWriter();
                 preparationException.printStackTrace(new PrintWriter(sw));
                 forwarder.testRunFailed(sw.toString());
@@ -420,7 +420,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 }
                 return;
             }
-            mElapsedTest = getCurrentTime();
+            mStartTestTime = getCurrentTime();
             while (true) {
                 IRemoteTest test = poll();
                 if (test == null) {
@@ -624,9 +624,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         long elapsedTime = 0l;
         HashMap<String, Metric> metricsProto = new HashMap<>();
         if (attempt != null) {
-            listener.testRunStarted(getId(), totalExpectedTests, attempt);
+            listener.testRunStarted(getId(), totalExpectedTests, attempt, mStartTestTime);
         } else {
-            listener.testRunStarted(getId(), totalExpectedTests);
+            listener.testRunStarted(getId(), totalExpectedTests, 0, mStartTestTime);
         }
         int numResults = 0;
         Map<String, LogFile> aggLogFiles = new LinkedHashMap<>();
@@ -686,7 +686,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 ((ILogSaverListener) listener).logAssociation(logFile.getKey(), logFile.getValue());
             }
         }
-        listener.testRunEnded(getCurrentTime() - mElapsedTest, metricsProto);
+        listener.testRunEnded(getCurrentTime() - mStartTestTime, metricsProto);
     }
 
     private void forwardTestResults(
@@ -931,7 +931,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     /** Report completely not executed modules. */
     public final void reportNotExecuted(ITestInvocationListener listener, String message) {
         listener.testModuleStarted(getModuleInvocationContext());
-        listener.testRunStarted(getId(), 0);
+        listener.testRunStarted(getId(), 0, 0, System.currentTimeMillis());
         listener.testRunFailed(message);
         listener.testRunEnded(0, new HashMap<String, Metric>());
         listener.testModuleEnded();

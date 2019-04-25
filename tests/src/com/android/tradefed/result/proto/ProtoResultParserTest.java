@@ -145,7 +145,8 @@ public class ProtoResultParserTest {
         mMockListener.invocationStarted(EasyMock.anyObject());
 
         mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted("run1", 2);
+        mMockListener.testRunStarted(
+                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testStarted(test1, 5L);
         mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
 
@@ -219,7 +220,8 @@ public class ProtoResultParserTest {
         // Verify Mocks
         mMockListener.invocationStarted(EasyMock.anyObject());
 
-        mMockListener.testRunStarted("run1", 2);
+        mMockListener.testRunStarted(
+                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testStarted(test1, 5L);
         mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
 
@@ -259,7 +261,8 @@ public class ProtoResultParserTest {
         mMockListener.invocationStarted(EasyMock.anyObject());
 
         mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted("run1", 2);
+        mMockListener.testRunStarted(
+                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testStarted(test1, 5L);
         mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
 
@@ -313,7 +316,8 @@ public class ProtoResultParserTest {
         // Verify Mocks
         mMockListener.invocationStarted(EasyMock.anyObject());
 
-        mMockListener.testRunStarted("run1", 2);
+        mMockListener.testRunStarted(
+                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testStarted(test1, 5L);
         mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
 
@@ -351,7 +355,8 @@ public class ProtoResultParserTest {
         // Verify Mocks
         mMockListener.invocationStarted(EasyMock.anyObject());
 
-        mMockListener.testRunStarted("run1", 2);
+        mMockListener.testRunStarted(
+                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testStarted(test1, 5L);
         mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
 
@@ -359,7 +364,8 @@ public class ProtoResultParserTest {
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
-        mMockListener.testRunStarted("run1", 1, 1);
+        mMockListener.testRunStarted(
+                EasyMock.eq("run1"), EasyMock.eq(1), EasyMock.eq(1), EasyMock.anyLong());
         mMockListener.testStarted(test1, 5L);
         mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
         mMockListener.testRunEnded(
@@ -404,7 +410,8 @@ public class ProtoResultParserTest {
 
         // Verify Mocks - No Invocation Start and End
         mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted("run1", 2);
+        mMockListener.testRunStarted(
+                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testStarted(test1, 5L);
         mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
 
@@ -501,7 +508,8 @@ public class ProtoResultParserTest {
         mMockListener.invocationStarted(EasyMock.anyObject());
 
         mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted("run1", 2);
+        mMockListener.testRunStarted(
+                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testStarted(test1, 5L);
         mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
 

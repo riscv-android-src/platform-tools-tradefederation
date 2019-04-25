@@ -282,12 +282,15 @@ public class ProtoResultParser {
     private void handleTestRunStart(TestRecord runProto) {
         String id = runProto.getTestRecordId();
         log("Test run started proto: %s", id);
-        if (runProto.getAttemptId() != 0) {
-            mListener.testRunStarted(
-                    id, (int) runProto.getNumExpectedChildren(), (int) runProto.getAttemptId());
-        } else {
-            mListener.testRunStarted(id, (int) runProto.getNumExpectedChildren());
-        }
+        //if (runProto.getAttemptId() != 0) {
+        mListener.testRunStarted(
+                id,
+                (int) runProto.getNumExpectedChildren(),
+                (int) runProto.getAttemptId(),
+                timeStampToMillis(runProto.getStartTime()));
+        /*} else {
+            mListener.testRunStarted(id, (int) runProto.getNumExpectedChildren(), 0, timeStampToMillis(runProto.getStartTime()));
+        }*/
     }
 
     private void handleTestRunEnd(TestRecord runProto) {
