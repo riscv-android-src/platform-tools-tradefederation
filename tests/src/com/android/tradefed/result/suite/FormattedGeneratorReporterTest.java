@@ -182,6 +182,27 @@ public class FormattedGeneratorReporterTest {
         mReporter.invocationEnded(500L);
     }
 
+    @Test
+    public void testFinalizedResults_skippedByNPE() {
+        mReporter =
+                new FormattedGeneratorReporter() {
+
+                    @Override
+                    public void finalizeResults(
+                            IFormatterGenerator generator, SuiteResultHolder resultHolder) {
+                        throw new RuntimeException("finalizeResults should not have been called.");
+                    }
+
+                    @Override
+                    public IFormatterGenerator createFormatter() {
+                        return null;
+                    }
+                };
+        mReporter.invocationStarted(mContext);
+        mReporter.invocationFailed(new NullPointerException("Invocation failed."));
+        mReporter.invocationEnded(500L);
+    }
+
     /** Validate the information inside the suite holder. */
     private void validateSuiteHolder(
             SuiteResultHolder holder,
