@@ -197,12 +197,14 @@ public abstract class ITestSuite
     )
     private boolean mReportSystemChecker = false;
 
+    @Deprecated
     @Option(
         name = "random-order",
         description = "Whether randomizing the order of the modules to be ran or not."
     )
     private boolean mRandomOrder = false;
 
+    @Deprecated
     @Option(
         name = "random-seed",
         description = "Seed to randomize the order of the modules."
