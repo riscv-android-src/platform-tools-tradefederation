@@ -764,7 +764,9 @@ public class NativeDevice implements IManagedTestDevice {
                 cmd, null, null, maxTimeoutForCommand, timeUnit, retryAttempts);
     }
 
-    private CommandResult executeShellV2Command(
+    /** {@inheritDoc} */
+    @Override
+    public CommandResult executeShellV2Command(
             String cmd,
             File pipeAsInput,
             OutputStream pipeToOutput,
