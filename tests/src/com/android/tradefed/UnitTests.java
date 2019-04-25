@@ -213,6 +213,7 @@ import com.android.tradefed.targetprep.TimeSetterTargetPreparerTest;
 import com.android.tradefed.targetprep.UserCleanerTest;
 import com.android.tradefed.targetprep.adb.AdbStopServerPreparerTest;
 import com.android.tradefed.targetprep.app.NoApkTestSkipperTest;
+import com.android.tradefed.targetprep.multi.DynamicSystemPreparerTest;
 import com.android.tradefed.targetprep.multi.MergeMultiBuildTargetPreparerTest;
 import com.android.tradefed.targetprep.suite.SuiteApkInstallerTest;
 import com.android.tradefed.testtype.AndroidJUnitTestTest;
@@ -578,6 +579,7 @@ import org.junit.runners.Suite.SuiteClasses;
     DeviceStorageFillerTest.class,
     DeviceStringPusherTest.class,
     DisableSELinuxTargetPreparerTest.class,
+    DynamicSystemPreparerTest.class,
     FastbootDeviceFlasherTest.class,
     FlashingResourcesParserTest.class,
     InstallAllTestZipAppsSetupTest.class,
