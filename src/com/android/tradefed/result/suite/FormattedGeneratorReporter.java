@@ -21,7 +21,7 @@ import com.android.tradefed.targetprep.TargetSetupError;
 /** Reporter that allows to generate reports in a particular format. TODO: fix logged file */
 public abstract class FormattedGeneratorReporter extends SuiteResultReporter {
 
-    private boolean mInvocationFailed = false;
+    private Throwable mTestHarnessError = null;
 
     /** {@inheritDoc} */
     @Override
@@ -29,20 +29,26 @@ public abstract class FormattedGeneratorReporter extends SuiteResultReporter {
         // Let the parent create the results structures
         super.invocationEnded(elapsedTime);
 
-        // If invocation failed and did not see any tests
-        if (mInvocationFailed && getNumTotalTests() == 0) {
-            CLog.e("Invocation failed, skip generating the formatted report.");
-        } else {
-            SuiteResultHolder holder = generateResultHolder();
-            IFormatterGenerator generator = createFormatter();
-            finalizeResults(generator, holder);
+        // If invocation failed due to a test harness error and did not see any tests
+        if (mTestHarnessError != null) {
+            CLog.e(
+                    "Invocation failed and we couldn't ensure results are consistent, skip "
+                            + "generating the formatted report due to:");
+            CLog.e(mTestHarnessError);
+            return;
         }
+
+        SuiteResultHolder holder = generateResultHolder();
+        IFormatterGenerator generator = createFormatter();
+        finalizeResults(generator, holder);
     }
 
     @Override
     public void invocationFailed(Throwable cause) {
-        if (cause instanceof TargetSetupError) {
-            mInvocationFailed = true;
+        // Some exception indicate a harness level issue, the tests result cannot be trusted at
+        // that point so we should skip the reporting.
+        if (cause instanceof TargetSetupError || cause instanceof RuntimeException) {
+            mTestHarnessError = cause;
         }
         super.invocationFailed(cause);
     }
