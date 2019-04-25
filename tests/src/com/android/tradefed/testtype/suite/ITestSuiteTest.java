@@ -1562,6 +1562,30 @@ public class ITestSuiteTest {
         EasyMock.verify(mMockDevice);
     }
 
+    @Test
+    public void testNoPrimaryAbi() throws Exception {
+        OptionSetter setter = new OptionSetter(mTestSuite);
+        setter.setOptionValue(ITestSuite.PRIMARY_ABI_RUN, "true");
+        EasyMock.reset(mMockDevice);
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(new TcpDevice("tcp-device-0"));
+
+        EasyMock.expect(mMockDevice.getProperty("ro.product.cpu.abi")).andReturn(null);
+
+        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("SERIAL");
+
+        EasyMock.replay(mMockDevice);
+        try {
+            mTestSuite.getAbis(mMockDevice);
+            fail("Should have thrown an exception.");
+        } catch (DeviceNotAvailableException expected) {
+            // Expected
+            assertEquals(
+                    "Device 'SERIAL' was not online to query ro.product.cpu.abi",
+                    expected.getMessage());
+        }
+        EasyMock.verify(mMockDevice);
+    }
+
     /** Test that when {@link ITestSuite} is within a Guice scope it can receive the injector. */
     @Test
     public void testInjector_guice() throws Exception {
@@ -1570,8 +1594,8 @@ public class ITestSuiteTest {
     }
 
     /**
-     * Test for {@link ITestSuite#randomizeTestModules(List<ModuleDefinition>, long)}
-     * to make sure the order won't change using the same seed.
+     * Test for {@link ITestSuite#randomizeTestModules(List, long)} to make sure the order won't
+     * change using the same seed.
      */
     @Test
     public void testRandomizeTestModulesWithSameSeed() throws Exception {
@@ -1590,8 +1614,8 @@ public class ITestSuiteTest {
     }
 
     /**
-     * Test for {@link ITestSuite#randomizeTestModules(List<ModuleDefinition>, long)}
-     * to make sure the order will change using different seed.
+     * Test for {@link ITestSuite#randomizeTestModules(List, long)} to make sure the order will
+     * change using different seed.
      */
     @Test
     public void testRandomizeTestModulesWithDifferentSeed() throws Exception {
