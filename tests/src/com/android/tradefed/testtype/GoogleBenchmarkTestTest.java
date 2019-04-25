@@ -289,6 +289,8 @@ public class GoogleBenchmarkTestTest extends TestCase {
         assertFalse(mGoogleBenchmarkTest.shouldSkipFile("/some/path/file/binary"));
         assertFalse(mGoogleBenchmarkTest.shouldSkipFile("/some/path/file/random.dat"));
         assertTrue(mGoogleBenchmarkTest.shouldSkipFile("/some/path/file/test.txt"));
+        // Always skip files ending in .config
+        assertTrue(mGoogleBenchmarkTest.shouldSkipFile("/some/path/file/random.config"));
     }
 
     /**
@@ -302,5 +304,19 @@ public class GoogleBenchmarkTestTest extends TestCase {
         assertFalse(mGoogleBenchmarkTest.shouldSkipFile("/some/path/file/binary"));
         assertTrue(mGoogleBenchmarkTest.shouldSkipFile("/some/path/file/random.dat"));
         assertTrue(mGoogleBenchmarkTest.shouldSkipFile("/some/path/file/test.txt"));
+        // Always skip files ending in .config
+        assertTrue(mGoogleBenchmarkTest.shouldSkipFile("/some/path/file/random.config"));
+    }
+
+    /** File exclusion regex filter should always skip .config file. */
+    public void testFileExclusionRegexFilter_skipDefaultMatched() {
+        // Always skip files ending in .config
+        assertTrue(mGoogleBenchmarkTest.shouldSkipFile("/some/path/file/random.config"));
+        // Other file should not be skipped
+        assertFalse(mGoogleBenchmarkTest.shouldSkipFile("/some/path/file/random.configs"));
+        assertFalse(mGoogleBenchmarkTest.shouldSkipFile("/some/path/file/binary"));
+        assertFalse(mGoogleBenchmarkTest.shouldSkipFile("/some/path/file/random.dat"));
+        assertFalse(mGoogleBenchmarkTest.shouldSkipFile("/some/path/file/test.txt"));
+
     }
 }
