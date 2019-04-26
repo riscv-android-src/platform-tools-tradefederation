@@ -16,6 +16,7 @@
 package com.android.tradefed.invoker.sandbox;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
@@ -24,6 +25,7 @@ import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.InvocationExecution;
 import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.log.ITestLogger;
@@ -41,6 +43,23 @@ import com.android.tradefed.targetprep.TargetSetupError;
 public class ParentSandboxInvocationExecution extends InvocationExecution {
 
     private IConfiguration mParentPreparerConfig = null;
+
+    @Override
+    public boolean fetchBuild(
+            IInvocationContext context,
+            IConfiguration config,
+            IRescheduler rescheduler,
+            ITestInvocationListener listener)
+            throws DeviceNotAvailableException, BuildRetrievalError {
+        if (!context.getBuildInfos().isEmpty()) {
+            CLog.d(
+                    "Context already contains builds: %s. Skipping download as we are in "
+                            + "sandbox-test-mode.",
+                    context.getBuildInfos());
+            return true;
+        }
+        return super.fetchBuild(context, config, rescheduler, listener);
+    }
 
     @Override
     public void doSetup(
