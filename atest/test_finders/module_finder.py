@@ -212,6 +212,63 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                 return test_config
         return rel_config
 
+    def _get_test_info_filter(self, path, methods, module_name, **kwargs):
+        """Get test info filter.
+
+        Args:
+            path: A string of the test's path.
+            methods: A set of method name strings.
+            module_name: A string of the module name.
+            rel_module_dir: Optional. A string of the module dir relative to
+                root.
+            class_name: Optional. A string of the class name.
+            is_native_test: Optional. A boolean variable of whether to search
+                for a native test or not.
+
+        Returns:
+            A set of test info filter.
+        """
+        _, file_name = test_finder_utils.get_dir_path_and_filename(path)
+        ti_filter = frozenset()
+        if kwargs.get('is_native_test', None):
+            ti_filter = frozenset([test_info.TestFilter(
+                test_finder_utils.get_cc_filter(
+                    kwargs.get('class_name', '*'), methods), frozenset())])
+        # Path to java file.
+        elif file_name and _JAVA_EXT_RE.match(file_name):
+            full_class_name = test_finder_utils.get_fully_qualified_class_name(
+                path)
+            ti_filter = frozenset(
+                [test_info.TestFilter(full_class_name, methods)])
+        # Path to cc file.
+        elif file_name and _CC_EXT_RE.match(file_name):
+            if not test_finder_utils.has_cc_class(path):
+                raise atest_error.MissingCCTestCaseError(
+                    "Can't find CC class in %s" % path)
+            if methods:
+                ti_filter = frozenset(
+                    [test_info.TestFilter(test_finder_utils.get_cc_filter(
+                        kwargs.get('class_name', '*'), methods), frozenset())])
+        # Path to non-module dir, treat as package.
+        elif (not file_name
+              and not self.module_info.is_auto_gen_test_config(module_name)
+              and kwargs.get('rel_module_dir', None) !=
+              os.path.relpath(path, self.root_dir)):
+            dir_items = [os.path.join(path, f) for f in os.listdir(path)]
+            for dir_item in dir_items:
+                if _JAVA_EXT_RE.match(dir_item):
+                    package_name = test_finder_utils.get_package_name(dir_item)
+                    if package_name:
+                        # methods should be empty frozenset for package.
+                        if methods:
+                            raise atest_error.MethodWithoutClassError(
+                                '%s: Method filtering requires class'
+                                % str(methods))
+                        ti_filter = frozenset(
+                            [test_info.TestFilter(package_name, methods)])
+                        break
+        return ti_filter
+
     def find_test_by_module_name(self, module_name):
         """Find test for the given module name.
 
@@ -268,14 +325,9 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                                                           is_native_test)
         if not test_path:
             return None
-        if is_native_test:
-            test_filter = frozenset([test_info.TestFilter(
-                test_finder_utils.get_cc_filter(class_name, methods), frozenset())])
-        else:
-            full_class_name = test_finder_utils.get_fully_qualified_class_name(
-                test_path)
-            test_filter = frozenset([test_info.TestFilter(full_class_name,
-                                                          methods)])
+        test_filter = self._get_test_info_filter(
+            test_path, methods, module_name, class_name=class_name,
+            is_native_test=is_native_test)
         if not rel_config:
             test_dir = os.path.dirname(test_path)
             rel_module_dir = test_finder_utils.find_parent_module_dir(
@@ -413,7 +465,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         path = os.path.realpath(path)
         if not os.path.exists(path):
             return None
-        dir_path, file_name = test_finder_utils.get_dir_path_and_filename(path)
+        dir_path, _ = test_finder_utils.get_dir_path_and_filename(path)
         # Module/Class
         rel_module_dir = test_finder_utils.find_parent_module_dir(
             self.root_dir, dir_path, self.module_info)
@@ -424,38 +476,8 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         # The real test config might be record in module-info.
         rel_config = self._get_module_test_config(module_name, rel_config=rel_config)
         data = {constants.TI_REL_CONFIG: rel_config,
-                constants.TI_FILTER: frozenset()}
-        # Path is to java file.
-        if file_name and _JAVA_EXT_RE.match(file_name):
-            full_class_name = test_finder_utils.get_fully_qualified_class_name(
-                path)
-            data[constants.TI_FILTER] = frozenset(
-                [test_info.TestFilter(full_class_name, methods)])
-        # Path is to cc file.
-        elif file_name and _CC_EXT_RE.match(file_name):
-            if not test_finder_utils.has_cc_class(path):
-                raise atest_error.MissingCCTestCaseError(
-                    "Can't find CC class in %s" % path)
-            if methods:
-                data[constants.TI_FILTER] = frozenset(
-                    [test_info.TestFilter(test_finder_utils.get_cc_filter(
-                        '*', methods), frozenset())])
-        # Path to non-module dir, treat as package.
-        elif (not file_name and not self.module_info.is_auto_gen_test_config(module_name)
-              and rel_module_dir != os.path.relpath(path, self.root_dir)):
-            dir_items = [os.path.join(path, f) for f in os.listdir(path)]
-            for dir_item in dir_items:
-                if _JAVA_EXT_RE.match(dir_item):
-                    package_name = test_finder_utils.get_package_name(dir_item)
-                    if package_name:
-                        # methods should be empty frozenset for package.
-                        if methods:
-                            raise atest_error.MethodWithoutClassError(
-                                '%s: Method filtering requires class'
-                                % str(methods))
-                        data[constants.TI_FILTER] = frozenset(
-                            [test_info.TestFilter(package_name, methods)])
-                        break
+                constants.TI_FILTER: self._get_test_info_filter(
+                    path, methods, module_name, rel_module_dir=rel_module_dir)}
         return self._process_test_info(test_info.TestInfo(
             test_name=module_name,
             test_runner=self._TEST_RUNNER,
