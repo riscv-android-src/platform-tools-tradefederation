@@ -62,6 +62,8 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
 
     private IInvocationContext mCurrentModuleContext = null;
     private TestRunResult mCurrentTestRunResult = new TestRunResult();
+    /** True if the default initialized mCurrentTestRunResult has its original value. */
+    private boolean mDefaultRun = true;
 
     // Tracks if mStatusCounts are accurate, or if they need to be recalculated
     private AtomicBoolean mIsCountDirty = new AtomicBoolean(true);
@@ -161,6 +163,16 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
         testRunStarted(name, numTests, 0);
     }
 
+    private TestRunResult getNewRunResult() {
+        TestRunResult result = new TestRunResult();
+        if (mDefaultRun) {
+            result = mCurrentTestRunResult;
+            mDefaultRun = false;
+        }
+        result.setAggregateMetrics(mIsAggregateMetrics);
+        return result;
+    }
+
     /** {@inheritDoc} */
     @Override
     public void testRunStarted(String name, int numTests, int attemptNumber) {
@@ -187,14 +199,12 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
             }
         } else if (attemptNumber == results.size()) {
             // new run
-            TestRunResult result = new TestRunResult();
-            result.setAggregateMetrics(mIsAggregateMetrics);
+            TestRunResult result = getNewRunResult();
             results.add(result);
         } else {
             int size = results.size();
             for (int i = size; i < attemptNumber; i++) {
-                TestRunResult result = new TestRunResult();
-                result.setAggregateMetrics(mIsAggregateMetrics);
+                TestRunResult result = getNewRunResult();
                 result.testRunStarted(name, numTests);
                 String errorMessage =
                         String.format(
@@ -205,8 +215,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
                 results.add(result);
             }
             // New current run
-            TestRunResult newResult = new TestRunResult();
-            newResult.setAggregateMetrics(mIsAggregateMetrics);
+            TestRunResult newResult = getNewRunResult();
             results.add(newResult);
         }
         mCurrentTestRunResult = results.get(attemptNumber);
