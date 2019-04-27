@@ -197,12 +197,14 @@ public abstract class ITestSuite
     )
     private boolean mReportSystemChecker = false;
 
+    @Deprecated
     @Option(
         name = "random-order",
         description = "Whether randomizing the order of the modules to be ran or not."
     )
     private boolean mRandomOrder = false;
 
+    @Deprecated
     @Option(
         name = "random-seed",
         description = "Seed to randomize the order of the modules."
@@ -1061,7 +1063,15 @@ public abstract class ITestSuite
             Set<String> hostAbis = getHostAbis();
             return hostAbis.iterator().next();
         }
-        return device.getProperty(PRODUCT_CPU_ABI_KEY).trim();
+        String property = device.getProperty(PRODUCT_CPU_ABI_KEY);
+        if (property == null) {
+            String serial = device.getSerialNumber();
+            throw new DeviceNotAvailableException(
+                    String.format(
+                            "Device '%s' was not online to query %s", serial, PRODUCT_CPU_ABI_KEY),
+                    serial);
+        }
+        return property.trim();
     }
 
     /** Returns the list of abis supported by the device or host if it's a null device. */
