@@ -3673,7 +3673,8 @@ public class TestDeviceTest extends TestCase {
         injectShellResponse("pidof system_server", "929");
         injectShellResponse("am dumpheap 929 /data/dump.hprof", "");
         injectShellResponse("ls \"/data/dump.hprof\"", "/data/dump.hprof");
-        injectShellResponse("rm /data/dump.hprof", "");
+        injectShellResponse("rm -rf \"/data/dump.hprof\"", "");
+
         EasyMock.replay(mMockIDevice, mMockRunUtil);
         File res = mTestDevice.dumpHeap("system_server", "/data/dump.hprof");
         assertNotNull(res);
@@ -3776,4 +3777,38 @@ public class TestDeviceTest extends TestCase {
         mTestDevice.postInvocationTearDown();
         verifyMocks();
     }
+
+    // FIXME: Delete this, not necessary
+    // <<<<<<< HEAD
+    // =======
+    //
+    //     /** Test that displays can be collected. */
+    //     public void testListDisplayId() throws Exception {
+    //         OutputStream stdout = null, stderr = null;
+    //         CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+    //         res.setStdout("Display 0 color modes:\nDisplay 5 color modes:\n");
+    //         EasyMock.expect(
+    //                         mMockRunUtil.runTimedCmd(
+    //                                 100L,
+    //                                 stdout,
+    //                                 stderr,
+    //                                 "adb",
+    //                                 "-s",
+    //                                 "serial",
+    //                                 "shell",
+    //                                 "dumpsys",
+    //                                 "SurfaceFlinger",
+    //                                 "|",
+    //                                 "grep",
+    //                                 "'color",
+    //                                 "modes:'"))
+    //                 .andReturn(res);
+    //         replayMocks();
+    //         Set<Integer> displays = mTestDevice.listDisplayIds();
+    //         assertEquals(2, displays.size());
+    //         assertTrue(displays.contains(0));
+    //         assertTrue(displays.contains(5));
+    //         verifyMocks();
+    //     }
+    // >>>>>>> f39a78ced... Hook up pullFile to use content provider.
 }
