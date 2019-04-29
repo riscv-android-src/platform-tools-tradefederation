@@ -58,6 +58,64 @@ public class MultiUserSetupUtil {
         return null;
     }
 
+    /** Create the 'cvd-XX' user on the remote device if missing. */
+    public static CommandResult addExtraCvdUser(
+            int userId,
+            GceAvdInfo remoteInstance,
+            TestDeviceOptions options,
+            IRunUtil runUtil,
+            long timeoutMs) {
+        String useridString = getUserNumber(userId);
+        String username = String.format("cvd-%s", useridString);
+        String createUserCommand =
+                "sudo useradd " + username + " -G plugdev -m -s /bin/bash -p '*'";
+        CommandResult createUserRes =
+                RemoteSshUtil.remoteSshCommandExec(
+                        remoteInstance, options, runUtil, timeoutMs, createUserCommand.split(" "));
+        if (!CommandStatus.SUCCESS.equals(createUserRes.getStatus())) {
+            if (createUserRes
+                    .getStderr()
+                    .contains(String.format("user '%s' already exists", username))) {
+                return null;
+            }
+            return createUserRes;
+        }
+        return null;
+    }
+
+    /** Setup the tuntap interface required to start the Android devices if they are missing. */
+    public static CommandResult setupNetworkInterface(
+            int userId,
+            GceAvdInfo remoteInstance,
+            TestDeviceOptions options,
+            IRunUtil runUtil,
+            long timeoutMs) {
+        if (userId < 9) {
+            // TODO: use 'tuntap show' to check if interface exists already or not.
+            return null;
+        }
+        String useridString = getUserNumber(userId);
+        String mtap = String.format("cvd-mtap-%s", useridString);
+        String wtap = String.format("cvd-wtap-%s", useridString);
+        String addNetworkInterface = "sudo ip tuntap add dev %s mode tap group cvdnetwork";
+        String mtapCommand = String.format(addNetworkInterface, mtap);
+        CommandResult addNetworkInterfaceRes =
+                RemoteSshUtil.remoteSshCommandExec(
+                        remoteInstance, options, runUtil, timeoutMs, mtapCommand.split(" "));
+        if (!CommandStatus.SUCCESS.equals(addNetworkInterfaceRes.getStatus())) {
+            return addNetworkInterfaceRes;
+        }
+
+        String wtapCommand = String.format(addNetworkInterface, wtap);
+        addNetworkInterfaceRes =
+                RemoteSshUtil.remoteSshCommandExec(
+                        remoteInstance, options, runUtil, timeoutMs, wtapCommand.split(" "));
+        if (!CommandStatus.SUCCESS.equals(addNetworkInterfaceRes.getStatus())) {
+            return addNetworkInterfaceRes;
+        }
+        return null;
+    }
+
     /** Setup a new remote user on an existing Cuttlefish VM. */
     public static CommandResult prepareRemoteHomeDir(
             String mainRootUser,
@@ -106,5 +164,10 @@ public class MultiUserSetupUtil {
     /** Gets the command for a user to own the main directory. */
     public static String getChownCommand(String username) {
         return "find /home/" + username + " | sudo xargs chown " + username;
+    }
+
+    /** Returns the user id string version that follow the remote device notation. */
+    public static String getUserNumber(int userId) {
+        return (userId > 9) ? Integer.toString(userId) : "0" + Integer.toString(userId);
     }
 }
