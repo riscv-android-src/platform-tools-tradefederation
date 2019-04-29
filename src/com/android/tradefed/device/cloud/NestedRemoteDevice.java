@@ -55,6 +55,14 @@ public class NestedRemoteDevice extends TestDevice {
         IP_TO_USER.put("127.0.0.1:6524", "vsoc-05");
         IP_TO_USER.put("127.0.0.1:6525", "vsoc-06");
         IP_TO_USER.put("127.0.0.1:6526", "vsoc-07");
+        IP_TO_USER.put("127.0.0.1:6527", "vsoc-08");
+        IP_TO_USER.put("127.0.0.1:6528", "vsoc-09");
+        IP_TO_USER.put("127.0.0.1:6529", "vsoc-10");
+        IP_TO_USER.put("127.0.0.1:6530", "vsoc-11");
+        IP_TO_USER.put("127.0.0.1:6531", "vsoc-12");
+        IP_TO_USER.put("127.0.0.1:6532", "vsoc-13");
+        IP_TO_USER.put("127.0.0.1:6533", "vsoc-14");
+        IP_TO_USER.put("127.0.0.1:6534", "vsoc-15");
     }
 
     /** When calling launch_cvd, the launcher.log is populated. */
