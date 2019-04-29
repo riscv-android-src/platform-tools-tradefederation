@@ -36,6 +36,7 @@ import com.google.errorprone.annotations.MustBeClosed;
 
 import java.io.File;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -286,6 +287,19 @@ public interface INativeDevice {
      *     recovered.
      */
     public CommandResult executeShellV2Command(String command, File pipeAsInput)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Helper method which executes an adb shell command and returns the results as a {@link
+     * CommandResult} properly populated with the command status output, stdout and stderr.
+     *
+     * @param command The command that should be run.
+     * @param pipeToOutput {@link OutputStream} where the std output will be redirected.
+     * @return The result in {@link CommandResult}.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     */
+    public CommandResult executeShellV2Command(String command, OutputStream pipeToOutput)
             throws DeviceNotAvailableException;
 
     /**
