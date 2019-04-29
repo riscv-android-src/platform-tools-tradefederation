@@ -183,6 +183,7 @@ import com.android.tradefed.targetprep.AllTestAppsInstallSetupTest;
 import com.android.tradefed.targetprep.AoaTargetPreparerTest;
 import com.android.tradefed.targetprep.AppSetupTest;
 import com.android.tradefed.targetprep.BuildInfoAttributePreparerTest;
+import com.android.tradefed.targetprep.CreateUserPreparerTest;
 import com.android.tradefed.targetprep.DefaultTestsZipInstallerTest;
 import com.android.tradefed.targetprep.DeviceFlashPreparerTest;
 import com.android.tradefed.targetprep.DeviceSetupTest;
@@ -569,6 +570,7 @@ import org.junit.runners.Suite.SuiteClasses;
     AoaTargetPreparerTest.class,
     AppSetupTest.class,
     BuildInfoAttributePreparerTest.class,
+    CreateUserPreparerTest.class,
     DefaultTestsZipInstallerTest.class,
     DeviceFlashPreparerTest.class,
     DeviceSetupTest.class,
