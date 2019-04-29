@@ -142,7 +142,7 @@ public class UserChecker implements ISystemStatusChecker {
         DeviceUserState(ITestDevice device) throws DeviceNotAvailableException {
             mCurrentUser = device.getCurrentUser();
             mUsers = device.listUsers();
-            mUserRunningStates = new HashMap(mUsers.size());
+            mUserRunningStates = new HashMap<>(mUsers.size());
             for (Integer userId : mUsers) {
                 mUserRunningStates.put(userId, device.isUserRunning(userId));
             }
