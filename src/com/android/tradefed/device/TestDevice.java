@@ -29,7 +29,6 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
-import com.android.tradefed.util.UserUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -787,6 +786,25 @@ public class TestDevice extends NativeDevice {
         return userIds;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Map<Integer, UserInfo> getUserInfos() throws DeviceNotAvailableException {
+        ArrayList<String[]> lines = tokenizeListUsers();
+        Map<Integer, UserInfo> result = new HashMap<Integer, UserInfo>(lines.size());
+        for (String[] tokens : lines) {
+            UserInfo userInfo =
+                    new UserInfo(
+                            /* userId= */ Integer.parseInt(tokens[1]),
+                            /* userName= */ tokens[2],
+                            /* flag= */ Integer.parseInt(tokens[3], 16),
+                            /* isRunning= */ tokens.length >= 5
+                                    ? tokens[4].contains("running")
+                                    : false);
+            result.put(userInfo.userId(), userInfo);
+        }
+        return result;
+    }
+
     /**
      * Tokenizes the output of 'pm list users'.
      * The returned tokens for each user have the form: {"\tUserInfo", Integer.toString(id), name,
@@ -1026,14 +1044,14 @@ public class TestDevice extends NativeDevice {
     /** {@inheritDoc} */
     @Override
     public boolean isUserSecondary(int userId) throws DeviceNotAvailableException {
-        if (userId == UserUtil.USER_SYSTEM) {
+        if (userId == UserInfo.USER_SYSTEM) {
             return false;
         }
         int flags = getUserFlags(userId);
         if (flags == INVALID_USER_ID) {
             return false;
         }
-        return (flags & UserUtil.FLAGS_NOT_SECONDARY) == 0;
+        return (flags & UserInfo.FLAGS_NOT_SECONDARY) == 0;
     }
 
     /**
