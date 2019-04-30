@@ -43,12 +43,19 @@ message AtestLogEventExternal {
     optional Duration duration = 1;
   }
 
+  // Occurs after detection of catching bug by atest have finished
+  message LocalDetectEvent {
+    optional int32 detect_type = 1;
+    optional int32 result = 2;
+  }
+
   // ------------------------
   // FIELDS FOR ATESTLOGEVENT
   // ------------------------
   optional string user_key = 1;
   optional string run_id = 2;
   optional UserType user_type = 3;
+  optional string tool_name = 10;
   oneof event {
     AtestStartEvent atest_start_event = 4;
     AtestExitEvent atest_exit_event = 5;
@@ -56,5 +63,6 @@ message AtestLogEventExternal {
     BuildFinishEvent build_finish_event = 7;
     RunnerFinishEvent runner_finish_event = 8;
     RunTestsFinishEvent run_tests_finish_event = 9;
+    LocalDetectEvent local_detect_event = 11;
   }
 }
