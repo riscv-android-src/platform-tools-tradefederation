@@ -143,14 +143,15 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             CLog.e("Device %s is not available. Teardown() skipped.", device.getSerialNumber());
             return;
         } else {
-            for (String apkPkgName : mApkInstalled) {
-                super.uninstallPackage(device, apkPkgName);
-            }
-            device.deleteFile(APEX_DATA_DIR + "*");
-            device.deleteFile(STAGING_DATA_DIR + "*");
-            device.deleteFile(SESSION_DATA_DIR + "*");
-            if (!mTestApexInfoList.isEmpty()) {
-                device.reboot();
+            if (mTestApexInfoList.isEmpty()) {
+                super.tearDown(device, buildInfo, e);
+            } else {
+                for (String apkPkgName : mApkInstalled) {
+                    super.uninstallPackage(device, apkPkgName);
+                }
+                if (!mTestApexInfoList.isEmpty()) {
+                    cleanUpStagedAndActiveSession(device);
+                }
             }
         }
     }
@@ -412,17 +413,24 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     private void cleanUpStagedAndActiveSession(ITestDevice device)
             throws DeviceNotAvailableException {
         boolean reboot = false;
-        if (!device.executeShellV2Command("ls " + APEX_DATA_DIR).getStdout().isEmpty()) {
+        if (!mTestApexInfoList.isEmpty()) {
             device.deleteFile(APEX_DATA_DIR + "*");
-            reboot = true;
-        }
-        if (!device.executeShellV2Command("ls " + STAGING_DATA_DIR).getStdout().isEmpty()) {
             device.deleteFile(STAGING_DATA_DIR + "*");
-            reboot = true;
-        }
-        if (!device.executeShellV2Command("ls " + SESSION_DATA_DIR).getStdout().isEmpty()) {
             device.deleteFile(SESSION_DATA_DIR + "*");
             reboot = true;
+        } else {
+            if (!device.executeShellV2Command("ls " + APEX_DATA_DIR).getStdout().isEmpty()) {
+                device.deleteFile(APEX_DATA_DIR + "*");
+                reboot = true;
+            }
+            if (!device.executeShellV2Command("ls " + STAGING_DATA_DIR).getStdout().isEmpty()) {
+                device.deleteFile(STAGING_DATA_DIR + "*");
+                reboot = true;
+            }
+            if (!device.executeShellV2Command("ls " + SESSION_DATA_DIR).getStdout().isEmpty()) {
+                device.deleteFile(SESSION_DATA_DIR + "*");
+                reboot = true;
+            }
         }
         if (reboot) {
             device.reboot();
