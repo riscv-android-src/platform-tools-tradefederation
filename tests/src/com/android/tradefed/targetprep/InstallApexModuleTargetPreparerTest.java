@@ -23,6 +23,7 @@ import static org.mockito.Mockito.times;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.ApexInfo;
 import com.android.tradefed.util.CommandResult;
@@ -57,6 +58,7 @@ public class InstallApexModuleTargetPreparerTest {
     private File mFakeApkApks;
     private File mFakeApexApks;
     private File mBundletoolJar;
+    private OptionSetter mSetter;
     private static final String APEX_PACKAGE_NAME = "com.android.FAKE_APEX_PACKAGE_NAME";
     private static final String APK_PACKAGE_NAME = "com.android.FAKE_APK_PACKAGE_NAME";
     private static final String SPLIT_APEX_PACKAGE_NAME =
@@ -147,6 +149,9 @@ public class InstallApexModuleTargetPreparerTest {
                         return apexInfo;
                     }
                 };
+
+        mSetter = new OptionSetter(mInstallApexModuleTargetPreparer);
+        mSetter.setOptionValue("cleanup-apks", "true");
     }
 
     @After
@@ -289,6 +294,33 @@ public class InstallApexModuleTargetPreparerTest {
         } finally {
             EasyMock.verify(mMockBuildInfo, mMockDevice);
         }
+    }
+
+    @Test
+    public void testSetupAndTearDown_SingleApk() throws Exception {
+        mInstallApexModuleTargetPreparer.addTestFileName(APK_NAME);
+        mMockDevice.deleteFile(APEX_DATA_DIR + "*");
+        EasyMock.expectLastCall().times(1);
+        mMockDevice.deleteFile(SESSION_DATA_DIR + "*");
+        EasyMock.expectLastCall().times(1);
+        mMockDevice.deleteFile(STAGING_DATA_DIR + "*");
+        EasyMock.expectLastCall().times(1);
+        CommandResult res = new CommandResult();
+        res.setStdout("test.apex");
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + APEX_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + SESSION_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + STAGING_DATA_DIR)).andReturn(res);
+        mMockDevice.reboot();
+        EasyMock.expectLastCall();
+        EasyMock.expect(mMockDevice.installPackage((File) EasyMock.anyObject(), EasyMock.eq(true)))
+                .andReturn(null)
+                .once();
+        EasyMock.expect(mMockDevice.uninstallPackage(APK_PACKAGE_NAME)).andReturn(null).once();
+
+        EasyMock.replay(mMockBuildInfo, mMockDevice);
+        mInstallApexModuleTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
+        mInstallApexModuleTargetPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
+        EasyMock.verify(mMockBuildInfo, mMockDevice);
     }
 
     @Test
