@@ -129,7 +129,8 @@ public class RemoteInvocationExecution extends InvocationExecution {
             if (config.getCommandOptions().getShardCount() > 1) {
                 // For each device after the first one we need to start a new device.
                 for (int i = 2; i < config.getCommandOptions().getShardCount() + 1; i++) {
-                    String username = String.format("vsoc-0%s", i);
+                    String useridString = MultiUserSetupUtil.getUserNumber(i);
+                    String username = String.format("vsoc-%s", useridString);
                     CommandResult userSetup =
                             MultiUserSetupUtil.prepareRemoteUser(
                                     username, info, options, runUtil, NEW_USER_TIMEOUT);
@@ -153,6 +154,32 @@ public class RemoteInvocationExecution extends InvocationExecution {
                         String errorMsg =
                                 String.format(
                                         "Failed to setup home dir: %s", homeDirSetup.getStderr());
+                        CLog.e(errorMsg);
+                        listener.invocationFailed(new RuntimeException(errorMsg));
+                        return;
+                    }
+
+                    // Create the cvd user if missing
+                    CommandResult cvdSetup =
+                            MultiUserSetupUtil.addExtraCvdUser(
+                                    i, info, options, runUtil, NEW_USER_TIMEOUT);
+                    if (cvdSetup != null) {
+                        String errorMsg =
+                                String.format("Failed to setup user: %s", cvdSetup.getStderr());
+                        CLog.e(errorMsg);
+                        listener.invocationFailed(new RuntimeException(errorMsg));
+                        return;
+                    }
+
+                    // Setup the tuntap interface if needed
+                    CommandResult tapSetup =
+                            MultiUserSetupUtil.setupNetworkInterface(
+                                    i, info, options, runUtil, NEW_USER_TIMEOUT);
+                    if (tapSetup != null) {
+                        String errorMsg =
+                                String.format(
+                                        "Failed to setup network interface: %s",
+                                        tapSetup.getStderr());
                         CLog.e(errorMsg);
                         listener.invocationFailed(new RuntimeException(errorMsg));
                         return;
