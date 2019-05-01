@@ -4179,7 +4179,8 @@ public class TestDeviceTest extends TestCase {
         injectShellResponse("pidof system_server", "929");
         injectShellResponse("am dumpheap 929 /data/dump.hprof", "");
         injectShellResponse("ls \"/data/dump.hprof\"", "/data/dump.hprof");
-        injectShellResponse("rm /data/dump.hprof", "");
+        injectShellResponse("rm -rf /data/dump.hprof", "");
+
         EasyMock.replay(mMockIDevice, mMockRunUtil);
         File res = mTestDevice.dumpHeap("system_server", "/data/dump.hprof");
         assertNotNull(res);
@@ -4309,6 +4310,45 @@ public class TestDeviceTest extends TestCase {
         assertEquals(2, displays.size());
         assertTrue(displays.contains(0));
         assertTrue(displays.contains(5));
+        verifyMocks();
+    }
+
+    /** Test for {@link TestDevice#getScreenshot(int)}. */
+    public void testScreenshotByDisplay() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public File pullFile(String remoteFilePath) throws DeviceNotAvailableException {
+                        assertEquals("/data/local/tmp/display_0.png", remoteFilePath);
+                        return new File("fakewhatever");
+                    }
+                };
+        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+        OutputStream outStream = null;
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                120000L,
+                                outStream,
+                                outStream,
+                                "adb",
+                                "-s",
+                                "serial",
+                                "shell",
+                                "screencap",
+                                "-p",
+                                "-d",
+                                "0",
+                                "/data/local/tmp/display_0.png"))
+                .andReturn(res);
+        mMockIDevice.executeShellCommand(
+                EasyMock.eq("rm -rf /data/local/tmp/display_0.png"),
+                EasyMock.anyObject(),
+                EasyMock.anyLong(),
+                EasyMock.anyObject());
+        replayMocks();
+        InputStreamSource source = mTestDevice.getScreenshot(0);
+        assertNotNull(source);
+        StreamUtil.close(source);
         verifyMocks();
     }
 }

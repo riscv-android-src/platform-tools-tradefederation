@@ -52,13 +52,27 @@ public class ContentProviderTest extends BaseHostJUnit4Test {
 
     @After
     public void tearDown() throws Exception {
-        if (mHandler != null) {
-            mHandler.tearDown();
-        }
         for (String delete : mToBeDeleted) {
             getDevice().deleteFile(delete);
         }
         mToBeDeleted.clear();
+        if (mHandler != null) {
+            mHandler.tearDown();
+        }
+    }
+
+    /** Test pushing a file with special characters in the name. */
+    @Test
+    public void testPushFile_encode() throws Exception {
+        // Name with space and parenthesis
+        File tmpFile = FileUtil.createTempFile("tmpFileToPush (test)", ".txt");
+        try {
+            boolean res = mHandler.pushFile(tmpFile, "/sdcard/" + tmpFile.getName());
+            assertTrue(res);
+            assertTrue(getDevice().doesFileExist(mCurrentUserStoragePath + tmpFile.getName()));
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+        }
     }
 
     @Test
@@ -100,6 +114,7 @@ public class ContentProviderTest extends BaseHostJUnit4Test {
         File tmpFile = FileUtil.createTempFile("tmpFileToPush", ".txt");
         FileUtil.writeToFile(fileContent, tmpFile);
         mHandler.pushFile(tmpFile, "/sdcard/" + tmpFile.getName());
+        mToBeDeleted.add("/sdcard/" + tmpFile.getName());
 
         File tmpPullFile = new File("fileToPullTo.txt");
         // Local file does not exist before we pull the content from the device.
@@ -113,6 +128,35 @@ public class ContentProviderTest extends BaseHostJUnit4Test {
         } finally {
             FileUtil.deleteFile(tmpFile);
             FileUtil.deleteFile(tmpPullFile);
+        }
+    }
+
+    @Test
+    public void testPullDir() throws Exception {
+        String fileContent = "some test content";
+        String dirName = "test_dir_path";
+        String subDirName = "test_subdir_path";
+        String subDirPath = dirName + "/" + subDirName;
+
+        // First, push the file onto a device to create nested structure= dirName->subDirName->file
+        File tmpFile = FileUtil.createTempFile("tmpFileToPush", ".txt");
+        FileUtil.writeToFile(fileContent, tmpFile);
+        mHandler.pushFile(tmpFile, "/sdcard/" + subDirPath + "/" + tmpFile.getName());
+        mToBeDeleted.add("/sdcard/" + dirName);
+
+        File tmpPullDir = FileUtil.createTempDir("dirToPullTo");
+
+        try {
+            boolean res = mHandler.pullDir("/sdcard/" + dirName, tmpPullDir);
+            assertTrue(res);
+            assertEquals(tmpPullDir.listFiles()[0].getName(), subDirName); // Verify subDir
+            assertEquals(tmpPullDir.listFiles()[0].listFiles().length, 1); // Verify subDir content.
+            assertEquals(
+                    FileUtil.readStringFromFile(tmpPullDir.listFiles()[0].listFiles()[0]),
+                    fileContent); // Verify content.
+        } finally {
+            FileUtil.recursiveDelete(tmpPullDir);
+            FileUtil.deleteFile(tmpFile);
         }
     }
 }

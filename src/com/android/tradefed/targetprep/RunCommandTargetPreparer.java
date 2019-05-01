@@ -141,7 +141,10 @@ public class RunCommandTargetPreparer extends BaseTargetPreparer implements ITar
             }
             bgAction.getKey().cancel();
         }
-
+        if (e instanceof DeviceNotAvailableException) {
+            CLog.e("Skipping command teardown since exception was DeviceNotAvailable");
+            return;
+        }
         for (String cmd : mTeardownCommands) {
             CLog.d("About to run tearDown command on device %s: %s", device.getSerialNumber(),
                     cmd);

@@ -21,8 +21,7 @@ include $(CLEAR_VARS)
 # makefile rules to copy jars to HOST_OUT/tradefed
 # so tradefed.sh can automatically add to classpath
 deps := $(call copy-many-files,\
-  $(call intermediates-dir-for,JAVA_LIBRARIES,tradefed,HOST)/javalib.jar:$(HOST_OUT)/tradefed/tradefed.jar \
-  $(HOST_OUT_JAVA_LIBRARIES)/tools-common-prebuilt.jar:$(HOST_OUT)/tradefed/tools-common-prebuilt.jar)
+  $(call intermediates-dir-for,JAVA_LIBRARIES,tradefed,HOST)/javalib.jar:$(HOST_OUT)/tradefed/tradefed.jar)
 
 # this dependency ensures the above rule will be executed if jar is installed
 $(HOST_OUT_JAVA_LIBRARIES)/tradefed.jar : $(deps)
@@ -53,7 +52,7 @@ include $(BUILD_HOST_PREBUILT)
 ########################################################
 # Zip up the built files and dist it as tradefed.zip
 
-tradefed_dist_host_jars := tradefed tradefed-tests loganalysis loganalysis-tests tf-remote-client tradefed-contrib tf-contrib-tests tools-common-prebuilt
+tradefed_dist_host_jars := tradefed tradefed-tests loganalysis loganalysis-tests tf-remote-client tradefed-contrib tf-contrib-tests
 tradefed_dist_host_exes := tradefed.sh tradefed_win.bat script_help.sh verify.sh run_tf_cmd.sh atest_tradefed.sh
 tradefed_dist_test_apks := TradeFedUiTestApp TradeFedTestApp DeviceSetupUtil
 

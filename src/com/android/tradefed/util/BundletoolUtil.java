@@ -66,17 +66,15 @@ public class BundletoolUtil {
      * @return a {@link String} representing the path of the device specification file.
      */
     public String generateDeviceSpecFile(ITestDevice device) {
-        String filePathStr =
-                getBundletoolFile().getParentFile()
-                        + "/"
-                        + device.getSerialNumber()
-                        + DEVICE_SPEC_FILE_EXTENSION;
-        Path specFilePath = Paths.get(filePathStr);
+        Path specFilePath =
+                Paths.get(
+                        getBundletoolFile().getParentFile().getAbsolutePath(),
+                        device.getSerialNumber() + DEVICE_SPEC_FILE_EXTENSION);
         if (Files.exists(specFilePath)) {
-            return filePathStr;
+            return specFilePath.toString();
         }
 
-        String outputDirArg = DEVICE_SPEC_OUTPUT_FLAG + filePathStr;
+        String outputDirArg = DEVICE_SPEC_OUTPUT_FLAG + specFilePath.toString();
 
         String adbArg = "--adb=" + getAdbPath();
 
@@ -96,7 +94,7 @@ public class BundletoolUtil {
                     Arrays.toString(cmd), res.getStderr());
             return null;
         }
-        return filePathStr;
+        return specFilePath.toString();
     }
 
     /**
@@ -171,6 +169,7 @@ public class BundletoolUtil {
                             Arrays.toString(installApksCmd), res.getStderr()),
                     device.getDeviceDescriptor());
         }
+        CLog.i("%s is installed successfully", apks.getName());
         return;
     }
 

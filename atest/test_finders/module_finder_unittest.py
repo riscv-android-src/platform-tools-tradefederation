@@ -68,7 +68,6 @@ RUN_ROBO_MOD = {constants.MODULE_NAME: RUN_ROBO_MOD_NAME,
 
 SEARCH_DIR_RE = re.compile(r'^find ([^ ]*).*$')
 
-
 #pylint: disable=unused-argument
 def classoutside_side_effect(find_cmd, shell=False):
     """Mock the check output of a find cmd where class outside module path."""
@@ -184,6 +183,8 @@ class ModuleFinderUnittests(unittest.TestCase):
                                            mock_checkoutput, mock_build,
                                            _vts):
         """Test find_test_by_module_and_class."""
+        # Native test was tested in test_find_test_by_cc_class_name().
+        self.mod_finder.module_info.is_native_test.return_value = False
         self.mod_finder.module_info.is_auto_gen_test_config.return_value = False
         self.mod_finder.module_info.is_robolectric_test.return_value = False
         self.mod_finder.module_info.has_test_config.return_value = True
@@ -221,6 +222,8 @@ class ModuleFinderUnittests(unittest.TestCase):
                                                   mock_checkoutput, mock_build,
                                                   _vts):
         """Test find_test_by_module_and_class for MODULE:CC_CLASS."""
+        # Native test was tested in test_find_test_by_cc_class_name()
+        self.mod_finder.module_info.is_native_test.return_value = False
         self.mod_finder.module_info.is_auto_gen_test_config.return_value = False
         self.mod_finder.module_info.is_robolectric_test.return_value = False
         self.mod_finder.module_info.has_test_config.return_value = True
@@ -469,6 +472,25 @@ class ModuleFinderUnittests(unittest.TestCase):
                                                              uc.CC_MODULE2_NAME,
                                                              uc.CC_CONFIG2_FILE),
             CC_CLASS_INFO_MODULE_2)
+
+    def test_get_testable_modules_with_ld(self):
+        """Test get_testable_modules_with_ld"""
+        self.mod_finder.module_info.get_testable_modules.return_value = [
+            uc.MODULE_NAME, uc.MODULE2_NAME]
+        # Without a misfit constraint
+        ld1 = self.mod_finder.get_testable_modules_with_ld(uc.TYPO_MODULE_NAME)
+        self.assertEqual([[16, uc.MODULE2_NAME], [1, uc.MODULE_NAME]], ld1)
+        # With a misfit constraint
+        ld2 = self.mod_finder.get_testable_modules_with_ld(uc.TYPO_MODULE_NAME, 2)
+        self.assertEqual([[1, uc.MODULE_NAME]], ld2)
+
+    def test_get_fuzzy_searching_modules(self):
+        """Test get_fuzzy_searching_modules"""
+        self.mod_finder.module_info.get_testable_modules.return_value = [
+            uc.MODULE_NAME, uc.MODULE2_NAME]
+        result = self.mod_finder.get_fuzzy_searching_results(uc.TYPO_MODULE_NAME)
+        self.assertEqual(uc.MODULE_NAME, result[0])
+
 
 if __name__ == '__main__':
     unittest.main()

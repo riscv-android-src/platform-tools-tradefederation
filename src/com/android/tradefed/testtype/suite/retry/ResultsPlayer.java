@@ -16,6 +16,8 @@
 package com.android.tradefed.testtype.suite.retry;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaverListener;
@@ -53,6 +55,16 @@ public final class ResultsPlayer implements IRemoteTest, IInvocationContextRecei
 
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        // Very first thing of the retry is to check whether all devices are available, this avoids
+        // use wasting time replaying result for an invocation that will fail right after during
+        // the re-run.
+        for (ITestDevice device : mContext.getDevices()) {
+            if (device.getIDevice() instanceof StubDevice) {
+                continue;
+            }
+            device.waitForDeviceAvailable();
+        }
+
         long startReplay = System.currentTimeMillis();
         CLog.d("Start replaying the previous results.");
         for (TestRunResult module : mModuleResult.keySet()) {
