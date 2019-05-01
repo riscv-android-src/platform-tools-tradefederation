@@ -39,9 +39,12 @@ import org.junit.runner.notification.RunListener;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.util.Set;
 
 /**
@@ -64,6 +67,8 @@ public class AndroidJUnitTest extends InstrumentationTest
     private static final String INCLUDE_PACKAGE_INST_ARGS_KEY = "package";
     /** instrumentation test runner argument key used for excluding a package */
     private static final String EXCLUDE_PACKAGE_INST_ARGS_KEY = "notPackage";
+    /** instrumentation test runner argument key used for including a test regex */
+    private static final String INCLUDE_REGEX_INST_ARGS_KEY = "tests_regex";
     /** instrumentation test runner argument key used for adding annotation filter */
     private static final String ANNOTATION_INST_ARGS_KEY = "annotation";
     /** instrumentation test runner argument key used for adding notAnnotation filter */
@@ -366,14 +371,19 @@ public class AndroidJUnitTest extends InstrumentationTest
         List<String> notClassArg = new ArrayList<String>();
         List<String> packageArg = new ArrayList<String>();
         List<String> notPackageArg = new ArrayList<String>();
+        List<String> regexArg = new ArrayList<String>();
         for (String test : mIncludeFilters) {
-            if (isClassOrMethod(test)) {
+            if (isRegex(test)) {
+                regexArg.add(test);
+            } else if (isClassOrMethod(test)) {
                 classArg.add(test);
             } else {
                 packageArg.add(test);
             }
         }
         for (String test : mExcludeFilters) {
+            // tests_regex doesn't support exclude-filter. Therefore, only check if the filter is
+            // for class/method or package.
             if (isClassOrMethod(test)) {
                 notClassArg.add(test);
             } else {
@@ -395,6 +405,16 @@ public class AndroidJUnitTest extends InstrumentationTest
         if (!notPackageArg.isEmpty()) {
             runner.addInstrumentationArg(EXCLUDE_PACKAGE_INST_ARGS_KEY,
                     ArrayUtil.join(",", notPackageArg));
+        }
+        if (!regexArg.isEmpty()) {
+            String regexFilter;
+            if (regexArg.size() == 1) {
+                regexFilter = regexArg.get(0);
+            } else {
+                Collections.sort(regexArg);
+                regexFilter = "\"(" + ArrayUtil.join("|", regexArg) + ")\"";
+            }
+            runner.addInstrumentationArg(INCLUDE_REGEX_INST_ARGS_KEY, regexFilter);
         }
         if (!mIncludeAnnotation.isEmpty()) {
             runner.addInstrumentationArg(ANNOTATION_INST_ARGS_KEY,
@@ -496,6 +516,24 @@ public class AndroidJUnitTest extends InstrumentationTest
             // com.android.foobar.Test
             return Character.isUpperCase(parts[parts.length - 1].charAt(0));
         }
+        return false;
+    }
+
+    /** Return if a string is a regex for filter. */
+    @VisibleForTesting
+    public boolean isRegex(String filter) {
+        // If filter contains any special regex character, return true.
+        // Throw RuntimeException if the regex is invalid.
+        if (Pattern.matches(".*[\\?\\*\\^\\$\\(\\)\\[\\]\\{\\}\\|\\\\].*", filter)) {
+            try {
+                Pattern.compile(filter);
+            } catch (PatternSyntaxException e) {
+                CLog.e("Filter %s is not a valid regular expression string.", filter);
+                throw new RuntimeException(e);
+            }
+            return true;
+        }
+
         return false;
     }
 

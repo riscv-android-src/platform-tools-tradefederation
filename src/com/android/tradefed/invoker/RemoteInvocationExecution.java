@@ -129,7 +129,8 @@ public class RemoteInvocationExecution extends InvocationExecution {
             if (config.getCommandOptions().getShardCount() > 1) {
                 // For each device after the first one we need to start a new device.
                 for (int i = 2; i < config.getCommandOptions().getShardCount() + 1; i++) {
-                    String username = String.format("vsoc-0%s", i);
+                    String useridString = MultiUserSetupUtil.getUserNumber(i);
+                    String username = String.format("vsoc-%s", useridString);
                     CommandResult userSetup =
                             MultiUserSetupUtil.prepareRemoteUser(
                                     username, info, options, runUtil, NEW_USER_TIMEOUT);
@@ -153,6 +154,32 @@ public class RemoteInvocationExecution extends InvocationExecution {
                         String errorMsg =
                                 String.format(
                                         "Failed to setup home dir: %s", homeDirSetup.getStderr());
+                        CLog.e(errorMsg);
+                        listener.invocationFailed(new RuntimeException(errorMsg));
+                        return;
+                    }
+
+                    // Create the cvd user if missing
+                    CommandResult cvdSetup =
+                            MultiUserSetupUtil.addExtraCvdUser(
+                                    i, info, options, runUtil, NEW_USER_TIMEOUT);
+                    if (cvdSetup != null) {
+                        String errorMsg =
+                                String.format("Failed to setup user: %s", cvdSetup.getStderr());
+                        CLog.e(errorMsg);
+                        listener.invocationFailed(new RuntimeException(errorMsg));
+                        return;
+                    }
+
+                    // Setup the tuntap interface if needed
+                    CommandResult tapSetup =
+                            MultiUserSetupUtil.setupNetworkInterface(
+                                    i, info, options, runUtil, NEW_USER_TIMEOUT);
+                    if (tapSetup != null) {
+                        String errorMsg =
+                                String.format(
+                                        "Failed to setup network interface: %s",
+                                        tapSetup.getStderr());
                         CLog.e(errorMsg);
                         listener.invocationFailed(new RuntimeException(errorMsg));
                         return;
@@ -229,26 +256,9 @@ public class RemoteInvocationExecution extends InvocationExecution {
         CLog.d("stderr: %s", listRemoteDir.getStderr());
         mRemoteFinalResult = mRemoteTradefedDir + PROTO_RESULT_NAME;
 
-        // Setup the remote reporting to a proto file
-        FileProtoResultReporter reporter = new FileProtoResultReporter();
-        reporter.setFileOutput(new File(mRemoteFinalResult));
-        config.setTestInvocationListener(reporter);
-
-        for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
-            deviceConfig.getDeviceRequirements().setSerial();
-            if (deviceConfig.getDeviceRequirements() instanceof DeviceSelectionOptions) {
-                ((DeviceSelectionOptions) deviceConfig.getDeviceRequirements())
-                        .setDeviceTypeRequested(null);
-            }
-        }
-
-        File configFile = FileUtil.createTempFile(config.getName(), ".xml");
+        File configFile = createRemoteConfig(config, listener);
         File globalConfig = null;
-        config.dumpXml(new PrintWriter(configFile));
         try {
-            try (InputStreamSource source = new FileInputStreamSource(configFile)) {
-                listener.testLog(REMOTE_CONFIG, LogDataType.XML, source);
-            }
             CLog.d("Pushing Tradefed XML configuration to remote.");
             boolean resultPush =
                     RemoteFileUtil.pushFileToRemote(
@@ -546,5 +556,39 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 folder + "/adb." + uidString + ".log",
                 LogDataType.TEXT,
                 "full_adb.log");
+    }
+
+    /**
+     * Create the configuration that will run in the remote VM.
+     *
+     * @param config The main {@link IConfiguration}.
+     * @param logger A logger where to save the XML configuration for debugging.
+     * @return A file containing the dumped remote XML configuration.
+     * @throws IOException
+     */
+    private File createRemoteConfig(IConfiguration config, ITestLogger logger) throws IOException {
+        // Setup the remote reporting to a proto file
+        List<ITestInvocationListener> reporters = new ArrayList<>();
+        FileProtoResultReporter protoReporter = new FileProtoResultReporter();
+        protoReporter.setFileOutput(new File(mRemoteFinalResult));
+        reporters.add(protoReporter);
+
+        config.setTestInvocationListeners(reporters);
+
+        for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
+            deviceConfig.getDeviceRequirements().setSerial();
+            if (deviceConfig.getDeviceRequirements() instanceof DeviceSelectionOptions) {
+                ((DeviceSelectionOptions) deviceConfig.getDeviceRequirements())
+                        .setDeviceTypeRequested(null);
+            }
+        }
+
+        // Dump and log the configuration
+        File configFile = FileUtil.createTempFile(config.getName(), ".xml");
+        config.dumpXml(new PrintWriter(configFile));
+        try (InputStreamSource source = new FileInputStreamSource(configFile)) {
+            logger.testLog(REMOTE_CONFIG, LogDataType.XML, source);
+        }
+        return configFile;
     }
 }
