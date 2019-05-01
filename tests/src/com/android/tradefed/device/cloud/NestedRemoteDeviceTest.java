@@ -20,9 +20,11 @@ import static org.mockito.Mockito.doReturn;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceStateMonitor;
+import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -46,17 +48,25 @@ public class NestedRemoteDeviceTest {
     private ITestLogger mMockLogger;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         mMockIDevice = Mockito.mock(IDevice.class);
         mMockStateMonitor = Mockito.mock(IDeviceStateMonitor.class);
         mMockMonitor = Mockito.mock(IDeviceMonitor.class);
         mMockRunUtil = Mockito.mock(IRunUtil.class);
         mMockLogger = Mockito.mock(ITestLogger.class);
+        TestDeviceOptions options = new TestDeviceOptions();
+        OptionSetter setter = new OptionSetter(options);
+        setter.setOptionValue(TestDeviceOptions.INSTANCE_TYPE_OPTION, "CUTTLEFISH");
         mDevice =
                 new NestedRemoteDevice(mMockIDevice, mMockStateMonitor, mMockMonitor) {
                     @Override
                     protected IRunUtil getRunUtil() {
                         return mMockRunUtil;
+                    }
+
+                    @Override
+                    public TestDeviceOptions getOptions() {
+                        return options;
                     }
                 };
     }
