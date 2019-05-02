@@ -45,19 +45,22 @@ public class StreamProtoResultReporterTest {
 
     private StreamProtoResultReporter mReporter;
     private IInvocationContext mInvocationContext;
+    private IInvocationContext mMainInvocationContext;
     private ITestInvocationListener mMockListener;
 
     @Before
     public void setUp() {
         mReporter = new StreamProtoResultReporter();
         mInvocationContext = new InvocationContext();
+        mMainInvocationContext = new InvocationContext();
         mInvocationContext.setConfigurationDescriptor(new ConfigurationDescriptor());
         mMockListener = EasyMock.createStrictMock(ITestInvocationListener.class);
     }
 
     @Test
     public void testStream() throws Exception {
-        StreamProtoReceiver receiver = new StreamProtoReceiver(mMockListener, true);
+        StreamProtoReceiver receiver =
+                new StreamProtoReceiver(mMockListener, mMainInvocationContext, true);
         OptionSetter setter = new OptionSetter(mReporter);
         try {
             setter.setOptionValue(
@@ -70,7 +73,8 @@ public class StreamProtoResultReporterTest {
             mMockListener.invocationStarted(EasyMock.anyObject());
 
             mMockListener.testModuleStarted(EasyMock.anyObject());
-            mMockListener.testRunStarted("run1", 2);
+            mMockListener.testRunStarted(
+                    EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
             mMockListener.testStarted(test1, 5L);
             mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
 
@@ -123,6 +127,7 @@ public class StreamProtoResultReporterTest {
         StreamProtoReceiver receiver =
                 new StreamProtoReceiver(
                         mMockListener,
+                        mMainInvocationContext,
                         /** No invocation reporting */
                         false);
         OptionSetter setter = new OptionSetter(mReporter);
@@ -135,7 +140,8 @@ public class StreamProtoResultReporterTest {
             metrics.put("metric1", TfMetricProtoUtil.stringToMetric("value1"));
             // Verify mocks
             mMockListener.testModuleStarted(EasyMock.anyObject());
-            mMockListener.testRunStarted("run1", 2);
+            mMockListener.testRunStarted(
+                    EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
             mMockListener.testStarted(test1, 5L);
             mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
 

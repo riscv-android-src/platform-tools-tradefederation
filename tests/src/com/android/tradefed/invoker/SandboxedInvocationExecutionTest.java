@@ -43,6 +43,7 @@ import com.android.tradefed.result.LogFile;
 import com.android.tradefed.sandbox.ISandbox;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 
@@ -65,7 +66,7 @@ public class SandboxedInvocationExecutionTest {
     @Mock IRescheduler mMockRescheduler;
     @Mock ITestInvocationListener mMockListener;
     @Mock ILogSaver mMockLogSaver;
-    @Mock IBuildProvider mMockProvider;
+    @Mock TestBuildProviderInterface mMockProvider;
     @Mock ITargetPreparer mMockPreparer;
     @Mock ITargetCleaner mMockCleaner;
     @Mock ITestDevice mMockDevice;
@@ -74,6 +75,7 @@ public class SandboxedInvocationExecutionTest {
 
     private IConfiguration mConfig;
     private IInvocationContext mContext;
+    private InvocationExecution mSpyExec;
 
     @Before
     public void setUp() throws Exception {
@@ -102,6 +104,14 @@ public class SandboxedInvocationExecutionTest {
                         // Avoid re-entry in the current TF invocation scope for unit tests.
                         return new InvocationScope();
                     }
+
+                    @Override
+                    public IInvocationExecution createInvocationExec(RunMode mode) {
+                        mSpyExec =
+                                (InvocationExecution) Mockito.spy(super.createInvocationExec(mode));
+                        doReturn("version 123").when(mSpyExec).getAdbVersion();
+                        return mSpyExec;
+                    }
                 };
         mConfig = new Configuration("test", "test");
         mContext = new InvocationContext();
@@ -110,6 +120,10 @@ public class SandboxedInvocationExecutionTest {
 
         doReturn(new ByteArrayInputStreamSource("".getBytes())).when(mMockDevice).getLogcat();
     }
+
+    /** Interface to test the build provider receiving the context */
+    private interface TestBuildProviderInterface
+            extends IBuildProvider, IInvocationContextReceiver {}
 
     /** Basic test to go through the flow of a sandbox invocation. */
     @Test
@@ -130,6 +144,8 @@ public class SandboxedInvocationExecutionTest {
 
         // Ensure that in sandbox we don't download again.
         Mockito.verify(mMockProvider, times(0)).getBuild();
+        // Ensure that the context is still set.
+        Mockito.verify(mMockProvider, times(1)).setInvocationContext(mContext);
     }
 
     /**
@@ -167,6 +183,11 @@ public class SandboxedInvocationExecutionTest {
                                 // Ensure that sharding is not called against a sandbox
                                 // configuration run
                                 throw new RuntimeException("Should not be called.");
+                            }
+
+                            @Override
+                            protected String getAdbVersion() {
+                                return "version 123";
                             }
                         };
                     }
@@ -250,6 +271,14 @@ public class SandboxedInvocationExecutionTest {
                         // Avoid re-entry in the current TF invocation scope for unit tests.
                         return new InvocationScope();
                     }
+
+                    @Override
+                    public IInvocationExecution createInvocationExec(RunMode mode) {
+                        mSpyExec =
+                                (InvocationExecution) Mockito.spy(super.createInvocationExec(mode));
+                        doReturn("version 123").when(mSpyExec).getAdbVersion();
+                        return mSpyExec;
+                    }
                 };
 
         ConfigurationDescriptor descriptor = new ConfigurationDescriptor();
@@ -304,6 +333,14 @@ public class SandboxedInvocationExecutionTest {
                     InvocationScope getInvocationScope() {
                         // Avoid re-entry in the current TF invocation scope for unit tests.
                         return new InvocationScope();
+                    }
+
+                    @Override
+                    public IInvocationExecution createInvocationExec(RunMode mode) {
+                        mSpyExec =
+                                (InvocationExecution) Mockito.spy(super.createInvocationExec(mode));
+                        doReturn("version 123").when(mSpyExec).getAdbVersion();
+                        return mSpyExec;
                     }
                 };
 

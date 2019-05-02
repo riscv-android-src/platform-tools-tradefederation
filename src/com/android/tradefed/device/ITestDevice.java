@@ -381,6 +381,18 @@ public interface ITestDevice extends INativeDevice {
             throws DeviceNotAvailableException;
 
     /**
+     * Grabs a screenshot from the device given display id. Format is PNG.
+     *
+     * <p>TODO: extend the implementations above to support 'format' and 'rescale'
+     *
+     * @param displayId the display id of the screen to get screenshot from.
+     * @return a {@link InputStreamSource} of the screenshot in format, or <code>null</code> if the
+     *     screenshot was not successful.
+     * @throws DeviceNotAvailableException
+     */
+    public InputStreamSource getScreenshot(int displayId) throws DeviceNotAvailableException;
+
+    /**
      * Clears the last connected wifi network. This should be called when starting a new invocation
      * to avoid connecting to the wifi network used in the previous test after device reboots.
      */

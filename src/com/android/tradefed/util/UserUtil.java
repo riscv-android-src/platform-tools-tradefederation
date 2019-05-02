@@ -77,8 +77,9 @@ public class UserUtil {
             case SECONDARY:
                 switchToSecondaryUser(device);
                 return;
+            default:
+                throw new RuntimeException("userType case not covered: " + userType);
         }
-        throw new RuntimeException("userType case not covered: " + userType);
     }
 
     /**

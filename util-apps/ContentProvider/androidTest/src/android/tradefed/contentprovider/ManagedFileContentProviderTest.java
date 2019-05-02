@@ -46,30 +46,32 @@ import static org.junit.Assert.assertTrue;
 @RunWith(AndroidJUnit4.class)
 public class ManagedFileContentProviderTest {
 
-    public static final String CONTENT_PROVIDER =
-            String.format("%s://android.tradefed.contentprovider", ContentResolver.SCHEME_CONTENT);
+    public static final String CONTENT_PROVIDER_AUTHORITY = "android.tradefed.contentprovider";
     private static final String TEST_FILE = "ManagedFileContentProviderTest.txt";
+    private static final String TEST_DIRECTORY = "ManagedFileContentProviderTestDir";
+    private static final String TEST_SUBDIRECTORY = "ManagedFileContentProviderTestSubDir";
 
     private File mTestFile = null;
+    private File mTestDir = null;
+    private File mTestSubdir = null;
+
+    private Uri mTestFileUri;
+    private Uri mTestDirUri;
+    private Uri mTestSubdirUri;
+
     private Context mAppContext;
+    private ContentResolver mResolver;
     private List<Uri> mShouldBeCleaned = new ArrayList<>();
     private ContentValues mCv;
-    private Uri mTestUri;
 
     @Before
     public void setUp() throws Exception {
         mCv = new ContentValues();
-        mTestFile = new File(Environment.getExternalStorageDirectory(), TEST_FILE);
-        if (mTestFile.exists()) {
-            mTestFile.delete();
-        }
-        mTestFile.createNewFile();
+
         // Context of the app under test.
         mAppContext = InstrumentationRegistry.getTargetContext();
+        mResolver = mAppContext.getContentResolver();
         assertEquals("android.tradefed.contentprovider.test", mAppContext.getPackageName());
-
-        String fullUriPath = String.format("%s%s", CONTENT_PROVIDER, mTestFile.getAbsolutePath());
-        mTestUri = Uri.parse(fullUriPath);
     }
 
     @After
@@ -77,33 +79,54 @@ public class ManagedFileContentProviderTest {
         if (mTestFile != null) {
             mTestFile.delete();
         }
-        for (Uri uri : mShouldBeCleaned) {
-            mAppContext
-                    .getContentResolver()
-                    .delete(
-                            uri,
-                            /** selection * */
-                            null,
-                            /** selectionArgs * */
-                            null);
+        if (mTestDir != null) {
+            mTestDir.delete();
         }
+        if (mTestSubdir != null) {
+            mTestSubdir.delete();
+        }
+        for (Uri uri : mShouldBeCleaned) {
+            mResolver.delete(
+                    uri,
+                    /** selection * */
+                    null,
+                    /** selectionArgs * */
+                    null);
+        }
+    }
+
+    private void createTestDirectories() throws Exception {
+        mTestDir = new File(Environment.getExternalStorageDirectory(), TEST_DIRECTORY);
+        mTestDir.mkdir();
+        mTestSubdir = new File(mTestDir, TEST_SUBDIRECTORY);
+        mTestSubdir.mkdir();
+        createTestFile(mTestDir);
+    }
+
+    private void createTestFile(File parentDir) throws Exception {
+        mTestFile = new File(parentDir, TEST_FILE);
+        mTestFile.createNewFile();
+
+        mTestFileUri = createContentUri(mTestFile.getAbsolutePath());
     }
 
     /** Test that we can delete a file from the content provider. */
     @Test
     public void testDelete() throws Exception {
-        ContentResolver resolver = mAppContext.getContentResolver();
-        Uri uriResult = resolver.insert(mTestUri, mCv);
-        mShouldBeCleaned.add(mTestUri);
+        createTestFile(Environment.getExternalStorageDirectory());
+        Uri uriResult = mResolver.insert(mTestFileUri, mCv);
+        mShouldBeCleaned.add(mTestFileUri);
         // Insert is successful
-        assertEquals(mTestUri, uriResult);
+        assertEquals(mTestFileUri, uriResult);
+
         // Trying to insert again is inop
-        Uri reInsert = resolver.insert(mTestUri, mCv);
+        Uri reInsert = mResolver.insert(mTestFileUri, mCv);
         assertNull(reInsert);
+
         // Now delete
         int affected =
-                resolver.delete(
-                        mTestUri,
+                mResolver.delete(
+                        mTestFileUri,
                         /** selection * */
                         null,
                         /** selectionArgs * */
@@ -111,24 +134,20 @@ public class ManagedFileContentProviderTest {
         assertEquals(1, affected);
         // File should have been deleted.
         assertFalse(mTestFile.exists());
+
         // We can now insert again
         mTestFile.createNewFile();
-        uriResult = resolver.insert(mTestUri, mCv);
-        assertEquals(mTestUri, uriResult);
+        uriResult = mResolver.insert(mTestFileUri, mCv);
+        assertEquals(mTestFileUri, uriResult);
     }
 
-    /** Test that querying the content provider is working. */
+    /** Test that querying the content provider for a single File returns null. */
     @Test
-    public void testQuery() throws Exception {
-        ContentResolver resolver = mAppContext.getContentResolver();
-        Uri uriResult = resolver.insert(mTestUri, mCv);
-        mShouldBeCleaned.add(mTestUri);
-        // Insert is successful
-        assertEquals(mTestUri, uriResult);
-
+    public void testQueryForFile() throws Exception {
+        createTestFile(Environment.getExternalStorageDirectory());
         Cursor cursor =
-                resolver.query(
-                        mTestUri,
+                mResolver.query(
+                        mTestFileUri,
                         /** projection * */
                         null,
                         /** selection * */
@@ -142,35 +161,33 @@ public class ManagedFileContentProviderTest {
             String[] columns = cursor.getColumnNames();
             assertEquals(ManagedFileContentProvider.COLUMNS, columns);
             assertTrue(cursor.moveToNext());
+
+            // Test values in all columns and enforce column ordering.
+            // Name
+            assertEquals(TEST_FILE, cursor.getString(0));
             // Absolute path
             assertEquals(
                     Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + TEST_FILE,
-                    cursor.getString(0));
-            // Uri
-            assertEquals(mTestUri.toString(), cursor.getString(1));
+                    cursor.getString(1));
+            // Is directory
+            assertEquals("false", cursor.getString(2));
             // Type
-            assertEquals("text/plain", cursor.getString(2));
+            assertEquals("text/plain", cursor.getString(3));
             // Metadata
-            assertNull(cursor.getString(3));
+            assertNull(cursor.getString(4));
         } finally {
             cursor.close();
         }
     }
 
-    /** Test that querying the content provider is working when abstracting the sdcard */
+    /** Test that querying the content provider for a file is working when abstracting the sdcard */
     @Test
-    public void testQuery_sdcard() throws Exception {
-        ContentResolver resolver = mAppContext.getContentResolver();
-        Uri uriResult = resolver.insert(mTestUri, mCv);
-        mShouldBeCleaned.add(mTestUri);
-        // Insert is successful
-        assertEquals(mTestUri, uriResult);
-
-        String sdcardUriPath = String.format("%s/sdcard/%s", CONTENT_PROVIDER, mTestFile.getName());
-        Uri sdcardUri = Uri.parse(sdcardUriPath);
+    public void testQueryForFile_sdcard() throws Exception {
+        createTestFile(Environment.getExternalStorageDirectory());
+        Uri sdcardUri = createContentUri(String.format("sdcard/%s", mTestFile.getName()));
 
         Cursor cursor =
-                resolver.query(
+                mResolver.query(
                         sdcardUri,
                         /** projection * */
                         null,
@@ -185,18 +202,100 @@ public class ManagedFileContentProviderTest {
             String[] columns = cursor.getColumnNames();
             assertEquals(ManagedFileContentProvider.COLUMNS, columns);
             assertTrue(cursor.moveToNext());
+
+            // Test values in all columns and enforce column ordering.
+            // Name
+            assertEquals(TEST_FILE, cursor.getString(0));
             // Absolute path
             assertEquals(
                     Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + TEST_FILE,
-                    cursor.getString(0));
-            // Uri
-            assertEquals(sdcardUri.toString(), cursor.getString(1));
+                    cursor.getString(1));
+            // Is directory
+            assertEquals("false", cursor.getString(2));
             // Type
-            assertEquals("text/plain", cursor.getString(2));
+            assertEquals("text/plain", cursor.getString(3));
             // Metadata
-            assertNull(cursor.getString(3));
+            assertNull(cursor.getString(4));
         } finally {
             cursor.close();
         }
+    }
+
+    /**
+     * Test that querying the content provider for a directory returns content of the directory -
+     * one row per each subdirectory/file.
+     */
+    @Test
+    public void testQueryForDirectoryContent() throws Exception {
+        createTestDirectories();
+
+        mTestDirUri = createContentUri(mTestDir.getAbsolutePath());
+        Cursor cursor =
+                mResolver.query(
+                        mTestDirUri,
+                        /** projection * */
+                        null,
+                        /** selection * */
+                        null,
+                        /** selectionArgs* */
+                        null,
+                        /** sortOrder * */
+                        null);
+        try {
+            // One row for subdir, one row for a file.
+            assertEquals(2, cursor.getCount());
+            String[] columns = cursor.getColumnNames();
+            assertEquals(ManagedFileContentProvider.COLUMNS, columns);
+
+            // Test the file.
+            assertTrue(cursor.moveToNext());
+            // Test values in all columns and enforce column ordering.
+            // Name
+            assertEquals(TEST_FILE, cursor.getString(0));
+            // Absolute path
+            assertEquals(
+                    Environment.getExternalStorageDirectory().getAbsolutePath()
+                            + "/"
+                            + TEST_DIRECTORY
+                            + "/"
+                            + TEST_FILE,
+                    cursor.getString(1));
+            // Is directory
+            assertEquals("false", cursor.getString(2));
+            // Type
+            assertEquals("text/plain", cursor.getString(3));
+            // Metadata
+            assertNull(cursor.getString(4));
+
+            // Test the subdirectory.
+            assertTrue(cursor.moveToNext());
+            // Test values in all columns and enforce column ordering.
+            // Name
+            assertEquals(TEST_SUBDIRECTORY, cursor.getString(0));
+            // Absolute path
+            assertEquals(
+                    Environment.getExternalStorageDirectory().getAbsolutePath()
+                            + "/"
+                            + TEST_DIRECTORY
+                            + "/"
+                            + TEST_SUBDIRECTORY,
+                    cursor.getString(1));
+            // Is directory
+            assertEquals("true", cursor.getString(2));
+            // Type
+            assertNull(cursor.getString(3));
+            // Metadata
+            assertNull(cursor.getString(4));
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private Uri createContentUri(String path) {
+        Uri.Builder builder = new Uri.Builder();
+        return builder.scheme(ContentResolver.SCHEME_CONTENT)
+                .authority(CONTENT_PROVIDER_AUTHORITY)
+                .appendPath(path)
+                .build();
     }
 }

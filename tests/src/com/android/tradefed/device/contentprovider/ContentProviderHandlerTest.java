@@ -39,6 +39,7 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.OutputStream;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -112,9 +113,8 @@ public class ContentProviderHandlerTest {
                 .executeShellV2Command(
                         eq(
                                 "content delete --user 99 --uri "
-                                        + ContentProviderHandler.CONTENT_PROVIDER_URI
-                                        + "/"
-                                        + devicePath));
+                                        + ContentProviderHandler.createEscapedContentUri(
+                                                devicePath)));
         assertTrue(mProvider.deleteFile(devicePath));
     }
 
@@ -123,6 +123,7 @@ public class ContentProviderHandlerTest {
     public void testDeleteFile_fail() throws Exception {
         String devicePath = "path/somewhere/file.txt";
         CommandResult result = new CommandResult(CommandStatus.FAILED);
+        result.setStdout("");
         result.setStderr("couldn't find the file");
         doReturn(99).when(mMockDevice).getCurrentUser();
         doReturn(result)
@@ -130,9 +131,25 @@ public class ContentProviderHandlerTest {
                 .executeShellV2Command(
                         eq(
                                 "content delete --user 99 --uri "
-                                        + ContentProviderHandler.CONTENT_PROVIDER_URI
-                                        + "/"
-                                        + devicePath));
+                                        + ContentProviderHandler.createEscapedContentUri(
+                                                devicePath)));
+        assertFalse(mProvider.deleteFile(devicePath));
+    }
+
+    /** Test {@link ContentProviderHandler#deleteFile(String)}. */
+    @Test
+    public void testError() throws Exception {
+        String devicePath = "path/somewhere/file.txt";
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStdout("[ERROR] Unsupported operation: delete");
+        doReturn(99).when(mMockDevice).getCurrentUser();
+        doReturn(result)
+                .when(mMockDevice)
+                .executeShellV2Command(
+                        eq(
+                                "content delete --user 99 --uri "
+                                        + ContentProviderHandler.createEscapedContentUri(
+                                                devicePath)));
         assertFalse(mProvider.deleteFile(devicePath));
     }
 
@@ -148,9 +165,8 @@ public class ContentProviderHandlerTest {
                     .executeShellV2Command(
                             eq(
                                     "content write --user 99 --uri "
-                                            + ContentProviderHandler.CONTENT_PROVIDER_URI
-                                            + "/"
-                                            + devicePath),
+                                            + ContentProviderHandler.createEscapedContentUri(
+                                                    devicePath)),
                             eq(toPush));
             assertTrue(mProvider.pushFile(toPush, devicePath));
         } finally {
@@ -178,9 +194,7 @@ public class ContentProviderHandlerTest {
             assertEquals(
                     shellCommandCaptor.getValue(),
                     "content read --user 99 --uri "
-                            + ContentProviderHandler.CONTENT_PROVIDER_URI
-                            + "/"
-                            + devicePath);
+                            + ContentProviderHandler.createEscapedContentUri(devicePath));
         } finally {
             FileUtil.deleteFile(pullTo);
         }
@@ -216,9 +230,132 @@ public class ContentProviderHandlerTest {
         }
     }
 
+    /** Test {@link ContentProviderHandler#pullDir(String, File)}. */
+    @Test
+    public void testPullDir_EmptyDirectory() throws Exception {
+        File pullTo = FileUtil.createTempDir("content-provider-test");
+
+        doReturn("No result found.").when(mMockDevice).executeShellCommand(anyString());
+
+        try {
+            assertTrue(mProvider.pullDir("path/somewhere", pullTo));
+        } finally {
+            FileUtil.recursiveDelete(pullTo);
+        }
+    }
+
+    /**
+     * Test {@link ContentProviderHandler#pullDir(String, File)} to pull a directory that contains
+     * one text file.
+     */
+    @Test
+    public void testPullDir_OneFile() throws Exception {
+        File pullTo = FileUtil.createTempDir("content-provider-test");
+
+        String devicePath = "path/somewhere";
+        String fileName = "content-provider-file.txt";
+
+        doReturn(createMockFileRow(fileName, devicePath + "/" + fileName, "text/plain"))
+                .when(mMockDevice)
+                .executeShellCommand(anyString());
+        mockPullFileSuccess();
+
+        try {
+            // Assert that local directory is empty.
+            assertEquals(pullTo.listFiles().length, 0);
+            mProvider.pullDir(devicePath, pullTo);
+
+            // Assert that a file has been pulled inside the directory.
+            assertEquals(pullTo.listFiles().length, 1);
+            assertEquals(pullTo.listFiles()[0].getName(), fileName);
+        } finally {
+            FileUtil.recursiveDelete(pullTo);
+        }
+    }
+
+    /**
+     * Test {@link ContentProviderHandler#pullDir(String, File)} to pull a directory that contains
+     * another directory.
+     */
+    @Test
+    public void testPullDir_RecursiveSubDir() throws Exception {
+        File pullTo = FileUtil.createTempDir("content-provider-test");
+
+        String devicePath = "path/somewhere";
+        String subDirName = "test-subdir";
+        String subDirPath = devicePath + "/" + subDirName;
+        String fileName = "test-file.txt";
+
+        doReturn(99).when(mMockDevice).getCurrentUser();
+        // Mock the result for the directory.
+        doReturn(createMockDirRow(subDirName, subDirPath))
+                .when(mMockDevice)
+                .executeShellCommand(
+                        "content query --user 99 --uri "
+                                + ContentProviderHandler.createEscapedContentUri(devicePath));
+
+        // Mock the result for the subdir.
+        doReturn(createMockFileRow(fileName, subDirPath + "/" + fileName, "text/plain"))
+                .when(mMockDevice)
+                .executeShellCommand(
+                        "content query --user 99 --uri "
+                                + ContentProviderHandler.createEscapedContentUri(
+                                devicePath + "/" + subDirName));
+
+        mockPullFileSuccess();
+
+        try {
+            // Assert that local directory is empty.
+            assertEquals(pullTo.listFiles().length, 0);
+            mProvider.pullDir(devicePath, pullTo);
+
+            // Assert that a subdirectory has been created.
+            assertEquals(pullTo.listFiles().length, 1);
+            assertEquals(pullTo.listFiles()[0].getName(), subDirName);
+            assertTrue(pullTo.listFiles()[0].isDirectory());
+
+            // Assert that a file has been pulled inside the subdirectory.
+            assertEquals(pullTo.listFiles()[0].listFiles().length, 1);
+            assertEquals(pullTo.listFiles()[0].listFiles()[0].getName(), fileName);
+        } finally {
+            FileUtil.recursiveDelete(pullTo);
+        }
+    }
+
+    @Test
+    public void testCreateUri() {
+        String espacedUrl =
+                ContentProviderHandler.createEscapedContentUri("filepath/file name spaced (data)");
+        // We expect the full url to be quoted to avoid space issues and the URL to be encoded.
+        assertEquals(
+                "\"content://android.tradefed.contentprovider/filepath%252Ffile%2520name"
+                        + "%2520spaced%2520%28data%29\"",
+                espacedUrl);
+    }
+
+    @Test
+    public void testParseQueryResultRow() {
+        String row =
+                "Row: 1 name=name spaced with , ,comma, "
+                        + "absolute_path=/storage/emulated/0/Alarms/name spaced with , ,comma, "
+                        + "is_directory=true, mime_type=NULL, metadata=NULL";
+
+        HashMap<String, String> columnValues = mProvider.parseQueryResultRow(row);
+
+        assertEquals(
+                columnValues.get(ContentProviderHandler.COLUMN_NAME), "name spaced with , ,comma");
+        assertEquals(
+                columnValues.get(ContentProviderHandler.COLUMN_ABSOLUTE_PATH),
+                "/storage/emulated/0/Alarms/name spaced with , ,comma");
+        assertEquals(columnValues.get(ContentProviderHandler.COLUMN_DIRECTORY), "true");
+        assertEquals(columnValues.get(ContentProviderHandler.COLUMN_MIME_TYPE), "NULL");
+        assertEquals(columnValues.get(ContentProviderHandler.COLUMN_METADATA), "NULL");
+    }
+
     private CommandResult mockSuccess() {
         CommandResult result = new CommandResult(CommandStatus.SUCCESS);
         result.setStderr("");
+        result.setStdout("");
         return result;
     }
 
@@ -226,5 +363,17 @@ public class ContentProviderHandlerTest {
         doReturn(mockSuccess())
                 .when(mMockDevice)
                 .executeShellV2Command(anyString(), any(OutputStream.class));
+    }
+
+    private String createMockDirRow(String name, String path) {
+        return String.format(
+                "Row: 1 name=%s, absolute_path=%s, is_directory=%b, mime_type=NULL, metadata=NULL",
+                name, path, true);
+    }
+
+    private String createMockFileRow(String name, String path, String mimeType) {
+        return String.format(
+                "Row: 1 name=%s, absolute_path=%s, is_directory=%b, mime_type=%s, metadata=NULL",
+                name, path, false, mimeType);
     }
 }

@@ -60,6 +60,7 @@ import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.StringEscapeUtils;
 import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.ZipUtil2;
 
@@ -124,8 +125,8 @@ public class NativeDevice implements IManagedTestDevice {
     /** the default number of command retry attempts to perform */
     protected static final int MAX_RETRY_ATTEMPTS = 2;
 
-    /** Value returned for any invalid/not found user id: UserHandle defined the -10000 value **/
-    protected static final int INVALID_USER_ID = -10000;
+    /** Value returned for any invalid/not found user id: UserHandle defined the -10000 value */
+    public static final int INVALID_USER_ID = -10000;
 
     /** regex to match input dispatch readiness line **/
     static final Pattern INPUT_DISPATCH_STATE_REGEX =
@@ -763,7 +764,9 @@ public class NativeDevice implements IManagedTestDevice {
                 cmd, null, null, maxTimeoutForCommand, timeUnit, retryAttempts);
     }
 
-    private CommandResult executeShellV2Command(
+    /** {@inheritDoc} */
+    @Override
+    public CommandResult executeShellV2Command(
             String cmd,
             File pipeAsInput,
             OutputStream pipeToOutput,
@@ -1173,7 +1176,10 @@ public class NativeDevice implements IManagedTestDevice {
             }
         }
         // Fallback to the direct command if content provider is unsuccessful
-        executeShellCommand(String.format("rm -rf \"%s\"", deviceFilePath));
+        String path = StringEscapeUtils.escapeShell(deviceFilePath);
+        // Escape spaces to handle filename with spaces
+        path = path.replaceAll(" ", "\\ ");
+        executeShellCommand(String.format("rm -rf %s", StringEscapeUtils.escapeShell(path)));
     }
 
     /**
@@ -1494,6 +1500,13 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean pullDir(String deviceFilePath, File localDir)
             throws DeviceNotAvailableException {
+        if (deviceFilePath.startsWith(SD_CARD)) {
+            ContentProviderHandler handler = getContentProvider();
+            if (handler != null) {
+                return handler.pullDir(deviceFilePath, localDir);
+            }
+        }
+
         if (!localDir.isDirectory()) {
             CLog.e("Local path %s is not a directory", localDir.getAbsolutePath());
             return false;
@@ -2025,8 +2038,14 @@ public class NativeDevice implements IManagedTestDevice {
         } catch (DeviceUnresponsiveException due) {
             RecoveryMode previousRecoveryMode = mRecoveryMode;
             mRecoveryMode = RecoveryMode.NONE;
-            boolean enabled = enableAdbRoot();
-            CLog.d("Device Unresponsive during recovery, is root still enabled: %s", enabled);
+            try {
+                boolean enabled = enableAdbRoot();
+                CLog.d("Device Unresponsive during recovery, is root still enabled: %s", enabled);
+            } catch (DeviceUnresponsiveException e) {
+                // Ignore exception thrown here to rethrow original exception.
+                CLog.e("Exception occurred during recovery adb root:");
+                CLog.e(e);
+            }
             mRecoveryMode = previousRecoveryMode;
             throw due;
         }
@@ -2457,6 +2476,12 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public InputStreamSource getScreenshot(String format, boolean rescale)
             throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Screenshot");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public InputStreamSource getScreenshot(int displayId) throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("No support for Screenshot");
     }
 
@@ -3598,6 +3623,18 @@ public class NativeDevice implements IManagedTestDevice {
         return apiLevel;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public boolean checkApiLevelAgainstNextRelease(int strictMinLevel)
+            throws DeviceNotAvailableException {
+        String codeName = getProperty(BUILD_CODENAME_PROP).trim();
+        int apiLevel = getApiLevel() + ("REL".equals(codeName) ? 0 : 1);
+        if (strictMinLevel > apiLevel) {
+            return false;
+        }
+        return true;
+    }
+
     private int getApiLevelSafe() {
         try {
             return getApiLevel();
@@ -4027,7 +4064,9 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public void preInvocationSetup(IBuildInfo info)
             throws TargetSetupError, DeviceNotAvailableException {
-        // Default implementation empty on purpose
+        // Default implementation
+        mContentProvider = null;
+        mShouldSkipContentProviderSetup = false;
     }
 
     /**
@@ -4046,9 +4085,8 @@ public class NativeDevice implements IManagedTestDevice {
             if (mContentProvider == null) {
                 return;
             }
-            ContentProviderHandler handler = getContentProvider();
-            if (handler != null) {
-                handler.tearDown();
+            if (TestDeviceState.ONLINE.equals(getDeviceState())) {
+                mContentProvider.tearDown();
             }
         } catch (DeviceNotAvailableException e) {
             CLog.e(e);
@@ -4340,8 +4378,9 @@ public class NativeDevice implements IManagedTestDevice {
         if (!getOptions().shouldUseContentProvider()) {
             return null;
         }
-        // Prevent usage of content provider before API 25 as it would not work well.
-        if (getApiLevel() < 25) {
+        // Prevent usage of content provider before API 28 as it would not work well since content
+        // tool is not working before P.
+        if (getApiLevel() < 28) {
             return null;
         }
         if (mContentProvider == null) {
