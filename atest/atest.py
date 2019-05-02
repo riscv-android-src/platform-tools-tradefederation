@@ -44,6 +44,7 @@ import result_reporter
 import test_runner_handler
 
 from metrics import metrics
+from metrics import metrics_base
 from metrics import metrics_utils
 from test_runners import regression_test_runner
 
@@ -598,6 +599,7 @@ if __name__ == '__main__':
     RESULTS_DIR = make_test_run_dir()
     with atest_execution_info.AtestExecutionInfo(sys.argv[1:],
                                                  RESULTS_DIR) as result_file:
+        metrics_base.MetricsBase.tool_name = constants.TOOL_NAME
         EXIT_CODE = main(sys.argv[1:], RESULTS_DIR)
         metrics_utils.send_exit_event(EXIT_CODE)
         if result_file:
