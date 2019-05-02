@@ -136,6 +136,11 @@ class TestFinderUtilsUnittests(unittest.TestCase):
         mock_input.return_value = '0'
         unittest_utils.assert_strict_equal(
             self, test_finder_utils.extract_test_path(FIND_TWO), path)
+        # Test inputing out-of-range integer or a string
+        mock_input.return_value = '100'
+        self.assertEquals(test_finder_utils.extract_test_from_tests(uc.CLASS_NAME), None)
+        mock_input.return_value = 'lOO'
+        self.assertEquals(test_finder_utils.extract_test_from_tests(uc.CLASS_NAME), None)
 
     @mock.patch('os.path.isdir')
     def test_is_equal_or_sub_dir(self, mock_isdir):
@@ -452,6 +457,14 @@ class TestFinderUtilsUnittests(unittest.TestCase):
         xml_path = os.path.join(uc.TEST_DATA_DIR, VTS_PLAN_DIR, 'NotExist.xml')
         self.assertRaises(atest_error.XmlNotExistError,
                           test_finder_utils.get_plans_from_vts_xml, xml_path)
+
+    def test_get_levenshtein_distance(self):
+        """Test get_levenshetine distance module correctly returns distance."""
+        self.assertEqual(test_finder_utils.get_levenshtein_distance(uc.MOD1, uc.FUZZY_MOD1), 1)
+        self.assertEqual(test_finder_utils.get_levenshtein_distance(uc.MOD2, uc.FUZZY_MOD2,
+                                                                    dir_costs=(1, 2, 3)), 3)
+        self.assertEqual(test_finder_utils.get_levenshtein_distance(uc.MOD3, uc.FUZZY_MOD3,
+                                                                    dir_costs=(1, 2, 1)), 8)
 
 
 if __name__ == '__main__':

@@ -99,6 +99,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
             mGceHandler =
                     new GceManager(
                             getDeviceDescriptor(), getOptions(), info, testResourceBuildInfos);
+            getGceHandler().logStableHostImageInfos(info);
             mInitialSerial = getSerialNumber();
             setFastbootEnabled(false);
 
@@ -192,29 +193,9 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                 // Log the serial output of the instance.
                 getGceHandler().logSerialOutput(mGceAvd, mTestLogger);
 
-                // Capture extra cuttlefish specific logs
-                if (InstanceType.CUTTLEFISH.equals(getOptions().getInstanceType())
-                        || InstanceType.REMOTE_NESTED_AVD.equals(getOptions().getInstanceType())) {
-                    LogRemoteFile(NESTED_REMOTE_LOG_DIR + "kernel.log", LogDataType.TEXT, null);
-                    LogRemoteFile(
-                            NESTED_REMOTE_LOG_DIR + "logcat",
-                            LogDataType.LOGCAT,
-                            "full_gce_logcat");
-                    LogRemoteFile(
-                            NESTED_REMOTE_LOG_DIR + "cuttlefish_config.json",
-                            LogDataType.TEXT,
-                            null);
-                }
-                // Capture extra emulator specific logs
-                if (InstanceType.EMULATOR.equals(getOptions().getInstanceType())) {
-                    LogRemoteFile(
-                            EMULATOR_REMOTE_LOG_DIR + "logcat.log",
-                            LogDataType.LOGCAT,
-                            "full_gce_emulator_logcat");
-                    LogRemoteFile(EMULATOR_REMOTE_LOG_DIR + "adb.log", LogDataType.TEXT, null);
-                    LogRemoteFile(EMULATOR_REMOTE_LOG_DIR + "kernel.log", LogDataType.TEXT, null);
-                    LogRemoteFile("/var/log/daemon.log", LogDataType.TEXT, null);
-                }
+                // Fetch remote files
+                CommonLogRemoteFileUtil.fetchCommonFiles(
+                        mTestLogger, mGceAvd, getOptions(), getRunUtil());
 
                 // Cleanup GCE first to make sure ssh tunnel has nowhere to go.
                 if (!getOptions().shouldSkipTearDown()) {
@@ -236,25 +217,6 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
             // Ensure parent postInvocationTearDown is always called.
             super.postInvocationTearDown();
         }
-    }
-
-    /**
-     * Captures a log from the remote destination.
-     *
-     * @param fileToRetrieve The remote path to the file to pull.
-     * @param logType The expected type of the pulled log.
-     * @param baseName The base name that will be used to log the file, if null the actually file
-     *     name will be used.
-     */
-    private void LogRemoteFile(String fileToRetrieve, LogDataType logType, String baseName) {
-        GceManager.logNestedRemoteFile(
-                mTestLogger,
-                mGceAvd,
-                getOptions(),
-                getRunUtil(),
-                fileToRetrieve,
-                logType,
-                baseName);
     }
 
     /** Capture a remote bugreport by ssh-ing into the device directly. */

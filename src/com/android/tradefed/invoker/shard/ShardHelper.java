@@ -17,6 +17,7 @@ package com.android.tradefed.invoker.shard;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
@@ -64,6 +65,8 @@ public class ShardHelper implements IShardHelper {
         CONFIG_OBJ_TO_CLONE.add(Configuration.MULTI_PREPARER_TYPE_NAME);
         CONFIG_OBJ_TO_CLONE.add(Configuration.CMD_OPTIONS_TYPE_NAME);
         CONFIG_OBJ_TO_CLONE.add(Configuration.LOGGER_TYPE_NAME);
+        // Deep clone of log_saver to ensure each shard manages its own logs
+        CONFIG_OBJ_TO_CLONE.add(Configuration.LOG_SAVER_TYPE_NAME);
     }
 
     /**
@@ -222,6 +225,9 @@ public class ShardHelper implements IShardHelper {
             }
             // Sharding was done, no need for children to look into it.
             clonedConfig.getCommandOptions().setShardCount(null);
+            clonedConfig
+                    .getConfigurationDescription()
+                    .addMetadata(ConfigurationDescriptor.LOCAL_SHARDED_KEY, "true");
             // Validate and download the dynamic options
             validateOptions(clonedConfig);
         } catch (ConfigurationException e) {

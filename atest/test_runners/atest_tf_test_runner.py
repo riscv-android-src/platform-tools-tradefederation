@@ -423,10 +423,11 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             test_runner = None
             build_targets = set()
             data = {}
+            module_args = []
             for test_info_i in group:
-                # We can overwrite existing data since it'll mostly just
-                # comprise of filters and relative configs.
                 data.update(test_info_i.data)
+                # Extend data with constants.TI_MODULE_ARG instead of overwriting.
+                module_args.extend(test_info_i.data.get(constants.TI_MODULE_ARG, []))
                 test_runner = test_info_i.test_runner
                 build_targets |= test_info_i.build_targets
                 test_filters = test_info_i.data.get(constants.TI_FILTER)
@@ -436,6 +437,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                     filters = set()
                     continue
                 filters |= test_filters
+            if module_args:
+                data[constants.TI_MODULE_ARG] = module_args
             data[constants.TI_FILTER] = self._flatten_test_filters(filters)
             results.add(
                 test_info.TestInfo(test_name=module,

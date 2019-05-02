@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.result.proto;
 
-import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -55,22 +54,29 @@ public class ProtoResultParser {
      * invocation scope we should not report it again.
      */
     private boolean mReportInvocation = false;
-    /** The invocation context */
-    private IInvocationContext mContext;
     /** Prefix that will be added to the files logged through the parser. */
     private String mFilePrefix;
+    /** The context from the invocation in progress, not the proto one. */
+    private IInvocationContext mMainContext;
 
     private boolean mQuietParsing = true;
 
     /** Ctor. */
-    public ProtoResultParser(ITestInvocationListener listener, boolean reportInvocation) {
-        this(listener, reportInvocation, "subprocess-");
+    public ProtoResultParser(
+            ITestInvocationListener listener,
+            IInvocationContext context,
+            boolean reportInvocation) {
+        this(listener, context, reportInvocation, "subprocess-");
     }
 
     /** Ctor. */
     public ProtoResultParser(
-            ITestInvocationListener listener, boolean reportInvocation, String prefixForFile) {
+            ITestInvocationListener listener,
+            IInvocationContext context,
+            boolean reportInvocation,
+            String prefixForFile) {
         mListener = listener;
+        mMainContext = context;
         mReportInvocation = reportInvocation;
         mFilePrefix = prefixForFile;
     }
@@ -133,11 +139,6 @@ public class ProtoResultParser {
         }
     }
 
-    @VisibleForTesting
-    IInvocationContext getInvocationContext() {
-        return mContext;
-    }
-
     private void evalProto(List<ChildReference> children, boolean isInRun) {
         for (ChildReference child : children) {
             TestRecord childProto = child.getInlineTestRecord();
@@ -184,8 +185,9 @@ public class ProtoResultParser {
         if (!anyDescription.is(Context.class)) {
             throw new RuntimeException("Expected Any description of type Context");
         }
+        IInvocationContext receivedProto;
         try {
-            mContext = InvocationContext.fromProto(anyDescription.unpack(Context.class));
+            receivedProto = InvocationContext.fromProto(anyDescription.unpack(Context.class));
         } catch (InvalidProtocolBufferException e) {
             throw new RuntimeException(e);
         }
@@ -196,7 +198,7 @@ public class ProtoResultParser {
             return;
         }
         // Only report invocation start if enabled
-        mListener.invocationStarted(mContext);
+        mListener.invocationStarted(receivedProto);
     }
 
     private void handleInvocationEnded(TestRecord endInvocationProto) {
@@ -211,7 +213,7 @@ public class ProtoResultParser {
         try {
             IInvocationContext context =
                     InvocationContext.fromProto(anyDescription.unpack(Context.class));
-            mergeInvocationContext(context);
+            mergeInvocationContext(mMainContext, context);
         } catch (InvalidProtocolBufferException e) {
             throw new RuntimeException(e);
         }
@@ -280,12 +282,15 @@ public class ProtoResultParser {
     private void handleTestRunStart(TestRecord runProto) {
         String id = runProto.getTestRecordId();
         log("Test run started proto: %s", id);
-        if (runProto.getAttemptId() != 0) {
-            mListener.testRunStarted(
-                    id, (int) runProto.getNumExpectedChildren(), (int) runProto.getAttemptId());
-        } else {
-            mListener.testRunStarted(id, (int) runProto.getNumExpectedChildren());
-        }
+        //if (runProto.getAttemptId() != 0) {
+        mListener.testRunStarted(
+                id,
+                (int) runProto.getNumExpectedChildren(),
+                (int) runProto.getAttemptId(),
+                timeStampToMillis(runProto.getStartTime()));
+        /*} else {
+            mListener.testRunStarted(id, (int) runProto.getNumExpectedChildren(), 0, timeStampToMillis(runProto.getStartTime()));
+        }*/
     }
 
     private void handleTestRunEnd(TestRecord runProto) {
@@ -391,15 +396,24 @@ public class ProtoResultParser {
         }
     }
 
-    private void mergeInvocationContext(IInvocationContext endInvocationContext) {
-        if (mContext == null) {
+    /**
+     * Copy the build info and invocation attributes from the proto context to the current
+     * invocation context
+     *
+     * @param receiverContext The context receiving the attributes
+     * @param endInvocationContext The context providing the attributes
+     */
+    private void mergeInvocationContext(
+            IInvocationContext receiverContext, IInvocationContext endInvocationContext) {
+        if (receiverContext == null) {
             return;
         }
         // Gather attributes of build infos
-        for (IBuildInfo info : mContext.getBuildInfos()) {
-            String name = mContext.getBuildInfoName(info);
+        for (IBuildInfo info : receiverContext.getBuildInfos()) {
+            String name = receiverContext.getBuildInfoName(info);
             IBuildInfo endInvocationInfo = endInvocationContext.getBuildInfo(name);
             if (endInvocationInfo == null) {
+                CLog.e("No build info named: %s", name);
                 continue;
             }
             info.addBuildAttributes(endInvocationInfo.getBuildAttributes());
@@ -408,7 +422,7 @@ public class ProtoResultParser {
         try {
             Method unlock = InvocationContext.class.getDeclaredMethod("unlock");
             unlock.setAccessible(true);
-            unlock.invoke(mContext);
+            unlock.invoke(receiverContext);
             unlock.setAccessible(false);
         } catch (NoSuchMethodException
                 | SecurityException
@@ -419,7 +433,7 @@ public class ProtoResultParser {
             return;
         }
         // Copy invocation attributes
-        mContext.addInvocationAttributes(endInvocationContext.getAttributes());
+        receiverContext.addInvocationAttributes(endInvocationContext.getAttributes());
     }
 
     private void log(String format, Object... obj) {

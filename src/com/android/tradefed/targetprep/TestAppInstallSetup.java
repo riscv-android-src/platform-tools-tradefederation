@@ -370,6 +370,9 @@ public class TestAppInstallSetup extends BaseTargetPreparer
                     device.getDeviceDescriptor());
         }
         if (mCleanup) {
+            if (mPackagesInstalled == null) {
+                mPackagesInstalled = new ArrayList<>();
+            }
             mPackagesInstalled.addAll(packageNames);
         }
     }
