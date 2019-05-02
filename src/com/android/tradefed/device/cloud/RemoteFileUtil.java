@@ -140,7 +140,7 @@ public class RemoteFileUtil {
                         options.getSshPrivateKeyPath(),
                         scpArgs,
                         options.getInstanceUser(),
-                        remoteInstance.hostAndPort().getHost(),
+                        remoteInstance.hostAndPort().getHostText(),
                         remoteFilePath,
                         localFile.getAbsolutePath(),
                         mode);

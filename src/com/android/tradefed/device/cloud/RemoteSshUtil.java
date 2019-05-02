@@ -51,7 +51,7 @@ public class RemoteSshUtil {
                         options.getSshPrivateKeyPath(),
                         null,
                         options.getInstanceUser(),
-                        remoteInstance.hostAndPort().getHost(),
+                        remoteInstance.hostAndPort().getHostText(),
                         command);
         return runUtil.runTimedCmd(timeoutMs, stdout, stderr, sshCmd.toArray(new String[0]));
     }
