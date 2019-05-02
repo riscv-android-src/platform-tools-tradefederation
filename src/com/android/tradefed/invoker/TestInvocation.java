@@ -803,4 +803,16 @@ public class TestInvocation implements ITestInvocation {
                 return new InvocationExecution();
         }
     }
+
+    /** Prints a delimiter for a given Stage of the invocation. */
+    public static void printStageDelimiter(Stage phase, boolean end) {
+        String startEnd = end ? "ENDING" : "STARTING";
+        String message = String.format("===== %s PHASE %s =====", phase, startEnd);
+        String limit = "";
+        for (int i = 0; i < message.length(); i++) {
+            limit += "=";
+        }
+        String finalFormat = String.format("\n%s\n%s\n%s", limit, message, limit);
+        CLog.d(finalFormat);
+    }
 }
