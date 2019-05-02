@@ -74,4 +74,5 @@ def send_exit_event(exit_code, stacktrace='', logs=''):
         stacktrace=stacktrace,
         logs=logs)
     # pylint: disable=no-member
-    clearcut.flush_events()
+    if clearcut:
+        clearcut.flush_events()
