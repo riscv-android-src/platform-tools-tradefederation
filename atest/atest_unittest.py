@@ -23,6 +23,8 @@ import mock
 import atest
 import constants
 import module_info
+
+from metrics import metrics_utils
 from test_finders import test_info
 
 if sys.version_info[0] == 2:
@@ -213,7 +215,8 @@ class AtestUnittests(unittest.TestCase):
                           '\x1b[1;37m\x1b[0m\n')
         self.assertEqual(capture_output.getvalue(), correct_output)
 
-    def test_validate_exec_mode(self):
+    @mock.patch.object(metrics_utils, 'send_exit_event')
+    def test_validate_exec_mode(self, _send_exit):
         """Test _validate_exec_mode."""
         args = []
         parsed_args = atest._parse_args(args)
