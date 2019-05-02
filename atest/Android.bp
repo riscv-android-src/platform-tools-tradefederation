@@ -148,3 +148,29 @@ python_library_host {
         canonical_path_from_root: false,
     },
 }
+
+python_library_host {
+    name: "asuite_proto",
+    defaults: ["asuite_default"],
+    srcs: [
+        "proto/*.proto",
+    ],
+    proto: {
+        canonical_path_from_root: false,
+    },
+}
+
+python_library_host {
+    name: "asuite_cc_client",
+    defaults: ["asuite_default"],
+    srcs: [
+        "atest_utils.py",
+        "constants.py",
+        "constants_default.py",
+        "metrics/*.py",
+    ],
+    libs: [
+        "asuite_proto",
+        "asuite_metrics",
+    ],
+}

@@ -22,12 +22,13 @@ import uuid
 
 import atest_utils
 import asuite_metrics
-import clearcut_client
 import constants
 
 from proto import clientanalytics_pb2
 from proto import external_user_log_pb2
 from proto import internal_user_log_pb2
+
+from . import clearcut_client
 
 INTERNAL_USER = 0
 EXTERNAL_USER = 1
@@ -74,7 +75,7 @@ class MetricsBase(object):
             return None
         allowed = ({constants.EXTERNAL} if cls._user_type == EXTERNAL_USER
                    else {constants.EXTERNAL, constants.INTERNAL})
-        fields = [k for k, v in vars(cls).iteritems()
+        fields = [k for k, v in vars(cls).items()
                   if not k.startswith('_') and v in allowed]
         fields_and_values = {}
         for field in fields:
@@ -101,6 +102,6 @@ class MetricsBase(object):
             A clientanalytics_pb2.LogEvent instance.
         """
         log_event = clientanalytics_pb2.LogEvent()
-        log_event.event_time_ms = long((time.time() - random.randint(1, 600)) * 1000)
+        log_event.event_time_ms = int((time.time() - random.randint(1, 600)) * 1000)
         log_event.source_extension = atest_event.SerializeToString()
         return log_event
