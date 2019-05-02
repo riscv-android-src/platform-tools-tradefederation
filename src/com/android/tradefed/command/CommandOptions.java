@@ -170,6 +170,13 @@ public class CommandOptions implements ICommandOptions {
     private boolean mUseRemoteSandbox = false;
 
     @Option(
+        name = "parallel-remote-setup",
+        description =
+                "For remote sharded invocation, whether or not to attempt the setup in parallel."
+    )
+    private boolean mUseParallelRemoteSetup = false;
+
+    @Option(
         name = "auto-collect",
         description =
                 "Specify a set of collectors that will be automatically managed by the harness "
@@ -522,5 +529,11 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public void setHostLogSuffix(String suffix) {
         mHostLogSuffix = suffix;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldUseParallelRemoteSetup() {
+        return mUseParallelRemoteSetup;
     }
 }
