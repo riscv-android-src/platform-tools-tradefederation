@@ -15,6 +15,7 @@
 """
 Metrics base class.
 """
+import logging
 import random
 import time
 import uuid
@@ -55,6 +56,7 @@ class MetricsBase(object):
                   else INTERNAL_USER)
     _log_source = ATEST_LOG_SOURCE[_user_type]
     cc = clearcut_client.Clearcut(_log_source)
+    tool_name = None
 
     def __new__(cls, **kwargs):
         """Send metric event to clearcut.
@@ -67,6 +69,9 @@ class MetricsBase(object):
             A Clearcut instance.
         """
         # pylint: disable=no-member
+        if not cls.tool_name:
+            logging.debug('There is no tool_name, and metrics stops sending.')
+            return None
         allowed = ({constants.EXTERNAL} if cls._user_type == EXTERNAL_USER
                    else {constants.EXTERNAL, constants.INTERNAL})
         fields = [k for k, v in vars(cls).iteritems()
@@ -78,7 +83,7 @@ class MetricsBase(object):
         params = {'user_key': cls._user_key,
                   'run_id': cls._run_id,
                   'user_type': cls._user_type,
-                  'tool_name': constants.TOOL_NAME,
+                  'tool_name': cls.tool_name,
                   cls._EVENT_NAME: fields_and_values}
         log_event = cls._build_full_event(ATEST_EVENTS[cls._user_type](**params))
         cls.cc.log(log_event)
