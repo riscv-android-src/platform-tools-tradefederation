@@ -29,12 +29,32 @@ public class LaunchCvdHelper {
      * @return The created command line;
      */
     public static List<String> createSimpleDeviceCommand(String username, boolean daemon) {
+        return createSimpleDeviceCommand(username, daemon, true, true);
+    }
+
+    /**
+     * Create the command line to start an additional device for a user.
+     *
+     * @param username The user that will run the device.
+     * @param daemon Whether or not to start the device as a daemon.
+     * @param alwaysCreateUserData Whether or not to create the userdata partition
+     * @param blankDataImage whether or not to create the data image.
+     * @return The created command line;
+     */
+    public static List<String> createSimpleDeviceCommand(
+            String username, boolean daemon, boolean alwaysCreateUserData, boolean blankDataImage) {
         List<String> command = new ArrayList<>();
         command.add("sudo -u " + username);
         command.add("/home/" + username + "/bin/launch_cvd");
         command.add("-data_policy");
-        command.add("always_create");
-        command.add("-blank_data_image_mb");
+        if (alwaysCreateUserData) {
+            command.add("always_create");
+        } else {
+            command.add("create_if_missing");
+        }
+        if (blankDataImage) {
+            command.add("-blank_data_image_mb");
+        }
         command.add("8000");
         if (daemon) {
             command.add("-daemon");
