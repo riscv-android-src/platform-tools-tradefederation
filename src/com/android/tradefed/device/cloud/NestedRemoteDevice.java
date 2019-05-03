@@ -105,8 +105,9 @@ public class NestedRemoteDevice extends TestDevice {
         synchronized (NestedRemoteDevice.class) {
             // Log the common files before restarting otherwise they are lost
             logDebugFiles(logger, username);
-            // Restart the device
-            List<String> createCommand = LaunchCvdHelper.createSimpleDeviceCommand(username, true);
+            // Restart the device without re-creating the data partitions.
+            List<String> createCommand =
+                    LaunchCvdHelper.createSimpleDeviceCommand(username, true, false, false);
             CommandResult createRes =
                     getRunUtil()
                             .runTimedCmd(
