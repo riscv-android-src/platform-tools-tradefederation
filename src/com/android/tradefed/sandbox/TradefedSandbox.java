@@ -195,7 +195,10 @@ public class TradefedSandbox implements ISandbox {
                     getTradefedSandboxEnvironment(
                             context,
                             config,
-                            QuotationAwareTokenizer.tokenizeLine(config.getCommandLine()));
+                            QuotationAwareTokenizer.tokenizeLine(
+                                    config.getCommandLine(),
+                                    /** no logging */
+                                    false));
         } catch (ConfigurationException e) {
             return e;
         }
