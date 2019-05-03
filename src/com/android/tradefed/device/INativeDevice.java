@@ -352,6 +352,32 @@ public interface INativeDevice {
             throws DeviceNotAvailableException;
 
     /**
+     * Executes a adb shell command, with more parameters to control command behavior.
+     *
+     * @see #executeShellV2Command(String)
+     * @param command the adb shell command to run
+     * @param pipeAsInput A {@link File} that will be piped as input to the command.
+     * @param pipeToOutput {@link OutputStream} where the std output will be redirected.
+     * @param maxTimeoutForCommand the maximum timeout for the command to complete; unit as
+     *     specified in <code>timeUnit</code>
+     * @param timeUnit unit for <code>maxTimeToOutputShellResponse</code>
+     * @param retryAttempts the maximum number of times to retry command if it fails due to a
+     *     exception. DeviceNotResponsiveException will be thrown if <var>retryAttempts</var> are
+     *     performed without success.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     * @see TimeUtil
+     */
+    public CommandResult executeShellV2Command(
+            String command,
+            File pipeAsInput,
+            OutputStream pipeToOutput,
+            final long maxTimeoutForCommand,
+            final TimeUnit timeUnit,
+            int retryAttempts)
+            throws DeviceNotAvailableException;
+
+    /**
      * Helper method which executes a adb command as a system command.
      * <p/>
      * {@link #executeShellCommand(String)} should be used instead wherever possible, as that
@@ -1112,6 +1138,17 @@ public interface INativeDevice {
      * @throws DeviceNotAvailableException
      */
     public int getApiLevel() throws DeviceNotAvailableException;
+
+    /**
+     * Check whether or not a feature is currently supported given a minimally supported level. This
+     * method takes into account unreleased features yet, before API level is raised.
+     *
+     * @param strictMinLevel The strict min possible level that supports the feature.
+     * @return True if the level is supported. False otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    public boolean checkApiLevelAgainstNextRelease(int strictMinLevel)
+            throws DeviceNotAvailableException;
 
     /**
      * Helper to get the time difference between the device and a given {@link Date}. Use Epoch time

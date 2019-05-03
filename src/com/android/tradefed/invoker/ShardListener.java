@@ -170,6 +170,10 @@ public class ShardListener extends CollectingTestListener {
                 mMasterListener.testModuleEnded();
                 moduleContext = null;
             }
+            // In case there was no run, we still want to report the logs we received.
+            if (getMergedTestRunResults().isEmpty()) {
+                forwardLogAssociation(getCurrentRunResults().getRunLoggedFiles(), mMasterListener);
+            }
             mMasterListener.invocationEnded(elapsedTime);
         }
     }

@@ -19,6 +19,7 @@
 import unittest
 import os
 import re
+import sys
 import mock
 
 import cli_translator as cli_t
@@ -28,7 +29,14 @@ import test_mapping
 import unittest_constants as uc
 import unittest_utils
 from metrics import metrics
+from test_finders import module_finder
 from test_finders import test_finder_base
+
+# Import StringIO in Python2/3 compatible way.
+if sys.version_info[0] == 2:
+    from StringIO import StringIO
+else:
+    from io import StringIO
 
 # TEST_MAPPING related consts
 TEST_MAPPING_TOP_DIR = os.path.join(uc.TEST_DATA_DIR, 'test_mapping')
@@ -81,9 +89,14 @@ class CLITranslatorUnittests(unittest.TestCase):
         """Run after execution of every test"""
         reload(uc)
 
+    @mock.patch('__builtin__.raw_input', return_value='n')
+    @mock.patch.object(module_finder.ModuleFinder, 'find_test_by_module_name')
+    @mock.patch.object(module_finder.ModuleFinder, 'get_fuzzy_searching_results')
     @mock.patch.object(metrics, 'FindTestFinishEvent')
     @mock.patch.object(test_finder_handler, 'get_find_methods_for_test')
-    def test_get_test_infos(self, mock_getfindmethods, _metrics):
+    # pylint: disable=too-many-locals
+    def test_get_test_infos(self, mock_getfindmethods, _metrics, mock_getfuzzyresults,
+                            mock_findtestbymodule, mock_raw_input):
         """Test _get_test_infos method."""
         ctr = cli_t.CLITranslator()
         find_method_return_module_info = lambda x, y: uc.MODULE_INFO
@@ -110,12 +123,22 @@ class CLITranslatorUnittests(unittest.TestCase):
         unittest_utils.assert_strict_equal(
             self, ctr._get_test_infos(mult_test), expected_test_infos)
 
-        # Check return null set when we have no tests found.
+        # Check return null set when we have no tests found or multiple results.
         mock_getfindmethods.return_value = [
             test_finder_base.Finder(None, find_method_return_nothing, None)]
         null_test_info = set()
+        mock_getfuzzyresults.return_value = []
         self.assertEqual(null_test_info, ctr._get_test_infos(one_test))
         self.assertEqual(null_test_info, ctr._get_test_infos(mult_test))
+
+        # Check returning test_info when the user says Yes.
+        mock_raw_input.return_value = "Y"
+        mock_getfindmethods.return_value = [
+            test_finder_base.Finder(None, find_method_return_module_info, None)]
+        mock_getfuzzyresults.return_value = one_test
+        mock_findtestbymodule.return_value = uc.MODULE_INFO
+        unittest_utils.assert_strict_equal(
+            self, ctr._get_test_infos([uc.TYPO_MODULE_NAME]), {uc.MODULE_INFO})
 
         # Check the method works for test mapping.
         test_detail1 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST)
@@ -263,6 +286,23 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertEqual(expected, tests)
         self.assertEqual(expected_all_tests, all_tests)
 
+    @mock.patch('__builtin__.raw_input', return_value='')
+    def test_confirm_running(self, mock_raw_input):
+        """Test _confirm_running method."""
+        self.assertTrue(self.ctr._confirm_running([TEST_1]))
+        mock_raw_input.return_value = 'N'
+        self.assertFalse(self.ctr._confirm_running([TEST_2]))
+
+    def test_print_fuzzy_searching_results(self):
+        """Test _print_fuzzy_searching_results"""
+        modules = [uc.MODULE_NAME, uc.MODULE2_NAME]
+        capture_output = StringIO()
+        sys.stdout = capture_output
+        self.ctr._print_fuzzy_searching_results(modules)
+        sys.stdout = sys.__stdout__
+        output = 'Did you mean the following modules?\n{0}\n{1}\n'.format(
+            uc.MODULE_NAME, uc.MODULE2_NAME)
+        self.assertEquals(capture_output.getvalue(), output)
 
 if __name__ == '__main__':
     unittest.main()

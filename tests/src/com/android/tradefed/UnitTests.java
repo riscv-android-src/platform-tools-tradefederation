@@ -75,6 +75,7 @@ import com.android.tradefed.device.cloud.GceAvdInfoTest;
 import com.android.tradefed.device.cloud.GceManagerTest;
 import com.android.tradefed.device.cloud.GceRemoteCmdFormatterTest;
 import com.android.tradefed.device.cloud.GceSshTunnelMonitorTest;
+import com.android.tradefed.device.cloud.NestedRemoteDeviceTest;
 import com.android.tradefed.device.cloud.RemoteFileUtilTest;
 import com.android.tradefed.device.contentprovider.ContentProviderHandlerTest;
 import com.android.tradefed.device.helper.TelephonyHelperTest;
@@ -161,6 +162,7 @@ import com.android.tradefed.result.proto.FileProtoResultReporterTest;
 import com.android.tradefed.result.proto.ProtoResultParserTest;
 import com.android.tradefed.result.proto.ProtoResultReporterTest;
 import com.android.tradefed.result.proto.StreamProtoResultReporterTest;
+import com.android.tradefed.result.proto.SummaryProtoResultReporterTest;
 import com.android.tradefed.result.suite.FormattedGeneratorReporterTest;
 import com.android.tradefed.result.suite.XmlSuiteResultFormatterTest;
 import com.android.tradefed.sandbox.SandboxConfigDumpTest;
@@ -181,6 +183,7 @@ import com.android.tradefed.targetprep.AllTestAppsInstallSetupTest;
 import com.android.tradefed.targetprep.AoaTargetPreparerTest;
 import com.android.tradefed.targetprep.AppSetupTest;
 import com.android.tradefed.targetprep.BuildInfoAttributePreparerTest;
+import com.android.tradefed.targetprep.CreateUserPreparerTest;
 import com.android.tradefed.targetprep.DefaultTestsZipInstallerTest;
 import com.android.tradefed.targetprep.DeviceFlashPreparerTest;
 import com.android.tradefed.targetprep.DeviceSetupTest;
@@ -434,6 +437,7 @@ import org.junit.runners.Suite.SuiteClasses;
     GceManagerTest.class,
     GceRemoteCmdFormatterTest.class,
     GceSshTunnelMonitorTest.class,
+    NestedRemoteDeviceTest.class,
     RemoteAndroidDeviceTest.class,
     RemoteFileUtilTest.class,
 
@@ -555,6 +559,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ProtoResultParserTest.class,
     ProtoResultReporterTest.class,
     StreamProtoResultReporterTest.class,
+    SummaryProtoResultReporterTest.class,
 
     // result.suite
     FormattedGeneratorReporterTest.class,
@@ -565,6 +570,7 @@ import org.junit.runners.Suite.SuiteClasses;
     AoaTargetPreparerTest.class,
     AppSetupTest.class,
     BuildInfoAttributePreparerTest.class,
+    CreateUserPreparerTest.class,
     DefaultTestsZipInstallerTest.class,
     DeviceFlashPreparerTest.class,
     DeviceSetupTest.class,

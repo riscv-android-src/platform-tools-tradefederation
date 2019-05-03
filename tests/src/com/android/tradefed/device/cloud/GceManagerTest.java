@@ -330,8 +330,7 @@ public class GceManagerTest {
                     }
 
                     @Override
-                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b)
-                            throws IOException {
+                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
                         List<String> tmp = new ArrayList<String>();
                         tmp.add("");
                         return tmp;
@@ -412,8 +411,7 @@ public class GceManagerTest {
                     }
 
                     @Override
-                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b)
-                            throws IOException {
+                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
                         String valid =
                                 " {\n"
                                         + "\"data\": {\n"
@@ -428,7 +426,11 @@ public class GceManagerTest {
                                         + "\"command\": \"create\",\n"
                                         + "\"status\": \"SUCCESS\"\n"
                                         + "}";
-                        FileUtil.writeToFile(valid, reportFile);
+                        try {
+                            FileUtil.writeToFile(valid, reportFile);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                         List<String> tmp = new ArrayList<String>();
                         tmp.add("");
                         return tmp;
@@ -463,8 +465,7 @@ public class GceManagerTest {
                     }
 
                     @Override
-                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b)
-                            throws IOException {
+                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
                         // We delete the potential report file to create an issue.
                         FileUtil.deleteFile(reportFile);
                         List<String> tmp = new ArrayList<String>();
@@ -503,8 +504,7 @@ public class GceManagerTest {
                     }
 
                     @Override
-                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b)
-                            throws IOException {
+                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
                         String validFail =
                                 " {\n"
                                         + "\"data\": {\n"
@@ -519,7 +519,11 @@ public class GceManagerTest {
                                         + "\"command\": \"create\",\n"
                                         + "\"status\": \"BOOT_FAIL\"\n"
                                         + "}";
-                        FileUtil.writeToFile(validFail, reportFile);
+                        try {
+                            FileUtil.writeToFile(validFail, reportFile);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                         List<String> tmp = new ArrayList<String>();
                         tmp.add("");
                         return tmp;
@@ -797,8 +801,7 @@ public class GceManagerTest {
                     }
 
                     @Override
-                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b)
-                            throws IOException {
+                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
                         // We delete the potential report file to create an issue.
                         FileUtil.deleteFile(reportFile);
                         List<String> tmp = new ArrayList<String>();

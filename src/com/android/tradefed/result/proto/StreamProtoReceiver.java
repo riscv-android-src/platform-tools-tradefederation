@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.result.proto;
 
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.proto.ProtoResultParser.TestLevel;
@@ -55,9 +56,12 @@ public class StreamProtoReceiver implements Closeable {
      * @param reportInvocation Whether or not to report the invocation level events.
      * @throws IOException
      */
-    public StreamProtoReceiver(ITestInvocationListener listener, boolean reportInvocation)
+    public StreamProtoReceiver(
+            ITestInvocationListener listener,
+            IInvocationContext mainContext,
+            boolean reportInvocation)
             throws IOException {
-        this(listener, reportInvocation, true);
+        this(listener, mainContext, reportInvocation, true);
     }
 
     /**
@@ -69,9 +73,12 @@ public class StreamProtoReceiver implements Closeable {
      * @throws IOException
      */
     public StreamProtoReceiver(
-            ITestInvocationListener listener, boolean reportInvocation, boolean quietParsing)
+            ITestInvocationListener listener,
+            IInvocationContext mainContext,
+            boolean reportInvocation,
+            boolean quietParsing)
             throws IOException {
-        this(listener, reportInvocation, quietParsing, "subprocess-");
+        this(listener, mainContext, reportInvocation, quietParsing, "subprocess-");
     }
 
     /**
@@ -85,12 +92,13 @@ public class StreamProtoReceiver implements Closeable {
      */
     public StreamProtoReceiver(
             ITestInvocationListener listener,
+            IInvocationContext mainContext,
             boolean reportInvocation,
             boolean quietParsing,
             String logNamePrefix)
             throws IOException {
         mListener = listener;
-        mParser = new ProtoResultParser(mListener, reportInvocation, logNamePrefix);
+        mParser = new ProtoResultParser(mListener, mainContext, reportInvocation, logNamePrefix);
         mParser.setQuiet(quietParsing);
         mEventReceiver = new EventReceiverThread();
         mEventReceiver.start();
