@@ -235,9 +235,7 @@ public class SuiteModuleLoader {
                         && !config.getConfigurationDescription()
                                 .getSuiteTags()
                                 .contains(suiteTag)) {
-                    CLog.d(
-                            "Configuration %s does not include the suite-tag '%s'. Ignoring it.",
-                            configFullName, suiteTag);
+                    // Do not print here, it could leave several hundred lines of logs.
                     continue;
                 }
 
