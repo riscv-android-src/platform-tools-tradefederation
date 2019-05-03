@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.util;
 
+import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.host.HostOptions;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
@@ -26,19 +28,31 @@ import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpUnsuccessfulResponseHandler;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.ExponentialBackOff;
+import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 /** Utils for create Google API client. */
 public class GoogleApiClientUtil {
 
     public static final String APP_NAME = "tradefed";
-  
+    private static GoogleApiClientUtil sInstance = null;
+
+    private static GoogleApiClientUtil getInstance() {
+        if (sInstance == null) {
+            sInstance = new GoogleApiClientUtil();
+        }
+        return sInstance;
+    }
+
     /**
      * Create credential from json key file.
      *
@@ -51,11 +65,98 @@ public class GoogleApiClientUtil {
      */
     public static GoogleCredential createCredentialFromJsonKeyFile(
             File file, Collection<String> scopes) throws IOException, GeneralSecurityException {
+        return getInstance().doCreateCredentialFromJsonKeyFile(file, scopes);
+    }
+
+    @VisibleForTesting
+    GoogleCredential doCreateCredentialFromJsonKeyFile(File file, Collection<String> scopes)
+            throws IOException, GeneralSecurityException {
         return GoogleCredential.fromStream(
                         new FileInputStream(file),
                         GoogleNetHttpTransport.newTrustedTransport(),
                         JacksonFactory.getDefaultInstance())
                 .createScoped(scopes);
+    }
+
+    /**
+     * Try to create credential with different key files or from local host.
+     *
+     * <p>1. If primaryKeyFile is set, try to use it to create credential. 2. Try to get
+     * corresponding key files from {@link HostOptions}. 3. Try to use backup key files. 4. Use
+     * local default credential.
+     *
+     * @param scopes scopes for the credential.
+     * @param primaryKeyFile the primary json key file; it can be null.
+     * @param hostOptionKeyFileName {@link HostOptions}'service-account-json-key-file option's key;
+     *     it can be null.
+     * @param backupKeyFiles backup key files.
+     * @return a {@link GoogleCredential}
+     * @throws IOException
+     * @throws GeneralSecurityException
+     */
+    public static GoogleCredential createCredential(
+            Collection<String> scopes,
+            File primaryKeyFile,
+            String hostOptionKeyFileName,
+            File... backupKeyFiles)
+            throws IOException, GeneralSecurityException {
+        return getInstance()
+                .doCreateCredential(scopes, primaryKeyFile, hostOptionKeyFileName, backupKeyFiles);
+    }
+
+    @VisibleForTesting
+    GoogleCredential doCreateCredential(
+            Collection<String> scopes,
+            File primaryKeyFile,
+            String hostOptionKeyFileName,
+            File... backupKeyFiles)
+            throws IOException, GeneralSecurityException {
+        List<File> keyFiles = new ArrayList<File>();
+        if (primaryKeyFile != null) {
+            keyFiles.add(primaryKeyFile);
+        }
+        File hostOptionKeyFile = null;
+        if (hostOptionKeyFileName != null) {
+            try {
+                hostOptionKeyFile =
+                        GlobalConfiguration.getInstance()
+                                .getHostOptions()
+                                .getServiceAccountJsonKeyFiles()
+                                .get(hostOptionKeyFileName);
+                if (hostOptionKeyFile != null) {
+                    keyFiles.add(hostOptionKeyFile);
+                }
+            } catch (IllegalStateException e) {
+                CLog.d("Global configuration haven't been initialized.");
+            }
+        }
+        keyFiles.addAll(Arrays.asList(backupKeyFiles));
+        for (File keyFile : keyFiles) {
+            if (keyFile != null) {
+                if (keyFile.exists() && keyFile.canRead()) {
+                    CLog.d("Using %s.", keyFile.getAbsolutePath());
+                    return doCreateCredentialFromJsonKeyFile(keyFile, scopes);
+                } else {
+                    CLog.i("No access to %s.", keyFile.getAbsolutePath());
+                }
+            }
+        }
+        return doCreateDefaultCredential(scopes);
+    }
+
+    @VisibleForTesting
+    GoogleCredential doCreateDefaultCredential(Collection<String> scopes) throws IOException {
+        try {
+            CLog.d("Using local authentication.");
+            return GoogleCredential.getApplicationDefault().createScoped(scopes);
+        } catch (IOException e) {
+            CLog.e(
+                    "Try 'gcloud auth application-default login' to login for "
+                            + "personal account; Or 'export "
+                            + "GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json' "
+                            + "for service account.");
+            throw e;
+        }
     }
 
     /**
