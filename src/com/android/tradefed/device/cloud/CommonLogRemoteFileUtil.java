@@ -32,9 +32,9 @@ import java.util.List;
 public class CommonLogRemoteFileUtil {
 
     /** The directory where to find debug logs for a nested remote instance. */
-    public static final String NESTED_REMOTE_LOG_DIR = "${HOME}/../vsoc-01/cuttlefish_runtime/";
+    public static final String NESTED_REMOTE_LOG_DIR = "/home/%s/cuttlefish_runtime/";
     /** The directory where to find debug logs for an emulator instance. */
-    public static final String EMULATOR_REMOTE_LOG_DIR = "/home/vsoc-01/log/";
+    public static final String EMULATOR_REMOTE_LOG_DIR = "/home/%s/log/";
 
     public static final MultiMap<InstanceType, KnownLogFileEntry> KNOWN_FILES_TO_FETCH =
             new MultiMap<>();
@@ -72,7 +72,8 @@ public class CommonLogRemoteFileUtil {
                 new KnownLogFileEntry("/var/log/daemon.log", null, LogDataType.TEXT));
     }
 
-    private static class KnownLogFileEntry {
+    /** A representation of a known log entry for remote devices. */
+    public static class KnownLogFileEntry {
         public String path;
         public String logName;
         public LogDataType type;
@@ -110,7 +111,8 @@ public class CommonLogRemoteFileUtil {
                         gceAvd,
                         options,
                         runUtil,
-                        entry.path,
+                        // Default fetch rely on main user
+                        String.format(entry.path, options.getInstanceUser()),
                         entry.type,
                         entry.logName);
             }

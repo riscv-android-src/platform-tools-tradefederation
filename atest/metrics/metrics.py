@@ -17,7 +17,8 @@ Metrics class.
 """
 
 import constants
-import metrics_base
+
+from . import metrics_base
 
 class AtestStartEvent(metrics_base.MetricsBase):
     """

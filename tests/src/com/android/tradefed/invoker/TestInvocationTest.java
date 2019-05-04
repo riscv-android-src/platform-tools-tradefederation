@@ -1259,6 +1259,8 @@ public class TestInvocationTest {
                 .andReturn(new StubKeyStoreFactory())
                 .times(2);
         setupInvoke();
+        mMockLogSaver.invocationStarted(mStubInvocationMetadata);
+        mMockLogSaver.invocationEnded(0L);
         setupNShardInvocation(shardCount, command);
         // Ensure that the host_log gets logged after sharding.
         EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);

@@ -31,6 +31,7 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.proto.LogFileProto.LogFileInfo;
 import com.android.tradefed.result.proto.TestRecordProto.ChildReference;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
+import com.android.tradefed.testtype.suite.ModuleDefinition;
 
 import com.google.common.base.Strings;
 import com.google.protobuf.Any;
@@ -254,6 +255,16 @@ public class ProtoResultParser {
         try {
             IInvocationContext moduleContext =
                     InvocationContext.fromProto(anyDescription.unpack(Context.class));
+            String message = "Test module started proto";
+            if (moduleContext.getAttributes().containsKey(ModuleDefinition.MODULE_ID)) {
+                message +=
+                        (": "
+                                + moduleContext
+                                        .getAttributes()
+                                        .getUniqueMap()
+                                        .get(ModuleDefinition.MODULE_ID));
+            }
+            log(message);
             mListener.testModuleStarted(moduleContext);
         } catch (InvalidProtocolBufferException e) {
             throw new RuntimeException(e);
@@ -281,16 +292,14 @@ public class ProtoResultParser {
 
     private void handleTestRunStart(TestRecord runProto) {
         String id = runProto.getTestRecordId();
-        log("Test run started proto: %s", id);
-        //if (runProto.getAttemptId() != 0) {
+        log(
+                "Test run started proto: %s. Expected tests: %s. Attempt: %s",
+                id, runProto.getNumExpectedChildren(), runProto.getAttemptId());
         mListener.testRunStarted(
                 id,
                 (int) runProto.getNumExpectedChildren(),
                 (int) runProto.getAttemptId(),
                 timeStampToMillis(runProto.getStartTime()));
-        /*} else {
-            mListener.testRunStarted(id, (int) runProto.getNumExpectedChildren(), 0, timeStampToMillis(runProto.getStartTime()));
-        }*/
     }
 
     private void handleTestRunEnd(TestRecord runProto) {

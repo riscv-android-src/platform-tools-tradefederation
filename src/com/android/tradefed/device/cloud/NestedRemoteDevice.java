@@ -21,6 +21,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceStateMonitor;
 import com.android.tradefed.device.TestDevice;
+import com.android.tradefed.device.cloud.CommonLogRemoteFileUtil.KnownLogFileEntry;
 import com.android.tradefed.invoker.RemoteInvocationExecution;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -34,6 +35,8 @@ import com.android.tradefed.util.CommandStatus;
 import com.google.common.base.Joiner;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -100,8 +103,11 @@ public class NestedRemoteDevice extends TestDevice {
         }
         // Synchronize this so multiple reset do not occur at the same time inside one VM.
         synchronized (NestedRemoteDevice.class) {
-            // Restart the device
-            List<String> createCommand = LaunchCvdHelper.createSimpleDeviceCommand(username, true);
+            // Log the common files before restarting otherwise they are lost
+            logDebugFiles(logger, username);
+            // Restart the device without re-creating the data partitions.
+            List<String> createCommand =
+                    LaunchCvdHelper.createSimpleDeviceCommand(username, true, false, false);
             CommandResult createRes =
                     getRunUtil()
                             .runTimedCmd(
@@ -120,6 +126,32 @@ public class NestedRemoteDevice extends TestDevice {
             // Re-init the freshly started device.
             return reInitDevice(info);
         }
+    }
+
+    /**
+     * Log the runtime files of the virtual device before resetting it since they will be deleted.
+     */
+    private void logDebugFiles(ITestLogger logger, String username) {
+        List<KnownLogFileEntry> toFetch =
+                CommonLogRemoteFileUtil.KNOWN_FILES_TO_FETCH.get(getOptions().getInstanceType());
+        if (toFetch != null) {
+            SimpleDateFormat formatter = new SimpleDateFormat("HH:mm:ss");
+            for (KnownLogFileEntry entry : toFetch) {
+                File toLog = new File(String.format(entry.path, username));
+                if (!toLog.exists()) {
+                    continue;
+                }
+                try (FileInputStreamSource source = new FileInputStreamSource(toLog)) {
+                    logger.testLog(
+                            String.format(
+                                    "before_reset_%s_%s_%s",
+                                    toLog.getName(), username, formatter.format(new Date())),
+                            entry.type,
+                            source);
+                }
+            }
+        }
+        logBugreport(String.format("before_reset_%s_bugreport", username), logger);
     }
 
     /** TODO: Re-run the target_preparation. */

@@ -18,7 +18,7 @@ Utility functions for metrics.
 
 import time
 
-import metrics
+from . import metrics
 
 
 def static_var(varname, value):
@@ -56,7 +56,7 @@ def convert_duration(diff_time_sec):
     Returns:
         A dict of Duration.
     """
-    seconds = long(diff_time_sec)
+    seconds = int(diff_time_sec)
     nanos = int((diff_time_sec - seconds)*10**9)
     return {'seconds': seconds, 'nanos': nanos}
 
@@ -74,4 +74,5 @@ def send_exit_event(exit_code, stacktrace='', logs=''):
         stacktrace=stacktrace,
         logs=logs)
     # pylint: disable=no-member
-    clearcut.flush_events()
+    if clearcut:
+        clearcut.flush_events()
