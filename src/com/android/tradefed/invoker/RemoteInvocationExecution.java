@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.invoker;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.StubBuildProvider;
@@ -41,6 +42,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.proto.FileProtoResultReporter;
 import com.android.tradefed.result.proto.ProtoResultParser;
+import com.android.tradefed.result.proto.SummaryProtoResultReporter;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
@@ -76,6 +78,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
     public static final String REMOTE_USER_DIR = "/home/{$USER}/";
     public static final String PROTO_RESULT_NAME = "output.pb";
+    public static final String PROTO_SUMMARY_NAME = "summary-output.pb";
     public static final String STDOUT_FILE = "screen-VM_tradefed-stdout.txt";
     public static final String STDERR_FILE = "screen-VM_tradefed-stderr.txt";
     public static final String REMOTE_CONFIG = "configuration";
@@ -87,7 +90,6 @@ public class RemoteInvocationExecution extends InvocationExecution {
     private static final int MAX_WORKER_THREAD = 3;
 
     private String mRemoteTradefedDir = null;
-    private String mRemoteFinalResult = null;
     private String mRemoteAdbPath = null;
 
     @Override
@@ -216,9 +218,8 @@ public class RemoteInvocationExecution extends InvocationExecution {
                         info, options, runUtil, 120000L, "ls", "-l", mRemoteTradefedDir);
         CLog.d("stdout: %s", listRemoteDir.getStdout());
         CLog.d("stderr: %s", listRemoteDir.getStderr());
-        mRemoteFinalResult = mRemoteTradefedDir + PROTO_RESULT_NAME;
 
-        File configFile = createRemoteConfig(config, listener);
+        File configFile = createRemoteConfig(config, listener, mRemoteTradefedDir);
         File globalConfig = null;
         try {
             CLog.d("Pushing Tradefed XML configuration to remote.");
@@ -356,22 +357,6 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 isStillRunning(
                         currentInvocationListener, configFile, info, options, runUtil, config);
 
-        File resultFile = null;
-        if (!stillRunning) {
-            resultFile =
-                    RemoteFileUtil.fetchRemoteFile(
-                            info, options, runUtil, PULL_RESULT_TIMEOUT, mRemoteFinalResult);
-            if (resultFile == null) {
-                currentInvocationListener.invocationFailed(
-                        new RuntimeException(
-                                String.format(
-                                        "Could not find remote result file at %s",
-                                        mRemoteFinalResult)));
-            } else {
-                CLog.d("Fetched remote result file!");
-            }
-        }
-
         // Fetch the logs
         File stdoutFile =
                 RemoteFileUtil.fetchRemoteFile(
@@ -399,12 +384,14 @@ public class RemoteInvocationExecution extends InvocationExecution {
             }
         }
 
-        if (resultFile != null) {
-            // Report result to listener.
-            ProtoResultParser parser =
-                    new ProtoResultParser(currentInvocationListener, context, false, "remote-");
-            parser.processFinalizedProto(TestRecordProtoUtil.readFromFile(resultFile));
-        }
+        fetchAndProcessResults(
+                stillRunning,
+                currentInvocationListener,
+                context,
+                info,
+                options,
+                runUtil,
+                mRemoteTradefedDir);
     }
 
     private boolean isStillRunning(
@@ -525,15 +512,22 @@ public class RemoteInvocationExecution extends InvocationExecution {
      *
      * @param config The main {@link IConfiguration}.
      * @param logger A logger where to save the XML configuration for debugging.
+     * @param resultDirPath the remote result dir where results should be saved.
      * @return A file containing the dumped remote XML configuration.
      * @throws IOException
      */
-    private File createRemoteConfig(IConfiguration config, ITestLogger logger) throws IOException {
+    @VisibleForTesting
+    File createRemoteConfig(IConfiguration config, ITestLogger logger, String resultDirPath)
+            throws IOException {
         // Setup the remote reporting to a proto file
         List<ITestInvocationListener> reporters = new ArrayList<>();
         FileProtoResultReporter protoReporter = new FileProtoResultReporter();
-        protoReporter.setFileOutput(new File(mRemoteFinalResult));
+        protoReporter.setFileOutput(new File(resultDirPath + PROTO_RESULT_NAME));
         reporters.add(protoReporter);
+        // Setup a summary reporter
+        SummaryProtoResultReporter summaryReporter = new SummaryProtoResultReporter();
+        summaryReporter.setFileOutput(new File(resultDirPath + PROTO_SUMMARY_NAME));
+        reporters.add(summaryReporter);
 
         config.setTestInvocationListeners(reporters);
 
@@ -552,6 +546,46 @@ public class RemoteInvocationExecution extends InvocationExecution {
             logger.testLog(REMOTE_CONFIG, LogDataType.XML, source);
         }
         return configFile;
+    }
+
+    private void fetchAndProcessResults(
+            boolean wasStillRunning,
+            ITestInvocationListener invocationListener,
+            IInvocationContext context,
+            GceAvdInfo info,
+            TestDeviceOptions options,
+            IRunUtil runUtil,
+            String resultDirPath)
+            throws InvalidProtocolBufferException, IOException {
+        File resultFile = null;
+        if (wasStillRunning) {
+            CLog.d("Remote invocation was still running. No result can be pulled.");
+            return;
+        }
+        resultFile =
+                RemoteFileUtil.fetchRemoteFile(
+                        info,
+                        options,
+                        runUtil,
+                        PULL_RESULT_TIMEOUT,
+                        resultDirPath + PROTO_RESULT_NAME);
+        if (resultFile == null) {
+            invocationListener.invocationFailed(
+                    new RuntimeException(
+                            String.format(
+                                    "Could not find remote result file at %s",
+                                    resultDirPath + PROTO_RESULT_NAME)));
+            return;
+        }
+        CLog.d("Fetched remote result file!");
+        // Report result to listener.
+        try {
+            ProtoResultParser parser =
+                    new ProtoResultParser(invocationListener, context, false, "remote-");
+            parser.processFinalizedProto(TestRecordProtoUtil.readFromFile(resultFile));
+        } finally {
+            FileUtil.deleteFile(resultFile);
+        }
     }
 
     /**
