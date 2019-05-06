@@ -143,10 +143,10 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             CLog.e("Device %s is not available. Teardown() skipped.", device.getSerialNumber());
             return;
         } else {
-            if (mTestApexInfoList.isEmpty()) {
+            if (mTestApexInfoList.isEmpty() && getApkInstalled().isEmpty()) {
                 super.tearDown(device, buildInfo, e);
             } else {
-                for (String apkPkgName : mApkInstalled) {
+                for (String apkPkgName : getApkInstalled()) {
                     super.uninstallPackage(device, apkPkgName);
                 }
                 if (!mTestApexInfoList.isEmpty()) {
@@ -472,6 +472,11 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     @VisibleForTesting
     protected BundletoolUtil getBundletoolUtil() {
         return mBundletoolUtil;
+    }
+
+    @VisibleForTesting
+    protected List<String> getApkInstalled() {
+        return mApkInstalled;
     }
 }
 
