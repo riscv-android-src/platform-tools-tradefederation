@@ -18,6 +18,7 @@ package com.android.tradefed.targetprep;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.ignoreStubs;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -60,6 +61,7 @@ public class AoaTargetPreparerTest {
         when(mUsb.getAoaDevice(any(), any())).thenReturn(mDevice);
         doReturn(mUsb).when(mPreparer).getUsbHelper();
         mOptionSetter = new OptionSetter(mPreparer);
+        when(mDevice.getSerialNumber()).thenReturn("SERIAL");
     }
 
     @Test
@@ -110,7 +112,7 @@ public class AoaTargetPreparerTest {
         mPreparer.execute(mDevice, "click 1 23");
 
         verify(mDevice, times(1)).click(eq(new Point(1, 23)));
-        verifyNoMoreInteractions(mDevice);
+        verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
@@ -118,7 +120,7 @@ public class AoaTargetPreparerTest {
         mPreparer.execute(mDevice, "longClick 23 4");
 
         verify(mDevice, times(1)).longClick(eq(new Point(23, 4)));
-        verifyNoMoreInteractions(mDevice);
+        verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
@@ -126,7 +128,7 @@ public class AoaTargetPreparerTest {
         mPreparer.execute(mDevice, "scroll 3 45 6 78");
 
         verify(mDevice, times(1)).scroll(eq(new Point(3, 45)), eq(new Point(6, 78)));
-        verifyNoMoreInteractions(mDevice);
+        verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
@@ -134,7 +136,7 @@ public class AoaTargetPreparerTest {
         mPreparer.execute(mDevice, "fling 45 6 78 9");
 
         verify(mDevice, times(1)).fling(eq(new Point(45, 6)), eq(new Point(78, 9)));
-        verifyNoMoreInteractions(mDevice);
+        verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
@@ -142,7 +144,7 @@ public class AoaTargetPreparerTest {
         mPreparer.execute(mDevice, "drag 5 67 8 90");
 
         verify(mDevice, times(1)).drag(eq(new Point(5, 67)), eq(new Point(8, 90)));
-        verifyNoMoreInteractions(mDevice);
+        verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
@@ -150,7 +152,7 @@ public class AoaTargetPreparerTest {
         mPreparer.execute(mDevice, "write lorem ipsum");
 
         verify(mDevice, times(1)).write(eq("lorem ipsum"));
-        verifyNoMoreInteractions(mDevice);
+        verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
@@ -160,7 +162,7 @@ public class AoaTargetPreparerTest {
         mPreparer.execute(mDevice, "key 0x2C");
 
         verify(mDevice, times(2)).key(eq(44));
-        verifyNoMoreInteractions(mDevice);
+        verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
@@ -168,7 +170,7 @@ public class AoaTargetPreparerTest {
         mPreparer.execute(mDevice, "key 1 2 3 4 5");
 
         verify(mDevice, times(1)).key(eq(1), eq(2), eq(3), eq(4), eq(5));
-        verifyNoMoreInteractions(mDevice);
+        verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
@@ -176,7 +178,7 @@ public class AoaTargetPreparerTest {
         mPreparer.execute(mDevice, "key 3* 0x2C");
 
         verify(mDevice, times(1)).key(eq(44), eq(44), eq(44));
-        verifyNoMoreInteractions(mDevice);
+        verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
@@ -184,7 +186,7 @@ public class AoaTargetPreparerTest {
         mPreparer.execute(mDevice, "wake");
 
         verify(mDevice, times(1)).wakeUp();
-        verifyNoMoreInteractions(mDevice);
+        verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
@@ -192,7 +194,7 @@ public class AoaTargetPreparerTest {
         mPreparer.execute(mDevice, "home");
 
         verify(mDevice, times(1)).goHome();
-        verifyNoMoreInteractions(mDevice);
+        verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
@@ -200,7 +202,7 @@ public class AoaTargetPreparerTest {
         mPreparer.execute(mDevice, "back");
 
         verify(mDevice, times(1)).goBack();
-        verifyNoMoreInteractions(mDevice);
+        verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
@@ -208,7 +210,7 @@ public class AoaTargetPreparerTest {
         mPreparer.execute(mDevice, "sleep PT10M");
 
         verify(mDevice, times(1)).sleep(eq(Duration.ofMinutes(10L)));
-        verifyNoMoreInteractions(mDevice);
+        verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test(expected = IllegalArgumentException.class)

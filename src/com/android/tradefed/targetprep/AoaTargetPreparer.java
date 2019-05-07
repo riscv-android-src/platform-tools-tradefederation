@@ -22,6 +22,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.RegexTrie;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -174,6 +175,7 @@ public class AoaTargetPreparer extends BaseTargetPreparer {
                 throw new DeviceNotAvailableException(
                         "AOAv2-compatible device not found", serialNumber);
             }
+            CLog.d("Performing %d actions on device %s", mActions.size(), serialNumber);
             mActions.forEach(action -> execute(device, action));
         }
     }
@@ -186,6 +188,7 @@ public class AoaTargetPreparer extends BaseTargetPreparer {
     // Parse and execute an action
     @VisibleForTesting
     void execute(AoaDevice device, String input) {
+        CLog.v("Executing '%s' on %s", input, device.getSerialNumber());
         List<List<String>> args = new ArrayList<>();
         Action action = ACTIONS.retrieve(args, input);
         if (action == null) {
