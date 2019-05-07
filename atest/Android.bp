@@ -52,6 +52,7 @@ python_binary_host {
     exclude_srcs: [
         "*_unittest.py",
         "*/*_unittest.py",
+        "asuite_lib_test/*.py",
         "proto/*_pb2.py",
         "proto/__init__.py",
     ],
@@ -111,6 +112,7 @@ python_test_host {
         "unittest_data/**/.*",
     ],
     exclude_srcs: [
+        "asuite_lib_test/*.py",
         "proto/*_pb2.py",
         "proto/__init__.py",
     ],
@@ -174,3 +176,4 @@ python_library_host {
         "asuite_metrics",
     ],
 }
+
