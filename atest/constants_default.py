@@ -141,7 +141,6 @@ CONTRIBUTOR_AGREEMENT_URL = {
 }
 PRIVACY_POLICY_URL = 'https://policies.google.com/privacy'
 TERMS_SERVICE_URL = 'https://policies.google.com/terms'
-DUMMY_UUID = '00000000-0000-4000-8000-000000000000'
 TOOL_NAME = 'atest'
 
 # VTS plans
