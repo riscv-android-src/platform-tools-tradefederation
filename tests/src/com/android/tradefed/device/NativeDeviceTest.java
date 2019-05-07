@@ -54,6 +54,7 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -2276,8 +2277,12 @@ public class NativeDeviceTest extends TestCase {
         SettableFuture<String> value = SettableFuture.create();
         value.set("23");
         EasyMock.expect(mMockIDevice.getSystemProperty("ro.build.version.sdk")).andReturn(value);
+        SimpleDateFormat format = new SimpleDateFormat("MM-dd HH:mm:ss.mmm");
+        String dateFormatted = format.format(new Date(date));
+
         mMockIDevice.executeShellCommand(
-                EasyMock.eq("logcat -v threadtime -t '12-11 03:15:42.015'"), EasyMock.anyObject());
+                EasyMock.eq(String.format("logcat -v threadtime -t '%s'", dateFormatted)),
+                EasyMock.anyObject());
         EasyMock.replay(mMockIDevice);
         mTestDevice.getLogcatSince(date);
         EasyMock.verify(mMockIDevice);
