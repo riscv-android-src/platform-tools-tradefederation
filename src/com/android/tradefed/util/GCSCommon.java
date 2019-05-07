@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.util;
 
+import com.android.tradefed.host.HostOptions;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
@@ -32,6 +33,8 @@ import java.util.Collection;
  * GCSFileUploader}.
  */
 public abstract class GCSCommon {
+    /** This is the key for {@link HostOptions}'s service-account-json-key-file option. */
+    private static final String GCS_JSON_KEY = "gcs-json-key";
 
     protected static final int DEFAULT_TIMEOUT = 10 * 60 * 1000; // 10minutes
 
@@ -49,10 +52,9 @@ public abstract class GCSCommon {
         try {
             if (mStorage == null) {
                 if (mJsonKeyFile != null && mJsonKeyFile.exists()) {
-                    CLog.d("Using json key file %s.", mJsonKeyFile);
                     credential =
-                            GoogleApiClientUtil.createCredentialFromJsonKeyFile(
-                                    mJsonKeyFile, scopes);
+                            GoogleApiClientUtil.createCredential(
+                                    scopes, mJsonKeyFile, GCS_JSON_KEY);
                 } else {
                     CLog.d("Using local authentication.");
                     try {
