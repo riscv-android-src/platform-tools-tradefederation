@@ -16,7 +16,6 @@
 package com.android.tradefed.util;
 
 import com.android.tradefed.host.HostOptions;
-import com.android.tradefed.log.LogUtil.CLog;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
@@ -51,24 +50,8 @@ public abstract class GCSCommon {
         GoogleCredential credential = null;
         try {
             if (mStorage == null) {
-                if (mJsonKeyFile != null && mJsonKeyFile.exists()) {
-                    credential =
-                            GoogleApiClientUtil.createCredential(
-                                    scopes, mJsonKeyFile, GCS_JSON_KEY);
-                } else {
-                    CLog.d("Using local authentication.");
-                    try {
-                        credential = GoogleCredential.getApplicationDefault().createScoped(scopes);
-                    } catch (IOException e) {
-                        CLog.e(e.getMessage());
-                        CLog.e(
-                                "Try 'gcloud auth application-default login' to login for "
-                                        + "personal account; Or 'export "
-                                        + "GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json' "
-                                        + "for service account.");
-                        throw e;
-                    }
-                }
+                credential =
+                        GoogleApiClientUtil.createCredential(scopes, mJsonKeyFile, GCS_JSON_KEY);
                 mStorage =
                         new Storage.Builder(
                                         GoogleNetHttpTransport.newTrustedTransport(),
