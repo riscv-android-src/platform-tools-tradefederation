@@ -639,7 +639,7 @@ public abstract class BaseHostJUnit4Test
             runOptions += "--no-hidden-api-checks ";
         }
         // isolated-storage flag only exists in Q and after.
-        if (isIsolatedStorageDisabled && device.checkApiLevelAgainstNextRelease(28)) {
+        if (isIsolatedStorageDisabled && device.checkApiLevelAgainstNextRelease(29)) {
             runOptions += "--no-isolated-storage ";
         }
         if (getAbi() != null) {
