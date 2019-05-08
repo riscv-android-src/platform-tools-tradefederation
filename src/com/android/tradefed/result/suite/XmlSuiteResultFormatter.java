@@ -121,7 +121,7 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
     private static final String LOG_FILE_NAME_ATTR = "file_name";
 
     /** Helper object for JSON conversion. */
-    private static final class RunHistory {
+    public static final class RunHistory {
         public long startTime;
         public long endTime;
     }
