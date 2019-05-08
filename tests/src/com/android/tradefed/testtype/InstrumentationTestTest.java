@@ -200,7 +200,7 @@ public class InstrumentationTestTest {
     /** Test normal run scenario with --no-isolated-storage specified */
     @Test
     public void testRun_isolatedStorage() throws Exception {
-        doReturn(true).when(mMockTestDevice).checkApiLevelAgainstNextRelease(28);
+        doReturn(true).when(mMockTestDevice).checkApiLevelAgainstNextRelease(29);
         OptionSetter setter = new OptionSetter(mInstrumentationTest);
         setter.setOptionValue("isolated-storage", "false");
         RemoteAndroidTestRunner runner =
