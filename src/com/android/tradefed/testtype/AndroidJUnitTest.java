@@ -404,6 +404,11 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
      * Helper to return if the runner is one that support sharding.
      */
     private boolean isShardable() {
+        // Edge toward shardable if no explicit runner specified. The runner will be determined
+        // later and if not shardable only the first shard will run.
+        if (getRunnerName() == null) {
+            return true;
+        }
         return ListInstrumentationParser.SHARDABLE_RUNNERS.contains(getRunnerName());
     }
 
