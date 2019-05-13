@@ -93,10 +93,8 @@ public class ITestSuiteTest {
     private IConfiguration mStubMainConfiguration;
     private ILogSaver mMockLogSaver;
 
-    /**
-     * Very basic implementation of {@link ITestSuite} to test it.
-     */
-    static class TestSuiteImpl extends ITestSuite {
+    /** Very basic implementation of {@link ITestSuite} to test it. */
+    public static class TestSuiteImpl extends ITestSuite {
         private int mNumTests = 1;
 
         public TestSuiteImpl() {}
@@ -281,6 +279,35 @@ public class ITestSuiteTest {
         EasyMock.expectLastCall().times(2);
         EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
                 .andReturn(result);
+        expectTestRun(mMockListener);
+        replayMocks();
+        mTestSuite.run(mMockListener);
+        verifyMocks();
+    }
+
+    /**
+     * Test for {@link ITestSuite#run(ITestInvocationListener)} when the System status checker is
+     * failing with a runtime exception. RuntimeException is interpreted as a checker failure.
+     */
+    @Test
+    public void testRun_failedSystemChecker_runtimeException() throws Exception {
+        final byte[] fakeData = "fakeData".getBytes();
+        InputStreamSource fakeSource = new ByteArrayInputStreamSource(fakeData);
+        List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
+        sysChecker.add(mMockSysChecker);
+        mTestSuite.setSystemStatusChecker(sysChecker);
+
+        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
+                .andThrow(new RuntimeException("I failed."));
+        EasyMock.expect(mMockDevice.getBugreport()).andReturn(fakeSource).times(2);
+        mMockListener.testLog(
+                (String) EasyMock.anyObject(),
+                EasyMock.eq(LogDataType.BUGREPORT),
+                EasyMock.eq(fakeSource));
+        EasyMock.expectLastCall().times(2);
+
+        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
+                .andThrow(new RuntimeException("I failed post."));
         expectTestRun(mMockListener);
         replayMocks();
         mTestSuite.run(mMockListener);

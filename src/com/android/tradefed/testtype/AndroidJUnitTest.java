@@ -47,8 +47,6 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
         ITestFileFilterReceiver, ITestFilterReceiver, ITestAnnotationFilterReceiver,
         IShardableTest, IStrictShardableTest {
 
-    protected static final String AJUR = "android.support.test.runner.AndroidJUnitRunner";
-
     /** instrumentation test runner argument key used for including a class/test */
     private static final String INCLUDE_CLASS_INST_ARGS_KEY = "class";
     /** instrumentation test runner argument key used for excluding a class/test */
@@ -143,8 +141,6 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
 
     public AndroidJUnitTest() {
         super();
-        // Set the runner to AJUR, this can still be overwritten by the optionsetter/optioncopier
-        setRunnerName(AJUR);
         setEnforceFormat(true);
     }
 
