@@ -122,6 +122,7 @@ import com.android.tradefed.result.TestFailureEmailResultReporterTest;
 import com.android.tradefed.result.TestRunResultTest;
 import com.android.tradefed.result.TestSummaryTest;
 import com.android.tradefed.result.XmlResultReporterTest;
+import com.android.tradefed.result.ddmlib.TestRunToTestInvocationForwarderTest;
 import com.android.tradefed.result.suite.FormattedGeneratorReporterTest;
 import com.android.tradefed.result.suite.XmlSuiteResultFormatterTest;
 import com.android.tradefed.sandbox.SandboxConfigDumpTest;
@@ -158,6 +159,7 @@ import com.android.tradefed.targetprep.RunCommandTargetPreparerTest;
 import com.android.tradefed.targetprep.RunHostCommandTargetPreparerTest;
 import com.android.tradefed.targetprep.SdkAvdPreparerTest;
 import com.android.tradefed.targetprep.StopServicesSetupTest;
+import com.android.tradefed.targetprep.SwitchUserTargetPreparerTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
 import com.android.tradefed.targetprep.TestAppInstallSetupTest;
 import com.android.tradefed.targetprep.TestFilePushSetupTest;
@@ -219,6 +221,7 @@ import com.android.tradefed.testtype.suite.TestSuiteInfoTest;
 import com.android.tradefed.testtype.suite.TfSuiteRunnerTest;
 import com.android.tradefed.testtype.suite.ValidateSuiteConfigHelperTest;
 import com.android.tradefed.testtype.suite.module.BaseModuleControllerTest;
+import com.android.tradefed.testtype.suite.module.CarModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.NativeBridgeModuleControllerTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsParserTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsTestTest;
@@ -428,6 +431,9 @@ import org.junit.runners.Suite.SuiteClasses;
     TestSummaryTest.class,
     XmlResultReporterTest.class,
 
+    // result.ddmlib
+    TestRunToTestInvocationForwarderTest.class,
+
     // result.suite
     FormattedGeneratorReporterTest.class,
     XmlSuiteResultFormatterTest.class,
@@ -461,6 +467,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TestAppInstallSetupTest.class,
     TestFilePushSetupTest.class,
     TimeSetterTargetPreparerTest.class,
+    SwitchUserTargetPreparerTest.class,
 
     // targetprep.multi
     MergeMultiBuildTargetPreparerTest.class,
@@ -548,6 +555,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // testtype/suite/module
     BaseModuleControllerTest.class,
+    CarModuleControllerTest.class,
     NativeBridgeModuleControllerTest.class,
 
     // testtype/testdefs
