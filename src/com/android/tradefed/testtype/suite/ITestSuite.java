@@ -50,6 +50,7 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.IReportNotExecuted;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
@@ -86,7 +87,8 @@ public abstract class ITestSuite
                 IInvocationContextReceiver,
                 IRuntimeHintProvider,
                 IMetricCollectorReceiver,
-                IConfigurationReceiver {
+                IConfigurationReceiver,
+                IReportNotExecuted {
 
     public static final String SKIP_SYSTEM_STATUS_CHECKER = "skip-system-status-check";
     public static final String RUNNER_WHITELIST = "runner-whitelist";
@@ -356,6 +358,14 @@ public abstract class ITestSuite
         return res;
     }
 
+    /**
+     * Opportunity to clean up all the things that were needed during the suites setup but are not
+     * required to run the tests.
+     */
+    void cleanUpSuiteSetup() {
+        // Empty by default.
+    }
+
     /** Generic run method for all test loaded from {@link #loadTests()}. */
     @Override
     public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
@@ -535,7 +545,13 @@ public abstract class ITestSuite
                 continue;
             }
 
-            StatusCheckerResult result = checker.preExecutionCheck(device);
+            StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
+            try {
+                result = checker.preExecutionCheck(device);
+            } catch (RuntimeException e) {
+                // Catch RuntimeException to avoid leaking throws that go to the invocation.
+                result.setErrorMessage(e.getMessage());
+            }
             if (!CheckStatus.SUCCESS.equals(result.getStatus())) {
                 String errorMessage =
                         (result.getErrorMessage() == null) ? "" : result.getErrorMessage();
@@ -577,7 +593,13 @@ public abstract class ITestSuite
                 continue;
             }
 
-            StatusCheckerResult result = checker.postExecutionCheck(device);
+            StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
+            try {
+                result = checker.postExecutionCheck(device);
+            } catch (RuntimeException e) {
+                // Catch RuntimeException to avoid leaking throws that go to the invocation.
+                result.setErrorMessage(e.getMessage());
+            }
             if (!CheckStatus.SUCCESS.equals(result.getStatus())) {
                 String errorMessage =
                         (result.getErrorMessage() == null) ? "" : result.getErrorMessage();
@@ -642,6 +664,12 @@ public abstract class ITestSuite
                         runConfig, shardCountHint, mShouldMakeDynamicModule);
         runConfig.clear();
         runConfig = null;
+
+        // Clean up the parent that will get sharded: It is fine to clean up before copying the
+        // options, because the sharded module is already created/populated so there is no need
+        // to carry these extra data.
+        cleanUpSuiteSetup();
+
         // create an association of one ITestSuite <=> one ModuleDefinition as the smallest
         // execution unit supported.
         List<IRemoteTest> splitTests = new ArrayList<>();
@@ -778,6 +806,21 @@ public abstract class ITestSuite
     @Override
     public void setConfiguration(IConfiguration configuration) {
         mMainConfiguration = configuration;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void reportNotExecuted(ITestInvocationListener listener) {
+        List<ModuleDefinition> runModules = createExecutionList();
+
+        while (!runModules.isEmpty()) {
+            ModuleDefinition module = runModules.remove(0);
+            listener.testModuleStarted(module.getModuleInvocationContext());
+            listener.testRunStarted(module.getId(), 0);
+            listener.testRunFailed(IReportNotExecuted.NOT_EXECUTED_FAILURE);
+            listener.testRunEnded(0, new HashMap<String, Metric>());
+            listener.testModuleEnded();
+        }
     }
 
     /**
