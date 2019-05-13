@@ -28,6 +28,7 @@ import com.android.tradefed.util.FileUtil;
 import com.google.common.io.Files;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -63,30 +64,38 @@ public class ConfigUtil {
             Files.write(config.toByteArray(), configFile);
             String remotePath = String.format("/data/local/tmp/%s", configFile.getName());
             if (device.pushFile(configFile, remotePath)) {
-                CommandResult output =
-                        device.executeShellV2Command(
-                                String.join(
-                                        " ",
-                                        "cat",
-                                        remotePath,
-                                        "|",
-                                        UPDATE_CONFIG_CMD,
-                                        String.valueOf(config.getId())));
-                device.executeShellCommand(String.format("rm %s", remotePath));
-                if (output.getStderr().contains("Error parsing")) {
-                    throw new RuntimeException("Failed to parse configuration file on the device.");
-                } else if (!output.getStderr().isEmpty()) {
-                    throw new RuntimeException(
-                            String.format(
-                                    "Failed to push config with error: %s.", output.getStderr()));
-                } else {
-                    return config.getId();
-                }
+                updateConfig(device, remotePath, config.getId());
             } else {
                 throw new RuntimeException("Failed to configuration push file to the device.");
             }
+            return config.getId();
         } finally {
             FileUtil.deleteFile(configFile);
+        }
+    }
+
+    /**
+     * Pushes a binary statsd configuration file to collect metrics
+     *
+     * @param device Test device where the binary statsd config will be pushed to
+     * @param configFile The statsd config file
+     * @return ID of the newly pushed configuration file
+     */
+    public static long pushBinaryStatsConfig(ITestDevice device, File configFile)
+            throws IOException, DeviceNotAvailableException {
+        if (!configFile.exists()) {
+            throw new FileNotFoundException(
+                    String.format(
+                            "File not found for statsd config: %s", configFile.getAbsolutePath()));
+        }
+        String remotePath = String.format("/data/local/tmp/%s", configFile.getName());
+        if (device.pushFile(configFile, remotePath)) {
+            // For now use a fixed config Id. We will parse it from config file when necessary.
+            long configId = UUID.randomUUID().hashCode();
+            updateConfig(device, remotePath, configId);
+            return configId;
+        } else {
+            throw new RuntimeException("Failed to push configuration file to the device.");
         }
     }
 
@@ -98,7 +107,34 @@ public class ConfigUtil {
      */
     public static void removeConfig(ITestDevice device, long configId)
             throws DeviceNotAvailableException {
-        device.executeShellCommand(String.join(REMOVE_CONFIG_CMD, String.valueOf(configId)));
+        device.executeShellCommand(String.join(" ", REMOVE_CONFIG_CMD, String.valueOf(configId)));
+    }
+
+    /**
+     * Push a statsd configuration from a config file on device.
+     *
+     * @param device Test device where the config will be uploaded
+     * @param remotePath The path to the statsd config on the device
+     * @param configId ID of the statsd config
+     */
+    private static void updateConfig(ITestDevice device, String remotePath, long configId)
+            throws DeviceNotAvailableException {
+        CommandResult output =
+                device.executeShellV2Command(
+                        String.join(
+                                " ",
+                                "cat",
+                                remotePath,
+                                "|",
+                                UPDATE_CONFIG_CMD,
+                                String.valueOf(configId)));
+        device.deleteFile(remotePath);
+        if (output.getStderr().contains("Error parsing")) {
+            throw new RuntimeException("Failed to parse configuration file on the device.");
+        } else if (!output.getStderr().isEmpty()) {
+            throw new RuntimeException(
+                    String.format("Failed to push config with error: %s.", output.getStderr()));
+        }
     }
 
     /**
