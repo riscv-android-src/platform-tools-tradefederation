@@ -47,13 +47,17 @@ public class ConfigUtilTest {
     private static final String STATS_CONFIG_UPDATE_MATCHER =
             "cat \\/data\\/local\\/tmp\\/statsdconfig.*config \\| cmd stats config update .*";
     private static final String STATS_CONFIG_REMOVE_MATCHER = "cmd stats config remove";
-    private static final String REMOTE_PATH_REMOVE_MATCHER = "rm /data/local/tmp/.*";
+    private static final String REMOTE_PATH_MATCHER = "/data/local/tmp/.*";
+    private static final String PARSING_ERROR_MSG = "Error parsing proto stream for StatsConfig.";
 
     private ITestDevice mTestDevice;
+    private File mConfigFile;
 
     @Before
     public void setUpMocks() {
         mTestDevice = Mockito.mock(ITestDevice.class);
+        mConfigFile = Mockito.mock(File.class);
+        when(mConfigFile.getName()).thenReturn("statsdconfig.config");
     }
 
     /** Tests that a configuration is pushed to the device by making the expected calls. */
@@ -65,7 +69,6 @@ public class ConfigUtilTest {
         mockResult.setStderr("");
         when(mTestDevice.executeShellV2Command(matches(STATS_CONFIG_UPDATE_MATCHER)))
                 .thenReturn(mockResult);
-        when(mTestDevice.executeShellCommand(matches(REMOTE_PATH_REMOVE_MATCHER))).thenReturn("");
         // Push a file with some atoms to the device. If it fails to push or parse the file, or
         // any of the commands do not match, the utility will throw an exception and fail this test.
         long configId =
@@ -78,7 +81,7 @@ public class ConfigUtilTest {
         // Verify that key methods and commands are called on the device.
         verify(mTestDevice, times(1)).pushFile(any(File.class), anyString());
         verify(mTestDevice, times(1)).executeShellV2Command(matches(STATS_CONFIG_UPDATE_MATCHER));
-        verify(mTestDevice, times(1)).executeShellCommand(matches(REMOTE_PATH_REMOVE_MATCHER));
+        verify(mTestDevice, times(1)).deleteFile(matches(REMOTE_PATH_MATCHER));
     }
 
     /** Tests that an invalid configuration is reported as failing when unparseable. */
@@ -87,10 +90,9 @@ public class ConfigUtilTest {
         // Mock the push file, update config, and rm commands.
         when(mTestDevice.pushFile(any(File.class), anyString())).thenReturn(true);
         CommandResult mockResult = new CommandResult();
-        mockResult.setStderr("Error parsing proto stream for StatsConfig.");
+        mockResult.setStderr(PARSING_ERROR_MSG);
         when(mTestDevice.executeShellV2Command(matches(STATS_CONFIG_UPDATE_MATCHER)))
                 .thenReturn(mockResult);
-        when(mTestDevice.executeShellCommand(matches("rm /data/local/tmp/.*"))).thenReturn("");
         try {
             // Push a file with some atoms to the device and expect parsing failure.
             long configId =
@@ -107,6 +109,37 @@ public class ConfigUtilTest {
         }
     }
 
+    /** Tests that a statsd config proto binary is pushed to the device with expected calls. */
+    @Test
+    public void testPushBinaryDeviceConfig() throws DeviceNotAvailableException, IOException {
+        // Mock the file operations, push binary file, update config and rm commands.
+        when(mConfigFile.exists()).thenReturn(true);
+        when(mTestDevice.pushFile(any(File.class), anyString())).thenReturn(true);
+        CommandResult mockResult = new CommandResult();
+        mockResult.setStderr("");
+        when(mTestDevice.executeShellV2Command(matches(STATS_CONFIG_UPDATE_MATCHER)))
+                .thenReturn(mockResult);
+        // Push the config binary file to statsd.
+        long configId = ConfigUtil.pushBinaryStatsConfig(mTestDevice, mConfigFile);
+        // Verify that key methods and commands are called on the device
+        verify(mTestDevice, times(1)).pushFile(eq(mConfigFile), anyString());
+        verify(mTestDevice, times(1)).executeShellV2Command(matches(STATS_CONFIG_UPDATE_MATCHER));
+        verify(mTestDevice, times(1)).deleteFile(matches(REMOTE_PATH_MATCHER));
+    }
+
+    @Test
+    public void testPushBinaryDeviceConfigBinary_throwsWhenNotExists()
+            throws IOException, DeviceNotAvailableException {
+        // Mock the file does not exists
+        when(mConfigFile.exists()).thenReturn(false);
+        try {
+            long configId = ConfigUtil.pushBinaryStatsConfig(mTestDevice, mConfigFile);
+            fail("The configuration utility should fail and report file not found error");
+        } catch (IOException e) {
+            assertThat(e.getMessage()).contains("File not found");
+        }
+    }
+
     /** Test that the remove config shell command is executed on the device with the config id. */
     @Test
     public void testRemoveDeviceConfig() throws DeviceNotAvailableException {
@@ -118,6 +151,10 @@ public class ConfigUtilTest {
         ConfigUtil.removeConfig(mTestDevice, configId);
         verify(mTestDevice, times(1))
                 .executeShellCommand(
-                        eq(String.join(STATS_CONFIG_REMOVE_MATCHER, String.valueOf(configId))));
+                        eq(
+                                String.join(
+                                        " ",
+                                        STATS_CONFIG_REMOVE_MATCHER,
+                                        String.valueOf(configId))));
     }
 }
