@@ -81,7 +81,8 @@ def send_exit_event(exit_code, stacktrace='', logs=''):
     if clearcut:
         clearcut.flush_events()
 
-def send_start_event(tool_name, command_line=None, test_references=None,
+
+def send_start_event(tool_name, command_line='', test_references='',
                      cwd=None, operating_system=None):
     """Log start event of clearcut.
 
@@ -92,8 +93,6 @@ def send_start_event(tool_name, command_line=None, test_references=None,
         cwd: A string of current path.
         operating_system: A string of user's operating system.
     """
-    if not test_references:
-        test_references = ''
     if not cwd:
         cwd = os.getcwd()
     if not operating_system:
