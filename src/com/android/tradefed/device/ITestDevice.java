@@ -717,7 +717,7 @@ public interface ITestDevice extends INativeDevice {
      *
      * @throws DeviceNotAvailableException
      */
-    public int getCurrentUser() throws DeviceNotAvailableException;
+    public int getCurrentUser() throws DeviceNotAvailableException, DeviceRuntimeException;
 
     /**
      * Find and return the flags of a given user.

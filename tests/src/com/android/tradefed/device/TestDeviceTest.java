@@ -2852,8 +2852,12 @@ public class TestDeviceTest extends TestCase {
                 return "N\n";
             }
         };
-        int res = mTestDevice.getCurrentUser();
-        assertEquals(NativeDevice.INVALID_USER_ID, res);
+        try {
+            mTestDevice.getCurrentUser();
+            fail("Should have thrown an exception.");
+        } catch (DeviceRuntimeException expected) {
+            // Expected
+        }
     }
 
     /**
