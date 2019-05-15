@@ -909,12 +909,13 @@ public class TestDevice extends NativeDevice {
      */
     @Override
     public Set<String> getInstalledPackageNames() throws DeviceNotAvailableException {
-        return getInstalledPackageNames(new PkgFilter() {
-            @Override
-            public boolean accept(String pkgName, String apkPath) {
-                return true;
-            }
-        });
+        return getInstalledPackageNames(null);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean isPackageInstalled(String packageName) throws DeviceNotAvailableException {
+        return getInstalledPackageNames(packageName).contains(packageName);
     }
 
     /** {@inheritDoc} */
@@ -994,10 +995,24 @@ public class TestDevice extends NativeDevice {
     }
 
     // TODO: convert this to use DumpPkgAction
-    private Set<String> getInstalledPackageNames(PkgFilter filter)
+    private Set<String> getInstalledPackageNames(String packageNameSearched)
             throws DeviceNotAvailableException {
+        PkgFilter filter =
+                new PkgFilter() {
+                    @Override
+                    public boolean accept(String pkgName, String apkPath) {
+                        if (packageNameSearched == null) {
+                            return true;
+                        }
+                        return pkgName.equals(packageNameSearched);
+                    }
+                };
         Set<String> packages= new HashSet<String>();
-        String output = executeShellCommand(LIST_PACKAGES_CMD);
+        String command = LIST_PACKAGES_CMD;
+        if (packageNameSearched != null) {
+            command += (" | grep " + packageNameSearched);
+        }
+        String output = executeShellCommand(command);
         if (output != null) {
             Matcher m = PACKAGE_REGEX.matcher(output);
             while (m.find()) {
