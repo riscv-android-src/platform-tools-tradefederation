@@ -23,6 +23,8 @@ import com.android.tradefed.device.CollectingByteOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
+import com.android.tradefed.result.InputStreamSource;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -40,7 +42,7 @@ public class MetricUtil {
             throws DeviceNotAvailableException {
         ConfigMetricsReportList reports = getReportList(device, configId);
         if (reports.getReportsList().isEmpty()) {
-            CLog.i("No stats report collected.");
+            CLog.d("No stats report collected.");
             return new ArrayList<EventMetricData>();
         }
         ConfigMetricsReport report = reports.getReports(0);
@@ -50,23 +52,40 @@ public class MetricUtil {
         }
         data.sort(Comparator.comparing(EventMetricData::getElapsedTimestampNanos));
 
-        CLog.i("Received EventMetricDataList as following:\n");
+        CLog.d("Received EventMetricDataList as following:\n");
         for (EventMetricData d : data) {
-            CLog.i("Atom at %d:\n%s", d.getElapsedTimestampNanos(), d.getAtom().toString());
+            CLog.d("Atom at %d:\n%s", d.getElapsedTimestampNanos(), d.getAtom().toString());
         }
         return data;
+    }
+
+    /** Get Statsd report as a byte stream source */
+    public static InputStreamSource getReportByteStream(ITestDevice device, long configId)
+            throws DeviceNotAvailableException {
+        return new ByteArrayInputStreamSource(getReportByteArray(device, configId));
     }
 
     /** Get the report list proto from the device for the given {@code configId}. */
     private static ConfigMetricsReportList getReportList(ITestDevice device, long configId)
             throws DeviceNotAvailableException {
         try {
-            final CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
-            device.executeShellCommand(
-                    String.format(DUMP_REPORT_CMD_TEMPLATE, String.valueOf(configId)), receiver);
-            return ConfigMetricsReportList.parser().parseFrom(receiver.getOutput());
+            byte[] output = getReportByteArray(device, configId);
+            return ConfigMetricsReportList.parser().parseFrom(output);
         } catch (InvalidProtocolBufferException e) {
             throw new RuntimeException(e);
         }
     }
+
+    private static byte[] getReportByteArray(ITestDevice device, long configId)
+            throws DeviceNotAvailableException {
+        final CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
+        CLog.d(
+                "Dumping stats report with command: "
+                        + String.format(DUMP_REPORT_CMD_TEMPLATE, String.valueOf(configId)));
+        device.executeShellCommand(
+                String.format(DUMP_REPORT_CMD_TEMPLATE, String.valueOf(configId)), receiver);
+        return receiver.getOutput();
+    }
+
+
 }
