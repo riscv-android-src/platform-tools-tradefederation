@@ -106,6 +106,18 @@ RESULT_IGNORED_TEST = test_runner_base.TestResult(
     group_total=2
 )
 
+RESULT_ASSUMPTION_FAILED_TEST = test_runner_base.TestResult(
+    runner_name='someTestRunner',
+    group_name='someTestModule',
+    test_name='someClassName#sostName',
+    status=test_runner_base.ASSUMPTION_FAILED,
+    details=None,
+    test_count=1,
+    test_time='(10ms)',
+    runner_total=None,
+    group_total=2
+)
+
 #pylint: disable=protected-access
 #pylint: disable=invalid-name
 class ResultReporterUnittests(unittest.TestCase):
@@ -222,7 +234,7 @@ class ResultReporterUnittests(unittest.TestCase):
         self.assertEquals(group.ignored, 0)
         self.assertEquals(group.run_errors, True)
 
-    def test_update_stats_ignored(self):
+    def test_update_stats_ignored_and_assumption_failure(self):
         """Test _update_stats method."""
         # Passed Test
         group = result_reporter.RunStat()
@@ -256,6 +268,13 @@ class ResultReporterUnittests(unittest.TestCase):
         self.assertEquals(group.failed, 1)
         self.assertEquals(group.ignored, 2)
         self.assertEquals(group.run_errors, True)
+
+        # Assumption_Failure test
+        self.rr._update_stats(RESULT_ASSUMPTION_FAILED_TEST, group)
+        self.assertEquals(group.assumption_failed, 1)
+        # 2nd Assumption_Failure test
+        self.rr._update_stats(RESULT_ASSUMPTION_FAILED_TEST, group)
+        self.assertEquals(group.assumption_failed, 2)
 
     def test_print_summary_ret_val(self):
         """Test print_summary method's return value."""
