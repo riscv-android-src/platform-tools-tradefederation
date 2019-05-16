@@ -561,6 +561,14 @@ public interface ITestDevice extends INativeDevice {
     public Set<String> getInstalledPackageNames() throws DeviceNotAvailableException;
 
     /**
+     * Query the device for a given package name to check if it's currently installed or not.
+     *
+     * @return True if the package is reported as installed. False otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    public boolean isPackageInstalled(String packageName) throws DeviceNotAvailableException;
+
+    /**
      * Fetch the information about APEXes activated on the device.
      *
      * @return {@link Set} of {@link ApexInfo} currently activated on the device
