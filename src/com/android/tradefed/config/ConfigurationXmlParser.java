@@ -16,8 +16,6 @@
 
 package com.android.tradefed.config;
 
-import com.android.tradefed.log.LogUtil.CLog;
-
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
@@ -460,7 +458,6 @@ class ConfigurationXmlParser {
             // this has an hybrid use case since there is technically only one device. So we cannot
             // validate yet if objects are allowed to be outside <device> tags, it will be validated
             // later during the parsing when we have more information.
-            CLog.d("Only one device under tests. Using hybrid handling.");
             return;
         }
 
