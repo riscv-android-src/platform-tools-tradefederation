@@ -33,6 +33,7 @@ import com.android.tradefed.result.JUnit4ResultForwarder;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.host.PrettyTestEventLogger;
+import com.android.tradefed.testtype.junit4.CarryDnaeError;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.JUnit4TestFilter;
 import com.android.tradefed.util.StreamUtil;
@@ -627,7 +628,8 @@ public class HostTest
     }
 
     private void runJUnit4Tests(
-            ITestInvocationListener listener, Runner checkRunner, String className) {
+            ITestInvocationListener listener, Runner checkRunner, String className)
+            throws DeviceNotAvailableException {
         JUnitCore runnerCore = new JUnitCore();
         JUnit4ResultForwarder list = new JUnit4ResultForwarder(listener);
         runnerCore.addListener(list);
@@ -636,14 +638,19 @@ public class HostTest
         if (!(checkRunner instanceof ErrorReportingRunner)) {
             long startTime = System.currentTimeMillis();
             listener.testRunStarted(className, checkRunner.testCount());
-            if (mCollectTestsOnly) {
-                fakeDescriptionExecution(checkRunner.getDescription(), list);
-            } else {
-                setTestObjectInformation(checkRunner);
-                runnerCore.run(checkRunner);
+            try {
+                if (mCollectTestsOnly) {
+                    fakeDescriptionExecution(checkRunner.getDescription(), list);
+                } else {
+                    setTestObjectInformation(checkRunner);
+                    runnerCore.run(checkRunner);
+                }
+            } catch (CarryDnaeError e) {
+                throw e.getDeviceNotAvailableException();
+            } finally {
+                listener.testRunEnded(
+                        System.currentTimeMillis() - startTime, new HashMap<String, Metric>());
             }
-            listener.testRunEnded(
-                    System.currentTimeMillis() - startTime, new HashMap<String, Metric>());
         } else {
             // Special case where filtering leaves no tests to run, we report no failure
             // in this case.
@@ -671,8 +678,13 @@ public class HostTest
                 fakeDescriptionExecution(child, listener);
             }
         } else {
-            listener.testStarted(desc);
-            listener.testFinished(desc);
+            try {
+                listener.testStarted(desc);
+                listener.testFinished(desc);
+            } catch (Exception e) {
+                // Should never happen
+                CLog.e(e);
+            }
         }
     }
 

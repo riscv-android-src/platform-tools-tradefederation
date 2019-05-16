@@ -25,6 +25,8 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.MetricTestCase.LogHolder;
+import com.android.tradefed.testtype.junit4.CarryDnaeError;
+import com.android.tradefed.testtype.junit4.RunNotifierWrapper;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
@@ -110,12 +112,26 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
 
     @Override
     protected void runChild(FrameworkMethod method, RunNotifier notifier) {
+        RunNotifierWrapper wrapper = new RunNotifierWrapper(notifier);
         try {
-            super.runChild(method, notifier);
+            super.runChild(method, wrapper);
         } finally {
             for (File f : mDownloadedFiles) {
                 FileUtil.recursiveDelete(f);
             }
+        }
+        if (wrapper.getDeviceNotAvailableException() != null) {
+            throw new CarryDnaeError(wrapper.getDeviceNotAvailableException());
+        }
+    }
+
+    @Override
+    public void run(RunNotifier notifier) {
+        RunNotifierWrapper wrapper = new RunNotifierWrapper(notifier);
+        super.run(wrapper);
+
+        if (wrapper.getDeviceNotAvailableException() != null) {
+            throw new CarryDnaeError(wrapper.getDeviceNotAvailableException());
         }
     }
 
