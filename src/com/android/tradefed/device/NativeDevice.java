@@ -3586,6 +3586,13 @@ public class NativeDevice implements IManagedTestDevice {
 
     /** {@inheritDoc} */
     @Override
+    public boolean isPackageInstalled(String packageName, String userId)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Package's feature");
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public Set<ApexInfo> getActiveApexes() throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("No support for Package's feature");
     }
@@ -4401,5 +4408,10 @@ public class NativeDevice implements IManagedTestDevice {
             mShouldSkipContentProviderSetup = true;
         }
         return mContentProvider;
+    }
+
+    /** Reset the flag for content provider setup in order to trigger it again. */
+    void resetContentProviderSetup() {
+        mShouldSkipContentProviderSetup = false;
     }
 }
