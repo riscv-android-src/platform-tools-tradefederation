@@ -2154,6 +2154,32 @@ public class TestDeviceTest extends TestCase {
         assertEquals(2, actualPkgs.size());
         assertTrue(actualPkgs.contains("com.android.wallpaper"));
         assertTrue(actualPkgs.contains("com.android.wallpaper.livepicker"));
+        EasyMock.verify(mMockIDevice, mMockStateMonitor);
+    }
+
+    /** Unit test for {@link TestDevice#isPackageInstalled(String, String)}. */
+    public void testIsPackageInstalled() throws Exception {
+        final String output =
+                "package:/system/app/LiveWallpapers.apk=com.android.wallpaper\n"
+                        + "package:/system/app/LiveWallpapersPicker.apk="
+                        + "com.android.wallpaper.livepicker";
+        injectShellResponse(TestDevice.LIST_PACKAGES_CMD + " | grep com.android.wallpaper", output);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor);
+        assertTrue(mTestDevice.isPackageInstalled("com.android.wallpaper", null));
+        EasyMock.verify(mMockIDevice, mMockStateMonitor);
+    }
+
+    /** Unit test for {@link TestDevice#isPackageInstalled(String, String)}. */
+    public void testIsPackageInstalled_withUser() throws Exception {
+        final String output =
+                "package:/system/app/LiveWallpapers.apk=com.android.wallpaper\n"
+                        + "package:/system/app/LiveWallpapersPicker.apk="
+                        + "com.android.wallpaper.livepicker";
+        injectShellResponse(
+                TestDevice.LIST_PACKAGES_CMD + " --user 1 | grep com.android.wallpaper", output);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor);
+        assertTrue(mTestDevice.isPackageInstalled("com.android.wallpaper", "1"));
+        EasyMock.verify(mMockIDevice, mMockStateMonitor);
     }
 
     /**

@@ -82,7 +82,10 @@ public class ContentProviderHandlerTest {
 
     @Test
     public void testSetUp_alreadyInstalled() throws Exception {
-        doReturn(true).when(mMockDevice).isPackageInstalled(ContentProviderHandler.PACKAGE_NAME);
+        doReturn(0).when(mMockDevice).getCurrentUser();
+        doReturn(true)
+                .when(mMockDevice)
+                .isPackageInstalled(ContentProviderHandler.PACKAGE_NAME, "0");
 
         assertTrue(mProvider.setUp());
     }
