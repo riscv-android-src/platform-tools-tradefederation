@@ -742,7 +742,9 @@ public class TestDevice extends NativeDevice {
         int errorDialogCount = 0;
         Pattern crashPattern = Pattern.compile(".*crashing=true.*AppErrorDialog.*");
         Pattern anrPattern = Pattern.compile(".*notResponding=true.*AppNotRespondingDialog.*");
-        String systemStatusOutput = executeShellCommand("dumpsys activity processes");
+        String systemStatusOutput =
+                executeShellCommand(
+                        "dumpsys activity processes | grep -e .*crashing=true.*AppErrorDialog.* -e .*notResponding=true.*AppNotRespondingDialog.*");
         Matcher crashMatcher = crashPattern.matcher(systemStatusOutput);
         while (crashMatcher.find()) {
             errorDialogCount++;
