@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.Log;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -49,7 +48,6 @@ public class DeviceTestCase extends MetricTestCase
                 ITestFilterReceiver,
                 ITestAnnotationFilterReceiver {
 
-    private static final String LOG_TAG = "DeviceTestCase";
     private ITestDevice mDevice;
     private TestFilterHelper mFilterHelper;
 
@@ -348,9 +346,6 @@ public class DeviceTestCase extends MetricTestCase
                     }
                 }
                 superClass = superClass.getSuperclass();
-            }
-            if (mMethodNames.size() == 0) {
-                Log.w(LOG_TAG, String.format("No tests found in %s", theClass.getName()));
             }
         }
         return mMethodNames;
