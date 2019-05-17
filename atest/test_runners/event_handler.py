@@ -123,7 +123,8 @@ class EventHandler(object):
             test_count=self.state['test_count'],
             test_time='',
             runner_total=None,
-            group_total=self.state['current_group_total']))
+            group_total=self.state['current_group_total'],
+            perf_info={}))
 
     def _invocation_failed(self, event_data):
         # Broadest possible failure. May not even start the module/test run.
@@ -136,7 +137,8 @@ class EventHandler(object):
             test_count=self.state['test_count'],
             test_time='',
             runner_total=None,
-            group_total=self.state['current_group_total']))
+            group_total=self.state['current_group_total'],
+            perf_info={}))
 
     def _run_ended(self, event_data):
         pass
@@ -168,6 +170,15 @@ class EventHandler(object):
             status = test_runner_base.PASSED_STATUS
             trace = None
 
+        cpu_time = event_data.get('cpu_time', None)
+        real_time = event_data.get('real_time', None)
+        iterations = event_data.get('iterations', None)
+        perf_info = {}
+        if (cpu_time and real_time and iterations):
+            perf_info['cpu_time'] = cpu_time
+            perf_info['real_time'] = real_time
+            perf_info['iterations'] = iterations
+
         self.reporter.process_test_result(test_runner_base.TestResult(
             runner_name=self.runner_name,
             group_name=self.state['current_group'],
@@ -177,6 +188,7 @@ class EventHandler(object):
             test_count=self.state['test_count'],
             test_time=test_time,
             runner_total=None,
+            perf_info=perf_info,
             group_total=self.state['current_group_total']))
 
     def _log_association(self, event_data):
@@ -240,7 +252,8 @@ class EventHandler(object):
                     test_count=self.state['test_count'],
                     test_time='',
                     runner_total=None,
-                    group_total=self.state['current_group_total']))
+                    group_total=self.state['current_group_total'],
+                    perf_info={}))
             raise EventHandleError(EVENTS_NOT_BALANCED % (start_event,
                                                           event_name))
 
