@@ -78,6 +78,6 @@ public class NestedRemoteDeviceTest {
         doReturn(stopCvdRes).when(mMockRunUtil).runTimedCmd(Mockito.anyLong(), Mockito.any());
         doReturn(mMockIDevice).when(mMockStateMonitor).waitForDeviceAvailable();
 
-        assertTrue(mDevice.resetVirtualDevice(mMockLogger, new BuildInfo()));
+        assertTrue(mDevice.resetVirtualDevice(mMockLogger, new BuildInfo(), true));
     }
 }
