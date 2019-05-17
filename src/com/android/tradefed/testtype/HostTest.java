@@ -569,13 +569,16 @@ public class HostTest
     }
 
     private void runTestCases(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        Set<String> skippedTests = new LinkedHashSet<>();
         for (Object obj : getTestMethods()) {
             if (IRemoteTest.class.isInstance(obj)) {
                 IRemoteTest test = (IRemoteTest) obj;
                 runRemoteTest(listener, test);
             } else if (TestSuite.class.isInstance(obj)) {
                 TestSuite junitTest = (TestSuite) obj;
-                runJUnit3Tests(listener, junitTest, junitTest.getName());
+                if (!runJUnit3Tests(listener, junitTest, junitTest.getName())) {
+                    skippedTests.add(junitTest.getName());
+                }
             } else if (Description.class.isInstance(obj)) {
                 // Running in a full JUnit4 manner, no downgrade to JUnit3 {@link Test}
                 Description desc = (Description) obj;
@@ -587,6 +590,7 @@ public class HostTest
                         String.format("%s is not a supported test", obj));
             }
         }
+        CLog.v("The following classes were skipped due to no test cases found: %s", skippedTests);
     }
 
     private void runRemoteTest(ITestInvocationListener listener, IRemoteTest test)
@@ -604,14 +608,16 @@ public class HostTest
         test.run(listener);
     }
 
-    private void runJUnit3Tests(
+    /** Returns True if some tests were executed, false otherwise. */
+    private boolean runJUnit3Tests(
             ITestInvocationListener listener, TestSuite junitTest, String className)
             throws DeviceNotAvailableException {
         if (mCollectTestsOnly) {
             // Collect only mode, fake the junit test execution.
-            listener.testRunStarted(className, junitTest.countTestCases());
+            int testCount = junitTest.countTestCases();
+            listener.testRunStarted(className, testCount);
             HashMap<String, Metric> empty = new HashMap<>();
-            for (int i = 0; i < junitTest.countTestCases(); i++) {
+            for (int i = 0; i < testCount; i++) {
                 Test t = junitTest.testAt(i);
                 // Test does not have a getName method.
                 // using the toString format instead: <testName>(className)
@@ -622,8 +628,13 @@ public class HostTest
             }
             HashMap<String, Metric> emptyMap = new HashMap<>();
             listener.testRunEnded(0, emptyMap);
+            if (testCount > 0) {
+                return true;
+            } else {
+                return false;
+            }
         } else {
-            JUnitRunUtil.runTest(listener, junitTest, className);
+            return JUnitRunUtil.runTest(listener, junitTest, className);
         }
     }
 
