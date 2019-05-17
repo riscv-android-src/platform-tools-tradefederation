@@ -30,6 +30,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -69,6 +70,11 @@ public class NestedRemoteDeviceTest {
                         return options;
                     }
                 };
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        mDevice.postInvocationTearDown();
     }
 
     /** Test that reset device returns true in case of success */

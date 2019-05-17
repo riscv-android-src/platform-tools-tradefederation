@@ -25,6 +25,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.device.NativeDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.device.cloud.ManagedRemoteDevice;
@@ -35,9 +36,11 @@ import com.android.tradefed.invoker.shard.ShardBuildCloner;
 import com.android.tradefed.log.BaseLeveledLogOutput;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.postprocessor.IPostProcessor;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
@@ -50,6 +53,7 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
@@ -57,6 +61,7 @@ import com.android.tradefed.util.TimeUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -302,6 +307,9 @@ public class TestInvocation implements ITestInvocation {
                     takeBugreport(badDevice, listener, bugreportName);
                 }
             }
+            // Save the device executeShellCommand logs
+            logExecuteShellCommand(context.getDevices(), listener);
+
             mStatus = "tearing down";
             try {
                 invocationPath.doTeardown(context, config, listener, exception);
@@ -815,5 +823,31 @@ public class TestInvocation implements ITestInvocation {
         }
         String finalFormat = String.format("\n%s\n%s\n%s", limit, message, limit);
         CLog.d(finalFormat);
+    }
+
+    private void logExecuteShellCommand(List<ITestDevice> devices, ITestLogger logger) {
+        for (ITestDevice device : devices) {
+            if (!(device instanceof NativeDevice)) {
+                return;
+            }
+            File log = ((NativeDevice) device).getExecuteShellCommandLog();
+            if (log == null || !log.exists()) {
+                return;
+            }
+            try {
+                if (log != null && !FileUtil.readStringFromFile(log).isEmpty()) {
+                    try (InputStreamSource source = new FileInputStreamSource(log)) {
+                        logger.testLog(
+                                String.format(
+                                        "executeShellCommandLog_%s", device.getSerialNumber()),
+                                LogDataType.TEXT,
+                                source);
+                    }
+                }
+            } catch (IOException e) {
+                // Ignored
+                CLog.e(e);
+            }
+        }
     }
 }
