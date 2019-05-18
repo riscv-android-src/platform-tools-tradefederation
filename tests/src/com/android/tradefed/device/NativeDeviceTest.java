@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
 import com.android.ddmlib.AdbCommandRejectedException;
@@ -2578,5 +2579,35 @@ public class NativeDeviceTest {
                     }
                 };
         assertFalse(mTestDevice.isExecutable("/system"));
+    }
+
+    /** Test {@link NativeDevice#getTombstones()}. */
+    @Test
+    public void testGetTombstones_notRoot() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn(false).when(spy).isAdbRoot();
+
+        EasyMock.replay(mMockIDevice);
+        List<File> result = spy.getTombstones();
+        assertEquals(0, result.size());
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test {@link NativeDevice#getTombstones()}. */
+    @Test
+    public void testGetTombstones() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn(true).when(spy).isAdbRoot();
+
+        String[] tombs = new String[] {"tomb1", "tomb2"};
+        doReturn(tombs).when(spy).getChildren("/data/tombstones/");
+
+        doReturn(new File("tomb1_test")).when(spy).pullFile("/data/tombstones/tomb1");
+        doReturn(new File("tomb2_test")).when(spy).pullFile("/data/tombstones/tomb2");
+
+        EasyMock.replay(mMockIDevice);
+        List<File> result = spy.getTombstones();
+        assertEquals(2, result.size());
+        EasyMock.verify(mMockIDevice);
     }
 }
