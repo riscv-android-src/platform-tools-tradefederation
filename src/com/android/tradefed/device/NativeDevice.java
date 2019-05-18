@@ -183,6 +183,9 @@ public class NativeDevice implements IManagedTestDevice {
     /** Pattern to find an executable file. */
     private static final Pattern EXE_FILE = Pattern.compile("^[-l]r.x.+");
 
+    /** Path of the device containing the tombstones */
+    private static final String TOMBSTONE_PATH = "/data/tombstones/";
+
     /** The time in ms to wait for a command to complete. */
     private long mCmdTimeout = 2 * 60 * 1000L;
     /** The time in ms to wait for a 'long' command to complete. */
@@ -4362,6 +4365,23 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public long getLastExpectedRebootTimeMillis() {
         return mLastTradefedRebootTime;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<File> getTombstones() throws DeviceNotAvailableException {
+        List<File> tombstones = new ArrayList<>();
+        if (!isAdbRoot()) {
+            CLog.w("Device was not root, cannot collect tombstones.");
+            return tombstones;
+        }
+        for (String tombName : getChildren(TOMBSTONE_PATH)) {
+            File tombFile = pullFile(TOMBSTONE_PATH + tombName);
+            if (tombFile != null) {
+                tombstones.add(tombFile);
+            }
+        }
+        return tombstones;
     }
 
     /** Validate that pid is an integer and not empty. */
