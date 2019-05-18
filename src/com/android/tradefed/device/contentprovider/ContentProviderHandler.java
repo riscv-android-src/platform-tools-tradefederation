@@ -87,7 +87,7 @@ public class ContentProviderHandler {
      * @return True if ready to be used, False otherwise.
      */
     public boolean setUp() throws DeviceNotAvailableException {
-        if (mDevice.isPackageInstalled(PACKAGE_NAME)) {
+        if (mDevice.isPackageInstalled(PACKAGE_NAME, Integer.toString(mDevice.getCurrentUser()))) {
             return true;
         }
         if (mContentProviderApk == null) {

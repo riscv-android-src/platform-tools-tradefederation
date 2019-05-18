@@ -21,8 +21,8 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FilteredResultForwarder;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.FileUtil;
 
@@ -196,7 +196,7 @@ class InstrumentationFileTest implements IRemoteTest {
             throws DeviceNotAvailableException {
         CollectingTestListener testTracker = new CollectingTestListener();
         try {
-            runner.run(new ResultForwarder(listener, testTracker));
+            runner.run(new FilteredResultForwarder(mTests, listener, testTracker));
         } finally {
             deleteTestFileFromDevice(mFilePathOnDevice);
             Collection<TestDescription> completedTests =

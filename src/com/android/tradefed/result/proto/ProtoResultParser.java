@@ -251,7 +251,6 @@ public class ProtoResultParser {
         if (!anyDescription.is(Context.class)) {
             throw new RuntimeException("Expected Any description of type Context");
         }
-        log("Test module started proto");
         try {
             IInvocationContext moduleContext =
                     InvocationContext.fromProto(anyDescription.unpack(Context.class));

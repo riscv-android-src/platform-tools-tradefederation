@@ -911,13 +911,20 @@ public class TestDevice extends NativeDevice {
      */
     @Override
     public Set<String> getInstalledPackageNames() throws DeviceNotAvailableException {
-        return getInstalledPackageNames(null);
+        return getInstalledPackageNames(null, null);
     }
 
     /** {@inheritDoc} */
     @Override
     public boolean isPackageInstalled(String packageName) throws DeviceNotAvailableException {
-        return getInstalledPackageNames(packageName).contains(packageName);
+        return getInstalledPackageNames(packageName, null).contains(packageName);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean isPackageInstalled(String packageName, String userId)
+            throws DeviceNotAvailableException {
+        return getInstalledPackageNames(packageName, userId).contains(packageName);
     }
 
     /** {@inheritDoc} */
@@ -992,25 +999,14 @@ public class TestDevice extends NativeDevice {
         return action.mPkgInfoMap.get(packageName);
     }
 
-    private static interface PkgFilter {
-        boolean accept(String pkgName, String apkPath);
-    }
-
     // TODO: convert this to use DumpPkgAction
-    private Set<String> getInstalledPackageNames(String packageNameSearched)
+    private Set<String> getInstalledPackageNames(String packageNameSearched, String userId)
             throws DeviceNotAvailableException {
-        PkgFilter filter =
-                new PkgFilter() {
-                    @Override
-                    public boolean accept(String pkgName, String apkPath) {
-                        if (packageNameSearched == null) {
-                            return true;
-                        }
-                        return pkgName.equals(packageNameSearched);
-                    }
-                };
         Set<String> packages= new HashSet<String>();
         String command = LIST_PACKAGES_CMD;
+        if (userId != null) {
+            command += String.format(" --user %s", userId);
+        }
         if (packageNameSearched != null) {
             command += (" | grep " + packageNameSearched);
         }
@@ -1018,9 +1014,10 @@ public class TestDevice extends NativeDevice {
         if (output != null) {
             Matcher m = PACKAGE_REGEX.matcher(output);
             while (m.find()) {
-                String packagePath = m.group(1);
                 String packageName = m.group(2);
-                if (filter.accept(packageName, packagePath)) {
+                if (packageNameSearched != null && packageName.equals(packageNameSearched)) {
+                    packages.add(packageName);
+                } else if (packageNameSearched == null) {
                     packages.add(packageName);
                 }
             }
@@ -1141,6 +1138,7 @@ public class TestDevice extends NativeDevice {
         final String output = executeShellCommand(command);
         if (output.startsWith("Success")) {
             try {
+                resetContentProviderSetup();
                 return Integer.parseInt(output.substring(output.lastIndexOf(" ")).trim());
             } catch (NumberFormatException e) {
                 CLog.e("Failed to parse result: %s", output);
@@ -1368,6 +1366,7 @@ public class TestDevice extends NativeDevice {
             CLog.w("Already running as user id: %s. Nothing to be done.", userId);
             return true;
         }
+        resetContentProviderSetup();
         executeShellCommand(String.format("am switch-user %d", userId));
         long initialTime = getHostCurrentTime();
         while (getHostCurrentTime() - initialTime <= timeout) {
