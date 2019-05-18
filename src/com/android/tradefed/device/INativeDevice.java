@@ -1313,4 +1313,16 @@ public interface INativeDevice {
      * returned by {@link System#currentTimeMillis()}.
      */
     public long getLastExpectedRebootTimeMillis();
+
+    /**
+     * Fetch and return the list of tombstones from the devices. Requires root.
+     *
+     * <p>method is best-effort so if one tombstone fails to be pulled for any reason it will be
+     * missing from the list. Only a {@link DeviceNotAvailableException} will terminate the method
+     * early.
+     *
+     * @return A list of tombstone files, empty if no tombstone.
+     * @see <a href="https://source.android.com/devices/tech/debug">Tombstones documentation</a>
+     */
+    public List<File> getTombstones() throws DeviceNotAvailableException;
 }
