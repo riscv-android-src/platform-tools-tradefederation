@@ -297,7 +297,8 @@ public class TradefedSandbox implements ISandbox {
                 mEventParser = new SubprocessTestResultsParser(listener, true, context);
                 commandLine = commandLine + " --no-" + SandboxOptions.USE_PROTO_REPORTER;
             }
-            String[] args = QuotationAwareTokenizer.tokenizeLine(commandLine);
+            String[] args =
+                    QuotationAwareTokenizer.tokenizeLine(commandLine, /* No Logging */ false);
             mGlobalConfig = dumpGlobalConfig(config, new HashSet<>());
             try (InputStreamSource source = new FileInputStreamSource(mGlobalConfig)) {
                 listener.testLog("sandbox-global-config", LogDataType.XML, source);
