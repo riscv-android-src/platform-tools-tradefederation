@@ -742,7 +742,9 @@ public class TestDevice extends NativeDevice {
         int errorDialogCount = 0;
         Pattern crashPattern = Pattern.compile(".*crashing=true.*AppErrorDialog.*");
         Pattern anrPattern = Pattern.compile(".*notResponding=true.*AppNotRespondingDialog.*");
-        String systemStatusOutput = executeShellCommand("dumpsys activity processes");
+        String systemStatusOutput =
+                executeShellCommand(
+                        "dumpsys activity processes | grep -e .*crashing=true.*AppErrorDialog.* -e .*notResponding=true.*AppNotRespondingDialog.*");
         Matcher crashMatcher = crashPattern.matcher(systemStatusOutput);
         while (crashMatcher.find()) {
             errorDialogCount++;
@@ -1255,20 +1257,22 @@ public class TestDevice extends NativeDevice {
         return null;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public int getCurrentUser() throws DeviceNotAvailableException {
+    public int getCurrentUser() throws DeviceNotAvailableException, DeviceRuntimeException {
         checkApiLevelAgainstNextRelease("get-current-user", API_LEVEL_GET_CURRENT_USER);
         final String output = executeShellCommand("am get-current-user");
         try {
             int userId = Integer.parseInt(output.trim());
+            if (userId < 0) {
+                throw new DeviceRuntimeException(
+                        String.format(
+                                "Invalid user id '%s' was returned for get-current-user", userId));
+            }
             return userId;
         } catch (NumberFormatException e) {
-            CLog.e(e);
+            throw new DeviceRuntimeException(e);
         }
-        return INVALID_USER_ID;
     }
 
     private Matcher findUserInfo(String pmListUsersOutput) {
