@@ -833,11 +833,6 @@ public abstract class ITestSuite
         // to carry these extra data.
         cleanUpSuiteSetup();
 
-        /** Randomize all the modules to be ran if random-order is set while sharding.*/
-        if (mRandomOrder) {
-            randomizeTestModules(splitModules, mRandomSeed);
-        }
-
         // create an association of one ITestSuite <=> one ModuleDefinition as the smallest
         // execution unit supported.
         List<IRemoteTest> splitTests = new ArrayList<>();
