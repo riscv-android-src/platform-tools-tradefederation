@@ -628,7 +628,10 @@ public abstract class ITestSuite
         if (mIsolatedModule && (device instanceof NestedRemoteDevice)) {
             boolean res =
                     ((NestedRemoteDevice) device)
-                            .resetVirtualDevice(logger, context.getBuildInfos().get(0));
+                            .resetVirtualDevice(
+                                    logger,
+                                    context.getBuildInfos().get(0),
+                                    /* Do not collect the logs */ false);
             if (!res) {
                 String serial = device.getSerialNumber();
                 throw new DeviceNotAvailableException(
