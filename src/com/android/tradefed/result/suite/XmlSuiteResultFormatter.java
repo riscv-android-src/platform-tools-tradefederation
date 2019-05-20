@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.result.suite;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -53,6 +54,8 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -266,8 +269,9 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
         serializer.attribute(NS, MODULES_TOTAL_ATTR, Integer.toString(holder.totalModules));
         serializer.endTag(NS, SUMMARY_TAG);
 
+        List<TestRunResult> sortedModuleList = sortModules(holder.runResults, holder.modulesAbi);
         // Results
-        for (TestRunResult module : holder.runResults) {
+        for (TestRunResult module : sortedModuleList) {
             serializer.startTag(NS, MODULE_TAG);
             // To be compatible of CTS strip the abi from the module name when available.
             if (holder.modulesAbi.get(module.getName()) != null) {
@@ -519,6 +523,40 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
 
         invocation.context = context;
         return invocation;
+    }
+
+    /** Sort the list of results based on their name without abi primarily then secondly on abi. */
+    @VisibleForTesting
+    List<TestRunResult> sortModules(
+            Collection<TestRunResult> results, Map<String, IAbi> moduleAbis) {
+        List<TestRunResult> sortedList = new ArrayList<>(results);
+        Collections.sort(
+                sortedList,
+                new Comparator<TestRunResult>() {
+                    @Override
+                    public int compare(TestRunResult o1, TestRunResult o2) {
+                        String module1NameStripped = o1.getName();
+                        String module1Abi = "";
+                        if (moduleAbis.get(module1NameStripped) != null) {
+                            module1Abi = moduleAbis.get(module1NameStripped).getName();
+                            module1NameStripped = module1NameStripped.replace(module1Abi + " ", "");
+                        }
+
+                        String module2NameStripped = o2.getName();
+                        String module2Abi = "";
+                        if (moduleAbis.get(module2NameStripped) != null) {
+                            module2Abi = moduleAbis.get(module2NameStripped).getName();
+                            module2NameStripped = module2NameStripped.replace(module2Abi + " ", "");
+                        }
+                        int res = module1NameStripped.compareTo(module2NameStripped);
+                        if (res != 0) {
+                            return res;
+                        }
+                        // Use the Abi as discriminant to always sort abi in the same order.
+                        return module1Abi.compareTo(module2Abi);
+                    }
+                });
+        return sortedList;
     }
 
     /** Handle the parsing and replay of all run history information. */
