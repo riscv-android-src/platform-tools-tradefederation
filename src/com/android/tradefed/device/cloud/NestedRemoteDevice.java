@@ -88,7 +88,8 @@ public class NestedRemoteDevice extends TestDevice {
     }
 
     /** Teardown and restore the virtual device so testing can proceed. */
-    public final boolean resetVirtualDevice(ITestLogger logger, IBuildInfo info)
+    public final boolean resetVirtualDevice(
+            ITestLogger logger, IBuildInfo info, boolean resetDueToFailure)
             throws DeviceNotAvailableException {
         String username = IP_TO_USER.get(getSerialNumber());
         // stop_cvd
@@ -103,8 +104,10 @@ public class NestedRemoteDevice extends TestDevice {
         }
         // Synchronize this so multiple reset do not occur at the same time inside one VM.
         synchronized (NestedRemoteDevice.class) {
-            // Log the common files before restarting otherwise they are lost
-            logDebugFiles(logger, username);
+            if (resetDueToFailure) {
+                // Log the common files before restarting otherwise they are lost
+                logDebugFiles(logger, username);
+            }
             // Restart the device without re-creating the data partitions.
             List<String> createCommand =
                     LaunchCvdHelper.createSimpleDeviceCommand(username, true, false, false);
