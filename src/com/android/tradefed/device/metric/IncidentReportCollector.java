@@ -35,7 +35,7 @@ import java.nio.file.Files;
 @OptionClass(alias = "incident-collector")
 public class IncidentReportCollector extends FilePullerLogCollector {
     // Prefix of the keys for all incident files passed from the device.
-    private static final String INCIDENT_KEY_MATCHER = "incident";
+    private static final String INCIDENT_KEY_MATCHER = "incident-report";
     // Suffix for all of the logs that are processed incident reports.
     private static final String PROCESSED_KEY_SUFFIX = "-processed";
 
