@@ -193,26 +193,41 @@ class AtestUtilsUnittests(unittest.TestCase):
         self.assertEqual(capture_output.getvalue(),
                          green_wrap_no_highlight_string)
 
+    @mock.patch('socket.gethostname')
     @mock.patch('subprocess.check_output')
-    def test_is_external_run(self, mock_output):
+    def test_is_external_run(self, mock_output, mock_hostname):
         """Test method is_external_run."""
         mock_output.return_value = ''
+        mock_hostname.return_value = ''
         self.assertTrue(atest_utils.is_external_run())
+
         mock_output.return_value = 'test@other.com'
+        mock_hostname.return_value = 'abc.com'
         self.assertTrue(atest_utils.is_external_run())
+
+        mock_output.return_value = 'test@other.com'
+        mock_hostname.return_value = 'abc.google.com'
+        self.assertFalse(atest_utils.is_external_run())
+
+        mock_output.return_value = 'test@other.com'
+        mock_hostname.return_value = 'abc.google.def.com'
+        self.assertTrue(atest_utils.is_external_run())
+
         mock_output.return_value = 'test@google.com'
         self.assertFalse(atest_utils.is_external_run())
+
         mock_output.side_effect = OSError()
         self.assertTrue(atest_utils.is_external_run())
+
         mock_output.side_effect = subprocess.CalledProcessError(1, 'cmd')
         self.assertTrue(atest_utils.is_external_run())
 
-    @mock.patch('atest_utils.is_external_run')
-    def test_print_data_collection_notice(self, mock_is_external_run):
+    @mock.patch('metrics.metrics_base.get_user_type')
+    def test_print_data_collection_notice(self, mock_get_user_type):
         """Test method print_data_collection_notice."""
 
-        # is_external_run return False.
-        mock_is_external_run.return_value = True
+        # get_user_type return 1(external).
+        mock_get_user_type.return_value = 1
         notice_str = ('\n==================\nNotice:\n'
                       '  We collect anonymous usage statistics'
                       ' in accordance with our'
@@ -228,8 +243,8 @@ class AtestUtilsUnittests(unittest.TestCase):
         uncolored_string = notice_str
         self.assertEqual(capture_output.getvalue(), uncolored_string)
 
-        # is_external_run return False.
-        mock_is_external_run.return_value = False
+        # get_user_type return 0(internal).
+        mock_get_user_type.return_value = 0
         notice_str = ('\n==================\nNotice:\n'
                       '  We collect usage statistics'
                       ' in accordance with our'
