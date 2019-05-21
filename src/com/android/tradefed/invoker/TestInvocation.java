@@ -51,6 +51,7 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.PrettyPrintDelimiter;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.TimeUtil;
@@ -809,11 +810,6 @@ public class TestInvocation implements ITestInvocation {
     public static void printStageDelimiter(Stage phase, boolean end) {
         String startEnd = end ? "ENDING" : "STARTING";
         String message = String.format("===== %s PHASE %s =====", phase, startEnd);
-        String limit = "";
-        for (int i = 0; i < message.length(); i++) {
-            limit += "=";
-        }
-        String finalFormat = String.format("\n%s\n%s\n%s", limit, message, limit);
-        CLog.d(finalFormat);
+        PrettyPrintDelimiter.printStageDelimiter(message);
     }
 }
