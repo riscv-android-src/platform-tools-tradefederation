@@ -42,7 +42,6 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.proto.FileProtoResultReporter;
 import com.android.tradefed.result.proto.ProtoResultParser;
-import com.android.tradefed.result.proto.SummaryProtoResultReporter;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
@@ -78,7 +77,6 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
     public static final String REMOTE_USER_DIR = "/home/{$USER}/";
     public static final String PROTO_RESULT_NAME = "output.pb";
-    public static final String PROTO_SUMMARY_NAME = "summary-output.pb";
     public static final String STDOUT_FILE = "screen-VM_tradefed-stdout.txt";
     public static final String STDERR_FILE = "screen-VM_tradefed-stderr.txt";
     public static final String REMOTE_CONFIG = "configuration";
@@ -524,10 +522,6 @@ public class RemoteInvocationExecution extends InvocationExecution {
         FileProtoResultReporter protoReporter = new FileProtoResultReporter();
         protoReporter.setFileOutput(new File(resultDirPath + PROTO_RESULT_NAME));
         reporters.add(protoReporter);
-        // Setup a summary reporter
-        SummaryProtoResultReporter summaryReporter = new SummaryProtoResultReporter();
-        summaryReporter.setFileOutput(new File(resultDirPath + PROTO_SUMMARY_NAME));
-        reporters.add(summaryReporter);
 
         config.setTestInvocationListeners(reporters);
 

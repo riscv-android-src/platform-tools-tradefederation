@@ -163,7 +163,6 @@ import com.android.tradefed.result.proto.FileProtoResultReporterTest;
 import com.android.tradefed.result.proto.ProtoResultParserTest;
 import com.android.tradefed.result.proto.ProtoResultReporterTest;
 import com.android.tradefed.result.proto.StreamProtoResultReporterTest;
-import com.android.tradefed.result.proto.SummaryProtoResultReporterTest;
 import com.android.tradefed.result.suite.FormattedGeneratorReporterTest;
 import com.android.tradefed.result.suite.XmlSuiteResultFormatterTest;
 import com.android.tradefed.sandbox.SandboxConfigDumpTest;
@@ -562,7 +561,6 @@ import org.junit.runners.Suite.SuiteClasses;
     ProtoResultParserTest.class,
     ProtoResultReporterTest.class,
     StreamProtoResultReporterTest.class,
-    SummaryProtoResultReporterTest.class,
 
     // result.suite
     FormattedGeneratorReporterTest.class,
