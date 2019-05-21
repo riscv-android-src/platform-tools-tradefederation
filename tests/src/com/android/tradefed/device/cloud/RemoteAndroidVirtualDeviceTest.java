@@ -56,7 +56,6 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -168,8 +167,7 @@ public class RemoteAndroidVirtualDeviceTest {
                                 mMockBuildInfo,
                                 null) {
                             @Override
-                            protected List<String> buildGceCmd(File reportFile, IBuildInfo b)
-                                    throws IOException {
+                            protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
                                 FileUtil.deleteFile(reportFile);
                                 List<String> tmp = new ArrayList<String>();
                                 tmp.add("");
@@ -264,6 +262,11 @@ public class RemoteAndroidVirtualDeviceTest {
                     public void startLogcat() {
                         // ignore
                     }
+
+                    @Override
+                    GceManager getGceHandler() {
+                        return mGceHandler;
+                    }
                 };
         EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable(EasyMock.anyLong()))
                 .andReturn(mMockIDevice);
@@ -271,6 +274,8 @@ public class RemoteAndroidVirtualDeviceTest {
         replayMocks(mMockBuildInfo);
         testDevice.preInvocationSetup(mMockBuildInfo);
         verifyMocks(mMockBuildInfo);
+
+        Mockito.verify(mGceHandler).logStableHostImageInfos(mMockBuildInfo);
     }
 
     /**

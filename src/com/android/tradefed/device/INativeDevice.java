@@ -36,6 +36,7 @@ import com.google.errorprone.annotations.MustBeClosed;
 
 import java.io.File;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -300,6 +301,19 @@ public interface INativeDevice {
             throws DeviceNotAvailableException;
 
     /**
+     * Helper method which executes an adb shell command and returns the results as a {@link
+     * CommandResult} properly populated with the command status output, stdout and stderr.
+     *
+     * @param command The command that should be run.
+     * @param pipeToOutput {@link OutputStream} where the std output will be redirected.
+     * @return The result in {@link CommandResult}.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     */
+    public CommandResult executeShellV2Command(String command, OutputStream pipeToOutput)
+            throws DeviceNotAvailableException;
+
+    /**
      * Executes a adb shell command, with more parameters to control command behavior.
      *
      * @see #executeShellV2Command(String)
@@ -332,6 +346,32 @@ public interface INativeDevice {
      */
     public CommandResult executeShellV2Command(
             String command,
+            final long maxTimeoutForCommand,
+            final TimeUnit timeUnit,
+            int retryAttempts)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Executes a adb shell command, with more parameters to control command behavior.
+     *
+     * @see #executeShellV2Command(String)
+     * @param command the adb shell command to run
+     * @param pipeAsInput A {@link File} that will be piped as input to the command.
+     * @param pipeToOutput {@link OutputStream} where the std output will be redirected.
+     * @param maxTimeoutForCommand the maximum timeout for the command to complete; unit as
+     *     specified in <code>timeUnit</code>
+     * @param timeUnit unit for <code>maxTimeToOutputShellResponse</code>
+     * @param retryAttempts the maximum number of times to retry command if it fails due to a
+     *     exception. DeviceNotResponsiveException will be thrown if <var>retryAttempts</var> are
+     *     performed without success.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     * @see TimeUtil
+     */
+    public CommandResult executeShellV2Command(
+            String command,
+            File pipeAsInput,
+            OutputStream pipeToOutput,
             final long maxTimeoutForCommand,
             final TimeUnit timeUnit,
             int retryAttempts)
@@ -1100,6 +1140,17 @@ public interface INativeDevice {
     public int getApiLevel() throws DeviceNotAvailableException;
 
     /**
+     * Check whether or not a feature is currently supported given a minimally supported level. This
+     * method takes into account unreleased features yet, before API level is raised.
+     *
+     * @param strictMinLevel The strict min possible level that supports the feature.
+     * @return True if the level is supported. False otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    public boolean checkApiLevelAgainstNextRelease(int strictMinLevel)
+            throws DeviceNotAvailableException;
+
+    /**
      * Helper to get the time difference between the device and a given {@link Date}. Use Epoch time
      * internally.
      *
@@ -1262,4 +1313,16 @@ public interface INativeDevice {
      * returned by {@link System#currentTimeMillis()}.
      */
     public long getLastExpectedRebootTimeMillis();
+
+    /**
+     * Fetch and return the list of tombstones from the devices. Requires root.
+     *
+     * <p>method is best-effort so if one tombstone fails to be pulled for any reason it will be
+     * missing from the list. Only a {@link DeviceNotAvailableException} will terminate the method
+     * early.
+     *
+     * @return A list of tombstone files, empty if no tombstone.
+     * @see <a href="https://source.android.com/devices/tech/debug">Tombstones documentation</a>
+     */
+    public List<File> getTombstones() throws DeviceNotAvailableException;
 }

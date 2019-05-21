@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -168,7 +169,8 @@ public class RunUtil implements IRunUtil {
                 createProcessBuilder(command),
                 stdout,
                 stderr,
-                /* inputRedirect= */ null);
+                /* inputRedirect= */ null,
+                false);
     }
 
     /** {@inheritDoc} */
@@ -252,7 +254,8 @@ public class RunUtil implements IRunUtil {
                         createProcessBuilder(command),
                         /* stdoutStream= */ null,
                         /* stderrStream= */ null,
-                        inputRedirect);
+                        inputRedirect,
+                        true);
         CommandStatus status = runTimed(timeout, osRunnable, true);
         CommandResult result = osRunnable.getResult();
         result.setStatus(status);
@@ -264,7 +267,7 @@ public class RunUtil implements IRunUtil {
      */
     @Override
     public CommandResult runTimedCmdSilently(final long timeout, final String... command) {
-        RunnableResult osRunnable = new RunnableResult(null, createProcessBuilder(command));
+        RunnableResult osRunnable = new RunnableResult(null, createProcessBuilder(command), false);
         CommandStatus status = runTimed(timeout, osRunnable, false);
         CommandResult result = osRunnable.getResult();
         result.setStatus(status);
@@ -338,9 +341,11 @@ public class RunUtil implements IRunUtil {
         RunnableNotifier runThread = new RunnableNotifier(runnable, logErrors);
         if (logErrors) {
             if (timeout > 0l) {
-                CLog.d("Running command with timeout: %dms", timeout);
+                CLog.d(
+                        "Running command %s with timeout: %s",
+                        runnable.getCommand(), TimeUtil.formatElapsedTime(timeout));
             } else {
-                CLog.d("Running command without timeout.");
+                CLog.d("Running command %s without timeout.", runnable.getCommand());
             }
         }
         CommandStatus status = CommandStatus.TIMED_OUT;
@@ -567,9 +572,14 @@ public class RunUtil implements IRunUtil {
         private boolean mCreatedStderrStream = false;
         private final Object mLock = new Object();
         private boolean mCancelled = false;
+        private boolean mLogErrors = true;
 
         RunnableResult(final String input, final ProcessBuilder processBuilder) {
-            this(input, processBuilder, null, null, null);
+            this(input, processBuilder, null, null, null, true);
+        }
+
+        RunnableResult(final String input, final ProcessBuilder processBuilder, boolean logErrors) {
+            this(input, processBuilder, null, null, null, logErrors);
         }
 
         /**
@@ -584,9 +594,11 @@ public class RunUtil implements IRunUtil {
                 final ProcessBuilder processBuilder,
                 OutputStream stdoutStream,
                 OutputStream stderrStream,
-                File inputRedirect) {
+                File inputRedirect,
+                boolean logErrors) {
             mProcessBuilder = processBuilder;
             mInput = input;
+            mLogErrors = logErrors;
 
             mInputRedirect = inputRedirect;
             if (mInputRedirect != null) {
@@ -604,6 +616,11 @@ public class RunUtil implements IRunUtil {
             // and cause deadlock.
             mStdOut = stdoutStream != null ? stdoutStream : new ByteArrayOutputStream();
             mStdErr = stderrStream != null ? stderrStream : new ByteArrayOutputStream();
+        }
+
+        @Override
+        public List<String> getCommand() {
+            return new ArrayList<>(mProcessBuilder.command());
         }
 
         public CommandResult getResult() {
@@ -627,7 +644,6 @@ public class RunUtil implements IRunUtil {
                     return false;
                 }
                 mExecutionThread = Thread.currentThread();
-                CLog.d("Running %s", mProcessBuilder.command());
                 mProcess = startProcess();
                 if (mInput != null) {
                     BufferedOutputStream processStdin =
@@ -697,7 +713,7 @@ public class RunUtil implements IRunUtil {
 
             if (rc != null && rc == 0) {
                 return true;
-            } else {
+            } else if (mLogErrors) {
                 CLog.d("%s command failed. return code %d", mProcessBuilder.command(), rc);
             }
             return false;

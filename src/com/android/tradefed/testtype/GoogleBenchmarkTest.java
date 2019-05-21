@@ -43,9 +43,18 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest {
     private static final String GBENCHMARK_JSON_OUTPUT_FORMAT = "--benchmark_format=json";
     private static final String GBENCHMARK_LIST_TESTS_OPTION = "--benchmark_list_tests=true";
 
-    @Option(name = "file-exclusion-filter-regex",
-            description = "Regex to exclude certain files from executing. Can be repeated")
-    private List<String> mFileExclusionFilterRegex = new ArrayList<>();
+    private static final List<String> DEFAULT_FILE_EXCLUDE_FILTERS = new ArrayList<>();
+
+    static {
+        // Exclude .config by default as they are not runnable.
+        DEFAULT_FILE_EXCLUDE_FILTERS.add(".*\\.config$");
+    }
+
+    @Option(
+        name = "file-exclusion-filter-regex",
+        description = "Regex to exclude certain files from executing. Can be repeated"
+    )
+    private List<String> mFileExclusionFilterRegex = new ArrayList<>(DEFAULT_FILE_EXCLUDE_FILTERS);
 
     @Option(name = "native-benchmark-device-path",
             description="The path on the device where native stress tests are located.")

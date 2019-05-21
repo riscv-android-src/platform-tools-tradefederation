@@ -195,6 +195,47 @@ public class AndroidJUnitTestTest {
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
+    /** Test list of tests to run is filtered by include filters using regex. */
+    @Test
+    public void testRun_includeFilterSingleTestsRegex() throws Exception {
+        // expect this call
+        mMockRemoteRunner.addInstrumentationArg("tests_regex", ".*testName$");
+        setRunTestExpectations();
+        EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
+        mAndroidJUnitTest.addIncludeFilter(".*testName$");
+        mAndroidJUnitTest.run(mMockListener);
+        EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
+    }
+
+    /** Test list of tests to run is filtered by include filters using multiple regex. */
+    @Test
+    public void testRun_includeFilterMultipleTestsRegex() throws Exception {
+        // expect this call
+        mMockRemoteRunner.addInstrumentationArg("tests_regex", "\"(.*test2|.*testName$)\"");
+        setRunTestExpectations();
+        EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
+        mAndroidJUnitTest.addIncludeFilter(".*test2");
+        mAndroidJUnitTest.addIncludeFilter(".*testName$");
+        mAndroidJUnitTest.run(mMockListener);
+        EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
+    }
+
+    /** Test list of tests to run is filtered by include filters using invalid regex. */
+    @Test
+    public void testRun_includeFilterInvalidTestsRegex() throws Exception {
+        setRunTestExpectations();
+        EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
+        // regex with unbalanced parenthesis.
+        mAndroidJUnitTest.addIncludeFilter("(testName");
+        try {
+            mAndroidJUnitTest.run(mMockListener);
+        } catch (RuntimeException expected) {
+            //expected.
+            return;
+        }
+        fail("RuntimeException not raised for filter with invalid regular expression.");
+    }
+
     /** Test list of tests to run is filtered by include and exclude filters. */
     @Test
     public void testRun_includeAndExcludeFilters() throws Exception {

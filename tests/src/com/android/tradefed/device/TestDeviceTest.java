@@ -23,10 +23,12 @@ import com.android.ddmlib.InstallException;
 import com.android.ddmlib.InstallReceiver;
 import com.android.ddmlib.RawImage;
 import com.android.ddmlib.ShellCommandUnresponsiveException;
+import com.android.ddmlib.SplitApkInstaller;
 import com.android.ddmlib.TimeoutException;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
+import com.android.sdklib.AndroidVersion;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice.ApexInfo;
 import com.android.tradefed.device.ITestDevice.MountPointInfo;
@@ -63,6 +65,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -1737,6 +1740,55 @@ public class TestDeviceTest extends TestCase {
         assertNull(mTestDevice.installPackage(new File(apexFile), true));
     }
 
+    /** Test SplitApkInstaller with Split Apk Not Supported */
+    public void testInstallPackages_splitApkNotSupported() throws Exception {
+        List<File> mLocalApks = new ArrayList<File>();
+        for (int i = 0; i < 3; i++) {
+            mLocalApks.add(File.createTempFile("test", ".apk"));
+        }
+        List<String> mInstallOptions = new ArrayList<String>();
+        try {
+            EasyMock.expect(mMockIDevice.getVersion())
+                    .andStubReturn(
+                            new AndroidVersion(
+                                    AndroidVersion.ALLOW_SPLIT_APK_INSTALLATION.getApiLevel() - 1));
+            EasyMock.expectLastCall();
+            EasyMock.replay(mMockIDevice);
+            SplitApkInstaller.create(mMockIDevice, mLocalApks, true, mInstallOptions);
+            fail("IllegalArgumentException expected");
+        } catch (IllegalArgumentException e) {
+            // expected
+        } finally {
+            EasyMock.verify(mMockIDevice);
+            for (File apkFile : mLocalApks) {
+                apkFile.delete();
+            }
+        }
+    }
+
+    /** Test SplitApkInstaller with Split Apk Supported */
+    public void testInstallPackages_splitApkSupported() throws Exception {
+        List<File> mLocalApks = new ArrayList<File>();
+        for (int i = 0; i < 3; i++) {
+            mLocalApks.add(File.createTempFile("test", ".apk"));
+        }
+        List<String> mInstallOptions = new ArrayList<String>();
+        try {
+            EasyMock.expect(mMockIDevice.getVersion())
+                    .andStubReturn(
+                            new AndroidVersion(
+                                    AndroidVersion.ALLOW_SPLIT_APK_INSTALLATION.getApiLevel()));
+            EasyMock.expectLastCall();
+            EasyMock.replay(mMockIDevice);
+            SplitApkInstaller.create(mMockIDevice, mLocalApks, true, mInstallOptions);
+            EasyMock.verify(mMockIDevice);
+        } finally {
+            for (File apkFile : mLocalApks) {
+                apkFile.delete();
+            }
+        }
+    }
+
     /**
      * Test default installPackages on device without runtime permission support list of args
      *
@@ -2102,6 +2154,32 @@ public class TestDeviceTest extends TestCase {
         assertEquals(2, actualPkgs.size());
         assertTrue(actualPkgs.contains("com.android.wallpaper"));
         assertTrue(actualPkgs.contains("com.android.wallpaper.livepicker"));
+        EasyMock.verify(mMockIDevice, mMockStateMonitor);
+    }
+
+    /** Unit test for {@link TestDevice#isPackageInstalled(String, String)}. */
+    public void testIsPackageInstalled() throws Exception {
+        final String output =
+                "package:/system/app/LiveWallpapers.apk=com.android.wallpaper\n"
+                        + "package:/system/app/LiveWallpapersPicker.apk="
+                        + "com.android.wallpaper.livepicker";
+        injectShellResponse(TestDevice.LIST_PACKAGES_CMD + " | grep com.android.wallpaper", output);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor);
+        assertTrue(mTestDevice.isPackageInstalled("com.android.wallpaper", null));
+        EasyMock.verify(mMockIDevice, mMockStateMonitor);
+    }
+
+    /** Unit test for {@link TestDevice#isPackageInstalled(String, String)}. */
+    public void testIsPackageInstalled_withUser() throws Exception {
+        final String output =
+                "package:/system/app/LiveWallpapers.apk=com.android.wallpaper\n"
+                        + "package:/system/app/LiveWallpapersPicker.apk="
+                        + "com.android.wallpaper.livepicker";
+        injectShellResponse(
+                TestDevice.LIST_PACKAGES_CMD + " --user 1 | grep com.android.wallpaper", output);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor);
+        assertTrue(mTestDevice.isPackageInstalled("com.android.wallpaper", "1"));
+        EasyMock.verify(mMockIDevice, mMockStateMonitor);
     }
 
     /**
@@ -2800,8 +2878,12 @@ public class TestDeviceTest extends TestCase {
                 return "N\n";
             }
         };
-        int res = mTestDevice.getCurrentUser();
-        assertEquals(NativeDevice.INVALID_USER_ID, res);
+        try {
+            mTestDevice.getCurrentUser();
+            fail("Should have thrown an exception.");
+        } catch (DeviceRuntimeException expected) {
+            // Expected
+        }
     }
 
     /**
@@ -4127,7 +4209,8 @@ public class TestDeviceTest extends TestCase {
         injectShellResponse("pidof system_server", "929");
         injectShellResponse("am dumpheap 929 /data/dump.hprof", "");
         injectShellResponse("ls \"/data/dump.hprof\"", "/data/dump.hprof");
-        injectShellResponse("rm /data/dump.hprof", "");
+        injectShellResponse("rm -rf /data/dump.hprof", "");
+
         EasyMock.replay(mMockIDevice, mMockRunUtil);
         File res = mTestDevice.dumpHeap("system_server", "/data/dump.hprof");
         assertNotNull(res);
@@ -4233,11 +4316,14 @@ public class TestDeviceTest extends TestCase {
 
     /** Test that displays can be collected. */
     public void testListDisplayId() throws Exception {
+        OutputStream stdout = null, stderr = null;
         CommandResult res = new CommandResult(CommandStatus.SUCCESS);
         res.setStdout("Display 0 color modes:\nDisplay 5 color modes:\n");
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
                                 100L,
+                                stdout,
+                                stderr,
                                 "adb",
                                 "-s",
                                 "serial",
@@ -4254,6 +4340,45 @@ public class TestDeviceTest extends TestCase {
         assertEquals(2, displays.size());
         assertTrue(displays.contains(0));
         assertTrue(displays.contains(5));
+        verifyMocks();
+    }
+
+    /** Test for {@link TestDevice#getScreenshot(int)}. */
+    public void testScreenshotByDisplay() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public File pullFile(String remoteFilePath) throws DeviceNotAvailableException {
+                        assertEquals("/data/local/tmp/display_0.png", remoteFilePath);
+                        return new File("fakewhatever");
+                    }
+                };
+        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+        OutputStream outStream = null;
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                120000L,
+                                outStream,
+                                outStream,
+                                "adb",
+                                "-s",
+                                "serial",
+                                "shell",
+                                "screencap",
+                                "-p",
+                                "-d",
+                                "0",
+                                "/data/local/tmp/display_0.png"))
+                .andReturn(res);
+        mMockIDevice.executeShellCommand(
+                EasyMock.eq("rm -rf /data/local/tmp/display_0.png"),
+                EasyMock.anyObject(),
+                EasyMock.anyLong(),
+                EasyMock.anyObject());
+        replayMocks();
+        InputStreamSource source = mTestDevice.getScreenshot(0);
+        assertNotNull(source);
+        StreamUtil.close(source);
         verifyMocks();
     }
 }

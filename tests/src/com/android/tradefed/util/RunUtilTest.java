@@ -44,6 +44,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link RunUtil} */
@@ -109,6 +110,7 @@ public class RunUtilTest {
     public void testRunTimed() throws Exception {
         IRunUtil.IRunnableResult mockRunnable = EasyMock.createStrictMock(
                 IRunUtil.IRunnableResult.class);
+        EasyMock.expect(mockRunnable.getCommand()).andReturn(new ArrayList<>());
         EasyMock.expect(mockRunnable.run()).andReturn(Boolean.TRUE);
         mockRunnable.cancel(); // always ensure execution is cancelled
         EasyMock.replay(mockRunnable);
@@ -121,6 +123,7 @@ public class RunUtilTest {
     public void testRunTimed_failed() throws Exception {
         IRunUtil.IRunnableResult mockRunnable = EasyMock.createStrictMock(
                 IRunUtil.IRunnableResult.class);
+        EasyMock.expect(mockRunnable.getCommand()).andReturn(new ArrayList<>());
         EasyMock.expect(mockRunnable.run()).andReturn(Boolean.FALSE);
         mockRunnable.cancel(); // always ensure execution is cancelled
         EasyMock.replay(mockRunnable);
@@ -133,6 +136,7 @@ public class RunUtilTest {
     public void testRunTimed_exception() throws Exception {
         IRunUtil.IRunnableResult mockRunnable = EasyMock.createStrictMock(
                 IRunUtil.IRunnableResult.class);
+        EasyMock.expect(mockRunnable.getCommand()).andReturn(new ArrayList<>());
         EasyMock.expect(mockRunnable.run()).andThrow(new RuntimeException());
         mockRunnable.cancel(); // cancel due to exception
         mockRunnable.cancel(); // always ensure execution is cancelled
