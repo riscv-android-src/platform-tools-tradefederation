@@ -222,9 +222,11 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
             throw new IllegalArgumentException("Device has not been set");
         }
         // if mIncludeTestFile is set, perform filtering with this file
-        if (mIncludeTestFile != null) {
+        if (mIncludeTestFile != null && mIncludeTestFile.length() > 0) {
             mDeviceIncludeFile = mTestFilterDir.replaceAll("/$", "") + "/" + INCLUDE_FILE;
             pushTestFile(mIncludeTestFile, mDeviceIncludeFile, listener);
+            // If an explicit include file filter is provided, do not use the package
+            setTestPackageName(null);
         }
 
         // if mExcludeTestFile is set, perform filtering with this file
