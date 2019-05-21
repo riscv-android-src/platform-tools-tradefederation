@@ -28,6 +28,8 @@ import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.device.cloud.ManagedRemoteDevice;
+import com.android.tradefed.device.cloud.NestedRemoteDevice;
+import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecution;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
@@ -525,6 +527,11 @@ public class TestInvocation implements ITestInvocation {
                 continue;
             }
             if (testDevice.getIDevice() instanceof StubDevice) {
+                continue;
+            }
+            if (testDevice instanceof RemoteAndroidVirtualDevice
+                    || testDevice instanceof NestedRemoteDevice) {
+                // Vritual devices have a fake battery there is no point in logging it.
                 continue;
             }
             Integer batteryLevel = testDevice.getBattery();
