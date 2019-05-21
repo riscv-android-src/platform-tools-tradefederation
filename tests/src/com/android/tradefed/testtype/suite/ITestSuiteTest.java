@@ -83,6 +83,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 /** Unit tests for {@link ITestSuite}. */
@@ -277,6 +279,8 @@ public class ITestSuiteTest {
         mTestSuite.setConfiguration(mStubMainConfiguration);
         mContext = new InvocationContext();
         mTestSuite.setInvocationContext(mContext);
+        mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
+        mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockBuildInfo);
         mListCollectors = new ArrayList<>();
         mListCollectors.add(new TestMetricCollector("metric1", "value1"));
         mListCollectors.add(new TestMetricCollector("metric2", "value2"));
@@ -312,6 +316,24 @@ public class ITestSuiteTest {
         }
     }
 
+    /** Helper to get test modules to be ran.*/
+    private List<ModuleDefinition> getRunModules(
+            LinkedHashMap<String, IConfiguration> testConfigs) {
+        List<ModuleDefinition> runModules = new ArrayList<>();
+        for (Entry<String, IConfiguration> config : testConfigs.entrySet()) {
+            Map<String, List<ITargetPreparer>> preparersPerDevice = null;
+            ModuleDefinition module =
+                new ModuleDefinition(
+                    config.getKey(),
+                    config.getValue().getTests(),
+                    preparersPerDevice,
+                    config.getValue().getMultiTargetPreparers(),
+                    config.getValue());
+            runModules.add(module);
+        }
+        return runModules;
+    }
+
     /**
      * Helper for replaying mocks.
      */
@@ -340,7 +362,8 @@ public class ITestSuiteTest {
     private void expectTestRun(
             ITestInvocationListener listener, String message, boolean testFailed) {
         listener.testModuleStarted(EasyMock.anyObject());
-        listener.testRunStarted(TEST_CONFIG_NAME, 1);
+        listener.testRunStarted(
+                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
         listener.testStarted(test, 0);
         if (testFailed) {
@@ -495,11 +518,19 @@ public class ITestSuiteTest {
                 .andReturn(result);
         expectTestRun(mMockListener);
 
-        mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_PRE + "_test", 0);
+        mMockListener.testRunStarted(
+                EasyMock.eq(ITestSuite.MODULE_CHECKER_PRE + "_test"),
+                EasyMock.eq(0),
+                EasyMock.eq(0),
+                EasyMock.anyLong());
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
-        mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_POST + "_test", 0);
+        mMockListener.testRunStarted(
+                EasyMock.eq(ITestSuite.MODULE_CHECKER_POST + "_test"),
+                EasyMock.eq(0),
+                EasyMock.eq(0),
+                EasyMock.anyLong());
         mMockListener.testRunFailed(EasyMock.contains("some failures."));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
@@ -532,11 +563,19 @@ public class ITestSuiteTest {
                 .andReturn(result);
         expectTestRun(mMockListener);
 
-        mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_PRE + "_test", 0);
+        mMockListener.testRunStarted(
+                EasyMock.eq(ITestSuite.MODULE_CHECKER_PRE + "_test"),
+                EasyMock.eq(0),
+                EasyMock.eq(0),
+                EasyMock.anyLong());
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
-        mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_POST + "_test", 0);
+        mMockListener.testRunStarted(
+                EasyMock.eq(ITestSuite.MODULE_CHECKER_POST + "_test"),
+                EasyMock.eq(0),
+                EasyMock.eq(0),
+                EasyMock.anyLong());
         mMockListener.testRunFailed(EasyMock.contains("some failures."));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
@@ -607,12 +646,18 @@ public class ITestSuiteTest {
         setter.setOptionValue("reboot-per-module", "true");
         EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("user");
         mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
+        mMockListener.testRunStarted(
+                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed(
                 "unresponsive"
                         + TestRunResult.ERROR_DIVIDER
                         + "Module test only ran 0 out of 1 expected tests.");
+        EasyMock.expect(
+                        mMockDevice.logBugreport(
+                                EasyMock.eq("module-test-failure-SERIAL-bugreport"),
+                                EasyMock.anyObject()))
+                .andReturn(true);
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(1);
@@ -663,7 +708,8 @@ public class ITestSuiteTest {
         EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("user");
         mMockListener.testModuleStarted(EasyMock.anyObject());
         EasyMock.expectLastCall().times(2);
-        mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
+        mMockListener.testRunStarted(
+                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed(
                 "Run in progress was not completed due to: I failed"
@@ -674,7 +720,8 @@ public class ITestSuiteTest {
         EasyMock.expectLastCall().times(1);
 
         // The module that didn't run is reported too.
-        mMockListener.testRunStarted("NOT_RUN", 0);
+        mMockListener.testRunStarted(
+                EasyMock.eq("NOT_RUN"), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testRunFailed("Module did not run due to device not available.");
         mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
 
@@ -728,12 +775,18 @@ public class ITestSuiteTest {
         setter.setOptionValue("reboot-per-module", "true");
         EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("user");
         mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
+        mMockListener.testRunStarted(
+                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed(
                 "runtime"
                         + TestRunResult.ERROR_DIVIDER
                         + "Module test only ran 0 out of 1 expected tests.");
+        EasyMock.expect(
+                        mMockDevice.logBugreport(
+                                EasyMock.eq("module-test-failure-SERIAL-bugreport"),
+                                EasyMock.anyObject()))
+                .andReturn(true);
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(1);
@@ -1177,7 +1230,8 @@ public class ITestSuiteTest {
 
         Capture<HashMap<String, Metric>> c = new Capture<>();
         mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
+        mMockListener.testRunStarted(
+                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
         mMockListener.testStarted(test, 0);
         mMockListener.testEnded(test, 5, new HashMap<String, Metric>());
@@ -1520,10 +1574,71 @@ public class ITestSuiteTest {
         EasyMock.verify(mMockDevice);
     }
 
+    @Test
+    public void testNoPrimaryAbi() throws Exception {
+        OptionSetter setter = new OptionSetter(mTestSuite);
+        setter.setOptionValue(ITestSuite.PRIMARY_ABI_RUN, "true");
+        EasyMock.reset(mMockDevice);
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(new TcpDevice("tcp-device-0"));
+
+        EasyMock.expect(mMockDevice.getProperty("ro.product.cpu.abi")).andReturn(null);
+
+        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("SERIAL");
+
+        EasyMock.replay(mMockDevice);
+        try {
+            mTestSuite.getAbis(mMockDevice);
+            fail("Should have thrown an exception.");
+        } catch (DeviceNotAvailableException expected) {
+            // Expected
+            assertEquals(
+                    "Device 'SERIAL' was not online to query ro.product.cpu.abi",
+                    expected.getMessage());
+        }
+        EasyMock.verify(mMockDevice);
+    }
+
     /** Test that when {@link ITestSuite} is within a Guice scope it can receive the injector. */
     @Test
     public void testInjector_guice() throws Exception {
         mInjector.injectMembers(mTestSuite);
         assertNotNull(mTestSuite.getInjector());
     }
+
+    /**
+     * Test for {@link ITestSuite#randomizeTestModules(List, long)} to make sure the order won't
+     * change using the same seed.
+     */
+    @Test
+    public void testRandomizeTestModulesWithSameSeed() throws Exception {
+        mTestSuite = new TestSuiteImpl(5);
+        LinkedHashMap<String, IConfiguration> testConfigs = mTestSuite.loadTests();
+        List<ModuleDefinition> runModules = getRunModules(testConfigs);
+        List<ModuleDefinition> runModules2 = getRunModules(testConfigs);
+
+        mTestSuite.randomizeTestModules(runModules, 100L);
+        mTestSuite.randomizeTestModules(runModules2, 100L);
+        assertTrue(runModules.toString().equals(runModules2.toString()));
+
+        mTestSuite.randomizeTestModules(runModules, 400L);
+        mTestSuite.randomizeTestModules(runModules2, 400L);
+        assertTrue(runModules.toString().equals(runModules2.toString()));
+    }
+
+    /**
+     * Test for {@link ITestSuite#randomizeTestModules(List, long)} to make sure the order will
+     * change using different seed.
+     */
+    @Test
+    public void testRandomizeTestModulesWithDifferentSeed() throws Exception {
+        mTestSuite = new TestSuiteImpl(5);
+        LinkedHashMap<String, IConfiguration> testConfigs = mTestSuite.loadTests();
+        List<ModuleDefinition> runModules = getRunModules(testConfigs);
+        List<ModuleDefinition> runModules2 = getRunModules(testConfigs);
+
+        mTestSuite.randomizeTestModules(runModules, 100L);
+        mTestSuite.randomizeTestModules(runModules2, 10000L);
+        assertFalse(runModules.toString().equals(runModules2.toString()));
+    }
+
 }

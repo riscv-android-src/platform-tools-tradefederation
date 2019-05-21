@@ -398,9 +398,8 @@ public class GTestTest {
         EasyMock.expect(mMockITestDevice.isExecutable(testPath2)).andReturn(true);
         String[] files = new String[] {"test1", "test2"};
         EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("rm")))
-                .andReturn("")
-                .times(2);
+        mMockITestDevice.deleteFile(testPath1 + "_res.xml");
+        mMockITestDevice.deleteFile(testPath2 + "_res.xml");
         EasyMock.expect(mMockITestDevice.pullFile((String)EasyMock.anyObject(),
                 (File)EasyMock.anyObject())).andStubReturn(true);
         mMockITestDevice.executeShellCommand(EasyMock.contains(test1),

@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.invoker;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.StubBuildProvider;
@@ -62,6 +63,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.Semaphore;
 
 /** Implementation of {@link InvocationExecution} that drives a remote execution. */
 public class RemoteInvocationExecution extends InvocationExecution {
@@ -69,7 +71,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
     public static final long PUSH_TF_TIMEOUT = 150000L;
     public static final long PULL_RESULT_TIMEOUT = 180000L;
     public static final long REMOTE_PROCESS_RUNNING_WAIT = 15000L;
-    public static final long LAUNCH_EXTRA_DEVICE = 5 * 60 * 1000L;
+    public static final long LAUNCH_EXTRA_DEVICE = 10 * 60 * 1000L;
     public static final long NEW_USER_TIMEOUT = 5 * 60 * 1000L;
     public static final String REMOTE_VM_VARIABLE = "REMOTE_VM_ENV";
 
@@ -79,12 +81,13 @@ public class RemoteInvocationExecution extends InvocationExecution {
     public static final String STDERR_FILE = "screen-VM_tradefed-stderr.txt";
     public static final String REMOTE_CONFIG = "configuration";
     public static final String GLOBAL_REMOTE_CONFIG = "global-remote-configuration";
+    public static final String SHARDING_DEVICE_SETUP_TIME = "sharding-device-setup-ms";
 
     private static final int MAX_CONNECTION_REFUSED_COUNT = 3;
     private static final int MAX_PUSH_TF_ATTEMPTS = 3;
+    private static final int MAX_WORKER_THREAD = 3;
 
     private String mRemoteTradefedDir = null;
-    private String mRemoteFinalResult = null;
     private String mRemoteAdbPath = null;
 
     @Override
@@ -127,56 +130,42 @@ public class RemoteInvocationExecution extends InvocationExecution {
         if (config.getCommandOptions().getShardCount() != null
                 && config.getCommandOptions().getShardIndex() == null) {
             if (config.getCommandOptions().getShardCount() > 1) {
+                boolean parallel = config.getCommandOptions().shouldUseParallelRemoteSetup();
+                long startTime = System.currentTimeMillis();
                 // For each device after the first one we need to start a new device.
-                for (int i = 2; i < config.getCommandOptions().getShardCount() + 1; i++) {
-                    String username = String.format("vsoc-0%s", i);
-                    CommandResult userSetup =
-                            MultiUserSetupUtil.prepareRemoteUser(
-                                    username, info, options, runUtil, NEW_USER_TIMEOUT);
-                    if (userSetup != null) {
-                        String errorMsg =
-                                String.format("Failed to setup user: %s", userSetup.getStderr());
-                        CLog.e(errorMsg);
-                        listener.invocationFailed(new RuntimeException(errorMsg));
-                        return;
+                if (!parallel) {
+                    for (int i = 2; i < config.getCommandOptions().getShardCount() + 1; i++) {
+                        boolean res = startDevice(listener, i, info, options, runUtil, null);
+                        if (!res) {
+                            return;
+                        }
+                    }
+                } else {
+                    // Parallel setup of devices
+                    Semaphore token = new Semaphore(MAX_WORKER_THREAD);
+                    List<StartDeviceThread> threads = new ArrayList<>();
+                    for (int i = 2; i < config.getCommandOptions().getShardCount() + 1; i++) {
+                        StartDeviceThread sdt =
+                                new StartDeviceThread(listener, i, info, options, runUtil, token);
+                        threads.add(sdt);
+                        sdt.start();
                     }
 
-                    CommandResult homeDirSetup =
-                            MultiUserSetupUtil.prepareRemoteHomeDir(
-                                    options.getInstanceUser(),
-                                    username,
-                                    info,
-                                    options,
-                                    runUtil,
-                                    NEW_USER_TIMEOUT);
-                    if (homeDirSetup != null) {
-                        String errorMsg =
-                                String.format(
-                                        "Failed to setup home dir: %s", homeDirSetup.getStderr());
-                        CLog.e(errorMsg);
-                        listener.invocationFailed(new RuntimeException(errorMsg));
-                        return;
+                    boolean res = true;
+                    for (StartDeviceThread t : threads) {
+                        t.join();
+                        res = res & t.getFinalStatus();
                     }
-
-                    List<String> startCommand =
-                            LaunchCvdHelper.createSimpleDeviceCommand(username, true);
-                    CommandResult startDeviceRes =
-                            GceManager.remoteSshCommandExecution(
-                                    info,
-                                    options,
-                                    runUtil,
-                                    LAUNCH_EXTRA_DEVICE,
-                                    Joiner.on(" ").join(startCommand));
-                    if (!CommandStatus.SUCCESS.equals(startDeviceRes.getStatus())) {
-                        String errorMsg =
-                                String.format(
-                                        "Failed to start %s: %s",
-                                        username, startDeviceRes.getStderr());
-                        CLog.e(errorMsg);
-                        listener.invocationFailed(new RuntimeException(errorMsg));
+                    if (!res) {
                         return;
                     }
                 }
+
+                // Log the overhead to start the device
+                long elapsedTime = System.currentTimeMillis() - startTime;
+                context.getBuildInfos()
+                        .get(0)
+                        .addBuildAttribute(SHARDING_DEVICE_SETUP_TIME, Long.toString(elapsedTime));
             }
         }
 
@@ -227,28 +216,10 @@ public class RemoteInvocationExecution extends InvocationExecution {
                         info, options, runUtil, 120000L, "ls", "-l", mRemoteTradefedDir);
         CLog.d("stdout: %s", listRemoteDir.getStdout());
         CLog.d("stderr: %s", listRemoteDir.getStderr());
-        mRemoteFinalResult = mRemoteTradefedDir + PROTO_RESULT_NAME;
 
-        // Setup the remote reporting to a proto file
-        FileProtoResultReporter reporter = new FileProtoResultReporter();
-        reporter.setFileOutput(new File(mRemoteFinalResult));
-        config.setTestInvocationListener(reporter);
-
-        for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
-            deviceConfig.getDeviceRequirements().setSerial();
-            if (deviceConfig.getDeviceRequirements() instanceof DeviceSelectionOptions) {
-                ((DeviceSelectionOptions) deviceConfig.getDeviceRequirements())
-                        .setDeviceTypeRequested(null);
-            }
-        }
-
-        File configFile = FileUtil.createTempFile(config.getName(), ".xml");
+        File configFile = createRemoteConfig(config, listener, mRemoteTradefedDir);
         File globalConfig = null;
-        config.dumpXml(new PrintWriter(configFile));
         try {
-            try (InputStreamSource source = new FileInputStreamSource(configFile)) {
-                listener.testLog(REMOTE_CONFIG, LogDataType.XML, source);
-            }
             CLog.d("Pushing Tradefed XML configuration to remote.");
             boolean resultPush =
                     RemoteFileUtil.pushFileToRemote(
@@ -301,7 +272,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
             }
 
             resetAdb(info, options, runUtil);
-            runRemote(listener, configFile, info, options, runUtil, config, globalConfig);
+            runRemote(listener, context, configFile, info, options, runUtil, config, globalConfig);
             collectAdbLogs(info, options, runUtil, listener);
         } finally {
             FileUtil.recursiveDelete(configFile);
@@ -317,7 +288,11 @@ public class RemoteInvocationExecution extends InvocationExecution {
     }
 
     @Override
-    public void doTeardown(IInvocationContext context, IConfiguration config, Throwable exception)
+    public void doTeardown(
+            IInvocationContext context,
+            IConfiguration config,
+            ITestLogger logger,
+            Throwable exception)
             throws Throwable {
         // Only run device post invocation teardown
         super.runDevicePostInvocationTearDown(context, config);
@@ -329,13 +304,14 @@ public class RemoteInvocationExecution extends InvocationExecution {
     }
 
     @Override
-    String getAdbVersion() {
+    protected String getAdbVersion() {
         // Do not report the adb version from the parent, the remote child will remote its own.
         return null;
     }
 
     private void runRemote(
             ITestInvocationListener currentInvocationListener,
+            IInvocationContext context,
             File configFile,
             GceAvdInfo info,
             TestDeviceOptions options,
@@ -379,22 +355,6 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 isStillRunning(
                         currentInvocationListener, configFile, info, options, runUtil, config);
 
-        File resultFile = null;
-        if (!stillRunning) {
-            resultFile =
-                    RemoteFileUtil.fetchRemoteFile(
-                            info, options, runUtil, PULL_RESULT_TIMEOUT, mRemoteFinalResult);
-            if (resultFile == null) {
-                currentInvocationListener.invocationFailed(
-                        new RuntimeException(
-                                String.format(
-                                        "Could not find remote result file at %s",
-                                        mRemoteFinalResult)));
-            } else {
-                CLog.d("Fetched remote result file!");
-            }
-        }
-
         // Fetch the logs
         File stdoutFile =
                 RemoteFileUtil.fetchRemoteFile(
@@ -422,12 +382,14 @@ public class RemoteInvocationExecution extends InvocationExecution {
             }
         }
 
-        if (resultFile != null) {
-            // Report result to listener.
-            ProtoResultParser parser =
-                    new ProtoResultParser(currentInvocationListener, false, "remote-");
-            parser.processFinalizedProto(TestRecordProtoUtil.readFromFile(resultFile));
-        }
+        fetchAndProcessResults(
+                stillRunning,
+                currentInvocationListener,
+                context,
+                info,
+                options,
+                runUtil,
+                mRemoteTradefedDir);
     }
 
     private boolean isStillRunning(
@@ -541,5 +503,227 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 folder + "/adb." + uidString + ".log",
                 LogDataType.TEXT,
                 "full_adb.log");
+    }
+
+    /**
+     * Create the configuration that will run in the remote VM.
+     *
+     * @param config The main {@link IConfiguration}.
+     * @param logger A logger where to save the XML configuration for debugging.
+     * @param resultDirPath the remote result dir where results should be saved.
+     * @return A file containing the dumped remote XML configuration.
+     * @throws IOException
+     */
+    @VisibleForTesting
+    File createRemoteConfig(IConfiguration config, ITestLogger logger, String resultDirPath)
+            throws IOException {
+        // Setup the remote reporting to a proto file
+        List<ITestInvocationListener> reporters = new ArrayList<>();
+        FileProtoResultReporter protoReporter = new FileProtoResultReporter();
+        protoReporter.setFileOutput(new File(resultDirPath + PROTO_RESULT_NAME));
+        reporters.add(protoReporter);
+
+        config.setTestInvocationListeners(reporters);
+
+        for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
+            deviceConfig.getDeviceRequirements().setSerial();
+            if (deviceConfig.getDeviceRequirements() instanceof DeviceSelectionOptions) {
+                ((DeviceSelectionOptions) deviceConfig.getDeviceRequirements())
+                        .setDeviceTypeRequested(null);
+            }
+        }
+
+        // Dump and log the configuration
+        File configFile = FileUtil.createTempFile(config.getName(), ".xml");
+        config.dumpXml(new PrintWriter(configFile));
+        try (InputStreamSource source = new FileInputStreamSource(configFile)) {
+            logger.testLog(REMOTE_CONFIG, LogDataType.XML, source);
+        }
+        return configFile;
+    }
+
+    private void fetchAndProcessResults(
+            boolean wasStillRunning,
+            ITestInvocationListener invocationListener,
+            IInvocationContext context,
+            GceAvdInfo info,
+            TestDeviceOptions options,
+            IRunUtil runUtil,
+            String resultDirPath)
+            throws InvalidProtocolBufferException, IOException {
+        File resultFile = null;
+        if (wasStillRunning) {
+            CLog.d("Remote invocation was still running. No result can be pulled.");
+            return;
+        }
+        resultFile =
+                RemoteFileUtil.fetchRemoteFile(
+                        info,
+                        options,
+                        runUtil,
+                        PULL_RESULT_TIMEOUT,
+                        resultDirPath + PROTO_RESULT_NAME);
+        if (resultFile == null) {
+            invocationListener.invocationFailed(
+                    new RuntimeException(
+                            String.format(
+                                    "Could not find remote result file at %s",
+                                    resultDirPath + PROTO_RESULT_NAME)));
+            return;
+        }
+        CLog.d("Fetched remote result file!");
+        // Report result to listener.
+        try {
+            ProtoResultParser parser =
+                    new ProtoResultParser(invocationListener, context, false, "remote-");
+            parser.processFinalizedProto(TestRecordProtoUtil.readFromFile(resultFile));
+        } finally {
+            FileUtil.deleteFile(resultFile);
+        }
+    }
+
+    /**
+     * Method that handles starting an extra Android Virtual Device inside a given remote VM.
+     *
+     * @param listener The invocation {@link ITestInvocationListener}.
+     * @param userId The username id to associate the device with.
+     * @param info The {@link GceAvdInfo} describing the remote VM.
+     * @param options The {@link TestDeviceOptions} of the virtual device.
+     * @param runUtil A {@link IRunUtil} to run host commands
+     * @return True if the device is started successfully, false otherwise.
+     */
+    private boolean startDevice(
+            ITestInvocationListener listener,
+            int userId,
+            GceAvdInfo info,
+            TestDeviceOptions options,
+            IRunUtil runUtil,
+            Semaphore token)
+            throws InterruptedException {
+        String useridString = MultiUserSetupUtil.getUserNumber(userId);
+        String username = String.format("vsoc-%s", useridString);
+        CommandResult userSetup =
+                MultiUserSetupUtil.prepareRemoteUser(
+                        username, info, options, runUtil, NEW_USER_TIMEOUT);
+        if (userSetup != null) {
+            String errorMsg = String.format("Failed to setup user: %s", userSetup.getStderr());
+            CLog.e(errorMsg);
+            listener.invocationFailed(new RuntimeException(errorMsg));
+            return false;
+        }
+
+        CommandResult homeDirSetup =
+                MultiUserSetupUtil.prepareRemoteHomeDir(
+                        options.getInstanceUser(),
+                        username,
+                        info,
+                        options,
+                        runUtil,
+                        NEW_USER_TIMEOUT);
+        if (homeDirSetup != null) {
+            String errorMsg =
+                    String.format("Failed to setup home dir: %s", homeDirSetup.getStderr());
+            CLog.e(errorMsg);
+            listener.invocationFailed(new RuntimeException(errorMsg));
+            return false;
+        }
+
+        // Create the cvd user if missing
+        CommandResult cvdSetup =
+                MultiUserSetupUtil.addExtraCvdUser(
+                        userId, info, options, runUtil, NEW_USER_TIMEOUT);
+        if (cvdSetup != null) {
+            String errorMsg = String.format("Failed to setup user: %s", cvdSetup.getStderr());
+            CLog.e(errorMsg);
+            listener.invocationFailed(new RuntimeException(errorMsg));
+            return false;
+        }
+
+        // Setup the tuntap interface if needed
+        CommandResult tapSetup =
+                MultiUserSetupUtil.setupNetworkInterface(
+                        userId, info, options, runUtil, NEW_USER_TIMEOUT);
+        if (tapSetup != null) {
+            String errorMsg =
+                    String.format("Failed to setup network interface: %s", tapSetup.getStderr());
+            CLog.e(errorMsg);
+            listener.invocationFailed(new RuntimeException(errorMsg));
+            return false;
+        }
+
+        List<String> startCommand = LaunchCvdHelper.createSimpleDeviceCommand(username, true);
+        if (token != null) {
+            token.acquire();
+        }
+        CommandResult startDeviceRes = null;
+        try {
+            startDeviceRes =
+                    GceManager.remoteSshCommandExecution(
+                            info,
+                            options,
+                            runUtil,
+                            LAUNCH_EXTRA_DEVICE,
+                            Joiner.on(" ").join(startCommand));
+        } finally {
+            if (token != null) {
+                token.release();
+            }
+        }
+        if (!CommandStatus.SUCCESS.equals(startDeviceRes.getStatus())) {
+            String errorMsg =
+                    String.format("Failed to start %s: %s", username, startDeviceRes.getStderr());
+            CLog.e(errorMsg);
+            listener.invocationFailed(new RuntimeException(errorMsg));
+            return false;
+        }
+        return true;
+    }
+
+    /** Thread class that allows to start a device asynchronously. */
+    private class StartDeviceThread extends Thread {
+
+        private ITestInvocationListener mListener;
+        private int mUserId;
+        private GceAvdInfo mInfo;
+        private TestDeviceOptions mOptions;
+        private IRunUtil mRunUtil;
+        private Semaphore mToken;
+
+        private boolean mFinalResult = false;
+
+        public StartDeviceThread(
+                ITestInvocationListener listener,
+                int userId,
+                GceAvdInfo info,
+                TestDeviceOptions options,
+                IRunUtil runUtil,
+                Semaphore token) {
+            super();
+            setDaemon(true);
+            setName(String.format("start-device-thread-vsoc-%s", userId));
+            mListener = listener;
+            mUserId = userId;
+            mInfo = info;
+            mOptions = options;
+            mRunUtil = runUtil;
+            mToken = token;
+        }
+
+        @Override
+        public void run() {
+            try {
+                mFinalResult = startDevice(mListener, mUserId, mInfo, mOptions, mRunUtil, mToken);
+            } catch (InterruptedException e) {
+                CLog.e(e);
+            }
+        }
+
+        /**
+         * Returns the final status of the startDevice. Returns true if it succeeded, false
+         * otherwise.
+         */
+        boolean getFinalStatus() {
+            return mFinalResult;
+        }
     }
 }

@@ -310,3 +310,16 @@ class ModuleInfo(object):
             return (mod_info.get(constants.MODULE_CLASS, [None])[0] ==
                     constants.MODULE_CLASS_ROBOLECTRIC)
         return False
+
+    def is_native_test(self, module_name):
+        """Check if the input module is a native test.
+
+        Args:
+            module_name: A string of the module name.
+
+        Returns:
+            True if the test is a native test, False otherwise.
+        """
+        mod_info = self.get_module_info(module_name)
+        return constants.MODULE_CLASS_NATIVE_TESTS in mod_info.get(
+            constants.MODULE_CLASS, [])

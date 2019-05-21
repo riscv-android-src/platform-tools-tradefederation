@@ -25,9 +25,12 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.device.NativeDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.device.cloud.ManagedRemoteDevice;
+import com.android.tradefed.device.cloud.NestedRemoteDevice;
+import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecution;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
@@ -35,9 +38,11 @@ import com.android.tradefed.invoker.shard.ShardBuildCloner;
 import com.android.tradefed.log.BaseLeveledLogOutput;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.postprocessor.IPostProcessor;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
@@ -50,13 +55,16 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.PrettyPrintDelimiter;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.TimeUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -84,6 +92,8 @@ public class TestInvocation implements ITestInvocation {
     private static final String BATTERY_ATTRIBUTE_FORMAT_KEY = "%s-battery-%s";
 
     static final String TRADEFED_LOG_NAME = "host_log";
+    /** Suffix used on host_log for the part before sharding occurs. */
+    static final String BEFORE_SHARDING_SUFFIX = "_before_sharding";
     static final String DEVICE_LOG_NAME_PREFIX = "device_logcat_";
     static final String EMULATOR_LOG_NAME_PREFIX = "emulator_log_";
     static final String BUILD_ERROR_BUGREPORT_NAME = "build_error_bugreport";
@@ -300,9 +310,12 @@ public class TestInvocation implements ITestInvocation {
                     takeBugreport(badDevice, listener, bugreportName);
                 }
             }
+            // Save the device executeShellCommand logs
+            logExecuteShellCommand(context.getDevices(), listener);
+
             mStatus = "tearing down";
             try {
-                invocationPath.doTeardown(context, config, exception);
+                invocationPath.doTeardown(context, config, listener, exception);
             } catch (Throwable e) {
                 tearDownException = e;
                 CLog.e("Exception when tearing down invocation: %s", tearDownException.toString());
@@ -451,9 +464,13 @@ public class TestInvocation implements ITestInvocation {
     }
 
     private void reportHostLog(ITestInvocationListener listener, IConfiguration config) {
+        reportHostLog(listener, config, TRADEFED_LOG_NAME);
+    }
+
+    private void reportHostLog(
+            ITestInvocationListener listener, IConfiguration config, String name) {
         ILeveledLogOutput logger = config.getLogOutput();
         try (InputStreamSource globalLogSource = logger.getLog()) {
-            String name = TRADEFED_LOG_NAME;
             if (config.getCommandOptions().getHostLogSuffix() != null) {
                 name += config.getCommandOptions().getHostLogSuffix();
             }
@@ -518,6 +535,11 @@ public class TestInvocation implements ITestInvocation {
                 continue;
             }
             if (testDevice.getIDevice() instanceof StubDevice) {
+                continue;
+            }
+            if (testDevice instanceof RemoteAndroidVirtualDevice
+                    || testDevice instanceof NestedRemoteDevice) {
+                // Vritual devices have a fake battery there is no point in logging it.
                 continue;
             }
             Integer batteryLevel = testDevice.getBattery();
@@ -709,6 +731,9 @@ public class TestInvocation implements ITestInvocation {
                     CLog.i(
                             "Invocation for %s has been sharded, rescheduling",
                             context.getSerials());
+                    // Log the chunk of parent host_log before sharding
+                    reportHostLog(listener, config, TRADEFED_LOG_NAME + BEFORE_SHARDING_SUFFIX);
+                    config.getLogSaver().invocationEnded(0L);
                     return;
                 }
             }
@@ -793,6 +818,39 @@ public class TestInvocation implements ITestInvocation {
                 return new RemoteInvocationExecution();
             default:
                 return new InvocationExecution();
+        }
+    }
+
+    /** Prints a delimiter for a given Stage of the invocation. */
+    public static void printStageDelimiter(Stage phase, boolean end) {
+        String startEnd = end ? "ENDING" : "STARTING";
+        String message = String.format("===== %s PHASE %s =====", phase, startEnd);
+        PrettyPrintDelimiter.printStageDelimiter(message);
+    }
+
+    private void logExecuteShellCommand(List<ITestDevice> devices, ITestLogger logger) {
+        for (ITestDevice device : devices) {
+            if (!(device instanceof NativeDevice)) {
+                return;
+            }
+            File log = ((NativeDevice) device).getExecuteShellCommandLog();
+            if (log == null || !log.exists()) {
+                return;
+            }
+            try {
+                if (log != null && !FileUtil.readStringFromFile(log).isEmpty()) {
+                    try (InputStreamSource source = new FileInputStreamSource(log)) {
+                        logger.testLog(
+                                String.format(
+                                        "executeShellCommandLog_%s", device.getSerialNumber()),
+                                LogDataType.TEXT,
+                                source);
+                    }
+                }
+            } catch (IOException e) {
+                // Ignored
+                CLog.e(e);
+            }
         }
     }
 }

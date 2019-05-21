@@ -16,6 +16,7 @@
 package com.android.tradefed.invoker.sandbox;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -23,6 +24,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.build.BuildRetrievalError;
+import com.android.tradefed.build.IBuildProvider;
+import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationException;
@@ -68,6 +72,11 @@ public class ParentSandboxInvocationExecutionTest {
                     protected IConfigurationFactory getFactory() {
                         return mMockFactory;
                     }
+
+                    @Override
+                    protected String getAdbVersion() {
+                        return "0";
+                    }
                 };
         mContext = new InvocationContext();
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
@@ -79,7 +88,7 @@ public class ParentSandboxInvocationExecutionTest {
     @Test
     public void testDefaultSkipSetup_tearDown() throws Throwable {
         mParentSandbox.doSetup(mContext, mConfig, null);
-        mParentSandbox.doTeardown(mContext, mConfig, null);
+        mParentSandbox.doTeardown(mContext, mConfig, null, null);
         mParentSandbox.doCleanUp(mContext, mConfig, null);
 
         verify(mMockFactory, times(0)).createConfigurationFromArgs(Mockito.any());
@@ -99,7 +108,7 @@ public class ParentSandboxInvocationExecutionTest {
                 .createConfigurationFromArgs(new String[] {"parent-config"});
 
         mParentSandbox.doSetup(mContext, mConfig, null);
-        mParentSandbox.doTeardown(mContext, mConfig, null);
+        mParentSandbox.doTeardown(mContext, mConfig, null, null);
         mParentSandbox.doCleanUp(mContext, mConfig, null);
 
         verify(mMockFactory, times(1)).createConfigurationFromArgs(Mockito.any());
@@ -123,7 +132,7 @@ public class ParentSandboxInvocationExecutionTest {
         doReturn(new StubDevice("stub")).when(mMockDevice).getIDevice();
 
         mParentSandbox.doSetup(mContext, mConfig, null);
-        mParentSandbox.doTeardown(mContext, mConfig, null);
+        mParentSandbox.doTeardown(mContext, mConfig, null, null);
         mParentSandbox.doCleanUp(mContext, mConfig, null);
         mParentSandbox.reportLogs(
                 mMockDevice, configParent.getTestInvocationListeners().get(0), Stage.ERROR);
@@ -154,5 +163,39 @@ public class ParentSandboxInvocationExecutionTest {
                     expected.getMessage());
         }
         verify(mMockDevice, times(0)).getIDevice();
+    }
+
+    /**
+     * If the context already contains BuildInfo we are in sandbox-test-mode and should not download
+     * again.
+     */
+    @Test
+    public void testParentSandbox_testMode() throws Throwable {
+        IBuildProvider stubProvider = new StubBuildProvider();
+        OptionSetter setter = new OptionSetter(stubProvider);
+        setter.setOptionValue("throw-build-error", "true");
+        mConfig.getDeviceConfig().get(0).addSpecificConfig(stubProvider);
+
+        assertTrue(mParentSandbox.fetchBuild(mContext, mConfig, null, null));
+    }
+
+    /**
+     * Test that in regular sandbox mode, the fetchBuild is called as always in the parent sandbox.
+     */
+    @Test
+    public void testParentSandbox_NotTestMode() throws Throwable {
+        IBuildProvider stubProvider = new StubBuildProvider();
+        OptionSetter setter = new OptionSetter(stubProvider);
+        setter.setOptionValue("throw-build-error", "true");
+        mConfig.getDeviceConfig().get(0).addSpecificConfig(stubProvider);
+
+        mContext = new InvocationContext();
+        mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
+        try {
+            mParentSandbox.fetchBuild(mContext, mConfig, null, null);
+            fail("Should have thrown an exception.");
+        } catch (BuildRetrievalError expected) {
+            assertEquals("stub failed to get build.", expected.getMessage());
+        }
     }
 }

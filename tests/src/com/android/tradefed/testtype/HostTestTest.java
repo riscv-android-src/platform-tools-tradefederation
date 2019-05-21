@@ -300,6 +300,20 @@ public class HostTestTest extends TestCase {
     }
 
     @RunWith(DeviceJUnit4ClassRunner.class)
+    public static class JUnit4TestClassMultiExceptionDnae {
+
+        @org.junit.Test
+        public void testPass5() {
+            Assume.assumeTrue(false);
+        }
+
+        @After
+        public void tearDown() throws Exception {
+            throw new DeviceNotAvailableException("dnae", "serial");
+        }
+    }
+
+    @RunWith(DeviceJUnit4ClassRunner.class)
     public static class Junit4TestClassMulti implements IMultiDeviceTest {
         private Map<ITestDevice, IBuildInfo> mDeviceMap;
 
@@ -1191,6 +1205,29 @@ public class HostTestTest extends TestCase {
         EasyMock.verify(mListener);
     }
 
+    public void testRun_junit4style_multiException_dnae() throws Exception {
+        mListener = EasyMock.createStrictMock(ITestInvocationListener.class);
+        mHostTest.setClassName(JUnit4TestClassMultiExceptionDnae.class.getName());
+        TestDescription test1 =
+                new TestDescription(JUnit4TestClassMultiExceptionDnae.class.getName(), "testPass5");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testFailed(
+                EasyMock.eq(test1),
+                EasyMock.contains("MultipleFailureException: There were 2 errors:"));
+        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testRunFailed(EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        try {
+            mHostTest.run(mListener);
+            fail("Should have thrown an exception.");
+        } catch (DeviceNotAvailableException expected) {
+
+        }
+        EasyMock.verify(mListener);
+    }
+
     /**
      * Test for {@link HostTest#run(ITestInvocationListener)}, for test with Junit4 style properly
      * pass to the test the {@link IMultiDeviceTest} information.
@@ -1878,6 +1915,7 @@ public class HostTestTest extends TestCase {
         mListener.testRunStarted(
                 EasyMock.eq("com.android.tradefed.testtype.HostTestTest$Junit4RegularClass"),
                 EasyMock.eq(1));
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.replay(mListener);
         try {
             mHostTest.run(mListener);

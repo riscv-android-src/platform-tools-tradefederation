@@ -23,6 +23,8 @@ import mock
 import atest
 import constants
 import module_info
+
+from metrics import metrics_utils
 from test_finders import test_info
 
 if sys.version_info[0] == 2:
@@ -213,7 +215,8 @@ class AtestUnittests(unittest.TestCase):
                           '\x1b[1;37m\x1b[0m\n')
         self.assertEqual(capture_output.getvalue(), correct_output)
 
-    def test_validate_exec_mode(self):
+    @mock.patch.object(metrics_utils, 'send_exit_event')
+    def test_validate_exec_mode(self, _send_exit):
         """Test _validate_exec_mode."""
         args = []
         parsed_args = atest._parse_args(args)
@@ -230,23 +233,23 @@ class AtestUnittests(unittest.TestCase):
             'mod', '', set(), data={}, module_class=["NATIVE_TESTS"],
             install_locations=set(['host', 'device']))
 
-        # $atest <host-only>
+        # $atest <Both-support>
         test_infos = [host_test_info]
         atest._validate_exec_mode(parsed_args, test_infos)
-        self.assertTrue(parsed_args.host)
+        self.assertFalse(parsed_args.host)
 
-        # $atest <host-only> with host_tests set to True
+        # $atest <Both-support> with host_tests set to True
         parsed_args = atest._parse_args([])
         test_infos = [host_test_info]
         atest._validate_exec_mode(parsed_args, test_infos, host_tests=True)
         # Make sure the host option is not set.
         self.assertFalse(parsed_args.host)
 
-        # $atest <host-only> with host_tests set to False
+        # $atest <Both-support> with host_tests set to False
         parsed_args = atest._parse_args([])
         test_infos = [host_test_info]
-        self.assertRaises(SystemExit, atest._validate_exec_mode,
-                          parsed_args, test_infos, host_tests=False)
+        atest._validate_exec_mode(parsed_args, test_infos, host_tests=False)
+        self.assertFalse(parsed_args.host)
 
         # $atest <device-only> with host_tests set to False
         parsed_args = atest._parse_args([])
@@ -266,18 +269,6 @@ class AtestUnittests(unittest.TestCase):
         test_infos = [both_test_info]
         atest._validate_exec_mode(parsed_args, test_infos)
         self.assertFalse(parsed_args.host)
-
-        # $atest <host-only> <both-support>
-        parsed_args = atest._parse_args([])
-        test_infos = [both_test_info, host_test_info]
-        atest._validate_exec_mode(parsed_args, test_infos)
-        self.assertTrue(parsed_args.host)
-
-        # $atest <device-only> <host-only>
-        parsed_args = atest._parse_args([])
-        test_infos = [device_test_info, host_test_info]
-        self.assertRaises(SystemExit, atest._validate_exec_mode,
-                          parsed_args, test_infos)
 
         # $atest <no_install_test_info>
         parsed_args = atest._parse_args([])
