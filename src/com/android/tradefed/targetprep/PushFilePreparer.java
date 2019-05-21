@@ -189,7 +189,7 @@ public class PushFilePreparer extends BaseTargetPreparer implements ITargetClean
                 device.remountSystemWritable();
             }
             for (String devicePath : mFilesPushed) {
-                device.executeShellCommand("rm -r " + devicePath);
+                device.deleteFile(devicePath);
             }
         }
     }
