@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
 import com.android.ddmlib.AdbCommandRejectedException;
@@ -357,7 +358,7 @@ public class NativeDeviceTest {
         // Empty list of childen
         EasyMock.replay(fakeEntry);
         try {
-            boolean res = mTestDevice.pullDir("/sdcard/screenshots/", dir);
+            boolean res = mTestDevice.pullDir("/some_device_path/screenshots/", dir);
             assertTrue(res);
             assertTrue(dir.list().length == 0);
         } finally {
@@ -413,12 +414,12 @@ public class NativeDeviceTest {
         children.add(fakeFile);
         EasyMock.expect(fakeFile.isDirectory()).andReturn(false);
         EasyMock.expect(fakeFile.getName()).andReturn("fakeFile");
-        EasyMock.expect(fakeFile.getFullPath()).andReturn("/sdcard/screenshots/fakeFile");
+        EasyMock.expect(fakeFile.getFullPath()).andReturn("/some_device_path/fakeFile");
 
         children.add(fakeDir);
         EasyMock.expect(fakeDir.isDirectory()).andReturn(true);
         EasyMock.expect(fakeDir.getName()).andReturn("fakeDir");
-        EasyMock.expect(fakeDir.getFullPath()).andReturn("/sdcard/screenshots/fakeDir");
+        EasyMock.expect(fakeDir.getFullPath()).andReturn("/some_device_path/fakeDir");
         // #pullDir is being called on dir fakeDir to pull everything recursively.
         Collection<IFileEntry> fakeDirChildren = new ArrayList<>();
         EasyMock.expect(fakeDir.getChildren(false)).andReturn(fakeDirChildren);
@@ -426,7 +427,7 @@ public class NativeDeviceTest {
 
         EasyMock.replay(fakeEntry, fakeFile, fakeDir);
         try {
-            boolean res = mTestDevice.pullDir("/sdcard/screenshots/", dir);
+            boolean res = mTestDevice.pullDir("/some_device_path/", dir);
             assertTrue(res);
             assertEquals(2, dir.list().length);
             assertTrue(Arrays.asList(dir.list()).contains("fakeFile"));
@@ -487,12 +488,12 @@ public class NativeDeviceTest {
         children.add(fakeFile);
         EasyMock.expect(fakeFile.isDirectory()).andReturn(false);
         EasyMock.expect(fakeFile.getName()).andReturn("fakeFile");
-        EasyMock.expect(fakeFile.getFullPath()).andReturn("/sdcard/screenshots/fakeFile");
+        EasyMock.expect(fakeFile.getFullPath()).andReturn("/some_device_path/fakeFile");
 
         children.add(fakeDir);
         EasyMock.expect(fakeDir.isDirectory()).andReturn(true);
         EasyMock.expect(fakeDir.getName()).andReturn("fakeDir");
-        EasyMock.expect(fakeDir.getFullPath()).andReturn("/sdcard/screenshots/fakeDir");
+        EasyMock.expect(fakeDir.getFullPath()).andReturn("/some_device_path/fakeDir");
         // #pullDir is being called on dir fakeDir to pull everything recursively.
         Collection<IFileEntry> fakeDirChildren = new ArrayList<>();
         IFileEntry secondLevelChildren = EasyMock.createMock(IFileEntry.class);
@@ -503,11 +504,11 @@ public class NativeDeviceTest {
         EasyMock.expect(secondLevelChildren.isDirectory()).andReturn(false);
         EasyMock.expect(secondLevelChildren.getName()).andReturn("secondLevelChildren");
         EasyMock.expect(secondLevelChildren.getFullPath())
-                .andReturn("/sdcard/screenshots/fakeDir/secondLevelChildren");
+                .andReturn("/some_device_path/fakeDir/secondLevelChildren");
 
         EasyMock.replay(fakeEntry, fakeFile, fakeDir, secondLevelChildren);
         try {
-            boolean res = mTestDevice.pullDir("/sdcard/screenshots/", dir);
+            boolean res = mTestDevice.pullDir("/some_device_path/", dir);
             // If one of the pull fails, the full command is considered failed.
             assertFalse(res);
             assertEquals(2, dir.list().length);
@@ -2578,5 +2579,35 @@ public class NativeDeviceTest {
                     }
                 };
         assertFalse(mTestDevice.isExecutable("/system"));
+    }
+
+    /** Test {@link NativeDevice#getTombstones()}. */
+    @Test
+    public void testGetTombstones_notRoot() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn(false).when(spy).isAdbRoot();
+
+        EasyMock.replay(mMockIDevice);
+        List<File> result = spy.getTombstones();
+        assertEquals(0, result.size());
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test {@link NativeDevice#getTombstones()}. */
+    @Test
+    public void testGetTombstones() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn(true).when(spy).isAdbRoot();
+
+        String[] tombs = new String[] {"tomb1", "tomb2"};
+        doReturn(tombs).when(spy).getChildren("/data/tombstones/");
+
+        doReturn(new File("tomb1_test")).when(spy).pullFile("/data/tombstones/tomb1");
+        doReturn(new File("tomb2_test")).when(spy).pullFile("/data/tombstones/tomb2");
+
+        EasyMock.replay(mMockIDevice);
+        List<File> result = spy.getTombstones();
+        assertEquals(2, result.size());
+        EasyMock.verify(mMockIDevice);
     }
 }

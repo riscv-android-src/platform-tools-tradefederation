@@ -50,6 +50,9 @@ RUN_CMD = atf_tr.AtestTradefedTestRunner._RUN_CMD.format(
 FULL_CLASS2_NAME = 'android.jank.cts.ui.SomeOtherClass'
 CLASS2_FILTER = test_info.TestFilter(FULL_CLASS2_NAME, frozenset())
 METHOD2_FILTER = test_info.TestFilter(uc.FULL_CLASS_NAME, frozenset([uc.METHOD2_NAME]))
+MODULE_ARG1 = [(constants.TF_INCLUDE_FILTER_OPTION, "A"),
+               (constants.TF_INCLUDE_FILTER_OPTION, "B")]
+MODULE_ARG2 = []
 CLASS2_METHOD_FILTER = test_info.TestFilter(FULL_CLASS2_NAME,
                                             frozenset([uc.METHOD_NAME, uc.METHOD2_NAME]))
 MODULE2_INFO = test_info.TestInfo(uc.MODULE2_NAME,
@@ -69,6 +72,20 @@ CLASS2_INFO = test_info.TestInfo(uc.MODULE_NAME,
                                  CLASS2_BUILD_TARGETS,
                                  data={constants.TI_REL_CONFIG: uc.CONFIG_FILE,
                                        constants.TI_FILTER: frozenset([CLASS2_FILTER])})
+CLASS3_BUILD_TARGETS = {'class_3_build_target'}
+CLASS3_INFO = test_info.TestInfo(uc.MODULE_NAME,
+                                 atf_tr.AtestTradefedTestRunner.NAME,
+                                 CLASS3_BUILD_TARGETS,
+                                 data={constants.TI_REL_CONFIG: uc.CONFIG_FILE,
+                                       constants.TI_FILTER: frozenset(),
+                                       constants.TI_MODULE_ARG: MODULE_ARG1})
+CLASS4_BUILD_TARGETS = {'class_4_build_target'}
+CLASS4_INFO = test_info.TestInfo(uc.MODULE_NAME,
+                                 atf_tr.AtestTradefedTestRunner.NAME,
+                                 CLASS4_BUILD_TARGETS,
+                                 data={constants.TI_REL_CONFIG: uc.CONFIG_FILE,
+                                       constants.TI_FILTER: frozenset(),
+                                       constants.TI_MODULE_ARG: MODULE_ARG2})
 CLASS1_CLASS2_MODULE_INFO = test_info.TestInfo(
     uc.MODULE_NAME,
     atf_tr.AtestTradefedTestRunner.NAME,
@@ -80,6 +97,13 @@ FLAT_CLASS_INFO = test_info.TestInfo(
     CLASS1_BUILD_TARGETS | CLASS2_BUILD_TARGETS,
     data={constants.TI_REL_CONFIG: uc.CONFIG_FILE,
           constants.TI_FILTER: frozenset([uc.CLASS_FILTER, CLASS2_FILTER])})
+FLAT2_CLASS_INFO = test_info.TestInfo(
+    uc.MODULE_NAME,
+    atf_tr.AtestTradefedTestRunner.NAME,
+    CLASS3_BUILD_TARGETS | CLASS4_BUILD_TARGETS,
+    data={constants.TI_REL_CONFIG: uc.CONFIG_FILE,
+          constants.TI_FILTER: frozenset(),
+          constants.TI_MODULE_ARG: MODULE_ARG1 + MODULE_ARG2})
 GTF_INT_CONFIG = os.path.join(uc.GTF_INT_DIR, uc.GTF_INT_NAME + '.xml')
 CLASS2_METHOD_INFO = test_info.TestInfo(
     uc.MODULE_NAME,
@@ -416,6 +440,9 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
             self, test_infos, {uc.INT_INFO, MODULE2_INFO,
                                METHOD_METHOD2_AND_CLASS2_METHOD})
 
+        test_infos = self.tr._flatten_test_infos({CLASS3_INFO, CLASS4_INFO})
+        unittest_utils.assert_equal_testinfo_sets(self, test_infos,
+                                                  {FLAT2_CLASS_INFO})
 
 
 if __name__ == '__main__':

@@ -87,7 +87,9 @@ public class SandboxConfigUtil {
         }
         CommandResult result = runUtil.runTimedCmd(DUMP_TIMEOUT, mCmdArgs.toArray(new String[0]));
         CLog.d("stdout: %s", result.getStdout());
-        CLog.d("stderr: %s", result.getStderr());
+        if (result.getStderr() != null && !result.getStderr().isEmpty()) {
+            CLog.d("stderr: %s", result.getStderr());
+        }
         if (CommandStatus.SUCCESS.equals(result.getStatus())) {
             return destination;
         }

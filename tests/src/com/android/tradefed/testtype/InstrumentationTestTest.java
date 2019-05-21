@@ -18,6 +18,7 @@ package com.android.tradefed.testtype;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -43,6 +44,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
+import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.InputStreamSource;
@@ -83,6 +85,8 @@ public class InstrumentationTestTest {
     private static final String TEST_RUNNER_VALUE = ".FooRunner";
     private static final TestDescription TEST1 = new TestDescription("Test", "test1");
     private static final TestDescription TEST2 = new TestDescription("Test", "test2");
+    private static final TestDescription TEST_PARAM1 = new TestDescription("Test", "test[0]");
+    private static final TestDescription TEST_PARAM2 = new TestDescription("Test", "test[1]");
     private static final String RUN_ERROR_MSG = "error";
     private static final HashMap<String, Metric> EMPTY_STRING_MAP = new HashMap<>();
 
@@ -200,7 +204,7 @@ public class InstrumentationTestTest {
     /** Test normal run scenario with --no-isolated-storage specified */
     @Test
     public void testRun_isolatedStorage() throws Exception {
-        doReturn(29).when(mMockTestDevice).getApiLevel();
+        doReturn(true).when(mMockTestDevice).checkApiLevelAgainstNextRelease(29);
         OptionSetter setter = new OptionSetter(mInstrumentationTest);
         setter.setOptionValue("isolated-storage", "false");
         RemoteAndroidTestRunner runner =
@@ -360,6 +364,70 @@ public class InstrumentationTestTest {
         inOrder.verifyNoMoreInteractions();
     }
 
+    /**
+     * When retrying a parameterized test we run all the parameters (since AJUR doesn't support
+     * re-running only one). So we should ignore the unexpected ones in the retry.
+     */
+    @Test
+    public void testRun_rerun_Parameterized() throws Exception {
+        mInstrumentationTest.setRerunMode(true);
+
+        // Mock collected tests
+        RunInstrumentationTestsAnswer collected =
+                (runner, listener) -> {
+                    // perform call back on listener to show run of two tests
+                    listener.testRunStarted(TEST_PACKAGE_VALUE, 3);
+                    listener.testStarted(TEST1);
+                    listener.testEnded(TEST1, EMPTY_STRING_MAP);
+                    listener.testStarted(TEST2);
+                    listener.testEnded(TEST2, EMPTY_STRING_MAP);
+                    listener.testStarted(TEST_PARAM2);
+                    listener.testEnded(TEST_PARAM2, EMPTY_STRING_MAP);
+                    listener.testRunEnded(1, EMPTY_STRING_MAP);
+                    return true;
+                };
+        RunInstrumentationTestsAnswer partialRun =
+                (runner, listener) -> {
+                    // perform call back on listener to show run failed - only one test
+                    listener.testRunStarted(TEST_PACKAGE_VALUE, 3);
+                    listener.testStarted(TEST1);
+                    listener.testEnded(TEST1, EMPTY_STRING_MAP);
+                    listener.testRunFailed(RUN_ERROR_MSG);
+                    listener.testRunEnded(1, EMPTY_STRING_MAP);
+                    return true;
+                };
+        RunInstrumentationTestsAnswer rerun =
+                (runner, listener) -> {
+                    // perform call back on listeners to show run remaining test was run
+                    listener.testRunStarted(TEST_PACKAGE_VALUE, 3);
+                    listener.testStarted(TEST2);
+                    listener.testEnded(TEST2, EMPTY_STRING_MAP);
+                    listener.testStarted(TEST_PARAM1);
+                    listener.testEnded(TEST_PARAM1, EMPTY_STRING_MAP);
+                    listener.testStarted(TEST_PARAM2);
+                    listener.testEnded(TEST_PARAM2, EMPTY_STRING_MAP);
+                    listener.testRunEnded(1, EMPTY_STRING_MAP);
+                    return true;
+                };
+
+        doAnswer(collected)
+                .doAnswer(partialRun)
+                .doAnswer(rerun)
+                .when(mMockTestDevice)
+                .runInstrumentationTests(
+                        any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
+
+        CollectingTestListener listener = new CollectingTestListener();
+        mInstrumentationTest.run(listener);
+
+        assertEquals(3, listener.getExpectedTests());
+        assertEquals(3, listener.getNumTotalTests());
+        assertTrue(listener.getMergedTestRunResults().get(0).isRunComplete());
+        assertTrue(listener.getMergedTestRunResults().get(0).isRunFailure());
+        assertEquals(
+                RUN_ERROR_MSG, listener.getMergedTestRunResults().get(0).getRunFailureMessage());
+    }
+
     /** Verify that all tests are re-run when there is a failure during a coverage run. */
     @Test
     public void testRun_rerunCoverage() throws ConfigurationException, DeviceNotAvailableException {
@@ -440,13 +508,10 @@ public class InstrumentationTestTest {
 
     /** Verify that all tests are re-run when there is a failure during a coverage run. */
     @Test
-    public void testRun_mergedCoverage()
-            throws ConfigurationException, DeviceNotAvailableException {
+    public void testRun_mergedCoverage() throws DeviceNotAvailableException {
         mInstrumentationTest.setRerunMode(true);
         mInstrumentationTest.setCoverage(true);
         mInstrumentationTest.setMergeCoverageMeasurements(true);
-
-        Collection<TestDescription> expectedTests = ImmutableList.of(TEST1, TEST2);
 
         // Mock collected tests
         RunInstrumentationTestsAnswer runTests =

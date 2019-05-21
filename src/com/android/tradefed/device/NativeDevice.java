@@ -37,6 +37,7 @@ import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.device.contentprovider.ContentProviderHandler;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ITestLogger;
+import com.android.tradefed.log.LogUtil;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -60,6 +61,7 @@ import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.StringEscapeUtils;
 import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.ZipUtil2;
 
@@ -124,8 +126,8 @@ public class NativeDevice implements IManagedTestDevice {
     /** the default number of command retry attempts to perform */
     protected static final int MAX_RETRY_ATTEMPTS = 2;
 
-    /** Value returned for any invalid/not found user id: UserHandle defined the -10000 value **/
-    protected static final int INVALID_USER_ID = -10000;
+    /** Value returned for any invalid/not found user id: UserHandle defined the -10000 value */
+    public static final int INVALID_USER_ID = -10000;
 
     /** regex to match input dispatch readiness line **/
     static final Pattern INPUT_DISPATCH_STATE_REGEX =
@@ -182,6 +184,9 @@ public class NativeDevice implements IManagedTestDevice {
     /** Pattern to find an executable file. */
     private static final Pattern EXE_FILE = Pattern.compile("^[-l]r.x.+");
 
+    /** Path of the device containing the tombstones */
+    private static final String TOMBSTONE_PATH = "/data/tombstones/";
+
     /** The time in ms to wait for a command to complete. */
     private long mCmdTimeout = 2 * 60 * 1000L;
     /** The time in ms to wait for a 'long' command to complete. */
@@ -217,6 +222,8 @@ public class NativeDevice implements IManagedTestDevice {
     private boolean mShouldSkipContentProviderSetup = false;
     /** Keep track of the last time Tradefed itself triggered a reboot. */
     private long mLastTradefedRebootTime = 0L;
+
+    private File mExecuteShellCommandLogs = null;
 
     /**
      * Interface for a generic device communication attempt.
@@ -709,7 +716,29 @@ public class NativeDevice implements IManagedTestDevice {
         CollectingOutputReceiver receiver = new CollectingOutputReceiver();
         executeShellCommand(command, receiver);
         String output = receiver.getOutput();
-        CLog.v("%s on %s returned %s", command, getSerialNumber(), output);
+        if (mExecuteShellCommandLogs != null) {
+            // Log all output to a dedicated file as it can be very verbose.
+            String formatted =
+                    LogUtil.getLogFormatString(
+                            LogLevel.VERBOSE,
+                            "NativeDevice",
+                            String.format(
+                                    "%s on %s returned %s\n==== END OF OUTPUT ====\n",
+                                    command, getSerialNumber(), output));
+            try {
+                FileUtil.writeToFile(formatted, mExecuteShellCommandLogs, true);
+            } catch (IOException e) {
+                // Ignore the full error
+                CLog.e("Failed to log to executeShellCommand log: %s", e.getMessage());
+            }
+        }
+        if (output.length() > 80) {
+            CLog.v(
+                    "%s on %s returned %s <truncated - See executeShellCommand log for full trace>",
+                    command, getSerialNumber(), output.substring(0, 80));
+        } else {
+            CLog.v("%s on %s returned %s", command, getSerialNumber(), output);
+        }
         return output;
     }
 
@@ -763,7 +792,9 @@ public class NativeDevice implements IManagedTestDevice {
                 cmd, null, null, maxTimeoutForCommand, timeUnit, retryAttempts);
     }
 
-    private CommandResult executeShellV2Command(
+    /** {@inheritDoc} */
+    @Override
+    public CommandResult executeShellV2Command(
             String cmd,
             File pipeAsInput,
             OutputStream pipeToOutput,
@@ -1173,7 +1204,10 @@ public class NativeDevice implements IManagedTestDevice {
             }
         }
         // Fallback to the direct command if content provider is unsuccessful
-        executeShellCommand(String.format("rm -rf \"%s\"", deviceFilePath));
+        String path = StringEscapeUtils.escapeShell(deviceFilePath);
+        // Escape spaces to handle filename with spaces
+        path = path.replaceAll(" ", "\\ ");
+        executeShellCommand(String.format("rm -rf %s", StringEscapeUtils.escapeShell(path)));
     }
 
     /**
@@ -1494,6 +1528,13 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean pullDir(String deviceFilePath, File localDir)
             throws DeviceNotAvailableException {
+        if (deviceFilePath.startsWith(SD_CARD)) {
+            ContentProviderHandler handler = getContentProvider();
+            if (handler != null) {
+                return handler.pullDir(deviceFilePath, localDir);
+            }
+        }
+
         if (!localDir.isDirectory()) {
             CLog.e("Local path %s is not a directory", localDir.getAbsolutePath());
             return false;
@@ -2025,8 +2066,14 @@ public class NativeDevice implements IManagedTestDevice {
         } catch (DeviceUnresponsiveException due) {
             RecoveryMode previousRecoveryMode = mRecoveryMode;
             mRecoveryMode = RecoveryMode.NONE;
-            boolean enabled = enableAdbRoot();
-            CLog.d("Device Unresponsive during recovery, is root still enabled: %s", enabled);
+            try {
+                boolean enabled = enableAdbRoot();
+                CLog.d("Device Unresponsive during recovery, is root still enabled: %s", enabled);
+            } catch (DeviceUnresponsiveException e) {
+                // Ignore exception thrown here to rethrow original exception.
+                CLog.e("Exception occurred during recovery adb root:");
+                CLog.e(e);
+            }
             mRecoveryMode = previousRecoveryMode;
             throw due;
         }
@@ -3561,6 +3608,19 @@ public class NativeDevice implements IManagedTestDevice {
 
     /** {@inheritDoc} */
     @Override
+    public boolean isPackageInstalled(String packageName) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Package's feature");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean isPackageInstalled(String packageName, String userId)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Package's feature");
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public Set<ApexInfo> getActiveApexes() throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("No support for Package's feature");
     }
@@ -3602,6 +3662,18 @@ public class NativeDevice implements IManagedTestDevice {
             // ignore, return unknown instead
         }
         return apiLevel;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean checkApiLevelAgainstNextRelease(int strictMinLevel)
+            throws DeviceNotAvailableException {
+        String codeName = getProperty(BUILD_CODENAME_PROP).trim();
+        int apiLevel = getApiLevel() + ("REL".equals(codeName) ? 0 : 1);
+        if (strictMinLevel > apiLevel) {
+            return false;
+        }
+        return true;
     }
 
     private int getApiLevelSafe() {
@@ -4036,6 +4108,13 @@ public class NativeDevice implements IManagedTestDevice {
         // Default implementation
         mContentProvider = null;
         mShouldSkipContentProviderSetup = false;
+        try {
+            mExecuteShellCommandLogs =
+                    FileUtil.createTempFile("TestDevice_ExecuteShellCommands", ".txt");
+        } catch (IOException e) {
+            throw new TargetSetupError(
+                    "Failed to create the executeShellCommand log file.", e, getDeviceDescriptor());
+        }
     }
 
     /**
@@ -4043,6 +4122,8 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public void postInvocationTearDown() {
+        FileUtil.deleteFile(mExecuteShellCommandLogs);
+        mExecuteShellCommandLogs = null;
         // Default implementation
         if (getIDevice() instanceof StubDevice) {
             return;
@@ -4054,7 +4135,9 @@ public class NativeDevice implements IManagedTestDevice {
             if (mContentProvider == null) {
                 return;
             }
-            mContentProvider.tearDown();
+            if (TestDeviceState.ONLINE.equals(getDeviceState())) {
+                mContentProvider.tearDown();
+            }
         } catch (DeviceNotAvailableException e) {
             CLog.e(e);
         }
@@ -4318,6 +4401,23 @@ public class NativeDevice implements IManagedTestDevice {
         return mLastTradefedRebootTime;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public List<File> getTombstones() throws DeviceNotAvailableException {
+        List<File> tombstones = new ArrayList<>();
+        if (!isAdbRoot()) {
+            CLog.w("Device was not root, cannot collect tombstones.");
+            return tombstones;
+        }
+        for (String tombName : getChildren(TOMBSTONE_PATH)) {
+            File tombFile = pullFile(TOMBSTONE_PATH + tombName);
+            if (tombFile != null) {
+                tombstones.add(tombFile);
+            }
+        }
+        return tombstones;
+    }
+
     /** Validate that pid is an integer and not empty. */
     private boolean checkValidPid(String output) {
         if (output.isEmpty()) {
@@ -4362,5 +4462,15 @@ public class NativeDevice implements IManagedTestDevice {
             mShouldSkipContentProviderSetup = true;
         }
         return mContentProvider;
+    }
+
+    /** Reset the flag for content provider setup in order to trigger it again. */
+    void resetContentProviderSetup() {
+        mShouldSkipContentProviderSetup = false;
+    }
+
+    /** The log that contains all the {@link #executeShellCommand(String)} logs. */
+    public final File getExecuteShellCommandLog() {
+        return mExecuteShellCommandLogs;
     }
 }

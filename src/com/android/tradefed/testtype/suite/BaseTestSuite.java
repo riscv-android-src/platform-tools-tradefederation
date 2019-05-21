@@ -380,7 +380,10 @@ public class BaseTestSuite extends ITestSuite {
     private static void checkFilters(Set<String> filters, String moduleName) {
         Set<String> cleanedFilters = new HashSet<String>();
         for (String filter : filters) {
-            if (moduleName.equals(SuiteTestFilter.createFrom(filter).getName())) {
+            SuiteTestFilter filterObject = SuiteTestFilter.createFrom(filter);
+            String filterName = filterObject.getName();
+            String filterBaseName = filterObject.getBaseName();
+            if (moduleName.equals(filterName) || moduleName.equals(filterBaseName)) {
                 cleanedFilters.add(filter); // Module name matches, filter passes
             }
         }

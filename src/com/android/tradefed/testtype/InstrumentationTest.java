@@ -654,8 +654,7 @@ public class InstrumentationTest
             runOptions += "--no-hidden-api-checks ";
         }
         // isolated-storage flag only exists in Q and after.
-        if (!mIsolatedStorage && (getDevice().getApiLevel() >= 29
-                || "Q".equals(getDevice().getProperty("ro.build.version.release")))) {
+        if (!mIsolatedStorage && getDevice().checkApiLevelAgainstNextRelease(29)) {
             runOptions += "--no-isolated-storage ";
         }
         if (abiName != null) {
