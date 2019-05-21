@@ -37,6 +37,7 @@ from metrics import metrics_utils
 from test_finders import module_finder
 
 TEST_MAPPING = 'TEST_MAPPING'
+FUZZY_FINDER = 'FUZZY'
 
 
 #pylint: disable=no-self-use
@@ -64,7 +65,98 @@ class CLITranslator(object):
         """
         self.mod_info = module_info
 
-    # pylint: disable=too-many-locals
+    def _find_test_infos(self, test, tm_test_detail):
+        """Return set of TestInfos based on a given test.
+
+        Args:
+            test: A string representing test references.
+            tm_test_detail: The TestDetail of test configured in TEST_MAPPING
+                files.
+
+        Returns:
+            Set of TestInfos based on the given test.
+        """
+        test_infos = set()
+        test_find_starts = time.time()
+        test_found = False
+        test_finders = []
+        test_info_str = ''
+        find_test_err_msg = None
+        for finder in test_finder_handler.get_find_methods_for_test(
+                self.mod_info, test):
+            # For tests in TEST_MAPPING, find method is only related to
+            # test name, so the details can be set after test_info object
+            # is created.
+            try:
+                test_info = finder.find_method(finder.test_finder_instance,
+                                               test)
+            except atest_error.TestDiscoveryException as e:
+                find_test_err_msg = e
+            if test_info:
+                if tm_test_detail:
+                    test_info.data[constants.TI_MODULE_ARG] = (
+                        tm_test_detail.options)
+                    test_info.from_test_mapping = True
+                    test_info.host = tm_test_detail.host
+                test_infos.add(test_info)
+                test_found = True
+                finder_info = finder.finder_info
+                print("Found '%s' as %s" % (
+                    atest_utils.colorize(test, constants.GREEN),
+                    finder_info))
+                test_finders.append(finder_info)
+                test_info_str = str(test_info)
+                break
+        if not test_found:
+            f_results = self._fuzzy_search_and_msg(test, find_test_err_msg)
+            if f_results:
+                test_infos.add(f_results)
+                test_found = True
+                test_finders.append(FUZZY_FINDER)
+        metrics.FindTestFinishEvent(
+            duration=metrics_utils.convert_duration(
+                time.time() - test_find_starts),
+            success=test_found,
+            test_reference=test,
+            test_finders=test_finders,
+            test_info=test_info_str)
+        return test_infos
+
+    def _fuzzy_search_and_msg(self, test, find_test_err_msg):
+        """ Fuzzy search and print message.
+
+        Args:
+            test: A string representing test references
+            find_test_err_msg: A string of find test error message.
+
+        Returns:
+            A TestInfos if found, otherwise None.
+        """
+        print('No test found for: %s' %
+              atest_utils.colorize(test, constants.RED))
+        # Currently we focus on guessing module names. Append names on
+        # results if more finders support fuzzy searching.
+        mod_finder = module_finder.ModuleFinder(self.mod_info)
+        results = mod_finder.get_fuzzy_searching_results(test)
+        if len(results) == 1 and self._confirm_running(results):
+            test_info = mod_finder.find_test_by_module_name(results[0])
+            if test_info:
+                return test_info
+        elif len(results) > 1:
+            self._print_fuzzy_searching_results(results)
+        else:
+            print('No matching result for {0}.'.format(test))
+        if find_test_err_msg:
+            print('%s\n' % (atest_utils.colorize(
+                find_test_err_msg, constants.MAGENTA)))
+        else:
+            print('(This can happen after a repo sync or if the test'
+                  ' is new. Running: with "%s" may resolve the issue.)'
+                  '\n' % (atest_utils.colorize(
+                      constants.REBUILD_MODULE_INFO_FLAG,
+                      constants.RED)))
+        return None
+
     def _get_test_infos(self, tests, test_mapping_test_details=None):
         """Return set of TestInfos based on passed in tests.
 
@@ -80,67 +172,8 @@ class CLITranslator(object):
         if not test_mapping_test_details:
             test_mapping_test_details = [None] * len(tests)
         for test, tm_test_detail in zip(tests, test_mapping_test_details):
-            test_find_starts = time.time()
-            test_found = False
-            test_finders = []
-            test_info_str = ''
-            find_test_err_msg = None
-            for finder in test_finder_handler.get_find_methods_for_test(
-                    self.mod_info, test):
-                # For tests in TEST_MAPPING, find method is only related to
-                # test name, so the details can be set after test_info object
-                # is created.
-                try:
-                    test_info = finder.find_method(finder.test_finder_instance,
-                                                   test)
-                except atest_error.TestDiscoveryException as e:
-                    find_test_err_msg = e
-                if test_info:
-                    if tm_test_detail:
-                        test_info.data[constants.TI_MODULE_ARG] = (
-                            tm_test_detail.options)
-                        test_info.from_test_mapping = True
-                        test_info.host = tm_test_detail.host
-                    test_infos.add(test_info)
-                    test_found = True
-                    finder_info = finder.finder_info
-                    print("Found '%s' as %s" % (
-                        atest_utils.colorize(test, constants.GREEN),
-                        finder_info))
-                    test_finders.append(finder_info)
-                    test_info_str = str(test_info)
-                    break
-            if not test_found:
-                print('No test found for: %s' %
-                      atest_utils.colorize(test, constants.RED))
-                # Currently we focus on guessing module names. Append names on
-                # results if more finders support fuzzy searching.
-                mod_finder = module_finder.ModuleFinder(self.mod_info)
-                results = mod_finder.get_fuzzy_searching_results(test)
-                if len(results) == 1 and self._confirm_running(results):
-                    test_info = mod_finder.find_test_by_module_name(results[0])
-                    test_infos.add(test_info)
-                    continue
-                elif len(results) > 1:
-                    self._print_fuzzy_searching_results(results)
-                else:
-                    print('No matching result for {0}.'.format(test))
-                if find_test_err_msg:
-                    print('%s\n' % (atest_utils.colorize(
-                        find_test_err_msg, constants.MAGENTA)))
-                else:
-                    print('(This can happen after a repo sync or if the test'
-                          ' is new. Running: with "%s" may resolve the issue.)'
-                          '\n' % (atest_utils.colorize(
-                              constants.REBUILD_MODULE_INFO_FLAG,
-                              constants.RED)))
-            metrics.FindTestFinishEvent(
-                duration=metrics_utils.convert_duration(
-                    time.time() - test_find_starts),
-                success=test_found,
-                test_reference=test,
-                test_finders=test_finders,
-                test_info=test_info_str)
+            found_test_infos = self._find_test_infos(test, tm_test_detail)
+            test_infos.update(found_test_infos)
         return test_infos
 
     def _confirm_running(self, results):

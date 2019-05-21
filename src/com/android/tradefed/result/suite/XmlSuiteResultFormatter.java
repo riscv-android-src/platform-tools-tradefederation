@@ -35,6 +35,7 @@ import com.android.tradefed.util.proto.TfMetricProtoUtil;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.xml.XmlEscapers;
+import com.google.gson.Gson;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -103,6 +104,9 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
 
     private static final String RESULT_ATTR = "result";
     private static final String RESULT_TAG = "Result";
+    private static final String RUN_HISTORY = "run_history";
+    private static final String RUN_HISTORY_TAG = "RunHistory";
+    private static final String RUN_TAG = "Run";
     private static final String RUNTIME_ATTR = "runtime";
     private static final String SCREENSHOT_TAG = "Screenshot";
     private static final String SKIPPED_ATTR = "skipped";
@@ -116,11 +120,16 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
 
     private static final String LOG_FILE_NAME_ATTR = "file_name";
 
+    /** Helper object for JSON conversion. */
+    public static final class RunHistory {
+        public long startTime;
+        public long endTime;
+    }
+
     /**
      * Allows to add some attributes to the <Result> tag via {@code serializer.attribute}.
      *
-     * @param serializer
-     * @throws IOException
+     * @param serializer The object that serializes an XML suite result.
      */
     public void addSuiteAttributes(XmlSerializer serializer)
             throws IllegalArgumentException, IllegalStateException, IOException {
@@ -132,7 +141,7 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
      *
      * @param parser The parser where to read the attributes from.
      * @param context The {@link IInvocationContext} where to put the attributes.
-     * @throws XmlPullParserException
+     * @throws XmlPullParserException When XmlPullParser fails.
      */
     public void parseSuiteAttributes(XmlPullParser parser, IInvocationContext context)
             throws XmlPullParserException {
@@ -142,11 +151,8 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
     /**
      * Allows to add some attributes to the <Build> tag via {@code serializer.attribute}.
      *
-     * @param serializer
-     * @param holder
-     * @throws IllegalArgumentException
-     * @throws IllegalStateException
-     * @throws IOException
+     * @param serializer The object that serializes an XML suite result.
+     * @param holder An object that contains information to be written to the suite result.
      */
     public void addBuildInfoAttributes(XmlSerializer serializer, SuiteResultHolder holder)
             throws IllegalArgumentException, IllegalStateException, IOException {
@@ -158,7 +164,7 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
      *
      * @param parser The parser where to read the attributes from.
      * @param context The {@link IInvocationContext} where to put the attributes.
-     * @throws XmlPullParserException
+     * @throws XmlPullParserException When XmlPullParser fails.
      */
     public void parseBuildInfoAttributes(XmlPullParser parser, IInvocationContext context)
             throws XmlPullParserException {
@@ -236,6 +242,21 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
         }
         addBuildInfoAttributes(serializer, holder);
         serializer.endTag(NS, BUILD_TAG);
+
+        // Run History
+        String runHistoryJson = holder.context.getAttributes().getUniqueMap().get(RUN_HISTORY);
+        if (runHistoryJson != null) {
+            serializer.startTag(NS, RUN_HISTORY_TAG);
+            Gson gson = new Gson();
+            RunHistory[] runHistories = gson.fromJson(runHistoryJson, RunHistory[].class);
+            for (RunHistory runHistory : runHistories) {
+                serializer.startTag(NS, RUN_TAG);
+                serializer.attribute(NS, START_TIME_ATTR, String.valueOf(runHistory.startTime));
+                serializer.attribute(NS, END_TIME_ATTR, String.valueOf(runHistory.endTime));
+                serializer.endTag(NS, RUN_TAG);
+            }
+            serializer.endTag(NS, RUN_HISTORY_TAG);
+        }
 
         // Summary
         serializer.startTag(NS, SUMMARY_TAG);
@@ -460,6 +481,16 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
             parser.require(XmlPullParser.END_TAG, NS, BUILD_TAG);
 
             parser.nextTag();
+            boolean hasRunHistoryTag = true;
+            try {
+                parser.require(XmlPullParser.START_TAG, NS, RUN_HISTORY_TAG);
+            } catch (XmlPullParserException e) {
+                hasRunHistoryTag = false;
+            }
+            if (hasRunHistoryTag) {
+                handleRunHistoryLevel(parser);
+            }
+
             parser.require(XmlPullParser.START_TAG, NS, SUMMARY_TAG);
 
             invocation.completeModules =
@@ -488,6 +519,18 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
 
         invocation.context = context;
         return invocation;
+    }
+
+    /** Handle the parsing and replay of all run history information. */
+    private void handleRunHistoryLevel(XmlPullParser parser)
+            throws IOException, XmlPullParserException {
+        while (parser.nextTag() == XmlPullParser.START_TAG) {
+            parser.require(XmlPullParser.START_TAG, NS, RUN_TAG);
+            parser.nextTag();
+            parser.require(XmlPullParser.END_TAG, NS, RUN_TAG);
+        }
+        parser.require(XmlPullParser.END_TAG, NS, RUN_HISTORY_TAG);
+        parser.nextTag();
     }
 
     /**

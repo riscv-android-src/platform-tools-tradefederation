@@ -15,8 +15,11 @@
  */
 package com.android.tradefed.testtype.suite.retry;
 
+import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -41,13 +44,22 @@ public class ResultsPlayerTest {
     private ResultsPlayer mPlayer;
     private ITestInvocationListener mMockListener;
     private IInvocationContext mContext;
+    private ITestDevice mMockDevice;
+    private IDevice mMockIDevice;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         mContext = new InvocationContext();
         mMockListener = EasyMock.createStrictMock(ITestInvocationListener.class);
+        mMockDevice = EasyMock.createMock(ITestDevice.class);
+        mMockIDevice = EasyMock.createMock(IDevice.class);
         mPlayer = new ResultsPlayer();
         mPlayer.setInvocationContext(mContext);
+        mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
+
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
+        mMockDevice.waitForDeviceAvailable();
+        EasyMock.expectLastCall();
     }
 
     /** Test that the replay of a full test run is properly working. */
@@ -70,9 +82,9 @@ public class ResultsPlayerTest {
                 EasyMock.eq(new HashMap<String, Metric>()));
         mMockListener.testRunEnded(500L, new HashMap<String, Metric>());
 
-        EasyMock.replay(mMockListener);
+        EasyMock.replay(mMockListener, mMockDevice);
         mPlayer.run(mMockListener);
-        EasyMock.verify(mMockListener);
+        EasyMock.verify(mMockListener, mMockDevice);
     }
 
     /** Test that when replaying a module we properly replay all the results. */
@@ -116,9 +128,9 @@ public class ResultsPlayerTest {
         mMockListener.testRunEnded(500L, new HashMap<String, Metric>());
         mMockListener.testModuleEnded();
 
-        EasyMock.replay(mMockListener);
+        EasyMock.replay(mMockListener, mMockDevice);
         mPlayer.run(mMockListener);
-        EasyMock.verify(mMockListener);
+        EasyMock.verify(mMockListener, mMockDevice);
     }
 
     /** Test that the replay of a single requested test case is working. */
@@ -143,9 +155,9 @@ public class ResultsPlayerTest {
                 EasyMock.eq(test), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         mMockListener.testRunEnded(500L, new HashMap<String, Metric>());
 
-        EasyMock.replay(mMockListener);
+        EasyMock.replay(mMockListener, mMockDevice);
         mPlayer.run(mMockListener);
-        EasyMock.verify(mMockListener);
+        EasyMock.verify(mMockListener, mMockDevice);
     }
 
     /** Test requesting several tests to re-run. */
@@ -186,9 +198,9 @@ public class ResultsPlayerTest {
 
         mMockListener.testRunEnded(500L, new HashMap<String, Metric>());
 
-        EasyMock.replay(mMockListener);
+        EasyMock.replay(mMockListener, mMockDevice);
         mPlayer.run(mMockListener);
-        EasyMock.verify(mMockListener);
+        EasyMock.verify(mMockListener, mMockDevice);
     }
 
     private TestRunResult createTestRunResult(String runName, int testCount, int failCount) {

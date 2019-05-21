@@ -23,6 +23,7 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.common.net.UrlEscapers;
 
@@ -34,7 +35,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.StringJoiner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Handler that abstract the content provider interactions and allow to use the device side content
@@ -44,6 +48,23 @@ import java.util.Set;
  * device.
  */
 public class ContentProviderHandler {
+    public static final String COLUMN_NAME = "name";
+    public static final String COLUMN_ABSOLUTE_PATH = "absolute_path";
+    public static final String COLUMN_DIRECTORY = "is_directory";
+    public static final String COLUMN_MIME_TYPE = "mime_type";
+    public static final String COLUMN_METADATA = "metadata";
+    public static final String QUERY_INFO_VALUE = "INFO";
+    public static final String NO_RESULTS_STRING = "No result found.";
+
+    // Has to be kept in sync with columns in ManagedFileContentProvider.java.
+    public static final String[] COLUMNS =
+            new String[] {
+                    COLUMN_NAME,
+                    COLUMN_ABSOLUTE_PATH,
+                    COLUMN_DIRECTORY,
+                    COLUMN_MIME_TYPE,
+                    COLUMN_METADATA
+            };
 
     public static final String PACKAGE_NAME = "android.tradefed.contentprovider";
     public static final String CONTENT_PROVIDER_URI = "content://android.tradefed.contentprovider";
@@ -66,8 +87,7 @@ public class ContentProviderHandler {
      * @return True if ready to be used, False otherwise.
      */
     public boolean setUp() throws DeviceNotAvailableException {
-        Set<String> packageNames = mDevice.getInstalledPackageNames();
-        if (packageNames.contains(PACKAGE_NAME)) {
+        if (mDevice.isPackageInstalled(PACKAGE_NAME, Integer.toString(mDevice.getCurrentUser()))) {
             return true;
         }
         if (mContentProviderApk == null) {
@@ -134,6 +154,66 @@ public class ContentProviderHandler {
                 "Failed to remove a file at %s using content provider. Error: '%s'",
                 deviceFilePath, deleteResult.getStderr());
         return false;
+    }
+
+    /**
+     * Recursively pull directory contents from device using content provider.
+     *
+     * @param deviceFilePath the absolute file path of the remote source
+     * @param localDir the local directory to pull files into
+     * @return <code>true</code> if file was pulled successfully. <code>false</code> otherwise.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     */
+    public boolean pullDir(String deviceFilePath, File localDir)
+            throws DeviceNotAvailableException {
+        if (!localDir.isDirectory()) {
+            CLog.e("Local path %s is not a directory", localDir.getAbsolutePath());
+            return false;
+        }
+
+        String contentUri = createEscapedContentUri(deviceFilePath);
+        String queryContentCommand =
+                String.format(
+                        "content query --user %d --uri %s", mDevice.getCurrentUser(), contentUri);
+
+        String listCommandResult = mDevice.executeShellCommand(queryContentCommand);
+
+        if (listCommandResult.equals(NO_RESULTS_STRING)) {
+            // Empty directory.
+            return true;
+        }
+
+        String[] listResult = listCommandResult.split("[\\r\\n]+");
+
+        for (String row : listResult) {
+            HashMap<String, String> columnValues = parseQueryResultRow(row);
+            boolean isDirectory = Boolean.valueOf(columnValues.get(COLUMN_DIRECTORY));
+            String name = columnValues.get(COLUMN_NAME);
+            String path = columnValues.get(COLUMN_ABSOLUTE_PATH);
+
+            File localChild = new File(localDir, name);
+            if (isDirectory) {
+                if (!localChild.mkdir()) {
+                    CLog.w(
+                            "Failed to create sub directory %s, aborting.",
+                            localChild.getAbsolutePath());
+                    return false;
+                }
+
+                if (!pullDir(path, localChild)) {
+                    CLog.w("Failed to pull sub directory %s from device, aborting", path);
+                    return false;
+                }
+            } else {
+                // handle regular file
+                if (!pullFile(path, localChild)) {
+                    CLog.w("Failed to pull file %s from device, aborting", path);
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /**
@@ -247,5 +327,34 @@ public class ContentProviderHandler {
             CLog.e(e);
         }
         return String.format("\"%s/%s\"", CONTENT_PROVIDER_URI, escapedFilePath);
+    }
+
+    /**
+     * Parses the String output of "adb shell content query" for a single row.
+     *
+     * @param row The entire row representing a single file/directory returned by the "adb shell
+     *     content query" command.
+     * @return Key-value map of column name to column value.
+     */
+    @VisibleForTesting
+    final HashMap<String, String> parseQueryResultRow(String row) {
+        HashMap<String, String> columnValues = new HashMap<>();
+
+        StringJoiner pattern = new StringJoiner(", ");
+        for (int i = 0; i < COLUMNS.length; i++) {
+            pattern.add(String.format("(%s=.*)", COLUMNS[i]));
+        }
+
+        Pattern p = Pattern.compile(pattern.toString());
+        Matcher m = p.matcher(row);
+        if (m.find()) {
+            for (int i = 1; i <= m.groupCount(); i++) {
+                String[] keyValue = m.group(i).split("=");
+                if (keyValue.length == 2) {
+                    columnValues.put(keyValue[0], keyValue[1]);
+                }
+            }
+        }
+        return columnValues;
     }
 }

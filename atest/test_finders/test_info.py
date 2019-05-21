@@ -73,12 +73,13 @@ class TestInfo(object):
         Determine the test supports which execution mode by strategy:
         Robolectric/JAVA_LIBRARIES --> 'both'
         Not native tests or installed only in out/target --> 'device'
-        Installed only in out/host --> 'host'
+        Installed only in out/host --> 'both'
         Installed under host and target --> 'both'
 
         Return:
             String of execution mode.
         """
+        install_path = self.install_locations
         if not self.module_class:
             return constants.DEVICE_TEST
         # Let Robolectric test support both.
@@ -87,14 +88,15 @@ class TestInfo(object):
         # Let JAVA_LIBRARIES support both.
         if constants.MODULE_CLASS_JAVA_LIBRARIES in self.module_class:
             return constants.BOTH_TEST
-        if not self.install_locations:
+        if not install_path:
             return constants.DEVICE_TEST
         # Non-Native test runs on device-only.
         if constants.MODULE_CLASS_NATIVE_TESTS not in self.module_class:
             return constants.DEVICE_TEST
-        # Native test returns its install path locations.
-        if len(self.install_locations) == 1:
-            return list(self.install_locations)[0]
+        # Native test with install path as host should be treated as both.
+        # Otherwise, return device test.
+        if len(install_path) == 1 and constants.DEVICE_TEST in install_path:
+            return constants.DEVICE_TEST
         return constants.BOTH_TEST
 
 

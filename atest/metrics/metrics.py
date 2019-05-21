@@ -17,7 +17,8 @@ Metrics class.
 """
 
 import constants
-import metrics_base
+
+from . import metrics_base
 
 class AtestStartEvent(metrics_base.MetricsBase):
     """
@@ -132,3 +133,16 @@ class RunTestsFinishEvent(metrics_base.MetricsBase):
     """
     _EVENT_NAME = 'run_tests_finish_event'
     duration = constants.EXTERNAL
+
+class LocalDetectEvent(metrics_base.MetricsBase):
+    """
+    Create local detection event and send it to clearcut.
+
+    Usage:
+        metrics.LocalDetectEvent(
+            detect_type=0,
+            result=0)
+    """
+    _EVENT_NAME = 'local_detect_event'
+    detect_type = constants.EXTERNAL
+    result = constants.EXTERNAL

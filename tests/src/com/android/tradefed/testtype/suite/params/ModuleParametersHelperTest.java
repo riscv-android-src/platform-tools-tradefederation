@@ -29,7 +29,8 @@ public class ModuleParametersHelperTest {
     @Test
     public void testHandlersExists() {
         for (ModuleParameters param : ModuleParameters.values()) {
-            IModuleParameter handler = ModuleParametersHelper.getParameterHandler(param);
+            IModuleParameter handler =
+                    ModuleParametersHelper.getParameterHandler(param, /* Include optional */ true);
             assertNotNull(handler);
         }
     }

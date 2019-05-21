@@ -21,14 +21,22 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceStateMonitor;
 import com.android.tradefed.device.TestDevice;
+import com.android.tradefed.device.cloud.CommonLogRemoteFileUtil.KnownLogFileEntry;
 import com.android.tradefed.invoker.RemoteInvocationExecution;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
+import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 
 import com.google.common.base.Joiner;
 
+import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +58,18 @@ public class NestedRemoteDevice extends TestDevice {
         IP_TO_USER.put("127.0.0.1:6524", "vsoc-05");
         IP_TO_USER.put("127.0.0.1:6525", "vsoc-06");
         IP_TO_USER.put("127.0.0.1:6526", "vsoc-07");
+        IP_TO_USER.put("127.0.0.1:6527", "vsoc-08");
+        IP_TO_USER.put("127.0.0.1:6528", "vsoc-09");
+        IP_TO_USER.put("127.0.0.1:6529", "vsoc-10");
+        IP_TO_USER.put("127.0.0.1:6530", "vsoc-11");
+        IP_TO_USER.put("127.0.0.1:6531", "vsoc-12");
+        IP_TO_USER.put("127.0.0.1:6532", "vsoc-13");
+        IP_TO_USER.put("127.0.0.1:6533", "vsoc-14");
+        IP_TO_USER.put("127.0.0.1:6534", "vsoc-15");
     }
+
+    /** When calling launch_cvd, the launcher.log is populated. */
+    private static final String LAUNCHER_LOG_PATH = "/home/%s/cuttlefish_runtime/launcher.log";
 
     /**
      * Creates a {@link NestedRemoteDevice}.
@@ -68,12 +87,10 @@ public class NestedRemoteDevice extends TestDevice {
         }
     }
 
-    /**
-     * Teardown and restore the virtual device so testing can proceed.
-     *
-     * <p>TODO: Restore device setup
-     */
-    public final boolean resetVirtualDevice(IBuildInfo info) throws DeviceNotAvailableException {
+    /** Teardown and restore the virtual device so testing can proceed. */
+    public final boolean resetVirtualDevice(
+            ITestLogger logger, IBuildInfo info, boolean resetDueToFailure)
+            throws DeviceNotAvailableException {
         String username = IP_TO_USER.get(getSerialNumber());
         // stop_cvd
         String stopCvdCommand = String.format("sudo runuser -l %s -c 'stop_cvd'", username);
@@ -87,15 +104,13 @@ public class NestedRemoteDevice extends TestDevice {
         }
         // Synchronize this so multiple reset do not occur at the same time inside one VM.
         synchronized (NestedRemoteDevice.class) {
-            // Own the image files
-            String chownUserCommand = MultiUserSetupUtil.getChownCommand(username);
-            CommandResult chownRes = getRunUtil().runTimedCmd(60000L, "sh", "-c", chownUserCommand);
-            if (!CommandStatus.SUCCESS.equals(chownRes.getStatus())) {
-                CLog.e("%s", chownRes.getStderr());
-                return false;
+            if (resetDueToFailure) {
+                // Log the common files before restarting otherwise they are lost
+                logDebugFiles(logger, username);
             }
-            // Restart the device
-            List<String> createCommand = LaunchCvdHelper.createSimpleDeviceCommand(username, true);
+            // Restart the device without re-creating the data partitions.
+            List<String> createCommand =
+                    LaunchCvdHelper.createSimpleDeviceCommand(username, true, false, false);
             CommandResult createRes =
                     getRunUtil()
                             .runTimedCmd(
@@ -105,24 +120,68 @@ public class NestedRemoteDevice extends TestDevice {
                                     Joiner.on(" ").join(createCommand));
             if (!CommandStatus.SUCCESS.equals(createRes.getStatus())) {
                 CLog.e("%s", createRes.getStderr());
+                captureLauncherLog(username, logger);
                 return false;
             }
             // Wait for the device to start for real.
             getRunUtil().sleep(5000);
             waitForDeviceAvailable();
-            reInitDevice(info);
-            return true;
+            // Re-init the freshly started device.
+            return reInitDevice(info);
         }
     }
 
-    private void reInitDevice(IBuildInfo info) throws DeviceNotAvailableException {
+    /**
+     * Log the runtime files of the virtual device before resetting it since they will be deleted.
+     */
+    private void logDebugFiles(ITestLogger logger, String username) {
+        List<KnownLogFileEntry> toFetch =
+                CommonLogRemoteFileUtil.KNOWN_FILES_TO_FETCH.get(getOptions().getInstanceType());
+        if (toFetch != null) {
+            SimpleDateFormat formatter = new SimpleDateFormat("HH:mm:ss");
+            for (KnownLogFileEntry entry : toFetch) {
+                File toLog = new File(String.format(entry.path, username));
+                if (!toLog.exists()) {
+                    continue;
+                }
+                try (FileInputStreamSource source = new FileInputStreamSource(toLog)) {
+                    logger.testLog(
+                            String.format(
+                                    "before_reset_%s_%s_%s",
+                                    toLog.getName(), username, formatter.format(new Date())),
+                            entry.type,
+                            source);
+                }
+            }
+        }
+        logBugreport(String.format("before_reset_%s_bugreport", username), logger);
+    }
+
+    /** TODO: Re-run the target_preparation. */
+    private boolean reInitDevice(IBuildInfo info) throws DeviceNotAvailableException {
         // Reset recovery since it's a new device
         setRecoveryMode(RecoveryMode.AVAILABLE);
         try {
             preInvocationSetup(info);
         } catch (TargetSetupError e) {
-            throw new DeviceNotAvailableException(
-                    "Failed re-init of device.", e, getSerialNumber());
+            CLog.e("Failed to re-init the device %s", getSerialNumber());
+            CLog.e(e);
+            return false;
+        }
+        // Success
+        return true;
+    }
+
+    /** Capture and log the launcher.log to debug why the device didn't start properly. */
+    private void captureLauncherLog(String username, ITestLogger logger) {
+        String logName = String.format("launcher_log_failure_%s", username);
+        File launcherLog = new File(String.format(LAUNCHER_LOG_PATH, username));
+        if (!launcherLog.exists()) {
+            CLog.e("%s doesn't exists, skip logging it.", launcherLog.getAbsolutePath());
+            return;
+        }
+        try (InputStreamSource source = new FileInputStreamSource(launcherLog)) {
+            logger.testLog(logName, LogDataType.TEXT, source);
         }
     }
 }

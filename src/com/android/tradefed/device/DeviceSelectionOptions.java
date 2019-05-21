@@ -344,6 +344,10 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         mRequestedType = requestedType;
     }
 
+    public DeviceRequestedType getDeviceTypeRequested() {
+        return mRequestedType;
+    }
+
     /**
      * Sets the minimum battery level
      */

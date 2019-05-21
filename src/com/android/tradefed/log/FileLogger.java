@@ -28,12 +28,24 @@ import com.android.tradefed.util.StreamUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 /** A {@link ILeveledLogOutput} that directs log messages to a file and to stdout. */
 @OptionClass(alias = "file")
 public class FileLogger extends BaseLeveledLogOutput {
     private static final String TEMP_FILE_PREFIX = "tradefed_log_";
     private static final String TEMP_FILE_SUFFIX = ".txt";
+
+    /**
+     * Map of log tag to a level they are forced at for writing to log file purpose. This ensure
+     * that some logs we have less control over can still be regulated.
+     */
+    private static final Map<String, LogLevel> FORCED_LOG_LEVEL = new HashMap<>();
+
+    static {
+        FORCED_LOG_LEVEL.put("ddms", LogLevel.WARN);
+    }
 
     @Option(name = "log-level", description = "the minimum log level to log.")
     private LogLevel mLogLevel = LogLevel.DEBUG;
@@ -110,7 +122,9 @@ public class FileLogger extends BaseLeveledLogOutput {
             System.out.print(outMessage);
         }
         try {
-            writeToLog(outMessage);
+            if (shouldWrite(tag, logLevel, mLogLevel)) {
+                writeToLog(outMessage);
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -219,5 +233,19 @@ public class FileLogger extends BaseLeveledLogOutput {
         if (mLogStream != null) {
             StreamUtil.copyStreams(inputStream, mLogStream);
         }
+    }
+
+    private boolean shouldWrite(String tag, LogLevel messageLogLevel, LogLevel invocationLogLevel) {
+        LogLevel forcedLevel = FORCED_LOG_LEVEL.get(tag);
+        if (forcedLevel == null) {
+            return true;
+        }
+        // Use the highest level of our forced and invocation to decide if we should log the
+        // particular tag.
+        int minWriteLevel = Math.max(forcedLevel.getPriority(), invocationLogLevel.getPriority());
+        if (messageLogLevel.getPriority() >= minWriteLevel) {
+            return true;
+        }
+        return false;
     }
 }

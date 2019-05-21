@@ -35,6 +35,7 @@ import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.invoker.shard.token.TokenProviderHelper;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.ILogRegistry.EventType;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -236,7 +237,7 @@ public final class TestsPoolPoller
                     CLog.w(due);
                     CLog.w("Proceeding to the next test.");
                 } catch (DeviceNotAvailableException dnae) {
-                    HandleDeviceNotAvailable(dnae, test);
+                    HandleDeviceNotAvailable(listener, dnae, test);
                 } catch (ConfigurationException e) {
                     CLog.w(
                             "Failed to validate the @options of test: %s. Proceeding to next test.",
@@ -260,19 +261,20 @@ public final class TestsPoolPoller
      * Helper to wait for the device to maybe come back online, in that case we reboot it to refresh
      * the state and proceed with execution.
      */
-    void HandleDeviceNotAvailable(DeviceNotAvailableException originalException, IRemoteTest test)
+    void HandleDeviceNotAvailable(
+            ITestLogger logger, DeviceNotAvailableException originalException, IRemoteTest test)
             throws DeviceNotAvailableException {
         try {
             if (mDevice instanceof NestedRemoteDevice) {
                 // If it's not the last device, reset it.
-                if (((NestedRemoteDevice) mDevice).resetVirtualDevice(mBuildInfo)) {
+                if (((NestedRemoteDevice) mDevice)
+                        .resetVirtualDevice(logger, mBuildInfo, /* Collect the logs */ true)) {
                     CLog.d("Successful virtual device reset.");
                     return;
                 }
                 // Original exception will be thrown below
                 CLog.e("Virtual device %s reset failed.", mDevice.getSerialNumber());
-            }
-            if (mTracker.getCount() > 1) {
+            } else if (mTracker.getCount() > 1) {
                 CLog.d(
                         "Wait %s for device to maybe come back online.",
                         TimeUtil.formatElapsedTime(WAIT_RECOVERY_TIME));

@@ -235,12 +235,17 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
 
     @Override
     public void testRunStarted(String runName, int testCount, int attemptNumber) {
+        testRunStarted(runName, testCount, attemptNumber, System.currentTimeMillis());
+    }
+
+    @Override
+    public void testRunStarted(String runName, int testCount, int attemptNumber, long startTime) {
         TestRecord.Builder runBuilder = TestRecord.newBuilder();
         TestRecord.Builder parent = mLatestChild.peek();
         runBuilder.setParentTestRecordId(parent.getTestRecordId());
         runBuilder.setTestRecordId(runName);
         runBuilder.setNumExpectedChildren(testCount);
-        runBuilder.setStartTime(createTimeStamp(System.currentTimeMillis()));
+        runBuilder.setStartTime(createTimeStamp(startTime));
         runBuilder.setAttemptId(attemptNumber);
 
         mLatestChild.add(runBuilder);
@@ -272,8 +277,8 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
     @Override
     public final void testRunEnded(long elapsedTimeMillis, HashMap<String, Metric> runMetrics) {
         TestRecord.Builder runBuilder = mLatestChild.pop();
-        // TODO: Make sure the end time match the elapsed time
-        runBuilder.setEndTime(createTimeStamp(System.currentTimeMillis()));
+        long startTime = timeStampToMillis(runBuilder.getStartTime());
+        runBuilder.setEndTime(createTimeStamp(startTime + elapsedTimeMillis));
         runBuilder.putAllMetrics(runMetrics);
         TestRecord.Builder parentBuilder = mLatestChild.peek();
 
@@ -392,6 +397,10 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
                 .setSeconds(currentTimeMs / 1000)
                 .setNanos((int) ((currentTimeMs % 1000) * 1000000))
                 .build();
+    }
+
+    private long timeStampToMillis(Timestamp stamp) {
+        return stamp.getSeconds() * 1000L + (stamp.getNanos() / 1000000L);
     }
 
     private LogFileInfo createFileProto(LogFile logFile) {

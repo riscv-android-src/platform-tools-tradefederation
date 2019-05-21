@@ -46,6 +46,11 @@ public interface IRunUtil {
          * Cancel the operation.
          */
         public void cancel();
+
+        /** Returns the command associated with the runnable. */
+        public default List<String> getCommand() {
+            return null;
+        }
     }
 
     /**
