@@ -267,7 +267,8 @@ public final class TestsPoolPoller
         try {
             if (mDevice instanceof NestedRemoteDevice) {
                 // If it's not the last device, reset it.
-                if (((NestedRemoteDevice) mDevice).resetVirtualDevice(logger, mBuildInfo)) {
+                if (((NestedRemoteDevice) mDevice)
+                        .resetVirtualDevice(logger, mBuildInfo, /* Collect the logs */ true)) {
                     CLog.d("Successful virtual device reset.");
                     return;
                 }
