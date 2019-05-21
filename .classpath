@@ -28,5 +28,6 @@
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/external/jacoco/jacoco-cli/linux_glibc_common/combined/jacoco-cli.jar"/>
 	<classpathentry exported="true" kind="var" path="TRADEFED_ROOT/prebuilts/tools/common/google-api-services-storage/1.23.0/google-api-services-storage-v1-rev114-1.23.0.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/tools/tradefederation/core/tradefed-protos/linux_glibc_common/combined/tradefed-protos.jar"/>
+	<classpathentry kind="var" path="TRADEFED_ROOT/prebuilts/tools/common/m2/repository/com/google/code/gson/gson/2.8.0/gson-2.8.0.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
