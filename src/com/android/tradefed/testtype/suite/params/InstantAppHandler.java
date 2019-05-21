@@ -19,6 +19,7 @@ import android.platform.test.annotations.AppModeFull;
 import android.platform.test.annotations.AppModeInstant;
 
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TestAppInstallSetup;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -40,9 +41,11 @@ public class InstantAppHandler implements IModuleParameter {
     @Override
     public void applySetup(IConfiguration moduleConfiguration) {
         // First, force target_preparers if they support it to install app in instant mode.
-        for (ITargetPreparer preparer : moduleConfiguration.getTargetPreparers()) {
-            if (preparer instanceof TestAppInstallSetup) {
-                ((TestAppInstallSetup) preparer).setInstantMode(true);
+        for (IDeviceConfiguration deviceConfig : moduleConfiguration.getDeviceConfig()) {
+            for (ITargetPreparer preparer : deviceConfig.getTargetPreparers()) {
+                if (preparer instanceof TestAppInstallSetup) {
+                    ((TestAppInstallSetup) preparer).setInstantMode(true);
+                }
             }
         }
         // TODO: Second, notify HostTest that instant mode might be needed for apks.
