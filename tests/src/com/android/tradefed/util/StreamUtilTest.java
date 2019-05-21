@@ -172,6 +172,46 @@ public class StreamUtilTest extends TestCase {
         assertEquals(text, baos.toString());
     }
 
+    /**
+     * Verify that {@link com.android.tradefed.util.StreamUtil#copyStreams(InputStream,
+     * OutputStream, int, int)} can copy partial content.
+     */
+    public void testCopyStreams_partialSuccess() throws Exception {
+        String text = getLargeText();
+        StringBuilder builder = new StringBuilder(33 * 1024);
+        // Create a string longer than StreamUtil.BUF_SIZE
+        while (builder.length() < 32 * 1024) {
+            builder.append(text);
+        }
+        ByteArrayInputStream bais = new ByteArrayInputStream(builder.toString().getBytes());
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        // Skip the first 1kB, and read longer than StreamUtil.BUF_SIZE
+        StreamUtil.copyStreams(bais, baos, 1024, 20 * 1024);
+        bais.close();
+        baos.close();
+        assertEquals(builder.toString().substring(1024, 21 * 1024), baos.toString());
+    }
+
+    /**
+     * Verify that {@link com.android.tradefed.util.StreamUtil#copyStreams(InputStream,
+     * OutputStream, int, int)} cannot copy partial content if requested size is larger than what's
+     * available.
+     */
+    public void testCopyStreams_partialFail() throws Exception {
+        ByteArrayInputStream bais = null;
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            String text = getLargeText();
+            bais = new ByteArrayInputStream(text.getBytes());
+            // Skip the first 1kB, and read longer than the size of text
+            StreamUtil.copyStreams(bais, baos, 10, text.length() + 1024);
+            fail("IOException should be thrown when reading too much data.");
+        } catch (IOException e) {
+            // Ignore expected error.
+        } finally {
+            StreamUtil.close(bais);
+        }
+    }
+
     public void testCopyStreamToWriter() throws Exception {
         String text = getLargeText();
         ByteArrayInputStream bais = new ByteArrayInputStream(text.getBytes());
