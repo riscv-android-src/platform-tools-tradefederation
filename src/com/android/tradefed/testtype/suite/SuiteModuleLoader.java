@@ -203,7 +203,8 @@ public class SuiteModuleLoader {
             IModuleParameter mForcedParameter = null;
             if (mForcedModuleParameter != null) {
                 mForcedParameter =
-                        ModuleParametersHelper.getParameterHandler(mForcedModuleParameter);
+                        ModuleParametersHelper.getParameterHandler(
+                                mForcedModuleParameter, /* optionalParams */ false);
             }
 
             // Invokes parser to process the test module config file
@@ -547,7 +548,9 @@ public class SuiteModuleLoader {
                 CLog.d("'%s' was excluded via exclude-module-parameters.");
                 continue;
             }
-            IModuleParameter handler = ModuleParametersHelper.getParameterHandler(suiteParam);
+            IModuleParameter handler =
+                    ModuleParametersHelper.getParameterHandler(
+                            suiteParam, /* optionalParams */ false);
             params.add(handler);
         }
         return params;
