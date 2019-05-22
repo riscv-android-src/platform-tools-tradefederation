@@ -212,13 +212,12 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                 return test_config
         return rel_config
 
-    def _get_test_info_filter(self, path, methods, module_name, **kwargs):
+    def _get_test_info_filter(self, path, methods, **kwargs):
         """Get test info filter.
 
         Args:
             path: A string of the test's path.
             methods: A set of method name strings.
-            module_name: A string of the module name.
             rel_module_dir: Optional. A string of the module dir relative to
                 root.
             class_name: Optional. A string of the class name.
@@ -251,7 +250,6 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                         kwargs.get('class_name', '*'), methods), frozenset())])
         # Path to non-module dir, treat as package.
         elif (not file_name
-              and not self.module_info.is_auto_gen_test_config(module_name)
               and kwargs.get('rel_module_dir', None) !=
               os.path.relpath(path, self.root_dir)):
             dir_items = [os.path.join(path, f) for f in os.listdir(path)]
@@ -371,7 +369,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         if not test_path:
             return None
         test_filter = self._get_test_info_filter(
-            test_path, methods, module_name, class_name=class_name,
+            test_path, methods, class_name=class_name,
             is_native_test=is_native_test)
         tinfo = self._get_test_info(test_path, rel_config, module_name,
                                     test_filter)
@@ -488,7 +486,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         if not rel_module_dir:
             return None
         rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
-        test_filter = self._get_test_info_filter(path, methods, None,
+        test_filter = self._get_test_info_filter(path, methods,
                                                  rel_module_dir=rel_module_dir)
         return self._get_test_info(path, rel_config, None, test_filter)
 
