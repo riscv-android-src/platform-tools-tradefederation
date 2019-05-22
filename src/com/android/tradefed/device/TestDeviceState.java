@@ -27,6 +27,7 @@ public enum TestDeviceState {
     FASTBOOT,
     ONLINE,
     RECOVERY,
+    SIDELOAD,
     NOT_AVAILABLE;
 
     /**
@@ -39,6 +40,8 @@ public enum TestDeviceState {
                 return DeviceState.ONLINE;
             case RECOVERY:
                 return DeviceState.RECOVERY;
+            case SIDELOAD:
+                return DeviceState.SIDELOAD;
             default:
                 return null;
         }
@@ -59,6 +62,8 @@ public enum TestDeviceState {
                 return TestDeviceState.NOT_AVAILABLE;
             case RECOVERY:
                 return TestDeviceState.RECOVERY;
+            case SIDELOAD:
+                return TestDeviceState.SIDELOAD;
             case UNAUTHORIZED:
                 return TestDeviceState.NOT_AVAILABLE;
             case BOOTLOADER:
