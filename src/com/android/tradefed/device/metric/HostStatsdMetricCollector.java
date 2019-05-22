@@ -16,6 +16,7 @@
 package com.android.tradefed.device.metric;
 
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -36,6 +37,7 @@ import java.util.Map;
  * commands. It has basic push metrics and dump report functions. It can be extended by subclasses
  * to process statsd metric report based on the needs.
  */
+@OptionClass(alias = "host-statsd-collector")
 public class HostStatsdMetricCollector extends BaseDeviceMetricCollector {
 
     @Option(name = "binary-stats-config", description = "Path to the binary Statsd config file")
