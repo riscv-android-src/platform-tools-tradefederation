@@ -34,6 +34,7 @@ public class SecondaryUserHandler implements IModuleParameter {
     public void applySetup(IConfiguration moduleConfiguration) {
         for (IDeviceConfiguration deviceConfig : moduleConfiguration.getDeviceConfig()) {
             List<ITargetPreparer> preparers = deviceConfig.getTargetPreparers();
+            // The first things module will do is switch to a secondary user
             preparers.add(0, new CreateUserPreparer());
         }
     }
