@@ -93,6 +93,7 @@ import com.android.tradefed.util.keystore.StubKeyStoreFactory;
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -155,9 +156,17 @@ public class TestInvocationTest {
     private IRescheduler mockRescheduler;
     private DeviceDescriptor mFakeDescriptor;
 
+    @BeforeClass
+    public static void setUpClass() throws Exception {
+        try {
+            GlobalConfiguration.createGlobalConfiguration(new String[] {"empty"});
+        } catch (IllegalStateException e) {
+            // Avoid exception in case of multi-init
+        }
+    }
+
     @Before
     public void setUp() throws Exception {
-
         mStubConfiguration = new Configuration("foo", "bar");
         mStubMultiConfiguration = new Configuration("foo", "bar");
 
@@ -406,6 +415,45 @@ public class TestInvocationTest {
         mMockLogRegistry.unregisterLogger();
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         mMockLogger.closeLog();
+        replayMocks(test, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
+        verifyMocks(test);
+
+        IBuildInfo stubBuild = captured.getValue();
+        assertEquals(BuildInfo.UNKNOWN_BUILD_ID, stubBuild.getBuildId());
+        stubBuild.cleanUp();
+    }
+
+    /**
+     * Test when the reporting of host_log is returning null, in this case we don't log anything.
+     */
+    @Test
+    public void testInvoke_noBuild_noHostLog() throws Throwable {
+        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(null);
+        setupInvoke();
+        setupMockFailureListeners(
+                new BuildRetrievalError("No build found to test."),
+                true, /* don't expect host log */
+                false);
+
+        EasyMock.reset(mMockLogger, mMockLogRegistry);
+        mMockLogRegistry.registerLogger(mMockLogger);
+        mMockLogger.init();
+        mMockLogger.closeLog();
+        EasyMock.expectLastCall().times(2);
+
+        IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
+        mStubConfiguration.setTest(test);
+        // Host log fails to report
+        EasyMock.expect(mMockLogger.getLog()).andReturn(null);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(2);
+        mMockDevice.clearLogcat();
+        EasyMock.expectLastCall().times(2);
+        Capture<IBuildInfo> captured = new Capture<>();
+        mMockBuildProvider.cleanUp(EasyMock.capture(captured));
+        mMockLogRegistry.unregisterLogger();
+        EasyMock.expectLastCall().times(2);
+        mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         replayMocks(test, mockRescheduler);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(test);
@@ -1139,7 +1187,11 @@ public class TestInvocationTest {
      * calls.
      */
     private void setupMockListeners(
-            InvocationStatus status, Throwable throwable, boolean stubFailures) throws IOException {
+            InvocationStatus status,
+            Throwable throwable,
+            boolean stubFailures,
+            boolean reportHostLog)
+            throws IOException {
         // invocationStarted
         mMockLogSaver.invocationStarted(mStubInvocationMetadata);
         mMockTestListener.invocationStarted(mStubInvocationMetadata);
@@ -1238,20 +1290,26 @@ public class TestInvocationTest {
 
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
-                                EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
-                                EasyMock.eq(LogDataType.TEXT),
-                                (InputStream) EasyMock.anyObject()))
-                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
-        mMockTestListener.testLog(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
-                EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
-        mMockSummaryListener.testLog(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
-                EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
-        EasyMock.expect(
-                        mMockLogSaver.saveLogData(
                                 EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
                                 EasyMock.eq(LogDataType.TEXT),
                                 (InputStream) EasyMock.anyObject()))
                 .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
+        if (reportHostLog) {
+            EasyMock.expect(
+                            mMockLogSaver.saveLogData(
+                                    EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
+                                    EasyMock.eq(LogDataType.TEXT),
+                                    (InputStream) EasyMock.anyObject()))
+                    .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
+            mMockTestListener.testLog(
+                    EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
+                    EasyMock.eq(LogDataType.TEXT),
+                    (InputStreamSource) EasyMock.anyObject());
+            mMockSummaryListener.testLog(
+                    EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
+                    EasyMock.eq(LogDataType.TEXT),
+                    (InputStreamSource) EasyMock.anyObject());
+        }
 
         // invocationEnded, getSummary (mMockTestListener)
         mMockTestListener.invocationEnded(EasyMock.anyLong());
@@ -1269,12 +1327,6 @@ public class TestInvocationTest {
      */
     @Test
     public void testInvoke_shardableTest_legacy() throws Throwable {
-        try {
-            GlobalConfiguration.createGlobalConfiguration(new String[] {"empty"});
-        } catch (IllegalStateException e) {
-            // Avoid exception in case of multi-init
-        }
-
         String command = "empty --test-tag t";
         String[] commandLine = {"empty", "--test-tag", "t"};
         int shardCount = 2;
@@ -1474,16 +1526,21 @@ public class TestInvocationTest {
     }
 
     private void setupMockSuccessListeners() throws IOException {
-        setupMockListeners(InvocationStatus.SUCCESS, null, false);
+        setupMockListeners(InvocationStatus.SUCCESS, null, false, true);
     }
 
     private void setupMockFailureListeners(Throwable throwable) throws IOException {
-        setupMockListeners(InvocationStatus.FAILED, throwable, false);
+        setupMockListeners(InvocationStatus.FAILED, throwable, false, true);
     }
 
     private void setupMockFailureListenersAny(Throwable throwable, boolean stubFailures)
             throws IOException {
-        setupMockListeners(InvocationStatus.FAILED, throwable, stubFailures);
+        setupMockListeners(InvocationStatus.FAILED, throwable, stubFailures, true);
+    }
+
+    private void setupMockFailureListeners(
+            Throwable throwable, boolean stubFailures, boolean reportHostLog) throws IOException {
+        setupMockListeners(InvocationStatus.FAILED, throwable, stubFailures, reportHostLog);
     }
 
     private void verifySummaryListener() {

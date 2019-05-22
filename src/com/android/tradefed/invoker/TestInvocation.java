@@ -493,10 +493,14 @@ public class TestInvocation implements ITestInvocation {
             ITestInvocationListener listener, IConfiguration config, String name) {
         ILeveledLogOutput logger = config.getLogOutput();
         try (InputStreamSource globalLogSource = logger.getLog()) {
-            if (config.getCommandOptions().getHostLogSuffix() != null) {
-                name += config.getCommandOptions().getHostLogSuffix();
+            if (globalLogSource != null) {
+                if (config.getCommandOptions().getHostLogSuffix() != null) {
+                    name += config.getCommandOptions().getHostLogSuffix();
+                }
+                listener.testLog(name, LogDataType.TEXT, globalLogSource);
+            } else {
+                CLog.i("Skip logging %s to a file with logger '%s'", name, logger);
             }
-            listener.testLog(name, LogDataType.TEXT, globalLogSource);
         }
         // once tradefed log is reported, all further log calls for this invocation can get lost
         // unregister logger so future log calls get directed to the tradefed global log

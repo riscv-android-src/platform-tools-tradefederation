@@ -372,8 +372,6 @@ public class SandboxedInvocationExecutionTest {
         // No tests to run but we still call start/end
         Mockito.verify(mMockListener).invocationStarted(mContext);
         Mockito.verify(mMockListener).invocationFailed(exception);
-        Mockito.verify(mMockListener)
-                .testLog(eq(TestInvocation.TRADEFED_LOG_NAME), eq(LogDataType.TEXT), any());
         Mockito.verify(mMockListener).invocationEnded(0L);
         // Invocation did not start for real so context is not locked.
         mContext.addInvocationAttribute("test", "test");
