@@ -149,6 +149,7 @@ public class IncidentReportCollectorTest {
         // Set up the device metrics and fake file to pull from the device.
         Map<String, String> deviceMetrics = new HashMap<String, String>();
         deviceMetrics.put("not-that-type-of-report", FAKE_REPORT_PATH);
+        deviceMetrics.put("/system/bin/incidentd#anon-avg", FAKE_REPORT_PATH);
         // Replay the test started and test ended events to simulate a test.
         mIncidentCollector.testStarted(FAKE_TEST);
         mIncidentCollector.testEnded(FAKE_TEST, TfMetricProtoUtil.upgradeConvert(deviceMetrics));
