@@ -16,19 +16,34 @@
 package com.android.tradefed.invoker;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.DeviceSelectionOptions;
+import com.android.tradefed.device.DeviceSelectionOptions.DeviceRequestedType;
+import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.proto.ProtoResultReporter;
+import com.android.tradefed.util.FileUtil;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
+
+import java.io.File;
+import java.util.List;
 
 /** Unit tests for {@link RemoteInvocationExecution}. */
 @RunWith(JUnit4.class)
@@ -37,12 +52,14 @@ public class RemoteInvocationExecutionTest {
     private RemoteInvocationExecution mRemoteInvocation;
     private IInvocationContext mContext;
     private IConfiguration mConfiguration;
+    private ITestInvocationListener mMockListener;
 
     @Before
     public void setUp() {
         mRemoteInvocation = new RemoteInvocationExecution();
         mContext = new InvocationContext();
         mConfiguration = new Configuration("name", "description");
+        mMockListener = Mockito.mock(ITestInvocationListener.class);
     }
 
     @Test
@@ -64,5 +81,37 @@ public class RemoteInvocationExecutionTest {
         IBuildInfo info = mContext.getBuildInfos().get(0);
         // The build id is carried to the remote invocation build
         assertEquals("5555", info.getBuildId());
+    }
+
+    @Test
+    public void testCreateRemoteConfig() throws Exception {
+        IDeviceConfiguration deviceConfig = new DeviceConfigurationHolder();
+        DeviceSelectionOptions selection = new DeviceSelectionOptions();
+        selection.setDeviceTypeRequested(DeviceRequestedType.REMOTE_DEVICE);
+        deviceConfig.addSpecificConfig(selection);
+        mConfiguration.setDeviceConfig(deviceConfig);
+        File res = null;
+        try {
+            res = mRemoteInvocation.createRemoteConfig(mConfiguration, mMockListener, "path/");
+            IConfiguration reparse =
+                    ConfigurationFactory.getInstance()
+                            .createConfigurationFromArgs(new String[] {res.getAbsolutePath()});
+            List<ITestInvocationListener> listeners = reparse.getTestInvocationListeners();
+            assertEquals(1, listeners.size());
+            assertTrue(listeners.get(0) instanceof ProtoResultReporter);
+            // Ensure the requested type is reset
+            assertNull(
+                    ((DeviceSelectionOptions)
+                                    reparse.getDeviceConfig().get(0).getDeviceRequirements())
+                            .getDeviceTypeRequested());
+        } finally {
+            FileUtil.deleteFile(res);
+        }
+
+        verify(mMockListener)
+                .testLog(
+                        Mockito.eq(RemoteInvocationExecution.REMOTE_CONFIG),
+                        Mockito.eq(LogDataType.XML),
+                        Mockito.any());
     }
 }

@@ -561,6 +561,27 @@ public interface ITestDevice extends INativeDevice {
     public Set<String> getInstalledPackageNames() throws DeviceNotAvailableException;
 
     /**
+     * Query the device for a given package name to check if it's currently installed or not.
+     *
+     * @return True if the package is reported as installed. False otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    public boolean isPackageInstalled(String packageName) throws DeviceNotAvailableException;
+
+    /**
+     * Query the device for a given package name and given user id to check if it's currently
+     * installed or not for that user.
+     *
+     * @param packageName the package we are checking if it's installed.
+     * @param userId The user id we are checking the package is installed for. If null, primary user
+     *     zero will be used.
+     * @return True if the package is reported as installed. False otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    public boolean isPackageInstalled(String packageName, String userId)
+            throws DeviceNotAvailableException;
+
+    /**
      * Fetch the information about APEXes activated on the device.
      *
      * @return {@link Set} of {@link ApexInfo} currently activated on the device
@@ -717,7 +738,7 @@ public interface ITestDevice extends INativeDevice {
      *
      * @throws DeviceNotAvailableException
      */
-    public int getCurrentUser() throws DeviceNotAvailableException;
+    public int getCurrentUser() throws DeviceNotAvailableException, DeviceRuntimeException;
 
     /**
      * Find and return the flags of a given user.

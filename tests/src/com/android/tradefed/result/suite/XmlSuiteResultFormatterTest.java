@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -536,6 +537,34 @@ public class XmlSuiteResultFormatterTest {
         // Test that we can read back the information.
         SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
         assertEquals(RUN_HISTORY, holder.context.getAttributes().getUniqueMap().get("run_history"));
+    }
+
+    /** Ensure the order is sorted according to module name and abi. */
+    @Test
+    public void testSortModules() {
+        List<TestRunResult> originalList = new ArrayList<>();
+        originalList.add(createFakeResult("armeabi-v7a module1", 1, 0, 0, 0));
+        originalList.add(createFakeResult("arm64-v8a module3", 1, 0, 0, 0));
+        originalList.add(createFakeResult("armeabi-v7a module2", 1, 0, 0, 0));
+        originalList.add(createFakeResult("arm64-v8a module1", 1, 0, 0, 0));
+        originalList.add(createFakeResult("armeabi-v7a module4", 1, 0, 0, 0));
+        originalList.add(createFakeResult("arm64-v8a module2", 1, 0, 0, 0));
+        Map<String, IAbi> moduleAbis = new HashMap<>();
+        moduleAbis.put("armeabi-v7a module1", new Abi("armeabi-v7a", "32"));
+        moduleAbis.put("arm64-v8a module1", new Abi("arm64-v8a", "64"));
+        moduleAbis.put("armeabi-v7a module2", new Abi("armeabi-v7a", "32"));
+        moduleAbis.put("arm64-v8a module2", new Abi("arm64-v8a", "64"));
+        moduleAbis.put("arm64-v8a module3", new Abi("arm64-v8a", "64"));
+        moduleAbis.put("armeabi-v7a module4", new Abi("armeabi-v7a", "32"));
+
+        List<TestRunResult> sortedResult = mFormatter.sortModules(originalList, moduleAbis);
+        assertEquals(6, sortedResult.size());
+        assertEquals("arm64-v8a module1", sortedResult.get(0).getName());
+        assertEquals("armeabi-v7a module1", sortedResult.get(1).getName());
+        assertEquals("arm64-v8a module2", sortedResult.get(2).getName());
+        assertEquals("armeabi-v7a module2", sortedResult.get(3).getName());
+        assertEquals("arm64-v8a module3", sortedResult.get(4).getName());
+        assertEquals("armeabi-v7a module4", sortedResult.get(5).getName());
     }
 
     private TestRunResult createResultWithLog(String runName, int count, LogDataType type) {

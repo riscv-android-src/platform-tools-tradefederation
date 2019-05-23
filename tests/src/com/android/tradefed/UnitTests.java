@@ -100,9 +100,11 @@ import com.android.tradefed.device.metric.PagetypeInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.PerfettoPullerMetricCollectorTest;
 import com.android.tradefed.device.metric.ProcessMaxMemoryCollectorTest;
 import com.android.tradefed.device.metric.RebootReasonCollectorTest;
+import com.android.tradefed.device.metric.RuntimeRestartCollectorTest;
 import com.android.tradefed.device.metric.ScheduleMultipleDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.ScheduledDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.ScreenshotOnFailureCollectorTest;
+import com.android.tradefed.device.metric.HostStatsdMetricCollectorTest;
 import com.android.tradefed.device.metric.TemperatureCollectorTest;
 import com.android.tradefed.device.metric.TraceMetricCollectorTest;
 import com.android.tradefed.device.recovery.BatteryUnavailableDeviceRecoveryTest;
@@ -162,7 +164,6 @@ import com.android.tradefed.result.proto.FileProtoResultReporterTest;
 import com.android.tradefed.result.proto.ProtoResultParserTest;
 import com.android.tradefed.result.proto.ProtoResultReporterTest;
 import com.android.tradefed.result.proto.StreamProtoResultReporterTest;
-import com.android.tradefed.result.proto.SummaryProtoResultReporterTest;
 import com.android.tradefed.result.suite.FormattedGeneratorReporterTest;
 import com.android.tradefed.result.suite.XmlSuiteResultFormatterTest;
 import com.android.tradefed.sandbox.SandboxConfigDumpTest;
@@ -298,6 +299,7 @@ import com.android.tradefed.util.FileIdleMonitorTest;
 import com.android.tradefed.util.FileUtilTest;
 import com.android.tradefed.util.FixedByteArrayOutputStreamTest;
 import com.android.tradefed.util.GCSFileDownloaderTest;
+import com.android.tradefed.util.GoogleApiClientUtilTest;
 import com.android.tradefed.util.HprofAllocSiteParserTest;
 import com.android.tradefed.util.JUnitXmlParserTest;
 import com.android.tradefed.util.KeyguardControllerStateTest;
@@ -469,9 +471,11 @@ import org.junit.runners.Suite.SuiteClasses;
     PerfettoPullerMetricCollectorTest.class,
     ProcessMaxMemoryCollectorTest.class,
     RebootReasonCollectorTest.class,
+    RuntimeRestartCollectorTest.class,
     ScheduledDeviceMetricCollectorTest.class,
     ScheduleMultipleDeviceMetricCollectorTest.class,
     ScreenshotOnFailureCollectorTest.class,
+    HostStatsdMetricCollectorTest.class,
     TemperatureCollectorTest.class,
     TraceMetricCollectorTest.class,
 
@@ -559,7 +563,6 @@ import org.junit.runners.Suite.SuiteClasses;
     ProtoResultParserTest.class,
     ProtoResultReporterTest.class,
     StreamProtoResultReporterTest.class,
-    SummaryProtoResultReporterTest.class,
 
     // result.suite
     FormattedGeneratorReporterTest.class,
@@ -732,6 +735,7 @@ import org.junit.runners.Suite.SuiteClasses;
     FileUtilTest.class,
     FixedByteArrayOutputStreamTest.class,
     GCSFileDownloaderTest.class,
+    GoogleApiClientUtilTest.class,
     HprofAllocSiteParserTest.class,
     JUnitXmlParserTest.class,
     KeyguardControllerStateTest.class,

@@ -31,8 +31,29 @@ public class ModuleParametersHelper {
         sHandlerMap.put(ModuleParameters.NOT_MULTI_ABI, new NotMultiAbiHandler());
     }
 
-    /** Returns the {@link IModuleParameter} associated with the requested parameter. */
-    public static IModuleParameter getParameterHandler(ModuleParameters param) {
-        return sHandlerMap.get(param);
+    /**
+     * Optional parameters are params that will not automatically be created when the module
+     * parameterization is enabled. They will need to be explicitly enabled. They represent a second
+     * set of parameterization that is less commonly requested to run. They could be upgraded to
+     * main parameters in the future by moving them above.
+     */
+    private static Map<ModuleParameters, IModuleParameter> sOptionalHandlerMap = new HashMap<>();
+
+    static {
+        sOptionalHandlerMap.put(ModuleParameters.SECONDARY_USER, new SecondaryUserHandler());
+    }
+
+    /**
+     * Returns the {@link IModuleParameter} associated with the requested parameter.
+     *
+     * @param withOptional Whether or not to also check optional params.
+     */
+    public static IModuleParameter getParameterHandler(
+            ModuleParameters param, boolean withOptional) {
+        IModuleParameter value = sHandlerMap.get(param);
+        if (value == null && withOptional) {
+            return sOptionalHandlerMap.get(param);
+        }
+        return value;
     }
 }
