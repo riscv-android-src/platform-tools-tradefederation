@@ -34,7 +34,6 @@ import com.android.tradefed.device.DeviceSelectionOptions.DeviceRequestedType;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.proto.ProtoResultReporter;
-import com.android.tradefed.result.proto.SummaryProtoResultReporter;
 import com.android.tradefed.util.FileUtil;
 
 import org.junit.Before;
@@ -98,9 +97,8 @@ public class RemoteInvocationExecutionTest {
                     ConfigurationFactory.getInstance()
                             .createConfigurationFromArgs(new String[] {res.getAbsolutePath()});
             List<ITestInvocationListener> listeners = reparse.getTestInvocationListeners();
-            assertEquals(2, listeners.size());
+            assertEquals(1, listeners.size());
             assertTrue(listeners.get(0) instanceof ProtoResultReporter);
-            assertTrue(listeners.get(1) instanceof SummaryProtoResultReporter);
             // Ensure the requested type is reset
             assertNull(
                     ((DeviceSelectionOptions)

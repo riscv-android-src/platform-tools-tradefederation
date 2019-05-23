@@ -18,14 +18,12 @@ package com.android.tradefed.result;
 
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.result.proto.SummaryRecordProto.SummaryRecord;
 
 import java.io.IOException;
 import java.util.List;
 
 /** A {@link ResultForwarder} for saving logs with the global file saver. */
-public class LogSaverResultForwarder extends ResultForwarder
-        implements ILogSaverListener, IResultSummaryReceiver {
+public class LogSaverResultForwarder extends ResultForwarder implements ILogSaverListener {
 
     ILogSaver mLogSaver;
 
@@ -130,22 +128,6 @@ public class LogSaverResultForwarder extends ResultForwarder
                 }
             } catch (RuntimeException e) {
                 CLog.e("Failed to provide the log association");
-                CLog.e(e);
-            }
-        }
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void setResultSummary(SummaryRecord summary) {
-        for (ITestInvocationListener listener : getListeners()) {
-            try {
-                // Forward the logAssociation call
-                if (listener instanceof IResultSummaryReceiver) {
-                    ((IResultSummaryReceiver) listener).setResultSummary(summary);
-                }
-            } catch (RuntimeException e) {
-                CLog.e("Failed to setResultSummary on %s", listener);
                 CLog.e(e);
             }
         }
