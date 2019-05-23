@@ -56,7 +56,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -298,7 +297,7 @@ public class InstrumentationTest
 
     private ListInstrumentationParser mListInstrumentationParser = null;
 
-    private Set<String> mExtraDeviceListener = new HashSet<>();
+    private List<String> mExtraDeviceListener = new ArrayList<>();
 
     private boolean mIsRerun = false;
 
@@ -635,7 +634,7 @@ public class InstrumentationTest
     }
 
     /** Allows to add more custom listeners to the runner */
-    public void addDeviceListeners(Set<String> extraListeners) {
+    public void addDeviceListeners(List<String> extraListeners) {
         mExtraDeviceListener.addAll(extraListeners);
     }
 
