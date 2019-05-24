@@ -32,6 +32,7 @@ import com.android.tradefed.result.proto.LogFileProto.LogFileInfo;
 import com.android.tradefed.result.proto.TestRecordProto.ChildReference;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
+import com.android.tradefed.util.proto.TestRecordProtoUtil;
 
 import com.google.common.base.Strings;
 import com.google.protobuf.Any;
@@ -39,6 +40,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Timestamp;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -61,6 +63,8 @@ public class ProtoResultParser {
     private IInvocationContext mMainContext;
 
     private boolean mQuietParsing = true;
+
+    private boolean mInvocationStarted = false;
 
     /** Ctor. */
     public ProtoResultParser(
@@ -108,7 +112,7 @@ public class ProtoResultParser {
         // Invocation Start
         handleInvocationStart(finalProto);
 
-        evalProto(finalProto.getChildrenList(), false);
+        evalChildrenProto(finalProto.getChildrenList(), false);
         // Invocation End
         handleInvocationEnded(finalProto);
     }
@@ -140,33 +144,56 @@ public class ProtoResultParser {
         }
     }
 
-    private void evalProto(List<ChildReference> children, boolean isInRun) {
+    /**
+     * In case of parsing proto files directly, handle direct parsing of them as a sequence.
+     * Associated with {@link FileProtoResultReporter} when reporting a sequence of files.
+     *
+     * @param protoFile The proto file to be parsed.
+     * @throws IOException
+     */
+    public void processFileProto(File protoFile) throws IOException {
+        TestRecord record = TestRecordProtoUtil.readFromFile(protoFile);
+        if (!mInvocationStarted) {
+            handleInvocationStart(record);
+            mInvocationStarted = true;
+        } else if (record.getParentTestRecordId().isEmpty()) {
+            handleInvocationEnded(record);
+        } else {
+            evalProto(record, false);
+        }
+    }
+
+    private void evalChildrenProto(List<ChildReference> children, boolean isInRun) {
         for (ChildReference child : children) {
             TestRecord childProto = child.getInlineTestRecord();
-            if (isInRun) {
-                // test case
-                String[] info = childProto.getTestRecordId().split("#");
-                TestDescription description = new TestDescription(info[0], info[1]);
-                mListener.testStarted(description, timeStampToMillis(childProto.getStartTime()));
-                handleTestCaseEnd(description, childProto);
+            evalProto(childProto, isInRun);
+        }
+    }
+
+    private void evalProto(TestRecord childProto, boolean isInRun) {
+        if (isInRun) {
+            // test case
+            String[] info = childProto.getTestRecordId().split("#");
+            TestDescription description = new TestDescription(info[0], info[1]);
+            mListener.testStarted(description, timeStampToMillis(childProto.getStartTime()));
+            handleTestCaseEnd(description, childProto);
+        } else {
+            boolean inRun = false;
+            if (childProto.hasDescription()) {
+                // Module start
+                handleModuleStart(childProto);
             } else {
-                boolean inRun = false;
-                if (childProto.hasDescription()) {
-                    // Module start
-                    handleModuleStart(childProto);
-                } else {
-                    // run start
-                    handleTestRunStart(childProto);
-                    inRun = true;
-                }
-                evalProto(childProto.getChildrenList(), inRun);
-                if (childProto.hasDescription()) {
-                    // Module end
-                    handleModuleProto(childProto);
-                } else {
-                    // run end
-                    handleTestRunEnd(childProto);
-                }
+                // run start
+                handleTestRunStart(childProto);
+                inRun = true;
+            }
+            evalChildrenProto(childProto.getChildrenList(), inRun);
+            if (childProto.hasDescription()) {
+                // Module end
+                handleModuleProto(childProto);
+            } else {
+                // run end
+                handleTestRunEnd(childProto);
             }
         }
     }
