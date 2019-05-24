@@ -496,7 +496,7 @@ public class ITestSuiteTest {
         mTestSuite.run(mMockListener);
         verifyMocks();
     }
-    
+
     /**
      * Test for {@link ITestSuite#run(ITestInvocationListener)} when the System status checker is
      * passing pre-check but failing post-check and we enable reporting a failure for it.
