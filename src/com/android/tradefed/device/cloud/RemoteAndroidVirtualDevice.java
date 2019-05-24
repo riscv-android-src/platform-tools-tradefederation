@@ -43,6 +43,8 @@ import com.google.common.net.HostAndPort;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -51,11 +53,6 @@ import java.util.List;
  * <hostname>:<portnumber> in adb.
  */
 public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements ITestLoggerReceiver {
-
-    /** The directory where to find debug logs for a nested remote instance. */
-    public static final String NESTED_REMOTE_LOG_DIR = "${HOME}/../vsoc-01/cuttlefish_runtime/";
-    /** The directory where to find debug logs for an emulator instance. */
-    public static final String EMULATOR_REMOTE_LOG_DIR = "/home/vsoc-01/log/";
 
     private String mInitialSerial;
     private GceAvdInfo mGceAvd;
@@ -68,6 +65,8 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
     private static final long WAIT_AFTER_REBOOT = 60 * 1000;
     private static final long WAIT_FOR_TUNNEL_OFFLINE = 5 * 1000;
     private static final int WAIT_TIME_DIVISION = 4;
+
+    private static final long FETCH_TOMBSTONES_TIMEOUT_MS = 5 * 60 * 1000;
 
     /**
      * Creates a {@link RemoteAndroidVirtualDevice}.
@@ -344,6 +343,39 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
         getRunUtil().sleep(WAIT_FOR_TUNNEL_OFFLINE);
         waitForTunnelOnline(WAIT_FOR_TUNNEL_ONLINE);
         waitForAdbConnect(WAIT_FOR_ADB_CONNECT);
+    }
+
+    /**
+     * Cuttlefish has a special feature that brings the tombstones to the remote host where we can
+     * get them directly.
+     */
+    @Override
+    public List<File> getTombstones() throws DeviceNotAvailableException {
+        InstanceType type = getOptions().getInstanceType();
+        if (InstanceType.CUTTLEFISH.equals(type) || InstanceType.REMOTE_NESTED_AVD.equals(type)) {
+            List<File> tombs = new ArrayList<>();
+            String remoteRuntimePath =
+                    String.format(
+                                    CommonLogRemoteFileUtil.NESTED_REMOTE_LOG_DIR,
+                                    getOptions().getInstanceUser())
+                            + "tombstones";
+            File tombstonesDir =
+                    RemoteFileUtil.fetchRemoteDir(
+                            mGceAvd,
+                            getOptions(),
+                            getRunUtil(),
+                            FETCH_TOMBSTONES_TIMEOUT_MS,
+                            remoteRuntimePath);
+            if (tombstonesDir == null) {
+                CLog.e("Pulled tombstone dir was not valid. Path: %s", tombstonesDir);
+            } else {
+                // TODO: If possible delete the tombstones parent temp dir.
+                tombs.addAll(Arrays.asList(tombstonesDir.listFiles()));
+            }
+            return tombs;
+        }
+        // If it's not Cuttlefish, use the standard call.
+        return super.getTombstones();
     }
 
     /**
