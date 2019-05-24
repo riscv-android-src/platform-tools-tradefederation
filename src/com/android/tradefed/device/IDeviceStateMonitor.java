@@ -116,6 +116,14 @@ public interface IDeviceStateMonitor {
     public boolean waitForDeviceInRecovery(long waitTime);
 
     /**
+     * Waits for the device to be in the 'adb sideload' state
+     *
+     * @param waitTime the maximum time in ms to wait
+     * @return True if the device is in sideload before the timeout, False otherwise.
+     */
+    public boolean waitForDeviceInSideload(long waitTime);
+
+    /**
      * Gets the serial number of the device.
      */
     public String getSerialNumber();

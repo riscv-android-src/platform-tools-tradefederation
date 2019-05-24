@@ -901,7 +901,7 @@ public class TestDevice extends NativeDevice {
      */
     @Override
     protected void doAdbReboot(final String into) throws DeviceNotAvailableException {
-        if (!doAdbFrameworkReboot(into)) {
+        if (!TestDeviceState.ONLINE.equals(getDeviceState()) || !doAdbFrameworkReboot(into)) {
             super.doAdbReboot(into);
         }
     }

@@ -2913,6 +2913,24 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
+
+    /** {@inheritDoc} */
+    @Override
+    public void rebootIntoSideload() throws DeviceNotAvailableException {
+        if (TestDeviceState.FASTBOOT == getDeviceState()) {
+            CLog.w(
+                    "device %s in fastboot when requesting boot to sideload. "
+                            + "Rebooting to userspace first.",
+                    getSerialNumber());
+            rebootUntilOnline();
+        }
+        doAdbReboot("sideload");
+        if (!waitForDeviceInSideload(mOptions.getAdbRecoveryTimeout())) {
+            // using recovery mode because sideload is a sub-mode under recovery
+            recoverDeviceInRecovery();
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -3386,6 +3404,12 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean waitForDeviceInRecovery(long waitTime) {
         return mStateMonitor.waitForDeviceInRecovery(waitTime);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean waitForDeviceInSideload(long waitTime) {
+        return mStateMonitor.waitForDeviceInSideload(waitTime);
     }
 
     /**
