@@ -1643,6 +1643,26 @@ public class NativeDeviceTest {
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
+    /** Unit test for {@link NativeDevice#rebootIntoSideload()}}. */
+    @Test
+    public void testRebootIntoSideload() throws Exception {
+        NativeDevice testDevice =
+                new NativeDevice(mMockIDevice, mMockStateMonitor, mMockDvcMonitor) {
+                    @Override
+                    public TestDeviceState getDeviceState() {
+                        return TestDeviceState.ONLINE;
+                    }
+                };
+        String into = "sideload";
+        mMockIDevice.reboot(into);
+        EasyMock.expectLastCall();
+        EasyMock.expect(mMockStateMonitor.waitForDeviceInSideload(EasyMock.anyLong()))
+                .andReturn(true);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        testDevice.rebootIntoSideload();
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+    }
+
     /** Unit test for {@link NativeDevice#unlockDevice()} already decrypted. */
     @Test
     public void testUnlockDevice_skipping() throws Exception {
