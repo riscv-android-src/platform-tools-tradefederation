@@ -297,7 +297,13 @@ public class LogRegistry implements ILogRegistry {
         try {
             File tradefedLog = FileUtil.createTempFile(filePrefix, ".txt", parentdir);
             FileUtil.writeToFile(logData.createInputStream(), tradefedLog);
-            System.out.println(String.format("Saved log to %s", tradefedLog.getAbsolutePath()));
+            // Align format to our standard logger
+            String message =
+                    LogUtil.getLogFormatString(
+                            LogLevel.VERBOSE,
+                            this.getClass().getSimpleName(),
+                            String.format("Saved log to %s", tradefedLog.getAbsolutePath()));
+            System.out.println(message);
         } catch (IOException e) {
             // ignore
         }

@@ -37,6 +37,7 @@ from metrics import metrics_utils
 from test_finders import module_finder
 
 TEST_MAPPING = 'TEST_MAPPING'
+FUZZY_FINDER = 'FUZZY'
 
 
 #pylint: disable=no-self-use
@@ -110,6 +111,8 @@ class CLITranslator(object):
             f_results = self._fuzzy_search_and_msg(test, find_test_err_msg)
             if f_results:
                 test_infos.add(f_results)
+                test_found = True
+                test_finders.append(FUZZY_FINDER)
         metrics.FindTestFinishEvent(
             duration=metrics_utils.convert_duration(
                 time.time() - test_find_starts),

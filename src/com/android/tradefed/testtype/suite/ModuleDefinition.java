@@ -733,7 +733,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             // If disabled skip completely.
             return null;
         }
-        CLog.d("Preparer: %s", preparer.getClass().getSimpleName());
+        CLog.d("Running setup preparer: %s", preparer.getClass().getSimpleName());
         try {
             // set the logger in case they need it.
             if (preparer instanceof ITestLoggerReceiver) {
@@ -765,7 +765,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             // If disabled skip completely.
             return null;
         }
-        CLog.d("Multi preparer: %s", preparer.getClass().getSimpleName());
+        CLog.d("Running setup multi preparer: %s", preparer.getClass().getSimpleName());
         try {
             // set the logger in case they need it.
             if (preparer instanceof ITestLoggerReceiver) {
@@ -801,7 +801,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 // If disabled skip completely.
                 continue;
             }
-            CLog.d("Multi cleaner: %s", multiCleaner.getClass().getSimpleName());
+            CLog.d("Running teardown multi cleaner: %s", multiCleaner.getClass().getSimpleName());
             multiCleaner.tearDown(mModuleInvocationContext, exception);
         }
 

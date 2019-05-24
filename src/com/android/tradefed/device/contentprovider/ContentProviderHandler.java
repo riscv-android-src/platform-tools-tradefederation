@@ -36,7 +36,6 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.HashMap;
-import java.util.Set;
 import java.util.StringJoiner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -88,8 +87,7 @@ public class ContentProviderHandler {
      * @return True if ready to be used, False otherwise.
      */
     public boolean setUp() throws DeviceNotAvailableException {
-        Set<String> packageNames = mDevice.getInstalledPackageNames();
-        if (packageNames.contains(PACKAGE_NAME)) {
+        if (mDevice.isPackageInstalled(PACKAGE_NAME, Integer.toString(mDevice.getCurrentUser()))) {
             return true;
         }
         if (mContentProviderApk == null) {

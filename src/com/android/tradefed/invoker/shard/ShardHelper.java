@@ -106,6 +106,7 @@ public class ShardHelper implements IShardHelper {
         ShardMasterResultForwarder resultCollector =
                 new ShardMasterResultForwarder(buildMasterShardListeners(config), expectedShard);
 
+        config.getLogSaver().invocationStarted(context);
         resultCollector.invocationStarted(context);
         synchronized (shardableTests) {
             // When shardCount is available only create 1 poller per shard

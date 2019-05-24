@@ -465,6 +465,9 @@ public abstract class GTestBase
             resultParser.setPrependFileName(mPrependFileName);
             receiver = resultParser;
         }
+        // Erase the prepended binary name if needed
+        erasePrependedFileName(mExcludeFilters, runName);
+        erasePrependedFileName(mIncludeFilters, runName);
         return receiver;
     }
 
@@ -550,6 +553,22 @@ public abstract class GTestBase
             }
         }
         return msgBuilder.toString();
+    }
+
+    protected void erasePrependedFileName(Set<String> filters, String filename) {
+        if (!mPrependFileName) {
+            return;
+        }
+        Set<String> copy = new LinkedHashSet<>();
+        for (String filter : filters) {
+            if (filter.startsWith(filename + ".")) {
+                copy.add(filter.substring(filename.length() + 1));
+            } else {
+                copy.add(filter);
+            }
+        }
+        filters.clear();
+        filters.addAll(copy);
     }
 
     private IRemoteTest getTestShard(int shardCount, int shardIndex) {
