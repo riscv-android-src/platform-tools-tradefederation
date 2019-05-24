@@ -214,7 +214,8 @@ public final class TestsPoolPoller
                     // At this point only the <test> object needs to be validated for options, this
                     // ensures that the object is fine before running it.
                     validationConfig.setTest(test);
-                    validationConfig.validateOptions(true);
+                    validationConfig.validateOptions();
+                    validationConfig.resolveDynamicOptions();
                     // Run the test itself and prevent random exception from stopping the poller.
                     if (test instanceof IMetricCollectorReceiver) {
                         ((IMetricCollectorReceiver) test).setMetricCollectors(mCollectors);
