@@ -59,7 +59,7 @@ public final class StreamProtoResultReporter extends ProtoResultReporter {
     }
 
     @Override
-    public void processTestRunEnded(TestRecord runRecord) {
+    public void processTestRunEnded(TestRecord runRecord, boolean moduleInProgress) {
         writeRecordToSocket(runRecord);
     }
 
