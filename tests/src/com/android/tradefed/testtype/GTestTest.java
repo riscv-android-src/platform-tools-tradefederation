@@ -247,6 +247,23 @@ public class GTestTest {
         doTestFilter(String.format("%s=%s:%s", GTEST_FLAG_FILTER, includeFilter1, includeFilter2));
     }
 
+    /** Test that large filters are converted to flagfile. */
+    @Test
+    public void testLargeFilters() throws DeviceNotAvailableException {
+        StringBuilder includeFilter1 = new StringBuilder("abc");
+        for (int i = 0; i < 550; i++) {
+            includeFilter1.append("a");
+        }
+        String includeFilter2 = "def";
+        mGTest.addIncludeFilter(includeFilter1.toString());
+        mGTest.addIncludeFilter(includeFilter2);
+
+        EasyMock.expect(mMockITestDevice.pushFile(EasyMock.anyObject(), EasyMock.anyObject()))
+                .andReturn(true);
+
+        doTestFilter(String.format("%s=/data/local/tmp/flagfile", GTestBase.GTEST_FLAG_FILE));
+    }
+
     /** Test the exclude filtering of test methods. */
     @Test
     public void testExcludeFilter() throws DeviceNotAvailableException {
@@ -277,20 +294,15 @@ public class GTestTest {
     @Test
     public void testCommandTooLong() throws DeviceNotAvailableException {
         String deviceScriptPath = "/data/local/tmp/gtest_script.sh";
-        StringBuilder filterString = new StringBuilder(GTEST_FLAG_FILTER);
-        filterString.append("=-");
-        for (int i = 0; i < 100; i++) {
-            if (i != 0) {
-                filterString.append(":");
-            }
-            String filter = String.format("ExcludeClass%d", i);
-            filterString.append(filter);
-            mGTest.addExcludeFilter(filter);
+        StringBuilder testNameBuilder = new StringBuilder();
+        for (int i = 0; i < 1005; i++) {
+            testNameBuilder.append("a");
         }
+        String testName = testNameBuilder.toString();
         // filter string will be longer than GTest.GTEST_CMD_CHAR_LIMIT
 
         String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
-        String testPath = nativeTestPath + "/test1";
+        String testPath = nativeTestPath + "/" + testName;
         // configure the mock file system to have a single test
         MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, "test1");
         EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
@@ -298,7 +310,7 @@ public class GTestTest {
         EasyMock.expect(mMockITestDevice.isDirectory(testPath)).andReturn(false);
         // report the file as executable
         EasyMock.expect(mMockITestDevice.isExecutable(testPath)).andReturn(true);
-        String[] files = new String[] {"test1"};
+        String[] files = new String[] {testName};
         EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
         // Expect push of script file
         EasyMock.expect(mMockITestDevice.pushString(EasyMock.<String>anyObject(),
@@ -480,6 +492,28 @@ public class GTestTest {
     public void testGetGTestCmdLine_defaults() {
         String cmd_line = mGTest.getGTestCmdLine("test_path", "flags");
         assertEquals("test_path flags", cmd_line);
+    }
+
+    /**
+     * Test {@link GTest#getGTestFilters(String)} When the push to file fails, in this case we use
+     * the original filter arguments instead of hte flagfile.
+     */
+    @Test
+    public void testGetGTestFilters_largeFilters_pushFail() throws Exception {
+        StringBuilder includeFilter1 = new StringBuilder("abc");
+        for (int i = 0; i < 550; i++) {
+            includeFilter1.append("a");
+        }
+        mGTest.addIncludeFilter(includeFilter1.toString());
+        // Fail to push
+        EasyMock.expect(mMockITestDevice.pushFile(EasyMock.anyObject(), EasyMock.anyObject()))
+                .andReturn(false);
+
+        EasyMock.replay(mMockITestDevice);
+        String flag = mGTest.getGTestFilters("/path/");
+        // We fallback to the original command line filter
+        assertEquals("--gtest_filter=" + includeFilter1.toString(), flag);
+        EasyMock.verify(mMockITestDevice);
     }
 
     /** Test {@link GTest#getGTestCmdLine(String, String)} with non-default user. */
