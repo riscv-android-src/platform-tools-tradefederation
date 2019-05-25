@@ -154,6 +154,12 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
         return waitForDeviceState(TestDeviceState.RECOVERY, waitTime);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public boolean waitForDeviceInSideload(long waitTime) {
+        return waitForDeviceState(TestDeviceState.SIDELOAD, waitTime);
+    }
+
     /**
      * {@inheritDoc}
      */
