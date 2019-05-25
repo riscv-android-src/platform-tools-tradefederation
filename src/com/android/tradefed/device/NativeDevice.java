@@ -250,14 +250,20 @@ public class NativeDevice implements IManagedTestDevice {
         /** the output from the command */
         String mOutput = null;
         private String[] mCmd;
+        private long mTimeout;
 
         AdbAction(String[] cmd) {
+            this(getCommandTimeout(), cmd);
+        }
+
+        AdbAction(long timeout, String[] cmd) {
+            mTimeout = timeout;
             mCmd = cmd;
         }
 
         @Override
         public boolean run() throws TimeoutException, IOException {
-            CommandResult result = getRunUtil().runTimedCmd(getCommandTimeout(), mCmd);
+            CommandResult result = getRunUtil().runTimedCmd(mTimeout, mCmd);
             // TODO: how to determine device not present with command failing for other reasons
             if (result.getStatus() == CommandStatus.EXCEPTION) {
                 throw new IOException();
@@ -1777,12 +1783,18 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public String executeAdbCommand(String... cmdArgs) throws DeviceNotAvailableException {
+        return executeAdbCommand(getCommandTimeout(), cmdArgs);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String executeAdbCommand(long timeout, String... cmdArgs)
+            throws DeviceNotAvailableException {
         final String[] fullCmd = buildAdbCommand(cmdArgs);
-        AdbAction adbAction = new AdbAction(fullCmd);
+        AdbAction adbAction = new AdbAction(timeout, fullCmd);
         performDeviceAction(String.format("adb %s", cmdArgs[0]), adbAction, MAX_RETRY_ATTEMPTS);
         return adbAction.mOutput;
     }
-
 
     /**
      * {@inheritDoc}
