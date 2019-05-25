@@ -26,7 +26,18 @@ This class is intended to be general-purpose, usable for any Clearcut LogSource.
 import logging
 import threading
 import time
-import urllib2
+try:
+    # PYTHON2
+    from urllib2 import urlopen
+    from urllib2 import Request
+    from urllib2 import HTTPError
+    from urllib2 import URLError
+except ImportError:
+    # PYTHON3
+    from urllib.request import urlopen
+    from urllib.request import Request
+    from urllib.request import HTTPError
+    from urllib.request import URLError
 
 from proto import clientanalytics_pb2
 
@@ -83,7 +94,7 @@ class Clearcut(object):
 
     def _serialize_events_to_proto(self, events):
         log_request = clientanalytics_pb2.LogRequest()
-        log_request.request_time_ms = long(time.time() * 1000)
+        log_request.request_time_ms = int(time.time() * 1000)
         # pylint: disable=no-member
         log_request.client_info.client_type = _CLIENT_TYPE
         log_request.log_source = self._log_source
@@ -144,9 +155,9 @@ class Clearcut(object):
         Args:
             data: The serialized proto to send to Clearcut.
         """
-        request = urllib2.Request(self._clearcut_url, data=data)
+        request = Request(self._clearcut_url, data=data)
         try:
-            response = urllib2.urlopen(request)
+            response = urlopen(request)
             msg = response.read()
             logging.debug('LogRequest successfully sent to Clearcut.')
             log_response = clientanalytics_pb2.LogResponse()
@@ -156,10 +167,10 @@ class Clearcut(object):
             self._min_next_request_time = (log_response.next_request_wait_millis
                                            / 1000 + time.time())
             logging.debug('LogResponse: %s', log_response)
-        except urllib2.HTTPError as e:
+        except HTTPError as e:
             logging.debug('Failed to push events to Clearcut. Error code: %d',
                           e.code)
-        except urllib2.URLError:
+        except URLError:
             logging.debug('Failed to push events to Clearcut.')
         except Exception as e:
             logging.debug(e)

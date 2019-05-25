@@ -68,13 +68,15 @@ FAILURE_FLAG = 'RUNNER_FAILURE'
 class RunStat(object):
     """Class for storing stats of a test run."""
 
-    def __init__(self, passed=0, failed=0, ignored=0, run_errors=False):
+    def __init__(self, passed=0, failed=0, ignored=0, run_errors=False,
+                 assumption_failed=0):
         """Initialize a new instance of RunStat class.
 
         Args:
             passed: Count of passing tests.
             failed: Count of failed tests.
             ignored: Count of ignored tests.
+            assumption_failed: Count of assumption failure tests.
             run_errors: A boolean if there were run errors
         """
         # TODO(b/109822985): Track group and run estimated totals for updating
@@ -82,6 +84,7 @@ class RunStat(object):
         self.passed = passed
         self.failed = failed
         self.ignored = ignored
+        self.assumption_failed = assumption_failed
         # Run errors are not for particular tests, they are runner errors.
         self.run_errors = run_errors
 
@@ -266,6 +269,7 @@ class ResultReporter(object):
         passed_label = 'Passed'
         failed_label = 'Failed'
         ignored_label = 'Ignored'
+        assumption_failed_label = 'Assumption Failed'
         error_label = ''
         if stats.failed > 0:
             failed_label = au.colorize(failed_label, constants.RED)
@@ -273,14 +277,16 @@ class ResultReporter(object):
             error_label = au.colorize('(Completed With ERRORS)', constants.RED)
         elif stats.failed == 0:
             passed_label = au.colorize(passed_label, constants.GREEN)
-        summary = '%s: %s: %s, %s: %s, %s: %s %s' % (name,
-                                                     passed_label,
-                                                     stats.passed,
-                                                     failed_label,
-                                                     stats.failed,
-                                                     ignored_label,
-                                                     stats.ignored,
-                                                     error_label)
+        summary = '%s: %s: %s, %s: %s, %s: %s, %s: %s %s' % (name,
+                                                             passed_label,
+                                                             stats.passed,
+                                                             failed_label,
+                                                             stats.failed,
+                                                             ignored_label,
+                                                             stats.ignored,
+                                                             assumption_failed_label,
+                                                             stats.assumption_failed,
+                                                             error_label)
         return summary
 
     def _update_stats(self, test, group):
@@ -298,6 +304,9 @@ class ResultReporter(object):
         elif test.status == test_runner_base.IGNORED_STATUS:
             self.run_stats.ignored += 1
             group.ignored += 1
+        elif test.status == test_runner_base.ASSUMPTION_FAILED:
+            self.run_stats.assumption_failed += 1
+            group.assumption_failed += 1
         elif test.status == test_runner_base.FAILED_STATUS:
             self.run_stats.failed += 1
             self.failed_tests.append(test.test_name)
@@ -341,12 +350,29 @@ class ResultReporter(object):
             if test.status == test_runner_base.PASSED_STATUS:
                 # Example of output:
                 # [78/92] test_name: PASSED (92ms)
-                print('[%s/%s] %s: %s %s' % (test.test_count, test.group_total,
-                                             test.test_name, au.colorize(
-                                                 test.status, constants.GREEN),
+                print('[%s/%s] %s: %s %s' % (test.test_count,
+                                             test.group_total,
+                                             test.test_name,
+                                             au.colorize(
+                                                 test.status,
+                                                 constants.GREEN),
                                              test.test_time))
+                if test.perf_info.keys():
+                    print('\t%s: %s(ns) %s: %s(ns) %s: %s'
+                          %(au.colorize('cpu_time', constants.BLUE),
+                            test.perf_info['cpu_time'],
+                            au.colorize('real_time', constants.BLUE),
+                            test.perf_info['real_time'],
+                            au.colorize('iterations', constants.BLUE),
+                            test.perf_info['iterations']))
             elif test.status == test_runner_base.IGNORED_STATUS:
                 # Example: [33/92] test_name: IGNORED (12ms)
+                print('[%s/%s] %s: %s %s' % (test.test_count, test.group_total,
+                                             test.test_name, au.colorize(
+                                                 test.status, constants.MAGENTA),
+                                             test.test_time))
+            elif test.status == test_runner_base.ASSUMPTION_FAILED:
+                # Example: [33/92] test_name: ASSUMPTION_FAILED (12ms)
                 print('[%s/%s] %s: %s %s' % (test.test_count, test.group_total,
                                              test.test_name, au.colorize(
                                                  test.status, constants.MAGENTA),

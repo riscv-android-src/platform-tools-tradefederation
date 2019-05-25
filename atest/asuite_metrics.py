@@ -17,10 +17,17 @@
 import json
 import logging
 import os
-import urllib2
 import uuid
 
-import constants
+try:
+    # PYTHON2
+    from urllib2 import Request
+    from urllib2 import urlopen
+except ImportError:
+    # PYTHON3
+    from urllib.request import Request
+    from urllib.request import urlopen
+
 
 _JSON_HEADERS = {'Content-Type': 'application/json'}
 _METRICS_RESPONSE = 'done'
@@ -28,6 +35,8 @@ _METRICS_TIMEOUT = 2 #seconds
 _META_FILE = os.path.join(os.path.expanduser('~'),
                           '.config', 'asuite', '.metadata')
 _ANDROID_BUILD_TOP = 'ANDROID_BUILD_TOP'
+
+DUMMY_UUID = '00000000-0000-4000-8000-000000000000'
 
 
 #pylint: disable=broad-except
@@ -48,15 +57,15 @@ def log_event(metrics_url, dummy_key_fallback=True, **kwargs):
         except Exception:
             if not dummy_key_fallback:
                 return
-            key = constants.DUMMY_UUID
+            key = DUMMY_UUID
         data = {'grouping_key': key,
                 'run_id': str(uuid.uuid4())}
         if kwargs:
             data.update(kwargs)
         data = json.dumps(data)
-        request = urllib2.Request(metrics_url, data=data,
-                                  headers=_JSON_HEADERS)
-        response = urllib2.urlopen(request, timeout=_METRICS_TIMEOUT)
+        request = Request(metrics_url, data=data,
+                          headers=_JSON_HEADERS)
+        response = urlopen(request, timeout=_METRICS_TIMEOUT)
         content = response.read()
         if content != _METRICS_RESPONSE:
             raise Exception('Unexpected metrics response: %s' % content)

@@ -91,6 +91,26 @@ EVENTS_IGNORE = [
     ('TEST_MODULE_ENDED', {'foo': 'bar'}),
 ]
 
+EVENTS_WITH_PERF_INFO = [
+    ('TEST_MODULE_STARTED', {
+        'moduleContextFileName':'serial-util1146216{974}2772610436.ser',
+        'moduleName':'someTestModule'}),
+    ('TEST_RUN_STARTED', {'testCount': 2}),
+    ('TEST_STARTED', {'start_time':52, 'className':'someClassName',
+                      'testName':'someTestName'}),
+    ('TEST_ENDED', {'end_time':1048, 'className':'someClassName',
+                    'testName':'someTestName'}),
+    ('TEST_STARTED', {'start_time':48, 'className':'someClassName2',
+                      'testName':'someTestName2'}),
+    ('TEST_FAILED', {'className':'someClassName2', 'testName':'someTestName2',
+                     'trace': 'someTrace'}),
+    ('TEST_ENDED', {'end_time':9876450, 'className':'someClassName2',
+                    'testName':'someTestName2', 'cpu_time':'1234.1234(ns)',
+                    'real_time':'5678.5678(ns)', 'iterations':'6666'}),
+    ('TEST_RUN_ENDED', {}),
+    ('TEST_MODULE_ENDED', {'foo': 'bar'}),
+]
+
 class EventHandlerUnittests(unittest.TestCase):
     """Unit tests for event_handler.py"""
 
@@ -116,7 +136,8 @@ class EventHandlerUnittests(unittest.TestCase):
             test_count=1,
             test_time='(996ms)',
             runner_total=None,
-            group_total=2
+            group_total=2,
+            perf_info={}
         ))
         call2 = mock.call(test_runner_base.TestResult(
             runner_name=atf_tr.AtestTradefedTestRunner.NAME,
@@ -127,7 +148,8 @@ class EventHandlerUnittests(unittest.TestCase):
             test_count=2,
             test_time='(2h44m36.402s)',
             runner_total=None,
-            group_total=2
+            group_total=2,
+            perf_info={}
         ))
         self.mock_reporter.process_test_result.assert_has_calls([call1, call2])
 
@@ -144,7 +166,8 @@ class EventHandlerUnittests(unittest.TestCase):
             test_count=1,
             test_time='',
             runner_total=None,
-            group_total=2
+            group_total=2,
+            perf_info={}
         ))
         self.mock_reporter.process_test_result.assert_has_calls([call])
 
@@ -161,7 +184,8 @@ class EventHandlerUnittests(unittest.TestCase):
             test_count=0,
             test_time='',
             runner_total=None,
-            group_total=None
+            group_total=None,
+            perf_info={}
         ))
         self.mock_reporter.process_test_result.assert_has_calls([call])
 
@@ -179,7 +203,8 @@ class EventHandlerUnittests(unittest.TestCase):
             test_count=1,
             test_time='(8ms)',
             runner_total=None,
-            group_total=2
+            group_total=2,
+            perf_info={}
         ))
         self.mock_reporter.process_test_result.assert_has_calls([call])
         # Event pair: TEST_STARTED -> TEST_RUN_ENDED
@@ -210,7 +235,8 @@ class EventHandlerUnittests(unittest.TestCase):
             test_count=1,
             test_time='(10ms)',
             runner_total=None,
-            group_total=2
+            group_total=2,
+            perf_info={}
         ))
         call2 = mock.call(test_runner_base.TestResult(
             runner_name=atf_tr.AtestTradefedTestRunner.NAME,
@@ -221,7 +247,41 @@ class EventHandlerUnittests(unittest.TestCase):
             test_count=2,
             test_time='(62ms)',
             runner_total=None,
-            group_total=2
+            group_total=2,
+            perf_info={}
+        ))
+        self.mock_reporter.process_test_result.assert_has_calls([call1, call2])
+
+    def test_process_event_with_perf_info(self):
+        """Test process_event method with perf information."""
+        for name, data in EVENTS_WITH_PERF_INFO:
+            self.fake_eh.process_event(name, data)
+        call1 = mock.call(test_runner_base.TestResult(
+            runner_name=atf_tr.AtestTradefedTestRunner.NAME,
+            group_name='someTestModule',
+            test_name='someClassName#someTestName',
+            status=test_runner_base.PASSED_STATUS,
+            details=None,
+            test_count=1,
+            test_time='(996ms)',
+            runner_total=None,
+            group_total=2,
+            perf_info={}
+        ))
+
+        test_perf_info = {'cpu_time':'1234.1234(ns)', 'real_time':'5678.5678(ns)',
+                          'iterations':'6666'}
+        call2 = mock.call(test_runner_base.TestResult(
+            runner_name=atf_tr.AtestTradefedTestRunner.NAME,
+            group_name='someTestModule',
+            test_name='someClassName2#someTestName2',
+            status=test_runner_base.FAILED_STATUS,
+            details='someTrace',
+            test_count=2,
+            test_time='(2h44m36.402s)',
+            runner_total=None,
+            group_total=2,
+            perf_info=test_perf_info
         ))
         self.mock_reporter.process_test_result.assert_has_calls([call1, call2])
 
