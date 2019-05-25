@@ -24,9 +24,12 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.FileUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -158,6 +161,7 @@ public abstract class GTestBase
     protected static final String GTEST_FLAG_FILTER = "--gtest_filter";
     protected static final String GTEST_FLAG_RUN_DISABLED_TESTS = "--gtest_also_run_disabled_tests";
     protected static final String GTEST_FLAG_LIST_TESTS = "--gtest_list_tests";
+    protected static final String GTEST_FLAG_FILE = "--gtest_flagfile";
     protected static final String GTEST_XML_OUTPUT = "--gtest_output=xml:%s";
     // Expected extension for the filter file associated with the binary (json formatted file)
     @VisibleForTesting protected static final String FILTER_EXTENSION = ".filter";
@@ -399,7 +403,37 @@ public abstract class GTestBase
                 }
             }
         }
-        return filter.toString();
+        String filterFlag = filter.toString();
+        // Handle long args
+        if (filterFlag.length() > 500) {
+            String tmpFlag = createFlagFile(filterFlag);
+            if (tmpFlag != null) {
+                return String.format("%s=%s", GTEST_FLAG_FILE, tmpFlag);
+            }
+        }
+
+        return filterFlag;
+    }
+
+    /**
+     * Create a file containing the filters that will be used via --gtest_flagfile to avoid any OS
+     * limitation in args size.
+     *
+     * @param filter The filter string
+     * @return The path to the file containing the filter.
+     * @throws DeviceNotAvailableException
+     */
+    protected String createFlagFile(String filter) throws DeviceNotAvailableException {
+        File tmpFlagFile = null;
+        try {
+            tmpFlagFile = FileUtil.createTempFile("flagfile", ".txt");
+            FileUtil.writeToFile(filter, tmpFlagFile);
+        } catch (IOException e) {
+            FileUtil.deleteFile(tmpFlagFile);
+            CLog.e(e);
+            return null;
+        }
+        return tmpFlagFile.getAbsolutePath();
     }
 
     /**
