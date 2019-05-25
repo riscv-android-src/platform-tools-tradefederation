@@ -20,10 +20,12 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
 import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.device.metric.IMetricCollector;
@@ -39,6 +41,8 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.suite.ITestSuite.RetryStrategy;
 
+import org.easymock.EasyMock;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -58,6 +62,7 @@ public class GranularRetriableTestWrapperTest {
 
     private static final String RUN_NAME = "test run";
     private static final String RUN_NAME_2 = "test run 2";
+    private InvocationContext mModuleInvocationContext;
 
     private class BasicFakeTest implements IRemoteTest {
 
@@ -252,12 +257,17 @@ public class GranularRetriableTestWrapperTest {
         granularTestWrapper.setMarkTestsSkipped(false);
         granularTestWrapper.setMetricCollectors(collectors);
         // Setup InvocationContext.
-        granularTestWrapper.setInvocationContext(new InvocationContext());
+        granularTestWrapper.setInvocationContext(mModuleInvocationContext);
         // Setup logsaver.
         granularTestWrapper.setLogSaver(new FileSystemLogSaver());
         IConfiguration mockModuleConfiguration = Mockito.mock(IConfiguration.class);
         granularTestWrapper.setModuleConfig(mockModuleConfiguration);
         return granularTestWrapper;
+    }
+
+    @Before
+    public void setUp() {
+        mModuleInvocationContext = new InvocationContext();
     }
 
     /**
@@ -800,6 +810,53 @@ public class GranularRetriableTestWrapperTest {
         // Ensure that the disabled collector was not called, and enabled one was called
         assertFalse(notCalledCollector.wasCalled);
         assertTrue(calledCollector.wasCalled);
+    }
+
+    /**
+     * Test to reboot device at the last intra-module retry.
+     */
+    @Test
+    public void testIntraModuleRun_rebootAtLastIntraModuleRetry() throws Exception {
+        FakeTest test = new FakeTest();
+        test.setRunFailure("I failed!");
+        ITestDevice mMockDevice = EasyMock.createMock(ITestDevice.class);
+        mModuleInvocationContext.addAllocatedDevice("default-device1", mMockDevice);
+        GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
+        granularTestWrapper.setRebootAtLastRetry(true);
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
+        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("SERIAL");
+        mMockDevice.reboot();
+        EasyMock.replay(mMockDevice);
+        granularTestWrapper.run(new CollectingTestListener());
+        EasyMock.verify(mMockDevice);
+    }
+
+    /**
+     * Test to reboot multi-devices at the last intra-module retry.
+     */
+    @Test
+    public void testIntraModuleRun_rebootMultiDevicesAtLastIntraModuleRetry() throws Exception {
+        FakeTest test = new FakeTest();
+        test.setRunFailure("I failed!");
+        ITestDevice mMockDevice = EasyMock.createMock(ITestDevice.class);
+        ITestDevice mMockDevice2 = EasyMock.createMock(ITestDevice.class);
+        mModuleInvocationContext.addAllocatedDevice("default-device1", mMockDevice);
+        mModuleInvocationContext.addAllocatedDevice("default-device2", mMockDevice2);
+        GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
+        granularTestWrapper.setRebootAtLastRetry(true);
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
+        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("SERIAL");
+        EasyMock.expect(mMockDevice2.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
+        EasyMock.expect(mMockDevice2.getSerialNumber()).andReturn("SERIAL-2");
+        mMockDevice.reboot();
+        mMockDevice2.reboot();
+        EasyMock.replay(mMockDevice);
+        EasyMock.replay(mMockDevice2);
+        granularTestWrapper.run(new CollectingTestListener());
+        EasyMock.verify(mMockDevice);
+        EasyMock.verify(mMockDevice2);
     }
 
     /** Collector that track if it was called or not */

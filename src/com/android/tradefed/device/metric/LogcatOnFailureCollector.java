@@ -82,7 +82,9 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
 
     @VisibleForTesting
     ILogcatReceiver createLogcatReceiver(ITestDevice device) {
-        return new LogcatReceiver(device, "logcat", device.getOptions().getMaxLogcatDataSize(), 0);
+        // Use logcat -T 'count' to only print a few line before we start and not the full buffer
+        return new LogcatReceiver(
+                device, "logcat -T 150", device.getOptions().getMaxLogcatDataSize(), 0);
     }
 
     @VisibleForTesting
