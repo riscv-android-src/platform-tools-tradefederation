@@ -100,8 +100,9 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
      * occurred.
      *
      * @param runRecord The finalized proto representing the run.
+     * @param moduleInProgress whether or not a module is in progress.
      */
-    public void processTestRunEnded(TestRecord runRecord) {}
+    public void processTestRunEnded(TestRecord runRecord, boolean moduleInProgress) {}
 
     /**
      * Handling of the partial test case record proto after {@link #testStarted(TestDescription,
@@ -286,7 +287,7 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
         TestRecord runRecord = runBuilder.build();
         parentBuilder.addChildren(createChildReference(runRecord));
         try {
-            processTestRunEnded(runRecord);
+            processTestRunEnded(runRecord, mModuleInProgress);
         } catch (RuntimeException e) {
             CLog.e("Failed to process test run end:");
             CLog.e(e);
