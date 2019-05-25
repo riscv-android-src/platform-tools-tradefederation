@@ -167,53 +167,7 @@ public class ContentProviderHandler {
      */
     public boolean pullDir(String deviceFilePath, File localDir)
             throws DeviceNotAvailableException {
-        if (!localDir.isDirectory()) {
-            CLog.e("Local path %s is not a directory", localDir.getAbsolutePath());
-            return false;
-        }
-
-        String contentUri = createEscapedContentUri(deviceFilePath);
-        String queryContentCommand =
-                String.format(
-                        "content query --user %d --uri %s", mDevice.getCurrentUser(), contentUri);
-
-        String listCommandResult = mDevice.executeShellCommand(queryContentCommand);
-
-        if (listCommandResult.equals(NO_RESULTS_STRING)) {
-            // Empty directory.
-            return true;
-        }
-
-        String[] listResult = listCommandResult.split("[\\r\\n]+");
-
-        for (String row : listResult) {
-            HashMap<String, String> columnValues = parseQueryResultRow(row);
-            boolean isDirectory = Boolean.valueOf(columnValues.get(COLUMN_DIRECTORY));
-            String name = columnValues.get(COLUMN_NAME);
-            String path = columnValues.get(COLUMN_ABSOLUTE_PATH);
-
-            File localChild = new File(localDir, name);
-            if (isDirectory) {
-                if (!localChild.mkdir()) {
-                    CLog.w(
-                            "Failed to create sub directory %s, aborting.",
-                            localChild.getAbsolutePath());
-                    return false;
-                }
-
-                if (!pullDir(path, localChild)) {
-                    CLog.w("Failed to pull sub directory %s from device, aborting", path);
-                    return false;
-                }
-            } else {
-                // handle regular file
-                if (!pullFile(path, localChild)) {
-                    CLog.w("Failed to pull file %s from device, aborting", path);
-                    return false;
-                }
-            }
-        }
-        return true;
+        return pullDirInternal(deviceFilePath, localDir, /* currentUser */ null);
     }
 
     /**
@@ -227,33 +181,7 @@ public class ContentProviderHandler {
      */
     public boolean pullFile(String deviceFilePath, File localFile)
             throws DeviceNotAvailableException {
-        String contentUri = createEscapedContentUri(deviceFilePath);
-        String pullCommand =
-                String.format(
-                        "content read --user %d --uri %s", mDevice.getCurrentUser(), contentUri);
-
-        // Open the output stream to the local file.
-        OutputStream localFileStream;
-        try {
-            localFileStream = new FileOutputStream(localFile);
-        } catch (FileNotFoundException e) {
-            CLog.e("Failed to open OutputStream to the local file. Error: %s", e.getMessage());
-            return false;
-        }
-
-        try {
-            CommandResult pullResult = mDevice.executeShellV2Command(pullCommand, localFileStream);
-            if (isSuccessful(pullResult)) {
-                return true;
-            }
-
-            CLog.e(
-                    "Failed to pull a file at '%s' to %s using content provider. Error: '%s'",
-                    deviceFilePath, localFile, pullResult.getStderr());
-            return false;
-        } finally {
-            StreamUtil.close(localFileStream);
-        }
+        return pullFileInternal(deviceFilePath, localFile, /* currentUser */ null);
     }
 
     /**
@@ -356,5 +284,96 @@ public class ContentProviderHandler {
             }
         }
         return columnValues;
+    }
+
+    /**
+     * Internal method to actually do the pull directory but without re-querying the current user
+     * while doing the recursive pull.
+     */
+    private boolean pullDirInternal(String deviceFilePath, File localDir, Integer currentUser)
+            throws DeviceNotAvailableException {
+        if (!localDir.isDirectory()) {
+            CLog.e("Local path %s is not a directory", localDir.getAbsolutePath());
+            return false;
+        }
+
+        String contentUri = createEscapedContentUri(deviceFilePath);
+        if (currentUser == null) {
+            // Keep track of the user so if we recursively pull dir we don't re-query it.
+            currentUser = mDevice.getCurrentUser();
+        }
+        String queryContentCommand =
+                String.format("content query --user %d --uri %s", currentUser, contentUri);
+
+        String listCommandResult = mDevice.executeShellCommand(queryContentCommand);
+
+        if (NO_RESULTS_STRING.equals(listCommandResult.trim())) {
+            // Empty directory.
+            return true;
+        }
+
+        String[] listResult = listCommandResult.split("[\\r\\n]+");
+
+        for (String row : listResult) {
+            HashMap<String, String> columnValues = parseQueryResultRow(row);
+            boolean isDirectory = Boolean.valueOf(columnValues.get(COLUMN_DIRECTORY));
+            String name = columnValues.get(COLUMN_NAME);
+            String path = columnValues.get(COLUMN_ABSOLUTE_PATH);
+
+            File localChild = new File(localDir, name);
+            if (isDirectory) {
+                if (!localChild.mkdir()) {
+                    CLog.w(
+                            "Failed to create sub directory %s, aborting.",
+                            localChild.getAbsolutePath());
+                    return false;
+                }
+
+                if (!pullDirInternal(path, localChild, currentUser)) {
+                    CLog.w("Failed to pull sub directory %s from device, aborting", path);
+                    return false;
+                }
+            } else {
+                // handle regular file
+                if (!pullFileInternal(path, localChild, currentUser)) {
+                    CLog.w("Failed to pull file %s from device, aborting", path);
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private boolean pullFileInternal(String deviceFilePath, File localFile, Integer currentUser)
+            throws DeviceNotAvailableException {
+        String contentUri = createEscapedContentUri(deviceFilePath);
+        if (currentUser == null) {
+            currentUser = mDevice.getCurrentUser();
+        }
+        String pullCommand =
+                String.format("content read --user %d --uri %s", currentUser, contentUri);
+
+        // Open the output stream to the local file.
+        OutputStream localFileStream;
+        try {
+            localFileStream = new FileOutputStream(localFile);
+        } catch (FileNotFoundException e) {
+            CLog.e("Failed to open OutputStream to the local file. Error: %s", e.getMessage());
+            return false;
+        }
+
+        try {
+            CommandResult pullResult = mDevice.executeShellV2Command(pullCommand, localFileStream);
+            if (isSuccessful(pullResult)) {
+                return true;
+            }
+
+            CLog.e(
+                    "Failed to pull a file at '%s' to %s using content provider. Error: '%s'",
+                    deviceFilePath, localFile, pullResult.getStderr());
+            return false;
+        } finally {
+            StreamUtil.close(localFileStream);
+        }
     }
 }
