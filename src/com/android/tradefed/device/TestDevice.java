@@ -742,7 +742,9 @@ public class TestDevice extends NativeDevice {
         int errorDialogCount = 0;
         Pattern crashPattern = Pattern.compile(".*crashing=true.*AppErrorDialog.*");
         Pattern anrPattern = Pattern.compile(".*notResponding=true.*AppNotRespondingDialog.*");
-        String systemStatusOutput = executeShellCommand("dumpsys activity processes");
+        String systemStatusOutput =
+                executeShellCommand(
+                        "dumpsys activity processes | grep -e .*crashing=true.*AppErrorDialog.* -e .*notResponding=true.*AppNotRespondingDialog.*");
         Matcher crashMatcher = crashPattern.matcher(systemStatusOutput);
         while (crashMatcher.find()) {
             errorDialogCount++;
@@ -909,12 +911,20 @@ public class TestDevice extends NativeDevice {
      */
     @Override
     public Set<String> getInstalledPackageNames() throws DeviceNotAvailableException {
-        return getInstalledPackageNames(new PkgFilter() {
-            @Override
-            public boolean accept(String pkgName, String apkPath) {
-                return true;
-            }
-        });
+        return getInstalledPackageNames(null, null);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean isPackageInstalled(String packageName) throws DeviceNotAvailableException {
+        return getInstalledPackageNames(packageName, null).contains(packageName);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean isPackageInstalled(String packageName, String userId)
+            throws DeviceNotAvailableException {
+        return getInstalledPackageNames(packageName, userId).contains(packageName);
     }
 
     /** {@inheritDoc} */
@@ -989,21 +999,25 @@ public class TestDevice extends NativeDevice {
         return action.mPkgInfoMap.get(packageName);
     }
 
-    private static interface PkgFilter {
-        boolean accept(String pkgName, String apkPath);
-    }
-
     // TODO: convert this to use DumpPkgAction
-    private Set<String> getInstalledPackageNames(PkgFilter filter)
+    private Set<String> getInstalledPackageNames(String packageNameSearched, String userId)
             throws DeviceNotAvailableException {
         Set<String> packages= new HashSet<String>();
-        String output = executeShellCommand(LIST_PACKAGES_CMD);
+        String command = LIST_PACKAGES_CMD;
+        if (userId != null) {
+            command += String.format(" --user %s", userId);
+        }
+        if (packageNameSearched != null) {
+            command += (" | grep " + packageNameSearched);
+        }
+        String output = executeShellCommand(command);
         if (output != null) {
             Matcher m = PACKAGE_REGEX.matcher(output);
             while (m.find()) {
-                String packagePath = m.group(1);
                 String packageName = m.group(2);
-                if (filter.accept(packageName, packagePath)) {
+                if (packageNameSearched != null && packageName.equals(packageNameSearched)) {
+                    packages.add(packageName);
+                } else if (packageNameSearched == null) {
                     packages.add(packageName);
                 }
             }
@@ -1124,6 +1138,7 @@ public class TestDevice extends NativeDevice {
         final String output = executeShellCommand(command);
         if (output.startsWith("Success")) {
             try {
+                resetContentProviderSetup();
                 return Integer.parseInt(output.substring(output.lastIndexOf(" ")).trim());
             } catch (NumberFormatException e) {
                 CLog.e("Failed to parse result: %s", output);
@@ -1240,20 +1255,22 @@ public class TestDevice extends NativeDevice {
         return null;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public int getCurrentUser() throws DeviceNotAvailableException {
+    public int getCurrentUser() throws DeviceNotAvailableException, DeviceRuntimeException {
         checkApiLevelAgainstNextRelease("get-current-user", API_LEVEL_GET_CURRENT_USER);
         final String output = executeShellCommand("am get-current-user");
         try {
             int userId = Integer.parseInt(output.trim());
+            if (userId < 0) {
+                throw new DeviceRuntimeException(
+                        String.format(
+                                "Invalid user id '%s' was returned for get-current-user", userId));
+            }
             return userId;
         } catch (NumberFormatException e) {
-            CLog.e(e);
+            throw new DeviceRuntimeException(e);
         }
-        return INVALID_USER_ID;
     }
 
     private Matcher findUserInfo(String pmListUsersOutput) {
@@ -1349,6 +1366,7 @@ public class TestDevice extends NativeDevice {
             CLog.w("Already running as user id: %s. Nothing to be done.", userId);
             return true;
         }
+        resetContentProviderSetup();
         executeShellCommand(String.format("am switch-user %d", userId));
         long initialTime = getHostCurrentTime();
         while (getHostCurrentTime() - initialTime <= timeout) {

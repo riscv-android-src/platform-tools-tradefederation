@@ -15,7 +15,7 @@
  */
 package com.android.tradefed.util;
 
-import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.host.HostOptions;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
@@ -32,6 +32,8 @@ import java.util.Collection;
  * GCSFileUploader}.
  */
 public abstract class GCSCommon {
+    /** This is the key for {@link HostOptions}'s service-account-json-key-file option. */
+    private static final String GCS_JSON_KEY = "gcs-json-key";
 
     protected static final int DEFAULT_TIMEOUT = 10 * 60 * 1000; // 10minutes
 
@@ -48,25 +50,8 @@ public abstract class GCSCommon {
         GoogleCredential credential = null;
         try {
             if (mStorage == null) {
-                if (mJsonKeyFile != null && mJsonKeyFile.exists()) {
-                    CLog.d("Using json key file %s.", mJsonKeyFile);
-                    credential =
-                            GoogleApiClientUtil.createCredentialFromJsonKeyFile(
-                                    mJsonKeyFile, scopes);
-                } else {
-                    CLog.d("Using local authentication.");
-                    try {
-                        credential = GoogleCredential.getApplicationDefault().createScoped(scopes);
-                    } catch (IOException e) {
-                        CLog.e(e.getMessage());
-                        CLog.e(
-                                "Try 'gcloud auth application-default login' to login for "
-                                        + "personal account; Or 'export "
-                                        + "GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json' "
-                                        + "for service account.");
-                        throw e;
-                    }
-                }
+                credential =
+                        GoogleApiClientUtil.createCredential(scopes, mJsonKeyFile, GCS_JSON_KEY);
                 mStorage =
                         new Storage.Builder(
                                         GoogleNetHttpTransport.newTrustedTransport(),

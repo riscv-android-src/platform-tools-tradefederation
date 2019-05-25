@@ -22,6 +22,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.RegexTrie;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -137,6 +138,12 @@ public class AoaTargetPreparer extends BaseTargetPreparer {
     )
     private long mDeviceTimeout = 60 * 1000;
 
+    @Option(
+        name = "wait-for-device-online",
+        description = "Checks whether the device is online after preparation."
+    )
+    private boolean mWaitForDeviceOnline = true;
+
     @Option(name = "action", description = "AOAv2 action to perform. Can be repeated.")
     private List<String> mActions = new ArrayList<>();
 
@@ -152,24 +159,36 @@ public class AoaTargetPreparer extends BaseTargetPreparer {
         } catch (RuntimeException e) {
             throw new TargetSetupError(e.getMessage(), e, device.getDeviceDescriptor());
         }
+
+        if (mWaitForDeviceOnline) {
+            // Verify that the device is online after executing AOA actions
+            device.waitForDeviceOnline();
+        }
     }
 
     // Connect to device using its serial number and perform actions
     private void configure(String serialNumber) throws DeviceNotAvailableException {
-        try (UsbHelper usb = new UsbHelper();
+        try (UsbHelper usb = getUsbHelper();
                 AoaDevice device =
                         usb.getAoaDevice(serialNumber, Duration.ofMillis(mDeviceTimeout))) {
             if (device == null) {
                 throw new DeviceNotAvailableException(
                         "AOAv2-compatible device not found", serialNumber);
             }
+            CLog.d("Performing %d actions on device %s", mActions.size(), serialNumber);
             mActions.forEach(action -> execute(device, action));
         }
+    }
+
+    @VisibleForTesting
+    UsbHelper getUsbHelper() {
+        return new UsbHelper();
     }
 
     // Parse and execute an action
     @VisibleForTesting
     void execute(AoaDevice device, String input) {
+        CLog.v("Executing '%s' on %s", input, device.getSerialNumber());
         List<List<String>> args = new ArrayList<>();
         Action action = ACTIONS.retrieve(args, input);
         if (action == null) {

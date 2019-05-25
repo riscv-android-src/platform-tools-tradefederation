@@ -40,6 +40,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.PrettyPrintDelimiter;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -63,6 +64,8 @@ import java.util.Set;
  * the sandbox.
  */
 public class TradefedSandbox implements ISandbox {
+
+    private static final String SANDBOX_PREFIX = "sandbox-";
 
     private File mStdoutFile = null;
     private File mStderrFile = null;
@@ -149,6 +152,11 @@ public class TradefedSandbox implements ISandbox {
             result.setStderr(
                     String.format("Event receiver thread did not complete.:\n%s", stderrText));
         }
+        PrettyPrintDelimiter.printStageDelimiter(
+                String.format(
+                        "Execution of the tests occurred in the sandbox, you can find its logs "
+                                + "under the name pattern '%s*'",
+                        SANDBOX_PREFIX));
 
         return result;
     }
@@ -195,7 +203,10 @@ public class TradefedSandbox implements ISandbox {
                     getTradefedSandboxEnvironment(
                             context,
                             config,
-                            QuotationAwareTokenizer.tokenizeLine(config.getCommandLine()));
+                            QuotationAwareTokenizer.tokenizeLine(
+                                    config.getCommandLine(),
+                                    /** no logging */
+                                    false));
         } catch (ConfigurationException e) {
             return e;
         }
@@ -287,14 +298,15 @@ public class TradefedSandbox implements ISandbox {
             String commandLine = config.getCommandLine();
             if (getSandboxOptions(config).shouldUseProtoReporter()) {
                 mProtoReceiver =
-                        new StreamProtoReceiver(listener, context, false, false, "sandbox-");
+                        new StreamProtoReceiver(listener, context, false, false, SANDBOX_PREFIX);
                 // Force the child to the same mode as the parent.
                 commandLine = commandLine + " --" + SandboxOptions.USE_PROTO_REPORTER;
             } else {
                 mEventParser = new SubprocessTestResultsParser(listener, true, context);
                 commandLine = commandLine + " --no-" + SandboxOptions.USE_PROTO_REPORTER;
             }
-            String[] args = QuotationAwareTokenizer.tokenizeLine(commandLine);
+            String[] args =
+                    QuotationAwareTokenizer.tokenizeLine(commandLine, /* No Logging */ false);
             mGlobalConfig = dumpGlobalConfig(config, new HashSet<>());
             try (InputStreamSource source = new FileInputStreamSource(mGlobalConfig)) {
                 listener.testLog("sandbox-global-config", LogDataType.XML, source);

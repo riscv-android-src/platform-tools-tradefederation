@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -103,6 +104,8 @@ public class XmlSuiteResultFormatterTest {
         File res = mFormatter.writeResults(mResultHolder, mResultDir);
         String content = FileUtil.readStringFromFile(res);
         assertXmlContainsNode(content, "Result");
+        // Verify that RunHistory tag should not exist if run history is empty.
+        assertXmlNotContainNode(content, "Result/RunHistory");
         // Verify that the summary has been populated
         assertXmlContainsNode(content, "Result/Summary");
         assertXmlContainsAttribute(content, "Result/Summary", "pass", "2");
@@ -499,6 +502,71 @@ public class XmlSuiteResultFormatterTest {
         }
     }
 
+    /** Check that run history is properly reported. */
+    @Test
+    public void testRunHistoryReporting() throws Exception {
+        final String RUN_HISTORY =
+                "[{\"startTime\":10000000000000,\"endTime\":10000000100000},"
+                        + "{\"startTime\":10000000200000,\"endTime\":10000000300000}]";
+        mResultHolder.context = mContext;
+        mResultHolder.context.addInvocationAttribute("run_history", RUN_HISTORY);
+
+        Collection<TestRunResult> runResults = new ArrayList<>();
+        runResults.add(createFakeResult("module1", 2, 1, 0, 0));
+        mResultHolder.runResults = runResults;
+
+        Map<String, IAbi> modulesAbi = new HashMap<>();
+        modulesAbi.put("module1", new Abi("armeabi-v7a", "32"));
+        mResultHolder.modulesAbi = modulesAbi;
+
+        mResultHolder.completeModules = 1;
+        mResultHolder.totalModules = 1;
+        mResultHolder.passedTests = 1;
+        mResultHolder.failedTests = 0;
+        mResultHolder.startTime = 0L;
+        mResultHolder.endTime = 10L;
+        File res = mFormatter.writeResults(mResultHolder, mResultDir);
+        String content = FileUtil.readStringFromFile(res);
+
+        assertXmlContainsAttribute(content, "Result/Build", "run_history", RUN_HISTORY);
+        assertXmlContainsNode(content, "Result/RunHistory");
+        assertXmlContainsAttribute(content, "Result/RunHistory/Run", "start", "10000000000000");
+        assertXmlContainsAttribute(content, "Result/RunHistory/Run", "end", "10000000100000");
+        assertXmlContainsAttribute(content, "Result/RunHistory/Run", "start", "10000000200000");
+        assertXmlContainsAttribute(content, "Result/RunHistory/Run", "end", "10000000300000");
+        // Test that we can read back the information.
+        SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
+        assertEquals(RUN_HISTORY, holder.context.getAttributes().getUniqueMap().get("run_history"));
+    }
+
+    /** Ensure the order is sorted according to module name and abi. */
+    @Test
+    public void testSortModules() {
+        List<TestRunResult> originalList = new ArrayList<>();
+        originalList.add(createFakeResult("armeabi-v7a module1", 1, 0, 0, 0));
+        originalList.add(createFakeResult("arm64-v8a module3", 1, 0, 0, 0));
+        originalList.add(createFakeResult("armeabi-v7a module2", 1, 0, 0, 0));
+        originalList.add(createFakeResult("arm64-v8a module1", 1, 0, 0, 0));
+        originalList.add(createFakeResult("armeabi-v7a module4", 1, 0, 0, 0));
+        originalList.add(createFakeResult("arm64-v8a module2", 1, 0, 0, 0));
+        Map<String, IAbi> moduleAbis = new HashMap<>();
+        moduleAbis.put("armeabi-v7a module1", new Abi("armeabi-v7a", "32"));
+        moduleAbis.put("arm64-v8a module1", new Abi("arm64-v8a", "64"));
+        moduleAbis.put("armeabi-v7a module2", new Abi("armeabi-v7a", "32"));
+        moduleAbis.put("arm64-v8a module2", new Abi("arm64-v8a", "64"));
+        moduleAbis.put("arm64-v8a module3", new Abi("arm64-v8a", "64"));
+        moduleAbis.put("armeabi-v7a module4", new Abi("armeabi-v7a", "32"));
+
+        List<TestRunResult> sortedResult = mFormatter.sortModules(originalList, moduleAbis);
+        assertEquals(6, sortedResult.size());
+        assertEquals("arm64-v8a module1", sortedResult.get(0).getName());
+        assertEquals("armeabi-v7a module1", sortedResult.get(1).getName());
+        assertEquals("arm64-v8a module2", sortedResult.get(2).getName());
+        assertEquals("armeabi-v7a module2", sortedResult.get(3).getName());
+        assertEquals("arm64-v8a module3", sortedResult.get(4).getName());
+        assertEquals("armeabi-v7a module4", sortedResult.get(5).getName());
+    }
+
     private TestRunResult createResultWithLog(String runName, int count, LogDataType type) {
         TestRunResult fakeRes = new TestRunResult();
         fakeRes.testRunStarted(runName, count);
@@ -594,6 +662,22 @@ public class XmlSuiteResultFormatterTest {
                         xml, xPathExpression, nodes.getLength()),
                 nodes.getLength() >= 1);
         return nodes;
+    }
+
+    /** Assert that the XML does not contain a node matching the given xPathExpression. */
+    private void assertXmlNotContainNode(String xml, String xPathExpression)
+            throws XPathExpressionException {
+        NodeList nodes = getXmlNodes(xml, xPathExpression);
+        assertNotNull(
+                String.format("XML '%s' returned null for xpath '%s'.", xml, xPathExpression),
+                nodes);
+        assertEquals(
+                String.format(
+                        "XML '%s' should have returned at least 1 node for xpath '%s', "
+                                + "but returned %s nodes instead.",
+                        xml, xPathExpression, nodes.getLength()),
+                0,
+                nodes.getLength());
     }
 
     /**

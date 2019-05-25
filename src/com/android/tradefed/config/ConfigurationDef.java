@@ -260,7 +260,10 @@ public class ConfigurationDef {
                 // handle very differently: object at the root of the xml needs to be associated
                 // with the only DuT.
                 // All the other use cases can be handled the regular way.
-                CLog.d("Only one Device Under Test, using hybrid handling.");
+                CLog.d(
+                        "One device is under tests while config '%s' requires some fake=true "
+                                + "devices. Using hybrid parsing of config.",
+                        getName());
                 hybridMultiDeviceHandling = true;
             }
             for (String name : mExpectedDevices.keySet()) {

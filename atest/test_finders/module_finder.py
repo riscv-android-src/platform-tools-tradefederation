@@ -212,13 +212,12 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                 return test_config
         return rel_config
 
-    def _get_test_info_filter(self, path, methods, module_name, **kwargs):
+    def _get_test_info_filter(self, path, methods, **kwargs):
         """Get test info filter.
 
         Args:
             path: A string of the test's path.
             methods: A set of method name strings.
-            module_name: A string of the module name.
             rel_module_dir: Optional. A string of the module dir relative to
                 root.
             class_name: Optional. A string of the class name.
@@ -251,7 +250,6 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                         kwargs.get('class_name', '*'), methods), frozenset())])
         # Path to non-module dir, treat as package.
         elif (not file_name
-              and not self.module_info.is_auto_gen_test_config(module_name)
               and kwargs.get('rel_module_dir', None) !=
               os.path.relpath(path, self.root_dir)):
             dir_items = [os.path.join(path, f) for f in os.listdir(path)]
@@ -268,6 +266,51 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                             [test_info.TestFilter(package_name, methods)])
                         break
         return ti_filter
+
+    def _get_rel_config(self, test_path):
+        """Get config file's relative path.
+
+        Args:
+            test_path: A string of the test absolute path.
+
+        Returns:
+            A string of config's relative path, else None.
+        """
+        test_dir = os.path.dirname(test_path)
+        rel_module_dir = test_finder_utils.find_parent_module_dir(
+            self.root_dir, test_dir, self.module_info)
+        if rel_module_dir:
+            return os.path.join(rel_module_dir, constants.MODULE_CONFIG)
+        return None
+
+    def _get_test_info(self, test_path, rel_config, module_name, test_filter):
+        """Get test_info for test_path.
+
+        Args:
+            test_path: A string of the test path.
+            rel_config: A string of rel path of config.
+            module_name: A string of the module name to use.
+            test_filter: A test info filter.
+
+        Returns:
+            TestInfo namedtuple if found, else None.
+        """
+        if not rel_config:
+            rel_config = self._get_rel_config(test_path)
+            if not rel_config:
+                return None
+        if not module_name:
+            module_name = self._determine_testable_module(
+                os.path.dirname(rel_config))
+        # The real test config might be recorded in module-info.
+        rel_config = self._get_module_test_config(module_name,
+                                                  rel_config=rel_config)
+        return self._process_test_info(test_info.TestInfo(
+            test_name=module_name,
+            test_runner=self._TEST_RUNNER,
+            build_targets=set(),
+            data={constants.TI_FILTER: test_filter,
+                  constants.TI_REL_CONFIG: rel_config}))
 
     def find_test_by_module_name(self, module_name):
         """Find test for the given module name.
@@ -326,26 +369,11 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         if not test_path:
             return None
         test_filter = self._get_test_info_filter(
-            test_path, methods, module_name, class_name=class_name,
+            test_path, methods, class_name=class_name,
             is_native_test=is_native_test)
-        if not rel_config:
-            test_dir = os.path.dirname(test_path)
-            rel_module_dir = test_finder_utils.find_parent_module_dir(
-                self.root_dir, test_dir, self.module_info)
-            if not rel_module_dir:
-                return None
-            rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
-        if not module_name:
-            module_name = self._determine_testable_module(os.path.dirname(
-                rel_config))
-        # The real test config might be record in module-info.
-        rel_config = self._get_module_test_config(module_name, rel_config=rel_config)
-        return self._process_test_info(test_info.TestInfo(
-            test_name=module_name,
-            test_runner=self._TEST_RUNNER,
-            build_targets=set(),
-            data={constants.TI_FILTER: test_filter,
-                  constants.TI_REL_CONFIG: rel_config}))
+        tinfo = self._get_test_info(test_path, rel_config, module_name,
+                                    test_filter)
+        return tinfo
 
     def find_test_by_module_and_class(self, module_class):
         """Find the test info given a MODULE:CLASS string.
@@ -406,23 +434,9 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         if not package_path:
             return None
         test_filter = frozenset([test_info.TestFilter(package, frozenset())])
-        if not rel_config:
-            rel_module_dir = test_finder_utils.find_parent_module_dir(
-                self.root_dir, package_path, self.module_info)
-            if not rel_module_dir:
-                return None
-            rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
-        if not module_name:
-            module_name = self._determine_testable_module(
-                os.path.dirname(rel_config))
-        # The real test config might be record in module-info.
-        rel_config = self._get_module_test_config(module_name, rel_config=rel_config)
-        return self._process_test_info(test_info.TestInfo(
-            test_name=module_name,
-            test_runner=self._TEST_RUNNER,
-            build_targets=set(),
-            data={constants.TI_FILTER: test_filter,
-                  constants.TI_REL_CONFIG: rel_config}))
+        tinfo = self._get_test_info(package_path, rel_config, module_name,
+                                    test_filter)
+        return tinfo
 
     def find_test_by_module_and_package(self, module_package):
         """Find the test info given a MODULE:PACKAGE string.
@@ -471,18 +485,10 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             self.root_dir, dir_path, self.module_info)
         if not rel_module_dir:
             return None
-        module_name = self._determine_testable_module(rel_module_dir)
         rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
-        # The real test config might be record in module-info.
-        rel_config = self._get_module_test_config(module_name, rel_config=rel_config)
-        data = {constants.TI_REL_CONFIG: rel_config,
-                constants.TI_FILTER: self._get_test_info_filter(
-                    path, methods, module_name, rel_module_dir=rel_module_dir)}
-        return self._process_test_info(test_info.TestInfo(
-            test_name=module_name,
-            test_runner=self._TEST_RUNNER,
-            build_targets=set(),
-            data=data))
+        test_filter = self._get_test_info_filter(path, methods,
+                                                 rel_module_dir=rel_module_dir)
+        return self._get_test_info(path, rel_config, None, test_filter)
 
     def find_test_by_cc_class_name(self, class_name, module_name=None,
                                    rel_config=None):

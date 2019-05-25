@@ -40,7 +40,7 @@ import java.util.HashMap;
  * A {@link ResultForwarder} that will pull native coverage measurements off of the device and log
  * them as test artifacts.
  */
-final class NativeCodeCoverageListener extends ResultForwarder {
+public final class NativeCodeCoverageListener extends ResultForwarder {
 
     private static final String NATIVE_COVERAGE_DEVICE_PATH = "/data/misc/trace";
     private static final String COVERAGE_FILE_LIST_COMMAND =

@@ -438,6 +438,7 @@ public class InvocationExecution implements IInvocationExecution {
         UnexecutedTestReporterThread reporterThread =
                 new UnexecutedTestReporterThread(listener, remainingTests);
         Runtime.getRuntime().addShutdownHook(reporterThread);
+        TestInvocation.printStageDelimiter(Stage.TEST, false);
         try {
             for (IRemoteTest test : config.getTests()) {
                 // For compatibility of those receivers, they are assumed to be single device alloc.
@@ -494,6 +495,7 @@ public class InvocationExecution implements IInvocationExecution {
                 remainingTests.remove(test);
             }
         } finally {
+            TestInvocation.printStageDelimiter(Stage.TEST, true);
             // TODO: Look if this can be improved to DeviceNotAvailableException too.
             Runtime.getRuntime().removeShutdownHook(reporterThread);
         }
