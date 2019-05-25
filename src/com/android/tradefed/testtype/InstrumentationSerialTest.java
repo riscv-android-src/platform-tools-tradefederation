@@ -22,11 +22,13 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FilteredResultForwarder;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.RetryResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 
@@ -118,7 +120,10 @@ class InstrumentationSerialTest implements IRemoteTest {
                 };
         for (int i=1; i <= FAILED_RUN_TEST_ATTEMPTS; i++) {
             runner.run(
-                    new RetryResultForwarder(i, trackingListener, listener) {
+                    new RetryResultForwarder(
+                            i,
+                            trackingListener,
+                            new FilteredResultForwarder(Arrays.asList(testToRun), listener)) {
                         // Avoid any test count to avoid recounting the tests.
                         @Override
                         public void testRunStarted(String runName, int testCount) {

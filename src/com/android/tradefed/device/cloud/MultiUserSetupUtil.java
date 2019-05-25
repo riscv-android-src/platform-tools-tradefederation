@@ -28,13 +28,7 @@ public class MultiUserSetupUtil {
 
     /** Files that must be copied between users to avoid conflicting ownership */
     private static final List<String> FILE_TO_BE_COPIED =
-            Arrays.asList(
-                    "android-info.txt",
-                    "boot.img",
-                    "cache.img",
-                    "product.img",
-                    "system.img",
-                    "vendor.img");
+            Arrays.asList("android-info.txt", "*.img");
 
     /** Files that can simply be shared between the different users */
     private static final List<String> FILE_TO_BE_LINKED = Arrays.asList("bin", "config", "lib64");

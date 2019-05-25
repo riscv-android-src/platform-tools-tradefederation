@@ -40,8 +40,6 @@ import org.mockito.Mockito;
 import java.io.File;
 import java.io.OutputStream;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
 
 /** Run unit tests for {@link ContentProviderHandler}. */
 @RunWith(JUnit4.class)
@@ -64,8 +62,6 @@ public class ContentProviderHandlerTest {
     /** Test the install flow. */
     @Test
     public void testSetUp_install() throws Exception {
-        Set<String> set = new HashSet<>();
-        doReturn(set).when(mMockDevice).getInstalledPackageNames();
         doReturn(1).when(mMockDevice).getCurrentUser();
         doReturn(null).when(mMockDevice).installPackage(any(), eq(true), eq(true));
         doReturn(null)
@@ -86,17 +82,16 @@ public class ContentProviderHandlerTest {
 
     @Test
     public void testSetUp_alreadyInstalled() throws Exception {
-        Set<String> set = new HashSet<>();
-        set.add(ContentProviderHandler.PACKAGE_NAME);
-        doReturn(set).when(mMockDevice).getInstalledPackageNames();
+        doReturn(0).when(mMockDevice).getCurrentUser();
+        doReturn(true)
+                .when(mMockDevice)
+                .isPackageInstalled(ContentProviderHandler.PACKAGE_NAME, "0");
 
         assertTrue(mProvider.setUp());
     }
 
     @Test
     public void testSetUp_installFail() throws Exception {
-        Set<String> set = new HashSet<>();
-        doReturn(set).when(mMockDevice).getInstalledPackageNames();
         doReturn(1).when(mMockDevice).getCurrentUser();
         doReturn("fail").when(mMockDevice).installPackage(any(), eq(true), eq(true));
 
@@ -235,7 +230,7 @@ public class ContentProviderHandlerTest {
     public void testPullDir_EmptyDirectory() throws Exception {
         File pullTo = FileUtil.createTempDir("content-provider-test");
 
-        doReturn("No result found.").when(mMockDevice).executeShellCommand(anyString());
+        doReturn("No result found.\n").when(mMockDevice).executeShellCommand(anyString());
 
         try {
             assertTrue(mProvider.pullDir("path/somewhere", pullTo));

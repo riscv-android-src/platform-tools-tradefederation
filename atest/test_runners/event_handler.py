@@ -37,7 +37,8 @@ EVENT_NAMES = {'module_started': 'TEST_MODULE_STARTED',
                'run_failed': 'TEST_RUN_FAILED',
                'invocation_failed': 'INVOCATION_FAILED',
                'test_ignored': 'TEST_IGNORED',
-               'log_association':'LOG_ASSOCIATION'}
+               'test_assumption_failure': 'TEST_ASSUMPTION_FAILURE',
+               'log_association': 'LOG_ASSOCIATION'}
 
 EVENT_PAIRS = {EVENT_NAMES['module_started']: EVENT_NAMES['module_ended'],
                EVENT_NAMES['run_started']: EVENT_NAMES['run_ended'],
@@ -57,6 +58,7 @@ CONNECTION_STATE = {
     'current_test': None,
     'last_failed': None,
     'last_ignored': None,
+    'last_assumption_failed': None,
     'current_group': None,
     'current_group_total': None,
     'test_count': 0,
@@ -105,6 +107,11 @@ class EventHandler(object):
                                      event_data['testName'])
         self.state['last_ignored'] = name
 
+    def _test_assumption_failure(self, event_data):
+        name = TEST_NAME_TEMPLATE % (event_data['className'],
+                                     event_data['testName'])
+        self.state['last_assumption_failed'] = name
+
     def _run_failed(self, event_data):
         # Module and Test Run probably started, but failure occurred.
         self.reporter.process_test_result(test_runner_base.TestResult(
@@ -116,7 +123,8 @@ class EventHandler(object):
             test_count=self.state['test_count'],
             test_time='',
             runner_total=None,
-            group_total=self.state['current_group_total']))
+            group_total=self.state['current_group_total'],
+            perf_info={}))
 
     def _invocation_failed(self, event_data):
         # Broadest possible failure. May not even start the module/test run.
@@ -129,7 +137,8 @@ class EventHandler(object):
             test_count=self.state['test_count'],
             test_time='',
             runner_total=None,
-            group_total=self.state['current_group_total']))
+            group_total=self.state['current_group_total'],
+            perf_info={}))
 
     def _run_ended(self, event_data):
         pass
@@ -144,11 +153,15 @@ class EventHandler(object):
         if self.state['test_start_time']:
             test_time = self._calc_duration(event_data['end_time'] -
                                             self.state['test_start_time'])
-
         if self.state['last_failed'] and name == self.state['last_failed']['name']:
             status = test_runner_base.FAILED_STATUS
             trace = self.state['last_failed']['trace']
             self.state['last_failed'] = None
+        elif (self.state['last_assumption_failed'] and
+              name == self.state['last_assumption_failed']):
+            status = test_runner_base.ASSUMPTION_FAILED
+            self.state['last_assumption_failed'] = None
+            trace = None
         elif self.state['last_ignored'] and name == self.state['last_ignored']:
             status = test_runner_base.IGNORED_STATUS
             self.state['last_ignored'] = None
@@ -156,6 +169,15 @@ class EventHandler(object):
         else:
             status = test_runner_base.PASSED_STATUS
             trace = None
+
+        cpu_time = event_data.get('cpu_time', None)
+        real_time = event_data.get('real_time', None)
+        iterations = event_data.get('iterations', None)
+        perf_info = {}
+        if (cpu_time and real_time and iterations):
+            perf_info['cpu_time'] = cpu_time
+            perf_info['real_time'] = real_time
+            perf_info['iterations'] = iterations
 
         self.reporter.process_test_result(test_runner_base.TestResult(
             runner_name=self.runner_name,
@@ -166,6 +188,7 @@ class EventHandler(object):
             test_count=self.state['test_count'],
             test_time=test_time,
             runner_total=None,
+            perf_info=perf_info,
             group_total=self.state['current_group_total']))
 
     def _log_association(self, event_data):
@@ -176,6 +199,7 @@ class EventHandler(object):
                       EVENT_NAMES['test_started']: _test_started,
                       EVENT_NAMES['test_failed']: _test_failed,
                       EVENT_NAMES['test_ignored']: _test_ignored,
+                      EVENT_NAMES['test_assumption_failure']: _test_assumption_failure,
                       EVENT_NAMES['run_failed']: _run_failed,
                       EVENT_NAMES['invocation_failed']: _invocation_failed,
                       EVENT_NAMES['test_ended']: _test_ended,
@@ -228,7 +252,8 @@ class EventHandler(object):
                     test_count=self.state['test_count'],
                     test_time='',
                     runner_total=None,
-                    group_total=self.state['current_group_total']))
+                    group_total=self.state['current_group_total'],
+                    perf_info={}))
             raise EventHandleError(EVENTS_NOT_BALANCED % (start_event,
                                                           event_name))
 

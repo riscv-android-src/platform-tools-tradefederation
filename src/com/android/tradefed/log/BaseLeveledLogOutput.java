@@ -102,6 +102,9 @@ public abstract class BaseLeveledLogOutput implements ILeveledLogOutput {
                 receiver.put(objTag, components.get(component));
             }
         }
+        // Add components we have less control over (ddmlib for example) to ensure they don't flood
+        // us. This will still write to the log.
+        mVerbosityMap.put("ddms", LogLevel.WARN);
     }
 
     /** {@inheritDoc} */

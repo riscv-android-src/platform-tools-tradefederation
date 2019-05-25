@@ -97,8 +97,11 @@ public class BackgroundDeviceAction extends Thread {
             try {
                 mTestDevice.getIDevice().executeShellCommand(mCommand, mReceiver,
                         0, TimeUnit.MILLISECONDS);
-            } catch (AdbCommandRejectedException | IOException |
-                    ShellCommandUnresponsiveException | TimeoutException e) {
+            } catch (AdbCommandRejectedException e) {
+                // For command rejected wait a bit to let the device reach a stable state again.
+                getRunUtil().sleep(ONLINE_POLL_INTERVAL_MS);
+                waitForDeviceRecovery(e.getClass().getName());
+            } catch (IOException | ShellCommandUnresponsiveException | TimeoutException e) {
                 waitForDeviceRecovery(e.getClass().getName());
             }
         }
