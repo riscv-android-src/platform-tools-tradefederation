@@ -196,4 +196,7 @@ public interface ICommandOptions {
 
     /** Sets the suffix to append to Tradefed host_log. */
     public void setHostLogSuffix(String suffix);
+
+    /** Whether or not to attempt parallel setup of the remote devices. */
+    public boolean shouldUseParallelRemoteSetup();
 }

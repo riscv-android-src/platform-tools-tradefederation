@@ -203,7 +203,8 @@ public class SuiteModuleLoader {
             IModuleParameter mForcedParameter = null;
             if (mForcedModuleParameter != null) {
                 mForcedParameter =
-                        ModuleParametersHelper.getParameterHandler(mForcedModuleParameter);
+                        ModuleParametersHelper.getParameterHandler(
+                                mForcedModuleParameter, /* optionalParams */ false);
             }
 
             // Invokes parser to process the test module config file
@@ -235,9 +236,7 @@ public class SuiteModuleLoader {
                         && !config.getConfigurationDescription()
                                 .getSuiteTags()
                                 .contains(suiteTag)) {
-                    CLog.d(
-                            "Configuration %s does not include the suite-tag '%s'. Ignoring it.",
-                            configFullName, suiteTag);
+                    // Do not print here, it could leave several hundred lines of logs.
                     continue;
                 }
 
@@ -549,7 +548,9 @@ public class SuiteModuleLoader {
                 CLog.d("'%s' was excluded via exclude-module-parameters.");
                 continue;
             }
-            IModuleParameter handler = ModuleParametersHelper.getParameterHandler(suiteParam);
+            IModuleParameter handler =
+                    ModuleParametersHelper.getParameterHandler(
+                            suiteParam, /* optionalParams */ false);
             params.add(handler);
         }
         return params;

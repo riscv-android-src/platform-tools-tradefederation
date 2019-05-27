@@ -116,6 +116,29 @@ public class GTestBaseTest {
                 filters);
     }
 
+    /** Test to ensure that the filters do not carry the prepended filename. */
+    @Test
+    public void testFilterResultWhenPrepending() throws Exception {
+        GTestBase gTestBase = new GTestBaseImpl();
+        mSetter = new OptionSetter(gTestBase);
+        gTestBase.addIncludeFilter("test1.filter1");
+        gTestBase.addIncludeFilter("filter2");
+        gTestBase.addExcludeFilter("test1.filter3");
+        gTestBase.addExcludeFilter("test1.filter4");
+        mSetter.setOptionValue("prepend-filename", "true");
+        ITestInvocationListener listener = EasyMock.createNiceMock(ITestInvocationListener.class);
+        EasyMock.replay(listener);
+
+        gTestBase.createResultParser("test1", listener);
+
+        String filters = gTestBase.getGTestFilters("/path/test1");
+        assertEquals(
+                String.format("--gtest_filter=%s-%s", "filter1:filter2", "filter3:filter4"),
+                filters);
+
+        EasyMock.verify(listener);
+    }
+
     /** Test the return instance type of createResultParser. */
     @Test
     public void testCreateResultParser() throws ConfigurationException {
