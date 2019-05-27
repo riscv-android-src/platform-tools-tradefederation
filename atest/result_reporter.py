@@ -357,14 +357,8 @@ class ResultReporter(object):
                                                  test.status,
                                                  constants.GREEN),
                                              test.test_time))
-                if test.perf_info.keys():
-                    print('\t%s: %s(ns) %s: %s(ns) %s: %s'
-                          %(au.colorize('cpu_time', constants.BLUE),
-                            test.perf_info['cpu_time'],
-                            au.colorize('real_time', constants.BLUE),
-                            test.perf_info['real_time'],
-                            au.colorize('iterations', constants.BLUE),
-                            test.perf_info['iterations']))
+                for key, data in test.additional_info.items():
+                    print('\t%s: %s' % (au.colorize(key, constants.BLUE), data))
             elif test.status == test_runner_base.IGNORED_STATUS:
                 # Example: [33/92] test_name: IGNORED (12ms)
                 print('[%s/%s] %s: %s %s' % (test.test_count, test.group_total,
