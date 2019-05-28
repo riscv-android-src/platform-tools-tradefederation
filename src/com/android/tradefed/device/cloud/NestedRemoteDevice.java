@@ -31,10 +31,12 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
 
 import com.google.common.base.Joiner;
 
 import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -179,6 +181,13 @@ public class NestedRemoteDevice extends TestDevice {
         if (!launcherLog.exists()) {
             CLog.e("%s doesn't exists, skip logging it.", launcherLog.getAbsolutePath());
             return;
+        }
+        try {
+            // Attempt to print the log
+            CLog.e("Launcher.log content: %s", FileUtil.readStringFromFile(launcherLog));
+        } catch (IOException e) {
+            // Ignore
+            CLog.e(e);
         }
         try (InputStreamSource source = new FileInputStreamSource(launcherLog)) {
             logger.testLog(logName, LogDataType.TEXT, source);

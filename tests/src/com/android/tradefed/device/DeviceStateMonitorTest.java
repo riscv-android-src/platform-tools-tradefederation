@@ -790,4 +790,14 @@ public class DeviceStateMonitorTest extends TestCase {
         };
         assertNull(mMonitor.waitForDeviceAvailable(WAIT_TIMEOUT_REACHED_MS));
     }
+
+    /** Test {@link DeviceStateMonitor#waitForDeviceInSideload(long)} */
+    public void testWaitForDeviceInSideload() throws Exception {
+        mMockDevice = EasyMock.createMock(IDevice.class);
+        EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.SIDELOAD).anyTimes();
+        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn(SERIAL_NUMBER).anyTimes();
+        EasyMock.replay(mMockDevice);
+        mMonitor = new DeviceStateMonitor(mMockMgr, mMockDevice, true);
+        assertTrue(mMonitor.waitForDeviceInSideload(WAIT_TIMEOUT_NOT_REACHED_MS));
+    }
 }

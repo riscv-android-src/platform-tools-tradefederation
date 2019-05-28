@@ -32,7 +32,7 @@ RESULT_TEST_TEMPLATE = test_runner_base.TestResult(
     test_time='(10ms)',
     runner_total=None,
     group_total=2,
-    perf_info={}
+    additional_info={}
 )
 
 # pylint: disable=protected-access

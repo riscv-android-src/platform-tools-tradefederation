@@ -145,11 +145,14 @@ public class AndroidJUnitTest extends InstrumentationTest
     private Integer mMaxShard = null;
 
     @Option(
-            name = "device-listeners",
-            description =
-                    "Specify a device side instrumentation listener to be added for the run. "
-                            + "Can be repeated.")
-    private Set<String> mExtraDeviceListeners = new HashSet<>();
+        name = "device-listeners",
+        description =
+                "Specify device side instrumentation listeners to be added for the run. "
+                        + "Can be repeated. Note that while the ordering here is followed for "
+                        + "now, future versions of AndroidJUnitRunner might not preserve the "
+                        + "listener ordering."
+    )
+    private List<String> mExtraDeviceListeners = new ArrayList<>();
 
     @Option(
         name = "use-new-run-listener-order",
@@ -329,6 +332,8 @@ public class AndroidJUnitTest extends InstrumentationTest
             mDeviceIncludeFile = mTestFilterDir.replaceAll("/$", "") + "/" + INCLUDE_FILE;
             pushTestFile(mIncludeTestFile, mDeviceIncludeFile, listener);
             pushedFile = true;
+            // If an explicit include file filter is provided, do not use the package
+            setTestPackageName(null);
         }
 
         // if mExcludeTestFile is set, perform filtering with this file

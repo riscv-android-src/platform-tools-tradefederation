@@ -19,6 +19,8 @@ package com.android.tradefed.testtype.suite;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
@@ -95,6 +97,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
     private Map<String, Integer> mAttemptSuccess = new HashMap<>();
 
     private RetryStrategy mRetryStrategy = RetryStrategy.RETRY_TEST_CASE_FAILURE;
+    private boolean mRebootAtLastRetry = false;
 
     public GranularRetriableTestWrapper(
             IRemoteTest test,
@@ -170,6 +173,11 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
     /** Sets the {@link RetryStrategy} to be used when retrying. */
     public final void setRetryStrategy(RetryStrategy retryStrategy) {
         mRetryStrategy = retryStrategy;
+    }
+
+    /** Sets the flag to reboot devices at the last intra-module retry. */
+    public final void setRebootAtLastRetry(boolean rebootAtLastRetry) {
+        mRebootAtLastRetry = rebootAtLastRetry;
     }
 
     /**
@@ -293,7 +301,16 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                         break;
                     }
                 }
-
+                // Reboot device at the last intra-module retry if reboot-at-last-retry is set.
+                if (mRebootAtLastRetry && (attemptNumber == (mMaxRunLimit-1))) {
+                    for (ITestDevice device : mModuleInvocationContext.getDevices()) {
+                        if (!(device.getIDevice() instanceof StubDevice)) {
+                            CLog.i("Rebooting device: %s at the last intra-module retry.",
+                                    device.getSerialNumber());
+                            device.reboot();
+                        }
+                    }
+                }
                 // Run the tests again
                 intraModuleRun(allListeners);
 

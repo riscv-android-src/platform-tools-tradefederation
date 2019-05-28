@@ -143,6 +143,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     private RetryStrategy mRetryStrategy = RetryStrategy.RETRY_TEST_CASE_FAILURE;
     private boolean mMergeAttempts = true;
+    private boolean mRebootAtLastRetry = false;
 
     // Token during sharding
     private Set<TokenProperty> mRequiredTokens = new HashSet<>();
@@ -590,6 +591,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         retriableTest.setInvocationContext(mModuleInvocationContext);
         retriableTest.setLogSaver(mLogSaver);
         retriableTest.setRetryStrategy(mRetryStrategy);
+        retriableTest.setRebootAtLastRetry(mRebootAtLastRetry);
         return retriableTest;
     }
 
@@ -871,6 +873,11 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     public final void setRetryStrategy(RetryStrategy retryStrategy, boolean mergeAttempts) {
         mRetryStrategy = retryStrategy;
         mMergeAttempts = mergeAttempts;
+    }
+
+    /** Sets the flag to reboot devices at the last intra-module retry. */
+    public final void setRebootAtLastRetry(boolean rebootAtLastRetry) {
+        mRebootAtLastRetry = rebootAtLastRetry;
     }
 
     /** Returns a list of tests that ran in this module. */

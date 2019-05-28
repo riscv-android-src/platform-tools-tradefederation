@@ -16,6 +16,7 @@
 package com.android.tradefed.result.proto;
 
 import com.android.tradefed.config.Option;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 
@@ -33,18 +34,74 @@ public class FileProtoResultReporter extends ProtoResultReporter {
     )
     private File mOutputFile;
 
+    @Option(
+        name = "periodic-proto-writing",
+        description =
+                "Whether or not to output intermediate proto per module following a numbered "
+                        + "sequence."
+    )
+    private boolean mPeriodicWriting = false;
+
+    // Current index of the sequence of proto output
+    private int mIndex = 0;
+    private File mCurrentOutputFile;
+
+    @Override
+    public void processStartInvocation(
+            TestRecord invocationStartRecord, IInvocationContext invocationContext) {
+        writeProto(invocationStartRecord);
+    }
+
+    @Override
+    public void processTestModuleEnd(TestRecord moduleRecord) {
+        writeProto(moduleRecord);
+    }
+
+    @Override
+    public void processTestRunEnded(TestRecord runRecord, boolean moduleInProgress) {
+        if (!moduleInProgress) {
+            // If it's a testRun outside of the module scope, output it to ensure we support
+            // non-module use cases.
+            writeProto(runRecord);
+        }
+    }
+
     @Override
     public void processFinalProto(TestRecord finalRecord) {
+        writeProto(finalRecord);
+    }
+
+    /** Sets the file where to output the result. */
+    public void setFileOutput(File output) {
+        mOutputFile = output;
+        if (mPeriodicWriting) {
+            mCurrentOutputFile = new File(mOutputFile.getAbsolutePath() + mIndex);
+        }
+    }
+
+    /** Enable writing each module individualy to a file. */
+    public void setPeriodicWriting(boolean enabled) {
+        mPeriodicWriting = enabled;
+    }
+
+    private void writeProto(TestRecord record) {
+        File outputFile = mOutputFile;
+        if (mPeriodicWriting) {
+            outputFile = mCurrentOutputFile;
+        }
         try {
-            finalRecord.writeDelimitedTo(new FileOutputStream(mOutputFile));
+            record.writeDelimitedTo(new FileOutputStream(outputFile));
+            if (mPeriodicWriting) {
+                nextOutputFile();
+            }
         } catch (IOException e) {
             CLog.e(e);
             throw new RuntimeException(e);
         }
     }
 
-    /** Sets the file where to output the result. */
-    public void setFileOutput(File output) {
-        mOutputFile = output;
+    private void nextOutputFile() {
+        mIndex++;
+        mCurrentOutputFile = new File(mOutputFile.getAbsolutePath() + mIndex);
     }
 }
