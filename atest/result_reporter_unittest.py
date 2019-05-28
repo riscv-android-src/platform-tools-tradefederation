@@ -32,7 +32,7 @@ RESULT_PASSED_TEST = test_runner_base.TestResult(
     test_time='(10ms)',
     runner_total=None,
     group_total=2,
-    perf_info={}
+    additional_info={}
 )
 
 RESULT_PASSED_TEST_MODULE_2 = test_runner_base.TestResult(
@@ -45,7 +45,7 @@ RESULT_PASSED_TEST_MODULE_2 = test_runner_base.TestResult(
     test_time='(10ms)',
     runner_total=None,
     group_total=2,
-    perf_info={}
+    additional_info={}
 )
 
 RESULT_PASSED_TEST_RUNNER_2_NO_MODULE = test_runner_base.TestResult(
@@ -58,7 +58,7 @@ RESULT_PASSED_TEST_RUNNER_2_NO_MODULE = test_runner_base.TestResult(
     test_time='(10ms)',
     runner_total=None,
     group_total=2,
-    perf_info={}
+    additional_info={}
 )
 
 RESULT_FAILED_TEST = test_runner_base.TestResult(
@@ -71,7 +71,7 @@ RESULT_FAILED_TEST = test_runner_base.TestResult(
     test_time='',
     runner_total=None,
     group_total=2,
-    perf_info={}
+    additional_info={}
 )
 
 RESULT_RUN_FAILURE = test_runner_base.TestResult(
@@ -84,7 +84,7 @@ RESULT_RUN_FAILURE = test_runner_base.TestResult(
     test_time='',
     runner_total=None,
     group_total=2,
-    perf_info={}
+    additional_info={}
 )
 
 RESULT_INVOCATION_FAILURE = test_runner_base.TestResult(
@@ -97,7 +97,7 @@ RESULT_INVOCATION_FAILURE = test_runner_base.TestResult(
     test_time='',
     runner_total=None,
     group_total=None,
-    perf_info={}
+    additional_info={}
 )
 
 RESULT_IGNORED_TEST = test_runner_base.TestResult(
@@ -110,7 +110,7 @@ RESULT_IGNORED_TEST = test_runner_base.TestResult(
     test_time='(10ms)',
     runner_total=None,
     group_total=2,
-    perf_info={}
+    additional_info={}
 )
 
 RESULT_ASSUMPTION_FAILED_TEST = test_runner_base.TestResult(
@@ -123,7 +123,7 @@ RESULT_ASSUMPTION_FAILED_TEST = test_runner_base.TestResult(
     test_time='(10ms)',
     runner_total=None,
     group_total=2,
-    perf_info={}
+    additional_info={}
 )
 
 #pylint: disable=protected-access

@@ -135,7 +135,7 @@ public final class ResultsPlayer implements IRemoteTest, IInvocationContextRecei
             TestRunResult module,
             Collection<Entry<TestDescription, TestResult>> testSet,
             ITestInvocationListener listener) {
-        listener.testRunStarted(module.getName(), module.getNumTests());
+        listener.testRunStarted(module.getName(), testSet.size());
         for (Map.Entry<TestDescription, TestResult> testEntry : testSet) {
             listener.testStarted(testEntry.getKey(), testEntry.getValue().getStartTime());
             switch (testEntry.getValue().getStatus()) {

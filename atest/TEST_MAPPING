@@ -3,6 +3,22 @@
     {
       "name": "atest_unittests",
       "host": true
+    },
+    {
+      "name": "asuite_metrics_lib_tests",
+      "host": true
+    },
+    {
+      "name": "asuite_metrics_lib_py3_tests",
+      "host": true
+    },
+    {
+      "name": "asuite_cc_lib_tests",
+      "host": true
+    },
+    {
+      "name": "asuite_cc_lib_py3_tests",
+      "host": true
     }
   ]
 }
