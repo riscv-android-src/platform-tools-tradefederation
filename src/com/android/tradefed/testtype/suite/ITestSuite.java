@@ -178,6 +178,11 @@ public abstract class ITestSuite
     @Option(name = "reboot-per-module", description = "Reboot the device before every module run.")
     private boolean mRebootPerModule = false;
 
+    @Deprecated
+    @Option(name = "reboot-at-last-retry",
+        description = "Reboot the device at the last intra-module retry")
+    private boolean mRebootAtLastRetry = false;
+
     @Option(name = "skip-all-system-status-check",
             description = "Whether all system status check between modules should be skipped")
     private boolean mSkipAllSystemStatusCheck = false;
@@ -199,14 +204,12 @@ public abstract class ITestSuite
     )
     private boolean mReportSystemChecker = false;
 
-    @Deprecated
     @Option(
         name = "random-order",
         description = "Whether randomizing the order of the modules to be ran or not."
     )
     private boolean mRandomOrder = false;
 
-    @Deprecated
     @Option(
         name = "random-seed",
         description = "Seed to randomize the order of the modules."
@@ -680,6 +683,8 @@ public abstract class ITestSuite
         module.setLogSaver(mMainConfiguration.getLogSaver());
         // Pass the retry strategy to the module
         module.setRetryStrategy(mRetryStrategy, mMergeAttempts);
+        // Pass the reboot strategy at the last intra-module retry to the module
+        module.setRebootAtLastRetry(mRebootAtLastRetry);
 
         // Actually run the module
         module.run(listener, moduleListeners, failureListener, mMaxRunLimit);

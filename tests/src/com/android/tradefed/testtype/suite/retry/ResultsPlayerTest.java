@@ -147,7 +147,7 @@ public class ResultsPlayerTest {
         mPlayer.addToReplay(null, createTestRunResult("run1", 2, 1), entry);
 
         // Verify Mock
-        mMockListener.testRunStarted("run1", 2);
+        mMockListener.testRunStarted("run1", 1);
         // Only the provided test is re-run
         mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
         mMockListener.testAssumptionFailure(test, "assertionfailure");
@@ -184,7 +184,7 @@ public class ResultsPlayerTest {
         mPlayer.addToReplay(null, runResult, entry2);
 
         // Verify Mock
-        mMockListener.testRunStarted("run1", 5);
+        mMockListener.testRunStarted("run1", 2);
         // Only the provided test is re-run
         mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
         mMockListener.testAssumptionFailure(test, "assertionfailure");

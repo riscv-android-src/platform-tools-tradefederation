@@ -2,6 +2,8 @@ syntax = "proto2";
 
 import "proto/common.proto";
 
+option java_package = "com.android.asuite.clearcut";
+
 // Proto used by Atest CLI Tool for External Non-PII Users
 message AtestLogEventExternal {
 
