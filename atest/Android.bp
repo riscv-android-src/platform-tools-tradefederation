@@ -151,6 +151,20 @@ python_library_host {
     },
 }
 
+java_library_host {
+    name: "asuite_proto_java",
+    srcs: [
+        "proto/*.proto",
+    ],
+    libs: [
+        "libprotobuf-java-full",
+    ],
+    proto: {
+        canonical_path_from_root: false,
+        include_dirs: ["external/protobuf/src"],
+    },
+}
+
 python_library_host {
     name: "asuite_proto",
     defaults: ["asuite_default"],
