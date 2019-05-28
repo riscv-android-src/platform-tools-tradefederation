@@ -391,6 +391,22 @@ public interface INativeDevice {
     public String executeAdbCommand(String... commandArgs) throws DeviceNotAvailableException;
 
     /**
+     * Helper method which executes a adb command as a system command with a specified timeout.
+     *
+     * <p>{@link #executeShellCommand(String)} should be used instead wherever possible, as that
+     * method provides better failure detection and performance.
+     *
+     * @param timeout the time in milliseconds before the device is considered unresponsive, 0L for
+     *     no timeout
+     * @param commandArgs the adb command and arguments to run
+     * @return the stdout from command. <code>null</code> if command failed to execute.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     */
+    public String executeAdbCommand(long timeout, String... commandArgs)
+            throws DeviceNotAvailableException;
+
+    /**
      * Helper method which executes a fastboot command as a system command with a default timeout
      * of 2 minutes.
      * <p/>
@@ -880,6 +896,15 @@ public interface INativeDevice {
     public void rebootIntoRecovery() throws DeviceNotAvailableException;
 
     /**
+     * Reboots the device into adb sideload mode (note that this is a special mode under recovery)
+     *
+     * <p>Blocks until device enters sideload mode
+     *
+     * @throws DeviceNotAvailableException if device is not in sideload after reboot
+     */
+    public void rebootIntoSideload() throws DeviceNotAvailableException;
+
+    /**
      * An alternate to {@link #reboot()} that only blocks until device is online ie visible to adb.
      *
      * @throws DeviceNotAvailableException if device is not available after reboot
@@ -1049,6 +1074,15 @@ public interface INativeDevice {
      *         <code>false</code> otherwise
      */
     public boolean waitForDeviceInRecovery(final long waitTime);
+
+    /**
+     * Blocks for the device to be in the 'adb sideload' state
+     *
+     * @param waitTime the time in ms to wait
+     * @return <code>true</code> if device boots into sideload before time expires. <code>false
+     *     </code> otherwise
+     */
+    public boolean waitForDeviceInSideload(final long waitTime);
 
     /**
      * Waits for device to be responsive to a basic adb shell command.
