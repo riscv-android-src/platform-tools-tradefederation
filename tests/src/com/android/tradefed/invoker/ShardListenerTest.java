@@ -78,6 +78,27 @@ public class ShardListenerTest {
         EasyMock.verify(mMockListener, mMockDevice);
     }
 
+    /** Test that we can replay events even if invocationEnded hasn't be called yet. */
+    @Test
+    public void testPlayRuns() {
+        mMockListener.invocationStarted(mContext);
+        mMockListener.testRunStarted("run1", 1);
+        TestDescription tid = new TestDescription("class1", "name1");
+        mMockListener.testStarted(tid, 0l);
+        mMockListener.testEnded(tid, 0l, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(0l, new HashMap<String, Metric>());
+        // mMockListener.invocationEnded(0l); On purpose not calling invocationEnded.
+
+        EasyMock.replay(mMockListener, mMockDevice);
+        mShardListener.invocationStarted(mContext);
+        mShardListener.testRunStarted("run1", 1);
+        mShardListener.testStarted(tid, 0l);
+        mShardListener.testEnded(tid, 0l, new HashMap<String, Metric>());
+        mShardListener.testRunEnded(0l, new HashMap<String, Metric>());
+        // mShardListener.invocationEnded(0l); On purpose not calling invocationEnded.
+        EasyMock.verify(mMockListener, mMockDevice);
+    }
+
     /** Ensure that replaying a log without a run (no tests ran) still works. */
     @Test
     public void testLogWithoutRun() {
