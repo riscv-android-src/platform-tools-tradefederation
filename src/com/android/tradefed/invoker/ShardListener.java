@@ -43,6 +43,7 @@ import java.util.Map.Entry;
 public class ShardListener extends CollectingTestListener {
 
     private ITestInvocationListener mMasterListener;
+    private IInvocationContext mModuleContext = null;
 
     /**
      * Create a {@link ShardListener}.
@@ -112,10 +113,9 @@ public class ShardListener extends CollectingTestListener {
 
     /** {@inheritDoc} */
     @Override
-    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
-        super.testRunEnded(elapsedTime, runMetrics);
-        CLog.logAndDisplay(LogLevel.INFO, "Sharded test completed: %s",
-                getCurrentRunResults().getName());
+    public void testModuleStarted(IInvocationContext moduleContext) {
+        super.testModuleStarted(moduleContext);
+        mModuleContext = moduleContext;
     }
 
     /**
@@ -128,16 +128,34 @@ public class ShardListener extends CollectingTestListener {
                 getCurrentRunResults().getName(), failureMessage);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void invocationEnded(long elapsedTime) {
-        super.invocationEnded(elapsedTime);
+    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
+        super.testRunEnded(elapsedTime, runMetrics);
+        CLog.logAndDisplay(
+                LogLevel.INFO, "Sharded test completed: %s", getCurrentRunResults().getName());
+        if (mModuleContext == null) {
+            // testRunEnded only forwards if it's not part of a module. If it's a module
+            // testModuleEnded is in charge of forwarding all run results.
+            synchronized (mMasterListener) {
+                forwardRunResults(getCurrentRunResults());
+            }
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testModuleEnded() {
+        super.testModuleEnded();
+
         synchronized (mMasterListener) {
-            logShardContent(getMergedTestRunResults());
             IInvocationContext moduleContext = null;
+            // TODO: Support attempts and retries
             for (TestRunResult runResult : getMergedTestRunResults()) {
+                // Only consider run results of the module in progress
+                if (getModuleContextForRunResult(runResult.getName()) != mModuleContext) {
+                    continue;
+                }
 
                 // Stop or start the module
                 if (moduleContext != null
@@ -151,31 +169,44 @@ public class ShardListener extends CollectingTestListener {
                     moduleContext = getModuleContextForRunResult(runResult.getName());
                     mMasterListener.testModuleStarted(moduleContext);
                 }
-
-                mMasterListener.testRunStarted(
-                        runResult.getName(), runResult.getExpectedTestCount());
-                forwardTestResults(runResult.getTestResults());
-                if (runResult.isRunFailure()) {
-                    mMasterListener.testRunFailed(runResult.getRunFailureMessage());
-                }
-
-                // Provide a strong association of the run to its logs.
-                forwardLogAssociation(runResult.getRunLoggedFiles(), mMasterListener);
-
-                mMasterListener.testRunEnded(
-                        runResult.getElapsedTime(), runResult.getRunProtoMetrics());
+                // Forward the run level results
+                forwardRunResults(runResult);
             }
             // Close the last module
             if (moduleContext != null) {
                 mMasterListener.testModuleEnded();
                 moduleContext = null;
             }
+        }
+        mModuleContext = null;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void invocationEnded(long elapsedTime) {
+        super.invocationEnded(elapsedTime);
+        synchronized (mMasterListener) {
+            logShardContent(getMergedTestRunResults());
             // In case there was no run, we still want to report the logs we received.
             if (getMergedTestRunResults().isEmpty()) {
                 forwardLogAssociation(getCurrentRunResults().getRunLoggedFiles(), mMasterListener);
             }
             mMasterListener.invocationEnded(elapsedTime);
         }
+    }
+
+    private void forwardRunResults(TestRunResult runResult) {
+        // TODO: Support attempts and retries
+        mMasterListener.testRunStarted(runResult.getName(), runResult.getExpectedTestCount());
+        forwardTestResults(runResult.getTestResults());
+        if (runResult.isRunFailure()) {
+            mMasterListener.testRunFailed(runResult.getRunFailureMessage());
+        }
+
+        // Provide a strong association of the run to its logs.
+        forwardLogAssociation(runResult.getRunLoggedFiles(), mMasterListener);
+
+        mMasterListener.testRunEnded(runResult.getElapsedTime(), runResult.getRunProtoMetrics());
     }
 
     private void forwardTestResults(Map<TestDescription, TestResult> testResults) {
