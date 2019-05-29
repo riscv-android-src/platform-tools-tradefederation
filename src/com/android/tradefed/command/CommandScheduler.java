@@ -1204,7 +1204,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 CLog.logAndDisplay(LogLevel.ERROR, "Failed to get json command usage: %s", e);
             }
         } else if (config.getCommandOptions().isDryRunMode()) {
-            config.validateOptions(false);
+            config.validateOptions();
             String cmdLine = QuotationAwareTokenizer.combineTokens(args);
             CLog.d("Dry run mode; skipping adding command: %s", cmdLine);
             if (config.getCommandOptions().isNoisyDryRunMode()) {
