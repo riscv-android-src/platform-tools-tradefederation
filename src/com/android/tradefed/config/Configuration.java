@@ -1272,12 +1272,6 @@ public class Configuration implements IConfiguration {
      */
     @Override
     public void validateOptions() throws ConfigurationException {
-        validateOptions(true);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void validateOptions(boolean download) throws ConfigurationException {
         ArgsOptionParser argsParser = new ArgsOptionParser(getAllConfigurationObjects());
         argsParser.validateMandatoryOptions();
         ICommandOptions options = getCommandOptions();
@@ -1289,16 +1283,21 @@ public class Configuration implements IConfiguration {
                         || options.getShardIndex() >= options.getShardCount())) {
             throw new ConfigurationException("a shard index must be in range [0, shard count)");
         }
-        // Parent invocation for local sharding should not resolved the dynamic @option yet.
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void resolveDynamicOptions() throws ConfigurationException {
+        ICommandOptions options = getCommandOptions();
         if (options.getShardCount() != null && options.getShardIndex() == null) {
-            download = false;
             CLog.w("Skipping download due to local sharding detected.");
+            return;
         }
-        if (download) {
-            CLog.d("Resolve and download remote files from @Option");
-            // Setup and validate the GCS File paths
-            mRemoteFiles.addAll(argsParser.validateRemoteFilePath());
-        }
+
+        ArgsOptionParser argsParser = new ArgsOptionParser(getAllConfigurationObjects());
+        CLog.d("Resolve and download remote files from @Option");
+        // Setup and validate the GCS File paths
+        mRemoteFiles.addAll(argsParser.validateRemoteFilePath());
     }
 
     /** {@inheritDoc} */
