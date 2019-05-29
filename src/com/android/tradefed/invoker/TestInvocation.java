@@ -654,6 +654,9 @@ public class TestInvocation implements ITestInvocation {
         scope.seed(IRescheduler.class, rescheduler);
         scope.seedConfiguration(config);
         try {
+            mStatus = "resolving dynamic options";
+            config.resolveDynamicOptions();
+
             mStatus = "fetching build";
             ILeveledLogOutput leveledLogOutput = config.getLogOutput();
             leveledLogOutput.init();
