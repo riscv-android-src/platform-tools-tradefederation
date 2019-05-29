@@ -193,10 +193,11 @@ public class ShardHelper implements IShardHelper {
         return GlobalConfiguration.getInstance();
     }
 
-    /** Runs the {@link IConfiguration#validateOptions(boolean)} on the config. */
+    /** Runs the {@link IConfiguration#validateOptions()} on the config. */
     @VisibleForTesting
     protected void validateOptions(IConfiguration config) throws ConfigurationException {
-        config.validateOptions(true);
+        config.validateOptions();
+        config.resolveDynamicOptions();
     }
 
     /**
