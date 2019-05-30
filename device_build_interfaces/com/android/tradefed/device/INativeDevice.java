@@ -40,6 +40,7 @@ import java.io.OutputStream;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -1315,19 +1316,31 @@ public interface INativeDevice {
     public DeviceDescriptor getDeviceDescriptor();
 
     /**
-     * Helper method runs the "ps" command and returns list of USER, PID and NAME of all the
-     * processes.
-     *
-     * @return List of ProcessInfo objects
-     */
-    public List<ProcessInfo> getProcesses() throws DeviceNotAvailableException;
-
-    /**
-     * Helper method runs the "ps" command and returns USER, PID and NAME of the given process name.
+     * Helper method runs the "pidof" and "stat" command and returns {@link ProcessInfo} object with
+     * PID and process start time of the given process.
      *
      * @return ProcessInfo of given processName
      */
     public ProcessInfo getProcessByName(String processName) throws DeviceNotAvailableException;
+
+    /**
+     * Helper method collects the boot history map with boot time and boot reason.
+     *
+     * @return Map of boot time (UTC time in second since Epoch) and boot reason
+     */
+    public Map<Long, String> getBootHistory() throws DeviceNotAvailableException;
+
+    /**
+     * Helper method collects the boot history map with boot time and boot reason since the given
+     * time in second since epoch from device. The current device utcEpochTime in second can be
+     * obtained by adb shell command "date +%s". Method {@link #getDeviceDate} uses adb shell
+     * command "date +%s" to get device UTC Time since Epoch and return the value in scale of
+     * millisecond.
+     *
+     * @return Map of boot time (UTC time in second since Epoch) and boot reason
+     */
+    public Map<Long, String> getBootHistorySince(long utcEpochTime)
+            throws DeviceNotAvailableException;
 
     /** Returns the pid of the service or null if something went wrong. */
     public String getProcessPid(String process) throws DeviceNotAvailableException;
@@ -1366,4 +1379,6 @@ public interface INativeDevice {
      * @see <a href="https://source.android.com/devices/tech/debug">Tombstones documentation</a>
      */
     public List<File> getTombstones() throws DeviceNotAvailableException;
+
+
 }
