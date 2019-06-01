@@ -621,6 +621,45 @@ public class PushFilePreparerTest {
     }
 
     /**
+     * Ensure that in case we don't find the module directory. We fallback to top level match first
+     * and not first found.
+     */
+    @Test
+    public void testPush_moduleName_noMatch() throws Exception {
+        mOptionSetter.setOptionValue("push", "lib64->/data/local/tmp/lib");
+        mPreparer.setAbi(new Abi("x86_64", "64"));
+
+        mPreparer.setInvocationContext(createModuleWithName("CtsBionicTestCases"));
+        IDeviceBuildInfo info = new DeviceBuildInfo();
+        File tmpFolder = FileUtil.createTempDir("push-file-tests-dir");
+        try {
+            File beforeName = new File(tmpFolder, "lib64");
+            FileUtil.mkdirsRWX(beforeName);
+            File libX86File = new File(tmpFolder, "DATA/lib64");
+            FileUtil.mkdirsRWX(libX86File);
+            info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
+            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/lib")).andReturn(false);
+            EasyMock.expect(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/lib\""))
+                    .andReturn("");
+            Capture<Set<String>> capture = new Capture<>();
+            EasyMock.expect(
+                            mMockDevice.pushDir(
+                                    EasyMock.eq(new File(tmpFolder, "lib64")),
+                                    EasyMock.eq("/data/local/tmp/lib"),
+                                    EasyMock.capture(capture)))
+                    .andReturn(true);
+            EasyMock.replay(mMockDevice);
+            mPreparer.setUp(mMockDevice, info);
+            EasyMock.verify(mMockDevice);
+            // The x86 folder was not filtered
+            Set<String> capValue = capture.getValue();
+            assertFalse(capValue.contains("x86_64"));
+        } finally {
+            FileUtil.recursiveDelete(tmpFolder);
+        }
+    }
+
+    /**
      * Test that if a binary name is repeating in another directory that is searched first we don't
      * use it and do prioritize the module name directory.
      */
