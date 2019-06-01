@@ -75,6 +75,7 @@ public class InstallApexModuleTargetPreparerTest {
     private static final String APEX_DATA_DIR = "/data/apex/active/";
     private static final String STAGING_DATA_DIR = "/data/app-staging/";
     private static final String SESSION_DATA_DIR = "/data/apex/sessions/";
+    private static final String APEX_STAGING_WAIT_TIME = "10";
 
     @Before
     public void setUp() throws Exception {
@@ -159,6 +160,7 @@ public class InstallApexModuleTargetPreparerTest {
 
         mSetter = new OptionSetter(mInstallApexModuleTargetPreparer);
         mSetter.setOptionValue("cleanup-apks", "true");
+        mSetter.setOptionValue("apex-staging-wait-time", APEX_STAGING_WAIT_TIME);
     }
 
     @After
