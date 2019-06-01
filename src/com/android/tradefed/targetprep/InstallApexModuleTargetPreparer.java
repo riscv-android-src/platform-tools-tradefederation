@@ -28,6 +28,7 @@ import com.android.tradefed.targetprep.suite.SuiteApkInstaller;
 import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.BundletoolUtil;
 
+import com.android.tradefed.util.RunUtil;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
@@ -62,6 +63,13 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
 
     @Option(name = "bundletool-file-name", description = "The file name of the bundletool jar.")
     private String mBundletoolFilename;
+
+    @Option(
+        name = "apex-staging-wait-time",
+        description = "The time in ms to wait for apex staged session ready.",
+        isTimeVal = true
+    )
+    private long mApexStagingWaitTime = 1 * 60 * 1000;
 
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
@@ -106,6 +114,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         }
 
         Set<ApexInfo> activatedApexes = device.getActiveApexes();
+
         if (activatedApexes.isEmpty()) {
             throw new TargetSetupError(
                     String.format(
@@ -206,6 +215,11 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             }
         }
         String log = device.executeAdbCommand(trainInstallCmd.toArray(new String[0]));
+
+        // Wait until all apexes are fully staged and ready.
+        // TODO: should have adb level solution b/130039562
+        RunUtil.getDefault().sleep(mApexStagingWaitTime);
+
         if (log.contains("Success")) {
             CLog.d(
                     "Train is staged successfully. Cmd: %s, Output: %s.",
