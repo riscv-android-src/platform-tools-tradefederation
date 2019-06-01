@@ -33,7 +33,6 @@ import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -205,7 +204,28 @@ public class PushFilePreparer extends BaseTargetPreparer
                     }
                 }
             }
-
+            // Search top-level matches
+            for (File searchDir : scanDirs) {
+                try {
+                    Set<File> allMatch = FileUtil.findFilesObject(searchDir, fileName);
+                    if (allMatch.size() > 1) {
+                        CLog.d(
+                                "Several match for filename '%s', searching for top-level match.",
+                                fileName);
+                        for (File f : allMatch) {
+                            // Bias toward direct child / top level nodes
+                            if (f.getParent().equals(searchDir.getAbsolutePath())) {
+                                return f;
+                            }
+                        }
+                    } else if (allMatch.size() == 1) {
+                        return allMatch.iterator().next();
+                    }
+                } catch (IOException e) {
+                    CLog.w("Failed to find test files from directory.");
+                }
+            }
+            // Fall-back to searching everything
             try {
                 // Search the full tests dir if no target dir is available.
                 src = FileUtil.findFile(fileName, null, scanDirs.toArray(new File[] {}));
