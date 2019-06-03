@@ -42,6 +42,7 @@ import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.IDisableable;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
@@ -518,23 +519,34 @@ public class Configuration implements IConfiguration {
      * Return a copy of all config objects
      */
     private Collection<Object> getAllConfigurationObjects() {
-        return getAllConfigurationObjects(null);
+        return getAllConfigurationObjects(null, true);
+    }
+
+    /** Return a copy of all config objects that are not disabled via {@link IDisableable}. */
+    private Collection<Object> getAllNonDisabledConfigurationObjects() {
+        return getAllConfigurationObjects(null, false);
     }
 
     /**
      * Return a copy of all config objects, minus the object configuration of the type specified.
      * Returns all the config objects if param is null.
      */
-    private Collection<Object> getAllConfigurationObjects(String excludedConfigName) {
+    private Collection<Object> getAllConfigurationObjects(
+            String excludedConfigName, boolean includeDisabled) {
         Collection<Object> objectsCopy = new ArrayList<Object>();
         for (Entry<String, List<Object>> entryList : mConfigMap.entrySet()) {
-            if (excludedConfigName != null) {
-                // Only add if not a descriptor config object type.
-                if (!excludedConfigName.equals(entryList.getKey())) {
-                    objectsCopy.addAll(entryList.getValue());
-                }
-            } else {
+            if (excludedConfigName != null && excludedConfigName.equals(entryList.getKey())) {
+                continue;
+            }
+            if (includeDisabled) {
                 objectsCopy.addAll(entryList.getValue());
+            } else {
+                for (Object o : entryList.getValue()) {
+                    if (o instanceof IDisableable && ((IDisableable) o).isDisabled()) {
+                        continue;
+                    }
+                    objectsCopy.add(o);
+                }
             }
         }
         return objectsCopy;
@@ -1029,7 +1041,7 @@ public class Configuration implements IConfiguration {
         // allow passing its option via command line.
         ArgsOptionParser parser =
                 new ArgsOptionParser(
-                        getAllConfigurationObjects(CONFIGURATION_DESCRIPTION_TYPE_NAME));
+                        getAllConfigurationObjects(CONFIGURATION_DESCRIPTION_TYPE_NAME, true));
         if (keyStoreClient != null) {
             parser.setKeyStore(keyStoreClient);
         }
@@ -1272,7 +1284,7 @@ public class Configuration implements IConfiguration {
      */
     @Override
     public void validateOptions() throws ConfigurationException {
-        ArgsOptionParser argsParser = new ArgsOptionParser(getAllConfigurationObjects());
+        ArgsOptionParser argsParser = new ArgsOptionParser(getAllNonDisabledConfigurationObjects());
         argsParser.validateMandatoryOptions();
         ICommandOptions options = getCommandOptions();
         if (options.getShardCount() != null && options.getShardCount() < 1) {
