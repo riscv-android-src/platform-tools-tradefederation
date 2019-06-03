@@ -34,6 +34,8 @@ except ImportError:
 
 import constants
 
+from metrics import metrics_base
+
 _MAKE_CMD = ('%s/build/soong/soong_ui.bash' %
              os.path.relpath(os.environ.get(constants.ANDROID_BUILD_TOP,
                                             os.getcwd()),
@@ -287,34 +289,26 @@ def colorful_print(text, color, highlight=False, auto_wrap=True):
 
 
 def is_external_run():
+    # TODO(b/133905312): remove this function after aidegen calling
+    #       metrics_base.get_user_type directly.
     """Check is external run or not.
+
+    Determine the internal user by passing at least one check:
+      - whose git mail domain is from google
+      - whose hostname is from google
+    Otherwise is external user.
 
     Returns:
         True if this is an external run, False otherwise.
     """
-    try:
-        output = subprocess.check_output(['git', 'config', '--get', 'user.email'],
-                                         universal_newlines=True)
-        if output and output.strip().endswith(constants.INTERNAL_EMAIL):
-            return False
-    except OSError:
-        # OSError can be raised when running atest_unittests on a host
-        # without git being set up.
-        # This happens before atest._configure_logging is called to set up
-        # logging. Therefore, use print to log the error message, instead of
-        # logging.debug.
-        print('Unable to determine if this is an external run, git is not found.')
-    except subprocess.CalledProcessError:
-        print('Unable to determine if this is an external run, email is not '
-              'found in git config.')
-    return True
+    return metrics_base.get_user_type() == metrics_base.EXTERNAL_USER
 
 
 def print_data_collection_notice():
     """Print the data collection notice."""
     anonymous = ''
     user_type = 'INTERNAL'
-    if is_external_run():
+    if metrics_base.get_user_type() == metrics_base.EXTERNAL_USER:
         anonymous = ' anonymous'
         user_type = 'EXTERNAL'
     notice = ('  We collect%s usage statistics in accordance with our Content '
