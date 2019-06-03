@@ -43,11 +43,18 @@ public class CreateUserPreparer extends BaseTargetPreparer implements ITargetCle
         } catch (IllegalStateException e) {
             throw new TargetSetupError("Failed to create user.", e, device.getDeviceDescriptor());
         }
+        if (!device.startUser(mCreatedUserId, true)) {
+            throw new TargetSetupError(
+                    String.format("Failed to start to user '%s'", mCreatedUserId),
+                    device.getDeviceDescriptor());
+        }
         if (!device.switchUser(mCreatedUserId)) {
             throw new TargetSetupError(
                     String.format("Failed to switch to user '%s'", mCreatedUserId),
                     device.getDeviceDescriptor());
         }
+        device.waitForDeviceAvailable();
+        device.postBootSetup();
     }
 
     @Override
