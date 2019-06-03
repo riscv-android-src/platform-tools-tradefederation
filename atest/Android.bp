@@ -68,10 +68,11 @@ python_library_host {
     name: "atest_module_info",
     defaults: ["atest_lib_default"],
     srcs: [
-        "module_info.py",
+        "atest_error.py",
         "atest_utils.py",
         "constants.py",
-        "constants_default.py"
+        "constants_default.py",
+        "module_info.py",
     ],
 }
 
@@ -180,6 +181,7 @@ python_library_host {
     name: "asuite_cc_client",
     defaults: ["asuite_default"],
     srcs: [
+        "atest_error.py",
         "atest_utils.py",
         "constants.py",
         "constants_default.py",
