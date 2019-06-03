@@ -1,3 +1,4 @@
+package com.android.tradefed.util;
 /*
  * Copyright (C) 2010 The Android Open Source Project
  *
@@ -13,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.util;
+
 
 import com.android.ddmlib.Log;
 import com.android.tradefed.command.FatalHostError;

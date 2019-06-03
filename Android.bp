@@ -74,6 +74,28 @@ java_library_host {
 }
 
 java_library_host {
+    name: "tradefed-common-util",
+    defaults: ["tradefed_defaults"],
+    srcs: [
+        "common_util/**/*.java",
+    ],
+    openjdk9: {
+        javacflags: [
+            "--add-modules=java.xml.bind",
+        ],
+    },
+    static_libs: [
+        "commons-compress-prebuilt",
+    ],
+    libs: [
+        "ddmlib-prebuilt",
+	"guava",
+	"tradefed-protos",
+	"devtools-annotations-prebuilt",
+    ],
+}
+
+java_library_host {
     name: "tradefed",
     defaults: ["tradefed_defaults"],
     srcs: [
@@ -88,8 +110,8 @@ java_library_host {
         ],
     },
     static_libs: [
+        "tradefed-common-util",
         "aoa-helper",
-        "commons-compress-prebuilt",
         "error_prone_annotations-2.0.18",
         "google-api-java-client-min-repackaged",
         "google-api-services-compute",
