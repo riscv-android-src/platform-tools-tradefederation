@@ -483,13 +483,19 @@ def _dry_run(results_dir, extra_args, test_infos):
         results_dir: Path for saving atest logs.
         extra_args: Dict of extra args for test runners to utilize.
         test_infos: A list of TestInfos.
+
+    Returns:
+        A list of test commands.
     """
+    all_run_cmds = []
     for test_runner, tests in test_runner_handler.group_tests_by_test_runners(test_infos):
         runner = test_runner(results_dir)
         run_cmds = runner.generate_run_commands(tests, extra_args)
         for run_cmd in run_cmds:
+            all_run_cmds.append(run_cmd)
             print('Would run test via command: %s'
                   % (atest_utils.colorize(run_cmd, constants.GREEN)))
+    return all_run_cmds
 
 def _print_testable_modules(mod_info, suite):
     """Print the testable modules for a given suite.
@@ -547,8 +553,14 @@ def main(argv, results_dir):
     build_targets |= test_runner_handler.get_test_runner_reqs(mod_info,
                                                               test_infos)
     extra_args = get_extra_args(args)
+    if args.update_cmd_mapping:
+        args.dry_run = True
     if args.dry_run:
-        _dry_run(results_dir, extra_args, test_infos)
+        dry_run_cmds = _dry_run(results_dir, extra_args, test_infos)
+        if args.update_cmd_mapping:
+            args.tests.sort()
+            atest_utils.update_test_runner_cmd(' '.join(args.tests),
+                                               dry_run_cmds)
         return constants.EXIT_CODE_SUCCESS
     if args.detect_regression:
         build_targets |= (regression_test_runner.RegressionTestRunner('')
