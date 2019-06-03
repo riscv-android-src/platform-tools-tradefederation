@@ -17,7 +17,6 @@
 package com.android.tradefed.util;
 
 import com.android.annotations.Nullable;
-import com.android.tradefed.command.CommandScheduler;
 
 import java.io.File;
 import java.io.IOException;
