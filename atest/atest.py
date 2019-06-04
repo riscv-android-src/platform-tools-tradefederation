@@ -36,6 +36,7 @@ import atest_arg_parser
 import atest_execution_info
 import atest_metrics
 import atest_utils
+import bug_detector
 import cli_translator
 # pylint: disable=import-error
 import constants
@@ -613,6 +614,10 @@ if __name__ == '__main__':
                                                  RESULTS_DIR) as result_file:
         metrics_base.MetricsBase.tool_name = constants.TOOL_NAME
         EXIT_CODE = main(sys.argv[1:], RESULTS_DIR)
+        DETECTOR = bug_detector.BugDetector(sys.argv[1:], EXIT_CODE)
+        metrics.LocalDetectEvent(
+            detect_type=constants.DETECT_TYPE_BUG_DETECTED,
+            result=DETECTOR.caught_result)
         metrics_utils.send_exit_event(EXIT_CODE)
         if result_file:
             print('Execution detail has saved in %s' % result_file.name)
