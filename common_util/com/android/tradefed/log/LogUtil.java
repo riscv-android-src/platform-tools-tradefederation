@@ -18,8 +18,6 @@ package com.android.tradefed.log;
 
 import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
-import com.android.tradefed.config.GlobalConfiguration;
-import com.android.tradefed.config.IGlobalConfiguration;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -68,7 +66,6 @@ public class LogUtil {
     public static class CLog {
 
         protected static final String CLASS_NAME = CLog.class.getName();
-        private static IGlobalConfiguration sGlobalConfig = null;
 
         /**
          * The shim version of {@link Log#v(String, String)}.
@@ -264,11 +261,6 @@ public class LogUtil {
          * @param t (Optional) An exception to log. If null, only message will be logged.
          */
         public static void wtf(String message, Throwable t) {
-            ITerribleFailureHandler wtfHandler = getGlobalConfigInstance().getWtfHandler();
-
-            /* since wtf(String, Throwable) can be called directly or through an overloaded
-             * method, ie wtf(String), the stack trace frame of the external class name that
-             * called CLog can vary, so we use findCallerClassName to find it */
             String tag = findCallerClassName();
             String logMessage = "WTF - " + message;
             String stackTrace = getStackTraceString(t);
@@ -277,31 +269,6 @@ public class LogUtil {
             }
 
             Log.logAndDisplay(LogLevel.ASSERT, tag, logMessage);
-            if (wtfHandler != null) {
-                wtfHandler.onTerribleFailure(message, t);
-            }
-        }
-
-        /**
-         * Sets the GlobalConfiguration instance for CLog to use - exposed for unit testing
-         *
-         * @param globalConfig the GlobalConfiguration object for CLog to use
-         */
-        // @VisibleForTesting
-        public static void setGlobalConfigInstance(IGlobalConfiguration globalConfig) {
-            sGlobalConfig = globalConfig;
-        }
-
-        /**
-         * Gets the GlobalConfiguration instance, useful for unit testing
-         *
-         * @return the GlobalConfiguration singleton instance
-         */
-        private static IGlobalConfiguration getGlobalConfigInstance() {
-            if (sGlobalConfig == null) {
-                sGlobalConfig = GlobalConfiguration.getInstance();
-            }
-            return sGlobalConfig;
         }
 
         /**

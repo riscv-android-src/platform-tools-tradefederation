@@ -19,11 +19,13 @@ Utility functions for atest.
 from __future__ import print_function
 
 import itertools
+import json
 import logging
 import os
 import re
 import subprocess
 import sys
+from distutils.util import strtobool
 try:
     # If PYTHON2
     from urllib2 import urlopen
@@ -32,8 +34,12 @@ except ImportError:
 
 import constants
 
-_MAKE_CMD = '%s/build/soong/soong_ui.bash' % os.environ.get(
-    constants.ANDROID_BUILD_TOP)
+from metrics import metrics_base
+
+_MAKE_CMD = ('%s/build/soong/soong_ui.bash' %
+             os.path.relpath(os.environ.get(constants.ANDROID_BUILD_TOP,
+                                            os.getcwd()),
+                             os.getcwd()))
 BUILD_CMD = [_MAKE_CMD, '--make-mode']
 _BASH_RESET_CODE = '\033[0m\n'
 # Arbitrary number to limit stdout for failed runs in _run_limited_output.
@@ -45,7 +51,10 @@ _FAILED_OUTPUT_LINE_LIMIT = 100
 # ex: [ 99% 39710/39711]
 _BUILD_COMPILE_STATUS = re.compile(r'\[\s*(\d{1,3}%\s+)?\d+/\d+\]')
 _BUILD_FAILURE = 'FAILED: '
-
+CMD_RESULT_PATH = os.path.join(os.environ.get(constants.ANDROID_BUILD_TOP,
+                                              os.getcwd()),
+                               'tools/tradefederation/core/atest/test_data',
+                               'sample_test_cmd_result.json')
 
 def _capture_fail_section(full_log):
     """Return the error message from the build output.
@@ -280,34 +289,26 @@ def colorful_print(text, color, highlight=False, auto_wrap=True):
 
 
 def is_external_run():
+    # TODO(b/133905312): remove this function after aidegen calling
+    #       metrics_base.get_user_type directly.
     """Check is external run or not.
+
+    Determine the internal user by passing at least one check:
+      - whose git mail domain is from google
+      - whose hostname is from google
+    Otherwise is external user.
 
     Returns:
         True if this is an external run, False otherwise.
     """
-    try:
-        output = subprocess.check_output(['git', 'config', '--get', 'user.email'],
-                                         universal_newlines=True)
-        if output and output.strip().endswith(constants.INTERNAL_EMAIL):
-            return False
-    except OSError:
-        # OSError can be raised when running atest_unittests on a host
-        # without git being set up.
-        # This happens before atest._configure_logging is called to set up
-        # logging. Therefore, use print to log the error message, instead of
-        # logging.debug.
-        print('Unable to determine if this is an external run, git is not found.')
-    except subprocess.CalledProcessError:
-        print('Unable to determine if this is an external run, email is not '
-              'found in git config.')
-    return True
+    return metrics_base.get_user_type() == metrics_base.EXTERNAL_USER
 
 
 def print_data_collection_notice():
     """Print the data collection notice."""
     anonymous = ''
     user_type = 'INTERNAL'
-    if is_external_run():
+    if metrics_base.get_user_type() == metrics_base.EXTERNAL_USER:
         anonymous = ' anonymous'
         user_type = 'EXTERNAL'
     notice = ('  We collect%s usage statistics in accordance with our Content '
@@ -323,3 +324,37 @@ def print_data_collection_notice():
     colorful_print("Notice:", constants.RED)
     colorful_print("%s" % notice, constants.GREEN)
     print('==================\n')
+
+
+def update_test_runner_cmd(input_test, test_cmds, result_path=CMD_RESULT_PATH):
+    """Update the runner command of input tests.
+
+    Args:
+        input_test: A string of input tests pass to atest.
+        test_cmds: A list of strings for running input tests.
+        result_path: The file path for saving result.
+    """
+    # Always sort test_cmds to make it comparable.
+    test_cmds.sort()
+    full_result_content = {}
+    if os.path.isfile(result_path):
+        with open(result_path) as json_file:
+            full_result_content = json.load(json_file)
+    former_test_cmds = full_result_content.get(input_test, [])
+    if former_test_cmds and former_test_cmds != test_cmds:
+        print('Former cmds = %s' % former_test_cmds)
+        print('Current cmds = %s' % test_cmds)
+        try:
+            if not strtobool(raw_input('Do you want to update former result'
+                                       'with the latest one?(Y/n)')):
+                print('SKIP updating result!!!')
+                return
+        except ValueError:
+            # Default action is updating the command result of the input_test.
+            # If the user input is unrecognizable telling yes or no,
+            # "Y" is implicitly applied.
+            pass
+    full_result_content[input_test] = test_cmds
+    with open(result_path, 'w') as outfile:
+        json.dump(full_result_content, outfile)
+        print('Save result mapping to %s' % result_path)

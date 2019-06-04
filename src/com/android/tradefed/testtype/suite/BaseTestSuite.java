@@ -148,6 +148,14 @@ public class BaseTestSuite extends ITestSuite {
     private boolean mEnableParameter = false;
 
     @Option(
+        name = "enable-optional-parameterization",
+        description =
+                "Whether or not to enable optional parameters. Optional parameters are "
+                        + "parameters not usually used by default."
+    )
+    private boolean mEnableOptionalParameter = false;
+
+    @Option(
         name = "module-parameter",
         description =
                 "Allows to run only one module parameter type instead of all the combinations. "
@@ -189,6 +197,7 @@ public class BaseTestSuite extends ITestSuite {
                     createModuleLoader(
                             mIncludeFiltersParsed, mExcludeFiltersParsed, mTestArgs, mModuleArgs);
             mModuleRepo.setParameterizedModules(mEnableParameter);
+            mModuleRepo.setOptionalParameterizedModules(mEnableOptionalParameter);
             mModuleRepo.setModuleParameter(mForceParameter);
             mModuleRepo.setExcludedModuleParameters(mExcludedModuleParameters);
 

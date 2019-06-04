@@ -1186,7 +1186,7 @@ public class TestDeviceTest extends TestCase {
      */
     private void setEncryptedUnsupportedExpectations() throws Exception {
         setEnableAdbRootExpectations();
-        injectShellResponse("vdc cryptfs enablecrypto", "\r\n");
+        EasyMock.expect(mMockIDevice.getProperty("ro.crypto.state")).andReturn("unsupported");
     }
 
     /**
@@ -1194,9 +1194,7 @@ public class TestDeviceTest extends TestCase {
      */
     private void setEncryptedSupported() throws Exception {
         setEnableAdbRootExpectations();
-        injectShellResponse("vdc cryptfs enablecrypto",
-                "500 29805 Usage: cryptfs enablecrypto <wipe|inplace> "
-                + "default|password|pin|pattern [passwd] [noui]\r\n");
+        EasyMock.expect(mMockIDevice.getProperty("ro.crypto.state")).andReturn("encrypted");
     }
 
     /**
@@ -3151,8 +3149,12 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     public String executeShellCommand(String command)
                             throws DeviceNotAvailableException {
-                        test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
-                        test.start();
+                        if (!started) {
+                            started = true;
+                            test.setDaemon(true);
+                            test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
+                            test.start();
+                        }
                         return "";
                     }
 
@@ -3176,6 +3178,7 @@ public class TestDeviceTest extends TestCase {
                         return 100;
                     }
 
+                    boolean started = false;
                     Thread test =
                             new Thread(
                                     new Runnable() {
@@ -4169,9 +4172,7 @@ public class TestDeviceTest extends TestCase {
                         return true;
                     }
                 };
-        injectShellResponse(
-                "vdc cryptfs enablecrypto",
-                "500 8674 Usage with ext4crypt: cryptfs enablecrypto inplace default noui\r\n");
+        EasyMock.expect(mMockIDevice.getProperty("ro.crypto.state")).andReturn("encrypted");
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
         assertTrue(mTestDevice.isEncryptionSupported());
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
@@ -4191,7 +4192,7 @@ public class TestDeviceTest extends TestCase {
                         return true;
                     }
                 };
-        injectShellResponse("vdc cryptfs enablecrypto", "500 8674 Command not recognized\r\n");
+        EasyMock.expect(mMockIDevice.getProperty("ro.crypto.state")).andReturn("unsupported");
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
         assertFalse(mTestDevice.isEncryptionSupported());
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);

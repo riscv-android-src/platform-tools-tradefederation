@@ -32,6 +32,7 @@ import com.android.tradefed.result.TextResultReporter;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.IDisableable;
 import com.android.tradefed.util.MultiMap;
 
 import junit.framework.TestCase;
@@ -71,13 +72,18 @@ public class ConfigurationTest extends TestCase {
         public boolean getBool();
     }
 
-    private static class TestConfigObject implements TestConfig {
+    private static class TestConfigObject implements TestConfig, IDisableable {
 
         @Option(name = OPTION_NAME, description = OPTION_DESCRIPTION, requiredForRerun = true)
         private boolean mBool;
 
         @Option(name = ALT_OPTION_NAME, description = OPTION_DESCRIPTION)
         private Map<String, Boolean> mBoolMap = new HashMap<String, Boolean>();
+
+        @Option(name = "mandatory-option", mandatory = true)
+        private String mMandatory = null;
+
+        private boolean mIsDisabled = false;
 
         @Override
         public boolean getBool() {
@@ -86,6 +92,16 @@ public class ConfigurationTest extends TestCase {
 
         public Map<String, Boolean> getMap() {
             return mBoolMap;
+        }
+
+        @Override
+        public void setDisable(boolean isDisabled) {
+            mIsDisabled = isDisabled;
+        }
+
+        @Override
+        public boolean isDisabled() {
+            return mIsDisabled;
         }
     }
 
@@ -98,6 +114,11 @@ public class ConfigurationTest extends TestCase {
     protected void setUp() throws Exception {
         super.setUp();
         mConfig = new Configuration(CONFIG_NAME, CONFIG_DESCRIPTION);
+
+        try {
+            GlobalConfiguration.createGlobalConfiguration(new String[] {"empty"});
+        } catch (IllegalStateException ignored) {
+        }
     }
 
     /**
@@ -566,6 +587,33 @@ public class ConfigurationTest extends TestCase {
      * are set.
      */
     public void testValidateOptions() throws ConfigurationException {
+        mConfig.validateOptions();
+    }
+
+    /**
+     * Test that {@link Configuration#validateOptions()} throw when all mandatory fields are not set
+     * and object is not disabled.
+     */
+    public void testValidateOptions_nonDisabledObject() throws ConfigurationException {
+        TestConfigObject object = new TestConfigObject();
+        object.setDisable(false);
+        mConfig.setConfigurationObject("helper", object);
+        try {
+            mConfig.validateOptions();
+            fail("Should have thrown an exception.");
+        } catch (ConfigurationException expected) {
+            assertTrue(expected.getMessage().contains("Found missing mandatory options"));
+        }
+    }
+
+    /**
+     * Test that {@link Configuration#validateOptions()} doesn't throw when all mandatory fields are
+     * not set but the object is disabled.
+     */
+    public void testValidateOptions_disabledObject() throws ConfigurationException {
+        TestConfigObject object = new TestConfigObject();
+        object.setDisable(true);
+        mConfig.setConfigurationObject("helper", object);
         mConfig.validateOptions();
     }
 
