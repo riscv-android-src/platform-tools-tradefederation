@@ -16,12 +16,14 @@
 
 """Unittests for bug_detector."""
 
+import datetime
 import json
 import os
 import unittest
 import mock
 
 import bug_detector
+import constants
 import unittest_constants as uc
 
 TEST_DICT = {
@@ -43,16 +45,32 @@ class BugDetectorUnittest(unittest.TestCase):
         self.history_file = os.path.join(uc.TEST_DATA_DIR, 'bug_detector.json')
         self.detector = bug_detector.BugDetector(['test1'], 5, self.history_file)
         self._reset_history_file()
+        self.history_file2 = os.path.join(uc.TEST_DATA_DIR, 'bug_detector2.json')
 
     def tearDown(self):
         """Run after execution of every test"""
         if os.path.isfile(self.history_file):
             os.remove(self.history_file)
+        if os.path.isfile(self.history_file2):
+            os.remove(self.history_file2)
 
     def _reset_history_file(self):
         """Reset test history file."""
         with open(self.history_file, 'w') as outfile:
             json.dump(TEST_DICT, outfile)
+
+    def _make_test_file(self, file_size):
+        temp_history = {}
+        for i in range(file_size):
+            latest_bug = {
+                i: {
+                    'latest_exit_code': i,
+                    'updated_at': datetime.datetime.now().isoformat()
+                }
+            }
+            temp_history.update(latest_bug)
+        with open(self.history_file2, 'w') as outfile:
+            json.dump(temp_history, outfile, indent=0)
 
     @mock.patch.object(bug_detector.BugDetector, 'update_history')
     def test_get_detect_key(self, _):
@@ -87,6 +105,33 @@ class BugDetectorUnittest(unittest.TestCase):
         success = 1
         self.assertEqual(dtr.detect_bug_caught(), success)
 
+    def test_update_history(self):
+        """Test update_history."""
+        constants.UPPER_LIMIT = 10
+        constants.TRIM_TO_SIZE = 3
+
+        mock_file_size = 0
+        self._make_test_file(mock_file_size)
+        dtr = bug_detector.BugDetector(['test1'], 0, self.history_file2)
+        self.assertTrue(dtr.history.has_key('test1'))
+
+        # History is larger than constants.UPPER_LIMIT. Trim to size.
+        mock_file_size = 10
+        self._make_test_file(mock_file_size)
+        dtr = bug_detector.BugDetector(['test1'], 0, self.history_file2)
+        self.assertEqual(len(dtr.history), constants.TRIM_TO_SIZE)
+        keys = ['test1', '9', '8']
+        for key in keys:
+            self.assertTrue(dtr.history.has_key(key))
+
+        # History is not larger than constants.UPPER_LIMIT.
+        mock_file_size = 5
+        self._make_test_file(mock_file_size)
+        dtr = bug_detector.BugDetector(['test1'], 0, self.history_file2)
+        self.assertEqual(len(dtr.history), mock_file_size+1)
+        keys = ['test1', '4', '3', '2', '1', '0']
+        for key in keys:
+            self.assertTrue(dtr.history.has_key(key))
 
 if __name__ == '__main__':
     unittest.main()
