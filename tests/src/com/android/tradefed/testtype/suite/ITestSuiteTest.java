@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.android.ddmlib.IDevice;
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDef;
@@ -1612,6 +1613,8 @@ public class ITestSuiteTest {
     @Test
     public void testRandomizeTestModulesWithSameSeed() throws Exception {
         mTestSuite = new TestSuiteImpl(5);
+        mTestSuite.setBuild(mMockBuildInfo);
+
         LinkedHashMap<String, IConfiguration> testConfigs = mTestSuite.loadTests();
         List<ModuleDefinition> runModules = getRunModules(testConfigs);
         List<ModuleDefinition> runModules2 = getRunModules(testConfigs);
@@ -1632,6 +1635,8 @@ public class ITestSuiteTest {
     @Test
     public void testRandomizeTestModulesWithDifferentSeed() throws Exception {
         mTestSuite = new TestSuiteImpl(5);
+        mTestSuite.setBuild(mMockBuildInfo);
+
         LinkedHashMap<String, IConfiguration> testConfigs = mTestSuite.loadTests();
         List<ModuleDefinition> runModules = getRunModules(testConfigs);
         List<ModuleDefinition> runModules2 = getRunModules(testConfigs);
@@ -1641,4 +1646,19 @@ public class ITestSuiteTest {
         assertFalse(runModules.toString().equals(runModules2.toString()));
     }
 
+    /**
+     * Test for {@link ITestSuite#randomizeTestModules(List, long)} to make sure the random-seed
+     * be injected into BuildInfo correctly.
+     */
+    @Test
+    public void testSeedwhenRandomization() throws Exception {
+        IBuildInfo mMockInfo = new BuildInfo();
+        mTestSuite.setBuild(mMockInfo);
+
+        List<ModuleDefinition> runModules = getRunModules(mTestSuite.loadTests());
+        mTestSuite.randomizeTestModules(runModules, 123L);
+
+        String randomSeed = mMockInfo.getBuildAttributes().get(ITestSuite.RANDOM_SEED);
+        assertTrue(randomSeed.equals(String.valueOf(123L)));
+    }
 }

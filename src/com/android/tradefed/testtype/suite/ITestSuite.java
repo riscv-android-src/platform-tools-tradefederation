@@ -135,6 +135,7 @@ public abstract class ITestSuite
     public static final String TOKEN_KEY = "token";
     public static final String MODULE_METADATA_INCLUDE_FILTER = "module-metadata-include-filter";
     public static final String MODULE_METADATA_EXCLUDE_FILTER = "module-metadata-exclude-filter";
+    public static final String RANDOM_SEED = "random-seed";
 
     private static final String PRODUCT_CPU_ABI_KEY = "ro.product.cpu.abi";
 
@@ -211,7 +212,7 @@ public abstract class ITestSuite
     private boolean mRandomOrder = false;
 
     @Option(
-        name = "random-seed",
+        name = RANDOM_SEED,
         description = "Seed to randomize the order of the modules."
     )
     private long mRandomSeed = -1;
@@ -478,6 +479,7 @@ public abstract class ITestSuite
         }
         CLog.i("Randomizing all the modules with seed: %s", randomSeed);
         Collections.shuffle(runModules, new Random(randomSeed));
+        mBuildInfo.addBuildAttribute(RANDOM_SEED, String.valueOf(randomSeed));
     }
 
     private void checkClassLoad(Set<String> classes, String type) {
