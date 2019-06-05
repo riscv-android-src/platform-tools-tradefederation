@@ -104,7 +104,10 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         } else {
             // Only contain .apk module.
             if (!containsApex(testAppFileNames)) {
-                super.installer(device, buildInfo, testAppFileNames);
+                for (String apkFileName : testAppFileNames) {
+                    // Install the apk one by one to avoid invoking split apk installation.
+                    super.installer(device, buildInfo, Arrays.asList(new String[] {apkFileName}));
+                }
                 return;
             } else {
                 // Any kind of combination of apex/apk.
