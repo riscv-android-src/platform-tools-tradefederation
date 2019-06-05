@@ -216,6 +216,25 @@ public class ShardListenerTest {
         // Log association to re-associate file to the run.
         mockListener.logAssociation("run-file", runFile);
         mockListener.testRunEnded(0l, new HashMap<String, Metric>());
+
+        // The log not associated to the run are replay at invocation level.
+        mockListener.testLog(
+                EasyMock.eq("host_log_of_shard"),
+                EasyMock.eq(LogDataType.TEXT),
+                EasyMock.anyObject());
+        LogFile invocFile = new LogFile("path", "url", false, LogDataType.TEXT, 0L);
+        EasyMock.expect(
+                        mMockSaver.saveLogData(
+                                EasyMock.eq("host_log_of_shard"),
+                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.anyObject()))
+                .andReturn(invocFile);
+        mockListener.testLogSaved(
+                EasyMock.eq("host_log_of_shard"),
+                EasyMock.eq(LogDataType.TEXT),
+                EasyMock.anyObject(),
+                EasyMock.eq(invocFile));
+        mockListener.logAssociation("host_log_of_shard", invocFile);
         mockListener.invocationEnded(0l);
         EasyMock.expect(mockListener.getSummary()).andReturn(null);
 
@@ -244,6 +263,10 @@ public class ShardListenerTest {
                 new ByteArrayInputStreamSource("test file".getBytes()));
         shardedInvocation.testEnded(tid, 0l, new HashMap<String, Metric>());
         shardedInvocation.testRunEnded(0l, new HashMap<String, Metric>());
+        shardedInvocation.testLog(
+                "host_log_of_shard",
+                LogDataType.TEXT,
+                new ByteArrayInputStreamSource("test".getBytes()));
         shardedInvocation.invocationEnded(0L);
 
         EasyMock.verify(mockListener, mMockSaver, mMockDevice);
