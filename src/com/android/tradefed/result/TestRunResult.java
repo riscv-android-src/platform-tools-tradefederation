@@ -163,6 +163,17 @@ public class TestRunResult {
         return mStatusCounts[status.ordinal()];
     }
 
+    /** Returns all the {@link TestResult} in a particular state. */
+    public List<TestResult> getTestsResultsInState(TestStatus status) {
+        List<TestResult> results = new ArrayList<>();
+        for (TestResult r : mTestResults.values()) {
+            if (r.getStatus().equals(status)) {
+                results.add(r);
+            }
+        }
+        return results;
+    }
+
     /** Gets the number of tests in this run. */
     public int getNumTests() {
         return mTestResults.size();
