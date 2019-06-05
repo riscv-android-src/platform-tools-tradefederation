@@ -45,6 +45,7 @@ public class AggregatePostProcessorTest {
     private static final String STATS_KEY_VAR = "var";
     private static final String STATS_KEY_STDEV = "stdev";
     private static final String STATS_KEY_MEDIAN = "median";
+    private static final String STATS_KEY_TOTAL = "total";
     // Separator for final upload
     private static final String STATS_KEY_SEPARATOR = "-";
 
@@ -71,6 +72,7 @@ public class AggregatePostProcessorTest {
         singularDoubleStats.put(STATS_KEY_VAR, "0.54");
         singularDoubleStats.put(STATS_KEY_STDEV, "0.73");
         singularDoubleStats.put(STATS_KEY_MEDIAN, "2.00");
+        singularDoubleStats.put(STATS_KEY_TOTAL, "6.00");
 
         // Construct ListMultimap of multiple iterations of test metrics.
         // Stores processed metrics which is overwitten with every test; this is consistent with
@@ -146,6 +148,16 @@ public class AggregatePostProcessorTest {
                         .build()
                         .getMeasurements()
                         .getSingleString());
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, singularDoubleKey, STATS_KEY_TOTAL)));
+        Assert.assertEquals(
+                singularDoubleStats.get(STATS_KEY_TOTAL),
+                processedMetrics
+                        .get(String.join(STATS_KEY_SEPARATOR, singularDoubleKey, STATS_KEY_TOTAL))
+                        .build()
+                        .getMeasurements()
+                        .getSingleString());
     }
 
     /** Test correct aggregation of list double metrics. */
@@ -162,6 +174,7 @@ public class AggregatePostProcessorTest {
         listDoubleStats.put(STATS_KEY_VAR, "0.36");
         listDoubleStats.put(STATS_KEY_STDEV, "0.60");
         listDoubleStats.put(STATS_KEY_MEDIAN, "2.05");
+        listDoubleStats.put(STATS_KEY_TOTAL, "12.10");
 
         // Stores processed metrics which is overwitten with every test; this is consistent with
         // the current reporting behavior. We only test the correctness on the final metrics values.
@@ -233,6 +246,16 @@ public class AggregatePostProcessorTest {
                         .build()
                         .getMeasurements()
                         .getSingleString());
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        listDoubleKey + STATS_KEY_SEPARATOR + STATS_KEY_TOTAL));
+        Assert.assertEquals(
+                listDoubleStats.get(STATS_KEY_TOTAL),
+                processedMetrics
+                        .get(listDoubleKey + STATS_KEY_SEPARATOR + STATS_KEY_TOTAL)
+                        .build()
+                        .getMeasurements()
+                        .getSingleString());
     }
 
 
@@ -274,6 +297,9 @@ public class AggregatePostProcessorTest {
         Assert.assertFalse(
                 processedMetrics.containsKey(
                         String.join(STATS_KEY_SEPARATOR, nonNumericKey, STATS_KEY_MEDIAN)));
+        Assert.assertFalse(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, nonNumericKey, STATS_KEY_TOTAL)));
     }
 
     /** Test empty result. */
@@ -312,6 +338,9 @@ public class AggregatePostProcessorTest {
         Assert.assertFalse(
                 processedMetrics.containsKey(
                         String.join(STATS_KEY_SEPARATOR, emptyResultKey, STATS_KEY_MEDIAN)));
+        Assert.assertFalse(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, emptyResultKey, STATS_KEY_TOTAL)));
     }
 
     /** Test single run. */
@@ -392,6 +421,16 @@ public class AggregatePostProcessorTest {
                         .build()
                         .getMeasurements()
                         .getSingleString());
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, singleRunKey, STATS_KEY_TOTAL)));
+        Assert.assertEquals(
+                singleRunVal,
+                processedMetrics
+                        .get(String.join(STATS_KEY_SEPARATOR, singleRunKey, STATS_KEY_TOTAL))
+                        .build()
+                        .getMeasurements()
+                        .getSingleString());
     }
 
 
@@ -430,6 +469,9 @@ public class AggregatePostProcessorTest {
         Assert.assertTrue(
                 processedMetrics.containsKey(
                         String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_MEDIAN)));
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_TOTAL)));
     }
 
     /**
