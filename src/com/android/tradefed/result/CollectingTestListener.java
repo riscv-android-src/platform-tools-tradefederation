@@ -64,6 +64,10 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     private TestRunResult mCurrentTestRunResult = new TestRunResult();
     /** True if the default initialized mCurrentTestRunResult has its original value. */
     private boolean mDefaultRun = true;
+    /** Track whether or not a test run is currently in progress */
+    private boolean mRunInProgress = false;
+
+    private Map<String, LogFile> mNonAssociatedLogFiles = new LinkedHashMap<>();
 
     // Tracks if mStatusCounts are accurate, or if they need to be recalculated
     private AtomicBoolean mIsCountDirty = new AtomicBoolean(true);
@@ -221,6 +225,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
         mCurrentTestRunResult = results.get(attemptNumber);
 
         mCurrentTestRunResult.testRunStarted(name, numTests);
+        mRunInProgress = true;
     }
 
     /** {@inheritDoc} */
@@ -228,6 +233,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         setCountDirty();
         mCurrentTestRunResult.testRunEnded(elapsedTime, runMetrics);
+        mRunInProgress = false;
     }
 
     /** {@inheritDoc} */
@@ -292,7 +298,11 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     /** {@inheritDoc} */
     @Override
     public void logAssociation(String dataName, LogFile logFile) {
-        mCurrentTestRunResult.testLogSaved(dataName, logFile);
+        if (mRunInProgress) {
+            mCurrentTestRunResult.testLogSaved(dataName, logFile);
+        } else {
+            mNonAssociatedLogFiles.put(dataName, logFile);
+        }
     }
 
     /**
@@ -506,5 +516,10 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
      */
     public IInvocationContext getModuleContextForRunResult(String testRunName) {
         return mModuleContextMap.get(testRunName);
+    }
+
+    /** Returns a copy of the map containing all the logged file not associated with a test run. */
+    public Map<String, LogFile> getNonAssociatedLogFiles() {
+        return new LinkedHashMap<>(mNonAssociatedLogFiles);
     }
 }
