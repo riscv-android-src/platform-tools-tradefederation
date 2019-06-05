@@ -70,6 +70,8 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
         try {
             localDir = FileUtil.createTempDir("native_coverage");
 
+            // Enable abd root on the device, otherwise the list command will fail.
+            verify(mDevice.enableAdbRoot(), "Failed to enable adb root.");
             String findResult = mDevice.executeShellCommand(COVERAGE_FILE_LIST_COMMAND);
 
             Path devicePathRoot = Paths.get(NATIVE_COVERAGE_DEVICE_PATH);
