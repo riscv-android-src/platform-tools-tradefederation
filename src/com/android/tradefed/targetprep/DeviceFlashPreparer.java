@@ -184,6 +184,11 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer implements 
         if (!(buildInfo instanceof IDeviceBuildInfo)) {
             throw new IllegalArgumentException("Provided buildInfo is not a IDeviceBuildInfo");
         }
+        IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo) buildInfo;
+        if (mShouldFlashRamdisk && deviceBuild.getRamdiskFile() == null) {
+            throw new IllegalArgumentException(
+                    "ramdisk flashing enabled but no ramdisk file was found in build info");
+        }
         // don't allow interruptions during flashing operations.
         getRunUtil().allowInterrupt(false);
         IDeviceManager deviceManager = getDeviceManager();
@@ -191,7 +196,6 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer implements 
         long flashingTime = -1;
         long start = -1;
         try {
-            IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo)buildInfo;
             checkDeviceProductType(device, deviceBuild);
             device.setRecoveryMode(RecoveryMode.ONLINE);
             IDeviceFlasher flasher = createFlasher(device);
