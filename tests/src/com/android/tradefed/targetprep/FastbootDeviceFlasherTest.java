@@ -590,6 +590,90 @@ public class FastbootDeviceFlasherTest {
     }
 
     /**
+     * Test the fastboot flashing with ramdisk interaction flow
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testFlashingSystemWithRamdisk() throws Exception {
+        final String buildId = "systemBuildId";
+        mFlasher.setShouldFlashRamdisk(true);
+        IDeviceBuildInfo mockBuild = EasyMock.createMock(IDeviceBuildInfo.class);
+        EasyMock.expect(mockBuild.getDeviceBuildId()).andReturn(buildId);
+        File deviceImage = FileUtil.createTempFile("fakeDeviceImage", "");
+        File ramdisk = FileUtil.createTempFile("fakeRamdisk", "");
+        EasyMock.expect(mockBuild.getRamdiskFile()).andReturn(ramdisk);
+        try {
+            EasyMock.expect(mockBuild.getDeviceImageFile()).andStubReturn(deviceImage);
+            CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+            res.setStderr("flashing");
+            EasyMock.expect(
+                            mMockDevice.executeLongFastbootCommand(
+                                    EasyMock.eq("--skip-reboot"),
+                                    EasyMock.eq("update"),
+                                    EasyMock.eq(deviceImage.getAbsolutePath())))
+                    .andReturn(res);
+            EasyMock.expect(
+                            mMockDevice.executeLongFastbootCommand(
+                                    EasyMock.eq("flash"),
+                                    EasyMock.eq("boot"),
+                                    EasyMock.eq(ramdisk.getAbsolutePath())))
+                    .andReturn(res);
+            mMockDevice.reboot();
+            EasyMock.expectLastCall();
+            EasyMock.replay(mMockDevice, mockBuild);
+            assertTrue(mFlasher.checkAndFlashSystem(mMockDevice, buildId, null, mockBuild));
+            EasyMock.verify(mMockDevice, mockBuild);
+            assertEquals(
+                    "system flashing status should be \"SUCCESS\"",
+                    CommandStatus.SUCCESS,
+                    mFlasher.getSystemFlashingStatus());
+        } finally {
+            FileUtil.deleteFile(deviceImage);
+            FileUtil.deleteFile(ramdisk);
+        }
+    }
+
+    /**
+     * Test that ramdisk is still flashed even system partition flashing is skipped
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testSkipFlashingSystemWithRamdisk() throws Exception {
+        final String buildId = "systemBuildId";
+        final String buildFlavor = "systemBuildFlavor";
+        mFlasher.setShouldFlashRamdisk(true);
+        IDeviceBuildInfo mockBuild = EasyMock.createMock(IDeviceBuildInfo.class);
+        File ramdisk = FileUtil.createTempFile("fakeRamdisk", "");
+        EasyMock.expect(mockBuild.getRamdiskFile()).andReturn(ramdisk);
+        try {
+            EasyMock.expect(mockBuild.getDeviceBuildId()).andReturn(buildId);
+            EasyMock.expect(mockBuild.getBuildFlavor()).andReturn(buildFlavor);
+            mMockDevice.rebootUntilOnline();
+            EasyMock.expectLastCall();
+            CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+            res.setStderr("flashing");
+            EasyMock.expect(
+                            mMockDevice.executeLongFastbootCommand(
+                                    EasyMock.eq("flash"),
+                                    EasyMock.eq("boot"),
+                                    EasyMock.eq(ramdisk.getAbsolutePath())))
+                    .andReturn(res);
+            mMockDevice.reboot();
+            EasyMock.expectLastCall();
+            EasyMock.replay(mMockDevice, mockBuild);
+            assertFalse(mFlasher.checkAndFlashSystem(mMockDevice, buildId, buildFlavor, mockBuild));
+            EasyMock.verify(mMockDevice, mockBuild);
+            assertNull(
+                    "system flash status should be null when partitions are not flashed",
+                    mFlasher.getSystemFlashingStatus());
+        } finally {
+            FileUtil.deleteFile(ramdisk);
+        }
+    }
+
+    /**
      * Test {@link FastbootDeviceFlasher#checkAndFlashSystem(ITestDevice, String, String,
      * IDeviceBuildInfo)} with flash options
      */
