@@ -17,6 +17,7 @@
 package com.android.tradefed.command;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.clearcut.ClearcutClient;
 import com.android.tradefed.config.ArgsOptionParser;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
@@ -1143,17 +1144,40 @@ public class Console extends Thread {
      */
     public static void startConsole(Console console, String[] args) throws InterruptedException,
             ConfigurationException {
+        ClearcutClient client = new ClearcutClient(/* override URL */ null, /* isExternal */ true);
+        Runtime.getRuntime().addShutdownHook(new TerminateClearcutClient(client));
+        client.notifyTradefedStartEvent();
+
         List<String> nonGlobalArgs = GlobalConfiguration.createGlobalConfiguration(args);
         GlobalConfiguration.getInstance().setup();
         console.setArgs(nonGlobalArgs);
         console.setCommandScheduler(GlobalConfiguration.getInstance().getCommandScheduler());
         console.setKeyStoreFactory(GlobalConfiguration.getInstance().getKeyStoreFactory());
         console.setDaemon(true);
+
+        GlobalConfiguration.getInstance().getCommandScheduler().setClearcutClient(client);
+
         console.start();
 
         // Wait for the CommandScheduler to get started before we exit the main thread.  See full
         // explanation near the top of #run()
         console.awaitScheduler();
         console.registerShutdownSignals();
+    }
+
+    /** Thread hooked to the JVM to ensure we flush the Clearcut events and stop the client. */
+    private static class TerminateClearcutClient extends Thread {
+
+        private final ClearcutClient mClient;
+
+        TerminateClearcutClient(ClearcutClient client) {
+            mClient = client;
+        }
+
+        @Override
+        public void run() {
+            // TODO: report the exit event if not already reported
+            mClient.stop();
+        }
     }
 }
