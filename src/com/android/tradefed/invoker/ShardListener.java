@@ -187,10 +187,8 @@ public class ShardListener extends CollectingTestListener {
         super.invocationEnded(elapsedTime);
         synchronized (mMasterListener) {
             logShardContent(getMergedTestRunResults());
-            // In case there was no run, we still want to report the logs we received.
-            if (getMergedTestRunResults().isEmpty()) {
-                forwardLogAssociation(getCurrentRunResults().getRunLoggedFiles(), mMasterListener);
-            }
+            // Report all logs not associated with test runs
+            forwardLogAssociation(getNonAssociatedLogFiles(), mMasterListener);
             mMasterListener.invocationEnded(elapsedTime);
         }
     }
