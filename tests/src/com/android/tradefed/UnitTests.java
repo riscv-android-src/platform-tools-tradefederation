@@ -52,6 +52,7 @@ import com.android.tradefed.config.SandboxConfigurationFactoryTest;
 import com.android.tradefed.config.gcs.GCSConfigurationFactoryTest;
 import com.android.tradefed.config.gcs.GCSConfigurationServerTest;
 import com.android.tradefed.config.remote.GcsRemoteFileResolverTest;
+import com.android.tradefed.config.remote.LocalFileResolverTest;
 import com.android.tradefed.device.AndroidDebugBridgeWrapperTest;
 import com.android.tradefed.device.BackgroundDeviceActionTest;
 import com.android.tradefed.device.CpuStatsCollectorTest;
@@ -410,6 +411,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // config.remote
     GcsRemoteFileResolverTest.class,
+    LocalFileResolverTest.class,
 
     // device
     AndroidDebugBridgeWrapperTest.class,

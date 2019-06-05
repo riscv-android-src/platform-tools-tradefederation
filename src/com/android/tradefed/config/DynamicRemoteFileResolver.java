@@ -19,6 +19,7 @@ import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.OptionSetter.OptionFieldsForName;
 import com.android.tradefed.config.remote.GcsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
+import com.android.tradefed.config.remote.LocalFileResolver;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
@@ -49,6 +50,7 @@ public class DynamicRemoteFileResolver {
 
     static {
         PROTOCOL_SUPPORT.put(GcsRemoteFileResolver.PROTOCOL, new GcsRemoteFileResolver());
+        PROTOCOL_SUPPORT.put(LocalFileResolver.PROTOCOL, new LocalFileResolver());
     }
     // The configuration map being static, we only need to update it once per TF instance.
     private static AtomicBoolean sIsUpdateDone = new AtomicBoolean(false);
