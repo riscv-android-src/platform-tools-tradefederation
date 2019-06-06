@@ -72,6 +72,7 @@ public class ModuleListener extends CollectingTestListener {
         if (attemptNumber != 0) {
             mTestsRan = 1;
         }
+        CLog.d("ModuleListener.testRunStarted(%s, %s, %s)", name, numTests, attemptNumber);
     }
 
     /** {@inheritDoc} */
@@ -111,7 +112,12 @@ public class ModuleListener extends CollectingTestListener {
     private void logTestPassed(String testName) {
         if (!mTestFailed && !mCollectTestsOnly) {
             CLog.logAndDisplay(
-                    LogLevel.INFO, "[%d/%d] %s pass", mTestsRan, getExpectedTests(), testName);
+                    LogLevel.INFO,
+                    "[%d/%d] %s %s pass",
+                    mTestsRan,
+                    getExpectedTests(),
+                    getCurrentRunResults().getName(),
+                    testName);
         }
         mTestsRan++;
     }
@@ -137,9 +143,10 @@ public class ModuleListener extends CollectingTestListener {
         }
         CLog.logAndDisplay(
                 LogLevel.INFO,
-                "[%d/%d] %s fail:\n%s",
+                "[%d/%d] %s %s fail:\n%s",
                 mTestsRan,
                 getExpectedTests(),
+                getCurrentRunResults().getName(),
                 test.toString(),
                 trace);
         mTestFailed = true;
