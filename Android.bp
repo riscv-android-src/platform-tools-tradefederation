@@ -77,6 +77,7 @@ java_library_host {
     defaults: ["tradefed_defaults"],
     srcs: [
         "src/**/*.java",
+        "clearcut_client/**/*.java",
     ],
     java_resource_dirs: [
         "res",
@@ -87,6 +88,7 @@ java_library_host {
         ],
     },
     static_libs: [
+        "protobuf-java-util-prebuilt-jar",
         "aoa-helper",
         "commons-compress-prebuilt",
         "error_prone_annotations-2.0.18",
