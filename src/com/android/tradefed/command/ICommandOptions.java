@@ -199,4 +199,7 @@ public interface ICommandOptions {
 
     /** Whether or not to attempt parallel setup of the remote devices. */
     public boolean shouldUseParallelRemoteSetup();
+
+    /** Whether or not to report progression of remote invocation at module level. */
+    public boolean shouldReportModuleProgression();
 }

@@ -44,7 +44,6 @@ public class FileProtoResultReporter extends ProtoResultReporter {
 
     // Current index of the sequence of proto output
     private int mIndex = 0;
-    private File mCurrentOutputFile;
 
     @Override
     public void processStartInvocation(
@@ -74,9 +73,6 @@ public class FileProtoResultReporter extends ProtoResultReporter {
     /** Sets the file where to output the result. */
     public void setFileOutput(File output) {
         mOutputFile = output;
-        if (mPeriodicWriting) {
-            mCurrentOutputFile = new File(mOutputFile.getAbsolutePath() + mIndex);
-        }
     }
 
     /** Enable writing each module individualy to a file. */
@@ -87,7 +83,7 @@ public class FileProtoResultReporter extends ProtoResultReporter {
     private void writeProto(TestRecord record) {
         File outputFile = mOutputFile;
         if (mPeriodicWriting) {
-            outputFile = mCurrentOutputFile;
+            outputFile = new File(mOutputFile.getAbsolutePath() + mIndex);
         }
         try {
             record.writeDelimitedTo(new FileOutputStream(outputFile));
@@ -102,6 +98,5 @@ public class FileProtoResultReporter extends ProtoResultReporter {
 
     private void nextOutputFile() {
         mIndex++;
-        mCurrentOutputFile = new File(mOutputFile.getAbsolutePath() + mIndex);
     }
 }
