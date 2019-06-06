@@ -4382,4 +4382,41 @@ public class TestDeviceTest extends TestCase {
         StreamUtil.close(source);
         verifyMocks();
     }
+
+    /** Test {@link TestDevice#doesFileExist(String)}. */
+    public void testDoesFileExists() throws Exception {
+        injectShellResponse("ls \"/data/local/tmp/file\"", "file");
+        EasyMock.replay(mMockIDevice);
+        assertTrue(mTestDevice.doesFileExist("/data/local/tmp/file"));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test {@link TestDevice#doesFileExist(String)} when the file does not exists. */
+    public void testDoesFileExists_notExists() throws Exception {
+        injectShellResponse(
+                "ls \"/data/local/tmp/file\"",
+                "ls: cannot access 'file': No such file or directory\n");
+        EasyMock.replay(mMockIDevice);
+        assertFalse(mTestDevice.doesFileExist("/data/local/tmp/file"));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /**
+     * Test {@link TestDevice#doesFileExist(String)} when the file exists on an sdcard from another
+     * user.
+     */
+    public void testDoesFileExists_sdcard() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public int getCurrentUser()
+                            throws DeviceNotAvailableException, DeviceRuntimeException {
+                        return 10;
+                    }
+                };
+        injectShellResponse("ls \"/storage/emulated/10/file\"", "file");
+        EasyMock.replay(mMockIDevice);
+        assertTrue(mTestDevice.doesFileExist("/sdcard/file"));
+        EasyMock.verify(mMockIDevice);
+    }
 }
