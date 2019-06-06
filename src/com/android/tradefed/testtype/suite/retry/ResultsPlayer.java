@@ -15,6 +15,9 @@
  */
 package com.android.tradefed.testtype.suite.retry;
 
+import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
@@ -38,7 +41,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 /** Special runner that replays the results given to it. */
-public final class ResultsPlayer implements IRemoteTest, IInvocationContextReceiver {
+public final class ResultsPlayer
+        implements IRemoteTest, IInvocationContextReceiver, IConfigurationReceiver {
 
     private class ReplayModuleHolder {
         public IInvocationContext mModuleContext;
@@ -47,6 +51,7 @@ public final class ResultsPlayer implements IRemoteTest, IInvocationContextRecei
 
     private IInvocationContext mContext;
     private Map<TestRunResult, ReplayModuleHolder> mModuleResult;
+    private IConfiguration mConfiguration;
 
     /** Ctor. */
     public ResultsPlayer() {
@@ -66,7 +71,13 @@ public final class ResultsPlayer implements IRemoteTest, IInvocationContextRecei
         }
 
         long startReplay = System.currentTimeMillis();
-        CLog.d("Start replaying the previous results.");
+        CLog.logAndDisplay(
+                LogLevel.DEBUG,
+                "Start replaying the previous results. Please wait this can take a few minutes.");
+        // Change the logging level to avoid too much logs from the replay.
+        LogLevel originalLevel = mConfiguration.getLogOutput().getLogLevel();
+        mConfiguration.getLogOutput().setLogLevel(LogLevel.WARN);
+
         for (TestRunResult module : mModuleResult.keySet()) {
             ReplayModuleHolder holder = mModuleResult.get(module);
 
@@ -96,7 +107,10 @@ public final class ResultsPlayer implements IRemoteTest, IInvocationContextRecei
             // memory early
             holder.mResults.clear();
         }
-        CLog.d(
+        // Restore the original log level to continue execution with the requested log level.
+        mConfiguration.getLogOutput().setLogLevel(originalLevel);
+        CLog.logAndDisplay(
+                LogLevel.DEBUG,
                 "Done replaying results in %s",
                 TimeUtil.formatElapsedTime(System.currentTimeMillis() - startReplay));
         mModuleResult.clear();
@@ -129,6 +143,12 @@ public final class ResultsPlayer implements IRemoteTest, IInvocationContextRecei
     @Override
     public void setInvocationContext(IInvocationContext invocationContext) {
         mContext = invocationContext;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mConfiguration = configuration;
     }
 
     private void forwardTestResults(
