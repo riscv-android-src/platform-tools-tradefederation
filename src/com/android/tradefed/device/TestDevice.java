@@ -1025,6 +1025,17 @@ public class TestDevice extends NativeDevice {
         return packages;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public boolean doesFileExist(String deviceFilePath) throws DeviceNotAvailableException {
+        if (deviceFilePath.startsWith(SD_CARD)) {
+            deviceFilePath =
+                    deviceFilePath.replaceFirst(
+                            SD_CARD, String.format("/storage/emulated/%s/", getCurrentUser()));
+        }
+        return super.doesFileExist(deviceFilePath);
+    }
+
     /**
      * {@inheritDoc}
      */
