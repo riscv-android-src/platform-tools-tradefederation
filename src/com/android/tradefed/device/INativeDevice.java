@@ -1275,20 +1275,11 @@ public interface INativeDevice {
     public String getDeviceClass();
 
     /**
-     * Extra steps for device specific required setup that will be executed on the device prior
-     * to the invocation flow.
-     */
-    public void preInvocationSetup(IBuildInfo info)
-            throws TargetSetupError, DeviceNotAvailableException;
-
-    /**
      * Extra steps for device specific required setup that will be executed on the device prior to
      * the invocation flow.
      */
-    public default void preInvocationSetup(IBuildInfo info, List<IBuildInfo> testResourceBuildInfos)
-            throws TargetSetupError, DeviceNotAvailableException {
-        preInvocationSetup(info);
-    }
+    public void preInvocationSetup(IBuildInfo info, List<IBuildInfo> testResourceBuildInfos)
+            throws TargetSetupError, DeviceNotAvailableException;
 
     /**
      * Extra steps for device specific required clean up that will be executed after the invocation
