@@ -56,6 +56,7 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -705,5 +706,35 @@ public class RemoteAndroidVirtualDeviceTest {
         } finally {
             FileUtil.deleteFile(tmpKeyFile);
         }
+    }
+
+    @Test
+    public void testGetRemoteTombstone() throws Exception {
+        mTestDevice =
+                new TestableRemoteAndroidVirtualDevice() {
+                    @Override
+                    boolean fetchRemoteDir(File localDir, String remotePath) {
+                        try {
+                            FileUtil.createTempFile("tombstone_00", "", localDir);
+                            FileUtil.createTempFile("tombstone_01", "", localDir);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                        return true;
+                    }
+                };
+        OptionSetter setter = new OptionSetter(mTestDevice.getOptions());
+        setter.setOptionValue(TestDeviceOptions.INSTANCE_TYPE_OPTION, "CUTTLEFISH");
+
+        replayMocks();
+        List<File> tombstones = mTestDevice.getTombstones();
+        try {
+            assertEquals(2, tombstones.size());
+        } finally {
+            for (File f : tombstones) {
+                FileUtil.deleteFile(f);
+            }
+        }
+        verifyMocks();
     }
 }
