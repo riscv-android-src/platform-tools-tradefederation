@@ -19,7 +19,6 @@ package com.android.tradefed.log;
 import com.android.ddmlib.Log.ILogOutput;
 import com.android.ddmlib.Log.LogLevel;
 
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -97,11 +96,4 @@ public interface ILogRegistry extends ILogOutput {
     /** Diagnosis method to dump all logs to files. */
     public void dumpLogs();
 
-    /**
-     * Get log entries after the given logEntry.
-     *
-     * @param logEntry a {@link LogEntry} as a pivot.
-     * @return log entries logged after the given logEntry.
-     */
-    public List<LogEntry> getLogEntriesAfter(LogEntry logEntry);
 }
