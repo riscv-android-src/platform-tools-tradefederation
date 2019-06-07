@@ -652,6 +652,14 @@ public class InstallApexModuleTargetPreparerTest {
         }
     }
 
+    /** Test that teardown without setup does not cause a NPE. */
+    @Test
+    public void testTearDown() throws Exception {
+        EasyMock.replay(mMockBuildInfo, mMockDevice);
+        mInstallApexModuleTargetPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
+        EasyMock.verify(mMockBuildInfo, mMockDevice);
+    }
+
     private void mockSuccessfulInstallPackageAndReboot() throws Exception {
         EasyMock.expect(mMockDevice.installPackage((File) EasyMock.anyObject(), EasyMock.eq(true)))
                 .andReturn(null)
