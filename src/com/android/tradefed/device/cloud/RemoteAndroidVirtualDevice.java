@@ -358,24 +358,36 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                     String.format(
                                     CommonLogRemoteFileUtil.NESTED_REMOTE_LOG_DIR,
                                     getOptions().getInstanceUser())
-                            + "tombstones";
-            File tombstonesDir =
-                    RemoteFileUtil.fetchRemoteDir(
-                            mGceAvd,
-                            getOptions(),
-                            getRunUtil(),
-                            FETCH_TOMBSTONES_TIMEOUT_MS,
-                            remoteRuntimePath);
-            if (tombstonesDir == null) {
-                CLog.e("Pulled tombstone dir was not valid. Path: %s", tombstonesDir);
+                            + "tombstones/*";
+            File localDir = null;
+            try {
+                localDir = FileUtil.createTempDir("tombstones");
+            } catch (IOException e) {
+                CLog.e(e);
+                return tombs;
+            }
+            if (!fetchRemoteDir(localDir, remoteRuntimePath)) {
+                CLog.e("Failed to pull %s", remoteRuntimePath);
+                FileUtil.recursiveDelete(localDir);
             } else {
-                // TODO: If possible delete the tombstones parent temp dir.
-                tombs.addAll(Arrays.asList(tombstonesDir.listFiles()));
+                tombs.addAll(Arrays.asList(localDir.listFiles()));
+                localDir.deleteOnExit();
             }
             return tombs;
         }
         // If it's not Cuttlefish, use the standard call.
         return super.getTombstones();
+    }
+
+    @VisibleForTesting
+    boolean fetchRemoteDir(File localDir, String remotePath) {
+        return RemoteFileUtil.fetchRemoteDir(
+                mGceAvd,
+                getOptions(),
+                getRunUtil(),
+                FETCH_TOMBSTONES_TIMEOUT_MS,
+                remotePath,
+                localDir);
     }
 
     /**
