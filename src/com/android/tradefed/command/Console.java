@@ -18,6 +18,7 @@ package com.android.tradefed.command;
 
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.clearcut.ClearcutClient;
+import com.android.tradefed.clearcut.TerminateClearcutClient;
 import com.android.tradefed.config.ArgsOptionParser;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
@@ -1163,21 +1164,5 @@ public class Console extends Thread {
         // explanation near the top of #run()
         console.awaitScheduler();
         console.registerShutdownSignals();
-    }
-
-    /** Thread hooked to the JVM to ensure we flush the Clearcut events and stop the client. */
-    private static class TerminateClearcutClient extends Thread {
-
-        private final ClearcutClient mClient;
-
-        TerminateClearcutClient(ClearcutClient client) {
-            mClient = client;
-        }
-
-        @Override
-        public void run() {
-            // TODO: report the exit event if not already reported
-            mClient.stop();
-        }
     }
 }
