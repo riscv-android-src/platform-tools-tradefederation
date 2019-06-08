@@ -353,7 +353,13 @@ public class RemoteInvocationExecution extends InvocationExecution {
         // running.
         boolean stillRunning =
                 isStillRunning(
-                        currentInvocationListener, configFile, info, options, runUtil, config);
+                        currentInvocationListener,
+                        configFile,
+                        info,
+                        options,
+                        runUtil,
+                        config,
+                        context);
 
         // Fetch the logs
         File stdoutFile =
@@ -382,14 +388,17 @@ public class RemoteInvocationExecution extends InvocationExecution {
             }
         }
 
-        fetchAndProcessResults(
-                stillRunning,
-                currentInvocationListener,
-                context,
-                info,
-                options,
-                runUtil,
-                mRemoteTradefedDir);
+        // If not result in progress are reported, parse the full results at the end.
+        if (!config.getCommandOptions().shouldReportModuleProgression()) {
+            fetchAndProcessResults(
+                    stillRunning,
+                    currentInvocationListener,
+                    context,
+                    info,
+                    options,
+                    runUtil,
+                    mRemoteTradefedDir);
+        }
     }
 
     private boolean isStillRunning(
@@ -398,7 +407,9 @@ public class RemoteInvocationExecution extends InvocationExecution {
             GceAvdInfo info,
             TestDeviceOptions options,
             IRunUtil runUtil,
-            IConfiguration config) {
+            IConfiguration config,
+            IInvocationContext context)
+            throws IOException {
         long maxTimeout = config.getCommandOptions().getInvocationTimeout();
         Long endTime = null;
         if (maxTimeout > 0L) {
@@ -406,7 +417,31 @@ public class RemoteInvocationExecution extends InvocationExecution {
         }
         boolean stillRunning = true;
         int errorConnectCount = 0;
+        int currentIndex = 0;
+        ProtoResultParser parser =
+                new ProtoResultParser(
+                        currentInvocationListener,
+                        context, /* Don't report invocation level */
+                        false,
+                        "remote-");
         while (stillRunning) {
+            if (config.getCommandOptions().shouldReportModuleProgression()) {
+                File resultFile =
+                        RemoteFileUtil.fetchRemoteFile(
+                                info,
+                                options,
+                                runUtil,
+                                PULL_RESULT_TIMEOUT,
+                                mRemoteTradefedDir + PROTO_RESULT_NAME + currentIndex);
+                if (resultFile != null) {
+                    currentIndex++;
+                    parser.processFileProto(resultFile);
+                    // Don't sleep in that case since we might have more file to process, this will
+                    // sleep next time we don't find a file to process on the remote.
+                    continue;
+                }
+            }
+
             CommandResult psRes =
                     GceManager.remoteSshCommandExecution(
                             info,
@@ -442,6 +477,24 @@ public class RemoteInvocationExecution extends InvocationExecution {
             if (stillRunning) {
                 RunUtil.getDefault().sleep(REMOTE_PROCESS_RUNNING_WAIT);
             }
+        }
+
+        File resultFile = null;
+        if (config.getCommandOptions().shouldReportModuleProgression()) {
+            // Process all remaining proto files available
+            do {
+                resultFile =
+                        RemoteFileUtil.fetchRemoteFile(
+                                info,
+                                options,
+                                runUtil,
+                                PULL_RESULT_TIMEOUT,
+                                mRemoteTradefedDir + PROTO_RESULT_NAME + currentIndex);
+                if (resultFile != null) {
+                    currentIndex++;
+                    parser.processFileProto(resultFile);
+                }
+            } while (resultFile != null);
         }
         return stillRunning;
     }
@@ -520,6 +573,9 @@ public class RemoteInvocationExecution extends InvocationExecution {
         // Setup the remote reporting to a proto file
         List<ITestInvocationListener> reporters = new ArrayList<>();
         FileProtoResultReporter protoReporter = new FileProtoResultReporter();
+        if (config.getCommandOptions().shouldReportModuleProgression()) {
+            protoReporter.setPeriodicWriting(true);
+        }
         protoReporter.setFileOutput(new File(resultDirPath + PROTO_RESULT_NAME));
         reporters.add(protoReporter);
 

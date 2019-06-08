@@ -17,6 +17,8 @@
 package com.android.tradefed.command;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.clearcut.ClearcutClient;
+import com.android.tradefed.clearcut.TerminateClearcutClient;
 import com.android.tradefed.config.ArgsOptionParser;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
@@ -1143,12 +1145,19 @@ public class Console extends Thread {
      */
     public static void startConsole(Console console, String[] args) throws InterruptedException,
             ConfigurationException {
+        ClearcutClient client = new ClearcutClient(/* override URL */ null, /* isExternal */ true);
+        Runtime.getRuntime().addShutdownHook(new TerminateClearcutClient(client));
+        client.notifyTradefedStartEvent();
+
         List<String> nonGlobalArgs = GlobalConfiguration.createGlobalConfiguration(args);
         GlobalConfiguration.getInstance().setup();
         console.setArgs(nonGlobalArgs);
         console.setCommandScheduler(GlobalConfiguration.getInstance().getCommandScheduler());
         console.setKeyStoreFactory(GlobalConfiguration.getInstance().getKeyStoreFactory());
         console.setDaemon(true);
+
+        GlobalConfiguration.getInstance().getCommandScheduler().setClearcutClient(client);
+
         console.start();
 
         // Wait for the CommandScheduler to get started before we exit the main thread.  See full

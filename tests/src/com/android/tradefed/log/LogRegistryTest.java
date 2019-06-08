@@ -18,28 +18,23 @@ package com.android.tradefed.log;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
 
+import junit.framework.TestCase;
+
 import org.easymock.EasyMock;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
 
-import java.util.List;
-
-/** Unit tests for {@link LogRegistry}. */
-@RunWith(JUnit4.class)
-public class LogRegistryTest {
+/**
+ * Unit tests for {@link LogRegistry}.
+ */
+public class LogRegistryTest extends TestCase {
 
     private static final String LOG_TAG = "LogRegistryTest";
-    private static final long MAX_HISTORY_SIZE = 5;
 
     private LogRegistry mLogRegistry;
     private ThreadGroup mStubThreadGroup;
 
-    @Before
-    public void setUp() throws Exception {
+    @Override
+    protected void setUp() throws Exception {
+        super.setUp();
         mStubThreadGroup = new ThreadGroup("LogRegistryTest");
         mLogRegistry =
                 new LogRegistry() {
@@ -54,29 +49,24 @@ public class LogRegistryTest {
                     public void saveGlobalLog() {
                         // empty on purpose, avoid leaving logs that we can't clean.
                     }
-
-                    @Override
-                    long getMaxHistorySize() {
-                        return MAX_HISTORY_SIZE;
-                    }
                 };
     }
 
-    @After
-    public void tearDown() throws Exception {
+    @Override
+    protected void tearDown() throws Exception {
+        super.tearDown();
         mLogRegistry.closeAndRemoveAllLogs();
     }
 
     /**
      * Tests that {@link LogRegistry#getLogger} returns the logger that was previously registered.
      */
-    @Test
     public void testGetLogger() {
         StdoutLogger stdoutLogger = new StdoutLogger();
         mLogRegistry.registerLogger(stdoutLogger);
 
         ILeveledLogOutput returnedLogger = mLogRegistry.getLogger();
-        Assert.assertEquals(stdoutLogger, returnedLogger);
+        assertEquals(stdoutLogger, returnedLogger);
         mLogRegistry.unregisterLogger();
     }
 
@@ -84,7 +74,6 @@ public class LogRegistryTest {
      * Tests that {@link LogRegistry#printLog} calls into the underlying logger's printLog method
      * when the logging level is appropriate for printing.
      */
-    @Test
     public void testPrintLog_sameLogLevel() {
         String testMessage = "This is a test message.";
         ILeveledLogOutput mockLogger = EasyMock.createMock(ILeveledLogOutput.class);
@@ -102,7 +91,6 @@ public class LogRegistryTest {
      * Tests that {@link LogRegistry#printLog} does not call into the underlying logger's printLog
      * method when the logging level is lower than necessary to log.
      */
-    @Test
     public void testPrintLog_lowerLogLevel() {
         String testMessage = "This is a test message.";
         ILeveledLogOutput mockLogger = EasyMock.createMock(ILeveledLogOutput.class);
@@ -117,10 +105,9 @@ public class LogRegistryTest {
     }
 
     /**
-     * Tests for ensuring new threads spawned without an explicit ThreadGroup will inherit the same
-     * logger as the parent's logger.
+     * Tests for ensuring new threads spawned without an explicit ThreadGroup will inherit the
+     * same logger as the parent's logger.
      */
-    @Test
     public void testThreadedLogging() {
         final String testMessage = "Another test message!";
         final ILeveledLogOutput mockLogger = EasyMock.createMock(ILeveledLogOutput.class);
@@ -144,7 +131,7 @@ public class LogRegistryTest {
                     secondThread.join();  // threaded, but force serialization for testing
                 }
                 catch (InterruptedException ie) {
-                    Assert.fail("Thread was unexpectedly interrupted.");
+                    fail("Thread was unexpectedly interrupted.");
                 }
                 finally {
                     mLogRegistry.unregisterLogger();
@@ -169,35 +156,7 @@ public class LogRegistryTest {
             firstThread.join();  // threaded, but force serialization for testing
         }
         catch (InterruptedException ie) {
-            Assert.fail("Thread was unexpectedly interrupted.");
+            fail("Thread was unexpectedly interrupted.");
         }
-    }
-
-    /** Tests {@link LogRegistry#getLogEntriesAfter}. */
-    @Test
-    public void testGetLogEntriesAfter() {
-        mLogRegistry.printLog(LogLevel.VERBOSE, LOG_TAG, "message1");
-        mLogRegistry.printLog(LogLevel.VERBOSE, LOG_TAG, "message2");
-        List<LogEntry> logs = mLogRegistry.getLogEntriesAfter(null);
-        Assert.assertEquals(2, logs.size());
-        Assert.assertEquals("message1", logs.get(0).getMessage());
-        Assert.assertEquals("message2", logs.get(1).getMessage());
-        mLogRegistry.printLog(LogLevel.VERBOSE, LOG_TAG, "message3");
-        mLogRegistry.printLog(LogLevel.VERBOSE, LOG_TAG, "message4");
-        logs = mLogRegistry.getLogEntriesAfter(logs.get(1));
-        Assert.assertEquals(2, logs.size());
-        Assert.assertEquals("message3", logs.get(0).getMessage());
-        Assert.assertEquals("message4", logs.get(1).getMessage());
-    }
-
-    /** Tests {@link LogRegistry#getLogEntriesAfter} will not store more than limit. */
-    @Test
-    public void testGetLogEntriesAfter_exceedLimit() {
-        for (int i = 0; i < MAX_HISTORY_SIZE * 2; ++i) {
-            mLogRegistry.printLog(LogLevel.VERBOSE, LOG_TAG, String.format("message-%d", i));
-        }
-        List<LogEntry> logs = mLogRegistry.getLogEntriesAfter(null);
-        Assert.assertEquals(MAX_HISTORY_SIZE, logs.size());
-        Assert.assertEquals("message-9", logs.get(logs.size() - 1).getMessage());
     }
 }

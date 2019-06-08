@@ -55,12 +55,14 @@ public class InstallApexModuleTargetPreparerTest {
     private BundletoolUtil mMockBundletoolUtil;
     private File mFakeApex;
     private File mFakeApk;
+    private File mFakeApk2;
     private File mFakeApkApks;
     private File mFakeApexApks;
     private File mBundletoolJar;
     private OptionSetter mSetter;
     private static final String APEX_PACKAGE_NAME = "com.android.FAKE_APEX_PACKAGE_NAME";
     private static final String APK_PACKAGE_NAME = "com.android.FAKE_APK_PACKAGE_NAME";
+    private static final String APK2_PACKAGE_NAME = "com.android.FAKE_APK2_PACKAGE_NAME";
     private static final String SPLIT_APEX_PACKAGE_NAME =
             "com.android.SPLIT_FAKE_APEX_PACKAGE_NAME";
     private static final String SPLIT_APK_PACKAGE_NAME =
@@ -69,6 +71,7 @@ public class InstallApexModuleTargetPreparerTest {
     private static final long APEX_VERSION = 1;
     private static final String APEX_NAME = "fakeApex.apex";
     private static final String APK_NAME = "fakeApk.apk";
+    private static final String APK2_NAME = "fakeSecondApk.apk";
     private static final String SPLIT_APEX_APKS_NAME = "fakeApex.apks";
     private static final String SPLIT_APK__APKS_NAME = "fakeApk.apks";
     private static final String BUNDLETOOL_JAR_NAME = "bundletool.jar";
@@ -81,6 +84,7 @@ public class InstallApexModuleTargetPreparerTest {
     public void setUp() throws Exception {
         mFakeApex = FileUtil.createTempFile("fakeApex", ".apex");
         mFakeApk = FileUtil.createTempFile("fakeApk", ".apk");
+        mFakeApk2 = FileUtil.createTempFile("fakeSecondApk", ".apk");
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
         mMockBundletoolUtil = Mockito.mock(BundletoolUtil.class);
@@ -112,7 +116,11 @@ public class InstallApexModuleTargetPreparerTest {
                             return mFakeApex;
                         }
                         if (appFileName.endsWith(".apk")) {
-                            return mFakeApk;
+                            if (appFileName.contains("Second")) {
+                                return mFakeApk2;
+                            } else {
+                                return mFakeApk;
+                            }
                         }
                         if (appFileName.endsWith(".apks")) {
                             if (appFileName.contains("Apex")) {
@@ -136,7 +144,11 @@ public class InstallApexModuleTargetPreparerTest {
                         }
                         if (testAppFile.getName().endsWith(".apk") &&
                             !testAppFile.getName().contains("Split")) {
-                            return APK_PACKAGE_NAME;
+                            if (testAppFile.getName().contains("Second")) {
+                                return APK2_PACKAGE_NAME;
+                            } else {
+                                return APK_PACKAGE_NAME;
+                            }
                         }
                         if (testAppFile.getName().endsWith(".apk") &&
                             testAppFile.getName().contains("Split")) {
@@ -167,6 +179,7 @@ public class InstallApexModuleTargetPreparerTest {
     public void tearDown() throws Exception {
         FileUtil.deleteFile(mFakeApex);
         FileUtil.deleteFile(mFakeApk);
+        FileUtil.deleteFile(mFakeApk2);
     }
 
     @Test
@@ -325,6 +338,35 @@ public class InstallApexModuleTargetPreparerTest {
                 .andReturn(null)
                 .once();
         EasyMock.expect(mMockDevice.uninstallPackage(APK_PACKAGE_NAME)).andReturn(null).once();
+
+        EasyMock.replay(mMockBuildInfo, mMockDevice);
+        mInstallApexModuleTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
+        mInstallApexModuleTargetPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
+        EasyMock.verify(mMockBuildInfo, mMockDevice);
+    }
+
+    @Test
+    public void testSetupAndTearDown_InstallMultipleApk() throws Exception {
+        mInstallApexModuleTargetPreparer.addTestFileName(APK_NAME);
+        mInstallApexModuleTargetPreparer.addTestFileName(APK2_NAME);
+        mMockDevice.deleteFile(APEX_DATA_DIR + "*");
+        EasyMock.expectLastCall().times(1);
+        mMockDevice.deleteFile(SESSION_DATA_DIR + "*");
+        EasyMock.expectLastCall().times(1);
+        mMockDevice.deleteFile(STAGING_DATA_DIR + "*");
+        EasyMock.expectLastCall().times(1);
+        CommandResult res = new CommandResult();
+        res.setStdout("test.apex");
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + APEX_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + SESSION_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + STAGING_DATA_DIR)).andReturn(res);
+        mMockDevice.reboot();
+        EasyMock.expectLastCall();
+        EasyMock.expect(mMockDevice.installPackage((File) EasyMock.anyObject(), EasyMock.eq(true)))
+            .andReturn(null)
+            .times(2);
+        EasyMock.expect(mMockDevice.uninstallPackage(APK_PACKAGE_NAME)).andReturn(null).once();
+        EasyMock.expect(mMockDevice.uninstallPackage(APK2_PACKAGE_NAME)).andReturn(null).once();
 
         EasyMock.replay(mMockBuildInfo, mMockDevice);
         mInstallApexModuleTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
@@ -608,6 +650,14 @@ public class InstallApexModuleTargetPreparerTest {
             FileUtil.deleteFile(fakeSplitApkApks);
             FileUtil.deleteFile(mBundletoolJar);
         }
+    }
+
+    /** Test that teardown without setup does not cause a NPE. */
+    @Test
+    public void testTearDown() throws Exception {
+        EasyMock.replay(mMockBuildInfo, mMockDevice);
+        mInstallApexModuleTargetPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
+        EasyMock.verify(mMockBuildInfo, mMockDevice);
     }
 
     private void mockSuccessfulInstallPackageAndReboot() throws Exception {

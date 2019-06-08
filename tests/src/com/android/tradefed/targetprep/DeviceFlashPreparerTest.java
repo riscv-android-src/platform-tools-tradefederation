@@ -162,6 +162,21 @@ public class DeviceFlashPreparerTest {
         }
     }
 
+    /**
+     * Test {@link DeviceFlashPreparer#setUp(ITestDevice, IBuildInfo)} when ramdisk flashing is
+     * required via parameter but not provided in build info
+     */
+    @Test
+    public void testSetUp_noRamdisk() throws Exception {
+        try {
+            mDeviceFlashPreparer.setShouldFlashRamdisk(true);
+            mDeviceFlashPreparer.setUp(mMockDevice, mMockBuildInfo);
+            fail("IllegalArgumentException not thrown");
+        } catch (IllegalArgumentException e) {
+            // expected
+        }
+    }
+
     /** Test {@link DeviceFlashPreparer#setUp(ITestDevice, IBuildInfo)} when build does not boot. */
     @Test
     public void testSetup_buildError() throws Exception {
@@ -256,6 +271,7 @@ public class DeviceFlashPreparerTest {
     @Test
     public void testSetup_flashRamdisk() throws Exception {
         mDeviceFlashPreparer.setShouldFlashRamdisk(true);
+        mMockBuildInfo.setRamdiskFile(new File("foo"), "0");
         doSetupExpectations();
         // report flashing success in normal case
         EasyMock.expect(mMockFlasher.getSystemFlashingStatus())

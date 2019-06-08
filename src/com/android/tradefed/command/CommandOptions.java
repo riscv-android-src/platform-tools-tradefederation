@@ -18,9 +18,9 @@ package com.android.tradefed.command;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
-import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionUpdateRule;
+import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.UniqueMultiMap;
 
@@ -175,6 +175,12 @@ public class CommandOptions implements ICommandOptions {
                 "For remote sharded invocation, whether or not to attempt the setup in parallel."
     )
     private boolean mUseParallelRemoteSetup = false;
+
+    @Option(
+        name = "report-module-progression",
+        description = "For remote invocation, whether or not to report progress at module level."
+    )
+    private boolean mReportModuleProgression = false;
 
     @Option(
         name = "auto-collect",
@@ -535,5 +541,11 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean shouldUseParallelRemoteSetup() {
         return mUseParallelRemoteSetup;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldReportModuleProgression() {
+        return mReportModuleProgression;
     }
 }

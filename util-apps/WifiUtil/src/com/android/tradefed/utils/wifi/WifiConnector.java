@@ -22,6 +22,7 @@ import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.os.SystemClock;
 import android.util.Log;
 
 import org.json.JSONException;
@@ -88,12 +89,12 @@ public class WifiConnector {
             throw new WifiException(
                 String.format("Failed %s due to invalid timeout (%d ms)", description, timeout));
         }
-        long startTime = System.currentTimeMillis();
+        long startTime = SystemClock.uptimeMillis();
         long endTime = startTime + timeout;
         try {
-            while (System.currentTimeMillis() < endTime) {
+            while (SystemClock.uptimeMillis() < endTime) {
                 if (checker.call()) {
-                    long elapsed = System.currentTimeMillis() - startTime;
+                    long elapsed = SystemClock.uptimeMillis() - startTime;
                     Log.i(TAG, String.format(
                         "Time elapsed waiting for %s: %d ms", description, elapsed));
                     return elapsed;

@@ -27,12 +27,11 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.suite.SuiteApkInstaller;
 import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.BundletoolUtil;
-
 import com.android.tradefed.util.RunUtil;
+
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -55,10 +54,10 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     private static final String SPLIT_APKS_SUFFIX = ".apks";
     private static final String TRAIN_WITH_APEX_INSTALL_OPTION = "install-multi-package";
 
-    private List<ApexInfo> mTestApexInfoList;
-    private Set<String> mApkToInstall;
-    private List<String> mApkInstalled;
-    private List<String> mSplitsInstallArgs;
+    private List<ApexInfo> mTestApexInfoList = new ArrayList<>();
+    private Set<String> mApkToInstall = new LinkedHashSet<>();
+    private List<String> mApkInstalled = new ArrayList<>();
+    private List<String> mSplitsInstallArgs = new ArrayList<>();
     private BundletoolUtil mBundletoolUtil;
 
     @Option(name = "bundletool-file-name", description = "The file name of the bundletool jar.")
@@ -75,11 +74,6 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, DeviceNotAvailableException {
 
-        mApkInstalled = new ArrayList<>();
-        mApkToInstall = new LinkedHashSet<>();
-        mTestApexInfoList = new ArrayList<>();
-        mSplitsInstallArgs = new ArrayList<>();
-
         if (getTestsFileName().isEmpty()) {
             CLog.i("No apk/apex module file to install. Skipping.");
             return;
@@ -89,22 +83,20 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
 
         List<String> testAppFileNames = getTestsFileName();
         if (containsApks(testAppFileNames)) {
-            try {
-                installUsingBundleTool(buildInfo, device);
-                if (mTestApexInfoList.isEmpty()) {
-                    CLog.i("No Apex module in the train. Skipping reboot.");
-                    return;
-                } else {
-                    device.reboot();
-                }
-            } catch (IOException e) {
-                throw new TargetSetupError(
-                        "Failed to create tmp spec file for device.", device.getDeviceDescriptor());
+            installUsingBundleTool(buildInfo, device);
+            if (mTestApexInfoList.isEmpty()) {
+                CLog.i("No Apex module in the train. Skipping reboot.");
+                return;
+            } else {
+                device.reboot();
             }
         } else {
             // Only contain .apk module.
             if (!containsApex(testAppFileNames)) {
-                super.installer(device, buildInfo, testAppFileNames);
+                for (String apkFileName : testAppFileNames) {
+                    // Install the apk one by one to avoid invoking split apk installation.
+                    super.installer(device, buildInfo, Arrays.asList(new String[] {apkFileName}));
+                }
                 return;
             } else {
                 // Any kind of combination of apex/apk.
@@ -241,7 +233,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      * @param buildInfo build artifact information
      */
     protected void installUsingBundleTool(IBuildInfo buildInfo, ITestDevice device)
-            throws TargetSetupError, DeviceNotAvailableException, IOException {
+            throws TargetSetupError, DeviceNotAvailableException {
         File bundletoolJar = getLocalPathForFilename(buildInfo, getBundletoolFileName(), device);
         if (bundletoolJar == null) {
             throw new TargetSetupError(
