@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
+<<<<<<< HEAD   (617b32 Merge "resolve merge conflicts of cd6fa02756252d903cc91f1b95)
 	<classpathentry kind="src" path="src"/>
+=======
+	<classpathentry excluding="com/android/tradefed/testtype/junit4/LongevityHostRunner.java|com/android/tradefed/testtype/junit4/builder/DeviceJUnit4ClassRunnerBuilder.java" kind="src" path="src"/>
+	<classpathentry kind="src" path="clearcut_client"/>
+>>>>>>> CHANGE (699381 Merge "Initial commit to get clearcut client reporting" am: )
 	<classpathentry kind="src" path="res"/>
 	<classpathentry kind="src" path="hamcrest"/>
 	<classpathentry kind="src" path="jline"/>
@@ -29,5 +34,6 @@
 	<classpathentry exported="true" kind="var" path="TRADEFED_ROOT/prebuilts/tools/common/google-api-services-storage/1.23.0/google-api-services-storage-v1-rev114-1.23.0.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/tools/tradefederation/core/tradefed-protos/linux_glibc_common/combined/tradefed-protos.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/prebuilts/tools/common/m2/repository/com/google/code/gson/gson/2.8.0/gson-2.8.0.jar"/>
+	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/prebuilts/tools/common/m2/protobuf-java-util-prebuilt-jar/linux_glibc_common/combined/protobuf-java-util-prebuilt-jar.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
