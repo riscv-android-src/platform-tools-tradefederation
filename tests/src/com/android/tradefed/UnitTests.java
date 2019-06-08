@@ -26,6 +26,7 @@ import com.android.tradefed.build.FileDownloadCacheTest;
 import com.android.tradefed.build.GCSTestResourceProviderTest;
 import com.android.tradefed.build.LocalDeviceBuildProviderTest;
 import com.android.tradefed.build.OtaZipfileBuildProviderTest;
+import com.android.tradefed.clearcut.ClearcutClientTest;
 import com.android.tradefed.command.CommandFileParserTest;
 import com.android.tradefed.command.CommandFileWatcherTest;
 import com.android.tradefed.command.CommandInterrupterTest;
@@ -375,6 +376,9 @@ import org.junit.runners.Suite.SuiteClasses;
     GCSTestResourceProviderTest.class,
     LocalDeviceBuildProviderTest.class,
     OtaZipfileBuildProviderTest.class,
+
+    // clearcut
+    ClearcutClientTest.class,
 
     // command
     CommandFileParserTest.class,
