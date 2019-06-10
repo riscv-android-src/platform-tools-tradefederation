@@ -164,7 +164,7 @@ public class NestedRemoteDevice extends TestDevice {
         // Reset recovery since it's a new device
         setRecoveryMode(RecoveryMode.AVAILABLE);
         try {
-            preInvocationSetup(info, null);
+            preInvocationSetup(info);
         } catch (TargetSetupError e) {
             CLog.e("Failed to re-init the device %s", getSerialNumber());
             CLog.e(e);
