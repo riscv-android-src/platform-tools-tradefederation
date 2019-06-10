@@ -136,6 +136,7 @@ public abstract class ITestSuite
     public static final String MODULE_METADATA_INCLUDE_FILTER = "module-metadata-include-filter";
     public static final String MODULE_METADATA_EXCLUDE_FILTER = "module-metadata-exclude-filter";
     public static final String RANDOM_SEED = "random-seed";
+    public static final String REBOOT_BEFORE_TEST = "reboot-before-test";
 
     private static final String PRODUCT_CPU_ABI_KEY = "ro.product.cpu.abi";
 
@@ -183,6 +184,12 @@ public abstract class ITestSuite
     @Option(name = "reboot-at-last-retry",
         description = "Reboot the device at the last intra-module retry")
     private boolean mRebootAtLastRetry = false;
+
+    @Option(
+        name = REBOOT_BEFORE_TEST,
+        description = "Reboot the device before the test suite starts."
+    )
+    private boolean mRebootBeforeTest = false;
 
     @Option(name = "skip-all-system-status-check",
             description = "Whether all system status check between modules should be skipped")
@@ -293,12 +300,6 @@ public abstract class ITestSuite
         description = "Whether or not to attempt the module isolation between modules"
     )
     private boolean mIsolatedModule = false;
-
-    @Option(
-        name = "reboot-before-test",
-        description = "Reboot the device before the test suite starts."
-    )
-    private boolean mRebootBeforeTest = false;
 
     // [Options relate to module retry and intra-module retry][
     @Option(
@@ -1154,6 +1155,11 @@ public abstract class ITestSuite
     @VisibleForTesting
     final Injector getInjector() {
         return mInjector;
+    }
+
+    /** Sets reboot-before-test to true. */
+    public final void enableRebootBeforeTest() {
+        mRebootBeforeTest = true;
     }
 
     /**
