@@ -79,11 +79,6 @@ java_library_host {
     srcs: [
         "common_util/**/*.java",
     ],
-    openjdk9: {
-        javacflags: [
-            "--add-modules=java.xml.bind",
-        ],
-    },
     static_libs: [
         "commons-compress-prebuilt",
     ],
@@ -105,11 +100,6 @@ java_library_host {
     java_resource_dirs: [
         "res",
     ],
-    openjdk9: {
-        javacflags: [
-            "--add-modules=java.xml.bind",
-        ],
-    },
     static_libs: [
         "tradefed-common-util",
         "protobuf-java-util-prebuilt-jar",
