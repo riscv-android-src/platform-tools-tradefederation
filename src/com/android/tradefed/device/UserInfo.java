@@ -42,12 +42,36 @@ public final class UserInfo {
     public enum UserType {
         /** current foreground user of the device */
         CURRENT,
+        /**
+         * guest user. Only one can exist at a time, may be ephemeral and have more restrictions.
+         */
+        GUEST,
         /** user flagged as primary on the device; most often primary = system user = user 0 */
         PRIMARY,
         /** system user = user 0 */
         SYSTEM,
         /** secondary user, i.e. non-primary and non-system. */
         SECONDARY;
+
+        public boolean isCurrent() {
+            return this == CURRENT;
+        }
+
+        public boolean isGuest() {
+            return this == GUEST;
+        }
+
+        public boolean isPrimary() {
+            return this == PRIMARY;
+        }
+
+        public boolean isSystem() {
+            return this == SYSTEM;
+        }
+
+        public boolean isSecondary() {
+            return this == SECONDARY;
+        }
     }
 
     public UserInfo(int userId, String userName, int flag, boolean isRunning) {
@@ -73,6 +97,10 @@ public final class UserInfo {
         return mIsRunning;
     }
 
+    public boolean isGuest() {
+        return (mFlag & FLAG_GUEST) == FLAG_GUEST;
+    }
+
     public boolean isPrimary() {
         return (mFlag & FLAG_PRIMARY) == FLAG_PRIMARY;
     }
@@ -90,6 +118,8 @@ public final class UserInfo {
         switch (userType) {
             case CURRENT:
                 return mUserId == currentUserId;
+            case GUEST:
+                return isGuest();
             case PRIMARY:
                 return isPrimary();
             case SYSTEM:
