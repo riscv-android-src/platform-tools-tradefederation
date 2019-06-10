@@ -4137,11 +4137,9 @@ public class NativeDevice implements IManagedTestDevice {
         return device.getClass().getSimpleName();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void preInvocationSetup(IBuildInfo info)
+    public void preInvocationSetup(IBuildInfo info, List<IBuildInfo> testResourceBuildInfos)
             throws TargetSetupError, DeviceNotAvailableException {
         // Default implementation
         mContentProvider = null;
