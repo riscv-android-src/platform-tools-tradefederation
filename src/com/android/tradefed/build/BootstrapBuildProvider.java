@@ -22,6 +22,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.BuildInfoUtil;
 import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
@@ -97,12 +98,7 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
     @Override
     public IBuildInfo getBuild(ITestDevice device) throws BuildRetrievalError,
             DeviceNotAvailableException {
-        String buildId = mBuildId;
-        // If mBuildId is set, do not use the device build-id
-        if (buildId == null) {
-            buildId = device.getBuildId();
-        }
-        IBuildInfo info = new DeviceBuildInfo(buildId, mBuildTargetName);
+        IBuildInfo info = new DeviceBuildInfo();
         if (!(device.getIDevice() instanceof StubDevice)) {
             if (!device.waitForDeviceShell(mShellAvailableTimeout * 1000)) {
                 throw new DeviceNotAvailableException(
@@ -111,24 +107,14 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
                                 mShellAvailableTimeout),
                         device.getSerialNumber());
             }
-            if (mBranch == null) {
-                mBranch =
-                        String.format(
-                                "%s-%s-%s-%s",
-                                device.getProperty("ro.product.brand"),
-                                device.getProperty("ro.product.name"),
-                                device.getProductVariant(),
-                                device.getProperty("ro.build.version.release"));
-            }
         } else {
             // In order to avoid issue with a null branch, use a placeholder stub for StubDevice.
             mBranch = "stub";
         }
-        info.setBuildBranch(mBranch);
-        info.setBuildFlavor(device.getBuildFlavor());
-        info.addBuildAttribute("build_alias", device.getBuildAlias());
+        BuildInfoUtil.bootstrapDeviceBuildAttributes(
+                info, device, mBuildId, mBuildTargetName, mBranch, null);
         if (mTestsDir != null && mTestsDir.isDirectory()) {
-            info.setFile("testsdir", mTestsDir, buildId);
+            info.setFile("testsdir", mTestsDir, info.getBuildId());
         }
         // Avoid tests dir being null, by creating a temporary dir.
         if (mTestsDir == null) {

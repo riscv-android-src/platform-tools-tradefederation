@@ -34,7 +34,7 @@ import java.io.File;
  * TargetSetupError}, and same applies to any OTA sideload error detected.
  */
 @OptionClass(alias = "sideload-ota")
-public class SideloadOtaTargetPreparer extends DeviceBuildInfoInjector {
+public class SideloadOtaTargetPreparer extends DeviceBuildInfoBootStrapper {
 
     private static final String SIDELOAD_CMD = "sideload";
     // the timeout for state transition from sideload finishes to recovery mode, not making this
@@ -53,12 +53,12 @@ public class SideloadOtaTargetPreparer extends DeviceBuildInfoInjector {
     private long mSideloadTimeout = 10 * 60 * 1000;
 
     @Option(
-        name = "inject-build-info",
+        name = "bootstrap-build-info",
         description =
-                "whether build info should be injected "
+                "whether build info should be bootstrapped "
                         + "based on device attributes after sideloading"
     )
-    private boolean mInjectBuildInfo = true;
+    private boolean mBootStrapBuildInfo = true;
 
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
@@ -76,7 +76,7 @@ public class SideloadOtaTargetPreparer extends DeviceBuildInfoInjector {
         // now reboot and wait for the device to become available
         device.reboot();
         // calling this last because we want to inject device side build info after device boots up
-        if (mInjectBuildInfo) {
+        if (mBootStrapBuildInfo) {
             super.setUp(device, buildInfo);
         }
     }
