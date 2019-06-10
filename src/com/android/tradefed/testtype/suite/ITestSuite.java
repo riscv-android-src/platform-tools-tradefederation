@@ -990,6 +990,11 @@ public abstract class ITestSuite
         mMainConfiguration = configuration;
     }
 
+    /** Returns the invocation {@link IConfiguration}. */
+    public final IConfiguration getConfiguration() {
+        return mMainConfiguration;
+    }
+
     /** {@inheritDoc} */
     @Override
     public void reportNotExecuted(ITestInvocationListener listener) {
