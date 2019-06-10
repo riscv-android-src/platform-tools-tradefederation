@@ -21,8 +21,10 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.UserInfo;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.util.UserUtil;
+
+import java.util.Map;
 
 /**
  * A {@link ITargetPreparer} that switches to the specified user kind in setUp. By default it
@@ -36,7 +38,7 @@ public class SwitchUserTargetPreparer extends BaseTargetPreparer implements ITar
         name = "user-type",
         description = "The type of user to switch to before the module run."
     )
-    private UserUtil.UserType mUserToSwitchTo = UserUtil.UserType.CURRENT;
+    private UserInfo.UserType mUserToSwitchTo = UserInfo.UserType.CURRENT;
 
     private int mPreExecutionCurrentUser;
 
@@ -45,17 +47,36 @@ public class SwitchUserTargetPreparer extends BaseTargetPreparer implements ITar
             throws TargetSetupError, DeviceNotAvailableException {
 
         mPreExecutionCurrentUser = device.getCurrentUser();
+        Map<Integer, UserInfo> userInfos = device.getUserInfos();
 
-        try {
-            UserUtil.switchToUserType(device, mUserToSwitchTo);
-        } catch (UserUtil.UserSwitchFailedException err) {
-            throw new TargetSetupError(
-                    String.format("Failed switch to user type %s", mUserToSwitchTo),
-                    err,
-                    device.getDeviceDescriptor());
+        if (userInfos
+                .get(mPreExecutionCurrentUser)
+                .isUserType(mUserToSwitchTo, mPreExecutionCurrentUser)) {
+            CLog.i(
+                    "User %d is already user type %s, no action.",
+                    mPreExecutionCurrentUser, mUserToSwitchTo.toString());
+            return;
         }
 
-        CLog.d("Successfully switched to user type %s", mUserToSwitchTo);
+        for (UserInfo userInfo : userInfos.values()) {
+            if (userInfo.isUserType(mUserToSwitchTo, mPreExecutionCurrentUser)) {
+                CLog.i(
+                        "User %d is user type %s, switching from %d",
+                        userInfo.userId(), mUserToSwitchTo.toString(), mPreExecutionCurrentUser);
+                if (!device.switchUser(userInfo.userId())) {
+                    throw new TargetSetupError(
+                            String.format("Device failed to switch to user %d", userInfo.userId()),
+                            device.getDeviceDescriptor());
+                }
+                return;
+            }
+        }
+
+        throw new TargetSetupError(
+                String.format(
+                        "Failed switch to user type %s, no user of that type exists",
+                        mUserToSwitchTo),
+                device.getDeviceDescriptor());
     }
 
     @Override
