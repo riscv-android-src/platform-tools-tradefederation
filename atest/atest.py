@@ -542,6 +542,9 @@ def main(argv, results_dir):
         return constants.EXIT_CODE_SUCCESS
     build_targets = set()
     test_infos = set()
+    # Clear cache if user pass -c option
+    if args.clear_cache:
+        atest_utils.clean_test_info_caches(args.tests)
     if _will_run_tests(args):
         build_targets, test_infos = translator.translate(args)
         if not test_infos:

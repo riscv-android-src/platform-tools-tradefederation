@@ -16,18 +16,36 @@
 
 """Unittests for atest_utils."""
 
+import hashlib
+import os
 import subprocess
 import sys
+import tempfile
 import unittest
 import mock
 
 import atest_error
 import atest_utils
+import unittest_utils
+from test_finders import test_info
 
 if sys.version_info[0] == 2:
     from StringIO import StringIO
 else:
     from io import StringIO
+
+TEST_MODULE_NAME_A = 'ModuleNameA'
+TEST_RUNNER_A = 'FakeTestRunnerA'
+TEST_BUILD_TARGET_A = set(['bt1', 'bt2'])
+TEST_DATA_A = {'test_data_a_1': 'a1',
+               'test_data_a_2': 'a2'}
+TEST_SUITE_A = 'FakeSuiteA'
+TEST_MODULE_CLASS_A = 'FAKE_MODULE_CLASS_A'
+TEST_INSTALL_LOC_A = set(['host', 'device'])
+TEST_INFO_A = test_info.TestInfo(TEST_MODULE_NAME_A, TEST_RUNNER_A,
+                                 TEST_BUILD_TARGET_A, TEST_DATA_A,
+                                 TEST_SUITE_A, TEST_MODULE_CLASS_A,
+                                 TEST_INSTALL_LOC_A)
 
 #pylint: disable=protected-access
 class AtestUtilsUnittests(unittest.TestCase):
@@ -329,6 +347,26 @@ class AtestUtilsUnittests(unittest.TestCase):
                           runner_cmds,
                           do_verification=True,
                           result_path=test_result_path)
+
+    def test_get_test_info_cache_path(self):
+        """Test method get_test_info_cache_path."""
+        input_file_name = 'mytest_name'
+        cache_root = '/a/b/c'
+        expect_hashed_name = ('%s.cache' % hashlib.md5(str(input_file_name).
+                                                       encode()).hexdigest())
+        self.assertEqual(os.path.join(cache_root, expect_hashed_name),
+                         atest_utils.get_test_info_cache_path(input_file_name,
+                                                              cache_root))
+
+    def test_get_and_load_cache(self):
+        """Test method update_test_info_cache and load_test_info_cache."""
+        test_reference = 'myTestRefA'
+        test_cache_dir = tempfile.mkdtemp()
+        atest_utils.update_test_info_cache(test_reference, TEST_INFO_A,
+                                           test_cache_dir)
+        unittest_utils.assert_equal_testinfos(
+            self, TEST_INFO_A,
+            atest_utils.load_test_info_cache(test_reference, test_cache_dir))
 
 if __name__ == "__main__":
     unittest.main()

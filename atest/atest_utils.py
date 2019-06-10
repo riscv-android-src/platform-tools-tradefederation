@@ -18,10 +18,12 @@ Utility functions for atest.
 
 from __future__ import print_function
 
+import hashlib
 import itertools
 import json
 import logging
 import os
+import pickle
 import re
 import subprocess
 import sys
@@ -56,6 +58,8 @@ CMD_RESULT_PATH = os.path.join(os.environ.get(constants.ANDROID_BUILD_TOP,
                                               os.getcwd()),
                                'tools/tradefederation/core/atest/test_data',
                                'sample_test_cmd_result.json')
+TEST_INFO_CACHE_ROOT = os.path.join(os.path.expanduser('~'), '.atest',
+                                    'info_cache')
 
 def _capture_fail_section(full_log):
     """Return the error message from the build output.
@@ -377,3 +381,92 @@ def handle_test_runner_cmd(input_test, test_cmds, do_verification=False,
     with open(result_path, 'w') as outfile:
         json.dump(full_result_content, outfile, indent=0)
         print('Save result mapping to %s' % result_path)
+
+def _get_hashed_file_name(main_file_name):
+    """Convert the input string to a md5-hashed string. If file_extension is
+       given, returns $(hashed_string).$(file_extension), otherwise
+       $(hashed_string).cache.
+
+    Args:
+        main_file_name: The input string need to be hashed.
+
+    Returns:
+        A string as hashed file name with .cache file extension.
+    """
+    hashed_fn = hashlib.md5(str(main_file_name).encode())
+    hashed_name = hashed_fn.hexdigest()
+    return hashed_name + '.cache'
+
+def get_test_info_cache_path(test_reference, cache_root=TEST_INFO_CACHE_ROOT):
+    """Get the cache path of the desired test_infos.
+
+    Args:
+        test_reference: A string of the test.
+        cache_root: Folder path where stores caches.
+
+    Returns:
+        A string of the path of test_info cache.
+    """
+    return os.path.join(cache_root,
+                        _get_hashed_file_name(test_reference))
+
+def update_test_info_cache(test_reference, test_infos,
+                           cache_root=TEST_INFO_CACHE_ROOT):
+    """Update cache content which stores a set of test_info objects through
+       pickle module, each test_reference will be saved as a cache file.
+
+    Args:
+        test_reference: A string referencing a test.
+        test_infos: A set of TestInfos.
+        cache_root: Folder path for saving caches.
+    """
+    if not os.path.isdir(cache_root):
+        os.makedirs(cache_root)
+    cache_path = get_test_info_cache_path(test_reference, cache_root)
+    # Save test_info to files.
+    try:
+        with open(cache_path, 'wb') as test_info_cache_file:
+            logging.debug('Saving cache %s.', cache_path)
+            pickle.dump(test_infos, test_info_cache_file)
+    except (pickle.PicklingError, TypeError, IOError) as err:
+        # Don't break anything, just log this error, maybe collect the exception
+        # by metrics in the future.
+        logging.debug('Exception raised: %s', err)
+
+def load_test_info_cache(test_reference, cache_root=TEST_INFO_CACHE_ROOT):
+    """Load cache by test_reference to a set of test_infos object.
+
+    Args:
+        test_reference: A string referencing a test.
+        cache_root: Folder path for finding caches.
+
+    Returns:
+        A list of TestInfo namedtuple if cache found, else None.
+    """
+    cache_file = get_test_info_cache_path(test_reference, cache_root)
+    if os.path.isfile(cache_file):
+        logging.debug('Loading cache %s.', cache_file)
+        try:
+            with open(cache_file, 'rb') as config_dictionary_file:
+                return pickle.load(config_dictionary_file)
+        except (pickle.UnpicklingError, EOFError, IOError) as err:
+            # Don't break anything, just log this error, maybe collect the
+            # exception by metrics in the future.
+            logging.debug('Exception raised: %s', err)
+    return None
+
+def clean_test_info_caches(tests, cache_root=TEST_INFO_CACHE_ROOT):
+    """Clean caches of input tests.
+
+    Args:
+        tests: A list of test references.
+        cache_root: Folder path for finding caches.
+    """
+    for test in tests:
+        cache_file = get_test_info_cache_path(test, cache_root)
+        if os.path.isfile(cache_file):
+            logging.debug('Removing cache: %s', cache_file)
+            try:
+                os.remove(cache_file)
+            except IOError as err:
+                logging.debug('Exception raised: %s', err)
