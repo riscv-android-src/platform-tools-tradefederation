@@ -49,6 +49,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.google.common.net.HostAndPort;
 
 import org.easymock.EasyMock;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -133,6 +134,11 @@ public class RemoteAndroidVirtualDeviceTest {
         mGceHandler = Mockito.mock(GceManager.class);
 
         mMockBuildInfo = new BuildInfo();
+    }
+
+    @After
+    public void tearDown() {
+        FileUtil.deleteFile(mTestDevice.getExecuteShellCommandLog());
     }
 
     /**
@@ -238,11 +244,11 @@ public class RemoteAndroidVirtualDeviceTest {
         EasyMock.verify(mMockRunUtil);
     }
 
-    /** Test {@link RemoteAndroidVirtualDevice#preInvocationSetup(IBuildInfo)}. */
+    /** Test {@link RemoteAndroidVirtualDevice#preInvocationSetup(IBuildInfo, List)}. */
     @Test
     public void testPreInvocationSetup() throws Exception {
         IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        TestableRemoteAndroidVirtualDevice testDevice =
+        mTestDevice =
                 new TestableRemoteAndroidVirtualDevice() {
                     @Override
                     protected void launchGce(IBuildInfo buildInfo) throws TargetSetupError {
@@ -273,20 +279,20 @@ public class RemoteAndroidVirtualDeviceTest {
                 .andReturn(mMockIDevice);
         EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
         replayMocks(mMockBuildInfo);
-        testDevice.preInvocationSetup(mMockBuildInfo);
+        mTestDevice.preInvocationSetup(mMockBuildInfo, null);
         verifyMocks(mMockBuildInfo);
 
         Mockito.verify(mGceHandler).logStableHostImageInfos(mMockBuildInfo);
     }
 
     /**
-     * Test {@link RemoteAndroidVirtualDevice#preInvocationSetup(IBuildInfo)} when the device does
-     * not come up online at the end should throw an exception.
+     * Test {@link RemoteAndroidVirtualDevice#preInvocationSetup(IBuildInfo, List)} when the device
+     * does not come up online at the end should throw an exception.
      */
     @Test
     public void testPreInvocationSetup_fails() throws Exception {
         IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        TestableRemoteAndroidVirtualDevice testDevice =
+        mTestDevice =
                 new TestableRemoteAndroidVirtualDevice() {
                     @Override
                     protected void launchGce(IBuildInfo buildInfo) throws TargetSetupError {
@@ -303,7 +309,7 @@ public class RemoteAndroidVirtualDeviceTest {
         EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.OFFLINE).times(2);
         replayMocks(mMockBuildInfo);
         try {
-            testDevice.preInvocationSetup(mMockBuildInfo);
+            mTestDevice.preInvocationSetup(mMockBuildInfo, null);
             fail("Should have thrown an exception.");
         } catch (DeviceNotAvailableException expected) {
             // expected
@@ -490,7 +496,7 @@ public class RemoteAndroidVirtualDeviceTest {
 
             replayMocks(mMockBuildInfo);
             // Run device a first time
-            testDevice.preInvocationSetup(mMockBuildInfo);
+            testDevice.preInvocationSetup(mMockBuildInfo, null);
             testDevice.getGceSshMonitor().joinMonitor();
             // We expect to find our Runtime exception for the ssh key
             assertNotNull(testDevice.getGceSshMonitor().getLastException());
@@ -499,7 +505,7 @@ public class RemoteAndroidVirtualDeviceTest {
             assertNull(testDevice.getGceSshMonitor());
 
             // run a second time on same device should yield exact same exception.
-            testDevice.preInvocationSetup(mMockBuildInfo);
+            testDevice.preInvocationSetup(mMockBuildInfo, null);
             testDevice.getGceSshMonitor().joinMonitor();
             // Should have the same result, the run time exception from ssh key
             assertNotNull(testDevice.getGceSshMonitor().getLastException());
@@ -587,7 +593,7 @@ public class RemoteAndroidVirtualDeviceTest {
 
             replayMocks(mMockBuildInfo);
             // Run device a first time
-            testDevice.preInvocationSetup(mMockBuildInfo);
+            testDevice.preInvocationSetup(mMockBuildInfo, null);
             testDevice.getGceSshMonitor().joinMonitor();
             // We expect to find our Runtime exception for the ssh key
             assertNotNull(testDevice.getGceSshMonitor().getLastException());
@@ -693,7 +699,7 @@ public class RemoteAndroidVirtualDeviceTest {
             replayMocks(mMockBuildInfo);
             // Run device a first time
             try {
-                testDevice.preInvocationSetup(mMockBuildInfo);
+                testDevice.preInvocationSetup(mMockBuildInfo, null);
                 fail("Should have thrown an exception.");
             } catch (DeviceNotAvailableException expected) {
                 assertEquals("AVD device booted but was in OFFLINE state", expected.getMessage());
