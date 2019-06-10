@@ -3852,6 +3852,12 @@ public class NativeDevice implements IManagedTestDevice {
         throw new UnsupportedOperationException("No support for user's feature.");
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Map<Integer, UserInfo> getUserInfos() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
     /**
      * {@inheritDoc}
      */
