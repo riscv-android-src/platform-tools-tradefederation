@@ -16,15 +16,13 @@
 package com.android.tradefed.testtype.suite.module;
 
 /**
- * A module controller to check if a device is on SDK 28 (Android 9) or above. This is used to
- * workaround b/78780430, where on Android 8.1 armeabi-v7a devices, instrumentation will crash
- * because the target package was pre-opted for only arm64.
+ * Only run tests if the device under test is SDK version 29 or above.
  *
  * <p>Use by adding this line to your AndroidTest.xml: <object type="module_controller"
- * class="com.android.tradefed.testtype.suite.module.Sdk28ModuleController" />
+ * class="com.android.tradefed.testtype.suite.module.Sdk29ModuleController" />
  */
-public class Sdk28ModuleController extends MinSdkModuleController {
-    public Sdk28ModuleController() {
-        super(28);
+public class Sdk29ModuleController extends MinSdkModuleController {
+    public Sdk29ModuleController() {
+        super(29);
     }
 }
