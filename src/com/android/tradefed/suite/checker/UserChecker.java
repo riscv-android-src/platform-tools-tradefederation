@@ -40,6 +40,17 @@ public class UserChecker implements ISystemStatusChecker {
             description = "The type of user to switch to before each module run.")
     private UserInfo.UserType mUserToSwitchTo = UserInfo.UserType.CURRENT;
 
+    @Option(
+            name = "user-cleanup",
+            description =
+                    "If true, attempt to cleanup any changes made to users:"
+                            + "\n - switch to previous current-user"
+                            + "\n - remove any created users"
+                            + "\n\nThis does NOT:"
+                            + "\n - attempt to re-create a user that was deleted"
+                            + "\n - start/stop existing users if their running status changed")
+    private boolean mCleanup = false;
+
     private UserInfo mPreCurrentUserInfo = null;
     private Map<Integer, UserInfo> mPreUsersInfo = null;
     private int mSwitchedToUserId = -1;
@@ -97,7 +108,15 @@ public class UserChecker implements ISystemStatusChecker {
                                 "User %d was the currentUser before, has changed to %d",
                                 mPreCurrentUserInfo.userId(), postCurrentUserInfo.userId()));
             }
-            // TODO(b/130047592): do cleanup
+            if (mCleanup) {
+                if (!device.switchUser(mPreCurrentUserInfo.userId())) {
+                    errors.add(
+                            String.format(
+                                    "Failed to switch back to previous current user %d."
+                                            + " Check if it was removed.",
+                                    mPreCurrentUserInfo.userId()));
+                }
+            }
         }
 
         for (UserInfo preUserInfo : mPreUsersInfo.values()) {
@@ -122,7 +141,11 @@ public class UserChecker implements ISystemStatusChecker {
                             String.format(
                                     "User %d was created during test and not deleted", postUserId));
                 }
-                // TODO(b/130047592): do cleanup
+                if (mCleanup) {
+                    if (!device.removeUser(postUserId)) {
+                        errors.add(String.format("Failed to remove new user %d", postUserId));
+                    }
+                }
             }
         }
 
