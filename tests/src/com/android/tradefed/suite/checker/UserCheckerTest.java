@@ -185,6 +185,26 @@ public class UserCheckerTest {
     }
 
     @Test
+    public void testSwitchToGuest() throws Exception {
+        UserChecker checker = new UserChecker();
+        OptionSetter mOptionSetter = new OptionSetter(checker);
+        mOptionSetter.setOptionValue("user-type", "guest");
+        ITestDevice device =
+                mockDeviceUserState(
+                        /* currentUser=  */ 0,
+                        /* userIds= */ new Integer[] {0, 10},
+                        /* flags=        */ new Integer[] {0, UserInfo.FLAG_GUEST},
+                        /* isRunning= */ new Boolean[] {true, false});
+
+        when(device.switchUser(10)).thenReturn(true);
+
+        StatusCheckerResult result = checker.preExecutionCheck(device);
+        assertEquals(CheckStatus.SUCCESS, result.getStatus());
+        verify(device, never()).createUser(any(), anyBoolean(), anyBoolean());
+        verify(device, times(1)).switchUser(10);
+    }
+
+    @Test
     public void testCreateSecondary() throws Exception {
         UserChecker checker = new UserChecker();
         OptionSetter mOptionSetter = new OptionSetter(checker);
@@ -198,6 +218,24 @@ public class UserCheckerTest {
         StatusCheckerResult result = checker.preExecutionCheck(device);
         assertEquals(CheckStatus.SUCCESS, result.getStatus());
         verify(device, times(1)).createUser("Tfsecondary", false, false);
+        verify(device, times(1)).switchUser(10);
+    }
+
+    @Test
+    public void testCreateGuest() throws Exception {
+        UserChecker checker = new UserChecker();
+        OptionSetter mOptionSetter = new OptionSetter(checker);
+        mOptionSetter.setOptionValue("user-type", "guest");
+        ITestDevice device =
+                mockDeviceUserState(/* currentUser=  */ 0, /* userIds= */ new Integer[] {0});
+
+        when(device.createUser("Tfguest", /* guest= */ true, /* ephemeral= */ false))
+                .thenReturn(10);
+        when(device.switchUser(10)).thenReturn(true);
+
+        StatusCheckerResult result = checker.preExecutionCheck(device);
+        assertEquals(CheckStatus.SUCCESS, result.getStatus());
+        verify(device, times(1)).createUser("Tfguest", /* guest= */ true, /* ephemeral= */ false);
         verify(device, times(1)).switchUser(10);
     }
 
