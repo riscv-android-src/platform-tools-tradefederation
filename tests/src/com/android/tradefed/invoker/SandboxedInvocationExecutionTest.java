@@ -35,6 +35,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.log.ILogRegistry;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -179,7 +180,8 @@ public class SandboxedInvocationExecutionTest {
                             public boolean shardConfig(
                                     IConfiguration config,
                                     IInvocationContext context,
-                                    IRescheduler rescheduler) {
+                                    IRescheduler rescheduler,
+                                    ITestLogger logger) {
                                 // Ensure that sharding is not called against a sandbox
                                 // configuration run
                                 throw new RuntimeException("Should not be called.");

@@ -92,7 +92,7 @@ public class StrictShardHelperTest {
         setter.setOptionValue("num-shards", "5");
         mConfig.setTest(test);
         assertEquals(1, mConfig.getTests().size());
-        assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler));
+        assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler, null));
         // Ensure that we did split 1 tests per shard rescheduled.
         Mockito.verify(mRescheduler, Mockito.times(5))
                 .scheduleConfig(
@@ -121,7 +121,7 @@ public class StrictShardHelperTest {
         mConfig.setTest(test);
         assertEquals(1, mConfig.getTests().size());
         // We do not shard, we are relying on the current invocation to run.
-        assertFalse(mHelper.shardConfig(mConfig, mContext, mRescheduler));
+        assertFalse(mHelper.shardConfig(mConfig, mContext, mRescheduler, null));
         // Rescheduled is NOT called because we use the current invocation to run the index.
         Mockito.verify(mRescheduler, Mockito.times(0)).scheduleConfig(Mockito.any());
         assertEquals(1, mConfig.getTests().size());
@@ -152,7 +152,7 @@ public class StrictShardHelperTest {
         mConfig.setTest(test);
         assertEquals(1, mConfig.getTests().size());
         // We do not shard, we are relying on the current invocation to run.
-        assertFalse(mHelper.shardConfig(mConfig, mContext, mRescheduler));
+        assertFalse(mHelper.shardConfig(mConfig, mContext, mRescheduler, null));
         // Rescheduled is NOT called because we use the current invocation to run the index.
         Mockito.verify(mRescheduler, Mockito.times(0)).scheduleConfig(Mockito.any());
         assertEquals(1, mConfig.getTests().size());
@@ -183,7 +183,7 @@ public class StrictShardHelperTest {
         mConfig.setTest(test);
         assertEquals(1, mConfig.getTests().size());
         // We do not shard, we are relying on the current invocation to run.
-        assertFalse(mHelper.shardConfig(mConfig, mContext, mRescheduler));
+        assertFalse(mHelper.shardConfig(mConfig, mContext, mRescheduler, null));
         // Rescheduled is NOT called because we use the current invocation to run the index.
         Mockito.verify(mRescheduler, Mockito.times(0)).scheduleConfig(Mockito.any());
         // We have no tests to put in shard-index 1 so it's empty.
@@ -249,7 +249,7 @@ public class StrictShardHelperTest {
         mConfig.setCommandOptions(options);
         mConfig.setCommandLine(new String[] {"empty"});
         mConfig.setTests(test);
-        mHelper.shardConfig(mConfig, mContext, mRescheduler);
+        mHelper.shardConfig(mConfig, mContext, mRescheduler, null);
         return mConfig.getTests();
     }
 
@@ -314,7 +314,7 @@ public class StrictShardHelperTest {
     @Test
     public void testShardSuite() throws Exception {
         //mConfig
-        mHelper.shardConfig(mConfig, mContext, mRescheduler);
+        mHelper.shardConfig(mConfig, mContext, mRescheduler, null);
     }
 
     /**
@@ -365,7 +365,7 @@ public class StrictShardHelperTest {
         setter.setOptionValue("shard-index", Integer.toString(0));
         mConfig.setCommandOptions(options);
         mConfig.setTest(test);
-        mHelper.shardConfig(mConfig, mContext, mRescheduler);
+        mHelper.shardConfig(mConfig, mContext, mRescheduler, null);
 
         List<IRemoteTest> res = mConfig.getTests();
         assertEquals(1, res.size());
