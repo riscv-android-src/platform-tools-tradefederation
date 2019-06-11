@@ -17,6 +17,7 @@ package com.android.tradefed.device.metric;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.times;
 
 import com.android.tradefed.config.OptionSetter;
@@ -102,6 +103,18 @@ public class BaseDeviceMetricCollectorTest {
         Assert.assertSame(mMockListener, mBase.getInvocationListener());
         Assert.assertEquals(0, mBase.getDevices().size());
         Assert.assertEquals(0, mBase.getBuildInfos().size());
+    }
+
+    /** Test that multiple call to init are rejected. */
+    @Test
+    public void testMultiInit() {
+        mBase.init(mContext, mMockListener);
+        try {
+            mBase.init(mContext, mMockListener);
+            fail("Should have thrown an exception.");
+        } catch (IllegalStateException expected) {
+            // Expected
+        }
     }
 
     /**
@@ -424,7 +437,7 @@ public class BaseDeviceMetricCollectorTest {
         Mockito.verify(mMockListener, times(1))
                 .testEnded(Mockito.eq(test3), Mockito.anyLong(), mCapturedMetrics.capture());
         Mockito.verify(mMockListener, times(1))
-                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
 
         List<HashMap<String, Metric>> allValues = mCapturedMetrics.getAllValues();
         // For test1
@@ -472,7 +485,7 @@ public class BaseDeviceMetricCollectorTest {
         Mockito.verify(mMockListener, times(1))
                 .testEnded(Mockito.eq(test3), Mockito.anyLong(), mCapturedMetrics.capture());
         Mockito.verify(mMockListener, times(1))
-                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
 
         List<HashMap<String, Metric>> allValues = mCapturedMetrics.getAllValues();
         // For test1
