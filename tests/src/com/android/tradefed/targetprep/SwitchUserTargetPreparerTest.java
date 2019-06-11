@@ -57,7 +57,7 @@ public class SwitchUserTargetPreparerTest {
     }
 
     @Test
-    public void testSetUpRunAsPrimary_ifAlreadyInPrimary()
+    public void testSetUpRunAsPrimary_ifAlreadyInPrimary_noSwitch()
             throws DeviceNotAvailableException, TargetSetupError, ConfigurationException {
         mOptionSetter.setOptionValue("user-type", "primary");
 
@@ -77,23 +77,22 @@ public class SwitchUserTargetPreparerTest {
     }
 
     @Test
-    public void testSetUpRunAsSystem_ifAlreadyInSystem_switchToSystem()
+    public void testSetUpRunAsSystem_ifAlreadyInSystem_noSwitch()
             throws DeviceNotAvailableException, TargetSetupError, ConfigurationException {
         mOptionSetter.setOptionValue("user-type", "system");
 
         // setup
-        when(mMockDevice.getCurrentUser()).thenReturn(11);
+        when(mMockDevice.getCurrentUser()).thenReturn(0);
         mockListUsersInfo(
                 mMockDevice,
                 /* userIds= */ new Integer[] {0, 11},
                 /* flags= */ new Integer[] {0, UserInfo.FLAG_PRIMARY});
-        when(mMockDevice.switchUser(0)).thenReturn(true);
 
         // act
         mSwitchUserTargetPreparer.setUp(mMockDevice, /* buildInfo= */ null);
 
         // assert
-        verify(mMockDevice, times(1)).switchUser(0);
+        verify(mMockDevice, never()).switchUser(0);
     }
 
     @Test
@@ -107,6 +106,26 @@ public class SwitchUserTargetPreparerTest {
                 mMockDevice,
                 /* userIds= */ new Integer[] {0, 10, 11},
                 /* flags= */ new Integer[] {0, UserInfo.FLAG_PRIMARY, 0});
+        when(mMockDevice.switchUser(10)).thenReturn(true);
+
+        // act
+        mSwitchUserTargetPreparer.setUp(mMockDevice, /* buildInfo= */ null);
+
+        // assert
+        verify(mMockDevice, times(1)).switchUser(10);
+    }
+
+    @Test
+    public void testSetUpRunAsGuest_ifNotInGuest_switchToGuest()
+            throws DeviceNotAvailableException, TargetSetupError, ConfigurationException {
+        mOptionSetter.setOptionValue("user-type", "guest");
+
+        // setup
+        when(mMockDevice.getCurrentUser()).thenReturn(11);
+        mockListUsersInfo(
+                mMockDevice,
+                /* userIds= */ new Integer[] {0, 10, 11},
+                /* flags= */ new Integer[] {0, UserInfo.FLAG_GUEST, 0});
         when(mMockDevice.switchUser(10)).thenReturn(true);
 
         // act
