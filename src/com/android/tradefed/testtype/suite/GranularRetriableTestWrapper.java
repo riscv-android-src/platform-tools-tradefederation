@@ -204,7 +204,9 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
         }
 
         // The module collectors itself are added: this list will be very limited.
-        for (IMetricCollector collector : mModuleConfiguration.getMetricCollectors()) {
+        // We clone them since the configuration object is shared across shards.
+        for (IMetricCollector collector :
+                CollectorHelper.cloneCollectors(mModuleConfiguration.getMetricCollectors())) {
             if (collector.isDisabled()) {
                 CLog.d("%s has been disabled. Skipping.", collector);
             } else {
