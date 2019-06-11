@@ -340,6 +340,7 @@ import com.android.tradefed.util.keystore.JSONFileKeyStoreClientTest;
 import com.android.tradefed.util.keystore.JSONFileKeyStoreFactoryTest;
 import com.android.tradefed.util.net.HttpHelperTest;
 import com.android.tradefed.util.net.HttpMultipartPostTest;
+import com.android.tradefed.util.net.XmlRpcHelperTest;
 import com.android.tradefed.util.proto.TestRecordProtoUtilTest;
 import com.android.tradefed.util.proto.TfMetricProtoUtilTest;
 import com.android.tradefed.util.sl4a.Sl4aClientTest;
@@ -778,6 +779,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // util/net
     HttpHelperTest.class,
     HttpMultipartPostTest.class,
+    XmlRpcHelperTest.class,
 
     // util/keystore
     JSONFileKeyStoreClientTest.class,
