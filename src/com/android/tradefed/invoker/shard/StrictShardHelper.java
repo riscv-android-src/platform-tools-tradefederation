@@ -19,7 +19,9 @@ import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
@@ -42,19 +44,22 @@ public class StrictShardHelper extends ShardHelper {
     /** {@inheritDoc} */
     @Override
     public boolean shardConfig(
-            IConfiguration config, IInvocationContext context, IRescheduler rescheduler) {
+            IConfiguration config,
+            IInvocationContext context,
+            IRescheduler rescheduler,
+            ITestLogger logger) {
         Integer shardCount = config.getCommandOptions().getShardCount();
         Integer shardIndex = config.getCommandOptions().getShardIndex();
 
         if (shardIndex == null) {
-            return super.shardConfig(config, context, rescheduler);
+            return super.shardConfig(config, context, rescheduler, logger);
         }
         if (shardCount == null) {
             throw new RuntimeException("shard-count is null while shard-index is " + shardIndex);
         }
 
         // Split tests in place, without actually sharding.
-        List<IRemoteTest> listAllTests = getAllTests(config, shardCount, context);
+        List<IRemoteTest> listAllTests = getAllTests(config, shardCount, context, logger);
         // We cannot shuffle to get better average results
         normalizeDistribution(listAllTests, shardCount);
         List<IRemoteTest> splitList;
@@ -78,7 +83,10 @@ public class StrictShardHelper extends ShardHelper {
      * @return the list of all {@link IRemoteTest}.
      */
     private List<IRemoteTest> getAllTests(
-            IConfiguration config, Integer shardCount, IInvocationContext context) {
+            IConfiguration config,
+            Integer shardCount,
+            IInvocationContext context,
+            ITestLogger logger) {
         List<IRemoteTest> allTests = new ArrayList<>();
         for (IRemoteTest test : config.getTests()) {
             if (test instanceof IShardableTest) {
@@ -94,6 +102,9 @@ public class StrictShardHelper extends ShardHelper {
                 }
                 if (test instanceof IInvocationContextReceiver) {
                     ((IInvocationContextReceiver) test).setInvocationContext(context);
+                }
+                if (test instanceof ITestLoggerReceiver) {
+                    ((ITestLoggerReceiver) test).setTestLogger(logger);
                 }
 
                 // Handling of the ITestSuite is a special case, we do not allow pool of tests

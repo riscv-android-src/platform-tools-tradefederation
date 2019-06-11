@@ -161,8 +161,11 @@ public class InvocationExecution implements IInvocationExecution {
 
     @Override
     public boolean shardConfig(
-            IConfiguration config, IInvocationContext context, IRescheduler rescheduler) {
-        return createShardHelper().shardConfig(config, context, rescheduler);
+            IConfiguration config,
+            IInvocationContext context,
+            IRescheduler rescheduler,
+            ITestLogger logger) {
+        return createShardHelper().shardConfig(config, context, rescheduler, logger);
     }
 
     /** Create an return the {@link IShardHelper} to be used. */

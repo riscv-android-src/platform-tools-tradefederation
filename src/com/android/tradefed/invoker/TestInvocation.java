@@ -729,7 +729,8 @@ public class TestInvocation implements ITestInvocation {
                     }
                 }
 
-                boolean sharding = invocationPath.shardConfig(config, context, rescheduler);
+                boolean sharding =
+                        invocationPath.shardConfig(config, context, rescheduler, listener);
                 if (sharding) {
                     CLog.i(
                             "Invocation for %s has been sharded, rescheduling",
