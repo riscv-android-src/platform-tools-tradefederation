@@ -65,7 +65,7 @@ public class UserChecker implements ISystemStatusChecker {
             mSwitchedToUserId =
                     device.createUser(
                             /* name= */ "Tf" + mUserToSwitchTo.toString().toLowerCase(),
-                            /* guest= */ false,
+                            /* guest= */ mUserToSwitchTo.isGuest(),
                             /* ephemeral= */ false);
             CLog.i(
                     "No user of type %s found, created user %d",
