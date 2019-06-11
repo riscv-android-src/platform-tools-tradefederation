@@ -74,12 +74,19 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
      * Variable for whether or not to skip the collection of one test case because it was filtered.
      */
     private boolean mSkipTestCase = false;
+    /** Whether or not the collector was initialized already or not. */
+    private boolean mWasInitDone = false;
 
     @Override
     public ITestInvocationListener init(
             IInvocationContext context, ITestInvocationListener listener) {
         mContext = context;
         mForwarder = listener;
+        if (mWasInitDone) {
+            throw new IllegalStateException(
+                    String.format("init was called a second time on %s", this));
+        }
+        mWasInitDone = true;
         return this;
     }
 
