@@ -135,7 +135,7 @@ public class ShardHelperTest {
         setter.setOptionValue("num-shards", "5");
         mConfig.setTest(test);
         assertEquals(1, mConfig.getTests().size());
-        assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler));
+        assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler, null));
         // Ensure that we did split 1 tests per shard rescheduled.
         Mockito.verify(mRescheduler, Mockito.times(3))
                 .scheduleConfig(
@@ -161,7 +161,7 @@ public class ShardHelperTest {
         setter.setOptionValue("num-shards", "5");
         mConfig.setTest(test);
         assertEquals(1, mConfig.getTests().size());
-        assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler));
+        assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler, null));
         // Ensure that we did split 1 tests per shard rescheduled.
         Mockito.verify(mRescheduler, Mockito.times(5))
                 .scheduleConfig(
@@ -193,7 +193,7 @@ public class ShardHelperTest {
         setter.setOptionValue("num-shards", "5");
         mConfig.setTest(test);
         assertEquals(1, mConfig.getTests().size());
-        assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler));
+        assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler, null));
         // We only reschedule 5 times and not 10 like --shard-count because there is not enough
         // tests to put at least 1 test per shard. So there is no point in rescheduling on new
         // devices.
@@ -238,7 +238,7 @@ public class ShardHelperTest {
             setter.setOptionValue("num-shards", "5");
             mConfig.setTest(test);
             assertEquals(1, mConfig.getTests().size());
-            assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler));
+            assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler, null));
             // Ensure that we did split 1 tests per shard rescheduled.
             Mockito.verify(mRescheduler, Mockito.times(3))
                     .scheduleConfig(
@@ -285,7 +285,7 @@ public class ShardHelperTest {
             setter.setOptionValue("num-shards", "5");
             mConfig.setTest(test);
             assertEquals(1, mConfig.getTests().size());
-            assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler));
+            assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler, null));
             // Ensure that we did split 1 tests per shard rescheduled.
             Mockito.verify(mRescheduler, Mockito.times(3))
                     .scheduleConfig(
@@ -359,7 +359,7 @@ public class ShardHelperTest {
         doReturn(true).when(mockClient).isAvailable();
         doReturn(SuccessTestCase.class.getName()).when(mockClient).fetchKey("test");
 
-        assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler));
+        assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler, null));
         // Ensure that we did split 1 tests per shard rescheduled.
         Mockito.verify(mRescheduler, Mockito.times(2))
                 .scheduleConfig(
@@ -420,7 +420,7 @@ public class ShardHelperTest {
         doReturn(SuccessTestCase.class.getName()).when(mockClient).fetchKey("test");
         doThrow(new RuntimeException()).when(mockClient).fetchKey("test");
         try {
-            mHelper.shardConfig(mConfig, mContext, mRescheduler);
+            mHelper.shardConfig(mConfig, mContext, mRescheduler, null);
             fail("Should have thrown an exception.");
         } catch (RuntimeException expected) {
             // expected
@@ -452,7 +452,7 @@ public class ShardHelperTest {
         tests.add(new TokenTestClass());
         mConfig.setTests(tests);
         assertEquals(2, mConfig.getTests().size());
-        assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler));
+        assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler, null));
         // Ensure that we did split 1 tests per shard rescheduled.
         Mockito.verify(mRescheduler, Mockito.times(3))
                 .scheduleConfig(

@@ -98,7 +98,8 @@ public abstract class ITestSuite
                 IMetricCollectorReceiver,
                 IConfigurationReceiver,
                 IReportNotExecuted,
-                ITokenRequest {
+                ITokenRequest,
+                ITestLoggerReceiver {
 
     /** The Retry Strategy to be used when re-running some tests. */
     public enum RetryStrategy {
@@ -343,6 +344,8 @@ public abstract class ITestSuite
 
     // Current modules to run, null if not started to run yet.
     private List<ModuleDefinition> mRunModules = null;
+    // Logger to be used to files.
+    private ITestLogger mCurrentLogger = null;
 
     /**
      * Get the current Guice {@link Injector} from the invocation. It should allow us to continue
@@ -521,6 +524,7 @@ public abstract class ITestSuite
     /** Generic run method for all test loaded from {@link #loadTests()}. */
     @Override
     public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        mCurrentLogger = listener;
         // Load and check the module checkers, runners and preparers in black and whitelist
         checkClassLoad(mSystemStatusCheckBlacklist, SKIP_SYSTEM_STATUS_CHECKER);
         checkClassLoad(mAllowedRunners, RUNNER_WHITELIST);
@@ -964,6 +968,16 @@ public abstract class ITestSuite
     @Override
     public void setInvocationContext(IInvocationContext invocationContext) {
         mContext = invocationContext;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setTestLogger(ITestLogger testLogger) {
+        mCurrentLogger = testLogger;
+    }
+
+    public ITestLogger getCurrentTestLogger() {
+        return mCurrentLogger;
     }
 
     /** Set the max number of run attempt for each module. */

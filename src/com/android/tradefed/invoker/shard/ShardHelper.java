@@ -28,9 +28,11 @@ import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ShardListener;
 import com.android.tradefed.invoker.ShardMasterResultForwarder;
 import com.android.tradefed.invoker.shard.token.ITokenRequest;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.IShardableListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
@@ -85,12 +87,15 @@ public class ShardHelper implements IShardHelper {
      */
     @Override
     public boolean shardConfig(
-            IConfiguration config, IInvocationContext context, IRescheduler rescheduler) {
+            IConfiguration config,
+            IInvocationContext context,
+            IRescheduler rescheduler,
+            ITestLogger logger) {
         List<IRemoteTest> shardableTests = new ArrayList<IRemoteTest>();
         boolean isSharded = false;
         Integer shardCount = config.getCommandOptions().getShardCount();
         for (IRemoteTest test : config.getTests()) {
-            isSharded |= shardTest(shardableTests, test, shardCount, context);
+            isSharded |= shardTest(shardableTests, test, shardCount, context, logger);
         }
         if (!isSharded) {
             return false;
@@ -252,7 +257,8 @@ public class ShardHelper implements IShardHelper {
             List<IRemoteTest> shardableTests,
             IRemoteTest test,
             Integer shardCount,
-            IInvocationContext context) {
+            IInvocationContext context,
+            ITestLogger logger) {
         boolean isSharded = false;
         if (test instanceof IShardableTest) {
             // inject device and build since they might be required to shard.
@@ -267,6 +273,9 @@ public class ShardHelper implements IShardHelper {
             }
             if (test instanceof IInvocationContextReceiver) {
                 ((IInvocationContextReceiver) test).setInvocationContext(context);
+            }
+            if (test instanceof ITestLoggerReceiver) {
+                ((ITestLoggerReceiver) test).setTestLogger(logger);
             }
 
             IShardableTest shardableTest = (IShardableTest) test;
