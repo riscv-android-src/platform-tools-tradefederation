@@ -23,6 +23,7 @@ import static org.junit.Assert.fail;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
@@ -30,6 +31,7 @@ import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
 import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.FileSystemLogSaver;
@@ -245,14 +247,7 @@ public class GranularRetriableTestWrapperTest {
     private GranularRetriableTestWrapper createGranularTestWrapper(
             IRemoteTest test, int maxRunCount, List<IMetricCollector> collectors) {
         GranularRetriableTestWrapper granularTestWrapper =
-                new GranularRetriableTestWrapper(test, null, null, null, maxRunCount) {
-                    @Override
-                    List<IMetricCollector> cloneCollectors(
-                            List<IMetricCollector> originalCollectors) {
-                        // For testing purpose, avoid cloning.
-                        return originalCollectors;
-                    }
-                };
+                new GranularRetriableTestWrapper(test, null, null, null, maxRunCount);
         granularTestWrapper.setModuleId("test module");
         granularTestWrapper.setMarkTestsSkipped(false);
         granularTestWrapper.setMetricCollectors(collectors);
@@ -752,8 +747,10 @@ public class GranularRetriableTestWrapperTest {
         // Add a disabled collector to ensure it's never called
         CalledMetricCollector notCalledCollector = new CalledMetricCollector();
         notCalledCollector.setDisable(true);
+        notCalledCollector.mName = "not-called";
         collectors.add(notCalledCollector);
         CalledMetricCollector calledCollector = new CalledMetricCollector();
+        calledCollector.mName = "called";
         collectors.add(calledCollector);
 
         ArrayList<TestDescription> testCases = new ArrayList<>();
@@ -789,12 +786,16 @@ public class GranularRetriableTestWrapperTest {
         // All tests cases are rerun each time.
         assertEquals(2, lastRes.getNumCompleteTests());
         assertEquals(1, lastRes.getFailedTests().size());
+        assertTrue(lastRes.getRunProtoMetrics().containsKey("called"));
+        assertFalse(lastRes.getRunProtoMetrics().containsKey("not-called"));
 
         lastRes = allResults.get(4);
         assertFalse(lastRes.isRunFailure());
         // The passed test does not rerun now that there is no run failure.
         assertEquals(1, lastRes.getNumCompleteTests());
         assertEquals(1, lastRes.getFailedTests().size());
+        assertTrue(lastRes.getRunProtoMetrics().containsKey("called"));
+        assertFalse(lastRes.getRunProtoMetrics().containsKey("not-called"));
 
         lastRes = allResults.get(5);
         assertFalse(lastRes.isRunFailure());
@@ -802,14 +803,12 @@ public class GranularRetriableTestWrapperTest {
         assertEquals(1, lastRes.getNumCompleteTests());
         // The failed test final pass
         assertEquals(0, lastRes.getFailedTests().size());
+        assertTrue(lastRes.getRunProtoMetrics().containsKey("called"));
+        assertFalse(lastRes.getRunProtoMetrics().containsKey("not-called"));
 
         // No Test cases tracking since it was a run retry.
         assertEquals(1, granularTestWrapper.getRetrySuccess());
         assertEquals(0, granularTestWrapper.getRetryFailed());
-
-        // Ensure that the disabled collector was not called, and enabled one was called
-        assertFalse(notCalledCollector.wasCalled);
-        assertTrue(calledCollector.wasCalled);
     }
 
     /**
@@ -862,28 +861,41 @@ public class GranularRetriableTestWrapperTest {
     /** Collector that track if it was called or not */
     public static class CalledMetricCollector extends BaseDeviceMetricCollector {
 
-        public boolean wasCalled = false;
+        @Option(name = "name")
+        public String mName;
 
         @Override
         public void onTestRunStart(DeviceMetricData runData) {
-            wasCalled = true;
+            runData.addMetric(
+                    mName,
+                    Metric.newBuilder()
+                            .setMeasurements(Measurements.newBuilder().setSingleString(mName)));
         }
 
         @Override
         public void onTestRunEnd(
                 DeviceMetricData runData, final Map<String, Metric> currentRunMetrics) {
-            wasCalled = true;
+            runData.addMetric(
+                    mName,
+                    Metric.newBuilder()
+                            .setMeasurements(Measurements.newBuilder().setSingleString(mName)));
         }
 
         @Override
         public void onTestStart(DeviceMetricData testData) {
-            wasCalled = true;
+            testData.addMetric(
+                    mName,
+                    Metric.newBuilder()
+                            .setMeasurements(Measurements.newBuilder().setSingleString(mName)));
         }
 
         @Override
         public void onTestEnd(
                 DeviceMetricData testData, final Map<String, Metric> currentTestCaseMetrics) {
-            wasCalled = true;
+            testData.addMetric(
+                    mName,
+                    Metric.newBuilder()
+                            .setMeasurements(Measurements.newBuilder().setSingleString(mName)));
         }
     }
 }
