@@ -218,7 +218,7 @@ def extract_test_path(output, is_native_test=False):
         test or not.
 
     Returns:
-        A string of the test path or None if output is '' or None.
+        A list of the test paths or None if output is '' or None.
     """
     if not output:
         return None
@@ -232,31 +232,46 @@ def extract_test_from_tests(tests):
     """Extract the test path from the tests.
 
     Return the test to run from tests. If more than one option, prompt the user
-    to select one.
+    to select multiple ones. Supporting formats:
+    - An integer. E.g. 0
+    - Comma-separated integers. E.g. 1,3,5
+    - A range of integers denoted by the starting integer separated from
+      the end integer by a dash, '-'. E.g. 1-3
 
     Args:
         tests: A string list which contains multiple test paths.
 
     Returns:
-        A string of the test path or None if tests is out-of-index or ''.
+        A string list of paths.
     """
     count = len(tests)
-    test_index = 0
-    if count == 0:
-        return None
-    elif count > 1:
+    if count <= 1:
+        return tests if count else None
+    mtests = set()
+    try:
         numbered_list = ['%s: %s' % (i, t) for i, t in enumerate(tests)]
+        numbered_list.append('%s: All' % count)
         print('Multiple tests found:\n{0}'.format('\n'.join(numbered_list)))
-        try:
-            test_index = int(raw_input('Please enter number of test to use '
-                                       'or hit return to keep searching: '))
-            if test_index not in range(count):
-                logging.warn('The input %s is out-of-range(%s).',
-                             test_index, (count-1))
-                return None
-        except ValueError:
-            return None
-    return tests[test_index]
+        test_indices = raw_input("Please enter numbers of test to use. "
+                                 "If none of above option matched, keep "
+                                 "searching for other possible tests."
+                                 "\n(multiple selection is supported,"
+                                 " e.g. '1' or '0,1' or '0-2'): ")
+        for idx in re.sub(r'(\s)', '', test_indices).split(','):
+            indices = idx.split('-')
+            len_indices = len(indices)
+            if len_indices > 0:
+                start_index = min(int(indices[0]), int(indices[len_indices-1]))
+                end_index = max(int(indices[0]), int(indices[len_indices-1]))
+                # One of input is 'All', return all options.
+                if start_index == count or end_index == count:
+                    return tests
+                mtests.update(tests[start_index:(end_index+1)])
+    except (ValueError, IndexError, AttributeError, TypeError) as err:
+        logging.debug('%s', err)
+        print('None of above option matched, keep searching for other'
+              ' possible tests...')
+    return list(mtests)
 
 
 def static_var(varname, value):
@@ -337,7 +352,7 @@ def run_find_cmd(ref_type, search_dir, target):
         target: A string of what you're trying to find.
 
     Return:
-        A string of the path to the target.
+        A list of the path to the target.
     """
     prune_cond = _get_prune_cond_of_ignored_dirs()
     find_cmd = FIND_CMDS[ref_type].format(search_dir, prune_cond, target)
@@ -362,7 +377,7 @@ def find_class_file(search_dir, class_name, is_native_test=False):
         test or not.
 
     Return:
-        A string of the path to the java/cc file.
+        A list of the path to the java/cc file.
     """
     if is_native_test:
         find_target = class_name
@@ -762,7 +777,7 @@ def search_integration_dirs(name, int_dirs):
         int_dirs: A list of path needed to be searched.
 
     Returns:
-        A string of the test path.
+        A list of the test path.
         Ask user to select if multiple tests are found.
         None if no matched test found.
     """
@@ -770,10 +785,10 @@ def search_integration_dirs(name, int_dirs):
     test_files = []
     for integration_dir in int_dirs:
         abs_path = os.path.join(root_dir, integration_dir)
-        test_file = run_find_cmd(FIND_REFERENCE_TYPE.INTEGRATION, abs_path,
-                                 name)
-        if test_file:
-            test_files.append(test_file)
+        test_paths = run_find_cmd(FIND_REFERENCE_TYPE.INTEGRATION, abs_path,
+                                  name)
+        if test_paths:
+            test_files.extend(test_paths)
     return extract_test_from_tests(test_files)
 
 
