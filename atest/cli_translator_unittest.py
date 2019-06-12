@@ -99,11 +99,11 @@ class CLITranslatorUnittests(unittest.TestCase):
                             mock_findtestbymodule, mock_raw_input):
         """Test _get_test_infos method."""
         ctr = cli_t.CLITranslator()
-        find_method_return_module_info = lambda x, y: uc.MODULE_INFO
+        find_method_return_module_info = lambda x, y: uc.MODULE_INFOS
         # pylint: disable=invalid-name
-        find_method_return_module_class_info = (lambda x, test: uc.MODULE_INFO
+        find_method_return_module_class_info = (lambda x, test: uc.MODULE_INFOS
                                                 if test == uc.MODULE_NAME
-                                                else uc.CLASS_INFO)
+                                                else uc.CLASS_INFOS)
         find_method_return_nothing = lambda x, y: None
         one_test = [uc.MODULE_NAME]
         mult_test = [uc.MODULE_NAME, uc.CLASS_NAME]
@@ -157,6 +157,54 @@ class CLITranslatorUnittests(unittest.TestCase):
                     test_detail1.options,
                     test_info.data[constants.TI_MODULE_ARG])
             else:
+                self.assertEqual(
+                    test_detail2.options,
+                    test_info.data[constants.TI_MODULE_ARG])
+
+    @mock.patch.object(metrics, 'FindTestFinishEvent')
+    @mock.patch.object(test_finder_handler, 'get_find_methods_for_test')
+    def test_get_test_infos_2(self, mock_getfindmethods, _metrics):
+        """Test _get_test_infos method."""
+        ctr = cli_t.CLITranslator()
+        find_method_return_module_info2 = lambda x, y: uc.MODULE_INFOS2
+        find_method_ret_mod_cls_info2 = (
+            lambda x, test: uc.MODULE_INFOS2
+            if test == uc.MODULE_NAME else uc.CLASS_INFOS2)
+        one_test = [uc.MODULE_NAME]
+        mult_test = [uc.MODULE_NAME, uc.CLASS_NAME]
+        # Let's make sure we return what we expect.
+        expected_test_infos = {uc.MODULE_INFO, uc.MODULE_INFO2}
+        mock_getfindmethods.return_value = [
+            test_finder_base.Finder(None, find_method_return_module_info2,
+                                    None)]
+        unittest_utils.assert_strict_equal(
+            self, ctr._get_test_infos(one_test), expected_test_infos)
+        # Check we receive multiple test infos.
+        expected_test_infos = {uc.MODULE_INFO, uc.CLASS_INFO, uc.MODULE_INFO2,
+                               uc.CLASS_INFO2}
+        mock_getfindmethods.return_value = [
+            test_finder_base.Finder(None, find_method_ret_mod_cls_info2,
+                                    None)]
+        unittest_utils.assert_strict_equal(
+            self, ctr._get_test_infos(mult_test), expected_test_infos)
+        # Check the method works for test mapping.
+        test_detail1 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST)
+        test_detail2 = test_mapping.TestDetail(uc.TEST_MAPPING_TEST_WITH_OPTION)
+        expected_test_infos = {uc.MODULE_INFO, uc.CLASS_INFO, uc.MODULE_INFO2,
+                               uc.CLASS_INFO2}
+        mock_getfindmethods.return_value = [
+            test_finder_base.Finder(None, find_method_ret_mod_cls_info2,
+                                    None)]
+        test_infos = ctr._get_test_infos(
+            mult_test, [test_detail1, test_detail2])
+        unittest_utils.assert_strict_equal(
+            self, test_infos, expected_test_infos)
+        for test_info in test_infos:
+            if test_info in [uc.MODULE_INFO, uc.MODULE_INFO2]:
+                self.assertEqual(
+                    test_detail1.options,
+                    test_info.data[constants.TI_MODULE_ARG])
+            elif test_info in [uc.CLASS_INFO, uc.CLASS_INFO2]:
                 self.assertEqual(
                     test_detail2.options,
                     test_info.data[constants.TI_MODULE_ARG])
