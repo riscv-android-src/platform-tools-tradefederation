@@ -71,7 +71,7 @@ public class SuiteModuleLoader {
     private IConfigurationFactory mConfigFactory = ConfigurationFactory.getInstance();
 
     private boolean mAllowParameterizedModules = false;
-    private boolean mAllowOptionalParamterizedModules = false;
+    private boolean mAllowOptionalParameterizedModules = false;
     private ModuleParameters mForcedModuleParameter = null;
     private Set<ModuleParameters> mExcludedModuleParameters = new HashSet<>();
 
@@ -103,7 +103,7 @@ public class SuiteModuleLoader {
 
     /** Sets whether or not to allow optional parameterized modules. */
     public final void setOptionalParameterizedModules(boolean allowed) {
-        mAllowOptionalParamterizedModules = allowed;
+        mAllowOptionalParameterizedModules = allowed;
     }
 
     /** Sets the only {@link ModuleParameters} type that should be run. */
@@ -211,7 +211,7 @@ public class SuiteModuleLoader {
                 mForcedParameter =
                         ModuleParametersHelper.getParameterHandler(
                                 mForcedModuleParameter, /* optionalParams */
-                                mAllowOptionalParamterizedModules);
+                                mAllowOptionalParameterizedModules);
             }
 
             // Invokes parser to process the test module config file
@@ -557,8 +557,10 @@ public class SuiteModuleLoader {
             }
             IModuleParameter handler =
                     ModuleParametersHelper.getParameterHandler(
-                            suiteParam, /* optionalParams */ mAllowOptionalParamterizedModules);
-            params.add(handler);
+                            suiteParam, /* optionalParams */ mAllowOptionalParameterizedModules);
+            if (handler != null) {
+                params.add(handler);
+            }
         }
         return params;
     }
