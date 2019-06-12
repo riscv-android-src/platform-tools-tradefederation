@@ -677,4 +677,51 @@ public class BaseTestSuiteTest {
         }
         EasyMock.verify(mockDevice);
     }
+
+    /** Test that loading the option parameterization is gated by the option. */
+    @Test
+    public void testLoadTests_optionalParameterizedModule() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite-parameters");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue("enable-optional-parameterization", "true");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.testtype.suite.TestSuiteStub:"
+                        + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(4, configMap.size());
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized"));
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized[instant]"));
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized[secondary_user]"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/stub-parameterized"));
+        EasyMock.verify(mockDevice);
+    }
+
+    /** Test that we can explicitly request the option parameterization type. */
+    @Test
+    public void testLoadTests_optionalParameterizedModule_filter() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite-parameters");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue("enable-optional-parameterization", "true");
+        setter.setOptionValue("module-parameter", "SECONDARY_USER");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.testtype.suite.TestSuiteStub:"
+                        + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        // Only the secondary_user requested is created
+        assertEquals(1, configMap.size());
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized[secondary_user]"));
+        EasyMock.verify(mockDevice);
+    }
 }
