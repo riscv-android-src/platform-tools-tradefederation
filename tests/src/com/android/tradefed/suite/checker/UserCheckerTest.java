@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.HashMap;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
@@ -111,6 +112,75 @@ public class UserCheckerTest {
         assertEquals(CheckStatus.SUCCESS, checker.postExecutionCheck(postDevice).getStatus());
         verify(postDevice, never()).removeUser(anyInt());
         verify(postDevice, never()).switchUser(anyInt());
+    }
+
+    @Test
+    public void testCreateCleanup() throws Exception {
+        UserChecker checker = new UserChecker();
+        OptionSetter mOptionSetter = new OptionSetter(checker);
+        mOptionSetter.setOptionValue("user-type", "secondary");
+        mOptionSetter.setOptionValue("user-cleanup", "true");
+        ITestDevice preDevice =
+                mockDeviceUserState(
+                        /* currentUser=  */ 0,
+                        /* userIds=        */ new Integer[] {0},
+                        /* flags=        */ new Integer[] {0},
+                        /* isRunning= */ new Boolean[] {true});
+        when(preDevice.createUser("Tfsecondary", false, false)).thenReturn(10);
+        when(preDevice.switchUser(10)).thenReturn(true);
+
+        assertEquals(CheckStatus.SUCCESS, checker.preExecutionCheck(preDevice).getStatus());
+        verify(preDevice, times(1)).createUser("Tfsecondary", false, false);
+        verify(preDevice, times(1)).switchUser(10);
+
+        ITestDevice postDevice =
+                mockDeviceUserState(
+                        /* currentUser=  */ 10,
+                        /* userIds=        */ new Integer[] {0, 10},
+                        /* flags=        */ new Integer[] {0, 0},
+                        /* isRunning= */ new Boolean[] {true, true});
+        when(postDevice.switchUser(0)).thenReturn(true);
+        when(postDevice.removeUser(10)).thenReturn(true);
+        assertEquals(CheckStatus.SUCCESS, checker.postExecutionCheck(postDevice).getStatus());
+        verify(postDevice, times(1)).switchUser(0);
+        verify(postDevice, times(1)).removeUser(10);
+    }
+
+    @Test
+    public void testCreateCleanup_cleanupFail() throws Exception {
+        UserChecker checker = new UserChecker();
+        OptionSetter mOptionSetter = new OptionSetter(checker);
+        mOptionSetter.setOptionValue("user-type", "secondary");
+        mOptionSetter.setOptionValue("user-cleanup", "true");
+        ITestDevice preDevice =
+                mockDeviceUserState(
+                        /* currentUser=  */ 0,
+                        /* userIds=        */ new Integer[] {0},
+                        /* flags=        */ new Integer[] {0},
+                        /* isRunning= */ new Boolean[] {true});
+        when(preDevice.createUser("Tfsecondary", false, false)).thenReturn(10);
+        when(preDevice.switchUser(10)).thenReturn(true);
+
+        assertEquals(CheckStatus.SUCCESS, checker.preExecutionCheck(preDevice).getStatus());
+        verify(preDevice, times(1)).createUser("Tfsecondary", false, false);
+        verify(preDevice, times(1)).switchUser(10);
+
+        ITestDevice postDevice =
+                mockDeviceUserState(
+                        /* currentUser=  */ 10,
+                        /* userIds=        */ new Integer[] {0, 10},
+                        /* flags=        */ new Integer[] {0, 0},
+                        /* isRunning= */ new Boolean[] {true, true});
+        when(postDevice.switchUser(0)).thenReturn(false);
+        when(postDevice.removeUser(10)).thenReturn(false);
+        StatusCheckerResult result = checker.postExecutionCheck(postDevice);
+        verify(postDevice, times(1)).switchUser(0);
+        verify(postDevice, times(1)).removeUser(10);
+        assertEquals(CheckStatus.FAILED, result.getStatus());
+        assertTrue(
+                result.getErrorMessage()
+                        .contains("Failed to switch back to previous current user 0"));
+        assertTrue(result.getErrorMessage().contains("Failed to remove new user 10"));
     }
 
     @Test
