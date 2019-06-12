@@ -25,7 +25,6 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
-import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -455,11 +454,11 @@ public class BaseTestSuite extends ITestSuite {
 
     /** Log a file directly to the result reporter. */
     private void logFilterFile(File filterFile, String dataName, LogDataType type) {
-        List<ITestInvocationListener> listeners = getConfiguration().getTestInvocationListeners();
+        if (getCurrentTestLogger() == null) {
+            return;
+        }
         try (FileInputStreamSource source = new FileInputStreamSource(filterFile)) {
-            for (ITestInvocationListener listener : listeners) {
-                listener.testLog(dataName, type, source);
-            }
+            getCurrentTestLogger().testLog(dataName, type, source);
         }
     }
 }
