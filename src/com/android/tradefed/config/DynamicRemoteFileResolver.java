@@ -25,6 +25,8 @@ import com.android.tradefed.util.MultiMap;
 
 import java.io.File;
 import java.lang.reflect.Field;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -218,25 +220,40 @@ public class DynamicRemoteFileResolver {
 
     private File resolveRemoteFiles(File consideredFile, Option option)
             throws ConfigurationException {
+        File fileToResolve;
         String path = consideredFile.getPath();
-        String protocol = getProtocol(path);
+        String protocol;
+        Map<String, String> query;
+        try {
+            URI uri = new URI(path);
+            protocol = uri.getScheme();
+            query = parseQuery(uri.getQuery());
+            fileToResolve = new File(protocol + ":" + uri.getPath());
+        } catch (URISyntaxException e) {
+            CLog.e(e);
+            return null;
+        }
         IRemoteFileResolver resolver = getResolver(protocol);
         if (resolver != null) {
-            return resolver.resolveRemoteFiles(consideredFile, option);
+            return resolver.resolveRemoteFiles(fileToResolve, option, query);
         }
         // Not a remote file
         return null;
     }
 
     /**
-     * Java URL doesn't recognize 'gs' as a protocol and throws an exception so we do the protocol
-     * extraction ourselves.
+     * Parse a URL query style. Delimited by &, and map values represented by =. Example:
+     * ?key=value&key2=value2
      */
-    private String getProtocol(String path) {
-        int index = path.indexOf(":/");
-        if (index == -1) {
-            return "";
+    private Map<String, String> parseQuery(String query) {
+        Map<String, String> values = new HashMap<>();
+        if (query == null) {
+            return values;
         }
-        return path.substring(0, index);
+        for (String maps : query.split("&")) {
+            String[] keyVal = maps.split("=");
+            values.put(keyVal[0], keyVal[1]);
+        }
+        return values;
     }
 }
