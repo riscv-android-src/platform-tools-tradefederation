@@ -103,4 +103,20 @@ public class LocalRunInstructionBuilderTest {
                         + "atest module_name:class_name -- --abi arm",
                 instruction);
     }
+
+    /** Test when a parameterized module needs to be repro. */
+    @Test
+    public void testGetInstruction_withParameter() {
+        ConfigurationDescriptor configDescriptor = new ConfigurationDescriptor();
+        configDescriptor.setAbi(new Abi(ABI_NAME, "32"));
+        configDescriptor.setModuleName(OPTION_SOURCE);
+        configDescriptor.addMetadata(ConfigurationDescriptor.PARAMETER_KEY, "instant");
+        String instruction =
+                LocalRunInstructionBuilder.getInstruction(
+                        configDescriptor, LocalTestRunner.ATEST, null);
+        assertEquals(
+                "Run following command to try the test in a local setup:\n"
+                        + "atest module_name -- --abi arm --instant",
+                instruction);
+    }
 }

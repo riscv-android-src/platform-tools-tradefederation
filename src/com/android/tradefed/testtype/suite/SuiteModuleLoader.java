@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype.suite;
 
 import com.android.tradefed.config.ConfigurationDef.OptionDef;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.ConfigurationUtil;
@@ -303,6 +304,12 @@ public class SuiteModuleLoader {
                         if (shouldRunParameterized(baseId, fullId)) {
                             IConfiguration paramConfig =
                                     mConfigFactory.createConfigurationFromArgs(pathArg);
+                            // Mark the parameter in the metadata
+                            paramConfig
+                                    .getConfigurationDescription()
+                                    .addMetadata(
+                                            ConfigurationDescriptor.PARAMETER_KEY,
+                                            param.getParameterIdentifier());
                             setUpConfig(name, baseId, fullId, paramConfig, abi);
                             param.applySetup(paramConfig);
                             toRun.put(fullId, paramConfig);
