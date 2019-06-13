@@ -19,6 +19,7 @@ import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.StubBuildProvider;
+import com.android.tradefed.clearcut.ClearcutClient;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.CommandRunner;
 import com.android.tradefed.config.GlobalConfiguration;
@@ -329,6 +330,8 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 new StringBuilder("TF_GLOBAL_CONFIG=" + globalConfig.getName());
         // Set an env variable to notify that this a remote environment.
         tfCmdBuilder.append(" " + REMOTE_VM_VARIABLE + "=1");
+        // Disable clearcut in the remote
+        tfCmdBuilder.append(" " + ClearcutClient.DISABLE_CLEARCUT_KEY + "=1");
         tfCmdBuilder.append(" ENTRY_CLASS=" + CommandRunner.class.getCanonicalName());
         tfCmdBuilder.append(" ./tradefed.sh " + mRemoteTradefedDir + configFile.getName());
         if (config.getCommandOptions().shouldUseRemoteSandboxMode()) {
