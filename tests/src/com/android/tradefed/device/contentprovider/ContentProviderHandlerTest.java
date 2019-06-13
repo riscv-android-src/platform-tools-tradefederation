@@ -222,7 +222,7 @@ public class ContentProviderHandlerTest {
     public void testPullDir_EmptyDirectory() throws Exception {
         File pullTo = FileUtil.createTempDir("content-provider-test");
 
-        doReturn("No result found.").when(mMockDevice).executeShellCommand(anyString());
+        doReturn("No result found.\n").when(mMockDevice).executeShellCommand(anyString());
 
         try {
             assertTrue(mProvider.pullDir("path/somewhere", pullTo));
