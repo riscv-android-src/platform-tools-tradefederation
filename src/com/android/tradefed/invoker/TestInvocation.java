@@ -842,18 +842,19 @@ public class TestInvocation implements ITestInvocation {
                 return;
             }
             try {
-                if (log != null && !FileUtil.readStringFromFile(log).isEmpty()) {
-                    try (InputStreamSource source = new FileInputStreamSource(log)) {
-                        logger.testLog(
-                                String.format(
-                                        "executeShellCommandLog_%s", device.getSerialNumber()),
-                                LogDataType.TEXT,
-                                source);
-                    }
+                if (FileUtil.readStringFromFile(log).isEmpty()) {
+                    CLog.d("executeShellCommandLog file was empty, skip logging.");
+                    return;
                 }
             } catch (IOException e) {
                 // Ignored
                 CLog.e(e);
+            }
+            try (InputStreamSource source = new FileInputStreamSource(log)) {
+                logger.testLog(
+                        String.format("executeShellCommandLog_%s", device.getSerialNumber()),
+                        LogDataType.TEXT,
+                        source);
             }
         }
     }
