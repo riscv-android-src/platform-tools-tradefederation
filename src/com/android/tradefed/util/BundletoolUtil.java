@@ -29,6 +29,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Utility class that uses bundletool command line to install the .apks on deivce. Bundletool doc
@@ -76,22 +78,29 @@ public class BundletoolUtil {
 
         String outputDirArg = DEVICE_SPEC_OUTPUT_FLAG + specFilePath.toString();
 
-        String adbArg = "--adb=" + getAdbPath();
+        List<String> generateDeviceSpecCmd =
+                new ArrayList<String>(
+                        Arrays.asList(
+                                "java",
+                                "-jar",
+                                getBundletoolFile().getAbsolutePath(),
+                                GET_DEVICE_SPEC_OPTION,
+                                outputDirArg));
 
-        String[] cmd =
-                new String[] {
-                    "java",
-                    "-jar",
-                    getBundletoolFile().getAbsolutePath(),
-                    GET_DEVICE_SPEC_OPTION,
-                    outputDirArg,
-                    adbArg
-                };
-        CommandResult res = getRunUtil().runTimedCmd(CMD_TIME_OUT, cmd);
+        if (getAdbPath() != null) {
+            generateDeviceSpecCmd.add("--adb=" + getAdbPath());
+        }
+
+        CommandResult res =
+                getRunUtil()
+                        .runTimedCmd(
+                                CMD_TIME_OUT,
+                                generateDeviceSpecCmd.toArray(
+                                        new String[generateDeviceSpecCmd.size()]));
         if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
             CLog.e(
                     "Failed to generated device spec file. Cmd is %s. Error: %s.",
-                    Arrays.toString(cmd), res.getStderr());
+                    generateDeviceSpecCmd.toString(), res.getStderr());
             return null;
         }
         return specFilePath.toString();
@@ -151,22 +160,30 @@ public class BundletoolUtil {
      */
     public void installApks(File apks, ITestDevice device) throws TargetSetupError {
         String inputPathArg = "--apks=" + apks.getAbsolutePath();
-        String adbArg = "--adb=" + getAdbPath();
-        String[] installApksCmd =
-                new String[] {
-                    "java",
-                    "-jar",
-                    getBundletoolFile().getAbsolutePath(),
-                    INSTALL_APKS_OPTION,
-                    inputPathArg,
-                    adbArg
-                };
-        CommandResult res = getRunUtil().runTimedCmd(CMD_TIME_OUT, installApksCmd);
+
+        List<String> installApksCmd =
+                new ArrayList<String>(
+                        Arrays.asList(
+                                "java",
+                                "-jar",
+                                getBundletoolFile().getAbsolutePath(),
+                                INSTALL_APKS_OPTION,
+                                inputPathArg));
+
+        if (getAdbPath() != null) {
+            installApksCmd.add("--adb=" + getAdbPath());
+        }
+
+        CommandResult res =
+                getRunUtil()
+                        .runTimedCmd(
+                                CMD_TIME_OUT,
+                                installApksCmd.toArray(new String[installApksCmd.size()]));
         if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
             throw new TargetSetupError(
                     String.format(
                             "Failed to install split apk. Cmd: %s. Error: %s.",
-                            Arrays.toString(installApksCmd), res.getStderr()),
+                            installApksCmd.toString(), res.getStderr()),
                     device.getDeviceDescriptor());
         }
         CLog.i("%s is installed successfully", apks.getName());
@@ -180,6 +197,11 @@ public class BundletoolUtil {
 
     @VisibleForTesting
     protected String getAdbPath() {
-        return GlobalConfiguration.getDeviceManagerInstance().getAdbPath();
+        String adbPath = GlobalConfiguration.getDeviceManagerInstance().getAdbPath();
+        // No explicit adb path passed from device manager.
+        if (!new File(adbPath).exists()) {
+            return null;
+        }
+        return adbPath;
     }
 }
