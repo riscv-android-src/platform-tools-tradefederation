@@ -38,6 +38,7 @@ import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.BaseTestSuite;
 import com.android.tradefed.testtype.suite.SuiteTestFilter;
+import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.TestRecordInterpreter;
 
@@ -222,10 +223,28 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
         } else {
             types.add(mRetryType);
         }
+
+        // Expand the exclude-filter in case no abi is specified.
+        Set<String> extendedExcludeRetryFilters = new HashSet<>();
+        for (String excludeFilter : mExcludeFilters) {
+            SuiteTestFilter suiteFilter = SuiteTestFilter.createFrom(excludeFilter);
+            // Keep the current exclude-filter
+            extendedExcludeRetryFilters.add(excludeFilter);
+            if (suiteFilter.getAbi() == null) {
+                // If no abi is specified, exclude them all.
+                Set<String> abis = AbiUtils.getAbisSupportedByCompatibility();
+                for (String abi : abis) {
+                    SuiteTestFilter namingFilter =
+                            new SuiteTestFilter(abi, suiteFilter.getName(), suiteFilter.getTest());
+                    extendedExcludeRetryFilters.add(namingFilter.toString());
+                }
+            }
+        }
+
         // Prepare exclusion filters
         for (TestRunResult moduleResult : results.getMergedTestRunResults()) {
             // If the module is explicitly excluded from retries, preserve the original results.
-            if (!mExcludeFilters.contains(moduleResult.getName())
+            if (!extendedExcludeRetryFilters.contains(moduleResult.getName())
                     && RetryResultHelper.shouldRunModule(moduleResult, types)) {
                 if (types.contains(RetryType.NOT_EXECUTED)) {
                     // Clear the run failure since we are attempting to rerun all non-executed
