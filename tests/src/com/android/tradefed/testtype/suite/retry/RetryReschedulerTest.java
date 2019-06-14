@@ -35,6 +35,8 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.proto.ProtoResultReporter;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
+import com.android.tradefed.testtype.Abi;
+import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.suite.BaseTestSuite;
 
 import org.easymock.EasyMock;
@@ -345,6 +347,50 @@ public class RetryReschedulerTest {
         verify(mSuite).setExcludeFilter(excludeRun1);
     }
 
+    /**
+     * Test that if an exclude-filter is provided without abi, we are still able to exclude all the
+     * matching modules for all abis.
+     */
+    @Test
+    public void testReschedule_excludeFilters_abi() throws Exception {
+        OptionSetter setter = new OptionSetter(mTest);
+        // We specify to exclude "run1"
+        setter.setOptionValue(BaseTestSuite.EXCLUDE_FILTER_OPTION, "run1");
+        populateFakeResults(2, 2, 1, 0, 0, false, new Abi("armeabi-v7a", "32"));
+        mMockLoader.init();
+        EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
+        EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
+                .andReturn(mRescheduledConfiguration);
+        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+
+        mRescheduledConfiguration.setTests(EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
+
+        EasyMock.expect(mMockRescheduler.scheduleConfig(mRescheduledConfiguration)).andReturn(true);
+        EasyMock.replay(
+                mMockRescheduler,
+                mMockLoader,
+                mMockFactory,
+                mRescheduledConfiguration,
+                mMockCommandOptions);
+        mTest.run(null);
+        EasyMock.verify(
+                mMockRescheduler,
+                mMockLoader,
+                mMockFactory,
+                mRescheduledConfiguration,
+                mMockCommandOptions);
+
+        Set<String> excludeRun0 = new HashSet<>();
+        // Run with the abi are excluded
+        excludeRun0.add("armeabi-v7a run0 test.class#testPass0");
+        verify(mSuite).setExcludeFilter(excludeRun0);
+        Set<String> excludeRun1 = new HashSet<>();
+        // Even if run1 had failed test cases, it was excluded so it's not running.
+        excludeRun1.add("armeabi-v7a run1");
+        verify(mSuite).setExcludeFilter(excludeRun1);
+    }
+
     /** Test rescheduling a configuration when no parameterized tests previously failed. */
     @Test
     public void testReschedule_parameterized_nofail() throws Exception {
@@ -452,6 +498,18 @@ public class RetryReschedulerTest {
             int assumpFailure,
             int parameterized,
             boolean failedParam) {
+        populateFakeResults(
+                numModule, numTests, failedTests, assumpFailure, parameterized, failedParam, null);
+    }
+
+    private void populateFakeResults(
+            int numModule,
+            int numTests,
+            int failedTests,
+            int assumpFailure,
+            int parameterized,
+            boolean failedParam,
+            IAbi abi) {
         ProtoResultReporter reporter =
                 new ProtoResultReporter() {
                     @Override
@@ -464,7 +522,11 @@ public class RetryReschedulerTest {
         context.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, new BuildInfo());
         reporter.invocationStarted(context);
         for (int i = 0; i < numModule; i++) {
-            reporter.testRunStarted("run" + i, numTests);
+            String runName = "run" + i;
+            if (abi != null) {
+                runName = abi.getName() + " " + runName;
+            }
+            reporter.testRunStarted(runName, numTests);
             for (int j = 0; j < numTests - failedTests - assumpFailure - parameterized; j++) {
                 TestDescription test = new TestDescription("test.class", "testPass" + j);
                 reporter.testStarted(test);
