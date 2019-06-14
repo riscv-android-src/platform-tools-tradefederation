@@ -48,6 +48,8 @@ public class ConfigurationDescriptor implements Serializable, Cloneable {
 
     /** Metadata key for a config to specify that it was sharded. */
     public static final String LOCAL_SHARDED_KEY = "sharded";
+    /** Metadata key for a config parameterization, optional. */
+    public static final String PARAMETER_KEY = "parameter";
 
     @Option(name = "test-suite-tag", description = "A membership tag to suite. Can be repeated.")
     private List<String> mSuiteTags = new ArrayList<>();
