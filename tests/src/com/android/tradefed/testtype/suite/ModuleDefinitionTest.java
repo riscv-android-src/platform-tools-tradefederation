@@ -1403,7 +1403,6 @@ public class ModuleDefinitionTest {
                         mMultiTargetPrepList,
                         new Configuration("", ""));
         mModule.setRetryStrategy(RetryStrategy.ITERATIONS, false);
-
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
