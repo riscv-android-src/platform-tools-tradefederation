@@ -20,11 +20,16 @@ import datetime
 import json
 import os
 
+import constants
+
 _META_FILE = os.path.join(os.path.expanduser('~'),
                           '.config', 'asuite', 'atest_history.json')
 _DETECT_OPTION_FILTER = ['-v', '--verbose']
 _DETECTED_SUCCESS = 1
 _DETECTED_FAIL = 0
+# constants of history key
+_LATEST_EXIT_CODE = 'latest_exit_code'
+_UPDATED_AT = 'updated_at'
 
 class BugDetector(object):
     """Class for handling if a bug is detected by comparing test history."""
@@ -93,18 +98,29 @@ class BugDetector(object):
         if not self.history:
             return _DETECTED_FAIL
         latest = self.history.get(self.detect_key, {})
-        if latest.get('latest_exit_code', self.exit_code) == self.exit_code:
+        if latest.get(_LATEST_EXIT_CODE, self.exit_code) == self.exit_code:
             return _DETECTED_FAIL
         return _DETECTED_SUCCESS
 
     def update_history(self):
-        """Update the history file."""
+        """Update the history file.
+
+        1. update latest_bug result to history cache.
+        2. trim history cache to size from oldest updated time.
+        3. write to the file.
+        """
         latest_bug = {
             self.detect_key: {
-                'latest_exit_code': self.exit_code,
-                'updated_at': datetime.datetime.now().isoformat()
+                _LATEST_EXIT_CODE: self.exit_code,
+                _UPDATED_AT: datetime.datetime.now().isoformat()
             }
         }
         self.history.update(latest_bug)
+        num_history = len(self.history)
+        if num_history > constants.UPPER_LIMIT:
+            sorted_history = sorted(self.history.items(),
+                                    key=lambda kv: kv[1][_UPDATED_AT])
+            self.history = dict(
+                sorted_history[(num_history - constants.TRIM_TO_SIZE):])
         with open(self.file, 'w') as outfile:
-            json.dump(self.history, outfile)
+            json.dump(self.history, outfile, indent=0)
