@@ -44,6 +44,8 @@ import java.util.concurrent.TimeUnit;
 /** Client that allows reporting usage metrics to clearcut. */
 public class ClearcutClient {
 
+    public static final String DISABLE_CLEARCUT_KEY = "DISABLE_CLEARCUT";
+
     private static final String CLEARCUT_PROD_URL = "https://play.googleapis.com/log";
     private static final int CLIENT_TYPE = 1;
     private static final int INTERNAL_LOG_SOURCE = 971;
@@ -63,6 +65,8 @@ public class ClearcutClient {
     private List<LogRequest> mExternalEventQueue;
     // The pool executor to actually post the metrics
     private ScheduledThreadPoolExecutor mExecutor;
+    // Whether the clearcut client should be inop
+    private boolean mDisabled = false;
 
     public ClearcutClient(String url, boolean isExternalUser) {
         if (isExternalUser) {
@@ -82,6 +86,11 @@ public class ClearcutClient {
             mUserType = UserType.GOOGLE;
         }
         mExternalEventQueue = new ArrayList<>();
+
+        mDisabled = isClearcutDisabled();
+        if (mDisabled) {
+            return;
+        }
         // Print the notice
         System.out.println(NoticeMessageUtil.getNoticeMessage(mUserType));
 
@@ -103,6 +112,9 @@ public class ClearcutClient {
 
     /** Send the first event to notify that Tradefed was started. */
     public void notifyTradefedStartEvent() {
+        if (mDisabled) {
+            return;
+        }
         LogRequest.Builder request = createBaseLogRequest();
         LogEvent.Builder logEvent = LogEvent.newBuilder();
         logEvent.setEventTimeMs(System.currentTimeMillis());
@@ -131,6 +143,13 @@ public class ClearcutClient {
         }
     }
 
+    /** Returns the current queue size. */
+    public final int getQueueSize() {
+        synchronized (mExternalEventQueue) {
+            return mExternalEventQueue.size();
+        }
+    }
+
     /** Allows to override the default cached uuid file. */
     public void setCachedUuidFile(File uuidFile) {
         mCachedUuidFile = uuidFile;
@@ -156,6 +175,12 @@ public class ClearcutClient {
             }
         }
         return uuid;
+    }
+
+    /** Returns True if clearcut is disabled, False otherwise. */
+    @VisibleForTesting
+    boolean isClearcutDisabled() {
+        return "1".equals(System.getenv(DISABLE_CLEARCUT_KEY));
     }
 
     private LogRequest.Builder createBaseLogRequest() {
