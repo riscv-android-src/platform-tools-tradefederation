@@ -68,4 +68,23 @@ public class ClearcutClientTest {
             FileUtil.deleteFile(testFile);
         }
     }
+
+    @Test
+    public void testDisableClient() {
+        ClearcutClient c =
+                new ClearcutClient("url", true) {
+                    @Override
+                    boolean isClearcutDisabled() {
+                        return true;
+                    }
+                };
+        try {
+            c.notifyTradefedStartEvent();
+            c.notifyTradefedStartEvent();
+            c.notifyTradefedStartEvent();
+            assertEquals(0, c.getQueueSize());
+        } finally {
+            c.stop();
+        }
+    }
 }
