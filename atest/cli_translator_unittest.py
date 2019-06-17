@@ -17,6 +17,7 @@
 """Unittests for cli_translator."""
 
 import unittest
+import json
 import os
 import re
 import sys
@@ -351,6 +352,23 @@ class CLITranslatorUnittests(unittest.TestCase):
         output = 'Did you mean the following modules?\n{0}\n{1}\n'.format(
             uc.MODULE_NAME, uc.MODULE2_NAME)
         self.assertEquals(capture_output.getvalue(), output)
+
+    def test_filter_comments(self):
+        """Test filter_comments method"""
+        file_with_comments = os.path.join(TEST_MAPPING_TOP_DIR,
+                                          'folder6',
+                                          'test_mapping_sample_with_comments')
+        file_with_comments_golden = os.path.join(TEST_MAPPING_TOP_DIR,
+                                                 'folder6',
+                                                 'test_mapping_sample_golden')
+        test_mapping_dict = json.loads(
+            self.ctr.filter_comments(file_with_comments))
+        test_mapping_dict_gloden = None
+        with open(file_with_comments_golden) as json_file:
+            test_mapping_dict_gloden = json.load(json_file)
+
+        self.assertEqual(test_mapping_dict, test_mapping_dict_gloden)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -23,6 +23,7 @@ import fnmatch
 import json
 import logging
 import os
+import re
 import sys
 import time
 
@@ -39,6 +40,9 @@ from test_finders import module_finder
 TEST_MAPPING = 'TEST_MAPPING'
 FUZZY_FINDER = 'FUZZY'
 
+# Pattern used to identify comments start with '//' or '#' in TEST_MAPPING.
+_COMMENTS_RE = re.compile(r'(?m)[\s\t]*(#|//).*|(\".*?\")')
+_COMMENTS = frozenset(['//', '#'])
 
 #pylint: disable=no-self-use
 class CLITranslator(object):
@@ -207,6 +211,30 @@ class CLITranslator(object):
         for mod in results[:10]:
             atest_utils.colorful_print(mod, constants.GREEN)
 
+    def filter_comments(self, test_mapping_file):
+        """Remove comments in TEST_MAPPING file to valid format. Only '//' and
+        '#' are regarded as comments.
+
+        Args:
+            test_mapping_file: Path to a TEST_MAPPING file.
+
+        Returns:
+            Valid json string without comments.
+        """
+        def _replace(match):
+            """Replace comments if found matching the defined regular expression.
+
+            Args:
+                match: The matched regex pattern
+
+            Returns:
+                "" if it matches _COMMENTS, otherwise original string.
+            """
+            line = match.group(0).strip()
+            return "" if any(map(line.startswith, _COMMENTS)) else line
+        with open(test_mapping_file) as json_file:
+            return re.sub(_COMMENTS_RE, _replace, json_file.read())
+
     def _read_tests_in_test_mapping(self, test_mapping_file):
         """Read tests from a TEST_MAPPING file.
 
@@ -222,9 +250,7 @@ class CLITranslator(object):
         """
         all_tests = {}
         imports = []
-        test_mapping_dict = None
-        with open(test_mapping_file) as json_file:
-            test_mapping_dict = json.load(json_file)
+        test_mapping_dict = json.loads(self.filter_comments(test_mapping_file))
         for test_group_name, test_list in test_mapping_dict.items():
             if test_group_name == constants.TEST_MAPPING_IMPORTS:
                 for import_detail in test_list:
