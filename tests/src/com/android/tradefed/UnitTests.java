@@ -60,7 +60,6 @@ import com.android.tradefed.device.CpuStatsCollectorTest;
 import com.android.tradefed.device.DeviceManagerTest;
 import com.android.tradefed.device.DeviceSelectionOptionsTest;
 import com.android.tradefed.device.DeviceStateMonitorTest;
-import com.android.tradefed.device.DeviceUtilStatsMonitorTest;
 import com.android.tradefed.device.DumpsysPackageReceiverTest;
 import com.android.tradefed.device.FastbootHelperTest;
 import com.android.tradefed.device.ManagedDeviceListTest;
@@ -424,7 +423,6 @@ import org.junit.runners.Suite.SuiteClasses;
     DeviceManagerTest.class,
     DeviceSelectionOptionsTest.class,
     DeviceStateMonitorTest.class,
-    DeviceUtilStatsMonitorTest.class,
     DumpsysPackageReceiverTest.class,
     FastbootHelperTest.class,
     ManagedDeviceListTest.class,
