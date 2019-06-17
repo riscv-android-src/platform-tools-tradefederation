@@ -95,6 +95,7 @@ java_library_host {
     defaults: ["tradefed_defaults"],
     srcs: [
         "src/**/*.java",
+        "global_configuration/**/*.java",
     ],
     java_resource_dirs: [
         "res",
