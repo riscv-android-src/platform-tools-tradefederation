@@ -98,7 +98,7 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
     @Override
     public IBuildInfo getBuild(ITestDevice device) throws BuildRetrievalError,
             DeviceNotAvailableException {
-        IBuildInfo info = new DeviceBuildInfo();
+        IBuildInfo info = new DeviceBuildInfo(mBuildId, mBuildTargetName);
         if (!(device.getIDevice() instanceof StubDevice)) {
             if (!device.waitForDeviceShell(mShellAvailableTimeout * 1000)) {
                 throw new DeviceNotAvailableException(
@@ -112,7 +112,12 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
             mBranch = "stub";
         }
         BuildInfoUtil.bootstrapDeviceBuildAttributes(
-                info, device, mBuildId, mBuildTargetName, mBranch, null);
+                info,
+                device,
+                mBuildId,
+                null /* override build flavor */,
+                mBranch,
+                null /* override build alias */);
         if (mTestsDir != null && mTestsDir.isDirectory()) {
             info.setFile("testsdir", mTestsDir, info.getBuildId());
         }
