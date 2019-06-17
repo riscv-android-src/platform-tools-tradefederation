@@ -123,6 +123,7 @@ import com.android.tradefed.invoker.ShardMasterResultForwarderTest;
 import com.android.tradefed.invoker.TestInvocationMultiTest;
 import com.android.tradefed.invoker.TestInvocationTest;
 import com.android.tradefed.invoker.UnexecutedTestReporterThreadTest;
+import com.android.tradefed.invoker.logger.InvocationMetricLoggerTest;
 import com.android.tradefed.invoker.monitor.InvocationsMonitorTest;
 import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecutionTest;
 import com.android.tradefed.invoker.shard.ShardHelperTest;
@@ -507,6 +508,9 @@ import org.junit.runners.Suite.SuiteClasses;
     TestInvocationMultiTest.class,
     TestInvocationTest.class,
     UnexecutedTestReporterThreadTest.class,
+
+    // invoker.logger
+    InvocationMetricLoggerTest.class,
 
     // invoker.monitor
     InvocationsMonitorTest.class,
