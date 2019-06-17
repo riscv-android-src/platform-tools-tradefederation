@@ -137,6 +137,15 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
         // Does nothing
     }
 
+    @Override
+    public void onTestEnd(
+            DeviceMetricData testData,
+            final Map<String, Metric> currentTestCaseMetrics,
+            TestDescription test) {
+        // Call the default implementation of onTestEnd if not overridden
+        onTestEnd(testData, currentTestCaseMetrics);
+    }
+
     /** =================================== */
     /** Invocation Listeners for forwarding */
     @Override
@@ -240,7 +249,7 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
             TestDescription test, long endTime, HashMap<String, Metric> testMetrics) {
         if (!mSkipTestCase) {
             try {
-                onTestEnd(mTestData, testMetrics);
+                onTestEnd(mTestData, testMetrics, test);
                 mTestData.addToMetrics(testMetrics);
             } catch (Throwable t) {
                 // Prevent exception from messing up the status reporting.
