@@ -74,23 +74,6 @@ java_library_host {
 }
 
 java_library_host {
-    name: "tradefed-common-util",
-    defaults: ["tradefed_defaults"],
-    srcs: [
-        "common_util/**/*.java",
-    ],
-    static_libs: [
-        "commons-compress-prebuilt",
-    ],
-    libs: [
-        "ddmlib-prebuilt",
-	"guava",
-	"tradefed-protos",
-	"devtools-annotations-prebuilt",
-    ],
-}
-
-java_library_host {
     name: "tradefed",
     defaults: ["tradefed_defaults"],
     srcs: [
