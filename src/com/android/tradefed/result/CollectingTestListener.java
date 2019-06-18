@@ -180,6 +180,12 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     /** {@inheritDoc} */
     @Override
     public void testRunStarted(String name, int numTests, int attemptNumber) {
+        testRunStarted(name, numTests, attemptNumber, System.currentTimeMillis());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testRunStarted(String name, int numTests, int attemptNumber, long startTime) {
         setCountDirty();
         // Only testRunStarted can affect the expected count.
         mIsExpectedCountDirty.set(true);
@@ -209,7 +215,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
             int size = results.size();
             for (int i = size; i < attemptNumber; i++) {
                 TestRunResult result = getNewRunResult();
-                result.testRunStarted(name, numTests);
+                result.testRunStarted(name, numTests, startTime);
                 String errorMessage =
                         String.format(
                                 "Run attempt %s of %s did not exists, but got attempt %s. This is a placeholder for the missing attempt.",
@@ -224,7 +230,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
         }
         mCurrentTestRunResult = results.get(attemptNumber);
 
-        mCurrentTestRunResult.testRunStarted(name, numTests);
+        mCurrentTestRunResult.testRunStarted(name, numTests, startTime);
         mRunInProgress = true;
     }
 
