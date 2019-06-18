@@ -50,7 +50,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.net.URLConnection;
 import java.util.Set;
 
 import javax.imageio.ImageIO;
@@ -836,8 +836,9 @@ public class TestDeviceFuncTest implements IDeviceTest {
         assertNotNull(screenshot);
         File testFile = FileUtil.createTempFile("test-screenshot", ".testpng");
         try {
-            FileUtil.writeToFile(screenshot.createInputStream(), testFile);
-            assertEquals("image/png", Files.probeContentType(testFile.toPath()));
+            assertEquals(
+                    "image/png",
+                    URLConnection.guessContentTypeFromStream(screenshot.createInputStream()));
         } finally {
             FileUtil.deleteFile(testFile);
             StreamUtil.close(screenshot);
