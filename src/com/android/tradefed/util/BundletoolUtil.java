@@ -44,6 +44,7 @@ public class BundletoolUtil {
     private static final String DEVICE_SPEC_OUTPUT_FLAG = "--output=";
     private static final String APKS_TO_EXTRACT_FLAG = "--apks=";
     private static final String DEVICE_SPEC_FLAG = "--device-spec=";
+    private static final String DEVICE_ID_FLAG = "--device-id=";
     private static final String EXTRACT_APKS_OPTION = "extract-apks";
     private static final String INSTALL_APKS_OPTION = "install-apks";
     private static final String DEVICE_SPEC_FILE_EXTENSION = ".json";
@@ -78,6 +79,8 @@ public class BundletoolUtil {
 
         String outputDirArg = DEVICE_SPEC_OUTPUT_FLAG + specFilePath.toString();
 
+        String deviceIdArg = DEVICE_ID_FLAG + device.getSerialNumber();
+
         List<String> generateDeviceSpecCmd =
                 new ArrayList<String>(
                         Arrays.asList(
@@ -85,7 +88,8 @@ public class BundletoolUtil {
                                 "-jar",
                                 getBundletoolFile().getAbsolutePath(),
                                 GET_DEVICE_SPEC_OPTION,
-                                outputDirArg));
+                                outputDirArg,
+                                deviceIdArg));
 
         if (getAdbPath() != null) {
             generateDeviceSpecCmd.add("--adb=" + getAdbPath());
@@ -161,6 +165,8 @@ public class BundletoolUtil {
     public void installApks(File apks, ITestDevice device) throws TargetSetupError {
         String inputPathArg = "--apks=" + apks.getAbsolutePath();
 
+        String deviceIdArg = DEVICE_ID_FLAG + device.getSerialNumber();
+
         List<String> installApksCmd =
                 new ArrayList<String>(
                         Arrays.asList(
@@ -168,7 +174,8 @@ public class BundletoolUtil {
                                 "-jar",
                                 getBundletoolFile().getAbsolutePath(),
                                 INSTALL_APKS_OPTION,
-                                inputPathArg));
+                                inputPathArg,
+                                deviceIdArg));
 
         if (getAdbPath() != null) {
             installApksCmd.add("--adb=" + getAdbPath());
