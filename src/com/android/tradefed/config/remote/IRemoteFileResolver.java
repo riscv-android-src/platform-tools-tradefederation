@@ -37,8 +37,10 @@ public interface IRemoteFileResolver {
      * @return The resolved local file.
      * @throws ConfigurationException if something goes wrong.
      */
-    public @Nonnull File resolveRemoteFiles(File consideredFile, Option option)
-            throws ConfigurationException;
+    public default @Nonnull File resolveRemoteFiles(File consideredFile, Option option)
+            throws ConfigurationException {
+        throw new ConfigurationException("Should not have been called");
+    }
 
     /**
      * Resolve the remote file.
