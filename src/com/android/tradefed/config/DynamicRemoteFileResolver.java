@@ -23,8 +23,11 @@ import com.android.tradefed.config.remote.LocalFileResolver;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
+import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.ZipUtil2;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -56,6 +59,8 @@ public class DynamicRemoteFileResolver {
     }
     // The configuration map being static, we only need to update it once per TF instance.
     private static AtomicBoolean sIsUpdateDone = new AtomicBoolean(false);
+    // Query key for requesting to unzip a downloaded file automatically.
+    public static final String UNZIP_KEY = "unzip";
 
     private Map<String, OptionFieldsForName> mOptionMap;
 
@@ -218,6 +223,28 @@ public class DynamicRemoteFileResolver {
     @VisibleForTesting
     IGlobalConfiguration getGlobalConfig() {
         return GlobalConfiguration.getInstance();
+    }
+
+    /**
+     * Utility that allows to check whether or not a file should be unzip and unzip it if required.
+     */
+    public static final File unzipIfRequired(File downloadedFile, Map<String, String> query)
+            throws IOException {
+        String unzipValue = query.get(UNZIP_KEY);
+        if (unzipValue != null && "true".equals(unzipValue.toLowerCase())) {
+            // File was requested to be unzipped.
+            if (ZipUtil.isZipFileValid(downloadedFile, false)) {
+                File unzipped =
+                        ZipUtil2.extractZipToTemp(
+                                downloadedFile, FileUtil.getBaseName(downloadedFile.getName()));
+                FileUtil.deleteFile(downloadedFile);
+                return unzipped;
+            } else {
+                CLog.w("%s was requested to be unzipped but is not a valid zip.", downloadedFile);
+            }
+        }
+        // Return the original file untouched
+        return downloadedFile;
     }
 
     private File resolveRemoteFiles(File consideredFile, Option option)
