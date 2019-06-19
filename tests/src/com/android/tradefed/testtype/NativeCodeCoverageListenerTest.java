@@ -93,8 +93,9 @@ public class NativeCodeCoverageListenerTest {
         doReturn(true).when(mMockDevice).enableAdbRoot();
         doReturn(
                         new StringJoiner("\n")
-                                .add("/data/misc/trace/path/to/coverage.gcda")
-                                .add("/data/misc/trace/path/to/.hidden/coverage2.gcda")
+                                .add("/data/misc/trace/proc/self/cwd/out/path/to/coverage.gcda")
+                                .add(
+                                        "/data/misc/trace/proc/self/cwd/out/path/to/.hidden/coverage2.gcda")
                                 .toString())
                 .when(mMockDevice)
                 .executeShellCommand(anyString());
@@ -139,7 +140,7 @@ public class NativeCodeCoverageListenerTest {
     public void testFailure_unableToPullFile() throws DeviceNotAvailableException {
         // Setup mocks.
         doReturn(true).when(mMockDevice).enableAdbRoot();
-        doReturn("/data/misc/trace/some/path/to/coverage.gcda\n")
+        doReturn("/data/misc/trace/proc/self/cwd/out/some/path/to/coverage.gcda\n")
                 .when(mMockDevice)
                 .executeShellCommand(anyString());
         doReturn(false).when(mMockDevice).pullFile(anyString(), any());
