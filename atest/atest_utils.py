@@ -32,6 +32,7 @@ try:
 except ImportError:
     from urllib.request import urlopen
 
+import atest_error
 import constants
 
 from metrics import metrics_base
@@ -326,12 +327,19 @@ def print_data_collection_notice():
     print('==================\n')
 
 
-def update_test_runner_cmd(input_test, test_cmds, result_path=CMD_RESULT_PATH):
-    """Update the runner command of input tests.
+def handle_test_runner_cmd(input_test, test_cmds, do_verification=False,
+                           result_path=CMD_RESULT_PATH):
+    """Handle the runner command of input tests.
 
     Args:
         input_test: A string of input tests pass to atest.
         test_cmds: A list of strings for running input tests.
+        do_verification: A boolean to indicate the action of this method.
+                         True: Do verification without updating result map and
+                               raise DryRunVerificationError if verifying fails.
+                         False: Update result map, if the former command is
+                                different with current command, it will confirm
+                                with user if they want to update or not.
         result_path: The file path for saving result.
     """
     # Always sort test_cmds to make it comparable.
@@ -341,20 +349,31 @@ def update_test_runner_cmd(input_test, test_cmds, result_path=CMD_RESULT_PATH):
         with open(result_path) as json_file:
             full_result_content = json.load(json_file)
     former_test_cmds = full_result_content.get(input_test, [])
-    if former_test_cmds and former_test_cmds != test_cmds:
-        print('Former cmds = %s' % former_test_cmds)
-        print('Current cmds = %s' % test_cmds)
-        try:
-            if not strtobool(raw_input('Do you want to update former result'
-                                       'with the latest one?(Y/n)')):
-                print('SKIP updating result!!!')
-                return
-        except ValueError:
-            # Default action is updating the command result of the input_test.
-            # If the user input is unrecognizable telling yes or no,
-            # "Y" is implicitly applied.
-            pass
+    if former_test_cmds != test_cmds:
+        if do_verification:
+            raise atest_error.DryRunVerificationError('Dry run verification failed,'
+                                                      'former commands: %s' %
+                                                      former_test_cmds)
+        if former_test_cmds:
+            # If former_test_cmds is different from test_cmds, ask users if they
+            # are willing to update the result.
+            print('Former cmds = %s' % former_test_cmds)
+            print('Current cmds = %s' % test_cmds)
+            try:
+                if not strtobool(raw_input('Do you want to update former result'
+                                           'with the latest one?(Y/n)')):
+                    print('SKIP updating result!!!')
+                    return
+            except ValueError:
+                # Default action is updating the command result of the input_test.
+                # If the user input is unrecognizable telling yes or no,
+                # "Y" is implicitly applied.
+                pass
+    else:
+        # If current commands are the same as the formers, no need to update
+        # result.
+        return
     full_result_content[input_test] = test_cmds
     with open(result_path, 'w') as outfile:
-        json.dump(full_result_content, outfile)
+        json.dump(full_result_content, outfile, indent=0)
         print('Save result mapping to %s' % result_path)
