@@ -526,13 +526,13 @@ public class BuildInfo implements IBuildInfo {
             return false;
         }
         BuildInfo other = (BuildInfo) obj;
-        return Objects.equal(mBuildAttributes, other.mBuildAttributes) &&
-                Objects.equal(mBuildBranch, other.mBuildBranch) &&
-                Objects.equal(mBuildFlavor, other.mBuildFlavor) &&
-                Objects.equal(mBuildId, other.mBuildId) &&
-                Objects.equal(mBuildTargetName, other.mBuildTargetName) &&
-                Objects.equal(mTestTag, other.mTestTag) &&
-                Objects.equal(mDeviceSerial, other.mDeviceSerial);
+        return Objects.equal(mBuildAttributes, other.mBuildAttributes)
+                && Objects.equal(mBuildBranch, other.mBuildBranch)
+                && Objects.equal(mBuildFlavor, other.mBuildFlavor)
+                && Objects.equal(mBuildId, other.mBuildId)
+                && Objects.equal(mBuildTargetName, other.mBuildTargetName)
+                && Objects.equal(mTestTag, other.mTestTag)
+                && Objects.equal(mDeviceSerial, other.mDeviceSerial);
     }
 
     /**
@@ -573,7 +573,12 @@ public class BuildInfo implements IBuildInfo {
             for (VersionedFile vFile : mVersionedFileMultiMap.get(fileKey)) {
                 BuildFile.Builder fileInformation = BuildFile.newBuilder();
                 fileInformation.setVersion(vFile.getVersion());
-                fileInformation.setLocalPath(vFile.getFile().getAbsolutePath());
+                if (fileKey.startsWith(IBuildInfo.REMOTE_FILE_PREFIX)) {
+                    // Remote file doesn't exist on local cache, so don't save absolute path.
+                    fileInformation.setLocalPath(vFile.getFile().toString());
+                } else {
+                    fileInformation.setLocalPath(vFile.getFile().getAbsolutePath());
+                }
                 buildFile.addFile(fileInformation);
             }
             protoBuilder.addVersionedFile(buildFile);
@@ -673,5 +678,19 @@ public class BuildInfo implements IBuildInfo {
             }
         }
         return null;
+    }
+
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<File> getRemoteFiles() {
+        Set<File> remoteFiles = new HashSet<>();
+        for (String fileKey : mVersionedFileMultiMap.keySet()) {
+            if (fileKey.startsWith(IBuildInfo.REMOTE_FILE_PREFIX)) {
+                // Remote file is not versioned, there should be only one entry.
+                remoteFiles.add(mVersionedFileMultiMap.get(fileKey).get(0).getFile());
+            }
+        }
+        return remoteFiles;
     }
 }
