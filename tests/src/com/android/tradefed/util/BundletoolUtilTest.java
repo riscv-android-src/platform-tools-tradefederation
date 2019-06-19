@@ -88,6 +88,7 @@ public class BundletoolUtilTest {
                                 (String) EasyMock.anyObject(),
                                 (String) EasyMock.anyObject(),
                                 (String) EasyMock.anyObject(),
+                                (String) EasyMock.anyObject(),
                                 (String) EasyMock.anyObject()))
                 .andReturn(res)
                 .once();
