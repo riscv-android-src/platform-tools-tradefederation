@@ -278,8 +278,6 @@ import com.android.tradefed.testtype.suite.params.InstantAppHandlerTest;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelperTest;
 import com.android.tradefed.testtype.suite.retry.ResultsPlayerTest;
 import com.android.tradefed.testtype.suite.retry.RetryReschedulerTest;
-import com.android.tradefed.testtype.testdefs.XmlDefsParserTest;
-import com.android.tradefed.testtype.testdefs.XmlDefsTestTest;
 import com.android.tradefed.util.AaptParserTest;
 import com.android.tradefed.util.AbiFormatterTest;
 import com.android.tradefed.util.AbiUtilsTest;
@@ -349,7 +347,6 @@ import com.android.tradefed.util.statsd.ConfigUtilTest;
 import com.android.tradefed.util.statsd.MetricUtilTest;
 import com.android.tradefed.util.testmapping.TestInfoTest;
 import com.android.tradefed.util.testmapping.TestMappingTest;
-import com.android.tradefed.util.xml.AndroidManifestWriterTest;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -715,10 +712,6 @@ import org.junit.runners.Suite.SuiteClasses;
     ResultsPlayerTest.class,
     RetryReschedulerTest.class,
 
-    // testtype/testdefs
-    XmlDefsParserTest.class,
-    XmlDefsTestTest.class,
-
     // util
     AaptParserTest.class,
     AbiFormatterTest.class,
@@ -802,9 +795,6 @@ import org.junit.runners.Suite.SuiteClasses;
     // util/testmapping
     TestInfoTest.class,
     TestMappingTest.class,
-
-    // util/xml
-    AndroidManifestWriterTest.class,
 })
 public class UnitTests {
     // empty of purpose
