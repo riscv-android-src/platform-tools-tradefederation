@@ -21,6 +21,7 @@ import sys
 import unittest
 import mock
 
+import atest_error
 import atest_utils
 
 if sys.version_info[0] == 2:
@@ -260,6 +261,74 @@ class AtestUtilsUnittests(unittest.TestCase):
         uncolored_string = notice_str
         self.assertEqual(capture_output.getvalue(), uncolored_string)
 
+    @mock.patch('__builtin__.raw_input')
+    @mock.patch('json.load')
+    def test_update_test_runner_cmd(self, mock_json_load_data, mock_raw_input):
+        """Test method handle_test_runner_cmd without enable do_verification."""
+        former_cmd_str = 'Former cmds ='
+        write_result_str = 'Save result mapping to test_result'
+        test_result_path = 'test_result'
+        input_cmd = 'atest_args'
+        runner_cmds = ['cmd1', 'cmd2']
+        capture_output = StringIO()
+        sys.stdout = capture_output
+        # Previous data is empty. Should not enter strtobool.
+        # If entered, exception will be raised cause test fail.
+        mock_json_load_data.return_value = {}
+        atest_utils.handle_test_runner_cmd(input_cmd,
+                                           runner_cmds,
+                                           do_verification=False,
+                                           result_path=test_result_path)
+        sys.stdout = sys.__stdout__
+        self.assertEqual(capture_output.getvalue().find(former_cmd_str), -1)
+        # Previous data is the same as the new input. Should not enter strtobool.
+        # If entered, exception will be raised cause test fail
+        capture_output = StringIO()
+        sys.stdout = capture_output
+        mock_json_load_data.return_value = {input_cmd:runner_cmds}
+        atest_utils.handle_test_runner_cmd(input_cmd,
+                                           runner_cmds,
+                                           do_verification=False,
+                                           result_path=test_result_path)
+        sys.stdout = sys.__stdout__
+        self.assertEqual(capture_output.getvalue().find(former_cmd_str), -1)
+        self.assertEqual(capture_output.getvalue().find(write_result_str), -1)
+        # Previous data has different cmds. Should enter strtobool not update,
+        # should not find write_result_str.
+        prev_cmds = ['cmd1']
+        mock_raw_input.return_value = 'n'
+        capture_output = StringIO()
+        sys.stdout = capture_output
+        mock_json_load_data.return_value = {input_cmd:prev_cmds}
+        atest_utils.handle_test_runner_cmd(input_cmd,
+                                           runner_cmds,
+                                           do_verification=False,
+                                           result_path=test_result_path)
+        sys.stdout = sys.__stdout__
+        self.assertEqual(capture_output.getvalue().find(write_result_str), -1)
+
+    @mock.patch('json.load')
+    def test_verify_test_runner_cmd(self, mock_json_load_data):
+        """Test method handle_test_runner_cmd without enable update_result."""
+        test_result_path = 'test_result'
+        input_cmd = 'atest_args'
+        runner_cmds = ['cmd1', 'cmd2']
+        # Previous data is the same as the new input. Should not raise exception.
+        mock_json_load_data.return_value = {input_cmd:runner_cmds}
+        atest_utils.handle_test_runner_cmd(input_cmd,
+                                           runner_cmds,
+                                           do_verification=True,
+                                           result_path=test_result_path)
+        # Previous data has different cmds. Should enter strtobool and hit
+        # exception.
+        prev_cmds = ['cmd1']
+        mock_json_load_data.return_value = {input_cmd:prev_cmds}
+        self.assertRaises(atest_error.DryRunVerificationError,
+                          atest_utils.handle_test_runner_cmd,
+                          input_cmd,
+                          runner_cmds,
+                          do_verification=True,
+                          result_path=test_result_path)
 
 if __name__ == "__main__":
     unittest.main()

@@ -33,6 +33,7 @@ import time
 import platform
 
 import atest_arg_parser
+import atest_error
 import atest_execution_info
 import atest_metrics
 import atest_utils
@@ -554,13 +555,21 @@ def main(argv, results_dir):
     build_targets |= test_runner_handler.get_test_runner_reqs(mod_info,
                                                               test_infos)
     extra_args = get_extra_args(args)
-    if args.update_cmd_mapping:
+    if args.update_cmd_mapping or args.verify_cmd_mapping:
         args.dry_run = True
     if args.dry_run:
+        args.tests.sort()
         dry_run_cmds = _dry_run(results_dir, extra_args, test_infos)
+        if args.verify_cmd_mapping:
+            try:
+                atest_utils.handle_test_runner_cmd(' '.join(args.tests),
+                                                   dry_run_cmds,
+                                                   do_verification=True)
+            except atest_error.DryRunVerificationError as e:
+                atest_utils.colorful_print(str(e), constants.RED)
+                return constants.EXIT_CODE_VERIFY_FAILURE
         if args.update_cmd_mapping:
-            args.tests.sort()
-            atest_utils.update_test_runner_cmd(' '.join(args.tests),
+            atest_utils.handle_test_runner_cmd(' '.join(args.tests),
                                                dry_run_cmds)
         return constants.EXIT_CODE_SUCCESS
     if args.detect_regression:
