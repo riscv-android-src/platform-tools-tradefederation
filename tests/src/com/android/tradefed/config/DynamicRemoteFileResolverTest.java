@@ -166,6 +166,42 @@ public class DynamicRemoteFileResolverTest {
         EasyMock.verify(mMockResolver);
     }
 
+    /** Test to make sure that a dynamic download marked as "optional" does not throw */
+    @Test
+    public void testResolveOptional() throws Exception {
+        RemoteFileOption object = new RemoteFileOption();
+        OptionSetter setter =
+                new OptionSetter(object) {
+                    @Override
+                    protected DynamicRemoteFileResolver createResolver() {
+                        return mResolver;
+                    }
+                };
+
+        setter.setOptionValue("remote-file", "gs://fake/path?optional=true");
+        assertEquals("gs:/fake/path?optional=true", object.remoteFile.getPath());
+
+        Map<String, String> testMap = new HashMap<>();
+        testMap.put("optional", "true");
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path")),
+                                EasyMock.anyObject(),
+                                EasyMock.eq(testMap)))
+                .andThrow(new ConfigurationException("Failed to download"));
+        EasyMock.replay(mMockResolver);
+
+        Set<File> downloadedFile = setter.validateRemoteFilePath();
+        try {
+            assertEquals(0, downloadedFile.size());
+        } finally {
+            for (File f : downloadedFile) {
+                FileUtil.recursiveDelete(f);
+            }
+        }
+        EasyMock.verify(mMockResolver);
+    }
+
     @Test
     public void testResolve_remoteFileList() throws Exception {
         RemoteFileOption object = new RemoteFileOption();
