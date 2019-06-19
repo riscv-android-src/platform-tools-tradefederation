@@ -61,6 +61,8 @@ public class DynamicRemoteFileResolver {
     private static AtomicBoolean sIsUpdateDone = new AtomicBoolean(false);
     // Query key for requesting to unzip a downloaded file automatically.
     public static final String UNZIP_KEY = "unzip";
+    // Query key for requesting a download to be optional, so if it fails we don't replace it.
+    public static final String OPTIONAL_KEY = "optional";
 
     private Map<String, OptionFieldsForName> mOptionMap;
 
@@ -78,11 +80,19 @@ public class DynamicRemoteFileResolver {
     public final Set<File> validateRemoteFilePath() throws ConfigurationException {
         Set<File> downloadedFiles = new HashSet<>();
         try {
+            Set<Field> fieldSet = new HashSet<>();
             for (Map.Entry<String, OptionFieldsForName> optionPair : mOptionMap.entrySet()) {
                 final OptionFieldsForName optionFields = optionPair.getValue();
                 for (Map.Entry<Object, Field> fieldEntry : optionFields) {
+
                     final Object obj = fieldEntry.getKey();
+
                     final Field field = fieldEntry.getValue();
+                    if (fieldSet.contains(field)) {
+                        // Avoid reprocessing a Field we already saw.
+                        continue;
+                    }
+                    fieldSet.add(field);
                     final Option option = field.getAnnotation(Option.class);
                     if (option == null) {
                         continue;
@@ -264,7 +274,17 @@ public class DynamicRemoteFileResolver {
         }
         IRemoteFileResolver resolver = getResolver(protocol);
         if (resolver != null) {
-            return resolver.resolveRemoteFiles(fileToResolve, option, query);
+            try {
+                return resolver.resolveRemoteFiles(fileToResolve, option, query);
+            } catch (ConfigurationException e) {
+                if (isOptional(query)) {
+                    CLog.d(
+                            "Failed to resolve '%s' but marked optional so skipping: %s",
+                            fileToResolve, e.getMessage());
+                } else {
+                    throw e;
+                }
+            }
         }
         // Not a remote file
         return null;
@@ -284,5 +304,14 @@ public class DynamicRemoteFileResolver {
             values.put(keyVal[0], keyVal[1]);
         }
         return values;
+    }
+
+    /** Whether or not a link was requested as optional. */
+    private boolean isOptional(Map<String, String> query) {
+        String value = query.get(OPTIONAL_KEY);
+        if (value == null) {
+            return false;
+        }
+        return "true".equals(value.toLowerCase());
     }
 }
