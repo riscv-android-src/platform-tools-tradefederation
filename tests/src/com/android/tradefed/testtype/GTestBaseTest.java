@@ -195,7 +195,7 @@ public class GTestBaseTest {
     public void testCoverage_addsCodeCoverageListener() throws ConfigurationException {
         GTestBase gTestBase = new GTestBaseImpl();
         mSetter = new OptionSetter(gTestBase);
-        mSetter.setOptionValue("native-coverage", "true");
+        mSetter.setOptionValue("coverage", "true");
 
         ITestInvocationListener listener =
                 gTestBase.addNativeCoverageListenerIfEnabled(mMockTestDevice, mMockListener);
@@ -208,7 +208,7 @@ public class GTestBaseTest {
     public void testNoCoverage_doesNotAddCodeCoverageListener() throws ConfigurationException {
         GTestBase gTestBase = new GTestBaseImpl();
         mSetter = new OptionSetter(gTestBase);
-        mSetter.setOptionValue("native-coverage", "false");
+        mSetter.setOptionValue("coverage", "false");
 
         ITestInvocationListener listener =
                 gTestBase.addNativeCoverageListenerIfEnabled(mMockTestDevice, mMockListener);
