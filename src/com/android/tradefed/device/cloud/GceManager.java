@@ -222,6 +222,14 @@ public class GceManager {
                 getTestDeviceOptions().getInstanceType())) {
             gceArgs.add("--avd-type");
             gceArgs.add("cheeps");
+
+            if (getTestDeviceOptions().getCrosUser() != null
+                    && getTestDeviceOptions().getCrosPassword() != null) {
+                gceArgs.add("--user");
+                gceArgs.add(getTestDeviceOptions().getCrosUser());
+                gceArgs.add("--password");
+                gceArgs.add(getTestDeviceOptions().getCrosPassword());
+            }
         }
 
         // If args passed by gce-driver-param do not contain build_id or branch,
