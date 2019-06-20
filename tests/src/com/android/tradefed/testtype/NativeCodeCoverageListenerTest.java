@@ -59,6 +59,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.zip.ZipFile;
 
 /** Unit tests for {@link NativeCodeCoverageListener}. */
 @RunWith(JUnit4.class)
@@ -133,6 +134,28 @@ public class NativeCodeCoverageListenerTest {
             assertThat(ByteString.readFrom(Files.newInputStream(path2)))
                     .isEqualTo(ByteString.copyFromUtf8("coverage2.gcda"));
         }
+    }
+
+    @Test
+    public void testNoCoverageFiles_logsEmptyZip() throws DeviceNotAvailableException, IOException {
+        doReturn(true).when(mMockDevice).enableAdbRoot();
+        doReturn("").when(mMockDevice).executeShellCommand(anyString());
+
+        // Simulate a test run.
+        mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
+        Map<String, String> metric = new HashMap<>();
+        mCodeCoverageListener.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
+
+        // Verify testLog(..) was called with an empty zip.
+        List<ByteString> logs = mFakeListener.getLogs();
+        assertThat(logs).hasSize(1);
+        File outputZip = folder.newFile("empty_coverage.zip");
+        try (OutputStream out = new FileOutputStream(outputZip)) {
+            logs.get(0).writeTo(out);
+        }
+
+        ZipFile loggedZip = new ZipFile(outputZip);
+        assertThat(loggedZip.size()).isEqualTo(0);
     }
 
     @Test
