@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry excluding="com/android/tradefed/testtype/junit4/LongevityHostRunner.java|com/android/tradefed/testtype/junit4/builder/DeviceJUnit4ClassRunnerBuilder.java" kind="src" path="src"/>
+	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" path="clearcut_client"/>
 	<classpathentry kind="src" path="res"/>
 	<classpathentry kind="src" path="hamcrest"/>
 	<classpathentry kind="src" path="jline"/>
 	<classpathentry kind="src" path="junit"/>
 	<classpathentry kind="src" path="common_util"/>
+	<classpathentry kind="src" path="global_configuration"/>
 	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/tf-remote-client"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/LongevityHostRunner"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/ddmlib"/>

@@ -56,11 +56,9 @@ import com.android.tradefed.config.remote.GcsRemoteFileResolverTest;
 import com.android.tradefed.config.remote.LocalFileResolverTest;
 import com.android.tradefed.device.AndroidDebugBridgeWrapperTest;
 import com.android.tradefed.device.BackgroundDeviceActionTest;
-import com.android.tradefed.device.CpuStatsCollectorTest;
 import com.android.tradefed.device.DeviceManagerTest;
 import com.android.tradefed.device.DeviceSelectionOptionsTest;
 import com.android.tradefed.device.DeviceStateMonitorTest;
-import com.android.tradefed.device.DeviceUtilStatsMonitorTest;
 import com.android.tradefed.device.DumpsysPackageReceiverTest;
 import com.android.tradefed.device.FastbootHelperTest;
 import com.android.tradefed.device.ManagedDeviceListTest;
@@ -69,7 +67,6 @@ import com.android.tradefed.device.NativeDeviceTest;
 import com.android.tradefed.device.ReconnectingRecoveryTest;
 import com.android.tradefed.device.RemoteAndroidDeviceTest;
 import com.android.tradefed.device.TestDeviceTest;
-import com.android.tradefed.device.TopHelperTest;
 import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
 import com.android.tradefed.device.cloud.AcloudConfigParserTest;
@@ -423,11 +420,9 @@ import org.junit.runners.Suite.SuiteClasses;
     // device
     AndroidDebugBridgeWrapperTest.class,
     BackgroundDeviceActionTest.class,
-    CpuStatsCollectorTest.class,
     DeviceManagerTest.class,
     DeviceSelectionOptionsTest.class,
     DeviceStateMonitorTest.class,
-    DeviceUtilStatsMonitorTest.class,
     DumpsysPackageReceiverTest.class,
     FastbootHelperTest.class,
     ManagedDeviceListTest.class,
@@ -437,7 +432,6 @@ import org.junit.runners.Suite.SuiteClasses;
     RemoteAndroidDeviceTest.class,
     PropertyChangerTest.class,
     TestDeviceTest.class,
-    TopHelperTest.class,
     WaitDeviceRecoveryTest.class,
     WifiHelperTest.class,
 

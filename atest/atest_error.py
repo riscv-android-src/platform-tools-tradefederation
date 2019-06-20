@@ -61,3 +61,6 @@ class MissingCCTestCaseError(TestDiscoveryException):
 
 class XmlNotExistError(TestDiscoveryException):
     """Raised when the xml file does not exist."""
+
+class DryRunVerificationError(Exception):
+    """Base Exception if verification fail."""
