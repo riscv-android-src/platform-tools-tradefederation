@@ -238,8 +238,21 @@ public class ShardListenerTest {
         mockListener.invocationEnded(0l);
         EasyMock.expect(mockListener.getSummary()).andReturn(null);
 
+        // TODO: Fix the name of end_host_log for each shard
+        EasyMock.expect(
+                        mMockSaver.saveLogData(
+                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
+                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.anyObject()))
+                .andReturn(invocFile);
         mMockSaver.invocationEnded(0L);
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expect(
+                        mMockSaver.saveLogData(
+                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
+                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.anyObject()))
+                .andReturn(invocFile);
+        mMockSaver.invocationEnded(0L);
 
         EasyMock.replay(mockListener, mMockSaver, mMockDevice);
         // Setup of sharding
