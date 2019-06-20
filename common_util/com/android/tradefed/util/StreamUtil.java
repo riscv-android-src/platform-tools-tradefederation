@@ -23,6 +23,8 @@ import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -35,6 +37,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.Objects;
+import java.util.zip.CRC32;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipOutputStream;
 
@@ -201,6 +204,24 @@ public class StreamUtil {
     }
 
     /**
+     * Copies contents of file to outStream. It is recommended to provide a buffered stream.
+     *
+     * @param file the {@link File}
+     * @param outStream the {@link OutputStream}
+     * @throws IOException
+     */
+    public static void copyFileToStream(File file, OutputStream outStream) throws IOException {
+        InputStream inStream = null;
+        try {
+            inStream = new FileInputStream(file);
+            inStream = new BufferedInputStream(inStream);
+            StreamUtil.copyStreams(inStream, outStream);
+        } finally {
+            StreamUtil.close(inStream);
+        }
+    }
+
+    /**
      * Gets the stack trace as a {@link String}.
      *
      * @param throwable the {@link Throwable} to convert.
@@ -311,6 +332,28 @@ public class StreamUtil {
      */
     public static OutputStream nullOutputStream() {
         return ByteStreams.nullOutputStream();
+    }
+
+    /**
+     * Helper method to calculate CRC-32 for an {@link InputStream}. The stream will be consumed and
+     * closed. It is recommended to provide a buffered stream.
+     *
+     * @param inStream the {@link InputStream}
+     * @return CRC-32 of the stream
+     * @throws IOException
+     */
+    public static long calculateCrc32(InputStream inStream) throws IOException {
+        CRC32 crc32 = new CRC32();
+        byte[] buf = new byte[BUF_SIZE];
+        int size = -1;
+        try {
+            while ((size = inStream.read(buf)) >= 0) {
+                crc32.update(buf, 0, size);
+            }
+        } finally {
+            inStream.close();
+        }
+        return crc32.getValue();
     }
 
     /**

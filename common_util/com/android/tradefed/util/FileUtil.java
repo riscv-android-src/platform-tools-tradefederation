@@ -1024,6 +1024,19 @@ public class FileUtil {
     }
 
     /**
+     * Helper method to calculate CRC-32 for a file.
+     *
+     * @param file
+     * @return CRC-32 of the file
+     * @throws IOException
+     */
+    public static long calculateCrc32(File file) throws IOException {
+        try (BufferedInputStream inputSource = new BufferedInputStream(new FileInputStream(file))) {
+            return StreamUtil.calculateCrc32(inputSource);
+        }
+    }
+
+    /**
      * Helper method to calculate md5 for a file.
      *
      * @param file
