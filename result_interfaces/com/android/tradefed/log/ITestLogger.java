@@ -16,7 +16,6 @@
 
 package com.android.tradefed.log;
 
-import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 
