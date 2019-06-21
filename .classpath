@@ -8,6 +8,8 @@
 	<classpathentry kind="src" path="junit"/>
 	<classpathentry kind="src" path="common_util"/>
 	<classpathentry kind="src" path="global_configuration"/>
+	<classpathentry kind="src" path="device_build_interfaces"/>
+	<classpathentry kind="src" path="result_interfaces"/>
 	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/tf-remote-client"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/LongevityHostRunner"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/ddmlib"/>
