@@ -3307,7 +3307,7 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.w("Property ro.crypto.state is null on device %s", getSerialNumber());
         }
 
-        return "encrypted".equals(output);
+        return "encrypted".equals(output.trim());
     }
 
     /**
@@ -3324,11 +3324,13 @@ public class NativeDevice implements IManagedTestDevice {
             return mIsEncryptionSupported.booleanValue();
         }
         enableAdbRoot();
-        String output = executeShellCommand("vdc cryptfs enablecrypto").trim();
 
-        mIsEncryptionSupported =
-                (output != null
-                        && Pattern.matches("(500)(\\s+)(\\d+)(\\s+)(Usage)(.*)(:)(.*)", output));
+        String output = getProperty("ro.crypto.state");
+        if (output == null || "unsupported".equals(output.trim())) {
+            mIsEncryptionSupported = false;
+            return mIsEncryptionSupported;
+        }
+        mIsEncryptionSupported = true;
         return mIsEncryptionSupported;
     }
 
@@ -4122,6 +4124,7 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public void postInvocationTearDown() {
+        mIsEncryptionSupported = null;
         FileUtil.deleteFile(mExecuteShellCommandLogs);
         mExecuteShellCommandLogs = null;
         // Default implementation
