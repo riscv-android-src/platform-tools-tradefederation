@@ -86,6 +86,8 @@ java_library_host {
     static_libs: [
         "tradefed-common-util",
         "tradefed-clearcut-client",
+        "tradefed-result-interfaces",
+        "tradefed-device-build-interfaces",
         "protobuf-java-util-prebuilt-jar",
         "aoa-helper",
         "error_prone_annotations-2.0.18",
