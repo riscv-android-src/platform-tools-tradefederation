@@ -23,8 +23,10 @@ import junit.framework.TestCase;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 
@@ -119,6 +121,20 @@ public class StreamUtilTest extends TestCase {
     }
 
     /**
+     * Verify that {@link com.android.tradefed.util.StreamUtil#calculateCrc32(InputStream)} works as
+     * expected.
+     *
+     * @throws IOException
+     */
+    public void testCalculateCrc32() throws IOException {
+        final String source = getLargeText();
+        final long crc32 = 3023941728L;
+        ByteArrayInputStream inputSource = new ByteArrayInputStream(source.getBytes());
+        long actualCrc32 = StreamUtil.calculateCrc32(inputSource);
+        assertEquals(crc32, actualCrc32);
+    }
+
+    /**
      * Verify that {@link com.android.tradefed.util.StreamUtil#calculateMd5(InputStream)} works as
      * expected.
      *
@@ -166,6 +182,26 @@ public class StreamUtilTest extends TestCase {
         writer.close();
         baos.close();
         assertEquals(text, baos.toString());
+    }
+
+    /**
+     * Verify that {@link com.android.tradefed.util.StreamUtil#copyFileToStream(File, OutputStream)}
+     * works as expected.
+     *
+     * @throws IOException
+     */
+    public void testCopyFileToStream() throws IOException {
+        String text = getLargeText();
+        File file = File.createTempFile("testCopyFileToStream", ".txt");
+        try {
+            FileUtil.writeToFile(text, file);
+            try (ByteArrayOutputStream outStream = new ByteArrayOutputStream()) {
+                StreamUtil.copyFileToStream(file, outStream);
+                assertEquals(text, outStream.toString());
+            }
+        } finally {
+            file.delete();
+        }
     }
 
     /**
