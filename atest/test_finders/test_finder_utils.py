@@ -36,7 +36,7 @@ import constants
 # assume the apk name is the build target.
 _APK_RE = re.compile(r'^[^/]+\.apk$', re.I)
 # RE for check if TEST or TEST_F is in a cc file or not.
-_CC_CLASS_RE = re.compile(r'TEST(_F)?\(', re.I)
+_CC_CLASS_RE = re.compile(r'TEST(_F)?[ ]*\(', re.I)
 # Parse package name from the package declaration line of a java or a kotlin file.
 # Group matches "foo.bar" of line "package foo.bar;" or "package foo.bar"
 _PACKAGE_RE = re.compile(r'\s*package\s+(?P<package>[^(;|\s)]+)\s*', re.I)
@@ -46,10 +46,10 @@ _DEVICE_PATH_RE = re.compile(r'.*\/target\/.*', re.I)
 
 # Explanation of FIND_REFERENCE_TYPEs:
 # ----------------------------------
-# 0. CLASS: Name of a java/kotlin class, usually file is named the same (HostTest lives
-#           in HostTest.java or HostTest.kt)
+# 0. CLASS: Name of a java/kotlin class, usually file is named the same
+#    (HostTest lives in HostTest.java or HostTest.kt)
 # 1. QUALIFIED_CLASS: Like CLASS but also contains the package in front like
-#.                    com.android.tradefed.testtype.HostTest.
+#                     com.android.tradefed.testtype.HostTest.
 # 2. PACKAGE: Name of a java package.
 # 3. INTEGRATION: XML file name in one of the 4 integration config directories.
 # 4. CC_CLASS: Name of a cc class.
@@ -57,27 +57,27 @@ _DEVICE_PATH_RE = re.compile(r'.*\/target\/.*', re.I)
 FIND_REFERENCE_TYPE = atest_enum.AtestEnum(['CLASS', 'QUALIFIED_CLASS',
                                             'PACKAGE', 'INTEGRATION', 'CC_CLASS'])
 # Get cpu count.
-_CPU_COUNT = 1
-try:
-    _CPU_COUNT = multiprocessing.cpu_count()
-except NotImplementedError:
-    pass
+_CPU_COUNT = 0 if os.uname()[0] == 'Linux' else multiprocessing.cpu_count()
+
 # Unix find commands for searching for test files based on test type input.
 # Note: Find (unlike grep) exits with status 0 if nothing found.
 FIND_CMDS = {
-    FIND_REFERENCE_TYPE.CLASS: r"find {0} -type d {1} -prune -o -type f "
-                               r"\( -name '*{2}.java' -o -name '*{2}.kt' \) -print",
-    FIND_REFERENCE_TYPE.QUALIFIED_CLASS: r"find {0} -type d {1} -prune -o "
-                                         r"\( -wholename '*{2}.java' "
-                                         r"-o -wholename '*{2}.kt' \) -print",
-    FIND_REFERENCE_TYPE.PACKAGE: r"find {0} -type d {1} -prune -o -wholename "
+    FIND_REFERENCE_TYPE.CLASS: r"find {0} {1} -type f"
+                               r"| egrep '.*/{2}\.(kt|java)$' || true",
+    FIND_REFERENCE_TYPE.QUALIFIED_CLASS: r"find {0} {1} -type f"
+                                         r"| egrep '.*{2}\.(kt|java)$' || true",
+    FIND_REFERENCE_TYPE.PACKAGE: r"find {0} {1} -wholename "
                                  r"'*{2}' -type d -print",
-    FIND_REFERENCE_TYPE.INTEGRATION: r"find {0} -type d {1} -prune -o -wholename "
+    FIND_REFERENCE_TYPE.INTEGRATION: r"find {0} {1} -wholename "
                                      r"'*{2}.xml' -print",
-    FIND_REFERENCE_TYPE.CC_CLASS: r"find {0} -type d {1} -prune -o -type f "
-                                  r"\( -name '*.cpp' -o -name '*.cc' \)"
-                                  r" | xargs -P " + str(_CPU_COUNT) +
-                                  r" grep -s -H -E 'TEST(_F)?\({2},' {{}} + || true"
+    # Searching a test among files where the absolute paths contain *test*.
+    # If users complain atest couldn't find a CC_CLASS, ask them to follow the
+    # convention that the filename or dirname must contain *test*, where *test*
+    # is case-insensitive.
+    FIND_REFERENCE_TYPE.CC_CLASS: r"find {0} {1} -type f -print"
+                                  r"| egrep -i '/*test.*\.(cc|cpp)$'"
+                                  r"| xargs -P" + str(_CPU_COUNT) +
+                                  r" egrep -sH 'TEST(_F)?[ ]*\({2}' {{}} + || true"
 }
 
 # XML parsing related constants.
@@ -336,10 +336,10 @@ def _get_prune_cond_of_ignored_dirs():
         A string of the prune condition of the ignore dirs.
     """
     out_dirs = _get_ignored_dirs()
-    prune_cond = r'\( -name ".*"'
+    prune_cond = r'-type d \( -name ".*"'
     for out_dir in out_dirs:
         prune_cond += r' -o -path %s' % out_dir
-    prune_cond += r' \)'
+    prune_cond += r' \) -prune -o'
     return prune_cond
 
 
