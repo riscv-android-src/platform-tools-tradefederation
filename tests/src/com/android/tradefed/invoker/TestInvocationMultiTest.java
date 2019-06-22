@@ -191,6 +191,12 @@ public class TestInvocationMultiTest {
                         mMockLogSaver.saveLogData(
                                 EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
                 .andReturn(new LogFile("", "", LogDataType.TEXT));
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
+                .andReturn(new LogFile("", "", LogDataType.TEXT));
         mMockTestListener.invocationEnded(EasyMock.anyLong());
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationEnded(EasyMock.anyLong());
@@ -262,6 +268,12 @@ public class TestInvocationMultiTest {
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
+                .andReturn(new LogFile("", "", LogDataType.TEXT));
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
                 .andReturn(new LogFile("", "", LogDataType.TEXT));
         mMockTestListener.invocationEnded(EasyMock.anyLong());
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
@@ -343,6 +355,12 @@ public class TestInvocationMultiTest {
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
+                .andReturn(new LogFile("", "", LogDataType.TEXT));
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
                 .andReturn(new LogFile("", "", LogDataType.TEXT));
         mMockTestListener.invocationEnded(EasyMock.anyLong());
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
