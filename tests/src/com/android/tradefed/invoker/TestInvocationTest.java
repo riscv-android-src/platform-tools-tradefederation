@@ -229,9 +229,13 @@ public class TestInvocationTest {
 
         // always expect logger initialization and cleanup calls
         mMockLogRegistry.registerLogger(mMockLogger);
+        EasyMock.expectLastCall().times(2);
         mMockLogger.init();
+        EasyMock.expectLastCall().times(2);
         mMockLogger.closeLog();
+        EasyMock.expectLastCall().times(2);
         mMockLogRegistry.unregisterLogger();
+        EasyMock.expectLastCall().times(2);
         mUriCapture = new Capture<List<TestSummary>>();
 
         mStubInvocationMetadata = new InvocationContext();
@@ -351,6 +355,11 @@ public class TestInvocationTest {
 
         setupMockFailureListeners(exception);
         setupInvoke();
+        EasyMock.reset(mMockLogger, mMockLogRegistry);
+        mMockLogRegistry.registerLogger(mMockLogger);
+        mMockLogger.init();
+        mMockLogger.closeLog();
+        mMockLogRegistry.unregisterLogger();
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         CommandOptions cmdOptions = new CommandOptions();
         final String expectedTestTag = "TEST_TAG";
@@ -380,6 +389,12 @@ public class TestInvocationTest {
         setupInvoke();
         setupMockFailureListenersAny(new BuildRetrievalError("No build found to test."), true);
 
+        EasyMock.reset(mMockLogger, mMockLogRegistry);
+        mMockLogRegistry.registerLogger(mMockLogger);
+        mMockLogger.init();
+        mMockLogger.closeLog();
+        mMockLogRegistry.unregisterLogger();
+
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         mStubConfiguration.setTest(test);
         EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
@@ -408,13 +423,20 @@ public class TestInvocationTest {
         IRetriableTest test = EasyMock.createMock(IRetriableTest.class);
         EasyMock.expect(test.isRetriable()).andReturn(Boolean.TRUE);
 
+        setupInvoke();
+
+        EasyMock.reset(mMockLogger, mMockLogRegistry);
+        mMockLogRegistry.registerLogger(mMockLogger);
+        mMockLogger.init();
+        mMockLogger.closeLog();
+        mMockLogRegistry.unregisterLogger();
+
         EasyMock.expect(mockRescheduler.rescheduleCommand()).andReturn(EasyMock.anyBoolean());
         mStubConfiguration.setTest(test);
         mStubConfiguration.getCommandOptions().setLoopMode(false);
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         EasyMock.expectLastCall().times(1);
 
-        setupInvoke();
         setupMockFailureListenersAny(new BuildRetrievalError("No build found to test."), true);
         Capture<IBuildInfo> captured = new Capture<>();
         mMockBuildProvider.cleanUp(EasyMock.capture(captured));
@@ -608,6 +630,12 @@ public class TestInvocationTest {
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
+                                EasyMock.eq(LogDataType.TEXT),
+                                (InputStream) EasyMock.anyObject()))
+                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
                                 EasyMock.eq(LogDataType.TEXT),
                                 (InputStream) EasyMock.anyObject()))
                 .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
@@ -1218,6 +1246,12 @@ public class TestInvocationTest {
                 EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
         mMockSummaryListener.testLog(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
                 EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
+                                EasyMock.eq(LogDataType.TEXT),
+                                (InputStream) EasyMock.anyObject()))
+                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
 
         // invocationEnded, getSummary (mMockTestListener)
         mMockTestListener.invocationEnded(EasyMock.anyLong());
@@ -1259,6 +1293,11 @@ public class TestInvocationTest {
                 .andReturn(new StubKeyStoreFactory())
                 .times(2);
         setupInvoke();
+        EasyMock.reset(mMockLogger, mMockLogRegistry);
+        mMockLogRegistry.registerLogger(mMockLogger);
+        mMockLogger.init();
+        mMockLogger.closeLog();
+        mMockLogRegistry.unregisterLogger();
         mMockLogSaver.invocationStarted(mStubInvocationMetadata);
         mMockLogSaver.invocationEnded(0L);
         setupNShardInvocation(shardCount, command);

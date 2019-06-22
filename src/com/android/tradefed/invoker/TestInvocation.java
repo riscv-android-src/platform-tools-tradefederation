@@ -91,7 +91,8 @@ public class TestInvocation implements ITestInvocation {
      */
     private static final String BATTERY_ATTRIBUTE_FORMAT_KEY = "%s-battery-%s";
 
-    static final String TRADEFED_LOG_NAME = "host_log";
+    public static final String TRADEFED_LOG_NAME = "host_log";
+    public static final String TRADEFED_END_HOST_LOG = "end_host_log";
     /** Suffix used on host_log for the part before sharding occurs. */
     static final String BEFORE_SHARDING_SUFFIX = "_before_sharding";
     static final String DEVICE_LOG_NAME_PREFIX = "device_logcat_";
@@ -350,9 +351,20 @@ public class TestInvocation implements ITestInvocation {
                                     + "====");
                 }
                 reportHostLog(listener, config);
+
                 elapsedTime = System.currentTimeMillis() - startTime;
                 if (!resumed) {
-                    listener.invocationEnded(elapsedTime);
+                    // Init a log for the end of the host_log.
+                    ILeveledLogOutput endHostLog = config.getLogOutput();
+                    endHostLog.init();
+                    getLogRegistry().registerLogger(endHostLog);
+                    PrettyPrintDelimiter.printStageDelimiter("===== Result Reporters =====");
+                    try {
+                        listener.invocationEnded(elapsedTime);
+                    } finally {
+                        endHostLog.closeLog();
+                        getLogRegistry().unregisterLogger();
+                    }
                 }
             } finally {
                 invocationPath.cleanUpBuilds(context, config);
@@ -663,7 +675,7 @@ public class TestInvocation implements ITestInvocation {
             if (leveledLogOutput instanceof BaseLeveledLogOutput) {
                 ((BaseLeveledLogOutput) leveledLogOutput).initFilters(config);
             }
-            getLogRegistry().registerLogger(config.getLogOutput());
+            getLogRegistry().registerLogger(leveledLogOutput);
             for (String deviceName : context.getDeviceConfigNames()) {
                 context.getDevice(deviceName).clearLastConnectedWifiNetwork();
                 context.getDevice(deviceName)
