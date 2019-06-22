@@ -17,9 +17,12 @@
 package com.android.tradefed.result;
 
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInvocation;
+import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 /** A {@link ResultForwarder} for saving logs with the global file saver. */
@@ -54,11 +57,22 @@ public class LogSaverResultForwarder extends ResultForwarder implements ILogSave
     @Override
     public void invocationEnded(long elapsedTime) {
         InvocationSummaryHelper.reportInvocationEnded(getListeners(), elapsedTime);
+        reportEndHostLog(mLogSaver);
         // Intentionally call invocationEnded for the log saver last.
         try {
             mLogSaver.invocationEnded(elapsedTime);
         } catch (RuntimeException e) {
             CLog.e("Caught runtime exception from log saver: %s", mLogSaver.getClass().getName());
+            CLog.e(e);
+        }
+    }
+
+    private void reportEndHostLog(ILogSaver saver) {
+        LogRegistry registry = (LogRegistry) LogRegistry.getLogRegistry();
+        try (InputStreamSource source = registry.getLogger().getLog();
+                InputStream stream = source.createInputStream()) {
+            saver.saveLogData(TestInvocation.TRADEFED_END_HOST_LOG, LogDataType.TEXT, stream);
+        } catch (IOException e) {
             CLog.e(e);
         }
     }
