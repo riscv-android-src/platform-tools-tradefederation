@@ -130,6 +130,7 @@ import com.android.tradefed.invoker.shard.token.TokenProviderHelperTest;
 import com.android.tradefed.log.FileLoggerTest;
 import com.android.tradefed.log.HistoryLoggerTest;
 import com.android.tradefed.log.LogRegistryTest;
+import com.android.tradefed.log.SimpleFileLoggerTest;
 import com.android.tradefed.log.TerribleFailureEmailHandlerTest;
 import com.android.tradefed.postprocessor.AggregatePostProcessorTest;
 import com.android.tradefed.postprocessor.AveragePostProcessorTest;
@@ -522,6 +523,7 @@ import org.junit.runners.Suite.SuiteClasses;
     FileLoggerTest.class,
     HistoryLoggerTest.class,
     LogRegistryTest.class,
+    SimpleFileLoggerTest.class,
     TerribleFailureEmailHandlerTest.class,
 
     // postprocessor
