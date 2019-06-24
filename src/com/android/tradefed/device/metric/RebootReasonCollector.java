@@ -43,6 +43,7 @@ import java.util.Map;
 public class RebootReasonCollector extends BaseDeviceMetricCollector {
     private static final String METRIC_SEP = "-";
     public static final String METRIC_PREFIX = "rebooted" + METRIC_SEP;
+    public static final String COUNT_KEY = String.join(METRIC_SEP, "reboot", "count");
 
     private List<ITestDevice> mTestDevices;
     // Map to store statsd config ids for each device, keyed by the device serial number.
@@ -84,9 +85,12 @@ public class RebootReasonCollector extends BaseDeviceMetricCollector {
                         "Failed to pull metric data from device %s. Exception: %s.",
                         device.getSerialNumber(), e.toString());
             }
+            Map<String, Integer> metricsForDevice = new HashMap<>();
+            int rebootCount = 0;
             for (EventMetricData eventMetricEntry : metricData) {
                 Atom eventAtom = eventMetricEntry.getAtom();
                 if (eventAtom.hasBootSequenceReported()) {
+                    rebootCount += 1;
                     BootSequenceReported bootAtom = eventAtom.getBootSequenceReported();
                     String bootReasonKey =
                             METRIC_PREFIX
@@ -94,24 +98,20 @@ public class RebootReasonCollector extends BaseDeviceMetricCollector {
                                             METRIC_SEP,
                                             bootAtom.getBootloaderReason(),
                                             bootAtom.getSystemReason());
-                    // Append the device serial number only if there are more than one device.
-                    if (mTestDevices.size() > 1) {
-                        bootReasonKey =
-                                String.join(METRIC_SEP, bootReasonKey, device.getSerialNumber());
-                    }
-                    currentRunMetrics.computeIfPresent(
-                            bootReasonKey,
-                            (key, metric) ->
-                                    stringToMetric(
-                                            String.valueOf(
-                                                    Integer.valueOf(
-                                                                    metric.getMeasurements()
-                                                                            .getSingleString())
-                                                            + 1)));
-                    currentRunMetrics.computeIfAbsent(
-                            bootReasonKey, key -> stringToMetric(String.valueOf(1)));
+                    // Update the counts for the specific boot reason in the current atom.
+                    metricsForDevice.computeIfPresent(bootReasonKey, (k, v) -> v + 1);
+                    metricsForDevice.computeIfAbsent(bootReasonKey, k -> 1);
                 }
             }
+            for (String key : metricsForDevice.keySet()) {
+                runData.addMetricForDevice(
+                        device,
+                        key,
+                        stringToMetric(String.valueOf(metricsForDevice.get(key))).toBuilder());
+            }
+            // Add the count regardless of whether reboots occurred or not.
+            runData.addMetricForDevice(
+                    device, COUNT_KEY, stringToMetric(String.valueOf(rebootCount)).toBuilder());
             try {
                 removeConfig(device, configId);
             } catch (DeviceNotAvailableException e) {
