@@ -261,17 +261,26 @@ public class NativeDevice implements IManagedTestDevice {
             mCmd = cmd;
         }
 
+        private void logExceptionAndOutput(CommandResult result) {
+            CLog.w("Command exited with status: %s", result.getStatus().toString());
+            CLog.w("Command stdout:\n%s\n", result.getStdout());
+            CLog.w("Command stderr:\n%s\n", result.getStderr());
+        }
+
         @Override
         public boolean run() throws TimeoutException, IOException {
             CommandResult result = getRunUtil().runTimedCmd(mTimeout, mCmd);
             // TODO: how to determine device not present with command failing for other reasons
             if (result.getStatus() == CommandStatus.EXCEPTION) {
-                throw new IOException();
+                logExceptionAndOutput(result);
+                throw new IOException("CommandStatus was EXCEPTION, details in host log");
             } else if (result.getStatus() == CommandStatus.TIMED_OUT) {
-                throw new TimeoutException();
+                logExceptionAndOutput(result);
+                throw new TimeoutException("CommandStatus was TIMED_OUT, details in host log");
             } else if (result.getStatus() == CommandStatus.FAILED) {
                 // interpret as communication failure
-                throw new IOException();
+                logExceptionAndOutput(result);
+                throw new IOException("CommandStatus was FAILED, details in host log");
             }
             mOutput = result.getStdout();
             return true;
