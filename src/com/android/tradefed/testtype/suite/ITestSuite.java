@@ -18,7 +18,9 @@ package com.android.tradefed.testtype.suite;
 import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.IDeviceConfiguration;
@@ -67,6 +69,8 @@ import com.android.tradefed.util.TimeUtil;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -81,6 +85,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Abstract class used to run Test Suite. This class provide the base of how the Suite will be run.
@@ -329,6 +334,13 @@ public abstract class ITestSuite
     // Logger to be used to files.
     private ITestLogger mCurrentLogger = null;
 
+    private DynamicRemoteFileResolver mDynamicResolver = new DynamicRemoteFileResolver();
+
+    @VisibleForTesting
+    void setDynamicResolver(DynamicRemoteFileResolver resolver) {
+        mDynamicResolver = resolver;
+    }
+
     /**
      * Get the current Guice {@link Injector} from the invocation. It should allow us to continue
      * the object injection of modules.
@@ -369,6 +381,15 @@ public abstract class ITestSuite
         }
     }
 
+    public File getTestsDir() throws FileNotFoundException {
+        IBuildInfo build = getBuildInfo();
+        if (build instanceof IDeviceBuildInfo) {
+            return ((IDeviceBuildInfo) build).getTestsDir();
+        }
+        // TODO: handle multi build?
+        throw new FileNotFoundException("Could not found a tests dir folder.");
+    }
+
     private LinkedHashMap<String, IConfiguration> loadAndFilter() {
         LinkedHashMap<String, IConfiguration> runConfig = loadTests();
         if (runConfig.isEmpty()) {
@@ -378,6 +399,7 @@ public abstract class ITestSuite
         // Apply our guice scope to all modules objects
         applyGuiceInjection(runConfig);
 
+        Set<String> moduleNames = new HashSet<>();
         LinkedHashMap<String, IConfiguration> filteredConfig = new LinkedHashMap<>();
         for (Entry<String, IConfiguration> config : runConfig.entrySet()) {
             if (!mModuleMetadataIncludeFilter.isEmpty()
@@ -398,9 +420,49 @@ public abstract class ITestSuite
             }
             filterPreparers(config.getValue(), mAllowedPreparers);
             filteredConfig.put(config.getKey(), config.getValue());
+            moduleNames.add(config.getValue().getConfigurationDescription().getModuleName());
         }
+
+        if (mBuildInfo != null
+                && mBuildInfo.getRemoteFiles() != null
+                && mBuildInfo.getRemoteFiles().size() > 0) {
+            stageTestArtifacts(moduleNames);
+        }
+
         runConfig.clear();
         return filteredConfig;
+    }
+
+    /** Helper to download all artifacts for the given modules. */
+    private void stageTestArtifacts(Set<String> modules) {
+        CLog.i(String.format("Start to stage test artifacts for %d modules.", modules.size()));
+        long startTime = System.currentTimeMillis();
+        // Include the file if its path contains a folder name matching any of the module.
+        String moduleRegex =
+                modules.stream()
+                        .map(m -> String.format("/%s/", m))
+                        .collect(Collectors.joining("|"));
+        List<String> includeFilters = Arrays.asList(moduleRegex);
+        // Ignore config file as it's part of config zip artifact that's staged already.
+        List<String> excludeFilters = Arrays.asList("[.]config$");
+        for (File remoteFile : mBuildInfo.getRemoteFiles()) {
+            try {
+                mDynamicResolver.resolvePartialDownloadZip(
+                        getTestsDir(), remoteFile.toString(), includeFilters, excludeFilters);
+            } catch (ConfigurationException | FileNotFoundException e) {
+                CLog.e(
+                        String.format(
+                                "Failed to download partial zip from %s for modules: %s",
+                                remoteFile, String.join(", ", modules)));
+                CLog.e(e);
+                throw new RuntimeException(e);
+            }
+        }
+        long elapsedTime = System.currentTimeMillis() - startTime;
+        CLog.i(
+                String.format(
+                        "Staging test artifacts for %d modules finished in %s.",
+                        modules.size(), TimeUtil.formatElapsedTime(elapsedTime)));
     }
 
     /** Helper that creates and returns the list of {@link ModuleDefinition} to be executed. */

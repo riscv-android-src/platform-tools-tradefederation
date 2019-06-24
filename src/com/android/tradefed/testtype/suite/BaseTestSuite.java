@@ -17,7 +17,6 @@ package com.android.tradefed.testtype.suite;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -294,15 +293,6 @@ public class BaseTestSuite extends ITestSuite {
                         .loadConfigsFromDirectory(
                                 testsDirs, abis, suitePrefix, suiteTag, mConfigPatterns));
         return loadedConfigs;
-    }
-
-    public File getTestsDir() throws FileNotFoundException {
-        IBuildInfo build = getBuildInfo();
-        if (build instanceof IDeviceBuildInfo) {
-            return ((IDeviceBuildInfo) build).getTestsDir();
-        }
-        // TODO: handle multi build?
-        throw new FileNotFoundException("Could not found a tests dir folder.");
     }
 
     /** {@inheritDoc} */
