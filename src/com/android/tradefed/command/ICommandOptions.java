@@ -17,6 +17,7 @@
 package com.android.tradefed.command;
 
 import com.android.tradefed.device.metric.AutoLogCollector;
+import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.util.UniqueMultiMap;
 
 import java.util.Set;
@@ -202,4 +203,13 @@ public interface ICommandOptions {
 
     /** Whether or not to report progression of remote invocation at module level. */
     public boolean shouldReportModuleProgression();
+
+    /** The maximum number of attempts during auto-retry. */
+    public int getMaxRetryCount();
+
+    /** Set the max retry count allowed during auto-retry. */
+    public void setMaxRetryCount(int maxRetryCount);
+
+    /** The {@link RetryStrategy} used during auto-retry. */
+    public RetryStrategy getRetryStrategy();
 }

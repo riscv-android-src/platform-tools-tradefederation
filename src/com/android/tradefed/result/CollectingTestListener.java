@@ -21,6 +21,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.testtype.retry.MergeStrategy;
 
 import com.google.common.annotations.VisibleForTesting;
 

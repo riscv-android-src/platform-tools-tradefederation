@@ -57,7 +57,7 @@ import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
-import com.android.tradefed.testtype.suite.ITestSuite.RetryStrategy;
+import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.testtype.suite.module.BaseModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController;
 import com.android.tradefed.testtype.suite.module.TestFailureModuleController;
