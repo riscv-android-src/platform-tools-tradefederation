@@ -58,6 +58,7 @@ import com.android.tradefed.testtype.IReportNotExecuted;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
+import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.MultiMap;
@@ -278,6 +279,26 @@ public abstract class ITestSuite
         description = "Whether or not to attempt the module isolation between modules"
     )
     private boolean mIsolatedModule = false;
+
+    /** @deprecated to be deleted when next version is deployed */
+    @Deprecated
+    @Option(
+        name = "max-testcase-run-count",
+        description =
+                "If the IRemoteTest can have its testcases run multiple times, "
+                        + "the max number of runs for each testcase."
+    )
+    private int mMaxRunLimit = 1;
+
+    /** @deprecated to be deleted when next version is deployed */
+    @Deprecated
+    @Option(
+        name = "retry-strategy",
+        description =
+                "The retry strategy to be used when re-running some tests with "
+                        + "--max-testcase-run-count"
+    )
+    private RetryStrategy mRetryStrategy = RetryStrategy.NO_RETRY;
 
     // [Options relate to module retry and intra-module retry][
     @Option(
