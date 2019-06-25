@@ -88,6 +88,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                 CLog.i("No Apex module in the train. Skipping reboot.");
                 return;
             } else {
+                RunUtil.getDefault().sleep(mApexStagingWaitTime);
                 device.reboot();
             }
         } else {
