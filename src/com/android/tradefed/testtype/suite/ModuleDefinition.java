@@ -56,7 +56,7 @@ import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.ITestCollector;
-import com.android.tradefed.testtype.suite.ITestSuite.RetryStrategy;
+import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.testtype.suite.module.BaseModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
 import com.android.tradefed.util.StreamUtil;
@@ -141,7 +141,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     /** The number of test cases that remained failed after all retry attempts */
     private long mFailedRetried = 0L;
 
-    private RetryStrategy mRetryStrategy = RetryStrategy.RETRY_TEST_CASE_FAILURE;
+    private RetryStrategy mRetryStrategy = RetryStrategy.NO_RETRY;
     private boolean mMergeAttempts = true;
     private boolean mRebootAtLastRetry = false;
 

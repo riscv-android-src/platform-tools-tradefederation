@@ -1479,7 +1479,7 @@ public class ITestSuiteTest {
         mTestSuite.setDevice(mMockDevice);
         mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setConfiguration(mStubMainConfiguration);
-        mTestSuite.setMaxRunLimit(maxRunLimit);
+        mStubMainConfiguration.getCommandOptions().setMaxRetryCount(maxRunLimit);
         mContext = new InvocationContext();
         mTestSuite.setInvocationContext(mContext);
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
