@@ -48,6 +48,13 @@ public class MultiMap<K, V> implements Serializable {
         }
     }
 
+    public MultiMap(Map<K, V> map) {
+        this();
+        for (K key : map.keySet()) {
+            put(key, map.get(key));
+        }
+    }
+
     /**
      * Clears the map.
      */
