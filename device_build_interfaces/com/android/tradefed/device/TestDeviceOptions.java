@@ -247,6 +247,17 @@ public class TestDeviceOptions {
     )
     private Set<String> mRemoteFetchFilePattern = new HashSet<>();
 
+    @Option(name = "cros-user", description = "(CHEEPS ONLY) Account to log in to Chrome OS with.")
+    private String mCrosUser = null;
+
+    @Option(
+        name = "cros-password",
+        description =
+                "(CHEEPS ONLY) Password to log in to Chrome OS with. Only used if cros-user "
+                        + "is specified."
+    )
+    private String mCrosPassword = null;
+
     // END ====================== Options Related to Virtual Devices ======================
 
     /** Check whether adb root should be enabled on boot for this device */
@@ -614,6 +625,16 @@ public class TestDeviceOptions {
     /** Returns the list of pattern to attempt to fetch via scp. */
     public Set<String> getRemoteFetchFilePattern() {
         return mRemoteFetchFilePattern;
+    }
+
+    /** Returns the Chrome OS User to log in as. */
+    public String getCrosUser() {
+        return mCrosUser;
+    }
+
+    /** Returns the password to log in to Chrome OS with. */
+    public String getCrosPassword() {
+        return mCrosPassword;
     }
 
     public static String getCreateCommandByInstanceType(InstanceType type) {
