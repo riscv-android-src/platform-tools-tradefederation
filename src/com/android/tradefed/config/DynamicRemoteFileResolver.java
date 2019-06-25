@@ -207,6 +207,62 @@ public class DynamicRemoteFileResolver {
         return downloadedFiles;
     }
 
+    /**
+     * Download the files matching given filters in a remote zip file.
+     *
+     * <p>A file inside the remote zip file is only downloaded if its path matches any of the
+     * include filters but not the exclude filters.
+     *
+     * @param destDir the file to place the downloaded contents into.
+     * @param remoteZipFilePath the remote path to the zip file to download, relative to an
+     *     implementation specific root.
+     * @param includeFilters a list of regex strings to download matching files. A file's path
+     *     matching any filter will be downloaded.
+     * @param excludeFilters a list of regex strings to skip downloading matching files. A file's
+     *     path matching any filter will not be downloaded.
+     * @throws ConfigurationException if files could not be downloaded.
+     */
+    public void resolvePartialDownloadZip(
+            File destDir,
+            String remoteZipFilePath,
+            List<String> includeFilters,
+            List<String> excludeFilters)
+            throws ConfigurationException {
+        Map<String, String> queryArgs;
+        String protocol;
+        try {
+            URI uri = new URI(remoteZipFilePath);
+            protocol = uri.getScheme();
+            queryArgs = parseQuery(uri.getQuery());
+        } catch (URISyntaxException e) {
+            throw new ConfigurationException(
+                    String.format(
+                            "Failed to parse the remote zip file path: %s", remoteZipFilePath),
+                    e);
+        }
+        IRemoteFileResolver resolver = getResolver(protocol);
+
+        queryArgs.put("partial_download_dir", destDir.getAbsolutePath());
+        if (includeFilters != null) {
+            queryArgs.put("include_filters", String.join(";", includeFilters));
+        }
+        if (excludeFilters != null) {
+            queryArgs.put("exclude_filters", String.join(";", excludeFilters));
+        }
+        // Downloaded individual files should be saved to destDir, return value is not needed.
+        try {
+            resolver.resolveRemoteFiles(new File(remoteZipFilePath), null, queryArgs);
+        } catch (ConfigurationException e) {
+            if (isOptional(queryArgs)) {
+                CLog.d(
+                        "Failed to partially download '%s' but marked optional so skipping: %s",
+                        remoteZipFilePath, e.getMessage());
+            } else {
+                throw e;
+            }
+        }
+    }
+
     @VisibleForTesting
     protected IRemoteFileResolver getResolver(String protocol) {
         if (updateProtocols()) {
