@@ -36,6 +36,8 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 
@@ -122,6 +124,48 @@ public class GTestTest {
     /** Test the run method for a couple tests */
     @Test
     public void testRun() throws DeviceNotAvailableException {
+        final String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
+        final String test1 = "test1";
+        final String test2 = "test2";
+        final String testPath1 = String.format("%s/%s", nativeTestPath, test1);
+        final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
+
+        MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
+        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath1)).andReturn(false);
+        // report the file as executable
+        EasyMock.expect(mMockITestDevice.isExecutable(testPath1)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath2)).andReturn(false);
+        // report the file as executable
+        EasyMock.expect(mMockITestDevice.isExecutable(testPath2)).andReturn(true);
+
+        String[] files = new String[] {"test1", "test2"};
+        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
+        mMockITestDevice.executeShellCommand(
+                EasyMock.contains(test1),
+                EasyMock.same(mMockReceiver),
+                EasyMock.anyLong(),
+                (TimeUnit) EasyMock.anyObject(),
+                EasyMock.anyInt());
+        mMockITestDevice.executeShellCommand(
+                EasyMock.contains(test2),
+                EasyMock.same(mMockReceiver),
+                EasyMock.anyLong(),
+                (TimeUnit) EasyMock.anyObject(),
+                EasyMock.anyInt());
+
+        replayMocks();
+
+        mGTest.run(mMockInvocationListener);
+        verifyMocks();
+    }
+
+    /** Test the run method without clearing coverage before running the tests. */
+    @Test
+    public void testRunNoCoverageClear() throws Exception {
+        mSetter.setOptionValue("coverage-clear-before-test", "false");
+
         final String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
         final String test1 = "test1";
         final String test2 = "test2";
@@ -420,6 +464,121 @@ public class GTestTest {
         mMockITestDevice.executeShellCommand(EasyMock.contains(test2),
                 (CollectingOutputReceiver) EasyMock.anyObject(),
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
+        replayMocks();
+
+        mGTest.run(mMockInvocationListener);
+        verifyMocks();
+    }
+
+    /** Test cross-process coverage dump for all native processes */
+    @Test
+    public void testNativeCoverageAllProcesses() throws Exception {
+        mSetter.setOptionValue("coverage", "true");
+        mSetter.setOptionValue("coverage-flush", "true");
+
+        final String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
+        final String test1 = "test1";
+        final String test2 = "test2";
+        final String testPath1 = String.format("%s/%s", nativeTestPath, test1);
+        final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
+
+        MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
+        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 -1")).andReturn("");
+        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("rm -rf /data/misc/trace/*"))
+                .andReturn("");
+        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath1)).andReturn(false);
+        // report the file as executable
+        EasyMock.expect(mMockITestDevice.isExecutable(testPath1)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath2)).andReturn(false);
+        // report the file as executable
+        EasyMock.expect(mMockITestDevice.isExecutable(testPath2)).andReturn(true);
+
+        String[] files = new String[] {"test1", "test2"};
+        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
+        mMockITestDevice.executeShellCommand(
+                EasyMock.contains(test1),
+                EasyMock.same(mMockReceiver),
+                EasyMock.anyLong(),
+                (TimeUnit) EasyMock.anyObject(),
+                EasyMock.anyInt());
+        mMockITestDevice.executeShellCommand(
+                EasyMock.contains(test2),
+                EasyMock.same(mMockReceiver),
+                EasyMock.anyLong(),
+                (TimeUnit) EasyMock.anyObject(),
+                EasyMock.anyInt());
+
+        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 -1")).andReturn("");
+
+        replayMocks();
+
+        mGTest.run(mMockInvocationListener);
+        verifyMocks();
+    }
+
+    /** Test cross-process coverage dump for specific processes */
+    @Test
+    public void testNativeCoverageSpecificProcesses() throws Exception {
+        mSetter.setOptionValue("coverage", "true");
+        mSetter.setOptionValue("coverage-flush", "true");
+
+        final List<String> processNames = new ArrayList<>();
+        processNames.add("init");
+        processNames.add("surfaceflinger");
+
+        mGTest.setCoverageProcesses(processNames);
+
+        final String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
+        final String test1 = "test1";
+        final String test2 = "test2";
+        final String testPath1 = String.format("%s/%s", nativeTestPath, test1);
+        final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
+
+        MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
+        // Get the pids to flush coverage data.
+        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
+        EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(0))).andReturn("1");
+        EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(1))).andReturn("1000");
+        EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 1 1000")).andReturn("");
+
+        // Clear the coverage data.
+        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("rm -rf /data/misc/trace/*"))
+                .andReturn("");
+        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath1)).andReturn(false);
+        // report the file as executable
+        EasyMock.expect(mMockITestDevice.isExecutable(testPath1)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath2)).andReturn(false);
+        // report the file as executable
+        EasyMock.expect(mMockITestDevice.isExecutable(testPath2)).andReturn(true);
+
+        String[] files = new String[] {"test1", "test2"};
+        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
+        mMockITestDevice.executeShellCommand(
+                EasyMock.contains(test1),
+                EasyMock.same(mMockReceiver),
+                EasyMock.anyLong(),
+                (TimeUnit) EasyMock.anyObject(),
+                EasyMock.anyInt());
+        mMockITestDevice.executeShellCommand(
+                EasyMock.contains(test2),
+                EasyMock.same(mMockReceiver),
+                EasyMock.anyLong(),
+                (TimeUnit) EasyMock.anyObject(),
+                EasyMock.anyInt());
+
+        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
+        EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(0))).andReturn("1");
+        EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(1))).andReturn("1000");
+        EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 1 1000")).andReturn("");
+
         replayMocks();
 
         mGTest.run(mMockInvocationListener);
