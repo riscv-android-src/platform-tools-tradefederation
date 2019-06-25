@@ -523,6 +523,10 @@ public abstract class GTestBase
             gTestCmdLine.append(String.format("LD_LIBRARY_PATH=%s ", mLdLibraryPath));
         }
 
+        if (isCoverageEnabled()) {
+            gTestCmdLine.append("GCOV_PREFIX=/data/misc/trace/testcoverage ");
+        }
+
         // su to requested user
         if (mRunTestAs != null) {
             gTestCmdLine.append(String.format("su %s ", mRunTestAs));
