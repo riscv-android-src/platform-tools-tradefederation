@@ -28,6 +28,8 @@ import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ZipUtil;
 
+import com.google.common.base.Splitter;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -75,7 +77,7 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
             String findResult = mDevice.executeShellCommand(COVERAGE_FILE_LIST_COMMAND);
 
             Path devicePathRoot = Paths.get(NATIVE_COVERAGE_DEVICE_PATH);
-            for (String deviceFile : findResult.split("\n")) {
+            for (String deviceFile : Splitter.on("\n").omitEmptyStrings().split(findResult)) {
                 // Compute the relative path for the device file.
                 Path relativePath = devicePathRoot.relativize(Paths.get(deviceFile));
                 Path localFullPath = localDir.toPath().resolve(relativePath);
