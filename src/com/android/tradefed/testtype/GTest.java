@@ -26,6 +26,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.NativeCodeCoverageFlusher;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -34,6 +35,7 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -58,6 +60,24 @@ public class GTest extends GTestBase implements IDeviceTest {
             description = "Stops the Java application runtime before test execution.")
     private boolean mStopRuntime = false;
 
+    @Option(
+        name = "coverage-flush",
+        description = "Forces coverage data to be flushed at the end of the test."
+    )
+    private boolean mCoverageFlush = false;
+
+    @Option(
+        name = "coverage-processes",
+        description = "Name of processes to collect coverage data from."
+    )
+    private List<String> mCoverageProcesses = new ArrayList<>();
+
+    @Option(
+        name = "coverage-clear-before-test",
+        description = "Clears all coverage counters before test execution."
+    )
+    private boolean mCoverageClearBeforeTest = true;
+
     // Max characters allowed for executing GTest via command line
     private static final int GTEST_CMD_CHAR_LIMIT = 1000;
     /**
@@ -66,6 +86,11 @@ public class GTest extends GTestBase implements IDeviceTest {
     @Override
     public void setDevice(ITestDevice device) {
         mDevice = device;
+    }
+
+    @VisibleForTesting
+    void setCoverageProcesses(List<String> coverageProcesses) {
+        mCoverageProcesses = new ArrayList<>(coverageProcesses);
     }
 
     /**
@@ -365,14 +390,26 @@ public class GTest extends GTestBase implements IDeviceTest {
         }
         // Insert the coverage listener if code coverage collection is enabled.
         listener = addNativeCoverageListenerIfEnabled(mDevice, listener);
+        NativeCodeCoverageFlusher flusher = new NativeCodeCoverageFlusher(mDevice);
+
         Throwable throwable = null;
         try {
+            if (isCoverageEnabled() && mCoverageClearBeforeTest) {
+                if (mCoverageFlush) {
+                    flusher.forceCoverageFlush(mCoverageProcesses);
+                }
+                flusher.clearCoverageMeasurements();
+            }
             doRunAllTestsInSubdirectory(testPath, mDevice, listener);
         } catch (Throwable t) {
             throwable = t;
             throw t;
         } finally {
             if (!(throwable instanceof DeviceNotAvailableException)) {
+                if (isCoverageEnabled() && mCoverageFlush) {
+                    flusher.forceCoverageFlush(mCoverageProcesses);
+                }
+
                 if (mStopRuntime) {
                     mDevice.executeShellCommand("start");
                     mDevice.waitForDeviceAvailable();
