@@ -59,6 +59,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.zip.ZipFile;
 
 /** Unit tests for {@link NativeCodeCoverageListener}. */
 @RunWith(JUnit4.class)
@@ -93,8 +94,9 @@ public class NativeCodeCoverageListenerTest {
         doReturn(true).when(mMockDevice).enableAdbRoot();
         doReturn(
                         new StringJoiner("\n")
-                                .add("/data/misc/trace/path/to/coverage.gcda")
-                                .add("/data/misc/trace/path/to/.hidden/coverage2.gcda")
+                                .add("/data/misc/trace/proc/self/cwd/out/path/to/coverage.gcda")
+                                .add(
+                                        "/data/misc/trace/proc/self/cwd/out/path/to/.hidden/coverage2.gcda")
                                 .toString())
                 .when(mMockDevice)
                 .executeShellCommand(anyString());
@@ -136,10 +138,32 @@ public class NativeCodeCoverageListenerTest {
     }
 
     @Test
+    public void testNoCoverageFiles_logsEmptyZip() throws DeviceNotAvailableException, IOException {
+        doReturn(true).when(mMockDevice).enableAdbRoot();
+        doReturn("").when(mMockDevice).executeShellCommand(anyString());
+
+        // Simulate a test run.
+        mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
+        Map<String, String> metric = new HashMap<>();
+        mCodeCoverageListener.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
+
+        // Verify testLog(..) was called with an empty zip.
+        List<ByteString> logs = mFakeListener.getLogs();
+        assertThat(logs).hasSize(1);
+        File outputZip = folder.newFile("empty_coverage.zip");
+        try (OutputStream out = new FileOutputStream(outputZip)) {
+            logs.get(0).writeTo(out);
+        }
+
+        ZipFile loggedZip = new ZipFile(outputZip);
+        assertThat(loggedZip.size()).isEqualTo(0);
+    }
+
+    @Test
     public void testFailure_unableToPullFile() throws DeviceNotAvailableException {
         // Setup mocks.
         doReturn(true).when(mMockDevice).enableAdbRoot();
-        doReturn("/data/misc/trace/some/path/to/coverage.gcda\n")
+        doReturn("/data/misc/trace/proc/self/cwd/out/some/path/to/coverage.gcda\n")
                 .when(mMockDevice)
                 .executeShellCommand(anyString());
         doReturn(false).when(mMockDevice).pullFile(anyString(), any());

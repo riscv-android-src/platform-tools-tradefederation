@@ -116,6 +116,38 @@ public class ExecutableHostTestTest {
     }
 
     @Test
+    public void testRunHostExecutable_relativePath() throws Exception {
+        File tmpBinary = FileUtil.createTempFile("test-executable", "");
+        try {
+            OptionSetter setter = new OptionSetter(mExecutableTest);
+            setter.setOptionValue("binary", tmpBinary.getAbsolutePath());
+            setter.setOptionValue("relative-path-execution", "true");
+
+            CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+            doReturn(result)
+                    .when(mMockRunUtil)
+                    .runTimedCmd(
+                            Mockito.anyLong(),
+                            Mockito.eq("bash"),
+                            Mockito.eq("-c"),
+                            Mockito.eq(
+                                    String.format(
+                                            "pushd %s; ./%s;",
+                                            tmpBinary.getParent(), tmpBinary.getName())));
+
+            mExecutableTest.run(mMockListener);
+
+            verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(1));
+            verify(mMockListener, Mockito.times(0)).testRunFailed(any());
+            verify(mMockListener, Mockito.times(0)).testFailed(any(), any());
+            verify(mMockListener, Mockito.times(1))
+                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        } finally {
+            FileUtil.recursiveDelete(tmpBinary);
+        }
+    }
+
+    @Test
     public void testRunHostExecutable_dnae() throws Exception {
         File tmpBinary = FileUtil.createTempFile("test-executable", "");
         try {

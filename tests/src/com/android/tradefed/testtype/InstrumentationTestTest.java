@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollectionOf;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
@@ -531,6 +532,8 @@ public class InstrumentationTestTest {
                 .when(mMockTestDevice)
                 .runInstrumentationTests(
                         any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
+        doReturn(true).when(mMockTestDevice).enableAdbRoot();
+        doReturn("").when(mMockTestDevice).executeShellCommand(anyString());
 
         mInstrumentationTest.run(mMockListener);
 
@@ -923,6 +926,9 @@ public class InstrumentationTestTest {
         ITestInvocationListener listener =
                 mInstrumentationTest.addJavaCoverageListenerIfEnabled(mMockListener);
         assertThat(listener).isInstanceOf(JavaCodeCoverageListener.class);
+
+        listener = mInstrumentationTest.addNativeCoverageListenerIfEnabled(mMockListener);
+        assertThat(listener).isInstanceOf(NativeCodeCoverageListener.class);
     }
 
     @Test
@@ -931,6 +937,9 @@ public class InstrumentationTestTest {
 
         ITestInvocationListener listener =
                 mInstrumentationTest.addJavaCoverageListenerIfEnabled(mMockListener);
+        assertThat(listener).isSameAs(mMockListener);
+
+        listener = mInstrumentationTest.addNativeCoverageListenerIfEnabled(mMockListener);
         assertThat(listener).isSameAs(mMockListener);
     }
 
