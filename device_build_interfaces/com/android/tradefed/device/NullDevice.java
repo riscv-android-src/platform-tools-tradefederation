@@ -24,8 +24,7 @@ import com.android.ddmlib.IDevice;
 public class NullDevice extends StubDevice {
 
     /** Naming pattern for auto-created null devices */
-    public static final String TEMP_NULL_DEVICE_PREFIX =
-            DeviceManager.NULL_DEVICE_SERIAL_PREFIX + "-temp-";
+    public static final String TEMP_NULL_DEVICE_PREFIX = "null-device-temp-";
 
     private boolean mTemporaryDevice = false;
 
