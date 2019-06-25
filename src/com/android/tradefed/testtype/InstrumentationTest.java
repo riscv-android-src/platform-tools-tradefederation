@@ -861,6 +861,7 @@ public class InstrumentationTest
         if (!mIsRerun) {
             listener = addBugreportListenerIfEnabled(listener);
             listener = addJavaCoverageListenerIfEnabled(listener);
+            listener = addNativeCoverageListenerIfEnabled(listener);
 
             // TODO: Convert to device-side collectors when possible.
             for (IMetricCollector collector : mCollectors) {
@@ -922,6 +923,17 @@ public class InstrumentationTest
     ITestInvocationListener addJavaCoverageListenerIfEnabled(ITestInvocationListener listener) {
         if (mCoverage) {
             return new JavaCodeCoverageListener(getDevice(), mMergeCoverageMeasurements, listener);
+        }
+        return listener;
+    }
+
+    /**
+     * Returns a listener that will collect native coverage measurements, or the original {@code
+     * listener} if this feature is disabled.
+     */
+    ITestInvocationListener addNativeCoverageListenerIfEnabled(ITestInvocationListener listener) {
+        if (mCoverage) {
+            return new NativeCodeCoverageListener(getDevice(), listener);
         }
         return listener;
     }
