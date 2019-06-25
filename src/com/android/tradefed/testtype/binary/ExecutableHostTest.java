@@ -57,6 +57,14 @@ public class ExecutableHostTest extends ExecutableBaseTest implements IDeviceTes
     )
     private long mTimeoutPerBinaryMs = 5 * 60 * 1000L;
 
+    @Option(
+        name = "relative-path-execution",
+        description =
+                "Some scripts assume a relative location to their tests file, this allows to"
+                        + " execute with that relative location."
+    )
+    private boolean mExecuteRelativeToScript = false;
+
     private ITestDevice mDevice;
     private IBuildInfo mBuild;
 
@@ -109,7 +117,15 @@ public class ExecutableHostTest extends ExecutableBaseTest implements IDeviceTes
         FileUtil.chmodRWXRecursively(new File(binaryPath));
 
         List<String> command = new ArrayList<>();
-        command.add(binaryPath);
+        if (mExecuteRelativeToScript) {
+            String parentDir = new File(binaryPath).getParent();
+            String scriptName = new File(binaryPath).getName();
+            command.add("bash");
+            command.add("-c");
+            command.add(String.format("pushd %s; ./%s;", parentDir, scriptName));
+        } else {
+            command.add(binaryPath);
+        }
         CommandResult res =
                 runUtil.runTimedCmd(mTimeoutPerBinaryMs, command.toArray(new String[0]));
         if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
@@ -122,6 +138,10 @@ public class ExecutableHostTest extends ExecutableBaseTest implements IDeviceTes
                 errorMessage += String.format("\nExit Code: %s", res.getExitCode());
             }
             listener.testFailed(description, errorMessage);
+        } else {
+            // TODO: Refactor to use file logs
+            CLog.d("stdout: %s", res.getStdout());
+            CLog.d("stderr: %s", res.getStderr());
         }
         if (!(mDevice.getIDevice() instanceof StubDevice)) {
             // Ensure that the binary did not leave the device offline.
