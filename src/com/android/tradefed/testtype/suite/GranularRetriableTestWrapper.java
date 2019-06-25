@@ -29,13 +29,13 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogSaverResultForwarder;
-import com.android.tradefed.result.MergeStrategy;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.testtype.ITestFilterReceiver;
-import com.android.tradefed.testtype.suite.ITestSuite.RetryStrategy;
+import com.android.tradefed.testtype.retry.MergeStrategy;
+import com.android.tradefed.testtype.retry.RetryStrategy;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
@@ -96,7 +96,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
     /** Store the test that successfully re-run and at which attempt they passed */
     private Map<String, Integer> mAttemptSuccess = new HashMap<>();
 
-    private RetryStrategy mRetryStrategy = RetryStrategy.RETRY_TEST_CASE_FAILURE;
+    private RetryStrategy mRetryStrategy = RetryStrategy.NO_RETRY;
     private boolean mRebootAtLastRetry = false;
 
     public GranularRetriableTestWrapper(
@@ -279,16 +279,14 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                 if (shouldHandleFailure(mRetryStrategy)) {
                     boolean shouldContinue = false;
                     // In case of test run failure and we should retry test runs
-                    if (RetryStrategy.RETRY_TEST_RUN_FAILURE.equals(mRetryStrategy)
-                            || RetryStrategy.RETRY_ANY_FAILURE.equals(mRetryStrategy)) {
+                    if (RetryStrategy.RETRY_ANY_FAILURE.equals(mRetryStrategy)) {
                         if (mMainGranularRunListener.hasRunCrashedAtAttempt(attemptNumber - 1)) {
                             CLog.d("Retrying the run failure.");
                             shouldContinue = true;
                         }
                     }
 
-                    if (RetryStrategy.RETRY_TEST_CASE_FAILURE.equals(mRetryStrategy)
-                            || RetryStrategy.RETRY_ANY_FAILURE.equals(mRetryStrategy)) {
+                    if (RetryStrategy.RETRY_ANY_FAILURE.equals(mRetryStrategy)) {
                         // In case of test case failure, we retry with filters.
                         previousFailedTests = getFailedTestCases(attemptNumber - 1);
                         if (previousFailedTests.size() > 0 && !shouldContinue) {
@@ -352,9 +350,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
      * what like {@link RetryStrategy#ITERATIONS} returns False.
      */
     private boolean shouldHandleFailure(RetryStrategy retryStrategy) {
-        return RetryStrategy.RETRY_ANY_FAILURE.equals(retryStrategy)
-                || RetryStrategy.RETRY_TEST_RUN_FAILURE.equals(retryStrategy)
-                || RetryStrategy.RETRY_TEST_CASE_FAILURE.equals(retryStrategy);
+        return RetryStrategy.RETRY_ANY_FAILURE.equals(retryStrategy);
     }
 
     /**
@@ -441,26 +437,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
 
     /** Get the merged TestRunResults from each {@link IRemoteTest} run. */
     public final List<TestRunResult> getFinalTestRunResults() {
-        // TODO: Once we are ready to report break-down of results and option will override this.
-        MergeStrategy strategy = MergeStrategy.ONE_TESTCASE_PASS_IS_PASS;
-        switch (mRetryStrategy) {
-            case ITERATIONS:
-                strategy = MergeStrategy.ANY_FAIL_IS_FAIL;
-                break;
-            case RERUN_UNTIL_FAILURE:
-                strategy = MergeStrategy.ANY_FAIL_IS_FAIL;
-                break;
-            case RETRY_ANY_FAILURE:
-                strategy = MergeStrategy.ANY_PASS_IS_PASS;
-                break;
-            case RETRY_TEST_CASE_FAILURE:
-                strategy = MergeStrategy.ONE_TESTCASE_PASS_IS_PASS;
-                break;
-            case RETRY_TEST_RUN_FAILURE:
-                strategy = MergeStrategy.ONE_TESTRUN_PASS_IS_PASS;
-                break;
-        }
-
+        MergeStrategy strategy = MergeStrategy.getMergeStrategy(mRetryStrategy);
         mMainGranularRunListener.setMergeStrategy(strategy);
         return mMainGranularRunListener.getMergedTestRunResults();
     }

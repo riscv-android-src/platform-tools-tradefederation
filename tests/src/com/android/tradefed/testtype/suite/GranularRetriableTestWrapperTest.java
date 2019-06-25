@@ -41,7 +41,7 @@ import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
-import com.android.tradefed.testtype.suite.ITestSuite.RetryStrategy;
+import com.android.tradefed.testtype.retry.RetryStrategy;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -277,7 +277,7 @@ public class GranularRetriableTestWrapperTest {
                 .run(Mockito.any(ITestInvocationListener.class));
 
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(mockTest, 1);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_CASE_FAILURE);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         try {
             granularTestWrapper.run(new CollectingTestListener());
             fail("Should have thrown an exception.");
@@ -329,7 +329,7 @@ public class GranularRetriableTestWrapperTest {
         int maxRunCount = 5;
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_CASE_FAILURE);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
         // Verify the test runs several times but under the same run name
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
@@ -388,7 +388,7 @@ public class GranularRetriableTestWrapperTest {
         int maxRunCount = 5;
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_CASE_FAILURE);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
         // Verify the test runs several times but under the same run name
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
@@ -448,7 +448,7 @@ public class GranularRetriableTestWrapperTest {
         int maxRunCount = 5;
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_CASE_FAILURE);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
         // Verify the test runs several times but under the same run name
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
@@ -534,7 +534,7 @@ public class GranularRetriableTestWrapperTest {
         int maxRunCount = 3;
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_CASE_FAILURE);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
 
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
@@ -574,7 +574,7 @@ public class GranularRetriableTestWrapperTest {
 
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_CASE_FAILURE);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
         // Two runs.
         assertEquals(2, granularTestWrapper.getTestRunResultCollected().size());
@@ -615,7 +615,7 @@ public class GranularRetriableTestWrapperTest {
         FakeTest test = new FakeTest(testCases);
         test.setRunFailure("I failed!");
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_RUN_FAILURE);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
 
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
@@ -649,10 +649,8 @@ public class GranularRetriableTestWrapperTest {
         FakeTest test = new FakeTest(testCases);
         test.setRunFailure("I failed!");
         test.setClearRunFailure(3);
-        // Failed test cases do not affect retry of runs
-        test.addFailedTestCase(fakeTestCase1);
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 7);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_TEST_RUN_FAILURE);
+        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
 
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
