@@ -93,7 +93,7 @@ public abstract class GTestBase
     private long mMaxTestTimeMs = 1 * 60 * 1000L;
 
     @Option(
-        name = "native-coverage",
+        name = "coverage",
         description =
                 "Collect code coverage for this test run. Note that the build under test must be a "
                         + "coverage build or else this will fail."
