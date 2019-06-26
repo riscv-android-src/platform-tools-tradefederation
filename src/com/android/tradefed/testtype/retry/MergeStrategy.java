@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.result;
+package com.android.tradefed.testtype.retry;
 
 /** Describes how the results should be aggregated when multiple attempts are present. */
 public enum MergeStrategy {
@@ -26,5 +26,26 @@ public enum MergeStrategy {
     /** If a single run or test cases is a pass we will consider the merged results passed. */
     ANY_PASS_IS_PASS,
     /** If a single run or test cases is failed, status will be failed no matter what. */
-    ANY_FAIL_IS_FAIL,
+    ANY_FAIL_IS_FAIL;
+
+    /** Create a merge strategy based on the retry strategy. */
+    public static MergeStrategy getMergeStrategy(RetryStrategy retryStrategy) {
+        // TODO: Expand to take into account more context: postsubmit vs. presubmit
+        MergeStrategy strategy = MergeStrategy.ONE_TESTCASE_PASS_IS_PASS;
+        switch (retryStrategy) {
+            case ITERATIONS:
+                strategy = MergeStrategy.ANY_FAIL_IS_FAIL;
+                break;
+            case RERUN_UNTIL_FAILURE:
+                strategy = MergeStrategy.ANY_FAIL_IS_FAIL;
+                break;
+            case RETRY_ANY_FAILURE:
+                strategy = MergeStrategy.ANY_PASS_IS_PASS;
+                break;
+            case NO_RETRY:
+                strategy = MergeStrategy.ANY_FAIL_IS_FAIL;
+                break;
+        }
+        return strategy;
+    }
 }

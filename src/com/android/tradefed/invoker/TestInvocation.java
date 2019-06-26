@@ -32,6 +32,7 @@ import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.guice.InvocationScope;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecution;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.invoker.shard.ShardBuildCloner;
@@ -57,6 +58,7 @@ import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.PrettyPrintDelimiter;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
@@ -69,6 +71,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 
 /**
@@ -360,8 +363,15 @@ public class TestInvocation implements ITestInvocation {
                     getLogRegistry().registerLogger(endHostLog);
                     PrettyPrintDelimiter.printStageDelimiter("===== Result Reporters =====");
                     try {
+                        // Copy the invocation metrics to the context
+                        Map<String, String> metrics = InvocationMetricLogger.getInvocationMetrics();
+                        if (!metrics.isEmpty()) {
+                            context.addInvocationAttributes(new MultiMap<>(metrics));
+                        }
                         listener.invocationEnded(elapsedTime);
                     } finally {
+                        // Clear the metrics for this invocation
+                        InvocationMetricLogger.clearInvocationMetrics();
                         endHostLog.closeLog();
                         getLogRegistry().unregisterLogger();
                     }

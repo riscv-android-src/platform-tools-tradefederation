@@ -58,6 +58,7 @@ import com.android.tradefed.testtype.IReportNotExecuted;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
+import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.MultiMap;
@@ -100,29 +101,6 @@ public abstract class ITestSuite
                 IReportNotExecuted,
                 ITokenRequest,
                 ITestLoggerReceiver {
-
-    /** The Retry Strategy to be used when re-running some tests. */
-    public enum RetryStrategy {
-        /** Rerun all the tests for the number of attempts specified. */
-        ITERATIONS,
-        /**
-         * Rerun all the tests until the max count is reached or a failure occurs whichever come
-         * first.
-         */
-        RERUN_UNTIL_FAILURE,
-        /**
-         * Rerun all the test case failures until passed or the max number of attempts specified.
-         */
-        RETRY_TEST_CASE_FAILURE,
-        /** Rerun all the test run failures until passed or the max number of attempts specified. */
-        RETRY_TEST_RUN_FAILURE,
-        /**
-         * Rerun all the test run and test cases failures until passed or the max number of attempts
-         * specified. Test run failures are rerun in priority (a.k.a. if a run failure and a test
-         * case failure occur, the run failure is rerun).
-         */
-        RETRY_ANY_FAILURE,
-    }
 
     public static final String SKIP_SYSTEM_STATUS_CHECKER = "skip-system-status-check";
     public static final String RUNNER_WHITELIST = "runner-whitelist";
@@ -302,7 +280,8 @@ public abstract class ITestSuite
     )
     private boolean mIsolatedModule = false;
 
-    // [Options relate to module retry and intra-module retry][
+    /** @deprecated to be deleted when next version is deployed */
+    @Deprecated
     @Option(
         name = "max-testcase-run-count",
         description =
@@ -311,14 +290,17 @@ public abstract class ITestSuite
     )
     private int mMaxRunLimit = 1;
 
+    /** @deprecated to be deleted when next version is deployed */
+    @Deprecated
     @Option(
         name = "retry-strategy",
         description =
                 "The retry strategy to be used when re-running some tests with "
                         + "--max-testcase-run-count"
     )
-    private RetryStrategy mRetryStrategy = RetryStrategy.RETRY_TEST_CASE_FAILURE;
+    private RetryStrategy mRetryStrategy = RetryStrategy.NO_RETRY;
 
+    // [Options relate to module retry and intra-module retry][
     @Option(
         name = "merge-attempts",
         description = "Whether or not to use the merge the results of the different attempts."
@@ -689,12 +671,17 @@ public abstract class ITestSuite
         // Pass the main invocation logSaver
         module.setLogSaver(mMainConfiguration.getLogSaver());
         // Pass the retry strategy to the module
-        module.setRetryStrategy(mRetryStrategy, mMergeAttempts);
+        module.setRetryStrategy(
+                getConfiguration().getCommandOptions().getRetryStrategy(), mMergeAttempts);
         // Pass the reboot strategy at the last intra-module retry to the module
         module.setRebootAtLastRetry(mRebootAtLastRetry);
 
         // Actually run the module
-        module.run(listener, moduleListeners, failureListener, mMaxRunLimit);
+        module.run(
+                listener,
+                moduleListeners,
+                failureListener,
+                getConfiguration().getCommandOptions().getMaxRetryCount());
 
         if (!mSkipAllSystemStatusCheck) {
             runPostModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
@@ -978,11 +965,6 @@ public abstract class ITestSuite
 
     public ITestLogger getCurrentTestLogger() {
         return mCurrentLogger;
-    }
-
-    /** Set the max number of run attempt for each module. */
-    public final void setMaxRunLimit(int maxRunLimit) {
-        mMaxRunLimit = maxRunLimit;
     }
 
     /** {@inheritDoc} */

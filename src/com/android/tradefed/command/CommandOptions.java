@@ -22,6 +22,7 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionUpdateRule;
 import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.util.UniqueMultiMap;
 
 import java.util.LinkedHashSet;
@@ -206,6 +207,23 @@ public class CommandOptions implements ICommandOptions {
         description = "Suffix to add to Tradefed host_log before logging it."
     )
     private String mHostLogSuffix = null;
+
+    // [Options related to auto-retry]
+    @Option(
+        name = "max-testcase-run-count",
+        description =
+                "If the IRemoteTest can have its testcases run multiple times, "
+                        + "the max number of runs for each testcase."
+    )
+    private int mMaxRunLimit = 1;
+
+    @Option(
+        name = "retry-strategy",
+        description =
+                "The retry strategy to be used when re-running some tests with "
+                        + "--max-testcase-run-count"
+    )
+    private RetryStrategy mRetryStrategy = RetryStrategy.NO_RETRY;
 
     /**
      * Set the help mode for the config.
@@ -547,5 +565,23 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean shouldReportModuleProgression() {
         return mReportModuleProgression;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public int getMaxRetryCount() {
+        return mMaxRunLimit;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setMaxRetryCount(int maxRetryCount) {
+        mMaxRunLimit = maxRetryCount;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public RetryStrategy getRetryStrategy() {
+        return mRetryStrategy;
     }
 }
