@@ -1145,7 +1145,7 @@ public class Console extends Thread {
      */
     public static void startConsole(Console console, String[] args) throws InterruptedException,
             ConfigurationException {
-        ClearcutClient client = new ClearcutClient(/* override URL */ null, /* isExternal */ true);
+        ClearcutClient client = new ClearcutClient();
         Runtime.getRuntime().addShutdownHook(new TerminateClearcutClient(client));
         client.notifyTradefedStartEvent();
 
