@@ -111,6 +111,26 @@ public class SimpleFileLoggerTest {
         assertTrue(lines.isEmpty());
     }
 
+    @Test
+    public void testClone() throws IOException {
+        mLogger.init();
+        mLogger.printLog(LogLevel.DEBUG, LOG_TAG, "original");
+
+        // clone will append to same log file
+        SimpleFileLogger clone = mLogger.clone();
+        try {
+            clone.init();
+            clone.printLog(LogLevel.DEBUG, LOG_TAG, "clone");
+        } finally {
+            clone.closeLog();
+        }
+
+        List<String> lines = readLines(new FileInputStream(mLogFile));
+        assertEquals(2, lines.size());
+        assertThat(lines.get(0), endsWith("original"));
+        assertThat(lines.get(1), endsWith("clone"));
+    }
+
     // Read input stream as a list of strings.
     private static List<String> readLines(InputStream is) {
         return new BufferedReader(new InputStreamReader(is)).lines().collect(Collectors.toList());
