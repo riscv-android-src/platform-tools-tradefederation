@@ -18,6 +18,9 @@ package com.android.tradefed.clearcut;
 import com.android.asuite.clearcut.Common.UserType;
 import com.android.asuite.clearcut.ExternalUserLog.AtestLogEventExternal;
 import com.android.asuite.clearcut.ExternalUserLog.AtestLogEventExternal.AtestStartEvent;
+import com.android.asuite.clearcut.InternalUserLog.AtestLogEventInternal;
+
+import com.google.protobuf.ByteString;
 
 /** Utility to help populate the event protos */
 public class ClearcutEventHelper {
@@ -30,14 +33,23 @@ public class ClearcutEventHelper {
      * @param userKey The unique id representing the user
      * @param runId The current id for the session.
      * @param userType The type of the user: internal or external.
-     * @return a builder for the event.
+     * @return a ByteString representation of the even proto.
      */
-    public static AtestLogEventExternal createStartEvent(
-            String userKey, String runId, UserType userType) {
-        AtestLogEventExternal.Builder builder = createBaseEventBuilder(userKey, runId, userType);
+    public static ByteString createStartEvent(String userKey, String runId, UserType userType) {
+        if (UserType.GOOGLE.equals(userType)) {
+            AtestLogEventInternal.Builder builder =
+                    createBaseInternalEventBuilder(userKey, runId, userType);
+            AtestLogEventInternal.AtestStartEvent.Builder startEventBuilder =
+                    AtestLogEventInternal.AtestStartEvent.newBuilder();
+            builder.setAtestStartEvent(startEventBuilder.build());
+            return builder.build().toByteString();
+        }
+
+        AtestLogEventExternal.Builder builder =
+                createBaseExternalEventBuilder(userKey, runId, userType);
         AtestStartEvent.Builder startBuilder = AtestStartEvent.newBuilder();
         builder.setAtestStartEvent(startBuilder.build());
-        return builder.build();
+        return builder.build().toByteString();
     }
 
     /**
@@ -48,9 +60,27 @@ public class ClearcutEventHelper {
      * @param userType The type of the user: internal or external.
      * @return a builder for the event.
      */
-    private static AtestLogEventExternal.Builder createBaseEventBuilder(
+    private static AtestLogEventExternal.Builder createBaseExternalEventBuilder(
             String userKey, String runId, UserType userType) {
         AtestLogEventExternal.Builder builder = AtestLogEventExternal.newBuilder();
+        builder.setUserKey(userKey);
+        builder.setRunId(runId);
+        builder.setUserType(userType);
+        builder.setToolName(TOOL_NAME);
+        return builder;
+    }
+
+    /**
+     * Create the basic event builder with all the common informations.
+     *
+     * @param userKey The unique id representing the user
+     * @param runId The current id for the session.
+     * @param userType The type of the user: internal or external.
+     * @return a builder for the event.
+     */
+    private static AtestLogEventInternal.Builder createBaseInternalEventBuilder(
+            String userKey, String runId, UserType userType) {
+        AtestLogEventInternal.Builder builder = AtestLogEventInternal.newBuilder();
         builder.setUserKey(userKey);
         builder.setRunId(runId);
         builder.setUserType(userType);
