@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -34,7 +33,7 @@ import java.io.File;
  * TargetSetupError}, and same applies to any OTA sideload error detected.
  */
 @OptionClass(alias = "sideload-ota")
-public class SideloadOtaTargetPreparer extends DeviceBuildInfoBootStrapper {
+public class SideloadOtaTargetPreparer extends AbstractExternalBuildTargetPreparer {
 
     private static final String SIDELOAD_CMD = "sideload";
     // the timeout for state transition from sideload finishes to recovery mode, not making this
@@ -52,32 +51,38 @@ public class SideloadOtaTargetPreparer extends DeviceBuildInfoBootStrapper {
     // defaults to 10m: assuming USB 2.0 transfer speed, concurrency and some buffer
     private long mSideloadTimeout = 10 * 60 * 1000;
 
-    @Option(
-        name = "bootstrap-build-info",
-        description =
-                "whether build info should be bootstrapped "
-                        + "based on device attributes after sideloading"
-    )
-    private boolean mBootStrapBuildInfo = true;
-
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
-            throws TargetSetupError, BuildError, DeviceNotAvailableException {
-        if (mSideloadOtaPackage == null) {
-            CLog.i("No sideload file provided, assuming no-op; skipping ...");
-            return;
-        }
+    protected File getDeviceUpdateImage() {
+        return mSideloadOtaPackage;
+    }
+
+    /** Reboots the device into sideload mode in preparation */
+    @Override
+    protected void preUpdateActions(File deviceUpdateImage, ITestDevice device)
+            throws DeviceNotAvailableException, TargetSetupError {
         device.rebootIntoSideload();
-        String filePath = mSideloadOtaPackage.getAbsolutePath();
-        CLog.d("Sideloading package from %s ...", filePath);
-        device.executeAdbCommand(mSideloadTimeout, SIDELOAD_CMD, filePath);
+    }
+
+    /** Waits for device to transition from sideload to recovery, then reboot to userspace */
+    @Override
+    protected void postUpdateActions(File deviceUpdateImage, ITestDevice device)
+            throws DeviceNotAvailableException, TargetSetupError {
         // after applying sideload, device should transition to recovery mode
         device.waitForDeviceInRecovery(POST_SIDELOAD_TRANSITION_TIMEOUT);
-        // now reboot and wait for the device to become available
+        CLog.i(
+                "Sideloading completed on %s, rebooting and waiting for boot complete.",
+                device.getDeviceDescriptor());
+        // now reboot to userspace
         device.reboot();
-        // calling this last because we want to inject device side build info after device boots up
-        if (mBootStrapBuildInfo) {
-            super.setUp(device, buildInfo);
-        }
+    }
+
+    /** Performs the sideload of OTA package */
+    @Override
+    protected void performDeviceUpdate(File deviceUpdateImage, ITestDevice device)
+            throws DeviceNotAvailableException, TargetSetupError {
+        String filePath = getDeviceUpdateImage().getAbsolutePath();
+        CLog.i("Sideloading package from %s onto %s", filePath, device.getSerialNumber());
+        device.executeAdbCommand(mSideloadTimeout, SIDELOAD_CMD, filePath);
     }
 }
