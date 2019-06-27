@@ -163,17 +163,16 @@ public class SuiteModuleLoader {
      *
      * @param test The {@link IRemoteTest} that is being considered.
      * @param abi The Abi we are currently working on.
-     * @param name The name of the module.
+     * @param moduleId The id of the module (usually abi + module name).
      * @param includeFilters The formatted and parsed include filters.
      * @param excludeFilters The formatted and parsed exclude filters.
      */
     public void addFiltersToTest(
             IRemoteTest test,
             IAbi abi,
-            String name,
+            String moduleId,
             Map<String, List<SuiteTestFilter>> includeFilters,
             Map<String, List<SuiteTestFilter>> excludeFilters) {
-        String moduleId = AbiUtils.createId(abi.getName(), name);
         if (!(test instanceof ITestFilterReceiver)) {
             CLog.e("Test in module %s does not implement ITestFilterReceiver.", moduleId);
             return;
@@ -181,10 +180,10 @@ public class SuiteModuleLoader {
         List<SuiteTestFilter> mdIncludes = getFilterList(includeFilters, moduleId);
         List<SuiteTestFilter> mdExcludes = getFilterList(excludeFilters, moduleId);
         if (!mdIncludes.isEmpty()) {
-            addTestIncludes((ITestFilterReceiver) test, mdIncludes, name);
+            addTestIncludes((ITestFilterReceiver) test, mdIncludes, moduleId);
         }
         if (!mdExcludes.isEmpty()) {
-            addTestExcludes((ITestFilterReceiver) test, mdExcludes, name);
+            addTestExcludes((ITestFilterReceiver) test, mdExcludes, moduleId);
         }
     }
 
@@ -416,9 +415,11 @@ public class SuiteModuleLoader {
     }
 
     private void addTestIncludes(
-            ITestFilterReceiver test, List<SuiteTestFilter> includes, String name) {
+            ITestFilterReceiver test, List<SuiteTestFilter> includes, String moduleId) {
         if (test instanceof ITestFileFilterReceiver) {
-            File includeFile = createFilterFile(name, ".include", includes);
+            // module id can contain spaces, avoid them for file names.
+            String escapedFileName = moduleId.replaceAll(" ", "_");
+            File includeFile = createFilterFile(escapedFileName, ".include", includes);
             ((ITestFileFilterReceiver) test).setIncludeTestFile(includeFile);
         } else {
             // add test includes one at a time
@@ -577,7 +578,7 @@ public class SuiteModuleLoader {
      *
      * @param name The base name of the module
      * @param id The base id name of the module.
-     * @param fullId The full id of the module.
+     * @param fullId The full id of the module (usually abi + module name + parameters)
      * @param config The module configuration.
      * @param abi The abi of the module.
      * @throws ConfigurationException
@@ -611,7 +612,7 @@ public class SuiteModuleLoader {
             if (mTestOptions.containsKey(className)) {
                 config.injectOptionValues(mTestOptions.get(className));
             }
-            addFiltersToTest(test, abi, name, mIncludeFilters, mExcludeFilters);
+            addFiltersToTest(test, abi, fullId, mIncludeFilters, mExcludeFilters);
             if (test instanceof IAbiReceiver) {
                 ((IAbiReceiver) test).setAbi(abi);
             }
