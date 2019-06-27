@@ -36,6 +36,7 @@ import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.retry.MergeStrategy;
 import com.android.tradefed.testtype.retry.RetryStrategy;
+import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
@@ -414,7 +415,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             CLog.e("Module '%s' - test '%s' threw exception:", mModuleId, mTest.getClass());
             CLog.e(re);
             CLog.e("Proceeding to the next test.");
-            runListener.testRunFailed(re.getMessage());
+            runListener.testRunFailed(StreamUtil.getStackTrace(re));
         } catch (DeviceUnresponsiveException due) {
             // being able to catch a DeviceUnresponsiveException here implies that recovery was
             // successful, and test execution should proceed to next module.
