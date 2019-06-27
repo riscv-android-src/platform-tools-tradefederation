@@ -22,7 +22,10 @@ import com.android.asuite.clearcut.Clientanalytics.LogRequest;
 import com.android.asuite.clearcut.Clientanalytics.LogResponse;
 import com.android.asuite.clearcut.Common.UserType;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.net.HttpHelper;
 
@@ -34,7 +37,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -54,6 +59,9 @@ public class ClearcutClient {
     private static final long SCHEDULER_INITIAL_DELAY_SECONDS = 2;
     private static final long SCHEDULER_PERDIOC_SECONDS = 30;
 
+    private static final String GOOGLE_EMAIL = "@google.com";
+    private static final String GOOGLE_HOSTNAME = ".google.com";
+
     private File mCachedUuidFile = new File(System.getProperty("user.home"), ".tradefed");
     private String mRunId;
 
@@ -68,11 +76,21 @@ public class ClearcutClient {
     // Whether the clearcut client should be inop
     private boolean mDisabled = false;
 
-    public ClearcutClient(String url, boolean isExternalUser) {
-        if (isExternalUser) {
-            mLogSource = EXTERNAL_LOG_SOURCE;
-        } else {
+    public ClearcutClient() {
+        this(null);
+    }
+
+    /**
+     * Create Client with customized posting URL and forcing whether it's internal or external user.
+     */
+    @VisibleForTesting
+    protected ClearcutClient(String url) {
+        if (isGoogleUser()) {
             mLogSource = INTERNAL_LOG_SOURCE;
+            mUserType = UserType.GOOGLE;
+        } else {
+            mLogSource = EXTERNAL_LOG_SOURCE;
+            mUserType = UserType.EXTERNAL;
         }
         if (url == null) {
             mUrl = CLEARCUT_PROD_URL;
@@ -80,11 +98,6 @@ public class ClearcutClient {
             mUrl = url;
         }
         mRunId = UUID.randomUUID().toString();
-        if (isExternalUser) {
-            mUserType = UserType.EXTERNAL;
-        } else {
-            mUserType = UserType.GOOGLE;
-        }
         mExternalEventQueue = new ArrayList<>();
 
         mDisabled = isClearcutDisabled();
@@ -119,8 +132,7 @@ public class ClearcutClient {
         LogEvent.Builder logEvent = LogEvent.newBuilder();
         logEvent.setEventTimeMs(System.currentTimeMillis());
         logEvent.setSourceExtension(
-                ClearcutEventHelper.createStartEvent(getGroupingKey(), mRunId, mUserType)
-                        .toByteString());
+                ClearcutEventHelper.createStartEvent(getGroupingKey(), mRunId, mUserType));
         request.addLogEvent(logEvent);
         queueEvent(request.build());
     }
@@ -181,6 +193,28 @@ public class ClearcutClient {
     @VisibleForTesting
     boolean isClearcutDisabled() {
         return "1".equals(System.getenv(DISABLE_CLEARCUT_KEY));
+    }
+
+    /** Returns True if the user is a Googler, False otherwise. */
+    @VisibleForTesting
+    boolean isGoogleUser() {
+        CommandResult gitRes =
+                RunUtil.getDefault().runTimedCmd(60000L, "git", "config", "--get", "user.email");
+        if (CommandStatus.SUCCESS.equals(gitRes.getStatus())) {
+            String stdout = gitRes.getStdout();
+            if (stdout != null && stdout.trim().endsWith(GOOGLE_EMAIL)) {
+                return true;
+            }
+        }
+        try {
+            String hostname = InetAddress.getLocalHost().getHostName();
+            if (hostname.contains(GOOGLE_HOSTNAME)) {
+                return true;
+            }
+        } catch (UnknownHostException e) {
+            // Ignore
+        }
+        return false;
     }
 
     private LogRequest.Builder createBaseLogRequest() {

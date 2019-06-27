@@ -35,7 +35,13 @@ public class ClearcutClientTest {
 
     @Before
     public void setUp() {
-        mClient = new ClearcutClient("url", true);
+        mClient =
+                new ClearcutClient("url") {
+                    @Override
+                    boolean isGoogleUser() {
+                        return false;
+                    }
+                };
     }
 
     @After
@@ -72,10 +78,15 @@ public class ClearcutClientTest {
     @Test
     public void testDisableClient() {
         ClearcutClient c =
-                new ClearcutClient("url", true) {
+                new ClearcutClient("url") {
                     @Override
                     boolean isClearcutDisabled() {
                         return true;
+                    }
+
+                    @Override
+                    boolean isGoogleUser() {
+                        return false;
                     }
                 };
         try {
