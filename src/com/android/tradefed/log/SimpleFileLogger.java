@@ -36,7 +36,7 @@ public class SimpleFileLogger extends BaseStreamLogger<FileOutputStream> {
     @Override
     public void init() throws IOException {
         mFile.getParentFile().mkdirs();
-        mOutputStream = new FileOutputStream(mFile);
+        mOutputStream = new FileOutputStream(mFile, true);
     }
 
     @Override
@@ -48,7 +48,7 @@ public class SimpleFileLogger extends BaseStreamLogger<FileOutputStream> {
     }
 
     @Override
-    public ILeveledLogOutput clone() {
+    public SimpleFileLogger clone() {
         SimpleFileLogger logger = new SimpleFileLogger();
         OptionCopier.copyOptionsNoThrow(this, logger);
         return logger;
