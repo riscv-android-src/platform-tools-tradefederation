@@ -83,6 +83,8 @@ class CLITranslatorUnittests(unittest.TestCase):
         # Test mapping related args
         self.args.test_mapping = False
         self.args.include_subdirs = False
+        # Cache finder related args
+        self.args.clear_cache = False
         self.ctr.mod_info = mock.Mock
         self.ctr.mod_info.name_to_module_info = {}
 
