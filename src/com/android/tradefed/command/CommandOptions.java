@@ -225,6 +225,13 @@ public class CommandOptions implements ICommandOptions {
     )
     private RetryStrategy mRetryStrategy = RetryStrategy.NO_RETRY;
 
+    @Option(
+        name = "auto-retry",
+        description =
+                "Whether or not to enable the new auto-retry. This is a feature flag for testing."
+    )
+    private boolean mEnableAutoRetry = false;
+
     /**
      * Set the help mode for the config.
      * <p/>
@@ -583,5 +590,11 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public RetryStrategy getRetryStrategy() {
         return mRetryStrategy;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean isAutoRetryEnabled() {
+        return mEnableAutoRetry;
     }
 }
