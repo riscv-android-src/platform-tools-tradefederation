@@ -101,6 +101,9 @@ class AtestArgParser(argparse.ArgumentParser):
         # Option for verifying dry-run command mapping result.
         self.add_argument('-y', '--verify-cmd-mapping', action='store_true',
                           help='Verify the test command of input tests.')
+        # Option for clearing cache of input test reference .
+        self.add_argument('-c', '--clear-cache', action='store_true',
+                          help='Wipe out the test_infos cache of the test.')
         # This arg actually doesn't consume anything, it's primarily used for the
         # help description and creating custom_args in the NameSpace object.
         self.add_argument('--', dest='custom_args', nargs='*',

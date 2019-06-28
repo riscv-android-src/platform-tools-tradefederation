@@ -126,6 +126,14 @@ class CLITranslator(object):
             test_reference=test,
             test_finders=test_finders,
             test_info=test_info_str)
+        # Cache test_infos by default except running with TEST_MAPPING which may
+        # include customized flags and they are likely to mess up other
+        # non-test_mapping tests.
+        if test_infos and not tm_test_detail:
+            atest_utils.update_test_info_cache(test, test_infos)
+            print('Test info has been cached for speeding up the next run, if '
+                  'test info need to be updated, please add -c to clean the '
+                  'old cache.')
         return test_infos
 
     def _fuzzy_search_and_msg(self, test, find_test_err_msg):
