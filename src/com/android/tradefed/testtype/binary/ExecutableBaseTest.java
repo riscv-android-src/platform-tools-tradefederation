@@ -27,8 +27,10 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
+import com.android.tradefed.util.StreamUtil;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -77,6 +79,8 @@ public abstract class ExecutableBaseTest
                         // Do not actually run the test if we are dry running it.
                         runBinary(path, listener, description);
                     }
+                } catch (IOException e) {
+                    listener.testFailed(description, StreamUtil.getStackTrace(e));
                 } finally {
                     listener.testEnded(description, new HashMap<String, Metric>());
                     listener.testRunEnded(
@@ -104,7 +108,7 @@ public abstract class ExecutableBaseTest
      */
     public abstract void runBinary(
             String binaryPath, ITestInvocationListener listener, TestDescription description)
-            throws DeviceNotAvailableException;
+            throws DeviceNotAvailableException, IOException;
 
     /** {@inheritDoc} */
     @Override
