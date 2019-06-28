@@ -16,6 +16,8 @@
 package com.android.tradefed.build;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.List;
 
 /**
  * Interface for downloading a remote file.
@@ -56,5 +58,27 @@ public interface IFileDownloader {
     public default boolean isFresh(File localFile, String remoteFilePath)
             throws BuildRetrievalError {
         return true;
+    }
+
+    /**
+     * Download the files matching given filters in a remote zip file.
+     *
+     * <p>A file inside the remote zip file is only downloaded to its path matches any of the
+     * include filters but not the exclude filters.
+     *
+     * @param destDir the file to place the downloaded contents into.
+     * @param remoteFilePath the remote path to the file to download, relative to an implementation
+     *     specific root.
+     * @param includeFilters a list of filters to download matching files.
+     * @param excludeFilters a list of filters to skip downloading matching files.
+     * @throws BuildRetrievalError if files could not be downloaded.
+     */
+    public default void downloadPartialFiles(
+            File destDir,
+            String remoteFilePath,
+            List<String> includeFilters,
+            List<String> excludeFilters)
+            throws BuildRetrievalError, IOException {
+        throw new UnsupportedOperationException();
     }
 }
