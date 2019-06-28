@@ -29,10 +29,9 @@ public class FileProtoResultReporter extends ProtoResultReporter {
 
     @Option(
         name = "proto-output-file",
-        description = "File where the proto output will be saved",
-        mandatory = true
+        description = "File where the proto output will be saved. If unset, reporter will be inop."
     )
-    private File mOutputFile;
+    private File mOutputFile = null;
 
     @Option(
         name = "periodic-proto-writing",
@@ -81,12 +80,15 @@ public class FileProtoResultReporter extends ProtoResultReporter {
     }
 
     private void writeProto(TestRecord record) {
+        if (mOutputFile == null) {
+            return;
+        }
         File outputFile = mOutputFile;
         if (mPeriodicWriting) {
             outputFile = new File(mOutputFile.getAbsolutePath() + mIndex);
         }
-        try {
-            record.writeDelimitedTo(new FileOutputStream(outputFile));
+        try (FileOutputStream output = new FileOutputStream(outputFile)) {
+            record.writeDelimitedTo(output);
             if (mPeriodicWriting) {
                 nextOutputFile();
             }
