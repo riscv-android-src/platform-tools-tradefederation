@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
  * a device image file from an external source (as opposed to a build service). The actual update
  * mechanism is delegated to implementor of subclasses.
  */
-public abstract class AbstractExternalBuildTargetPreparer extends DeviceBuildInfoBootStrapper {
+public abstract class DeviceUpdateTargetPreparer extends DeviceBuildInfoBootStrapper {
 
     @Option(
         name = "device-boot-time",
@@ -50,12 +50,6 @@ public abstract class AbstractExternalBuildTargetPreparer extends DeviceBuildInf
                         + "bootstrapped based on device attributes after flashing"
     )
     private boolean mBootStrapBuildInfo = true;
-
-    @Option(
-        name = "enable-adb-root",
-        description = "whether adb root should be enabled after device image update"
-    )
-    private boolean mEnableAdbRoot = true;
 
     /** {@inheritDoc} */
     @Override
@@ -94,7 +88,7 @@ public abstract class AbstractExternalBuildTargetPreparer extends DeviceBuildInf
         device.waitForDeviceOnline();
         // device may lose date setting if wiped, update with host side date in case anything on
         // device side malfunction with an invalid date
-        if (mEnableAdbRoot) {
+        if (device.getOptions().isEnableAdbRoot()) {
             boolean rootEnabled = device.enableAdbRoot();
             if (rootEnabled) {
                 device.setDate(null);
