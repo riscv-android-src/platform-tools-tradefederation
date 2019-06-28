@@ -24,8 +24,11 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
@@ -36,6 +39,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +53,8 @@ import java.util.List;
 public class ExecutableHostTest extends ExecutableBaseTest implements IDeviceTest, IBuildReceiver {
 
     private static final String ANDROID_SERIAL = "ANDROID_SERIAL";
+    private static final String LOG_STDOUT_TAG = "-binary-stdout-";
+    private static final String LOG_STDERR_TAG = "-binary-stderr-";
 
     @Option(
         name = "per-binary-timeout",
@@ -105,7 +111,7 @@ public class ExecutableHostTest extends ExecutableBaseTest implements IDeviceTes
     @Override
     public void runBinary(
             String binaryPath, ITestInvocationListener listener, TestDescription description)
-            throws DeviceNotAvailableException {
+            throws DeviceNotAvailableException, IOException {
         IRunUtil runUtil = createRunUtil();
         // Output everything in stdout
         runUtil.setRedirectStderrToStdout(true);
@@ -117,32 +123,42 @@ public class ExecutableHostTest extends ExecutableBaseTest implements IDeviceTes
         FileUtil.chmodRWXRecursively(new File(binaryPath));
 
         List<String> command = new ArrayList<>();
+        String scriptName = new File(binaryPath).getName();
         if (mExecuteRelativeToScript) {
             String parentDir = new File(binaryPath).getParent();
-            String scriptName = new File(binaryPath).getName();
             command.add("bash");
             command.add("-c");
             command.add(String.format("pushd %s; ./%s;", parentDir, scriptName));
         } else {
             command.add(binaryPath);
         }
-        CommandResult res =
-                runUtil.runTimedCmd(mTimeoutPerBinaryMs, command.toArray(new String[0]));
-        if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
-            // Everything should be outputted in stdout with our redirect above.
-            String errorMessage = res.getStdout();
-            if (CommandStatus.TIMED_OUT.equals(res.getStatus())) {
-                errorMessage += "\nTimeout.";
+        File stdout = FileUtil.createTempFile(scriptName + LOG_STDOUT_TAG, ".txt");
+        File stderr = FileUtil.createTempFile(scriptName + LOG_STDERR_TAG, ".txt");
+
+        try (FileOutputStream stdoutStream = new FileOutputStream(stdout);
+                FileOutputStream stderrStream = new FileOutputStream(stderr); ) {
+            CommandResult res =
+                    runUtil.runTimedCmd(
+                            mTimeoutPerBinaryMs,
+                            stdoutStream,
+                            stderrStream,
+                            command.toArray(new String[0]));
+            if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
+                // Everything should be outputted in stdout with our redirect above.
+                String errorMessage = FileUtil.readStringFromFile(stdout);
+                if (CommandStatus.TIMED_OUT.equals(res.getStatus())) {
+                    errorMessage += "\nTimeout.";
+                }
+                if (res.getExitCode() != null) {
+                    errorMessage += String.format("\nExit Code: %s", res.getExitCode());
+                }
+                listener.testFailed(description, errorMessage);
             }
-            if (res.getExitCode() != null) {
-                errorMessage += String.format("\nExit Code: %s", res.getExitCode());
-            }
-            listener.testFailed(description, errorMessage);
-        } else {
-            // TODO: Refactor to use file logs
-            CLog.d("stdout: %s", res.getStdout());
-            CLog.d("stderr: %s", res.getStderr());
+        } finally {
+            logFile(stdout, listener);
+            logFile(stderr, listener);
         }
+
         if (!(mDevice.getIDevice() instanceof StubDevice)) {
             // Ensure that the binary did not leave the device offline.
             CLog.d("Checking whether device is still online after %s", binaryPath);
@@ -174,5 +190,11 @@ public class ExecutableHostTest extends ExecutableBaseTest implements IDeviceTes
     @VisibleForTesting
     IRunUtil createRunUtil() {
         return new RunUtil();
+    }
+
+    private void logFile(File logFile, ITestLogger logger) {
+        try (FileInputStreamSource source = new FileInputStreamSource(logFile, true)) {
+            logger.testLog(logFile.getName(), LogDataType.TEXT, source);
+        }
     }
 }
