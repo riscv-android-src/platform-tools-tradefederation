@@ -344,15 +344,11 @@ public class TestInvocation implements ITestInvocation {
                     invocationPath.reportLogs(device, listener, Stage.TEARDOWN);
                 }
                 if (mStopRequested) {
-                    CLog.e(
-                            "====================================================================="
-                                    + "====");
-                    CLog.e(
+                    String message =
                             "Invocation was interrupted due to TradeFed stop, results will be "
-                                    + "affected.");
-                    CLog.e(
-                            "====================================================================="
-                                    + "====");
+                                    + "affected.";
+                    listener.invocationFailed(new RuntimeException(message));
+                    PrettyPrintDelimiter.printStageDelimiter(message);
                 }
                 reportHostLog(listener, config);
 
