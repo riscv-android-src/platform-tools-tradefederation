@@ -779,10 +779,8 @@ public class ITestSuiteTest {
         mMockListener.testRunStarted(
                 EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         EasyMock.expectLastCall().times(1);
-        mMockListener.testRunFailed(
-                "runtime"
-                        + TestRunResult.ERROR_DIVIDER
-                        + "Module test only ran 0 out of 1 expected tests.");
+        Capture<String> captured = new Capture<>();
+        mMockListener.testRunFailed(EasyMock.capture(captured));
         EasyMock.expect(
                         mMockDevice.logBugreport(
                                 EasyMock.eq("module-test-failure-SERIAL-bugreport"),
@@ -795,6 +793,12 @@ public class ITestSuiteTest {
         replayMocks();
         mTestSuite.run(mMockListener);
         verifyMocks();
+        String exception = captured.getValue();
+        assertTrue(exception.contains("runtime"));
+        assertTrue(
+                exception.contains(
+                        TestRunResult.ERROR_DIVIDER
+                                + "Module test only ran 0 out of 1 expected tests."));
     }
 
     /**

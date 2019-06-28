@@ -902,7 +902,8 @@ public class ModuleDefinitionTest {
         // Only one module
         assertEquals(1, mModule.getTestsResults().size());
         assertEquals(2, mModule.getTestsResults().get(0).getNumCompleteTests());
-        assertEquals("assert error", mModule.getTestsResults().get(0).getRunFailureMessage());
+        assertTrue(
+                mModule.getTestsResults().get(0).getRunFailureMessage().contains("assert error"));
         verifyMocks();
     }
 
@@ -1394,7 +1395,7 @@ public class ModuleDefinitionTest {
 
         mMockListener.testRunStarted(
                 EasyMock.eq("fakeName"), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed("early failure!");
+        mMockListener.testRunFailed(EasyMock.contains("early failure!"));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
