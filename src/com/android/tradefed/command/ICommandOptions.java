@@ -212,4 +212,7 @@ public interface ICommandOptions {
 
     /** The {@link RetryStrategy} used during auto-retry. */
     public RetryStrategy getRetryStrategy();
+
+    /** Whether or not to enable auto-retry. */
+    public boolean isAutoRetryEnabled();
 }
