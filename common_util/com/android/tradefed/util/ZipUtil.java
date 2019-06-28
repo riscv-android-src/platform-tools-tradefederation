@@ -16,6 +16,9 @@
 package com.android.tradefed.util;
 
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.zip.CentralDirectoryInfo;
+import com.android.tradefed.util.zip.EndCentralDirectoryInfo;
+import com.android.tradefed.util.zip.LocalFileHeader;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -25,10 +28,14 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.zip.DataFormatException;
 import java.util.zip.GZIPOutputStream;
+import java.util.zip.Inflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
@@ -39,9 +46,19 @@ import java.util.zip.ZipOutputStream;
  */
 public class ZipUtil {
 
+    private static final int COMPRESSION_METHOD_STORED = 0;
+    private static final int COMPRESSION_METHOD_DEFLATE = 8;
     private static final String DEFAULT_DIRNAME = "dir";
     private static final String DEFAULT_FILENAME = "files";
     private static final String ZIP_EXTENSION = ".zip";
+    private static final String PARTIAL_ZIP_DATA = "compressed_data";
+
+    private static final boolean IS_UNIX;
+
+    static {
+        String OS = System.getProperty("os.name").toLowerCase();
+        IS_UNIX = (OS.contains("nix") || OS.contains("nux") || OS.contains("aix"));
+    }
 
     /**
      * Utility method to verify that a zip file is not corrupt.
@@ -345,6 +362,214 @@ public class ZipUtil {
             // clean tmp file since we couldn't extract.
             FileUtil.recursiveDelete(localRootDir);
             throw e;
+        }
+    }
+
+    /**
+     * Get a list of {link CentralDirectoryInfo} for files in a zip file.
+     *
+     * @param partialZipFile a {@link File} object of the partial zip file that contains central
+     *     directory entries.
+     * @param endCentralDirInfo a {@link EndCentralDirectoryInfo} object of the zip file.
+     * @return A list of {@link CentralDirectoryInfo} of the zip file
+     * @throws IOException
+     */
+    public static List<CentralDirectoryInfo> getZipCentralDirectoryInfos(
+            File partialZipFile, EndCentralDirectoryInfo endCentralDirInfo) throws IOException {
+        return getZipCentralDirectoryInfos(partialZipFile, endCentralDirInfo, 0);
+    }
+
+    /**
+     * Get a list of {link CentralDirectoryInfo} for files in a zip file.
+     *
+     * @param partialZipFile a {@link File} object of the partial zip file that contains central
+     *     directory entries.
+     * @param endCentralDirInfo a {@link EndCentralDirectoryInfo} object of the zip file.
+     * @param offset the offset in the partial zip file where the content of central directory
+     *     entries starts.
+     * @return A list of {@link CentralDirectoryInfo} of the zip file
+     * @throws IOException
+     */
+    public static List<CentralDirectoryInfo> getZipCentralDirectoryInfos(
+            File partialZipFile, EndCentralDirectoryInfo endCentralDirInfo, long offset)
+            throws IOException {
+        List<CentralDirectoryInfo> infos = new ArrayList<>();
+        byte[] data;
+        try (FileInputStream stream = new FileInputStream(partialZipFile)) {
+            // Read in the entire central directory block for a zip file till the end. The block
+            // should be small even for a large zip file.
+            long totalSize = stream.getChannel().size();
+            stream.skip(offset);
+            data = new byte[(int) (totalSize - offset)];
+            stream.read(data);
+        }
+        int startOffset = 0;
+        for (int i = 0; i < endCentralDirInfo.getEntryNumber(); i++) {
+            CentralDirectoryInfo info = new CentralDirectoryInfo(data, startOffset);
+            infos.add(info);
+            startOffset += info.getInfoSize();
+        }
+
+        return infos;
+    }
+
+    /**
+     * Apply the file permission configured in the central directory entry.
+     *
+     * @param targetFile the {@link File} to set permission to.
+     * @param zipEntry a {@link CentralDirectoryInfo} object that contains the file permissions.
+     * @throws IOException if fail to access the file.
+     */
+    public static void applyPermission(File targetFile, CentralDirectoryInfo zipEntry)
+            throws IOException {
+        if (!IS_UNIX) {
+            CLog.w("Permission setting is only supported in Unix/Linux system.");
+            return;
+        }
+
+        if (zipEntry.getFilePermission() != 0) {
+            Files.setPosixFilePermissions(
+                    targetFile.toPath(), FileUtil.unixModeToPosix(zipEntry.getFilePermission()));
+        }
+    }
+
+    /**
+     * Extract the requested folder from a partial zip file and apply proper permission.
+     *
+     * @param targetFile the {@link File} to save the extracted file to.
+     * @param zipEntry a {@link CentralDirectoryInfo} object of the file to extract from the partial
+     *     zip file.
+     * @throws IOException
+     */
+    public static void unzipPartialZipFolder(File targetFile, CentralDirectoryInfo zipEntry)
+            throws IOException {
+        unzipPartialZipFile(null, targetFile, zipEntry, null, -1);
+    }
+
+    /**
+     * Extract the requested file from a partial zip file.
+     *
+     * <p>This method assumes all files are on the same disk when compressed. It doesn't support
+     * following features yet:
+     *
+     * <p>Zip file larger than 4GB
+     *
+     * <p>ZIP64(require ZipLocalFileHeader update on compressed size)
+     *
+     * <p>Encrypted zip file
+     *
+     * <p>Symlink
+     *
+     * @param partialZip a {@link File} that's a partial of the zip file.
+     * @param targetFile the {@link File} to save the extracted file to.
+     * @param zipEntry a {@link CentralDirectoryInfo} object of the file to extract from the partial
+     *     zip file.
+     * @param localFileHeader a {@link LocalFileHeader} object of the file to extract from the
+     *     partial zip file.
+     * @param startOffset start offset of the file to extract.
+     * @throws IOException
+     */
+    public static void unzipPartialZipFile(
+            File partialZip,
+            File targetFile,
+            CentralDirectoryInfo zipEntry,
+            LocalFileHeader localFileHeader,
+            long startOffset)
+            throws IOException {
+        try {
+            if (zipEntry.getFileName().endsWith("/")) {
+                // Create a folder.
+                targetFile.mkdir();
+                return;
+            } else if (zipEntry.getCompressedSize() == 0) {
+                // The file is empty, just create an empty file.
+                targetFile.createNewFile();
+                return;
+            }
+
+            File zipFile = targetFile;
+            if (zipEntry.getCompressionMethod() != COMPRESSION_METHOD_STORED)
+                // Create a temp file to store the compressed data, then unzip it.
+                zipFile = FileUtil.createTempFile(PARTIAL_ZIP_DATA, ZIP_EXTENSION);
+            else {
+                // The file is not compressed, stream it directly to the target.
+                zipFile.getParentFile().mkdirs();
+                zipFile.createNewFile();
+            }
+
+            // Save compressed data to zipFile
+            try (FileInputStream stream = new FileInputStream(partialZip)) {
+                FileUtil.writeToFile(
+                        stream,
+                        zipFile,
+                        false,
+                        startOffset + localFileHeader.getHeaderSize(),
+                        zipEntry.getCompressedSize());
+            }
+
+            if (zipEntry.getCompressionMethod() == COMPRESSION_METHOD_STORED) {
+                return;
+            } else if (zipEntry.getCompressionMethod() == COMPRESSION_METHOD_DEFLATE) {
+                boolean success = false;
+                try {
+                    unzipRawZip(zipFile, targetFile, zipEntry);
+                    success = true;
+                } catch (DataFormatException e) {
+                    throw new IOException(e);
+                } finally {
+                    zipFile.delete();
+                    if (!success) {
+                        CLog.e("Failed to unzip %s", zipEntry.getFileName());
+                        targetFile.delete();
+                    }
+                }
+            } else {
+                throw new RuntimeException(
+                        String.format(
+                                "Compression method %d is not supported.",
+                                localFileHeader.getCompressionMethod()));
+            }
+        } finally {
+            if (targetFile.exists()) {
+                applyPermission(targetFile, zipEntry);
+            }
+        }
+    }
+
+    /**
+     * Unzip the raw compressed content without wrapper (local file header).
+     *
+     * @param zipFile the {@link File} that contains the compressed data of the target file.
+     * @param targetFile {@link File} to same the decompressed data to.
+     * @throws DataFormatException if decompression failed due to zip format issue.
+     * @throws IOException if failed to access the compressed data or the decompressed file has
+     *     mismatched CRC.
+     */
+    private static void unzipRawZip(File zipFile, File targetFile, CentralDirectoryInfo zipEntry)
+            throws IOException, DataFormatException {
+        Inflater decompresser = new Inflater(true);
+
+        targetFile.getParentFile().mkdirs();
+        targetFile.createNewFile();
+
+        try (FileInputStream inputStream = new FileInputStream(zipFile);
+                FileOutputStream outputStream = new FileOutputStream(targetFile)) {
+            byte[] data = new byte[32768];
+            byte[] buffer = new byte[65536];
+            while (inputStream.read(data) > 0) {
+                decompresser.setInput(data);
+                while (!decompresser.finished() && !decompresser.needsInput()) {
+                    int size = decompresser.inflate(buffer);
+                    outputStream.write(buffer, 0, size);
+                }
+            }
+        } finally {
+            decompresser.end();
+        }
+
+        // Validate CRC
+        if (FileUtil.calculateCrc32(targetFile) != zipEntry.getCrc()) {
+            throw new IOException(String.format("Failed to match CRC for file %s", targetFile));
         }
     }
 }
