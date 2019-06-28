@@ -53,7 +53,7 @@ import java.io.IOException;
  * This target preparer will unpack the device image zip file and execute the enclosed <code>flash-
  * all.sh</code> under the assumptions outline in requirements above.
  */
-public class DeviceImageZipFlashingTargetPreparer extends AbstractExternalBuildTargetPreparer {
+public class DeviceImageZipFlashingTargetPreparer extends DeviceUpdateTargetPreparer {
 
     private static final String ANDROID_SERIAL_ENV = "ANDROID_SERIAL";
 
