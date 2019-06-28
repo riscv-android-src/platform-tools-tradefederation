@@ -616,12 +616,29 @@ public class FileUtil {
      */
     public static void writeToFile(
             InputStream input, File destFile, boolean append) throws IOException {
+        // Set size to a negative value to write all content starting at the given offset.
+        writeToFile(input, destFile, append, 0, -1);
+    }
+
+    /**
+     * A helper method for writing stream data to file
+     *
+     * @param input the unbuffered input stream
+     * @param destFile the destination file to write or append to
+     * @param append append to end of file if true, overwrite otherwise
+     * @param startOffset the start offset of the input stream to retrieve data
+     * @param size number of bytes to retrieve from the input stream, set it to a negative value to
+     *     retrieve all content starting at the given offset.
+     */
+    public static void writeToFile(
+            InputStream input, File destFile, boolean append, long startOffset, long size)
+            throws IOException {
         InputStream origStream = null;
         OutputStream destStream = null;
         try {
             origStream = new BufferedInputStream(input);
             destStream = new BufferedOutputStream(new FileOutputStream(destFile, append));
-            StreamUtil.copyStreams(origStream, destStream);
+            StreamUtil.copyStreams(origStream, destStream, startOffset, size);
         } finally {
             StreamUtil.close(origStream);
             StreamUtil.flushAndCloseStream(destStream);
