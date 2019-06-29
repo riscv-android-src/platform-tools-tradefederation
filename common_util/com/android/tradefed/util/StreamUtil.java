@@ -173,16 +173,51 @@ public class StreamUtil {
      *
      * @param inStream the {@link InputStream}
      * @param outStream the {@link OutputStream}
-     * @param offset The offset of when to start copying the data.
+     * @param offset the offset of when to start copying the data.
      * @throws IOException
      */
     public static void copyStreams(InputStream inStream, OutputStream outStream, int offset)
             throws IOException {
+        // Set size to a negative value to copy all content starting at the given offset.
+        copyStreams(inStream, outStream, offset, -1);
+    }
+
+    /**
+     * Copies contents of origStream to destStream starting at a given offset with a specific size.
+     *
+     * <p>Recommended to provide a buffered stream for input and output
+     *
+     * @param inStream the {@link InputStream}
+     * @param outStream the {@link OutputStream}
+     * @param offset the offset of when to start copying the data.
+     * @param size the number of bytes to copy. A negative value means to copy all content.
+     * @throws IOException
+     */
+    public static void copyStreams(
+            InputStream inStream, OutputStream outStream, long offset, long size)
+            throws IOException {
+        assert offset >= 0 : "offset must be greater or equal to zero.";
+        assert size != 0 : "size cannot be zero.";
         inStream.skip(offset);
         byte[] buf = new byte[BUF_SIZE];
-        int size = -1;
-        while ((size = inStream.read(buf)) != -1) {
-            outStream.write(buf, 0, size);
+        long totalRetrievedSize = 0;
+        int retrievedSize = -1;
+        while ((retrievedSize = inStream.read(buf)) != -1) {
+            if (size > 0 && size < totalRetrievedSize + retrievedSize) {
+                retrievedSize = (int) (size - totalRetrievedSize);
+            }
+            outStream.write(buf, 0, retrievedSize);
+            totalRetrievedSize += retrievedSize;
+            if (size == totalRetrievedSize) {
+                break;
+            }
+        }
+        if (size > 0 && size > totalRetrievedSize) {
+            throw new IOException(
+                    String.format(
+                            "Failed to read %d bytes starting at offset %d, only %d bytes "
+                                    + "retrieved.",
+                            size, offset, totalRetrievedSize));
         }
     }
 

@@ -33,7 +33,7 @@ import java.io.File;
  * TargetSetupError}, and same applies to any OTA sideload error detected.
  */
 @OptionClass(alias = "sideload-ota")
-public class SideloadOtaTargetPreparer extends AbstractExternalBuildTargetPreparer {
+public class SideloadOtaTargetPreparer extends DeviceUpdateTargetPreparer {
 
     private static final String SIDELOAD_CMD = "sideload";
     // the timeout for state transition from sideload finishes to recovery mode, not making this

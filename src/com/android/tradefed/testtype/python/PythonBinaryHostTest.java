@@ -183,6 +183,7 @@ public class PythonBinaryHostTest
             }
         }
         if (updatedAdb != null) {
+            CLog.d("Testing with adb binary at: %s", updatedAdb);
             // If a special adb version is used, pass it to the PATH
             CommandResult pathResult =
                     getRunUtil()

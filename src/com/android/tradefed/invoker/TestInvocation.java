@@ -56,6 +56,7 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
+import com.android.tradefed.testtype.retry.ResultAggregator;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.MultiMap;
@@ -343,15 +344,11 @@ public class TestInvocation implements ITestInvocation {
                     invocationPath.reportLogs(device, listener, Stage.TEARDOWN);
                 }
                 if (mStopRequested) {
-                    CLog.e(
-                            "====================================================================="
-                                    + "====");
-                    CLog.e(
+                    String message =
                             "Invocation was interrupted due to TradeFed stop, results will be "
-                                    + "affected.");
-                    CLog.e(
-                            "====================================================================="
-                                    + "====");
+                                    + "affected.";
+                    listener.invocationFailed(new RuntimeException(message));
+                    PrettyPrintDelimiter.printStageDelimiter(message);
                 }
                 reportHostLog(listener, config);
 
@@ -642,6 +639,17 @@ public class TestInvocation implements ITestInvocation {
         allListeners.addAll(config.getTestInvocationListeners());
         allListeners.addAll(Arrays.asList(extraListeners));
         ITestInvocationListener listener = null;
+
+        // Auto retry feature
+        if (config.getCommandOptions().isAutoRetryEnabled()
+                && config.getCommandOptions().getMaxRetryCount() > 1) {
+            CLog.d("Auto-retry enabled, using the ResultAggregator to handle multiple retries.");
+            ResultAggregator aggregator =
+                    new ResultAggregator(
+                            allListeners, config.getCommandOptions().getRetryStrategy());
+            allListeners = Arrays.asList(aggregator);
+        }
+
         if (!config.getPostProcessors().isEmpty()) {
             ITestInvocationListener forwarder = new ResultAndLogForwarder(allListeners);
             // Post-processors are the first layer around the final reporters.
