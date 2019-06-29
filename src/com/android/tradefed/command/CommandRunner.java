@@ -80,8 +80,7 @@ public class CommandRunner {
         try {
             initGlobalConfig(args);
 
-            ClearcutClient client =
-                    new ClearcutClient(/* override URL */ null, /* isExternal */ true);
+            ClearcutClient client = new ClearcutClient();
             Runtime.getRuntime().addShutdownHook(new TerminateClearcutClient(client));
             client.notifyTradefedStartEvent();
 
