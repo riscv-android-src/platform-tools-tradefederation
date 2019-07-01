@@ -32,6 +32,8 @@ import org.junit.runners.JUnit4;
 
 import java.io.File;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -500,6 +502,37 @@ public class TestMappingTest {
             disabledTests = TestMapping.getDisabledTests(tempDirPath, "othertype");
             assertEquals(0, disabledTests.size());
 
+        } finally {
+            FileUtil.recursiveDelete(tempDir);
+        }
+    }
+
+    /** Test for {@link TestMapping#removeComments()} for removing comments in TEST_MAPPING file. */
+    @Test
+    public void testRemoveComments() throws Exception {
+        String jsonString = getJsonStringByName("test_mapping_with_comments1");
+        String goldenString = getJsonStringByName("test_mapping_golden1");
+        assertEquals(TestMapping.removeComments(jsonString), goldenString);
+    }
+
+    /** Test for {@link TestMapping#removeComments()} for removing comments in TEST_MAPPING file. */
+    @Test
+    public void testRemoveComments2() throws Exception {
+        String jsonString = getJsonStringByName("test_mapping_with_comments2");
+        String goldenString = getJsonStringByName("test_mapping_golden2");
+        assertEquals(TestMapping.removeComments(jsonString), goldenString);
+    }
+
+    private String getJsonStringByName(String fileName) throws Exception  {
+        File tempDir = null;
+        try {
+            tempDir = FileUtil.createTempDir("test_mapping");
+            File srcDir = FileUtil.createTempDir("src", tempDir);
+            String srcFile = File.separator + TEST_DATA_DIR + File.separator + fileName;
+            InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, srcDir, TEST_MAPPING);
+            Path file = Paths.get(srcDir.getAbsolutePath(), TEST_MAPPING);
+            return String.join("\n", Files.readAllLines(file, StandardCharsets.UTF_8));
         } finally {
             FileUtil.recursiveDelete(tempDir);
         }
