@@ -236,7 +236,9 @@ public class ProtoResultParser {
         // Get final context in case it changed.
         Any anyDescription = endInvocationProto.getDescription();
         if (!anyDescription.is(Context.class)) {
-            throw new RuntimeException("Expected Any description of type Context");
+            throw new RuntimeException(
+                    String.format(
+                            "Expected Any description of type Context, was %s", anyDescription));
         }
         try {
             IInvocationContext context =
