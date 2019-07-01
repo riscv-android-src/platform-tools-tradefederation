@@ -85,7 +85,10 @@ public class ClearcutClient {
      */
     @VisibleForTesting
     protected ClearcutClient(String url) {
-        if (isGoogleUser()) {
+        mDisabled = isClearcutDisabled();
+
+        // We still have to set the 'final' variable so go through the assignments before returning
+        if (!mDisabled && isGoogleUser()) {
             mLogSource = INTERNAL_LOG_SOURCE;
             mUserType = UserType.GOOGLE;
         } else {
@@ -100,10 +103,10 @@ public class ClearcutClient {
         mRunId = UUID.randomUUID().toString();
         mExternalEventQueue = new ArrayList<>();
 
-        mDisabled = isClearcutDisabled();
         if (mDisabled) {
             return;
         }
+
         // Print the notice
         System.out.println(NoticeMessageUtil.getNoticeMessage(mUserType));
 
@@ -199,7 +202,8 @@ public class ClearcutClient {
     @VisibleForTesting
     boolean isGoogleUser() {
         CommandResult gitRes =
-                RunUtil.getDefault().runTimedCmd(60000L, "git", "config", "--get", "user.email");
+                RunUtil.getDefault()
+                        .runTimedCmdSilently(60000L, "git", "config", "--get", "user.email");
         if (CommandStatus.SUCCESS.equals(gitRes.getStatus())) {
             String stdout = gitRes.getStdout();
             if (stdout != null && stdout.trim().endsWith(GOOGLE_EMAIL)) {

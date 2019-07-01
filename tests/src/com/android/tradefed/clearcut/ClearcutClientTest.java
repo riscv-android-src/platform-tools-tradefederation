@@ -86,7 +86,7 @@ public class ClearcutClientTest {
 
                     @Override
                     boolean isGoogleUser() {
-                        return false;
+                        throw new RuntimeException("Should not be called if disabled");
                     }
                 };
         try {
