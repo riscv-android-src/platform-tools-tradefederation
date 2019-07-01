@@ -42,6 +42,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -63,6 +65,10 @@ public class TestMapping {
     private static final String DISABLED_PRESUBMIT_TESTS_FILE = "disabled-presubmit-tests";
 
     private Map<String, Set<TestInfo>> mTestCollection = null;
+    // Pattern used to identify comments start with "//" or "#" in TEST_MAPPING.
+    private static final Pattern COMMENTS_REGEX = Pattern.compile(
+            "(?m)[\\s\\t]*(//|#).*|(\".*?\")");
+    private static final Set<String> COMMENTS = new HashSet<>(Arrays.asList("#", "//"));
 
     /**
      * Constructor to create a {@link TestMapping} object from a path to TEST_MAPPING file.
@@ -75,7 +81,8 @@ public class TestMapping {
         String relativePath = testMappingsDir.relativize(path.getParent()).toString();
         String errorMessage = null;
         try {
-            String content = String.join("", Files.readAllLines(path, StandardCharsets.UTF_8));
+            String content = removeComments(
+                    String.join("\n", Files.readAllLines(path, StandardCharsets.UTF_8)));
             if (content != null) {
                 JSONTokener tokener = new JSONTokener(content);
                 JSONObject root = new JSONObject(tokener);
@@ -136,6 +143,26 @@ public class TestMapping {
             CLog.e(errorMessage);
             throw new RuntimeException(errorMessage);
         }
+    }
+
+    /**
+     * Helper to remove comments in a TEST_MAPPING file to valid format. Only "//" and "#" are
+     * regarded as comments.
+     *
+     * @param jsonContent A {@link String} of json which content is from a TEST_MAPPING file.
+     * @return A {@link String} of valid json without comments.
+     */
+    @VisibleForTesting
+    static String removeComments(String jsonContent) {
+        StringBuffer out = new StringBuffer();
+        Matcher matcher = COMMENTS_REGEX.matcher(jsonContent);
+        while (matcher.find()) {
+            if (COMMENTS.contains(matcher.group(1))) {
+                matcher.appendReplacement(out, "");
+            }
+        }
+        matcher.appendTail(out);
+        return out.toString();
     }
 
     /**
