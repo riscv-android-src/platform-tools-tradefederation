@@ -177,9 +177,12 @@ public class PythonBinaryHostTest
         File updatedAdb = mBuildInfo.getFile(AdbStopServerPreparer.ADB_BINARY_KEY);
         if (updatedAdb == null) {
             String adbPath = getAdbPath();
-            updatedAdb = new File(adbPath);
-            if (!updatedAdb.exists()) {
-                updatedAdb = null;
+            // Don't check if it's the adb on the $PATH
+            if (!adbPath.equals("adb")) {
+                updatedAdb = new File(adbPath);
+                if (!updatedAdb.exists()) {
+                    updatedAdb = null;
+                }
             }
         }
         if (updatedAdb != null) {
