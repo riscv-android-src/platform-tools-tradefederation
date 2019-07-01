@@ -64,20 +64,21 @@ def get_user_type():
                                          universal_newlines=True)
         if output and output.strip().endswith(constants.INTERNAL_EMAIL):
             return INTERNAL_USER
-        hostname = socket.getfqdn()
-        if hostname and constants.INTERNAL_HOSTNAME in hostname:
-            return INTERNAL_USER
     except OSError:
         # OSError can be raised when running atest_unittests on a host
         # without git being set up.
-        # This happens before atest._configure_logging is called to set up
-        # logging. Therefore, use print to log the error message, instead of
-        # logging.debug.
-        print('Unable to determine if this is an external run, git or hostname is '
+        print('Unable to determine if this is an external run, git is '
               'not found.')
     except subprocess.CalledProcessError:
         print('Unable to determine if this is an external run, email is not '
               'found in git config.')
+    try:
+        hostname = socket.getfqdn()
+        if hostname and constants.INTERNAL_HOSTNAME in hostname:
+            return INTERNAL_USER
+    except IOError:
+        logging.debug('Unable to determine if this is an external run, '
+                      'hostname is not found.')
     return EXTERNAL_USER
 
 
