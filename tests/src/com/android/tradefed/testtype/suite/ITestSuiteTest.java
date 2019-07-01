@@ -1484,6 +1484,8 @@ public class ITestSuiteTest {
         mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setConfiguration(mStubMainConfiguration);
         mStubMainConfiguration.getCommandOptions().setMaxRetryCount(maxRunLimit);
+        OptionSetter cmdSetter = new OptionSetter(mStubMainConfiguration.getCommandOptions());
+        cmdSetter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
         mContext = new InvocationContext();
         mTestSuite.setInvocationContext(mContext);
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);

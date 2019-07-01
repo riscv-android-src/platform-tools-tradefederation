@@ -34,6 +34,8 @@ import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.retry.BaseRetryDecision;
+import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.testtype.retry.MergeStrategy;
 import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.util.StreamUtil;
@@ -45,7 +47,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -235,72 +236,21 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             return;
         }
 
-        // If the very first attempt failed, then don't proceed.
-        if (RetryStrategy.RERUN_UNTIL_FAILURE.equals(mRetryStrategy)) {
-            Set<TestDescription> lastRun = getFailedTestCases(0);
-            // If we encountered a failure
-            if (!lastRun.isEmpty() || mMainGranularRunListener.hasRunCrashedAtAttempt(0)) {
-                CLog.w("%s failed after the first run. Stopping.", lastRun);
-                return;
-            }
-        }
-
         // Deal with retried attempted
         long startTime = System.currentTimeMillis();
-        Set<TestDescription> previousFailedTests = null;
-        Set<String> originalFilters = new HashSet<>();
-
-        // TODO(b/77548917): Right now we only support ITestFilterReceiver. We should expect to
-        // support ITestFile*Filter*Receiver in the future.
-        if (mTest instanceof ITestFilterReceiver) {
-            ITestFilterReceiver test = (ITestFilterReceiver) mTest;
-            originalFilters = new LinkedHashSet<>(test.getIncludeFilters());
-        } else if (!shouldHandleFailure(mRetryStrategy)) {
-            // TODO: improve this for test run failures, since they rerun the full run we should
-            // be able to rerun even non-ITestFilterReceiver
-            CLog.d("RetryStrategy does not involved moving filters proceeding with retry.");
-        } else {
-            CLog.d(
-                    "%s does not implement ITestFilterReceiver, thus cannot work with "
-                            + "intra-module retry.",
-                    mTest);
-            return;
-        }
+        Set<TestDescription> previousFailedTests = new HashSet<>();
 
         try {
             CLog.d("Starting intra-module retry.");
             for (int attemptNumber = 1; attemptNumber < mMaxRunLimit; attemptNumber++) {
-                CLog.d("Retry attempt number %s", attemptNumber);
-                // Reset the filters to original.
-                if (mTest instanceof ITestFilterReceiver) {
-                    ((ITestFilterReceiver) mTest).clearIncludeFilters();
-                    ((ITestFilterReceiver) mTest).addAllIncludeFilters(originalFilters);
-                }
-                // TODO: sort out the collection of metrics for each strategy
-                if (shouldHandleFailure(mRetryStrategy)) {
-                    boolean shouldContinue = false;
-                    // In case of test run failure and we should retry test runs
-                    if (RetryStrategy.RETRY_ANY_FAILURE.equals(mRetryStrategy)) {
-                        if (mMainGranularRunListener.hasRunCrashedAtAttempt(attemptNumber - 1)) {
-                            CLog.d("Retrying the run failure.");
-                            shouldContinue = true;
-                        }
-                    }
-
-                    if (RetryStrategy.RETRY_ANY_FAILURE.equals(mRetryStrategy)) {
-                        // In case of test case failure, we retry with filters.
-                        previousFailedTests = getFailedTestCases(attemptNumber - 1);
-                        if (previousFailedTests.size() > 0 && !shouldContinue) {
-                            CLog.d("Retrying the test case failure.");
-                            shouldContinue = true;
-                            addRetriedTestsToIncludeFilters(mTest, previousFailedTests);
-                        }
-                    }
-
-                    if (!shouldContinue) {
-                        CLog.d("No test run or test case failures. No need to retry.");
-                        break;
-                    }
+                IRetryDecision retryDecision = new BaseRetryDecision();
+                boolean retry =
+                        retryDecision.shouldRetry(
+                                mRetryStrategy,
+                                mTest,
+                                mMainGranularRunListener.getTestRunForAttempts(attemptNumber - 1));
+                if (!retry) {
+                    return;
                 }
                 // Reboot device at the last intra-module retry if reboot-at-last-retry is set.
                 if (mRebootAtLastRetry && (attemptNumber == (mMaxRunLimit-1))) {
@@ -318,23 +268,11 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                 Set<TestDescription> lastRun = getFailedTestCases(attemptNumber);
                 if (shouldHandleFailure(mRetryStrategy)) {
                     // Evaluate success from what we just ran
-                    if (previousFailedTests != null) {
-                        Set<TestDescription> diff = Sets.difference(previousFailedTests, lastRun);
-                        mSuccessRetried += diff.size();
-                        final int currentAttempt = attemptNumber;
-                        diff.forEach(
-                                (desc) -> mAttemptSuccess.put(desc.toString(), currentAttempt));
-                        previousFailedTests = lastRun;
-                    }
-                }
-
-                if (RetryStrategy.RERUN_UNTIL_FAILURE.equals(mRetryStrategy)) {
-                    // If we encountered a failure do not proceed
-                    if (!lastRun.isEmpty()
-                            || mMainGranularRunListener.hasRunCrashedAtAttempt(attemptNumber)) {
-                        CLog.w("%s failed at iteration %s. Stopping.", lastRun, attemptNumber);
-                        break;
-                    }
+                    Set<TestDescription> diff = Sets.difference(previousFailedTests, lastRun);
+                    mSuccessRetried += diff.size();
+                    final int currentAttempt = attemptNumber;
+                    diff.forEach((desc) -> mAttemptSuccess.put(desc.toString(), currentAttempt));
+                    previousFailedTests = lastRun;
                 }
             }
         } finally {
@@ -369,24 +307,6 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             }
         }
         return failedTestCases;
-    }
-
-    /**
-     * Update the arguments of {@link IRemoteTest} to only run failed tests. This arguments/logic is
-     * implemented differently for each IRemoteTest testtype in the overridden
-     * ITestFilterReceiver.addIncludeFilter method.
-     *
-     * @param test The {@link IRemoteTest} to evaluate as ITestFilterReceiver.
-     * @param testDescriptions The set of failed testDescriptions to retry.
-     */
-    private void addRetriedTestsToIncludeFilters(
-            IRemoteTest test, Set<TestDescription> testDescriptions) {
-        if (test instanceof ITestFilterReceiver) {
-            for (TestDescription testCase : testDescriptions) {
-                String filter = testCase.toString();
-                ((ITestFilterReceiver) test).addIncludeFilter(filter);
-            }
-        }
     }
 
     /** The workflow for each individual {@link IRemoteTest} run. */
