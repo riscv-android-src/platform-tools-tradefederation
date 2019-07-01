@@ -25,13 +25,13 @@ import android.net.wifi.WifiManager;
 import android.os.SystemClock;
 import android.util.Log;
 
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.BitSet;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -194,12 +194,23 @@ public class WifiConnector {
      * @param urlToCheck URL to send a test request to
      * @return <code>true</code> if the test request succeeds. Otherwise <code>false</code>.
      */
-    public boolean checkConnectivity(final String urlToCheck) {
-        final HttpClient httpclient = new DefaultHttpClient();
+    public static boolean checkConnectivity(final String urlToCheck) {
+        URL url = null;
         try {
-            httpclient.execute(new HttpGet(urlToCheck));
+            url = new URL(urlToCheck);
+        } catch (MalformedURLException e) {
+            throw new RuntimeException("Malformed URL", e);
+        }
+        HttpURLConnection urlConnection = null;
+        try {
+            urlConnection = (HttpURLConnection) url.openConnection();
+            urlConnection.connect();
         } catch (final IOException e) {
             return false;
+        } finally {
+            if (urlConnection != null) {
+                urlConnection.disconnect();
+            }
         }
         return true;
     }
