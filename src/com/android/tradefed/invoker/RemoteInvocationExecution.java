@@ -354,40 +354,43 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
         // Monitor the remote invocation to ensure it's completing. Block until timeout or stops
         // running.
-        boolean stillRunning =
-                isStillRunning(
-                        currentInvocationListener,
-                        configFile,
-                        info,
-                        options,
-                        runUtil,
-                        config,
-                        context);
-
-        // Fetch the logs
-        File stdoutFile =
-                RemoteFileUtil.fetchRemoteFile(
-                        info,
-                        options,
-                        runUtil,
-                        PULL_RESULT_TIMEOUT,
-                        mRemoteTradefedDir + STDOUT_FILE);
-        if (stdoutFile != null) {
-            try (InputStreamSource source = new FileInputStreamSource(stdoutFile, true)) {
-                currentInvocationListener.testLog(STDOUT_FILE, LogDataType.TEXT, source);
+        boolean stillRunning = true;
+        try {
+            stillRunning =
+                    isStillRunning(
+                            currentInvocationListener,
+                            configFile,
+                            info,
+                            options,
+                            runUtil,
+                            config,
+                            context);
+        } finally {
+            // Fetch the logs for debugging
+            File stdoutFile =
+                    RemoteFileUtil.fetchRemoteFile(
+                            info,
+                            options,
+                            runUtil,
+                            PULL_RESULT_TIMEOUT,
+                            mRemoteTradefedDir + STDOUT_FILE);
+            if (stdoutFile != null) {
+                try (InputStreamSource source = new FileInputStreamSource(stdoutFile, true)) {
+                    currentInvocationListener.testLog(STDOUT_FILE, LogDataType.TEXT, source);
+                }
             }
-        }
 
-        File stderrFile =
-                RemoteFileUtil.fetchRemoteFile(
-                        info,
-                        options,
-                        runUtil,
-                        PULL_RESULT_TIMEOUT,
-                        mRemoteTradefedDir + STDERR_FILE);
-        if (stderrFile != null) {
-            try (InputStreamSource source = new FileInputStreamSource(stderrFile, true)) {
-                currentInvocationListener.testLog(STDERR_FILE, LogDataType.TEXT, source);
+            File stderrFile =
+                    RemoteFileUtil.fetchRemoteFile(
+                            info,
+                            options,
+                            runUtil,
+                            PULL_RESULT_TIMEOUT,
+                            mRemoteTradefedDir + STDERR_FILE);
+            if (stderrFile != null) {
+                try (InputStreamSource source = new FileInputStreamSource(stderrFile, true)) {
+                    currentInvocationListener.testLog(STDERR_FILE, LogDataType.TEXT, source);
+                }
             }
         }
 
