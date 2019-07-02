@@ -106,8 +106,6 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     public static final String RETRY_SUCCESS_COUNT = "MODULE_RETRY_SUCCESS";
     public static final String RETRY_FAIL_COUNT = "MODULE_RETRY_FAILED";
 
-    private static final String FLAKE_DATE_PREFIX = "FLAKE_DATA:";
-
     private final IInvocationContext mModuleInvocationContext;
     private final IConfiguration mModuleConfiguration;
     private ILogSaver mLogSaver;
@@ -494,8 +492,6 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     mRetryTime += retriableTest.getRetryTime();
                     mSuccessRetried += retriableTest.getRetrySuccess();
                     mFailedRetried += retriableTest.getRetryFailed();
-
-                    addAttemptStatsToBuild(mBuild, retriableTest.getAttemptSuccessStats());
                 }
                 // After the run, if the test failed (even after retry the final result passed) has
                 // failed, capture a bugreport.
@@ -967,12 +963,5 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             return controller.shouldRunModule(mModuleInvocationContext);
         }
         return RunStrategy.RUN;
-    }
-
-    private void addAttemptStatsToBuild(IBuildInfo build, Map<String, Integer> attemptStats) {
-        for (Entry<String, Integer> entry : attemptStats.entrySet()) {
-            String key = String.format("%s%s:%s", FLAKE_DATE_PREFIX, getId(), entry.getKey());
-            build.addBuildAttribute(key, Integer.toString(entry.getValue()));
-        }
     }
 }
