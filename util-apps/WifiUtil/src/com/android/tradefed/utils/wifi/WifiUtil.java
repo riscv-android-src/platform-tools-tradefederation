@@ -20,6 +20,7 @@ import android.app.Instrumentation;
 import android.content.Context;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -28,15 +29,16 @@ import com.android.tradefed.utils.wifi.WifiConnector.WifiException;
 
 /**
  * An instrumentation class to manipulate Wi-Fi services on device.
- * <p/>
- * adb shell am instrument -e method (method name) -e arg1 val1 -e arg2 val2 -e arg3 val3
- * -w com.android.tradefed.utils.wifi/.WifiUtils
+ *
+ * <p>adb shell am instrument -e method (method name) -e arg1 val1 -e arg2 val2 -e arg3 val3 -w
+ * com.android.tradefed.utils.wifi/.WifiUtil
  */
 public class WifiUtil extends Instrumentation {
     // FIXME: document exposed API methods and arguments
     private static final String TAG = "WifiUtil";
 
     private static final String DEFAULT_URL_TO_CHECK = "http://www.google.com";
+    private static final int API_LEVEL_Q_TBD = 29;
 
     private Bundle mArguments;
 
@@ -55,6 +57,18 @@ public class WifiUtil extends Instrumentation {
     public void onCreate(Bundle arguments) {
         super.onCreate(arguments);
         mArguments = arguments;
+        // elevate permission if on Qt or later
+        int apiLevel = Build.VERSION.SDK_INT;
+        if (!"REL".equals(Build.VERSION.CODENAME)) {
+            // add one extra if platform is under development
+            // i.e. trying to predict the next API level number
+            apiLevel++;
+        }
+        // on Qt or higher
+        // FIXEME: change to Build.VERSION_CODES.Q after API level is finalized
+        if (apiLevel >= API_LEVEL_Q_TBD) {
+            getUiAutomation().adoptShellPermissionIdentity();
+        }
         start();
     }
 
