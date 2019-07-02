@@ -285,7 +285,7 @@ class AtestUtilsUnittests(unittest.TestCase):
         """Test method handle_test_runner_cmd without enable do_verification."""
         former_cmd_str = 'Former cmds ='
         write_result_str = 'Save result mapping to test_result'
-        test_result_path = 'test_result'
+        tmp_file = tempfile.NamedTemporaryFile()
         input_cmd = 'atest_args'
         runner_cmds = ['cmd1', 'cmd2']
         capture_output = StringIO()
@@ -296,7 +296,7 @@ class AtestUtilsUnittests(unittest.TestCase):
         atest_utils.handle_test_runner_cmd(input_cmd,
                                            runner_cmds,
                                            do_verification=False,
-                                           result_path=test_result_path)
+                                           result_path=tmp_file.name)
         sys.stdout = sys.__stdout__
         self.assertEqual(capture_output.getvalue().find(former_cmd_str), -1)
         # Previous data is the same as the new input. Should not enter strtobool.
@@ -307,7 +307,7 @@ class AtestUtilsUnittests(unittest.TestCase):
         atest_utils.handle_test_runner_cmd(input_cmd,
                                            runner_cmds,
                                            do_verification=False,
-                                           result_path=test_result_path)
+                                           result_path=tmp_file.name)
         sys.stdout = sys.__stdout__
         self.assertEqual(capture_output.getvalue().find(former_cmd_str), -1)
         self.assertEqual(capture_output.getvalue().find(write_result_str), -1)
@@ -321,14 +321,14 @@ class AtestUtilsUnittests(unittest.TestCase):
         atest_utils.handle_test_runner_cmd(input_cmd,
                                            runner_cmds,
                                            do_verification=False,
-                                           result_path=test_result_path)
+                                           result_path=tmp_file.name)
         sys.stdout = sys.__stdout__
         self.assertEqual(capture_output.getvalue().find(write_result_str), -1)
 
     @mock.patch('json.load')
     def test_verify_test_runner_cmd(self, mock_json_load_data):
         """Test method handle_test_runner_cmd without enable update_result."""
-        test_result_path = 'test_result'
+        tmp_file = tempfile.NamedTemporaryFile()
         input_cmd = 'atest_args'
         runner_cmds = ['cmd1', 'cmd2']
         # Previous data is the same as the new input. Should not raise exception.
@@ -336,7 +336,7 @@ class AtestUtilsUnittests(unittest.TestCase):
         atest_utils.handle_test_runner_cmd(input_cmd,
                                            runner_cmds,
                                            do_verification=True,
-                                           result_path=test_result_path)
+                                           result_path=tmp_file.name)
         # Previous data has different cmds. Should enter strtobool and hit
         # exception.
         prev_cmds = ['cmd1']
@@ -346,7 +346,7 @@ class AtestUtilsUnittests(unittest.TestCase):
                           input_cmd,
                           runner_cmds,
                           do_verification=True,
-                          result_path=test_result_path)
+                          result_path=tmp_file.name)
 
     def test_get_test_info_cache_path(self):
         """Test method get_test_info_cache_path."""
