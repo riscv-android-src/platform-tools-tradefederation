@@ -476,6 +476,23 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     }
 
     /**
+     * Gets all the results for a given attempt.
+     *
+     * @param attempt The attempt we want results for.
+     * @return All {@link TestRunResult} for a given attempt.
+     */
+    public List<TestRunResult> getTestRunForAttempts(int attempt) {
+        List<TestRunResult> allResultForAttempts = new ArrayList<>();
+        for (Entry<String, List<TestRunResult>> runInfo : mTestRunResultMap.entrySet()) {
+            if (attempt < runInfo.getValue().size()) {
+                TestRunResult attemptRes = runInfo.getValue().get(attempt);
+                allResultForAttempts.add(attemptRes);
+            }
+        }
+        return allResultForAttempts;
+    }
+
+    /**
      * Returns whether a given test run name has any results.
      *
      * @param testRunName The name given by {{@link #testRunStarted(String, int)}.
