@@ -33,6 +33,7 @@ import com.android.tradefed.util.RunUtil;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -247,7 +248,17 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                     device.getDeviceDescriptor());
         }
         mBundletoolUtil = new BundletoolUtil(bundletoolJar);
-        String deviceSpecFilePath = getBundletoolUtil().generateDeviceSpecFile(device);
+        String deviceSpecFilePath = "";
+        try {
+            deviceSpecFilePath = getBundletoolUtil().generateDeviceSpecFile(device);
+        } catch (IOException e) {
+            throw new TargetSetupError(
+                    String.format(
+                            " Failed to generate device spec file on %s.",
+                            device.getSerialNumber()),
+                    e,
+                    device.getDeviceDescriptor());
+        }
 
         if (getTestsFileName().size() == 1) {
             // Installs single .apks module.
