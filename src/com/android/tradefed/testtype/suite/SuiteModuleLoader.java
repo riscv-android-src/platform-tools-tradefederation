@@ -521,7 +521,7 @@ public class SuiteModuleLoader {
             String optionValueString = remainder.substring(optionNameSep + 1);
             // TODO: See if QuotationTokenizer can be improved for multi-character delimiter.
             // or change the delimiter to a single char.
-            String[] tokens = optionValueString.split(":=");
+            String[] tokens = optionValueString.split(":=", 2);
             OptionDef option = null;
             if (tokens.length == 1) {
                 option = new OptionDef(optionName, tokens[0], moduleName);
