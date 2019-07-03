@@ -20,6 +20,8 @@ import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.ILogSaver;
+import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.retry.ISupportGranularResults;
@@ -38,17 +40,17 @@ import java.util.HashMap;
 public class ResultAggregatorTest {
 
     private ResultAggregator mAggregator;
-    private ITestInvocationListener mAggListener;
+    private ILogSaverListener mAggListener;
     private ITestDetailedReceiver mDetailedListener;
     private IInvocationContext mInvocationContext;
     private IInvocationContext mModuleContext;
 
     private interface ITestDetailedReceiver
-            extends ISupportGranularResults, ITestInvocationListener {}
+            extends ISupportGranularResults, ITestInvocationListener, ILogSaverListener {}
 
     @Before
     public void setUp() {
-        mAggListener = EasyMock.createMock(ITestInvocationListener.class);
+        mAggListener = EasyMock.createMock(ILogSaverListener.class);
         mDetailedListener = EasyMock.createMock(ITestDetailedReceiver.class);
         mInvocationContext = new InvocationContext();
         mInvocationContext.addDeviceBuildInfo(
@@ -60,12 +62,15 @@ public class ResultAggregatorTest {
     public void testForwarding() {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
+        ILogSaver logger = EasyMock.createMock(ILogSaver.class);
 
         EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
 
         // Invocation level
+        mAggListener.setLogSaver(logger);
         mAggListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
+        mDetailedListener.setLogSaver(logger);
         mDetailedListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
@@ -121,6 +126,7 @@ public class ResultAggregatorTest {
                 new ResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
+        mAggregator.setLogSaver(logger);
         mAggregator.invocationStarted(mInvocationContext);
         mAggregator.testModuleStarted(mModuleContext);
         // Attempt 1
