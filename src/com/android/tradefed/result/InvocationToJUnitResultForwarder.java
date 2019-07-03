@@ -18,6 +18,7 @@ package com.android.tradefed.result;
 import com.android.ddmlib.Log;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.util.TimeUtil;
 
 import junit.framework.AssertionFailedError;
 import junit.framework.Test;
@@ -70,9 +71,9 @@ import java.util.HashMap;
     /** {@inheritDoc} */
     @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
-       // TODO: no run ended method on TestListener - would be good to propagate the elaspedTime
-       // info up
-       Log.i(LOG_TAG, String.format("run ended %d ms", elapsedTime));
+        // TODO: no run ended method on TestListener - would be good to propagate the elapsedTime
+        // info up
+        Log.i(LOG_TAG, String.format("Run ended in %s", TimeUtil.formatElapsedTime(elapsedTime)));
     }
 
     /**
@@ -90,7 +91,7 @@ import java.util.HashMap;
     @Override
     public void testRunStarted(String runName, int testCount) {
         // TODO: no run started method on TestResult - would be good to propagate this up
-        Log.i(LOG_TAG, String.format("run %s started: %d tests", runName, testCount));
+        Log.i(LOG_TAG, String.format("Running %s: %d tests", runName, testCount));
     }
 
     /**
@@ -98,7 +99,9 @@ import java.util.HashMap;
      */
     @Override
     public void testRunStopped(long elapsedTime) {
-        Log.i(LOG_TAG, String.format("run stopped: %d ms", elapsedTime));
+        Log.i(
+                LOG_TAG,
+                String.format("run stopped after %s", TimeUtil.formatElapsedTime(elapsedTime)));
     }
 
     /** {@inheritDoc} */
@@ -159,8 +162,7 @@ import java.util.HashMap;
          */
         @Override
         public String toString() {
-            // TODO: use ':' or '#' as separator? The eternal debate rages on!
-            return String.format("%s:%s", mTestId.getClassName(), mTestId.getTestName());
+            return mTestId.toString();
         }
     }
 
