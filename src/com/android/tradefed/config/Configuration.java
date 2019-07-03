@@ -1331,13 +1331,16 @@ public class Configuration implements IConfiguration {
     /** {@inheritDoc} */
     @Override
     public void dumpXml(PrintWriter output, List<String> excludeFilters) throws IOException {
-        dumpXml(output, excludeFilters, true);
+        dumpXml(output, excludeFilters, true, true);
     }
 
     /** {@inheritDoc} */
     @Override
     public void dumpXml(
-            PrintWriter output, List<String> excludeFilters, boolean printDeprecatedOptions)
+            PrintWriter output,
+            List<String> excludeFilters,
+            boolean printDeprecatedOptions,
+            boolean printUnchangedOptions)
             throws IOException {
         KXmlSerializer serializer = new KXmlSerializer();
         serializer.setOutput(output);
@@ -1351,7 +1354,8 @@ public class Configuration implements IConfiguration {
                     MULTI_PRE_TARGET_PREPARER_TYPE_NAME,
                     multiPreTargerPrep,
                     excludeFilters,
-                    printDeprecatedOptions);
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
         }
 
         for (IMultiTargetPreparer multipreparer : getMultiTargetPreparers()) {
@@ -1360,7 +1364,8 @@ public class Configuration implements IConfiguration {
                     MULTI_PREPARER_TYPE_NAME,
                     multipreparer,
                     excludeFilters,
-                    printDeprecatedOptions);
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
         }
 
         if (getDeviceConfig().size() > 1) {
@@ -1376,33 +1381,38 @@ public class Configuration implements IConfiguration {
                         BUILD_PROVIDER_TYPE_NAME,
                         deviceConfig.getBuildProvider(),
                         excludeFilters,
-                        printDeprecatedOptions);
+                        printDeprecatedOptions,
+                        printUnchangedOptions);
                 for (ITargetPreparer preparer : deviceConfig.getTargetPreparers()) {
                     ConfigurationUtil.dumpClassToXml(
                             serializer,
                             TARGET_PREPARER_TYPE_NAME,
                             preparer,
                             excludeFilters,
-                            printDeprecatedOptions);
+                            printDeprecatedOptions,
+                            printUnchangedOptions);
                 }
                 ConfigurationUtil.dumpClassToXml(
                         serializer,
                         DEVICE_RECOVERY_TYPE_NAME,
                         deviceConfig.getDeviceRecovery(),
                         excludeFilters,
-                        printDeprecatedOptions);
+                        printDeprecatedOptions,
+                        printUnchangedOptions);
                 ConfigurationUtil.dumpClassToXml(
                         serializer,
                         DEVICE_REQUIREMENTS_TYPE_NAME,
                         deviceConfig.getDeviceRequirements(),
                         excludeFilters,
-                        printDeprecatedOptions);
+                        printDeprecatedOptions,
+                        printUnchangedOptions);
                 ConfigurationUtil.dumpClassToXml(
                         serializer,
                         DEVICE_OPTIONS_TYPE_NAME,
                         deviceConfig.getDeviceOptions(),
                         excludeFilters,
-                        printDeprecatedOptions);
+                        printDeprecatedOptions,
+                        printUnchangedOptions);
                 serializer.endTag(null, Configuration.DEVICE_NAME);
             }
         } else {
@@ -1412,70 +1422,85 @@ public class Configuration implements IConfiguration {
                     BUILD_PROVIDER_TYPE_NAME,
                     getBuildProvider(),
                     excludeFilters,
-                    printDeprecatedOptions);
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
             for (ITargetPreparer preparer : getTargetPreparers()) {
                 ConfigurationUtil.dumpClassToXml(
                         serializer,
                         TARGET_PREPARER_TYPE_NAME,
                         preparer,
                         excludeFilters,
-                        printDeprecatedOptions);
+                        printDeprecatedOptions,
+                        printUnchangedOptions);
             }
             ConfigurationUtil.dumpClassToXml(
                     serializer,
                     DEVICE_RECOVERY_TYPE_NAME,
                     getDeviceRecovery(),
                     excludeFilters,
-                    printDeprecatedOptions);
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
             ConfigurationUtil.dumpClassToXml(
                     serializer,
                     DEVICE_REQUIREMENTS_TYPE_NAME,
                     getDeviceRequirements(),
                     excludeFilters,
-                    printDeprecatedOptions);
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
             ConfigurationUtil.dumpClassToXml(
                     serializer,
                     DEVICE_OPTIONS_TYPE_NAME,
                     getDeviceOptions(),
                     excludeFilters,
-                    printDeprecatedOptions);
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
         }
         for (IRemoteTest test : getTests()) {
             ConfigurationUtil.dumpClassToXml(
-                    serializer, TEST_TYPE_NAME, test, excludeFilters, printDeprecatedOptions);
+                    serializer,
+                    TEST_TYPE_NAME,
+                    test,
+                    excludeFilters,
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
         }
         ConfigurationUtil.dumpClassToXml(
                 serializer,
                 CONFIGURATION_DESCRIPTION_TYPE_NAME,
                 getConfigurationDescription(),
                 excludeFilters,
-                printDeprecatedOptions);
+                printDeprecatedOptions,
+                printUnchangedOptions);
         ConfigurationUtil.dumpClassToXml(
                 serializer,
                 LOGGER_TYPE_NAME,
                 getLogOutput(),
                 excludeFilters,
-                printDeprecatedOptions);
+                printDeprecatedOptions,
+                printUnchangedOptions);
         ConfigurationUtil.dumpClassToXml(
                 serializer,
                 LOG_SAVER_TYPE_NAME,
                 getLogSaver(),
                 excludeFilters,
-                printDeprecatedOptions);
+                printDeprecatedOptions,
+                printUnchangedOptions);
         for (ITestInvocationListener listener : getTestInvocationListeners()) {
             ConfigurationUtil.dumpClassToXml(
                     serializer,
                     RESULT_REPORTER_TYPE_NAME,
                     listener,
                     excludeFilters,
-                    printDeprecatedOptions);
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
         }
         ConfigurationUtil.dumpClassToXml(
                 serializer,
                 CMD_OPTIONS_TYPE_NAME,
                 getCommandOptions(),
                 excludeFilters,
-                printDeprecatedOptions);
+                printDeprecatedOptions,
+                printUnchangedOptions);
 
         for (IMetricCollector collector : getMetricCollectors()) {
             ConfigurationUtil.dumpClassToXml(
@@ -1483,7 +1508,8 @@ public class Configuration implements IConfiguration {
                     DEVICE_METRICS_COLLECTOR_TYPE_NAME,
                     collector,
                     excludeFilters,
-                    printDeprecatedOptions);
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
         }
 
         for (ISystemStatusChecker checker : getSystemStatusCheckers()) {
@@ -1492,7 +1518,8 @@ public class Configuration implements IConfiguration {
                     SYSTEM_STATUS_CHECKER_TYPE_NAME,
                     checker,
                     excludeFilters,
-                    printDeprecatedOptions);
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
         }
 
         ConfigurationUtil.dumpClassToXml(
@@ -1500,7 +1527,8 @@ public class Configuration implements IConfiguration {
                 SANBOX_OPTIONS_TYPE_NAME,
                 getConfigurationObject(SANBOX_OPTIONS_TYPE_NAME),
                 excludeFilters,
-                printDeprecatedOptions);
+                printDeprecatedOptions,
+                printUnchangedOptions);
 
         serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
         serializer.endDocument();

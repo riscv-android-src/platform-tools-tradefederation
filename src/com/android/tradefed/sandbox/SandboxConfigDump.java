@@ -121,7 +121,11 @@ public class SandboxConfigDump {
             pw = new PrintWriter(resFile);
             if (DumpCmd.NON_VERSIONED_CONFIG.equals(cmd)) {
                 // Remove elements that are versioned.
-                config.dumpXml(pw, new ArrayList<>(VERSIONED_ELEMENTS));
+                config.dumpXml(
+                        pw,
+                        new ArrayList<>(VERSIONED_ELEMENTS),
+                        true, /* Don't print unchanged options */
+                        false);
             } else {
                 // FULL_XML in that case.
                 config.dumpXml(pw);
