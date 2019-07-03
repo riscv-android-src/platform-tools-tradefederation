@@ -31,9 +31,20 @@ import java.util.Set;
  */
 public class BaseRetryDecision implements IRetryDecision {
 
+    private RetryStrategy mRetryStrategy;
+    private IRemoteTest mCurrentlyConsideredTest;
+    private RetryStatsHelper mStatistics;
+
     @Override
     public boolean shouldRetry(
             RetryStrategy strategy, IRemoteTest test, List<TestRunResult> previousResults) {
+        mRetryStrategy = strategy;
+        // Keep track of some results for the test in progress for statistics purpose.
+        if (test != mCurrentlyConsideredTest) {
+            mCurrentlyConsideredTest = test;
+            mStatistics = new RetryStatsHelper();
+        }
+
         switch (strategy) {
             case NO_RETRY:
                 // Return directly if we are not considering retry at all.
@@ -49,6 +60,7 @@ public class BaseRetryDecision implements IRetryDecision {
                 break;
         }
 
+        mStatistics.addResultsFromRun(previousResults);
         if (!(test instanceof ITestFilterReceiver)) {
             CLog.d(
                     "%s does not implement ITestFilterReceiver, thus cannot work with auto-retry.",
@@ -60,6 +72,30 @@ public class BaseRetryDecision implements IRetryDecision {
         // support ITestFile*Filter*Receiver in the future.
         ITestFilterReceiver filterableTest = (ITestFilterReceiver) test;
         return handleRetryFailures(filterableTest, previousResults);
+    }
+
+    @Override
+    public void addLastAttempt(List<TestRunResult> lastResults) {
+        mStatistics.addResultsFromRun(lastResults);
+    }
+
+    @Override
+    public RetryStatistics getRetryStats() {
+        if (!RetryStrategy.RETRY_ANY_FAILURE.equals(mRetryStrategy)) {
+            return null;
+        }
+        return mStatistics.calculateStatistics();
+    }
+
+    /** Returns the set of failed test cases that should be retried. */
+    public static Set<TestDescription> getFailedTestCases(List<TestRunResult> previousResults) {
+        Set<TestDescription> failedTestCases = new HashSet<TestDescription>();
+        for (TestRunResult run : previousResults) {
+            if (run != null) {
+                failedTestCases.addAll(run.getFailedTests());
+            }
+        }
+        return failedTestCases;
     }
 
     private boolean handleRetryFailures(
@@ -98,17 +134,6 @@ public class BaseRetryDecision implements IRetryDecision {
             }
         }
         return false;
-    }
-
-    /** Returns the set of failed test cases that should be retried. */
-    private Set<TestDescription> getFailedTestCases(List<TestRunResult> previousResults) {
-        Set<TestDescription> failedTestCases = new HashSet<TestDescription>();
-        for (TestRunResult run : previousResults) {
-            if (run != null) {
-                failedTestCases.addAll(run.getFailedTests());
-            }
-        }
-        return failedTestCases;
     }
 
     /** Set the filters on the test runner for the retry. */
