@@ -85,12 +85,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
     private boolean mCollectTestsOnly = false;
 
     // Tracking of the metrics
-    /** How much time are we spending doing the retry attempts */
-    private long mRetryTime = 0L;
-    /** The number of test cases that passed after a failed attempt */
-    private long mSuccessRetried = 0L;
-    /** The number of test cases that remained failed after all retry attempts */
-    private long mFailedRetried = 0L;
+    private RetryStatistics mRetryStats = null;
 
     private RetryStrategy mRetryStrategy = RetryStrategy.NO_RETRY;
     private boolean mRebootAtLastRetry = false;
@@ -230,15 +225,19 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             return;
         }
 
+        // Bail out early if there is no need to retry at all.
+        IRetryDecision retryDecision = new BaseRetryDecision(mRetryStrategy);
+        if (!retryDecision.shouldRetry(mTest, mMainGranularRunListener.getTestRunForAttempts(0))) {
+            return;
+        }
+
         // Deal with retried attempted
         long startTime = System.currentTimeMillis();
-        IRetryDecision retryDecision = new BaseRetryDecision();
         try {
             CLog.d("Starting intra-module retry.");
             for (int attemptNumber = 1; attemptNumber < mMaxRunLimit; attemptNumber++) {
                 boolean retry =
                         retryDecision.shouldRetry(
-                                mRetryStrategy,
                                 mTest,
                                 mMainGranularRunListener.getTestRunForAttempts(attemptNumber - 1));
                 if (!retry) {
@@ -261,13 +260,9 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             retryDecision.addLastAttempt(
                     mMainGranularRunListener.getTestRunForAttempts(mMaxRunLimit - 1));
         } finally {
-            RetryStatistics res = retryDecision.getRetryStats();
-            if (res != null) {
-                mSuccessRetried = res.mRetrySuccess;
-                mFailedRetried = res.mRetryFailure;
-            }
+            mRetryStats = retryDecision.getRetryStats();
             // Track how long we spend in retry
-            mRetryTime = System.currentTimeMillis() - startTime;
+            mRetryStats.mRetryTime = System.currentTimeMillis() - startTime;
         }
     }
 
@@ -352,19 +347,12 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
         return mMainGranularRunListener.getExpectedTests();
     }
 
-    /** Returns the elapsed time in retry attempts. */
-    public final long getRetryTime() {
-        return mRetryTime;
-    }
-
-    /** Returns the number of tests we managed to change status from failed to pass. */
-    public final long getRetrySuccess() {
-        return mSuccessRetried;
-    }
-
-    /** Returns the number of tests we couldn't change status from failed to pass. */
-    public final long getRetryFailed() {
-        return mFailedRetried;
+    /**
+     * Returns the {@link RetryStatistics} representating the retry information. Null if no retry
+     * occurred.
+     */
+    public final RetryStatistics getRetryStatistics() {
+        return mRetryStats;
     }
 
     /** Returns the listener containing all the results. */

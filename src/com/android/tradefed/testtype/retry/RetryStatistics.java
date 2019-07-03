@@ -17,11 +17,28 @@ package com.android.tradefed.testtype.retry;
 
 import com.android.tradefed.testtype.IRemoteTest;
 
+import java.util.List;
+
 /**
- * Structure holding the statistics for a retry session of one {@link IRemoteTest}. This is
- * associated with {@link RetryStrategy#RETRY_ANY_FAILURE}.
+ * Structure holding the statistics for a retry session of one {@link IRemoteTest}. Not all fields
+ * might be populated depending of the {@link RetryStrategy}.
  */
 public class RetryStatistics {
+    // The time spent in retry. Always populated if retries or iterations occurred
+    public long mRetryTime = 0L;
+
+    // Success and failure counts. Populated for RETRY_ANY_FAILURE.
     public long mRetrySuccess = 0L;
     public long mRetryFailure = 0L;
+
+    /** Helper method to aggregate the statistics of several retries. */
+    public static final RetryStatistics aggregateStatistics(List<RetryStatistics> stats) {
+        RetryStatistics aggregatedStats = new RetryStatistics();
+        for (RetryStatistics s : stats) {
+            aggregatedStats.mRetryTime += s.mRetryTime;
+            aggregatedStats.mRetrySuccess += s.mRetrySuccess;
+            aggregatedStats.mRetryFailure += s.mRetryFailure;
+        }
+        return aggregatedStats;
+    }
 }

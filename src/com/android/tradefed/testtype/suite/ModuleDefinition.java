@@ -56,6 +56,7 @@ import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.ITestCollector;
+import com.android.tradefed.testtype.retry.RetryStatistics;
 import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.testtype.suite.module.BaseModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
@@ -133,11 +134,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private long mStartTestTime = 0l;
 
     // Tracking of retry performance
-    private long mRetryTime = 0L;
-    /** The number of test cases that passed after a failed attempt */
-    private long mSuccessRetried = 0L;
-    /** The number of test cases that remained failed after all retry attempts */
-    private long mFailedRetried = 0L;
+    private List<RetryStatistics> mRetryStats = new ArrayList<>();
 
     private RetryStrategy mRetryStrategy = RetryStrategy.NO_RETRY;
     private boolean mMergeAttempts = true;
@@ -489,9 +486,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
                     mExpectedTests += retriableTest.getExpectedTestsCount();
                     // Get information about retry
-                    mRetryTime += retriableTest.getRetryTime();
-                    mSuccessRetried += retriableTest.getRetrySuccess();
-                    mFailedRetried += retriableTest.getRetryFailed();
+                    RetryStatistics res = retriableTest.getRetryStatistics();
+                    if (res != null) {
+                        mRetryStats.add(res);
+                    }
                 }
                 // After the run, if the test failed (even after retry the final result passed) has
                 // failed, capture a bugreport.
@@ -651,13 +649,16 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         metricsProto.put(
                 TEST_TIME, TfMetricProtoUtil.createSingleValue(elapsedTime, "milliseconds"));
         // Report all the retry informations
-        if (mRetryTime > 0L) {
+        if (!mRetryStats.isEmpty()) {
+            RetryStatistics agg = RetryStatistics.aggregateStatistics(mRetryStats);
             metricsProto.put(
-                    RETRY_TIME, TfMetricProtoUtil.createSingleValue(mRetryTime, "milliseconds"));
+                    RETRY_TIME,
+                    TfMetricProtoUtil.createSingleValue(agg.mRetryTime, "milliseconds"));
             metricsProto.put(
-                    RETRY_SUCCESS_COUNT, TfMetricProtoUtil.createSingleValue(mSuccessRetried, ""));
+                    RETRY_SUCCESS_COUNT,
+                    TfMetricProtoUtil.createSingleValue(agg.mRetrySuccess, ""));
             metricsProto.put(
-                    RETRY_FAIL_COUNT, TfMetricProtoUtil.createSingleValue(mFailedRetried, ""));
+                    RETRY_FAIL_COUNT, TfMetricProtoUtil.createSingleValue(agg.mRetryFailure, ""));
         }
 
         if (totalExpectedTests != numResults) {

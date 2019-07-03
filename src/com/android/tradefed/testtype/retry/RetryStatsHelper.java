@@ -43,9 +43,12 @@ public class RetryStatsHelper {
      * {@link RetryStatistics} to represent the results.
      */
     public RetryStatistics calculateStatistics() {
-        List<TestRunResult> attemptResults = mResults.get(mResults.size() - 1);
-        Set<TestDescription> attemptFailures = BaseRetryDecision.getFailedTestCases(attemptResults);
-        mStats.mRetryFailure = attemptFailures.size();
+        if (!mResults.isEmpty()) {
+            List<TestRunResult> attemptResults = mResults.get(mResults.size() - 1);
+            Set<TestDescription> attemptFailures =
+                    BaseRetryDecision.getFailedTestCases(attemptResults);
+            mStats.mRetryFailure = attemptFailures.size();
+        }
         return mStats;
     }
 
