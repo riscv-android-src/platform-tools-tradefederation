@@ -86,6 +86,8 @@ public class TestSuiteStub
             description = "The notAnnotation class name of the test name to run, can be repeated")
     private Set<String> mExcludeAnnotationFilter = new HashSet<>();
 
+    private Set<String> mExcludeFilters = new HashSet<>();
+
     /** Tests attempt. */
     private void testAttempt(ITestInvocationListener listener) throws DeviceNotAvailableException {
         listener.testRunStarted(mModule, 3);
@@ -224,10 +226,14 @@ public class TestSuiteStub
     public void addAllIncludeFilters(Set<String> filters) {}
 
     @Override
-    public void addExcludeFilter(String filter) {}
+    public void addExcludeFilter(String filter) {
+        mExcludeFilters.add(filter);
+    }
 
     @Override
-    public void addAllExcludeFilters(Set<String> filters) {}
+    public void addAllExcludeFilters(Set<String> filters) {
+        mExcludeFilters.addAll(filters);
+    }
 
     @Override
     public void clearIncludeFilters() {}
@@ -239,11 +245,13 @@ public class TestSuiteStub
 
     @Override
     public Set<String> getExcludeFilters() {
-        return new HashSet<>();
+        return mExcludeFilters;
     }
 
     @Override
-    public void clearExcludeFilters() {}
+    public void clearExcludeFilters() {
+        mExcludeFilters.clear();
+    }
 
     @Override
     public void addIncludeAnnotation(String annotation) {
