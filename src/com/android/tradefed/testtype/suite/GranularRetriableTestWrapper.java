@@ -29,7 +29,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogSaverResultForwarder;
-import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestCollector;
@@ -37,19 +36,16 @@ import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.retry.BaseRetryDecision;
 import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.testtype.retry.MergeStrategy;
+import com.android.tradefed.testtype.retry.RetryStatistics;
 import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Sets;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * A wrapper class works on the {@link IRemoteTest} to granulate the IRemoteTest in testcase level.
@@ -95,8 +91,6 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
     private long mSuccessRetried = 0L;
     /** The number of test cases that remained failed after all retry attempts */
     private long mFailedRetried = 0L;
-    /** Store the test that successfully re-run and at which attempt they passed */
-    private Map<String, Integer> mAttemptSuccess = new HashMap<>();
 
     private RetryStrategy mRetryStrategy = RetryStrategy.NO_RETRY;
     private boolean mRebootAtLastRetry = false;
@@ -238,12 +232,10 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
 
         // Deal with retried attempted
         long startTime = System.currentTimeMillis();
-        Set<TestDescription> previousFailedTests = new HashSet<>();
-
+        IRetryDecision retryDecision = new BaseRetryDecision();
         try {
             CLog.d("Starting intra-module retry.");
             for (int attemptNumber = 1; attemptNumber < mMaxRunLimit; attemptNumber++) {
-                IRetryDecision retryDecision = new BaseRetryDecision();
                 boolean retry =
                         retryDecision.shouldRetry(
                                 mRetryStrategy,
@@ -264,49 +256,19 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                 }
                 // Run the tests again
                 intraModuleRun(allListeners);
-
-                Set<TestDescription> lastRun = getFailedTestCases(attemptNumber);
-                if (shouldHandleFailure(mRetryStrategy)) {
-                    // Evaluate success from what we just ran
-                    Set<TestDescription> diff = Sets.difference(previousFailedTests, lastRun);
-                    mSuccessRetried += diff.size();
-                    final int currentAttempt = attemptNumber;
-                    diff.forEach((desc) -> mAttemptSuccess.put(desc.toString(), currentAttempt));
-                    previousFailedTests = lastRun;
-                }
             }
+            // Feed the last attempt if we reached here.
+            retryDecision.addLastAttempt(
+                    mMainGranularRunListener.getTestRunForAttempts(mMaxRunLimit - 1));
         } finally {
-            if (previousFailedTests != null) {
-                mFailedRetried += previousFailedTests.size();
+            RetryStatistics res = retryDecision.getRetryStats();
+            if (res != null) {
+                mSuccessRetried = res.mRetrySuccess;
+                mFailedRetried = res.mRetryFailure;
             }
             // Track how long we spend in retry
             mRetryTime = System.currentTimeMillis() - startTime;
         }
-    }
-
-    /**
-     * If the strategy needs to handle some failures return True. If it needs to retry no matter
-     * what like {@link RetryStrategy#ITERATIONS} returns False.
-     */
-    private boolean shouldHandleFailure(RetryStrategy retryStrategy) {
-        return RetryStrategy.RETRY_ANY_FAILURE.equals(retryStrategy);
-    }
-
-    /**
-     * Collect failed test cases from listener.
-     *
-     * @param attemptNumber the 0-indexed integer indicating which attempt to gather failed cases.
-     */
-    private Set<TestDescription> getFailedTestCases(int attemptNumber) {
-        Set<TestDescription> failedTestCases = new HashSet<TestDescription>();
-        for (String runName : mMainGranularRunListener.getTestRunNames()) {
-            TestRunResult run =
-                    mMainGranularRunListener.getTestRunAtAttempt(runName, attemptNumber);
-            if (run != null) {
-                failedTestCases.addAll(run.getFailedTests());
-            }
-        }
-        return failedTestCases;
     }
 
     /** The workflow for each individual {@link IRemoteTest} run. */
@@ -408,11 +370,6 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
     /** Returns the listener containing all the results. */
     public ModuleListener getResultListener() {
         return mMainGranularRunListener;
-    }
-
-    /** Returns the attempts that turned into success. */
-    public Map<String, Integer> getAttemptSuccessStats() {
-        return mAttemptSuccess;
     }
 
     /** Forwarder that also handles passing the current attempt we are at. */
