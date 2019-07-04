@@ -43,7 +43,7 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
 
     @Override
     public void onTestRunStart(DeviceMetricData runData) {
-        for (ITestDevice device : getDevices()) {
+        for (ITestDevice device : getRealDevices()) {
             // In case of multiple runs for the same test runner, re-init the receiver.
             initReceiver(device);
             // Get the current offset of the buffer to be able to query later
@@ -62,7 +62,7 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
 
     @Override
     public void onTestFail(DeviceMetricData testData, TestDescription test) {
-        for (ITestDevice device : getDevices()) {
+        for (ITestDevice device : getRealDevices()) {
             // Delay slightly for the error to get in the logcat
             getRunUtil().sleep(100);
             try (InputStreamSource logcatSource =
