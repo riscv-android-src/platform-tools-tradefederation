@@ -32,9 +32,11 @@ import org.junit.runners.JUnit4;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -515,6 +517,52 @@ public class DynamicRemoteFileResolverTest {
                 FileUtil.recursiveDelete(f);
             }
         }
+        EasyMock.verify(mMockResolver);
+    }
+
+    @Test
+    public void testResolvePartialDownloadZip() throws Exception {
+        List<String> includeFilters = Arrays.asList("test1", "test2");
+        List<String> excludeFilters = Arrays.asList("[.]config");
+
+        Map<String, String> queryArgs = new HashMap<>();
+        queryArgs.put("partial_download_dir", "/tmp");
+        queryArgs.put("include_filters", "test1;test2");
+        queryArgs.put("exclude_filters", "[.]config");
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path")),
+                                EasyMock.eq(null),
+                                EasyMock.eq(queryArgs)))
+                .andReturn(null);
+        EasyMock.replay(mMockResolver);
+
+        mResolver.resolvePartialDownloadZip(
+                new File("/tmp"), "gs:/fake/path", includeFilters, excludeFilters);
+        EasyMock.verify(mMockResolver);
+    }
+
+    /** Ignore any error if the download request is optional. */
+    @Test
+    public void testResolvePartialDownloadZip_optional() throws Exception {
+        List<String> includeFilters = Arrays.asList("test1", "test2");
+        List<String> excludeFilters = Arrays.asList("[.]config");
+
+        Map<String, String> queryArgs = new HashMap<>();
+        queryArgs.put("partial_download_dir", "/tmp");
+        queryArgs.put("include_filters", "test1;test2");
+        queryArgs.put("exclude_filters", "[.]config");
+        queryArgs.put("optional", "true");
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path?optional=true")),
+                                EasyMock.eq(null),
+                                EasyMock.eq(queryArgs)))
+                .andThrow(new ConfigurationException("should not throw this exception."));
+        EasyMock.replay(mMockResolver);
+
+        mResolver.resolvePartialDownloadZip(
+                new File("/tmp"), "gs:/fake/path?optional=true", includeFilters, excludeFilters);
         EasyMock.verify(mMockResolver);
     }
 }
