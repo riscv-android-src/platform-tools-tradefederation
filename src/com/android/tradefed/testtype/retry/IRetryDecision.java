@@ -37,4 +37,19 @@ public interface IRetryDecision {
      */
     public boolean shouldRetry(
             RetryStrategy strategy, IRemoteTest test, List<TestRunResult> previousResults);
+
+    /**
+     * {@link #shouldRetry(RetryStrategy, IRemoteTest, List)} will most likely be called before the
+     * last retry attempt, so we might be missing the very last attempt results for statistics
+     * purpose. This method allows those results to be provided for proper statistics calculations.
+     *
+     * @param lastResults
+     */
+    public void addLastAttempt(List<TestRunResult> lastResults);
+
+    /**
+     * Returns the {@link RetryStatistics} representing the retry. Or null if the retry strategy is
+     * not {@link RetryStrategy#RETRY_ANY_FAILURE}.
+     */
+    public RetryStatistics getRetryStats();
 }
