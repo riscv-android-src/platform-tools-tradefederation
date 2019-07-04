@@ -86,7 +86,7 @@ FIND_CMDS = {
     FIND_REFERENCE_TYPE.CC_CLASS: r"find {0} {1} -type f -print"
                                   r"| egrep -i '/*test.*\.(cc|cpp)$'"
                                   r"| xargs -P" + str(_CPU_COUNT) +
-                                  r" egrep -sH '[ ]*TEST(_F|_P)?[ ]*\({2}' || true"
+                                  r" egrep -sH '^[ ]*TEST(_F|_P)?[ ]*\({2}' || true"
 }
 
 # XML parsing related constants.
