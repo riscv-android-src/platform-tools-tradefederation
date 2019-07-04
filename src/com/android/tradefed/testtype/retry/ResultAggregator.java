@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.retry;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
@@ -100,10 +101,18 @@ public class ResultAggregator extends CollectingTestListener {
         mAllForwarder.invocationEnded(elapsedTime);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void testModuleStarted(IInvocationContext moduleContext) {
         super.testModuleStarted(moduleContext);
         mAllForwarder.testModuleStarted(moduleContext);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setLogSaver(ILogSaver logSaver) {
+        super.setLogSaver(logSaver);
+        mAllForwarder.setLogSaver(logSaver);
     }
 
     // ====== Forwarders to the detailed result reporters
