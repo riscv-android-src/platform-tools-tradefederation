@@ -684,16 +684,16 @@ public class TestInvocation implements ITestInvocation {
         scope.seed(IRescheduler.class, rescheduler);
         scope.seedConfiguration(config);
         try {
-            mStatus = "resolving dynamic options";
-            config.resolveDynamicOptions();
-
-            mStatus = "fetching build";
             ILeveledLogOutput leveledLogOutput = config.getLogOutput();
             leveledLogOutput.init();
             if (leveledLogOutput instanceof BaseLeveledLogOutput) {
                 ((BaseLeveledLogOutput) leveledLogOutput).initFilters(config);
             }
             getLogRegistry().registerLogger(leveledLogOutput);
+            mStatus = "resolving dynamic options";
+            config.resolveDynamicOptions();
+
+            mStatus = "fetching build";
             for (String deviceName : context.getDeviceConfigNames()) {
                 context.getDevice(deviceName).clearLastConnectedWifiNetwork();
                 context.getDevice(deviceName)
