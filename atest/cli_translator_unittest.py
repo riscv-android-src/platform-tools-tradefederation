@@ -293,9 +293,7 @@ class CLITranslatorUnittests(unittest.TestCase):
                 test_group=constants.TEST_GROUP_POSTSUBMIT,
                 file_name='test_mapping_sample', checked_files=set())
         expected_presubmit = set([TEST_1, TEST_2, TEST_5, TEST_7, TEST_9])
-        expected = set(
-            [TEST_1, TEST_2, TEST_3, TEST_5, TEST_6, TEST_7, TEST_8, TEST_9,
-             TEST_10])
+        expected = set([TEST_3, TEST_6, TEST_8, TEST_10])
         expected_all_tests = {'presubmit': expected_presubmit,
                               'postsubmit': set(
                                   [TEST_3, TEST_6, TEST_8, TEST_10]),

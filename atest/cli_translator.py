@@ -339,11 +339,7 @@ class CLITranslator(object):
                 grouped_tests.update(test_list)
 
         tests = set(merged_all_tests.get(test_group, []))
-        # Postsubmit tests shall include all presubmit tests as well.
-        if test_group == constants.TEST_GROUP_POSTSUBMIT:
-            tests.update(merged_all_tests.get(
-                constants.TEST_GROUP_PRESUBMIT, set()))
-        elif test_group == constants.TEST_GROUP_ALL:
+        if test_group == constants.TEST_GROUP_ALL:
             for grouped_tests in merged_all_tests.values():
                 tests.update(grouped_tests)
         return tests, merged_all_tests, all_imports
