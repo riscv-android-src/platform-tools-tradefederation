@@ -67,11 +67,11 @@ def get_user_type():
     except OSError:
         # OSError can be raised when running atest_unittests on a host
         # without git being set up.
-        print('Unable to determine if this is an external run, git is '
-              'not found.')
+        logging.debug('Unable to determine if this is an external run, git is '
+                      'not found.')
     except subprocess.CalledProcessError:
-        print('Unable to determine if this is an external run, email is not '
-              'found in git config.')
+        logging.debug('Unable to determine if this is an external run, email '
+                      'is not found in git config.')
     try:
         hostname = socket.getfqdn()
         if hostname and constants.INTERNAL_HOSTNAME in hostname:
