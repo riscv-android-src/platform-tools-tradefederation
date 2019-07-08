@@ -91,6 +91,7 @@ public class NativeCodeCoverageListenerTest {
     @Test
     public void test_logsCoverageZip() throws DeviceNotAvailableException, IOException {
         // Setup mocks to write the coverage measurement to the file.
+        doReturn(true).when(mMockDevice).enableAdbRoot();
         doReturn(
                         new StringJoiner("\n")
                                 .add("/data/misc/trace/path/to/coverage.gcda")
@@ -160,6 +161,7 @@ public class NativeCodeCoverageListenerTest {
     @Test
     public void testFailure_unableToPullFile() throws DeviceNotAvailableException {
         // Setup mocks.
+        doReturn(true).when(mMockDevice).enableAdbRoot();
         doReturn("/data/misc/trace/some/path/to/coverage.gcda\n")
                 .when(mMockDevice)
                 .executeShellCommand(anyString());
