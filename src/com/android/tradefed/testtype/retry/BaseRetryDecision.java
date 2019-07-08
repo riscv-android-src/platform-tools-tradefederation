@@ -35,17 +35,20 @@ public class BaseRetryDecision implements IRetryDecision {
     private IRemoteTest mCurrentlyConsideredTest;
     private RetryStatsHelper mStatistics;
 
-    @Override
-    public boolean shouldRetry(
-            RetryStrategy strategy, IRemoteTest test, List<TestRunResult> previousResults) {
+    /** Constructor for the retry decision, always based on the {@link RetryStrategy}. */
+    public BaseRetryDecision(RetryStrategy strategy) {
         mRetryStrategy = strategy;
+    }
+
+    @Override
+    public boolean shouldRetry(IRemoteTest test, List<TestRunResult> previousResults) {
         // Keep track of some results for the test in progress for statistics purpose.
         if (test != mCurrentlyConsideredTest) {
             mCurrentlyConsideredTest = test;
             mStatistics = new RetryStatsHelper();
         }
 
-        switch (strategy) {
+        switch (mRetryStrategy) {
             case NO_RETRY:
                 // Return directly if we are not considering retry at all.
                 return false;
@@ -81,9 +84,6 @@ public class BaseRetryDecision implements IRetryDecision {
 
     @Override
     public RetryStatistics getRetryStats() {
-        if (!RetryStrategy.RETRY_ANY_FAILURE.equals(mRetryStrategy)) {
-            return null;
-        }
         return mStatistics.calculateStatistics();
     }
 
