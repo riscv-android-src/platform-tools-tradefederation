@@ -546,4 +546,13 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     public Map<String, LogFile> getNonAssociatedLogFiles() {
         return new LinkedHashMap<>(mNonAssociatedLogFiles);
     }
+
+    /**
+     * Allows to clear the results for a given run name. Should only be used in some cases like the
+     * aggregator of results.
+     */
+    protected final synchronized void clearResultsForName(String testRunName) {
+        setCountDirty();
+        mTestRunResultMap.remove(testRunName);
+    }
 }
