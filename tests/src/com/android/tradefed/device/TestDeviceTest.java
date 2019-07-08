@@ -29,6 +29,7 @@ import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice.MountPointInfo;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.device.contentprovider.ContentProviderHandler;
 import com.android.tradefed.host.HostOptions;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -43,6 +44,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.UserUtil;
 import com.android.tradefed.util.ZipUtil2;
 
 import com.google.common.util.concurrent.SettableFuture;
@@ -2165,6 +2167,31 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Test that successful user creation is handled by {@link
+     * TestDevice#createUserNoThrow(String)}.
+     */
+    public void testCreateUserNoThrow() throws Exception {
+        final String createUserCommand = "pm create-user foo";
+        injectShellResponse(createUserCommand, "Success: created user id 10");
+        replayMocks();
+        assertEquals(10, mTestDevice.createUserNoThrow("foo"));
+    }
+
+    /** Test that {@link TestDevice#createUserNoThrow(String)} fails when bad output */
+    public void testCreateUserNoThrow_wrongOutput() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "Success: created user id WRONG";
+                    }
+                };
+
+        assertEquals(-1, mTestDevice.createUserNoThrow("TEST"));
+    }
+
+    /**
      * Test that successful user removal is handled by {@link TestDevice#removeUser(int)}.
      */
     public void testRemoveUser() throws Exception {
@@ -2441,6 +2468,40 @@ public class TestDeviceTest extends TestCase {
         };
         int flags = mTestDevice.getUserFlags(3);
         assertEquals(21, flags);
+    }
+
+    /** Unit test for {@link TestDevice#isUserSecondary(int)} */
+    public void testIsUserSecondary() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return String.format(
+                                "Users:\n\tUserInfo{0:Owner:0}\n\t"
+                                        + "UserInfo{10:Primary:%x} Running\n\t"
+                                        + "UserInfo{11:Guest:%x}\n\t"
+                                        + "UserInfo{12:Secondary:0}\n\t"
+                                        + "UserInfo{13:Managed:%x}\n\t"
+                                        + "UserInfo{100:Restricted:%x}\n\t",
+                                UserUtil.FLAG_PRIMARY,
+                                UserUtil.FLAG_GUEST,
+                                UserUtil.FLAG_MANAGED_PROFILE,
+                                UserUtil.FLAG_RESTRICTED);
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 22;
+                    }
+                };
+        assertEquals(false, mTestDevice.isUserSecondary(0));
+        assertEquals(false, mTestDevice.isUserSecondary(-1));
+        assertEquals(false, mTestDevice.isUserSecondary(10));
+        assertEquals(false, mTestDevice.isUserSecondary(11));
+        assertEquals(true, mTestDevice.isUserSecondary(12));
+        assertEquals(false, mTestDevice.isUserSecondary(13));
+        assertEquals(false, mTestDevice.isUserSecondary(100));
     }
 
     /**
@@ -3612,7 +3673,8 @@ public class TestDeviceTest extends TestCase {
         injectShellResponse("pidof system_server", "929");
         injectShellResponse("am dumpheap 929 /data/dump.hprof", "");
         injectShellResponse("ls \"/data/dump.hprof\"", "/data/dump.hprof");
-        injectShellResponse("rm /data/dump.hprof", "");
+        injectShellResponse("rm -rf \"/data/dump.hprof\"", "");
+
         EasyMock.replay(mMockIDevice, mMockRunUtil);
         File res = mTestDevice.dumpHeap("system_server", "/data/dump.hprof");
         assertNotNull(res);
@@ -3696,6 +3758,11 @@ public class TestDeviceTest extends TestCase {
                             throws DeviceNotAvailableException {
                         return mMockWifi;
                     }
+
+                    @Override
+                    ContentProviderHandler getContentProvider() throws DeviceNotAvailableException {
+                        return null;
+                    }
                 };
         mMockIDevice.executeShellCommand(
                 EasyMock.eq("dumpsys package com.android.tradefed.utils.wifi"),
@@ -3710,4 +3777,38 @@ public class TestDeviceTest extends TestCase {
         mTestDevice.postInvocationTearDown();
         verifyMocks();
     }
+
+    // FIXME: Delete this, not necessary
+    // <<<<<<< HEAD
+    // =======
+    //
+    //     /** Test that displays can be collected. */
+    //     public void testListDisplayId() throws Exception {
+    //         OutputStream stdout = null, stderr = null;
+    //         CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+    //         res.setStdout("Display 0 color modes:\nDisplay 5 color modes:\n");
+    //         EasyMock.expect(
+    //                         mMockRunUtil.runTimedCmd(
+    //                                 100L,
+    //                                 stdout,
+    //                                 stderr,
+    //                                 "adb",
+    //                                 "-s",
+    //                                 "serial",
+    //                                 "shell",
+    //                                 "dumpsys",
+    //                                 "SurfaceFlinger",
+    //                                 "|",
+    //                                 "grep",
+    //                                 "'color",
+    //                                 "modes:'"))
+    //                 .andReturn(res);
+    //         replayMocks();
+    //         Set<Integer> displays = mTestDevice.listDisplayIds();
+    //         assertEquals(2, displays.size());
+    //         assertTrue(displays.contains(0));
+    //         assertTrue(displays.contains(5));
+    //         verifyMocks();
+    //     }
+    // >>>>>>> f39a78ced... Hook up pullFile to use content provider.
 }
