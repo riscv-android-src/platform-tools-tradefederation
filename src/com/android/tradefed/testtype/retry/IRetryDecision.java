@@ -30,26 +30,21 @@ public interface IRetryDecision {
      * Decide whether or not retry should be attempted. Also make any necessary changes to the
      * {@link IRemoteTest} to be retried (Applying filters, etc.).
      *
-     * @param strategy The {@link RetryStrategy} in progress.
      * @param test The {@link IRemoteTest} that just ran.
      * @param previousResults The list of {@link TestRunResult} of the test that just ran.
      * @return True if we should retry, False otherwise.
      */
-    public boolean shouldRetry(
-            RetryStrategy strategy, IRemoteTest test, List<TestRunResult> previousResults);
+    public boolean shouldRetry(IRemoteTest test, List<TestRunResult> previousResults);
 
     /**
-     * {@link #shouldRetry(RetryStrategy, IRemoteTest, List)} will most likely be called before the
-     * last retry attempt, so we might be missing the very last attempt results for statistics
-     * purpose. This method allows those results to be provided for proper statistics calculations.
+     * {@link #shouldRetry(IRemoteTest, List)} will most likely be called before the last retry
+     * attempt, so we might be missing the very last attempt results for statistics purpose. This
+     * method allows those results to be provided for proper statistics calculations.
      *
      * @param lastResults
      */
     public void addLastAttempt(List<TestRunResult> lastResults);
 
-    /**
-     * Returns the {@link RetryStatistics} representing the retry. Or null if the retry strategy is
-     * not {@link RetryStrategy#RETRY_ANY_FAILURE}.
-     */
+    /** Returns the {@link RetryStatistics} representing the retry. */
     public RetryStatistics getRetryStats();
 }
