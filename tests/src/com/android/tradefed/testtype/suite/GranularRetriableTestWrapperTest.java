@@ -15,10 +15,7 @@
  */
 package com.android.tradefed.testtype.suite;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
@@ -41,6 +38,7 @@ import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.retry.RetryStatistics;
 import com.android.tradefed.testtype.retry.RetryStrategy;
 
 import org.easymock.EasyMock;
@@ -365,8 +363,9 @@ public class GranularRetriableTestWrapperTest {
         }
 
         // Since tests stay failed, we have two failure in our monitoring.
-        assertEquals(0, granularTestWrapper.getRetrySuccess());
-        assertEquals(2, granularTestWrapper.getRetryFailed());
+        RetryStatistics stats = granularTestWrapper.getRetryStatistics();
+        assertEquals(0, stats.mRetrySuccess);
+        assertEquals(2, stats.mRetryFailure);
     }
 
     /** Test when a test becomes pass after failing */
@@ -424,8 +423,9 @@ public class GranularRetriableTestWrapperTest {
         }
 
         // One success since one test recover, one test never recover so one failure
-        assertEquals(1, granularTestWrapper.getRetrySuccess());
-        assertEquals(1, granularTestWrapper.getRetryFailed());
+        RetryStatistics stats = granularTestWrapper.getRetryStatistics();
+        assertEquals(1, stats.mRetrySuccess);
+        assertEquals(1, stats.mRetryFailure);
     }
 
     /** Test when all tests become pass, we stop intra-module retry early. */
@@ -511,9 +511,10 @@ public class GranularRetriableTestWrapperTest {
                         .getTestResults()
                         .containsKey(fakeTestCase2));
 
-        // One success since one test recover, one test never recover so one failure
-        assertEquals(2, granularTestWrapper.getRetrySuccess());
-        assertEquals(0, granularTestWrapper.getRetryFailed());
+        // One success since one test recover, one test never recover so one failure\
+        RetryStatistics stats = granularTestWrapper.getRetryStatistics();
+        assertEquals(2, stats.mRetrySuccess);
+        assertEquals(0, stats.mRetryFailure);
     }
 
     /**
@@ -631,8 +632,9 @@ public class GranularRetriableTestWrapperTest {
         }
 
         // No Test cases tracking since it was a run retry.
-        assertEquals(0, granularTestWrapper.getRetrySuccess());
-        assertEquals(0, granularTestWrapper.getRetryFailed());
+        RetryStatistics stats = granularTestWrapper.getRetryStatistics();
+        assertEquals(0, stats.mRetrySuccess);
+        assertEquals(0, stats.mRetryFailure);
     }
 
     /**
@@ -670,8 +672,9 @@ public class GranularRetriableTestWrapperTest {
         assertEquals(2, lastRes.getNumCompleteTests());
 
         // No Test cases tracking since it was a run retry.
-        assertEquals(0, granularTestWrapper.getRetrySuccess());
-        assertEquals(0, granularTestWrapper.getRetryFailed());
+        RetryStatistics stats = granularTestWrapper.getRetryStatistics();
+        assertEquals(0, stats.mRetrySuccess);
+        assertEquals(0, stats.mRetryFailure);
     }
 
     /** Test the retry with iterations, it doesn't require any failure to rerun. */
@@ -700,8 +703,9 @@ public class GranularRetriableTestWrapperTest {
         }
 
         // No Test cases tracking since it was a run retry.
-        assertEquals(0, granularTestWrapper.getRetrySuccess());
-        assertEquals(0, granularTestWrapper.getRetryFailed());
+        RetryStatistics stats = granularTestWrapper.getRetryStatistics();
+        assertEquals(0, stats.mRetrySuccess);
+        assertEquals(0, stats.mRetryFailure);
     }
 
     /** When re-running until failure, stop when failure is encountered. */
@@ -730,9 +734,9 @@ public class GranularRetriableTestWrapperTest {
         // All tests cases are rerun each time.
         assertEquals(2, res.getNumCompleteTests());
 
-        // No Test cases tracking since it was a run retry.
-        assertEquals(0, granularTestWrapper.getRetrySuccess());
-        assertEquals(0, granularTestWrapper.getRetryFailed());
+        // No stats since no retry occurred.
+        RetryStatistics stats = granularTestWrapper.getRetryStatistics();
+        assertNull(stats);
     }
 
     /**
@@ -804,9 +808,10 @@ public class GranularRetriableTestWrapperTest {
         assertTrue(lastRes.getRunProtoMetrics().containsKey("called"));
         assertFalse(lastRes.getRunProtoMetrics().containsKey("not-called"));
 
-        // No Test cases tracking since it was a run retry.
-        assertEquals(1, granularTestWrapper.getRetrySuccess());
-        assertEquals(0, granularTestWrapper.getRetryFailed());
+        // Check that failure are cleared
+        RetryStatistics stats = granularTestWrapper.getRetryStatistics();
+        assertEquals(1, stats.mRetrySuccess);
+        assertEquals(0, stats.mRetryFailure);
     }
 
     /**
