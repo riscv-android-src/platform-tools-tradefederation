@@ -17,9 +17,9 @@ package com.android.tradefed.util;
 
 import static org.junit.Assert.assertEquals;
 
-import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationDescriptor.LocalTestRunner;
+import com.android.tradefed.config.OptionDef;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.Abi;
 

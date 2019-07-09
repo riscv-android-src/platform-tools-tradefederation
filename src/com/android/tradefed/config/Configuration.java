@@ -19,7 +19,6 @@ package com.android.tradefed.config;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.ICommandOptions;
-import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.config.OptionSetter.FieldDef;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;

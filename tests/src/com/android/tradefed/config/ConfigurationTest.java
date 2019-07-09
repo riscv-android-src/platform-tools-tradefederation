@@ -20,7 +20,6 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.ICommandOptions;
-import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;

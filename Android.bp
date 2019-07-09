@@ -88,6 +88,7 @@ java_library_host {
         "tradefed-clearcut-client",
         "tradefed-result-interfaces",
         "tradefed-device-build-interfaces",
+	"tradefed-invocation-interfaces",
         "protobuf-java-util-prebuilt-jar",
         "aoa-helper",
         "error_prone_annotations-2.0.18",
