@@ -316,8 +316,7 @@ public class GTestTest {
                 EasyMock.same(mMockReceiver), EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(),
                 EasyMock.anyInt());
         // Expect deletion of file on device
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                EasyMock.eq(String.format("rm %s", deviceScriptPath)))).andReturn("");
+        mMockITestDevice.deleteFile(deviceScriptPath);
         replayMocks();
         mGTest.run(mMockInvocationListener);
 
@@ -410,9 +409,8 @@ public class GTestTest {
                 .andReturn("-rwxr-xr-x 1 root shell 7 2009-01-01 00:00 " + testPath2);
         String[] files = new String[] {"test1", "test2"};
         EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("rm")))
-                .andReturn("")
-                .times(2);
+        mMockITestDevice.deleteFile(testPath1 + "_res.xml");
+        mMockITestDevice.deleteFile(testPath2 + "_res.xml");
         EasyMock.expect(mMockITestDevice.pullFile((String)EasyMock.anyObject(),
                 (File)EasyMock.anyObject())).andStubReturn(true);
         mMockITestDevice.executeShellCommand(EasyMock.contains(test1),
