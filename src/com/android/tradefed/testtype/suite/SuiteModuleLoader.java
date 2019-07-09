@@ -560,7 +560,7 @@ public class SuiteModuleLoader {
             }
             // Do not consider the excluded parameterization dimension
             if (mExcludedModuleParameters.contains(suiteParam)) {
-                CLog.d("'%s' was excluded via exclude-module-parameters.");
+                CLog.d("'%s' was excluded via exclude-module-parameters.", moduleName);
                 continue;
             }
             IModuleParameter handler =
