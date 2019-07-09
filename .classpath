@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="src" path="clearcut_client"/>
+	<classpathentry excluding="Android.bp" kind="src" path="invocation_interfaces"/>
+	<classpathentry excluding="Android.bp" kind="src" path="test_result_interfaces"/>
 	<classpathentry excluding="Android.bp" kind="src" path="clearcut_client"/>
 	<classpathentry kind="src" path="res"/>
 	<classpathentry kind="src" path="hamcrest"/>
@@ -10,7 +11,6 @@
 	<classpathentry excluding="Android.bp" kind="src" path="common_util"/>
 	<classpathentry kind="src" path="global_configuration"/>
 	<classpathentry excluding="Android.bp" kind="src" path="device_build_interfaces"/>
-	<classpathentry excluding="Android.bp" kind="src" path="result_interfaces"/>
 	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/tf-remote-client"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/LongevityHostRunner"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/ddmlib"/>
