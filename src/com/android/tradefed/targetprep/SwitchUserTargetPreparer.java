@@ -22,6 +22,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.UserUtil;
 
 /**
  * A {@link ITargetPreparer} that switches to the specified user kind in setUp. By default it
@@ -31,25 +32,11 @@ import com.android.tradefed.log.LogUtil.CLog;
  */
 @OptionClass(alias = "switch-user-target-preparer")
 public class SwitchUserTargetPreparer extends BaseTargetPreparer implements ITargetCleaner {
-    private static final int USER_SYSTEM = 0; // From the UserHandle class.
-
-    /** Parameters that specify which user to run the test module as. */
-    public enum UserType {
-        // TODO:(b/123077733) Add support for guest and secondary.
-
-        /** current foreground user of the device */
-        CURRENT,
-        /** user flagged as primary on the device; most often primary = system user = user 0 */
-        PRIMARY,
-        /** system user = user 0 */
-        SYSTEM
-    }
-
     @Option(
         name = "user-type",
         description = "The type of user to switch to before the module run."
     )
-    private UserType mUserToSwitchTo = UserType.CURRENT;
+    private UserUtil.UserType mUserToSwitchTo = UserUtil.UserType.CURRENT;
 
     private int mPreExecutionCurrentUser;
 
@@ -59,39 +46,25 @@ public class SwitchUserTargetPreparer extends BaseTargetPreparer implements ITar
 
         mPreExecutionCurrentUser = device.getCurrentUser();
 
-        switch (mUserToSwitchTo) {
-            case SYSTEM:
-                switchToUser(USER_SYSTEM, device);
-                break;
-            case PRIMARY:
-                switchToUser(device.getPrimaryUserId(), device);
-                break;
-        }
-    }
-
-    private static void switchToUser(int userId, ITestDevice device)
-            throws TargetSetupError, DeviceNotAvailableException {
-        if (device.getCurrentUser() == userId) {
-            return;
-        }
-
-        // Otherwise, switch to user with userId.
-        if (device.switchUser(userId)) {
-            // Successful switch.
-            CLog.i("Switched to user %d.", userId);
-        } else {
-            // Couldn't switch, throw.
+        try {
+            UserUtil.switchToUserType(device, mUserToSwitchTo);
+        } catch (UserUtil.UserSwitchFailedException err) {
             throw new TargetSetupError(
-                    String.format("Failed switch to user %d.", userId),
+                    String.format("Failed switch to user type %s", mUserToSwitchTo),
+                    err,
                     device.getDeviceDescriptor());
         }
+
+        CLog.d("Successfully switched to user type %s", mUserToSwitchTo);
     }
 
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
         // Restore the previous user as the foreground.
-        if (!device.switchUser(mPreExecutionCurrentUser)) {
+        if (device.switchUser(mPreExecutionCurrentUser)) {
+            CLog.d("Successfully switched back to user id: %d", mPreExecutionCurrentUser);
+        } else {
             CLog.w("Could not switch back to the user id: %d", mPreExecutionCurrentUser);
         }
     }
