@@ -31,6 +31,7 @@ import junit.framework.TestCase;
 import org.easymock.EasyMock;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -202,7 +203,8 @@ public class AndroidJUnitTestTest extends TestCase {
                 EasyMock.<File>anyObject(), EasyMock.<String>anyObject())).andReturn(Boolean.TRUE);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
                 .andReturn("")
-                .times(2);
+                .times(1);
+        mMockTestDevice.deleteFile("/data/local/tmp/ajur");
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFile = FileUtil.createTempFile("testFile", ".txt");
@@ -227,7 +229,8 @@ public class AndroidJUnitTestTest extends TestCase {
                 EasyMock.<File>anyObject(), EasyMock.<String>anyObject())).andReturn(Boolean.TRUE);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
                 .andReturn("")
-                .times(2);
+                .times(1);
+        mMockTestDevice.deleteFile("/data/local/tmp/ajur");
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFile = FileUtil.createTempFile("notTestFile", ".txt");
@@ -256,7 +259,8 @@ public class AndroidJUnitTestTest extends TestCase {
                 EasyMock.<String>anyObject())).andReturn(Boolean.TRUE).times(2);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
                 .andReturn("")
-                .times(4);
+                .times(2);
+        mMockTestDevice.deleteFile("/data/local/tmp/ajur");
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
@@ -324,7 +328,8 @@ public class AndroidJUnitTestTest extends TestCase {
                 .times(2);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
                 .andReturn("")
-                .times(4);
+                .times(2);
+        mMockTestDevice.deleteFile("/data/local/tmp/ajur");
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
@@ -374,6 +379,16 @@ public class AndroidJUnitTestTest extends TestCase {
     public void testSplit_noShardRequested() {
         assertEquals(AJUR, mAndroidJUnitTest.getRunnerName());
         assertNull(mAndroidJUnitTest.split());
+    }
+
+    /** Test that {@link AndroidJUnitTest#split()} returns the split if no runner specified. */
+    public void testSplit_noRunner() {
+        AndroidJUnitTest test = new AndroidJUnitTest();
+        test.setRunnerName(null);
+        assertNull(test.getRunnerName());
+        Collection<IRemoteTest> listTests = test.split(4);
+        assertNotNull(listTests);
+        assertEquals(4, listTests.size());
     }
 
     /** Test that {@link AndroidJUnitTest#split(int)} returns 3 shards when requested to do so. */
