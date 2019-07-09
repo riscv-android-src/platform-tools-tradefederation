@@ -44,7 +44,7 @@ import java.util.HashMap;
  */
 public final class NativeCodeCoverageListener extends ResultForwarder {
 
-    private static final String NATIVE_COVERAGE_DEVICE_PATH = "/data/misc/trace";
+    private static final String NATIVE_COVERAGE_DEVICE_PATH = "/data/misc/trace/proc/self/cwd/out";
     private static final String COVERAGE_FILE_LIST_COMMAND =
             String.format("find %s -name '*.gcda'", NATIVE_COVERAGE_DEVICE_PATH);
 
@@ -72,6 +72,8 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
         try {
             localDir = FileUtil.createTempDir("native_coverage");
 
+            // Enable abd root on the device, otherwise the list command will fail.
+            verify(mDevice.enableAdbRoot(), "Failed to enable adb root.");
             String findResult = mDevice.executeShellCommand(COVERAGE_FILE_LIST_COMMAND);
 
             Path devicePathRoot = Paths.get(NATIVE_COVERAGE_DEVICE_PATH);
