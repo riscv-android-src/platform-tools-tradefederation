@@ -16,12 +16,10 @@
 
 package com.android.tradefed.config;
 
-import com.android.tradefed.build.BuildSerializedVersion;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.File;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -50,38 +48,6 @@ public class ConfigurationDef {
 
     /** The set of files (and modification times) that were used to load this config */
     private final Map<File, Long> mSourceFiles = new HashMap<>();
-
-    /** Holds the details of an option. */
-    public static final class OptionDef implements Serializable {
-        private static final long serialVersionUID = BuildSerializedVersion.VERSION;
-
-        public final String name;
-        public final String key;
-        public final String value;
-        public final String source;
-        public final String applicableObjectType;
-
-        public OptionDef(String optionName, String optionValue, String source) {
-            this(optionName, null, optionValue, source, null);
-        }
-
-        public OptionDef(String optionName, String optionKey, String optionValue, String source) {
-            this(optionName, optionKey, optionValue, source, null);
-        }
-
-        public OptionDef(
-                String optionName,
-                String optionKey,
-                String optionValue,
-                String source,
-                String type) {
-            this.name = optionName;
-            this.key = optionKey;
-            this.value = optionValue;
-            this.source = source;
-            this.applicableObjectType = type;
-        }
-    }
 
     /**
      * Object to hold info for a className and the appearance number it has (e.g. if a config has
