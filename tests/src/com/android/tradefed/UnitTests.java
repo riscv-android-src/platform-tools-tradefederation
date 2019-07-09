@@ -349,6 +349,7 @@ import com.android.tradefed.util.statsd.ConfigUtilTest;
 import com.android.tradefed.util.statsd.MetricUtilTest;
 import com.android.tradefed.util.testmapping.TestInfoTest;
 import com.android.tradefed.util.testmapping.TestMappingTest;
+import com.android.tradefed.util.zip.MergedZipEntryCollectionTest;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -746,6 +747,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ListInstrumentationParserTest.class,
     LogcatEventParserTest.class,
     MultiMapTest.class,
+    MergedZipEntryCollectionTest.class,
     NativeCodeCoverageFlusherTest.class,
     NullUtilTest.class,
     PairTest.class,
