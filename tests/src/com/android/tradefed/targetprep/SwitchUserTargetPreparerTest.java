@@ -53,7 +53,7 @@ public class SwitchUserTargetPreparerTest {
     }
 
     @Test
-    public void testSetUpRunAsPrimary_ifAlreadyInPrimary_noUserSwitch()
+    public void testSetUpRunAsPrimary_ifAlreadyInPrimary_switchToPrimary()
             throws DeviceNotAvailableException, TargetSetupError, ConfigurationException {
         // setup
         mockUsers(/* primaryUserId= */ 11, /* currentUserId= */ 11);
@@ -63,11 +63,11 @@ public class SwitchUserTargetPreparerTest {
         mSwitchUserTargetPreparer.setUp(mMockDevice, /* buildInfo= */ null);
 
         // assert
-        verify(mMockDevice, never()).switchUser(anyInt());
+        verify(mMockDevice, times(1)).switchUser(11);
     }
 
     @Test
-    public void testSetUpRunAsSystem_ifAlreadyInSystem_noUserSwitch()
+    public void testSetUpRunAsSystem_ifAlreadyInSystem_switchToSystem()
             throws DeviceNotAvailableException, TargetSetupError, ConfigurationException {
         // setup
         mockUsers(/* primaryUserId= */ 11, /* currentUserId= */ USER_SYSTEM);
@@ -77,7 +77,7 @@ public class SwitchUserTargetPreparerTest {
         mSwitchUserTargetPreparer.setUp(mMockDevice, /* buildInfo= */ null);
 
         // assert
-        verify(mMockDevice, never()).switchUser(anyInt());
+        verify(mMockDevice, times(1)).switchUser(0);
     }
 
     @Test

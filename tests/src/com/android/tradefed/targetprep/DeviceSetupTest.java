@@ -1037,9 +1037,7 @@ public class DeviceSetupTest extends TestCase {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         EasyMock.expect(mMockDevice.pullFile("/data/local.prop")).andReturn(null).once();
-        EasyMock.expect(mMockDevice.executeShellCommand("rm -f /data/local.prop"))
-                .andReturn(null)
-                .once();
+        mMockDevice.deleteFile("/data/local.prop");
         mMockDevice.reboot();
         EasyMock.expectLastCall().once();
 
