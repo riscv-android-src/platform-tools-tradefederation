@@ -16,9 +16,9 @@
 
 package com.android.tradefed.util;
 
-import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationDescriptor.LocalTestRunner;
+import com.android.tradefed.config.OptionDef;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.TestDescription;
 

@@ -16,7 +16,6 @@
 package com.android.tradefed.config;
 
 import com.android.tradefed.build.BuildSerializedVersion;
-import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.config.proto.ConfigurationDescription;
 import com.android.tradefed.config.proto.ConfigurationDescription.Descriptor;
 import com.android.tradefed.config.proto.ConfigurationDescription.Metadata;
