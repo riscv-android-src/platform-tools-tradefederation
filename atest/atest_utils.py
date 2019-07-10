@@ -27,7 +27,6 @@ import pickle
 import re
 import subprocess
 import sys
-from distutils.util import strtobool
 try:
     # If PYTHON2
     from urllib2 import urlopen
@@ -364,6 +363,11 @@ def handle_test_runner_cmd(input_test, test_cmds, do_verification=False,
             print('Former cmds = %s' % former_test_cmds)
             print('Current cmds = %s' % test_cmds)
             try:
+                # TODO(b/137156054):
+                # Move the import statement into a method for that distutils is
+                # not a built-in lib in older python3(b/137017806). Will move it
+                # back when embedded_launcher fully supports Python3.
+                from distutils.util import strtobool
                 if not strtobool(raw_input('Do you want to update former result'
                                            'with the latest one?(Y/n)')):
                     print('SKIP updating result!!!')
