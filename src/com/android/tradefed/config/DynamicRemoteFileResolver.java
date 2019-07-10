@@ -84,19 +84,13 @@ public class DynamicRemoteFileResolver {
     public final Set<File> validateRemoteFilePath() throws ConfigurationException {
         Set<File> downloadedFiles = new HashSet<>();
         try {
-            Set<Field> fieldSet = new HashSet<>();
+            Map<Object, Field> fieldSeen = new HashMap<>();
             for (Map.Entry<String, OptionFieldsForName> optionPair : mOptionMap.entrySet()) {
                 final OptionFieldsForName optionFields = optionPair.getValue();
                 for (Map.Entry<Object, Field> fieldEntry : optionFields) {
 
                     final Object obj = fieldEntry.getKey();
-
                     final Field field = fieldEntry.getValue();
-                    if (fieldSet.contains(field)) {
-                        // Avoid reprocessing a Field we already saw.
-                        continue;
-                    }
-                    fieldSet.add(field);
                     final Option option = field.getAnnotation(Option.class);
                     if (option == null) {
                         continue;
@@ -106,14 +100,21 @@ public class DynamicRemoteFileResolver {
                     final Object value;
                     try {
                         value = field.get(obj);
+                        if (value == null) {
+                            continue;
+                        }
                     } catch (IllegalAccessException e) {
                         throw new ConfigurationException(
                                 String.format("internal error: %s", e.getMessage()));
                     }
 
-                    if (value == null) {
+                    if (fieldSeen.get(value) != null && fieldSeen.get(value).equals(field)) {
                         continue;
-                    } else if (value instanceof File) {
+                    }
+                    // Keep track of the field set on each object
+                    fieldSeen.put(value, field);
+
+                    if (value instanceof File) {
                         File consideredFile = (File) value;
                         File downloadedFile = resolveRemoteFiles(consideredFile, option);
                         if (downloadedFile != null) {
