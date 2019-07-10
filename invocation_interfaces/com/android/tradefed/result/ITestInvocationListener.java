@@ -15,10 +15,8 @@
  */
 package com.android.tradefed.result;
 
-import com.android.tradefed.command.ICommandScheduler;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.ITestLogger;
-import com.android.tradefed.testtype.suite.ITestSuite;
 
 /**
  * Listener for test results from the test invocation.
@@ -82,17 +80,17 @@ public interface ITestInvocationListener extends ITestLogger, ITestLifeCycleRece
     default public TestSummary getSummary() { return null; }
 
     /**
-     * Called on {@link ICommandScheduler#shutdown()}, gives the invocation the opportunity to do
-     * something before terminating.
+     * Called on scheduler shutdown, gives the invocation the opportunity to do something before
+     * terminating.
      */
-    default public void invocationInterrupted() {
+    public default void invocationInterrupted() {
         // do nothing in default implementation.
     }
 
     /**
      * Reports the beginning of a module running. This callback is associated with {@link
      * #testModuleEnded()} and is optional in the sequence. It is only used during a run that uses
-     * modules: {@link ITestSuite} based runners.
+     * modules: suite based runners.
      *
      * @param moduleContext the {@link IInvocationContext} of the module.
      */

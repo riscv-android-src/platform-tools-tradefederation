@@ -18,6 +18,8 @@ package com.android.tradefed.util.zip;
 
 import com.android.tradefed.util.ByteArrayUtil;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.IOException;
 import java.util.Arrays;
 
@@ -164,6 +166,10 @@ public final class CentralDirectoryInfo {
     public int getInfoSize() {
         return 46 + mFileNameLength + mExtraFieldLength + mFileCommentLength;
     }
+
+    /** Default constructor used for unit test. */
+    @VisibleForTesting
+    protected CentralDirectoryInfo() {}
 
     /**
      * Constructor to collect the information of a file entry inside zip file.

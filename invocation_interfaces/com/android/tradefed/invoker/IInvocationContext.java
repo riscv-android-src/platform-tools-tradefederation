@@ -19,7 +19,6 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
-import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.UniqueMultiMap;
 
@@ -159,14 +158,10 @@ public interface IInvocationContext extends Serializable {
      */
     public ConfigurationDescriptor getConfigurationDescriptor();
 
-    /**
-     * Sets the invocation context of module while being executed as part of a {@link ITestSuite}
-     */
+    /** Sets the invocation context of module while being executed as part of a suite. */
     public void setModuleInvocationContext(IInvocationContext invocationContext);
 
-    /**
-     * Returns the invocation context of module while being executed as part of a {@link ITestSuite}
-     */
+    /** Returns the invocation context of module while being executed as part of a suite. */
     public IInvocationContext getModuleInvocationContext();
 
     /** Returns the invocation test-tag. */
