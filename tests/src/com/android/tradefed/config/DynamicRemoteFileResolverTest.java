@@ -16,6 +16,7 @@
 package com.android.tradefed.config;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -46,6 +47,7 @@ import javax.annotation.Nonnull;
 @RunWith(JUnit4.class)
 public class DynamicRemoteFileResolverTest {
 
+    @OptionClass(alias = "alias-remote-file")
     private static class RemoteFileOption {
         @Option(name = "remote-file")
         public File remoteFile = null;
@@ -563,6 +565,58 @@ public class DynamicRemoteFileResolverTest {
 
         mResolver.resolvePartialDownloadZip(
                 new File("/tmp"), "gs:/fake/path?optional=true", includeFilters, excludeFilters);
+        EasyMock.verify(mMockResolver);
+    }
+
+    /**
+     * Ensure that the same field on two different objects can be set with different remote values.
+     */
+    @Test
+    public void testResolveTwoObjects() throws Exception {
+        RemoteFileOption object1 = new RemoteFileOption();
+        RemoteFileOption object2 = new RemoteFileOption();
+        OptionSetter setter =
+                new OptionSetter(object1, object2) {
+                    @Override
+                    protected DynamicRemoteFileResolver createResolver() {
+                        return mResolver;
+                    }
+                };
+
+        File fake = FileUtil.createTempFile("gs-option-setter-test", "txt");
+        setter.setOptionValue("alias-remote-file:1:remote-file", "gs://fake/path");
+        assertEquals("gs:/fake/path", object1.remoteFile.getPath());
+
+        File fake2 = FileUtil.createTempFile("gs-option-setter-test", "txt");
+        setter.setOptionValue("alias-remote-file:2:remote-file", "gs://fake2/path2");
+        assertEquals("gs:/fake2/path2", object2.remoteFile.getPath());
+
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path")),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
+                .andReturn(fake);
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake2/path2")),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
+                .andReturn(fake2);
+        EasyMock.replay(mMockResolver);
+
+        Set<File> downloadedFile = setter.validateRemoteFilePath();
+        try {
+            assertEquals(2, downloadedFile.size());
+            assertTrue(downloadedFile.contains(object1.remoteFile));
+            assertTrue(downloadedFile.contains(object2.remoteFile));
+
+            assertFalse(object1.remoteFile.equals(object2.remoteFile));
+        } finally {
+            for (File f : downloadedFile) {
+                FileUtil.recursiveDelete(f);
+            }
+        }
         EasyMock.verify(mMockResolver);
     }
 }
