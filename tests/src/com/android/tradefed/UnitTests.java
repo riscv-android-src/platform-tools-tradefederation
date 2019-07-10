@@ -64,7 +64,6 @@ import com.android.tradefed.device.FastbootHelperTest;
 import com.android.tradefed.device.ManagedDeviceListTest;
 import com.android.tradefed.device.ManagedTestDeviceFactoryTest;
 import com.android.tradefed.device.NativeDeviceTest;
-import com.android.tradefed.device.ReconnectingRecoveryTest;
 import com.android.tradefed.device.RemoteAndroidDeviceTest;
 import com.android.tradefed.device.TestDeviceTest;
 import com.android.tradefed.device.WaitDeviceRecoveryTest;
@@ -429,7 +428,6 @@ import org.junit.runners.Suite.SuiteClasses;
     ManagedDeviceListTest.class,
     ManagedTestDeviceFactoryTest.class,
     NativeDeviceTest.class,
-    ReconnectingRecoveryTest.class,
     RemoteAndroidDeviceTest.class,
     PropertyChangerTest.class,
     TestDeviceTest.class,
