@@ -40,14 +40,18 @@ public interface IBuildInfo extends Serializable {
         DO_NOT_COPY_IMAGE_FILE,
     }
 
-    /**
-     * Default value when build ID is unknown.
-     */
-    public final static String UNKNOWN_BUILD_ID = "-1";
+    /** Default value when build ID is unknown. */
+    public static final String UNKNOWN_BUILD_ID = "-1";
+
+    /** Prefix used in name to indicate the file is set to be delayed download. */
+    public static final String REMOTE_FILE_PREFIX = "remote_file:";
+
+    /** Remote file is not versioned. */
+    public static final String REMOTE_FILE_VERSION = "";
 
     /**
-     * Returns the unique identifier of build under test. Should never be null. Defaults to
-     * {@link #UNKNOWN_BUILD_ID}.
+     * Returns the unique identifier of build under test. Should never be null. Defaults to {@link
+     * #UNKNOWN_BUILD_ID}.
      */
     public String getBuildId();
 
@@ -279,4 +283,9 @@ public interface IBuildInfo extends Serializable {
 
     /** Set the build as test resource build. */
     public default void setTestResourceBuild(boolean testResourceBuild) {}
+
+    /** Get the paths for build artifacts that are delayed download. */
+    public default Set<File> getRemoteFiles() {
+        return null;
+    }
 }
