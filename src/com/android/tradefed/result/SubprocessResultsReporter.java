@@ -67,9 +67,11 @@ public class SubprocessResultsReporter
 
     private IBuildInfo mPrimaryBuildInfo = null;
     private Socket mReportSocket = null;
+    private Object mLock = new Object();
     private PrintWriter mPrintWriter = null;
 
     private boolean mPrintWarning = true;
+    private boolean mCancelled = false;
 
     /** {@inheritDoc} */
     @Override
@@ -221,6 +223,9 @@ public class SubprocessResultsReporter
         InvocationEndedEventInfo eventEnd =
                 new InvocationEndedEventInfo(mPrimaryBuildInfo.getBuildAttributes());
         printEvent(SubprocessTestResultsParser.StatusKeys.INVOCATION_ENDED, eventEnd);
+        // Upon invocation ended, trigger the end of the socket when the process finishes
+        SocketFinisher thread = new SocketFinisher();
+        Runtime.getRuntime().addShutdownHook(thread);
     }
 
     /**
@@ -276,16 +281,21 @@ public class SubprocessResultsReporter
         }
         if(mReportPort != null) {
             try {
-                if (mReportSocket == null) {
-                    mReportSocket = new Socket("localhost", mReportPort.intValue());
-                    mPrintWriter = new PrintWriter(mReportSocket.getOutputStream(), true);
+                if (mCancelled) {
+                    return;
                 }
-                if (!mReportSocket.isConnected()) {
-                    throw new RuntimeException("Reporter Socket is not connected");
+                synchronized (mLock) {
+                    if (mReportSocket == null) {
+                        mReportSocket = new Socket("localhost", mReportPort.intValue());
+                        mPrintWriter = new PrintWriter(mReportSocket.getOutputStream(), true);
+                    }
+                    if (!mReportSocket.isConnected()) {
+                        throw new RuntimeException("Reporter Socket is not connected");
+                    }
+                    String eventLog = String.format("%s %s\n", key, event.toString());
+                    mPrintWriter.print(eventLog);
+                    mPrintWriter.flush();
                 }
-                String eventLog = String.format("%s %s\n", key, event.toString());
-                mPrintWriter.print(eventLog);
-                mPrintWriter.flush();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -302,12 +312,34 @@ public class SubprocessResultsReporter
     /** {@inheritDoc} */
     @Override
     public void close() {
-        StreamUtil.close(mReportSocket);
-        StreamUtil.close(mPrintWriter);
+        mCancelled = true;
+        synchronized (mLock) {
+            if (mPrintWriter != null) {
+                mPrintWriter.flush();
+            }
+            StreamUtil.close(mPrintWriter);
+            mPrintWriter = null;
+            StreamUtil.close(mReportSocket);
+            mReportSocket = null;
+        }
     }
 
     /** Sets whether or not we should output the test logged or not. */
     public void setOutputTestLog(boolean outputTestLog) {
         mOutputTestlog = outputTestLog;
+    }
+
+    /** Threads that help terminating the socket. */
+    private class SocketFinisher extends Thread {
+
+        public SocketFinisher() {
+            super();
+            setName("SubprocessResultsReporter-socket-finisher");
+        }
+
+        @Override
+        public void run() {
+            close();
+        }
     }
 }
