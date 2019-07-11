@@ -140,8 +140,14 @@ public class SubprocessResultsReporter
     /** {@inheritDoc} */
     @Override
     public void testRunStarted(String runName, int testCount, int attemptNumber) {
+        testRunStarted(runName, testCount, attemptNumber, System.currentTimeMillis());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testRunStarted(String runName, int testCount, int attemptNumber, long startTime) {
         TestRunStartedEventInfo info =
-                new TestRunStartedEventInfo(runName, testCount, attemptNumber);
+                new TestRunStartedEventInfo(runName, testCount, attemptNumber, startTime);
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_RUN_STARTED, info);
     }
 
