@@ -119,6 +119,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.mod_finder.module_info.is_testable_module.return_value = False
         self.assertIsNone(self.mod_finder.find_test_by_module_name('Not_Module'))
 
+    @mock.patch.object(test_finder_utils, 'has_method_in_file',
+                       return_value=True)
     @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
                        return_value=False)
     @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets')
@@ -130,7 +132,7 @@ class ModuleFinderUnittests(unittest.TestCase):
     #pylint: disable=unused-argument
     def test_find_test_by_class_name(self, _isdir, _isfile, _fqcn,
                                      mock_checkoutput, mock_build,
-                                     _vts):
+                                     _vts, _has_method_in_file):
         """Test find_test_by_class_name."""
         mock_build.return_value = uc.CLASS_BUILD_TARGETS
         self.mod_finder.module_info.is_auto_gen_test_config.return_value = False
@@ -175,6 +177,8 @@ class ModuleFinderUnittests(unittest.TestCase):
             self, t_infos[0],
             CLASS_INFO_MODULE_2)
 
+    @mock.patch.object(test_finder_utils, 'has_method_in_file',
+                       return_value=True)
     @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
                        return_value=False)
     @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets')
@@ -185,7 +189,7 @@ class ModuleFinderUnittests(unittest.TestCase):
     #pylint: disable=unused-argument
     def test_find_test_by_module_and_class(self, _isfile, _fqcn,
                                            mock_checkoutput, mock_build,
-                                           _vts):
+                                           _vts, _has_method_in_file):
         """Test find_test_by_module_and_class."""
         # Native test was tested in test_find_test_by_cc_class_name().
         self.mod_finder.module_info.is_native_test.return_value = False
@@ -322,6 +326,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.mod_finder.module_info.get_module_info.return_value = mod_info
         self.assertIsNone(self.mod_finder.find_test_by_module_and_package(bad_pkg))
 
+    @mock.patch.object(test_finder_utils, 'has_method_in_file',
+                       return_value=True)
     @mock.patch.object(test_finder_utils, 'has_cc_class',
                        return_value=True)
     @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets')
@@ -336,7 +342,8 @@ class ModuleFinderUnittests(unittest.TestCase):
     @mock.patch('os.path.exists')
     #pylint: disable=unused-argument
     def test_find_test_by_path(self, mock_pathexists, mock_dir, _isfile, _real,
-                               _fqcn, _vts, mock_build, _has_cc_class):
+                               _fqcn, _vts, mock_build, _has_cc_class,
+                               _has_method_in_file):
         """Test find_test_by_path."""
         self.mod_finder.module_info.is_robolectric_test.return_value = False
         self.mod_finder.module_info.has_test_config.return_value = True
@@ -435,6 +442,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         unittest_utils.assert_equal_testinfos(
             self, uc.CC_PATH_INFO, t_infos[0])
 
+    @mock.patch.object(test_finder_utils, 'has_method_in_file',
+                       return_value=True)
     @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
                        return_value=False)
     @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets')
@@ -444,7 +453,7 @@ class ModuleFinderUnittests(unittest.TestCase):
     #pylint: disable=unused-argument
     def test_find_test_by_cc_class_name(self, _isdir, _isfile,
                                         mock_checkoutput, mock_build,
-                                        _vts):
+                                        _vts, _has_method):
         """Test find_test_by_cc_class_name."""
         mock_build.return_value = uc.CLASS_BUILD_TARGETS
         self.mod_finder.module_info.is_auto_gen_test_config.return_value = False
