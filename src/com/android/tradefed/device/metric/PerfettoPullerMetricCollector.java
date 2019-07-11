@@ -27,6 +27,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.Pair;
 import com.android.tradefed.util.RunUtil;
 
@@ -92,6 +93,9 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
             DeviceMetricData data) {
         // Extract the metrics from the trace file.
         for (File scriptFile : mScriptFiles) {
+            // Apply necessary execute permissions to the script.
+            FileUtil.chmodGroupRWX(scriptFile);
+
             List<String> commandArgsList = new ArrayList<String>();
             commandArgsList.add(scriptFile.getAbsolutePath());
             commandArgsList.add("-trace_file");
