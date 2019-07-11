@@ -52,6 +52,7 @@ import com.android.tradefed.config.SandboxConfigurationFactoryTest;
 import com.android.tradefed.config.gcs.GCSConfigurationFactoryTest;
 import com.android.tradefed.config.gcs.GCSConfigurationServerTest;
 import com.android.tradefed.config.remote.GcsRemoteFileResolverTest;
+import com.android.tradefed.config.remote.HttpRemoteFileResolverTest;
 import com.android.tradefed.config.remote.LocalFileResolverTest;
 import com.android.tradefed.device.AndroidDebugBridgeWrapperTest;
 import com.android.tradefed.device.BackgroundDeviceActionTest;
@@ -63,7 +64,6 @@ import com.android.tradefed.device.FastbootHelperTest;
 import com.android.tradefed.device.ManagedDeviceListTest;
 import com.android.tradefed.device.ManagedTestDeviceFactoryTest;
 import com.android.tradefed.device.NativeDeviceTest;
-import com.android.tradefed.device.ReconnectingRecoveryTest;
 import com.android.tradefed.device.RemoteAndroidDeviceTest;
 import com.android.tradefed.device.TestDeviceTest;
 import com.android.tradefed.device.WaitDeviceRecoveryTest;
@@ -414,6 +414,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // config.remote
     GcsRemoteFileResolverTest.class,
+    HttpRemoteFileResolverTest.class,
     LocalFileResolverTest.class,
 
     // device
@@ -427,7 +428,6 @@ import org.junit.runners.Suite.SuiteClasses;
     ManagedDeviceListTest.class,
     ManagedTestDeviceFactoryTest.class,
     NativeDeviceTest.class,
-    ReconnectingRecoveryTest.class,
     RemoteAndroidDeviceTest.class,
     PropertyChangerTest.class,
     TestDeviceTest.class,
