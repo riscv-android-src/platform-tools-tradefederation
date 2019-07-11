@@ -16,6 +16,7 @@
 Various globals used by atest.
 """
 
+import re
 
 MODE = 'DEFAULT'
 
@@ -65,6 +66,8 @@ MODULE_CLASS_ROBOLECTRIC = 'ROBOLECTRIC'
 MODULE_CLASS_NATIVE_TESTS = 'NATIVE_TESTS'
 MODULE_CLASS_JAVA_LIBRARIES = 'JAVA_LIBRARIES'
 MODULE_TEST_CONFIG = 'test_config'
+CC_EXT_RE = re.compile(r'.*\.(cc|cpp)$', re.I)
+JAVA_EXT_RE = re.compile(r'.*\.(java|kt)$', re.I)
 
 # Env constants
 ANDROID_BUILD_TOP = 'ANDROID_BUILD_TOP'

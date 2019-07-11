@@ -18,7 +18,6 @@ Module Finder class.
 
 import logging
 import os
-import re
 
 # pylint: disable=import-error
 import atest_error
@@ -30,9 +29,6 @@ from test_finders import test_finder_utils
 from test_runners import atest_tf_test_runner
 from test_runners import robolectric_test_runner
 from test_runners import vts_tf_test_runner
-
-_CC_EXT_RE = re.compile(r'.*(\.cc|\.cpp)$', re.I)
-_JAVA_EXT_RE = re.compile(r'.*(\.java|\.kt)$', re.I)
 
 _MODULES_IN = 'MODULES-IN-%s'
 _ANDROID_MK = 'Android.mk'
@@ -236,13 +232,13 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                 test_finder_utils.get_cc_filter(
                     kwargs.get('class_name', '*'), methods), frozenset())])
         # Path to java file.
-        elif file_name and _JAVA_EXT_RE.match(file_name):
+        elif file_name and constants.JAVA_EXT_RE.match(file_name):
             full_class_name = test_finder_utils.get_fully_qualified_class_name(
                 path)
             ti_filter = frozenset(
                 [test_info.TestFilter(full_class_name, methods)])
         # Path to cc file.
-        elif file_name and _CC_EXT_RE.match(file_name):
+        elif file_name and constants.CC_EXT_RE.match(file_name):
             if not test_finder_utils.has_cc_class(path):
                 raise atest_error.MissingCCTestCaseError(
                     "Can't find CC class in %s" % path)
@@ -256,7 +252,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
               os.path.relpath(path, self.root_dir)):
             dir_items = [os.path.join(path, f) for f in os.listdir(path)]
             for dir_item in dir_items:
-                if _JAVA_EXT_RE.match(dir_item):
+                if constants.JAVA_EXT_RE.match(dir_item):
                     package_name = test_finder_utils.get_package_name(dir_item)
                     if package_name:
                         # methods should be empty frozenset for package.
@@ -372,13 +368,14 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         else:
             search_dir = self.root_dir
         test_paths = test_finder_utils.find_class_file(search_dir, class_name,
-                                                       is_native_test)
+                                                       is_native_test, methods)
         if not test_paths and rel_config:
             logging.info('Did not find class (%s) under module path (%s), '
                          'researching from repo root.', class_name, rel_config)
             test_paths = test_finder_utils.find_class_file(self.root_dir,
                                                            class_name,
-                                                           is_native_test)
+                                                           is_native_test,
+                                                           methods)
         if not test_paths:
             return None
         tinfos = []
@@ -503,6 +500,9 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         # create absolute path from cwd and remove symbolic links
         path = os.path.realpath(path)
         if not os.path.exists(path):
+            return None
+        if (methods and
+                not test_finder_utils.has_method_in_file(path, methods)):
             return None
         dir_path, _ = test_finder_utils.get_dir_path_and_filename(path)
         # Module/Class
