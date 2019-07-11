@@ -37,6 +37,7 @@ INT_DIR2 = os.path.join(uc.TEST_DATA_DIR, 'integration_dir_testing/int_dir2')
 INT_FILE_NAME = 'int_dir_testing'
 FIND_TWO = uc.ROOT + 'other/dir/test.java\n' + uc.FIND_ONE
 FIND_THREE = '/a/b/c.java\n/d/e/f.java\n/g/h/i.java'
+FIND_THREE_LIST = ['/a/b/c.java', '/d/e/f.java', '/g/h/i.java']
 VTS_XML = 'VtsAndroidTest.xml'
 VTS_BITNESS_XML = 'VtsBitnessAndroidTest.xml'
 VTS_PUSH_DIR = 'vts_push_files'
@@ -116,8 +117,10 @@ class TestFinderUtilsUnittests(unittest.TestCase):
             test_finder_utils.split_methods('foo/bar/class.java#Method'),
             ('foo/bar/class.java', {'Method'}))
 
+    @mock.patch.object(test_finder_utils, 'has_method_in_file',
+                       return_value=False)
     @mock.patch('__builtin__.raw_input', return_value='1')
-    def test_extract_test_path(self, _):
+    def test_extract_test_path(self, _, has_method):
         """Test extract_test_dir method."""
         paths = [os.path.join(uc.ROOT, CLASS_DIR, uc.CLASS_NAME + '.java')]
         unittest_utils.assert_strict_equal(
@@ -125,6 +128,34 @@ class TestFinderUtilsUnittests(unittest.TestCase):
         paths = [os.path.join(uc.ROOT, CLASS_DIR, uc.CLASS_NAME + '.java')]
         unittest_utils.assert_strict_equal(
             self, test_finder_utils.extract_test_path(FIND_TWO), paths)
+        paths = None
+        unittest_utils.assert_strict_equal(
+            self, test_finder_utils.extract_test_path(uc.FIND_ONE, 'method'), paths)
+        has_method.return_value = True
+        paths = [os.path.join(uc.ROOT, CLASS_DIR, uc.CLASS_NAME + '.java')]
+        unittest_utils.assert_strict_equal(
+            self, test_finder_utils.extract_test_path(uc.FIND_ONE, 'method'), paths)
+
+    def test_has_method_in_file(self):
+        """Test has_method_in_file method."""
+        test_path = os.path.join(uc.TEST_DATA_DIR, 'class_file_path_testing',
+                                 'hello_world_test.cc')
+        self.assertTrue(test_finder_utils.has_method_in_file(
+            test_path, frozenset(['PrintHelloWorld'])))
+        self.assertFalse(test_finder_utils.has_method_in_file(
+            test_path, frozenset(['PrintHelloWorld1'])))
+        test_path = os.path.join(uc.TEST_DATA_DIR, 'class_file_path_testing',
+                                 'hello_world_test.java')
+        self.assertTrue(test_finder_utils.has_method_in_file(
+            test_path, frozenset(['testMethod1'])))
+        test_path = os.path.join(uc.TEST_DATA_DIR, 'class_file_path_testing',
+                                 'hello_world_test.java')
+        self.assertTrue(test_finder_utils.has_method_in_file(
+            test_path, frozenset(['testMethod', 'testMethod2'])))
+        test_path = os.path.join(uc.TEST_DATA_DIR, 'class_file_path_testing',
+                                 'hello_world_test.java')
+        self.assertFalse(test_finder_utils.has_method_in_file(
+            test_path, frozenset(['testMethod'])))
 
     @mock.patch('__builtin__.raw_input', return_value='1')
     def test_extract_test_from_tests(self, mock_input):
@@ -153,22 +184,25 @@ class TestFinderUtilsUnittests(unittest.TestCase):
         paths = ['/a/b/c.java', '/d/e/f.java', '/g/h/i.java']
         mock_input.return_value = '3'
         unittest_utils.assert_strict_equal(
-            self, test_finder_utils.extract_test_path(FIND_THREE), paths)
+            self, sorted(test_finder_utils.extract_test_from_tests(
+                FIND_THREE_LIST)), sorted(paths))
         # multi-select
         paths = ['/a/b/c.java', '/g/h/i.java']
         mock_input.return_value = '0,2'
         unittest_utils.assert_strict_equal(
-            self, sorted(test_finder_utils.extract_test_path(FIND_THREE)), sorted(paths))
+            self, sorted(test_finder_utils.extract_test_from_tests(
+                FIND_THREE_LIST)), sorted(paths))
         # selecting a range
         paths = ['/d/e/f.java', '/g/h/i.java']
         mock_input.return_value = '1-2'
         unittest_utils.assert_strict_equal(
-            self, test_finder_utils.extract_test_path(FIND_THREE), paths)
+            self, test_finder_utils.extract_test_from_tests(FIND_THREE_LIST), paths)
         # mixed formats
         paths = ['/a/b/c.java', '/d/e/f.java', '/g/h/i.java']
         mock_input.return_value = '0,1-2'
         unittest_utils.assert_strict_equal(
-            self, sorted(test_finder_utils.extract_test_path(FIND_THREE)), sorted(paths))
+            self, sorted(test_finder_utils.extract_test_from_tests(
+                FIND_THREE_LIST)), sorted(paths))
         # input unsupported formats, return empty
         paths = []
         mock_input.return_value = '?/#'
