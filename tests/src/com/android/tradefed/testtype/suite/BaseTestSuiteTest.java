@@ -31,7 +31,6 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.ITestLogger;
-import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -288,7 +287,7 @@ public class BaseTestSuiteTest {
         assertNull(mRunner.split(2));
     }
 
-    /** Ensure that during sharding we obtain a logger for the files and use it. */
+    /** Ensure that during sharding we don't attempt to log the filter files. */
     @Test
     public void testSplit_withFilters() throws Exception {
         OptionSetter setter = new OptionSetter(mRunner);
@@ -302,10 +301,6 @@ public class BaseTestSuiteTest {
         ITestLogger logger = EasyMock.createMock(ITestLogger.class);
         mRunner.setTestLogger(logger);
 
-        logger.testLog(
-                EasyMock.contains("suite-exclude-filters"),
-                EasyMock.eq(LogDataType.TEXT),
-                EasyMock.anyObject());
         EasyMock.replay(logger);
         Collection<IRemoteTest> tests = mRunner.split(2);
         assertEquals(4, tests.size());
