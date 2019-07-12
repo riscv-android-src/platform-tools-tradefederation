@@ -105,7 +105,8 @@ public class LegacySubprocessResultsReporterTest {
             Map<String, String> map = new HashMap<>();
             map.put("key1", "value1");
             map.put("key2", "value2");
-            mMockListener.testRunStarted("test run", 2);
+            mMockListener.testRunStarted(
+                    EasyMock.eq("test run"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
             mMockListener.testRunEnded(50, TfMetricProtoUtil.upgradeConvert(map));
             EasyMock.replay(mMockListener);
             mReporter.testRunStarted("test run", 2);
