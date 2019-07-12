@@ -328,6 +328,8 @@ public abstract class ITestSuite
     private List<ModuleDefinition> mRunModules = null;
     // Logger to be used to files.
     private ITestLogger mCurrentLogger = null;
+    // Whether or not we are currently in split
+    private boolean mIsSplitting = false;
 
     /**
      * Get the current Guice {@link Injector} from the invocation. It should allow us to continue
@@ -807,6 +809,11 @@ public abstract class ITestSuite
                 System.currentTimeMillis() - startTime, new HashMap<String, Metric>());
     }
 
+    /** Returns true if we are currently in {@link #split(int)}. */
+    public boolean isSplitting() {
+        return mIsSplitting;
+    }
+
     /** {@inheritDoc} */
     @Override
     public Collection<IRemoteTest> split(int shardCountHint) {
@@ -814,39 +821,47 @@ public abstract class ITestSuite
             // cannot shard or already sharded
             return null;
         }
+        mIsSplitting = true;
+        try {
+            LinkedHashMap<String, IConfiguration> runConfig = loadAndFilter();
+            if (runConfig.isEmpty()) {
+                CLog.i("No config were loaded. Nothing to run.");
+                return null;
+            }
+            injectInfo(runConfig);
 
-        LinkedHashMap<String, IConfiguration> runConfig = loadAndFilter();
-        if (runConfig.isEmpty()) {
-            CLog.i("No config were loaded. Nothing to run.");
-            return null;
+            // We split individual tests on double the shardCountHint to provide better average.
+            // The test pool mechanism prevent this from creating too much overhead.
+            List<ModuleDefinition> splitModules =
+                    ModuleSplitter.splitConfiguration(
+                            runConfig,
+                            shardCountHint,
+                            mShouldMakeDynamicModule,
+                            mIntraModuleSharding);
+            runConfig.clear();
+            runConfig = null;
+
+            // Clean up the parent that will get sharded: It is fine to clean up before copying the
+            // options, because the sharded module is already created/populated so there is no need
+            // to carry these extra data.
+            cleanUpSuiteSetup();
+
+            // create an association of one ITestSuite <=> one ModuleDefinition as the smallest
+            // execution unit supported.
+            List<IRemoteTest> splitTests = new ArrayList<>();
+            for (ModuleDefinition m : splitModules) {
+                ITestSuite suite = createInstance();
+                OptionCopier.copyOptionsNoThrow(this, suite);
+                suite.mIsSharded = true;
+                suite.mDirectModule = m;
+                splitTests.add(suite);
+            }
+            // return the list of ITestSuite with their ModuleDefinition assigned
+            return splitTests;
+        } finally {
+            // Done splitting at that point
+            mIsSplitting = false;
         }
-        injectInfo(runConfig);
-
-        // We split individual tests on double the shardCountHint to provide better average.
-        // The test pool mechanism prevent this from creating too much overhead.
-        List<ModuleDefinition> splitModules =
-                ModuleSplitter.splitConfiguration(
-                        runConfig, shardCountHint, mShouldMakeDynamicModule, mIntraModuleSharding);
-        runConfig.clear();
-        runConfig = null;
-
-        // Clean up the parent that will get sharded: It is fine to clean up before copying the
-        // options, because the sharded module is already created/populated so there is no need
-        // to carry these extra data.
-        cleanUpSuiteSetup();
-
-        // create an association of one ITestSuite <=> one ModuleDefinition as the smallest
-        // execution unit supported.
-        List<IRemoteTest> splitTests = new ArrayList<>();
-        for (ModuleDefinition m : splitModules) {
-            ITestSuite suite = createInstance();
-            OptionCopier.copyOptionsNoThrow(this, suite);
-            suite.mIsSharded = true;
-            suite.mDirectModule = m;
-            splitTests.add(suite);
-        }
-        // return the list of ITestSuite with their ModuleDefinition assigned
-        return splitTests;
     }
 
     /**
