@@ -17,7 +17,6 @@ package com.android.tradefed.testtype.suite;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -196,33 +195,47 @@ public class BaseTestSuite extends ITestSuite {
 
             String includeFilter = mIncludeFiltersParsed.toString();
             if (mIncludeFiltersParsed.size() > MAX_FILTER_DISPLAY) {
-                File suiteIncludeFilters = null;
-                try {
-                    suiteIncludeFilters = FileUtil.createTempFile("suite-include-filters", ".txt");
-                    FileUtil.writeToFile(mIncludeFiltersParsed.toString(), suiteIncludeFilters);
-                    logFilterFile(
-                            suiteIncludeFilters, suiteIncludeFilters.getName(), LogDataType.TEXT);
-                    includeFilter = String.format("See %s", suiteIncludeFilters.getName());
-                } catch (IOException e) {
-                    CLog.e(e);
-                } finally {
-                    FileUtil.deleteFile(suiteIncludeFilters);
+                if (isSplitting()) {
+                    includeFilter = includeFilter.substring(0, 100) + "...";
+                } else {
+                    File suiteIncludeFilters = null;
+                    try {
+                        suiteIncludeFilters =
+                                FileUtil.createTempFile("suite-include-filters", ".txt");
+                        FileUtil.writeToFile(mIncludeFiltersParsed.toString(), suiteIncludeFilters);
+                        logFilterFile(
+                                suiteIncludeFilters,
+                                suiteIncludeFilters.getName(),
+                                LogDataType.TEXT);
+                        includeFilter = String.format("See %s", suiteIncludeFilters.getName());
+                    } catch (IOException e) {
+                        CLog.e(e);
+                    } finally {
+                        FileUtil.deleteFile(suiteIncludeFilters);
+                    }
                 }
             }
 
             String excludeFilter = mExcludeFiltersParsed.toString();
             if (mExcludeFiltersParsed.size() > MAX_FILTER_DISPLAY) {
-                File suiteExcludeFilters = null;
-                try {
-                    suiteExcludeFilters = FileUtil.createTempFile("suite-exclude-filters", ".txt");
-                    FileUtil.writeToFile(mExcludeFiltersParsed.toString(), suiteExcludeFilters);
-                    logFilterFile(
-                            suiteExcludeFilters, suiteExcludeFilters.getName(), LogDataType.TEXT);
-                    excludeFilter = String.format("See %s", suiteExcludeFilters.getName());
-                } catch (IOException e) {
-                    CLog.e(e);
-                } finally {
-                    FileUtil.deleteFile(suiteExcludeFilters);
+                if (isSplitting()) {
+                    excludeFilter = excludeFilter.substring(0, 100) + "...";
+                } else {
+                    File suiteExcludeFilters = null;
+                    try {
+                        suiteExcludeFilters =
+                                FileUtil.createTempFile("suite-exclude-filters", ".txt");
+                        FileUtil.writeToFile(mExcludeFiltersParsed.toString(), suiteExcludeFilters);
+                        logFilterFile(
+                                suiteExcludeFilters,
+                                suiteExcludeFilters.getName(),
+                                LogDataType.TEXT);
+                        excludeFilter = String.format("See %s", suiteExcludeFilters.getName());
+                    } catch (IOException e) {
+                        CLog.e(e);
+                    } finally {
+                        FileUtil.deleteFile(suiteExcludeFilters);
+                    }
                 }
             }
 
@@ -230,6 +243,7 @@ public class BaseTestSuite extends ITestSuite {
                     "Initializing ModuleRepo\nABIs:%s\n"
                             + "Test Args:%s\nModule Args:%s\nIncludes:%s\nExcludes:%s",
                     abis, mTestArgs, mModuleArgs, includeFilter, excludeFilter);
+
             mModuleRepo =
                     createModuleLoader(
                             mIncludeFiltersParsed, mExcludeFiltersParsed, mTestArgs, mModuleArgs);
@@ -294,15 +308,6 @@ public class BaseTestSuite extends ITestSuite {
                         .loadConfigsFromDirectory(
                                 testsDirs, abis, suitePrefix, suiteTag, mConfigPatterns));
         return loadedConfigs;
-    }
-
-    public File getTestsDir() throws FileNotFoundException {
-        IBuildInfo build = getBuildInfo();
-        if (build instanceof IDeviceBuildInfo) {
-            return ((IDeviceBuildInfo) build).getTestsDir();
-        }
-        // TODO: handle multi build?
-        throw new FileNotFoundException("Could not found a tests dir folder.");
     }
 
     /** {@inheritDoc} */

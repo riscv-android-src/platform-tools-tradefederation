@@ -27,14 +27,17 @@ public class PackageInfo {
     // frameworks/base/core/java/android/content/pm/ApplicationInfo.java
     private static final int FLAG_UPDATED_SYSTEM_APP = 1 << 7;
     private static final int FLAG_SYSTEM = 1 << 0;
+    public static final int FLAG_PERSISTENT = 1 << 3;
 
     // string flag constants. Used for newer platforms
     private static final String FLAG_UPDATED_SYSTEM_APP_TEXT = " UPDATED_SYSTEM_APP ";
     private static final String FLAG_SYSTEM_TEXT = " SYSTEM ";
+    private static final String FLAG_PERSISTENT_TEXT = " PERSISTENT ";
 
     private final String mPackageName;
     private boolean mIsSystemApp;
     private boolean mIsUpdatedSystemApp;
+    private boolean mIsPersistentApp;
     private Map<String, String> mAttributes = new HashMap<String, String>();
 
     PackageInfo(String pkgName) {
@@ -53,6 +56,13 @@ public class PackageInfo {
      */
     public boolean isSystemApp() {
         return mIsSystemApp;
+    }
+
+    /**
+     * Returns <code>true</code> if this is a persistent app.
+     */
+    public boolean isPersistentApp() {
+        return mIsPersistentApp;
     }
 
     /**
@@ -89,6 +99,7 @@ public class PackageInfo {
     private void parseFlagsAsString(String flagString) {
         mIsSystemApp = flagString.contains(FLAG_SYSTEM_TEXT);
         mIsUpdatedSystemApp = flagString.contains(FLAG_UPDATED_SYSTEM_APP_TEXT);
+        mIsPersistentApp = flagString.contains(FLAG_PERSISTENT_TEXT);
     }
 
     private boolean parseFlagsAsInt(String value) {
@@ -98,6 +109,7 @@ public class PackageInfo {
             // note: FLAG_UPDATED_SYSTEM_APP never seems to be set. Rely on parsing hidden system
             // packages
             mIsUpdatedSystemApp = (flags & FLAG_UPDATED_SYSTEM_APP) != 0;
+            mIsPersistentApp = (flags & FLAG_PERSISTENT) != 0;
             return true;
         } catch (NumberFormatException e) {
             // not an int, fall through
@@ -105,3 +117,4 @@ public class PackageInfo {
         return false;
     }
 }
+

@@ -91,6 +91,7 @@ public class ResultAggregatorTest {
                 EasyMock.eq(test2),
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
+        mDetailedListener.testRunFailed("run fail");
         mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
         mDetailedListener.testRunStarted(
                 EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(1), EasyMock.anyLong());
@@ -136,6 +137,7 @@ public class ResultAggregatorTest {
         mAggregator.testStarted(test2);
         mAggregator.testFailed(test2, "I failed. retry me.");
         mAggregator.testEnded(test2, new HashMap<String, Metric>());
+        mAggregator.testRunFailed("run fail");
         mAggregator.testRunEnded(450L, new HashMap<String, Metric>());
         // Attempt 2
         mAggregator.testRunStarted("run1", 2, 1);

@@ -25,6 +25,7 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -58,7 +59,7 @@ public class BundletoolUtil {
         mRunUtil = new RunUtil();
     }
 
-    public File getBundletoolFile() {
+    protected File getBundletoolFile() {
         return mBundleToolFile;
     }
 
@@ -68,14 +69,13 @@ public class BundletoolUtil {
      * @param device the connected device
      * @return a {@link String} representing the path of the device specification file.
      */
-    public String generateDeviceSpecFile(ITestDevice device) {
+    public String generateDeviceSpecFile(ITestDevice device) throws IOException {
         Path specFilePath =
                 Paths.get(
                         getBundletoolFile().getParentFile().getAbsolutePath(),
                         device.getSerialNumber() + DEVICE_SPEC_FILE_EXTENSION);
-        if (Files.exists(specFilePath)) {
-            return specFilePath.toString();
-        }
+
+        Files.deleteIfExists(specFilePath);
 
         String outputDirArg = DEVICE_SPEC_OUTPUT_FLAG + specFilePath.toString();
 
