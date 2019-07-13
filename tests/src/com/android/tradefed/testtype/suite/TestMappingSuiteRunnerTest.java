@@ -418,6 +418,7 @@ public class TestMappingSuiteRunnerTest {
                     .andReturn(null);
             EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(new File("non-existing-dir"));
             EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+            EasyMock.expect(mockBuildInfo.getRemoteFiles()).andReturn(null).once();
 
             mRunner.setBuild(mockBuildInfo);
             EasyMock.replay(mockBuildInfo);
