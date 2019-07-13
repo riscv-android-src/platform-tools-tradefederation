@@ -145,6 +145,12 @@ public class ResultAggregator extends CollectingTestListener {
     }
 
     @Override
+    public void testRunFailed(String errorMessage) {
+        super.testRunFailed(errorMessage);
+        mDetailedForwarder.testRunFailed(errorMessage);
+    }
+
+    @Override
     public void testStarted(TestDescription test, long startTime) {
         super.testStarted(test, startTime);
         mDetailedForwarder.testStarted(test, startTime);
