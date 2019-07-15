@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
@@ -388,6 +389,23 @@ public class BuildInfo implements IBuildInfo {
     @Override
     public void setFile(BuildInfoFileKey key, File file, String version) {
         setFile(key.getFileKey(), file, version);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<VersionedFile> getAppPackageFiles() {
+        List<VersionedFile> origList = getVersionedFiles(BuildInfoFileKey.PACKAGE_FILES);
+        List<VersionedFile> listCopy = new ArrayList<VersionedFile>();
+        if (origList != null) {
+            listCopy.addAll(origList);
+        }
+        return listCopy;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addAppPackageFile(File appPackageFile, String version) {
+        setFile(BuildInfoFileKey.PACKAGE_FILES, appPackageFile, version);
     }
 
     /**
