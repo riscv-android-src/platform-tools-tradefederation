@@ -91,12 +91,14 @@ public class ProtoResultReporterTest {
         mReporter.testModuleStarted(createModuleContext("arm32 module1"));
         mReporter.testModuleEnded();
         // Invocation ends
+        mReporter.invocationFailed(new NullPointerException());
         mReporter.invocationEnded(500L);
 
         //  ------ Verify that everything was populated ------
         assertNotNull(mFinalRecord.getTestRecordId());
         assertNotNull(mFinalRecord.getStartTime().getSeconds());
         assertNotNull(mFinalRecord.getEndTime().getSeconds());
+        assertNotNull(mFinalRecord.getDebugInfo());
 
         // The invocation has 2 modules
         assertEquals(2, mFinalRecord.getChildrenCount());
