@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IAppBuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.VersionedFile;
 import com.android.tradefed.config.Option;
@@ -86,10 +85,10 @@ public class AppSetup extends BaseTargetPreparer implements ITargetCleaner {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException, BuildError {
-        if (!(buildInfo instanceof IAppBuildInfo)) {
-            throw new IllegalArgumentException("Provided buildInfo is not a AppBuildInfo");
+        List<VersionedFile> apps = buildInfo.getAppPackageFiles();
+        if (apps.isEmpty()) {
+            return;
         }
-        IAppBuildInfo appBuild = (IAppBuildInfo)buildInfo;
         CLog.i("Performing setup on %s", device.getSerialNumber());
 
         // double check that device is clean, in case it has unexpected cruft on it
@@ -103,7 +102,7 @@ public class AppSetup extends BaseTargetPreparer implements ITargetCleaner {
         }
 
         if (mInstall) {
-            for (VersionedFile apkFile : appBuild.getAppPackageFiles()) {
+            for (VersionedFile apkFile : apps) {
                 if (mCheckMinSdk) {
                     AaptParser aaptParser = doAaptParse(apkFile.getFile());
                     if (aaptParser == null) {
