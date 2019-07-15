@@ -338,8 +338,9 @@ public class SubprocessTestResultsParser implements Closeable {
         @Override
         public void handleEvent(String eventJson) throws JSONException {
             TestRunStartedEventInfo rsi = new TestRunStartedEventInfo(new JSONObject(eventJson));
-            if (rsi.mAttempt != null && rsi.mAttempt != 0) {
-                mListener.testRunStarted(rsi.mRunName, rsi.mTestCount, rsi.mAttempt);
+            if (rsi.mAttempt != null) {
+                mListener.testRunStarted(
+                        rsi.mRunName, rsi.mTestCount, rsi.mAttempt, rsi.mStartTime);
             } else {
                 mListener.testRunStarted(rsi.mRunName, rsi.mTestCount);
             }
