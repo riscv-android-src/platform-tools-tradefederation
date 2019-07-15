@@ -21,6 +21,7 @@ import com.android.tradefed.device.ITestDevice;
 
 import java.io.File;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -254,6 +255,22 @@ public interface IBuildInfo extends Serializable {
      * @param version the file version
      */
     public default void setFile(BuildInfoFileKey key, File file, String version) {
+        // Default implementation for projects that don't extend BuildInfo class.
+    }
+
+    /**
+     * Gets a copy of the set of local app apk file(s) and their versions. The returned order
+     * matches the order in which the apks were added to the {@code IAppBuildInfo}.
+     */
+    public default List<VersionedFile> getAppPackageFiles() {
+        return new ArrayList<>();
+    }
+
+    /**
+     * Adds the local apk file and its associated version. Note that apks will be returned from
+     * {@link #getAppPackageFiles()} in the order in which they were added by this method.
+     */
+    public default void addAppPackageFile(File appPackageFile, String version) {
         // Default implementation for projects that don't extend BuildInfo class.
     }
 
