@@ -56,7 +56,6 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.ProcessInfo;
-import com.android.tradefed.util.PsParser;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
@@ -82,6 +81,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -4259,26 +4259,84 @@ public class NativeDevice implements IManagedTestDevice {
         return o == null ? "unknown" : o.toString();
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<ProcessInfo> getProcesses() throws DeviceNotAvailableException {
-        return PsParser.getProcesses(executeShellCommand(PS_COMMAND));
-    }
-
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public ProcessInfo getProcessByName(String processName) throws DeviceNotAvailableException {
-        List<ProcessInfo> processList = getProcesses();
-        for (ProcessInfo processInfo : processList) {
-            if (processName.equals(processInfo.getName())) {
-                return processInfo;
+        String pidString = getProcessPid(processName);
+        if (pidString == null) {
+            return null;
+        }
+        return new ProcessInfo(
+                getProcessUserByPid(pidString),
+                Integer.parseInt(pidString),
+                processName,
+                getProcessStartTimeByPid(pidString));
+    }
+
+    /** Return the process start time since epoch for the given pid string */
+    private long getProcessStartTimeByPid(String pidString) throws DeviceNotAvailableException {
+        String output = executeShellCommand("stat -c%Z /proc/" + pidString);
+        if (output != null && !output.trim().isEmpty()) {
+            try {
+                return Long.parseLong(output.trim());
+            } catch (NumberFormatException e) {
+                return -1L;
+            }
+        }
+        return -1L;
+    }
+
+    /** Return the process user for the given pid string */
+    private String getProcessUserByPid(String pidString) throws DeviceNotAvailableException {
+        String output = executeShellCommand("stat -c%U /proc/" + pidString);
+        if (output != null && !output.trim().isEmpty()) {
+            try {
+                return output.trim();
+            } catch (NumberFormatException e) {
+                return null;
             }
         }
         return null;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Map<Long, String> getBootHistory() throws DeviceNotAvailableException {
+        String output = getProperty(DeviceProperties.BOOT_REASON_HISTORY);
+        /* Sample output:
+        kernel_panic,1556587278
+        reboot,,1556238008
+        reboot,,1556237796
+        reboot,,1556237725
+        */
+        Map<Long, String> bootHistory = new LinkedHashMap<Long, String>();
+        if (Strings.isNullOrEmpty(output)) {
+            return bootHistory;
+        }
+        for (String line : output.split("\\n")) {
+            String infoStr[] = line.split(",");
+            String startStr = infoStr[infoStr.length - 1];
+            try {
+                long startTime = Long.parseLong(startStr.trim());
+                bootHistory.put(startTime, infoStr[0].trim());
+            } catch (NumberFormatException e) {
+                CLog.e("Fail to parse boot time from line %s", line);
+            }
+        }
+        return bootHistory;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Map<Long, String> getBootHistorySince(long utcEpochTime)
+            throws DeviceNotAvailableException {
+        Map<Long, String> bootHistory = new LinkedHashMap<Long, String>();
+        for (Map.Entry<Long, String> entry : getBootHistory().entrySet()) {
+            if (entry.getKey() > utcEpochTime) {
+                bootHistory.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return bootHistory;
     }
 
     /**

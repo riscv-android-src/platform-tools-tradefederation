@@ -70,6 +70,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -2166,6 +2167,134 @@ public class NativeDeviceTest {
         }
     }
 
+    /** Test get Process pid by process name */
+    @Test
+    public void testGetProcessPid() throws Exception {
+        final String fakePid = "914";
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn(fakePid).when(spy).executeShellCommand("pidof system_server");
+        EasyMock.replay(mMockIDevice);
+        assertEquals(fakePid, spy.getProcessPid("system_server"));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test get Process pid by process name with adb shell return of extra new line */
+    @Test
+    public void testGetProcessPidWithNewLine() throws Exception {
+        final String fakePid = "914";
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn(fakePid + "\n").when(spy).executeShellCommand("pidof system_server");
+        EasyMock.replay(mMockIDevice);
+        assertEquals(fakePid, spy.getProcessPid("system_server"));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test get Process pid return null with invalid shell command output */
+    @Test
+    public void testGetProcessPidInvalidOutput() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("invalid output").when(spy).executeShellCommand("pidof system_server");
+        EasyMock.replay(mMockIDevice);
+        assertNull(spy.getProcessPid("system_server"));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test get Process pid return null with shell command empty output */
+    @Test
+    public void testGetProcessPidEmptyOutput() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("").when(spy).executeShellCommand("pidof system_server");
+        EasyMock.replay(mMockIDevice);
+        assertNull(spy.getProcessPid("system_server"));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test get ProcessInfo by process name */
+    @Test
+    public void testGetProcessWithStartTimeByName() throws Exception {
+        final String fakePid = "914";
+        final String fakeCreationTime = "1559091922";
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn(fakePid).when(spy).executeShellCommand("pidof system_server");
+        doReturn(fakeCreationTime).when(spy).executeShellCommand("stat -c%Z /proc/" + fakePid);
+        doReturn("system").when(spy).executeShellCommand("stat -c%U /proc/" + fakePid);
+        EasyMock.replay(mMockIDevice);
+        assertEquals(Integer.parseInt(fakePid), spy.getProcessByName("system_server").getPid());
+        assertEquals(
+                Long.parseLong(fakeCreationTime),
+                spy.getProcessByName("system_server").getStartTime());
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test get ProcessInfo by process name return null for invalid process */
+    @Test
+    public void testGetProcessWithStartTimeByNameInvalidProcess() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("").when(spy).executeShellCommand("pidof system_server");
+        EasyMock.replay(mMockIDevice);
+        assertNull(spy.getProcessByName("system_server"));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test get boot history */
+    @Test
+    public void testGetBootHistory() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn(
+                        "kernel_panic,1556587278\n"
+                                + "        reboot,,1556238008\n"
+                                + "        reboot,,1556237796\n"
+                                + "        reboot,,1556237725\n")
+                .when(spy)
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
+        Map<Long, String> history = new LinkedHashMap<Long, String>();
+        history.put(1556587278L, "kernel_panic");
+        history.put(1556238008L, "reboot");
+        history.put(1556237796L, "reboot");
+        history.put(1556237725L, "reboot");
+        EasyMock.replay(mMockIDevice);
+        assertEquals(history, spy.getBootHistory());
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test get empty boot history */
+    @Test
+    public void testGetBootHistoryEmpty() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("").when(spy).getProperty(DeviceProperties.BOOT_REASON_HISTORY);
+        EasyMock.replay(mMockIDevice);
+        assertTrue(spy.getBootHistory().isEmpty());
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test get invalid boot history */
+    @Test
+    public void testGetBootHistoryInvalid() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("invalid output").when(spy).getProperty(DeviceProperties.BOOT_REASON_HISTORY);
+        EasyMock.replay(mMockIDevice);
+        assertTrue(spy.getBootHistory().isEmpty());
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test get boot history since */
+    @Test
+    public void testGetBootHistorySince() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn(
+                        "kernel_panic,1556587278\n"
+                                + "        reboot,,1556238008\n"
+                                + "        reboot,,1556237796\n"
+                                + "        reboot,,1556237725\n")
+                .when(spy)
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
+        Map<Long, String> history = new LinkedHashMap<Long, String>();
+        history.put(1556587278L, "kernel_panic");
+        EasyMock.replay(mMockIDevice);
+        assertEquals(history, spy.getBootHistorySince(1556238008L));
+        EasyMock.verify(mMockIDevice);
+    }
+
     /** Test validating valid MAC addresses */
     @Test
     public void testIsMacAddress() {
@@ -2630,4 +2759,5 @@ public class NativeDeviceTest {
         assertEquals(2, result.size());
         EasyMock.verify(mMockIDevice);
     }
+
 }
