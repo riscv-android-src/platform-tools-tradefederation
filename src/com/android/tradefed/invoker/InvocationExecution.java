@@ -247,14 +247,12 @@ public class InvocationExecution implements IInvocationExecution {
             if (device instanceof ITestLoggerReceiver) {
                 ((ITestLoggerReceiver) context.getDevice(deviceName)).setTestLogger(logger);
             }
-            if (!config.getCommandOptions().shouldSkipPreDeviceSetup()) {
-                device.preInvocationSetup(
-                        context.getBuildInfo(deviceName),
-                        context.getBuildInfos()
-                                .stream()
-                                .filter(buildInfo -> buildInfo.isTestResourceBuild())
-                                .collect(Collectors.toList()));
-            }
+            device.preInvocationSetup(
+                    context.getBuildInfo(deviceName),
+                    context.getBuildInfos()
+                            .stream()
+                            .filter(buildInfo -> buildInfo.isTestResourceBuild())
+                            .collect(Collectors.toList()));
         }
     }
 
@@ -265,9 +263,7 @@ public class InvocationExecution implements IInvocationExecution {
         // Extra tear down step for the device
         for (String deviceName : context.getDeviceConfigNames()) {
             ITestDevice device = context.getDevice(deviceName);
-            if (!config.getCommandOptions().shouldSkipPreDeviceSetup()) {
-                device.postInvocationTearDown();
-            }
+            device.postInvocationTearDown();
         }
     }
 
