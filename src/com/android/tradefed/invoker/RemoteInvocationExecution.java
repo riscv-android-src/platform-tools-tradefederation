@@ -296,7 +296,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
             Throwable exception)
             throws Throwable {
         // Only run device post invocation teardown
-        super.runDevicePostInvocationTearDown(context, config);
+        super.runDevicePostInvocationTearDown(context, config, exception);
     }
 
     @Override
