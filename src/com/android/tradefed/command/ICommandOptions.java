@@ -156,9 +156,6 @@ public interface ICommandOptions {
     /** Whether or not sharding should use the token support. */
     public boolean shouldUseTokenSharding();
 
-    /** Return true if the test should skip device setup during TestInvocation setup. */
-    public boolean shouldSkipPreDeviceSetup();
-
     /** Returns if we should use dynamic sharding or not */
     public boolean shouldUseDynamicSharding();
 
