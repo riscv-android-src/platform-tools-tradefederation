@@ -123,14 +123,6 @@ public class CommandOptions implements ICommandOptions {
     private boolean mTokenSharding = false;
 
     @Option(
-        name = "skip-pre-device-setup",
-        description =
-                "allow TestInvocation to skip calling device.preInvocationSetup. This is for "
-                        + "delaying device setup when the test runs with VersionedTfLauncher."
-    )
-    private boolean mSkipPreDeviceSetup = false;
-
-    @Option(
         name = "dynamic-sharding",
         description =
                 "Allow to dynamically move IRemoteTest from one shard to another. Only for local "
@@ -475,13 +467,6 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public String getTestTagSuffix() {
         return mTestTagSuffix;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-
-    public boolean shouldSkipPreDeviceSetup() {
-        return mSkipPreDeviceSetup;
     }
 
     /** {@inheritDoc} */

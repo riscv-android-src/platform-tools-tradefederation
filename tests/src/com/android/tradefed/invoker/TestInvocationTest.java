@@ -46,7 +46,6 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceRecovery;
-import com.android.tradefed.device.INativeDevice;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.StubDevice;
@@ -96,7 +95,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
@@ -1524,76 +1522,6 @@ public class TestInvocationTest {
      */
     private interface DeviceConfigTest extends IRemoteTest, IDeviceTest {
 
-    }
-
-    /**
-     * Test {@link INativeDevice#preInvocationSetup(IBuildInfo, List)} is called when command option
-     * skip-pre-device-setup is not set.
-     */
-    @Test
-    public void testNotSkipPreDeviceSetup() throws Throwable {
-        IInvocationContext context = new InvocationContext();
-        ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
-        IDevice idevice = Mockito.mock(IDevice.class);
-        context.addAllocatedDevice("DEFAULT_DEVICE", device1);
-        IBuildInfo testResourceBuildInfo = new BuildInfo();
-        testResourceBuildInfo.setTestResourceBuild(true);
-        context.addDeviceBuildInfo("test-resource", testResourceBuildInfo);
-        List<IBuildInfo> testResourceBuildInfos = new ArrayList<>();
-        testResourceBuildInfos.add(testResourceBuildInfo);
-        EasyMock.expect(device1.getSerialNumber()).andReturn("serial1").anyTimes();
-        EasyMock.expect(device1.getIDevice()).andReturn(idevice).anyTimes();
-
-        device1.preInvocationSetup(
-                (IBuildInfo) EasyMock.anyObject(), EasyMock.eq(testResourceBuildInfos));
-        EasyMock.expectLastCall().once();
-
-        CommandOptions commandOption = new CommandOptions();
-        OptionSetter setter = new OptionSetter(commandOption);
-        setter.setOptionValue("skip-pre-device-setup", "false");
-        mStubConfiguration.setCommandOptions(commandOption);
-        // Not expect isTearDownDisabled.
-        ITestInvocationListener listener = EasyMock.createStrictMock(ITestInvocationListener.class);
-        EasyMock.replay(device1, listener, mMockPreparer);
-        new InvocationExecution()
-                .runDevicePreInvocationSetup(context, mStubConfiguration, listener);
-        EasyMock.verify(device1, listener, mMockPreparer);
-
-    }
-
-    /**
-     * Test {@link INativeDevice#preInvocationSetup(IBuildInfo info)} is not called when command
-     * option skip-pre-device-setup is set.
-     */
-    @Test
-    public void testSkipPreDeviceSetup() throws Throwable {
-        IInvocationContext context = new InvocationContext();
-        ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
-        IDevice idevice = Mockito.mock(IDevice.class);
-        context.addAllocatedDevice("DEFAULT_DEVICE", device1);
-        EasyMock.expect(device1.getSerialNumber()).andReturn("serial1").anyTimes();
-        EasyMock.expect(device1.getIDevice()).andReturn(idevice).anyTimes();
-        EasyMock.expect(device1.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(1);
-        device1.clearLogcat();
-        EasyMock.expectLastCall().once();
-
-        CommandOptions commandOption = new CommandOptions();
-        OptionSetter setter = new OptionSetter(commandOption);
-        setter.setOptionValue("skip-pre-device-setup", "true");
-        mStubConfiguration.setCommandOptions(commandOption);
-
-        EasyMock.expect(mMockPreparer.isDisabled()).andReturn(true);
-        // Not expect isTearDownDisabled
-
-        ITestInvocationListener listener = EasyMock.createStrictMock(ITestInvocationListener.class);
-        listener.testLog(
-                EasyMock.startsWith(LOGCAT_NAME_SETUP),
-                EasyMock.eq(LogDataType.LOGCAT),
-                (InputStreamSource) EasyMock.anyObject());
-
-        EasyMock.replay(device1, listener, mMockPreparer);
-        new InvocationExecution().doSetup(context, mStubConfiguration, listener);
-        EasyMock.verify(device1, listener, mMockPreparer);
     }
 
     /**
