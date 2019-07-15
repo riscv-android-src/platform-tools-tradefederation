@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.targetprep.app;
 
-import com.android.tradefed.build.AppBuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
@@ -43,12 +42,7 @@ public final class NoApkTestSkipper extends BaseTargetPreparer implements IConfi
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
-        if (!(buildInfo instanceof AppBuildInfo)) {
-            CLog.d("Build info is not a AppBuildInfo skipping.");
-            return;
-        }
-        AppBuildInfo appBuild = (AppBuildInfo) buildInfo;
-        if (appBuild.getAppPackageFiles().isEmpty()) {
+        if (buildInfo.getAppPackageFiles().isEmpty()) {
             CLog.d("No app to install, skipping the tests");
 
             for (IDeviceConfiguration deviceConfig : mConfiguration.getDeviceConfig()) {
