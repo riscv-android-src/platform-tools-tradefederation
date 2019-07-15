@@ -293,7 +293,19 @@ public class PythonBinaryHostTest
         @Override
         public void testRunStarted(String runName, int testCount) {
             // Replace run name
-            super.testRunStarted(mRunName, testCount);
+            testRunStarted(runName, testCount, 0);
+        }
+
+        @Override
+        public void testRunStarted(String runName, int testCount, int attempt) {
+            // Replace run name
+            testRunStarted(runName, testCount, attempt, System.currentTimeMillis());
+        }
+
+        @Override
+        public void testRunStarted(String runName, int testCount, int attempt, long startTime) {
+            // Replace run name
+            super.testRunStarted(mRunName, testCount, attempt, startTime);
         }
     }
 }
