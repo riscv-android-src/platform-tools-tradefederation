@@ -4168,11 +4168,9 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void postInvocationTearDown() {
+    public void postInvocationTearDown(Throwable exception) {
         mIsEncryptionSupported = null;
         FileUtil.deleteFile(mExecuteShellCommandLogs);
         mExecuteShellCommandLogs = null;
@@ -4185,6 +4183,11 @@ public class NativeDevice implements IManagedTestDevice {
         try {
             // If we never installed it, don't even bother checking for it during tear down.
             if (mContentProvider == null) {
+                return;
+            }
+            if (exception instanceof DeviceNotAvailableException) {
+                CLog.e(
+                        "Skip Tradefed Content Provider teardown due to DeviceNotAvailableException.");
                 return;
             }
             if (TestDeviceState.ONLINE.equals(getDeviceState())) {

@@ -92,6 +92,7 @@ import com.android.tradefed.util.keystore.StubKeyStoreFactory;
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -153,6 +154,15 @@ public class TestInvocationTest {
     private IRescheduler mockRescheduler;
     private DeviceDescriptor mFakeDescriptor;
 
+    @BeforeClass
+    public static void setUpClass() throws Exception {
+        try {
+            GlobalConfiguration.createGlobalConfiguration(new String[] {"empty"});
+        } catch (IllegalStateException e) {
+            // Avoid exception in case of multi-init
+        }
+    }
+
     @Before
     public void setUp() throws Exception {
 
@@ -210,10 +220,16 @@ public class TestInvocationTest {
         mMockDevice.preInvocationSetup(
                 (IBuildInfo) EasyMock.anyObject(), EasyMock.<List<IBuildInfo>>anyObject());
         EasyMock.expectLastCall().anyTimes();
-        mMockDevice.postInvocationTearDown();
-        EasyMock.expectLastCall().anyTimes();
-        mFakeDescriptor = new DeviceDescriptor(SERIAL, false, DeviceAllocationState.Available,
-                "unknown", "unknown", "unknown", "unknown", "unknown");
+        mFakeDescriptor =
+                new DeviceDescriptor(
+                        SERIAL,
+                        false,
+                        DeviceAllocationState.Available,
+                        "unknown",
+                        "unknown",
+                        "unknown",
+                        "unknown",
+                        "unknown");
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(mFakeDescriptor);
 
         EasyMock.expect(mMockBuildInfo.getBuildId()).andStubReturn("1");
@@ -568,6 +584,9 @@ public class TestInvocationTest {
         setupMockFailureListeners(exception);
         EasyMock.expect(mMockDevice.getBugreport()).andReturn(EMPTY_STREAM_SOURCE);
         setupInvokeWithBuild();
+
+        mMockDevice.postInvocationTearDown(exception);
+
         replayMocks(test);
         EasyMock.replay(mockRescheduler);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
@@ -730,6 +749,7 @@ public class TestInvocationTest {
         EasyMock.expectLastCall().times(3);
         mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.stopLogcat();
+        mMockDevice.postInvocationTearDown(null);
         EasyMock.replay(mockRescheduler, resumeListener, resumableTest, mMockPreparer,
                 mMockBuildProvider, mMockLogger, mMockLogSaver, mMockDevice, mMockBuildInfo);
 
@@ -762,6 +782,10 @@ public class TestInvocationTest {
         IRescheduler mockRescheduler = EasyMock.createMock(IRescheduler.class);
         EasyMock.expect(mockRescheduler.rescheduleCommand()).andReturn(EasyMock.anyBoolean());
         mMockBuildProvider.buildNotTested(mMockBuildInfo);
+
+        mMockDevice.postInvocationTearDown(exception);
+        EasyMock.expectLastCall().anyTimes();
+
         setupMockFailureListeners(exception);
         setupNormalInvoke(test);
         EasyMock.replay(mockRescheduler);
@@ -1146,6 +1170,11 @@ public class TestInvocationTest {
         mMockSummaryListener.invocationStarted(mStubInvocationMetadata);
         EasyMock.expect(mMockSummaryListener.getSummary()).andReturn(null);
 
+        if (throwable == null) {
+            mMockDevice.postInvocationTearDown(null);
+            EasyMock.expectLastCall().anyTimes();
+        }
+
         if (!(throwable instanceof BuildRetrievalError)) {
             EasyMock.expect(
                             mMockLogSaver.saveLogData(
@@ -1267,12 +1296,6 @@ public class TestInvocationTest {
      */
     @Test
     public void testInvoke_shardableTest_legacy() throws Throwable {
-        try {
-            GlobalConfiguration.createGlobalConfiguration(new String[] {"empty"});
-        } catch (IllegalStateException e) {
-            // Avoid exception in case of multi-init
-        }
-
         String command = "empty --test-tag t";
         String[] commandLine = {"empty", "--test-tag", "t"};
         int shardCount = 2;
