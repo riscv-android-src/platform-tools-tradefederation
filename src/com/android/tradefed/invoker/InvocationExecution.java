@@ -259,11 +259,11 @@ public class InvocationExecution implements IInvocationExecution {
     /** {@inheritDoc} */
     @Override
     public final void runDevicePostInvocationTearDown(
-            IInvocationContext context, IConfiguration config) {
+            IInvocationContext context, IConfiguration config, Throwable exception) {
         // Extra tear down step for the device
         for (String deviceName : context.getDeviceConfigNames()) {
             ITestDevice device = context.getDevice(deviceName);
-            device.postInvocationTearDown();
+            device.postInvocationTearDown(exception);
         }
     }
 
@@ -389,7 +389,7 @@ public class InvocationExecution implements IInvocationExecution {
         }
 
         // Extra tear down step for the device
-        runDevicePostInvocationTearDown(context, config);
+        runDevicePostInvocationTearDown(context, config, exception);
 
         // After all, run the multi_pre_target_preparer tearDown.
         List<IMultiTargetPreparer> multiPrePreparers = config.getMultiPreTargetPreparers();
