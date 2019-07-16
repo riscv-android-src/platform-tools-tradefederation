@@ -149,7 +149,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
 
     /** {@inheritDoc} */
     @Override
-    public void postInvocationTearDown() {
+    public void postInvocationTearDown(Throwable exception) {
         try {
             CLog.i("Invocation tear down for device %s", getSerialNumber());
             // Log the last part of the logcat from the tear down.
@@ -208,7 +208,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
             }
         } finally {
             // Ensure parent postInvocationTearDown is always called.
-            super.postInvocationTearDown();
+            super.postInvocationTearDown(exception);
         }
     }
 

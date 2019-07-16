@@ -1598,8 +1598,8 @@ public class TestDevice extends NativeDevice {
 
     /** {@inheritDoc} */
     @Override
-    public void postInvocationTearDown() {
-        super.postInvocationTearDown();
+    public void postInvocationTearDown(Throwable exception) {
+        super.postInvocationTearDown(exception);
         // If wifi was installed and it's a real device, attempt to clean it.
         if (mWasWifiHelperInstalled) {
             mWasWifiHelperInstalled = false;
@@ -1607,6 +1607,10 @@ public class TestDevice extends NativeDevice {
                 return;
             }
             if (!TestDeviceState.ONLINE.equals(getDeviceState())) {
+                return;
+            }
+            if (exception instanceof DeviceNotAvailableException) {
+                CLog.e("Skip WifiHelper teardown due to DeviceNotAvailableException.");
                 return;
             }
             try {

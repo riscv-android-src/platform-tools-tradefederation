@@ -317,7 +317,7 @@ public class RemoteAndroidVirtualDeviceTest {
         verifyMocks(mMockBuildInfo);
     }
 
-    /** Test {@link RemoteAndroidVirtualDevice#postInvocationTearDown()}. */
+    /** Test {@link RemoteAndroidVirtualDevice#postInvocationTearDown(Throwable)}. */
     @Test
     public void testPostInvocationTearDown() throws Exception {
         mTestDevice.setTestLogger(mTestLogger);
@@ -334,7 +334,7 @@ public class RemoteAndroidVirtualDeviceTest {
 
         // Initial serial is not set because we call postInvoc directly.
         replayMocks();
-        mTestDevice.postInvocationTearDown();
+        mTestDevice.postInvocationTearDown(null);
         verifyMocks();
         Mockito.verify(mGceSshMonitor).shutdown();
         Mockito.verify(mGceSshMonitor).joinMonitor();
@@ -500,7 +500,7 @@ public class RemoteAndroidVirtualDeviceTest {
             mTestDevice.getGceSshMonitor().joinMonitor();
             // We expect to find our Runtime exception for the ssh key
             assertNotNull(mTestDevice.getGceSshMonitor().getLastException());
-            mTestDevice.postInvocationTearDown();
+            mTestDevice.postInvocationTearDown(null);
             // Bridge is set to null after tear down
             assertNull(mTestDevice.getGceSshMonitor());
 
@@ -509,7 +509,7 @@ public class RemoteAndroidVirtualDeviceTest {
             mTestDevice.getGceSshMonitor().joinMonitor();
             // Should have the same result, the run time exception from ssh key
             assertNotNull(mTestDevice.getGceSshMonitor().getLastException());
-            mTestDevice.postInvocationTearDown();
+            mTestDevice.postInvocationTearDown(null);
             // Bridge is set to null after tear down
             assertNull(mTestDevice.getGceSshMonitor());
 
@@ -597,7 +597,7 @@ public class RemoteAndroidVirtualDeviceTest {
             mTestDevice.getGceSshMonitor().joinMonitor();
             // We expect to find our Runtime exception for the ssh key
             assertNotNull(mTestDevice.getGceSshMonitor().getLastException());
-            mTestDevice.postInvocationTearDown();
+            mTestDevice.postInvocationTearDown(null);
             // shutdown was disabled, it should not have been called.
             verify(mGceHandler, never()).shutdownGce();
             verifyMocks(mMockBuildInfo);
@@ -707,7 +707,7 @@ public class RemoteAndroidVirtualDeviceTest {
             mTestDevice.getGceSshMonitor().joinMonitor();
             // We expect to find our Runtime exception for the ssh key
             assertNotNull(mTestDevice.getGceSshMonitor().getLastException());
-            mTestDevice.postInvocationTearDown();
+            mTestDevice.postInvocationTearDown(null);
             verifyMocks(mMockBuildInfo);
         } finally {
             FileUtil.deleteFile(tmpKeyFile);
