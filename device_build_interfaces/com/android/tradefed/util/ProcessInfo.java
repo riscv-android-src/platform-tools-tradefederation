@@ -16,27 +16,41 @@
 
 package com.android.tradefed.util;
 
-/**
- * Used to store process related(USER, PID and NAME) information.
- */
+/** Used to store process related(USER, PID, NAME, START TIME IN SECOND SINCE EPOCH) information. */
 public class ProcessInfo {
 
     private String mUser;
     private int mPid;
     private String mName;
+    private long mStartTime;
 
     /**
-     * Constructs the process info object based on the user, process id and
-     * name of the process.
+     * Constructs the process info object based on the user, process id and name of the process.
      *
      * @param user username of process owner
      * @param pid process id number
      * @param name process name
      */
-    ProcessInfo(String user, int pid, String name) {
+    public ProcessInfo(String user, int pid, String name) {
         mUser = user;
         mPid = pid;
         mName = name;
+    }
+
+    /**
+     * Constructs the process info object based on the user, process id, name of the process,
+     * process start time.
+     *
+     * @param user username of process owner
+     * @param pid process id number
+     * @param name process name
+     * @param startTime process start time in second since epoch
+     */
+    public ProcessInfo(String user, int pid, String name, long startTime) {
+        mUser = user;
+        mPid = pid;
+        mName = name;
+        mStartTime = startTime;
     }
 
     /** Returns the username of the process's owner. */
@@ -54,5 +68,12 @@ public class ProcessInfo {
         return mName;
     }
 
+    /**
+     * Returns the process start time in second since epoch. For device process, the start time
+     * would use device time
+     */
+    public long getStartTime() {
+        return mStartTime;
+    }
 }
 

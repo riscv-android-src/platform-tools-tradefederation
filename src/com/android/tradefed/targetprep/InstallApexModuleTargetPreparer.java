@@ -31,13 +31,12 @@ import com.android.tradefed.util.BundletoolUtil;
 import com.android.tradefed.util.RunUtil;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -56,14 +55,6 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     private static final String APK_SUFFIX = ".apk";
     private static final String SPLIT_APKS_SUFFIX = ".apks";
     private static final String TRAIN_WITH_APEX_INSTALL_OPTION = "install-multi-package";
-
-    // Modules that are mandatory for all devices. If a device does not have all of these modules,
-    // it should throw an error.
-    public static final ImmutableList<String> MANDATORY_MODULES =
-            ImmutableList.of(
-                    "com.google.android.modulemetadata",
-                    "com.google.android.permissioncontroller",
-                    "com.google.android.ext.services");
 
     private List<ApexInfo> mTestApexInfoList = new ArrayList<>();
     private Set<String> mApkToInstall = new LinkedHashSet<>();
@@ -92,7 +83,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
 
         cleanUpStagedAndActiveSession(device);
 
-        List<String> testAppFileNames = getModulesToInstall(buildInfo, device);
+        List<String> testAppFileNames = getTestsFileName();
         if (containsApks(testAppFileNames)) {
             installUsingBundleTool(buildInfo, device);
             if (mTestApexInfoList.isEmpty()) {
@@ -164,68 +155,6 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                 }
             }
         }
-    }
-
-    /**
-     * Gets the modules that should be installed on the train, based on the modules preloaded on the
-     * device.
-     *
-     * @param buildInfo the {@link IBuildInfo} for the artifacts.
-     * @param device the {@link ITestDevice} to install the train.
-     * @return List<String> of the modules that should be installed on the device.
-     * @throws DeviceNotAvailableException when device is not available.
-     * @throws TargetSetupError when mandatory modules are not installed, or module cannot be
-     *     installed.
-     */
-    public List<String> getModulesToInstall(IBuildInfo buildInfo, ITestDevice device)
-            throws DeviceNotAvailableException, TargetSetupError {
-        // Get all preloaded modules for the device, and check that mandatory modules are included.
-        Set<String> installedPackages = new HashSet<>(device.getInstalledPackageNames());
-        Set<ApexInfo> installedApexes = new HashSet<>(device.getActiveApexes());
-        for (ApexInfo installedApex : installedApexes) {
-            installedPackages.add(installedApex.name);
-        }
-        if (!installedPackages.containsAll(MANDATORY_MODULES)) {
-            throw new TargetSetupError(
-                    String.format(
-                            "Mandatory modules are not available to install on device %s. "
-                                    + "Skipping installing.",
-                            device.getSerialNumber()),
-                    device.getDeviceDescriptor());
-        }
-        List<String> moduleFileNames = getTestsFileName();
-        List<String> moduleNamesToInstall = new ArrayList<>();
-        for (String moduleFileName : moduleFileNames) {
-            File moduleFile = getLocalPathForFilename(buildInfo, moduleFileName, device);
-            if (moduleFile == null) {
-                throw new TargetSetupError(
-                        String.format("%s not found.", moduleFileName),
-                        device.getDeviceDescriptor());
-            }
-            String modulePackageName = parsePackageName(moduleFile, device.getDeviceDescriptor());
-            if (installedPackages.contains(modulePackageName)) {
-                long versionCode =
-                        retrieveApexInfo(moduleFile, device.getDeviceDescriptor()).versionCode;
-                CLog.i(
-                        "Found preloaded module for %s with version name %s.",
-                        modulePackageName, versionCode);
-                moduleNamesToInstall.add(moduleFileName);
-                installedPackages.remove(modulePackageName);
-            } else {
-                CLog.i(
-                        "The module package %s is not preloaded on the device but is included in "
-                                + "the train. Skipping.",
-                        modulePackageName);
-            }
-        }
-        // Log the modules that are not included in the train.
-        if (!installedPackages.isEmpty()) {
-            CLog.i(
-                    "The following modules are preloaded on the device, but not included in the "
-                            + "train: %s",
-                    installedPackages);
-        }
-        return moduleNamesToInstall;
     }
 
     // TODO(b/124461631): Remove after ddmlib supports install-multi-package.
@@ -330,6 +259,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                     e,
                     device.getDeviceDescriptor());
         }
+
         if (getTestsFileName().size() == 1) {
             // Installs single .apks module.
             installSingleModuleUsingBundletool(
@@ -337,6 +267,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         } else {
             installMultipleModuleUsingBundletool(device, buildInfo, deviceSpecFilePath);
         }
+
         mApkInstalled.addAll(mApkToInstall);
     }
 
