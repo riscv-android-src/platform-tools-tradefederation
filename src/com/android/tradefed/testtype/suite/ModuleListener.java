@@ -26,7 +26,6 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.TestDescription;
-import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 
 import java.util.HashMap;
@@ -199,21 +198,5 @@ public class ModuleListener extends CollectingTestListener {
                 ((ILogSaverListener) mMainListener).logAssociation(dataName, logFile);
             }
         }
-    }
-
-    /**
-     * Check if any runs in the given attempt have incompleted (aka "run failure").
-     *
-     * @param attemptNumber indicates which attempt should the test runs come from.
-     * @return true if any of the runs in the given attempt has crashed.
-     */
-    public boolean hasRunCrashedAtAttempt(int attemptNumber) {
-        for (String runName : getTestRunNames()) {
-            TestRunResult run = getTestRunAtAttempt(runName, attemptNumber);
-            if (run != null && run.isRunFailure()) {
-                return true;
-            }
-        }
-        return false;
     }
 }
