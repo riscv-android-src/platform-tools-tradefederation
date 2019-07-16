@@ -40,6 +40,7 @@ import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.InputStreamSource;
@@ -56,7 +57,10 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.SystemUtil.EnvVariable;
 import com.android.tradefed.util.TimeUtil;
@@ -404,6 +408,9 @@ public class InvocationExecution implements IInvocationExecution {
             deferredThrowable = preTargetTearDownException;
         }
 
+        // Collect adb logs.
+        logHostAdb(logger);
+
         if (deferredThrowable != null) {
             throw deferredThrowable;
         }
@@ -737,6 +744,31 @@ public class InvocationExecution implements IInvocationExecution {
             config.getCommandOptions()
                     .getAutoLogCollectors()
                     .add(AutoLogCollector.LOGCAT_ON_FAILURE);
+        }
+    }
+
+    /** Collect the logs from $TMPDIR/adb.$UID.log. */
+    @VisibleForTesting
+    void logHostAdb(ITestLogger logger) {
+        String tmpDir = "/tmp";
+        if (System.getenv("TMPDIR") != null) {
+            tmpDir = System.getenv("TMPDIR");
+        }
+        CommandResult uidRes =
+                RunUtil.getDefault()
+                        .runTimedCmd(60000, "id", "-u", System.getProperty("user.name"));
+        if (!CommandStatus.SUCCESS.equals(uidRes.getStatus())) {
+            CLog.e("Failed to collect UID for adb logs: %s", uidRes.getStderr());
+            return;
+        }
+        String uid = uidRes.getStdout().trim();
+        File adbLog = new File(tmpDir, String.format("adb.%s.log", uid));
+        if (!adbLog.exists()) {
+            CLog.e("Could not find adb log file: %s", adbLog);
+            return;
+        }
+        try (FileInputStreamSource source = new FileInputStreamSource(adbLog)) {
+            logger.testLog("host_adb_log", LogDataType.TEXT, source);
         }
     }
 

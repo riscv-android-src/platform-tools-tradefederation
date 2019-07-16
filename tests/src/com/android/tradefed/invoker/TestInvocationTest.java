@@ -59,6 +59,7 @@ import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric.Builder;
@@ -266,6 +267,11 @@ public class TestInvocationTest {
                             @Override
                             protected String getAdbVersion() {
                                 return null;
+                            }
+
+                            @Override
+                            void logHostAdb(ITestLogger logger) {
+                                // inop for the common test case.
                             }
                         };
                     }
@@ -1555,6 +1561,11 @@ public class TestInvocationTest {
                             protected String getAdbVersion() {
                                 return null;
                             }
+
+                            @Override
+                            void logHostAdb(ITestLogger logger) {
+                                // inop for the common test case.
+                            }
                         };
                     }
 
@@ -1634,6 +1645,11 @@ public class TestInvocationTest {
                                 @Override
                                 protected String getAdbVersion() {
                                     return null;
+                                }
+
+                                @Override
+                                void logHostAdb(ITestLogger logger) {
+                                    // inop for the common test case.
                                 }
                             };
                         }
@@ -1726,6 +1742,11 @@ public class TestInvocationTest {
                                 @Override
                                 protected String getAdbVersion() {
                                     return null;
+                                }
+
+                                @Override
+                                void logHostAdb(ITestLogger logger) {
+                                    // inop for the common test case.
                                 }
                             };
                         }
