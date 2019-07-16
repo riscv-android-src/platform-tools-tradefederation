@@ -478,8 +478,8 @@ public class SubprocessTestResultsParser implements Closeable {
             LogAssociationEventInfo assosInfo =
                     new LogAssociationEventInfo(new JSONObject(eventJson));
             if (mListener instanceof ILogSaverListener) {
-                ((ILogSaverListener) mListener)
-                        .logAssociation(assosInfo.mDataName, assosInfo.mLoggedFile);
+                String name = String.format("subprocess-%s", assosInfo.mDataName);
+                ((ILogSaverListener) mListener).logAssociation(name, assosInfo.mLoggedFile);
             }
         }
     }
