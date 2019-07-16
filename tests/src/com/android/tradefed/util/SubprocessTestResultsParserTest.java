@@ -493,7 +493,8 @@ public class SubprocessTestResultsParserTest {
     public void testParse_logAssociation() throws Exception {
         ILogSaverListener mockRunListener = EasyMock.createMock(ILogSaverListener.class);
         Capture<LogFile> capture = new Capture<>();
-        mockRunListener.logAssociation(EasyMock.eq("dataname"), EasyMock.capture(capture));
+        mockRunListener.logAssociation(
+                EasyMock.eq("subprocess-dataname"), EasyMock.capture(capture));
         EasyMock.replay(mockRunListener);
         LogFile logFile = new LogFile("path", "url", LogDataType.TEXT);
         File serializedLogFile = null;
