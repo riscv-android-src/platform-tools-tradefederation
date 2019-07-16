@@ -59,12 +59,13 @@ public class InvocationMetricLogger {
     }
 
     /**
-     * Add one key-value to be tracked at the invocation level.
+     * Add one key-value to be tracked at the invocation level. Don't expose the String key yet to
+     * avoid abuse, stick to the official {@link InvocationMetricKey} to start with.
      *
      * @param key The key under which the invocation metric will be tracked.
      * @param value The value of the invocation metric.
      */
-    public static void addInvocationMetrics(String key, String value) {
+    private static void addInvocationMetrics(String key, String value) {
         ThreadGroup group = Thread.currentThread().getThreadGroup();
         synchronized (mPerGroupMetrics) {
             if (mPerGroupMetrics.get(group) == null) {
