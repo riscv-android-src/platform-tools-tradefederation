@@ -19,7 +19,7 @@ java_library_host {
         "com/**/*.java",
     ],
     libs: [
-        "tradefed-core",
+        "tradefed-lib-core",
     ],
 }
 

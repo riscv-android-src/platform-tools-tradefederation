@@ -81,14 +81,14 @@ java_library_host {
         "res",
     ],
     static_libs: [
-        "tradefed-core",
+        "tradefed-lib-core",
         "tradefed-test-framework",
     ],
     manifest: "MANIFEST.mf",
 }
 
 java_library_host {
-    name: "tradefed-core",
+    name: "tradefed-lib-core",
     defaults: ["tradefed_defaults"],
     srcs: [
         "src/**/*.java",
