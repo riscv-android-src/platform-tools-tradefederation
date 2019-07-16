@@ -213,8 +213,7 @@ public class SubprocessResultsReporter
     /** {@inheritDoc} */
     @Override
     public void logAssociation(String dataName, LogFile logFile) {
-        LogAssociationEventInfo info =
-                new LogAssociationEventInfo("subprocess-a-" + dataName, logFile);
+        LogAssociationEventInfo info = new LogAssociationEventInfo(dataName, logFile);
         printEvent(SubprocessTestResultsParser.StatusKeys.LOG_ASSOCIATION, info);
     }
 
