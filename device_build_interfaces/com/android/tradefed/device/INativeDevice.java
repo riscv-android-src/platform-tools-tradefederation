@@ -1301,8 +1301,21 @@ public interface INativeDevice {
     /**
      * Extra steps for device specific required clean up that will be executed after the invocation
      * is done.
+     *
+     * @deprecated Use {@link #postInvocationTearDown(Throwable)} instead.
      */
-    public void postInvocationTearDown();
+    @Deprecated
+    public default void postInvocationTearDown() {
+        postInvocationTearDown(null);
+    }
+
+    /**
+     * Extra steps for device specific required clean up that will be executed after the invocation
+     * is done.
+     *
+     * @param invocationException if any, the final exception raised by the invocation failure.
+     */
+    public void postInvocationTearDown(Throwable invocationException);
 
     /**
      * Return true if the device is headless (no screen), false otherwise.

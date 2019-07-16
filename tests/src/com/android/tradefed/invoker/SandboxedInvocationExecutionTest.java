@@ -310,7 +310,7 @@ public class SandboxedInvocationExecutionTest {
         // Device early preInvocationSetup was called and even if no tests run we still call tear
         // down
         Mockito.verify(mMockDevice).preInvocationSetup(any(), any());
-        Mockito.verify(mMockDevice).postInvocationTearDown();
+        Mockito.verify(mMockDevice).postInvocationTearDown(null);
     }
 
     /**
@@ -380,6 +380,6 @@ public class SandboxedInvocationExecutionTest {
         // Device early preInvocationSetup was called and even if no tests run we still call tear
         // down
         Mockito.verify(mMockDevice).preInvocationSetup(any(), any());
-        Mockito.verify(mMockDevice).postInvocationTearDown();
+        Mockito.verify(mMockDevice).postInvocationTearDown(exception);
     }
 }

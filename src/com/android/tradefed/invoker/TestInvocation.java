@@ -745,7 +745,7 @@ public class TestInvocation implements ITestInvocation {
                         CLog.e(e);
                         setExitCode(ExitCode.THROWABLE_EXCEPTION, e);
                         try {
-                            invocationPath.runDevicePostInvocationTearDown(context, config);
+                            invocationPath.runDevicePostInvocationTearDown(context, config, e);
                         } finally {
                             listener.invocationFailed(e);
                             // Reports the logs
@@ -779,7 +779,7 @@ public class TestInvocation implements ITestInvocation {
                 CLog.e("No tests to run");
                 if (deviceInit) {
                     // If we did an early setup, do the tear down.
-                    invocationPath.runDevicePostInvocationTearDown(context, config);
+                    invocationPath.runDevicePostInvocationTearDown(context, config, null);
                 }
                 listener.invocationEnded(0L);
                 return;

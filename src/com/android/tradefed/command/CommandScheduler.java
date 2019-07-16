@@ -735,7 +735,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 // state during the interruption we at least do minimal tear down of devices with
                 // their built-in clean up.
                 CLog.d("Attempting postInvocationTearDown in stopInvocation");
-                device.postInvocationTearDown();
+                device.postInvocationTearDown(null);
             }
             // If invocation is not currently in an interruptible state we provide a timer
             // after which it will become interruptible.
