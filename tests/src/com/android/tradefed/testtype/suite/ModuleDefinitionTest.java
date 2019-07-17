@@ -57,6 +57,8 @@ import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.retry.BaseRetryDecision;
+import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.testtype.suite.module.BaseModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController;
@@ -1418,6 +1420,9 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        IRetryDecision decision = new BaseRetryDecision();
+        decision.init(RetryStrategy.ITERATIONS, 3);
+        mModule.setRetryDecision(decision);
         mModule.setRetryStrategy(RetryStrategy.ITERATIONS, false);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
@@ -1503,6 +1508,9 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        IRetryDecision decision = new BaseRetryDecision();
+        decision.init(RetryStrategy.RETRY_ANY_FAILURE, 3);
+        mModule.setRetryDecision(decision);
         mModule.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE, false);
 
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);

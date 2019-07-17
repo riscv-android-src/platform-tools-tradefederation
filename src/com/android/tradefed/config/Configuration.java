@@ -40,6 +40,8 @@ import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
+import com.android.tradefed.testtype.retry.BaseRetryDecision;
+import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IDisableable;
 import com.android.tradefed.util.MultiMap;
@@ -98,6 +100,7 @@ public class Configuration implements IConfiguration {
     public static final String METRIC_POST_PROCESSOR_TYPE_NAME = "metric_post_processor";
     public static final String SANDBOX_TYPE_NAME = "sandbox";
     public static final String SANBOX_OPTIONS_TYPE_NAME = "sandbox_options";
+    public static final String RETRY_DECISION_TYPE_NAME = "retry_decision";
 
     private static Map<String, ObjTypeInfo> sObjTypeMap = null;
     private static Set<String> sMultiDeviceSupportedTag = null;
@@ -185,6 +188,7 @@ public class Configuration implements IConfiguration {
                     METRIC_POST_PROCESSOR_TYPE_NAME,
                     new ObjTypeInfo(BasePostProcessor.class, true));
             sObjTypeMap.put(SANBOX_OPTIONS_TYPE_NAME, new ObjTypeInfo(SandboxOptions.class, false));
+            sObjTypeMap.put(RETRY_DECISION_TYPE_NAME, new ObjTypeInfo(IRetryDecision.class, false));
         }
         return sObjTypeMap;
     }
@@ -240,6 +244,7 @@ public class Configuration implements IConfiguration {
         setDeviceMetricCollectors(new ArrayList<>());
         setPostProcessors(new ArrayList<>());
         setConfigurationObjectNoThrow(SANBOX_OPTIONS_TYPE_NAME, new SandboxOptions());
+        setConfigurationObjectNoThrow(RETRY_DECISION_TYPE_NAME, new BaseRetryDecision());
     }
 
     /**
@@ -347,6 +352,12 @@ public class Configuration implements IConfiguration {
     @Override
     public ILogSaver getLogSaver() {
         return (ILogSaver) getConfigurationObject(LOG_SAVER_TYPE_NAME);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public IRetryDecision getRetryDecision() {
+        return (IRetryDecision) getConfigurationObject(RETRY_DECISION_TYPE_NAME);
     }
 
     /**
@@ -1525,6 +1536,13 @@ public class Configuration implements IConfiguration {
                 serializer,
                 SANBOX_OPTIONS_TYPE_NAME,
                 getConfigurationObject(SANBOX_OPTIONS_TYPE_NAME),
+                excludeFilters,
+                printDeprecatedOptions,
+                printUnchangedOptions);
+        ConfigurationUtil.dumpClassToXml(
+                serializer,
+                RETRY_DECISION_TYPE_NAME,
+                getRetryDecision(),
                 excludeFilters,
                 printDeprecatedOptions,
                 printUnchangedOptions);

@@ -39,6 +39,7 @@ import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
+import com.android.tradefed.testtype.retry.BaseRetryDecision;
 
 import org.easymock.Capture;
 import org.easymock.EasyMock;
@@ -77,6 +78,7 @@ public class TestInvocationMultiTest {
 
         mMockConfig = EasyMock.createMock(IConfiguration.class);
         EasyMock.expect(mMockConfig.getPostProcessors()).andReturn(mPostProcessors);
+        EasyMock.expect(mMockConfig.getRetryDecision()).andReturn(new BaseRetryDecision());
         mMockRescheduler = EasyMock.createMock(IRescheduler.class);
         mMockTestListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
