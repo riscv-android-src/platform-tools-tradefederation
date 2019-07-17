@@ -296,7 +296,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
             Throwable exception)
             throws Throwable {
         // Only run device post invocation teardown
-        super.runDevicePostInvocationTearDown(context, config);
+        super.runDevicePostInvocationTearDown(context, config, exception);
     }
 
     @Override
@@ -597,7 +597,11 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
         // Dump and log the configuration
         File configFile = FileUtil.createTempFile(config.getName(), ".xml");
-        config.dumpXml(new PrintWriter(configFile));
+        config.dumpXml(
+                new PrintWriter(configFile),
+                new ArrayList<String>(),
+                /* print deprecated */ true,
+                /* print unchanged*/ false);
         try (InputStreamSource source = new FileInputStreamSource(configFile)) {
             logger.testLog(REMOTE_CONFIG, LogDataType.XML, source);
         }

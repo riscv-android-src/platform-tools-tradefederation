@@ -170,7 +170,9 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
 
         if (mInvocationFailure != null) {
             DebugInfo.Builder debugBuilder = DebugInfo.newBuilder();
-            debugBuilder.setErrorMessage(mInvocationFailure.getMessage());
+            if (mInvocationFailure.getMessage() != null) {
+                debugBuilder.setErrorMessage(mInvocationFailure.getMessage());
+            }
             debugBuilder.setTrace(StreamUtil.getStackTrace(mInvocationFailure));
             mInvocationRecordBuilder.setDebugInfo(debugBuilder);
         }

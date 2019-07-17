@@ -4350,7 +4350,7 @@ public class TestDeviceTest extends TestCase {
         mMockWifi.cleanUp();
         replayMocks();
         mTestDevice.getIpAddress();
-        mTestDevice.postInvocationTearDown();
+        mTestDevice.postInvocationTearDown(null);
         verifyMocks();
     }
 

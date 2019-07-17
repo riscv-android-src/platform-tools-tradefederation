@@ -59,7 +59,6 @@ import com.android.tradefed.testtype.IRetriableTest;
 import com.android.tradefed.testtype.retry.ResultAggregator;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
-import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.PrettyPrintDelimiter;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
@@ -72,7 +71,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 
 /**
@@ -361,13 +359,9 @@ public class TestInvocation implements ITestInvocation {
                     PrettyPrintDelimiter.printStageDelimiter("===== Result Reporters =====");
                     try {
                         // Copy the invocation metrics to the context
-                        Map<String, String> metrics = InvocationMetricLogger.getInvocationMetrics();
-                        if (!metrics.isEmpty()) {
-                            context.addInvocationAttributes(new MultiMap<>(metrics));
-                        }
+                        ((InvocationContext) context).logInvocationMetrics();
                         listener.invocationEnded(elapsedTime);
                     } finally {
-                        // Clear the metrics for this invocation
                         InvocationMetricLogger.clearInvocationMetrics();
                         endHostLog.closeLog();
                         getLogRegistry().unregisterLogger();
@@ -745,7 +739,7 @@ public class TestInvocation implements ITestInvocation {
                         CLog.e(e);
                         setExitCode(ExitCode.THROWABLE_EXCEPTION, e);
                         try {
-                            invocationPath.runDevicePostInvocationTearDown(context, config);
+                            invocationPath.runDevicePostInvocationTearDown(context, config, e);
                         } finally {
                             listener.invocationFailed(e);
                             // Reports the logs
@@ -779,7 +773,7 @@ public class TestInvocation implements ITestInvocation {
                 CLog.e("No tests to run");
                 if (deviceInit) {
                     // If we did an early setup, do the tear down.
-                    invocationPath.runDevicePostInvocationTearDown(context, config);
+                    invocationPath.runDevicePostInvocationTearDown(context, config, null);
                 }
                 listener.invocationEnded(0L);
                 return;

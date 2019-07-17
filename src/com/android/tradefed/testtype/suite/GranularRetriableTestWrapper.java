@@ -334,11 +334,6 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
         return CollectorHelper.cloneCollectors(originalCollectors);
     }
 
-    /** Check if any testRunResult has ever failed. This check is used for bug report only. */
-    public boolean hasFailed() {
-        return mMainGranularRunListener.hasFailed();
-    }
-
     /**
      * Calculate the number of testcases in the {@link IRemoteTest}. This value distincts the same
      * testcases that are rescheduled multiple times.

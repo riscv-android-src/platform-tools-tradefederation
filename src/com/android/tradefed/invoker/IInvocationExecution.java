@@ -94,14 +94,15 @@ public interface IInvocationExecution {
             throws DeviceNotAvailableException, TargetSetupError {}
 
     /**
-     * Invoke the {@link ITestDevice#postInvocationTearDown()} for each device part of the
+     * Invoke the {@link ITestDevice#postInvocationTearDown(Throwable)} for each device part of the
      * invocation.
      *
      * @param context the {@link IInvocationContext} of the invocation.
      * @param config the {@link IConfiguration} of this test run.
+     * @param exception the original exception thrown by the test running if any.
      */
     public default void runDevicePostInvocationTearDown(
-            IInvocationContext context, IConfiguration config) {}
+            IInvocationContext context, IConfiguration config, Throwable exception) {}
 
     /**
      * Execute the target_preparer and multi_target_preparer teardown step. Does the devices tear

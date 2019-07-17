@@ -18,6 +18,8 @@ package com.android.tradefed.invoker.logger;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -31,14 +33,15 @@ public class InvocationMetricLoggerTest {
 
     @Test
     public void testLogMetrics() throws Exception {
-        String uniqueKey = UUID.randomUUID().toString();
-        Map<String, String> result = logMetric(uniqueKey, "TEST");
-        assertEquals("TEST", result.get(uniqueKey));
+        Map<String, String> result = logMetric(InvocationMetricKey.FETCH_BUILD, "TEST");
+        assertEquals("TEST", result.get(InvocationMetricKey.FETCH_BUILD.toString()));
         // Ensure that it wasn't added in current ThreadGroup
-        assertNull(InvocationMetricLogger.getInvocationMetrics().get(uniqueKey));
+        assertNull(
+                InvocationMetricLogger.getInvocationMetrics()
+                        .get(InvocationMetricKey.FETCH_BUILD.toString()));
     }
 
-    private Map<String, String> logMetric(String key, String value) throws Exception {
+    private Map<String, String> logMetric(InvocationMetricKey key, String value) throws Exception {
         String uuid = UUID.randomUUID().toString();
         ThreadGroup testGroup = new ThreadGroup("unit-test-group-" + uuid);
         TestRunnable runnable = new TestRunnable(key, value);
@@ -52,11 +55,11 @@ public class InvocationMetricLoggerTest {
 
     private class TestRunnable implements Runnable {
 
-        private String mKey;
+        private InvocationMetricKey mKey;
         private String mValue;
         private Map<String, String> mResultMap;
 
-        public TestRunnable(String key, String value) {
+        public TestRunnable(InvocationMetricKey key, String value) {
             mKey = key;
             mValue = value;
         }

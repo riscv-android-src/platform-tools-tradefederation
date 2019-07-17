@@ -94,7 +94,7 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
 
     /** {@inheritDoc} */
     @Override
-    public void postInvocationTearDown() {
+    public void postInvocationTearDown(Throwable exception) {
         try {
             CLog.i("Shutting down GCE device %s", getSerialNumber());
             // Log the last part of the logcat from the tear down.
@@ -135,7 +135,7 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
                 mValidationConfig.cleanDynamicOptionFiles();
             }
             // Ensure parent postInvocationTearDown is always called.
-            super.postInvocationTearDown();
+            super.postInvocationTearDown(exception);
         }
     }
 
