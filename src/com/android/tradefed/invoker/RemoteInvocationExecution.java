@@ -501,6 +501,13 @@ public class RemoteInvocationExecution extends InvocationExecution {
                     parser.processFileProto(resultFile);
                 }
             } while (resultFile != null);
+
+            if (!parser.invocationEndedReached()) {
+                currentInvocationListener.invocationFailed(
+                        new RuntimeException(
+                                "Parsing of results protos might be incomplete: invocation ended "
+                                        + "of remote execution was not found."));
+            }
         }
         return stillRunning;
     }
