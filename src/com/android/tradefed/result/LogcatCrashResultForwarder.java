@@ -38,6 +38,7 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
 
     /** Special error message from the instrumentation when something goes wrong on device side. */
     public static final String ERROR_MESSAGE = "Process crashed.";
+    public static final String SYSTEM_CRASH_MESSAGE = "System has crashed.";
 
     public static final int MAX_NUMBER_CRASH = 3;
 
@@ -94,7 +95,8 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
 
     /** Attempt to extract the crash from the logcat if the test was seen as started. */
     private String extractCrashAndAddToMessage(String errorMessage, Long startTime) {
-        if (errorMessage.contains(ERROR_MESSAGE) && startTime != null) {
+        if ((errorMessage.contains(ERROR_MESSAGE) || errorMessage.contains(SYSTEM_CRASH_MESSAGE))
+                && startTime != null) {
             mLogcatItem = extractLogcat(mDevice, startTime);
             errorMessage = addJavaCrashToString(mLogcatItem, errorMessage);
         }
