@@ -27,6 +27,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.Pair;
 import com.android.tradefed.util.RunUtil;
 
@@ -47,11 +48,15 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
 
     private static final String LINE_SEPARATOR = "\\r?\\n";
     private static final char KEY_VALUE_SEPARATOR = ':';
+    private static final String EXTRACTOR_STATUS = "trace_extractor_status";
+    private static final String EXTRACTOR_SUCCESS = "1";
+    private static final String EXTRACTOR_FAILURE = "0";
+    private static final String EXTRACTOR_RUNTIME = "trace_extractor_runtime";
 
     @Option(
             name = "perfetto-binary-path",
             description = "Path to the script files used to analyze the trace files.")
-    private List<String> mScriptPaths = new ArrayList<>();
+    private List<File> mScriptFiles = new ArrayList<>();
 
     @Option(
             name = "perfetto-metric-prefix",
@@ -87,9 +92,12 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
     public void processMetricFile(String key, File metricFile,
             DeviceMetricData data) {
         // Extract the metrics from the trace file.
-        for (String scriptPath : mScriptPaths) {
+        for (File scriptFile : mScriptFiles) {
+            // Apply necessary execute permissions to the script.
+            FileUtil.chmodGroupRWX(scriptFile);
+
             List<String> commandArgsList = new ArrayList<String>();
-            commandArgsList.add(scriptPath);
+            commandArgsList.add(scriptFile.getAbsolutePath());
             commandArgsList.add("-trace_file");
             commandArgsList.add(metricFile.getAbsolutePath());
 
@@ -98,12 +106,26 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
                 commandArgsList.add(Joiner.on(",").join(mProcessNames));
             }
 
+            String traceExtractorStatus = EXTRACTOR_SUCCESS;
+
+            double scriptDuration = 0;
+            double scriptStartTime = System.currentTimeMillis();
             CommandResult cr = runHostCommand(commandArgsList.toArray(new String[commandArgsList
                     .size()]));
+            scriptDuration = System.currentTimeMillis() - scriptStartTime;
+
+            // Update the script duration metrics.
+            Metric.Builder metricDurationBuilder = Metric.newBuilder();
+            metricDurationBuilder.getMeasurementsBuilder().setSingleDouble(scriptDuration);
+            data.addMetric(
+                    String.format("%s_%s", mMetricPrefix, EXTRACTOR_RUNTIME),
+                    metricDurationBuilder.setType(DataType.RAW));
+
             if (CommandStatus.SUCCESS.equals(cr.getStatus())) {
                 String[] metrics = cr.getStdout().split(LINE_SEPARATOR);
                 for (String metric : metrics) {
                     Pair<String, String> kv = splitKeyValue(metric);
+
                     if (kv != null) {
                         Metric.Builder metricBuilder = Metric.newBuilder();
                         metricBuilder.getMeasurementsBuilder().setSingleString(kv.second);
@@ -116,9 +138,16 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
                 }
                 CLog.i(cr.getStdout());
             } else {
+                traceExtractorStatus = EXTRACTOR_FAILURE;
                 CLog.e("Unable to parse the trace file %s due to %s - Status - %s ",
                         metricFile.getName(), cr.getStderr(), cr.getStatus());
             }
+
+            Metric.Builder metricStatusBuilder = Metric.newBuilder();
+            metricStatusBuilder.getMeasurementsBuilder().setSingleString(traceExtractorStatus);
+            data.addMetric(
+                    String.format("%s_%s", mMetricPrefix, EXTRACTOR_STATUS),
+                    metricStatusBuilder.setType(DataType.RAW));
         }
 
         // Upload and delete the host trace file.

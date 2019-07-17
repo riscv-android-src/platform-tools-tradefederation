@@ -23,10 +23,8 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollector;
-import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 
-import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
 import org.junit.Before;
@@ -36,7 +34,6 @@ import org.junit.runners.JUnit4;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 
 /** Unit tests for {@link InstalledInstrumentationsTest}. */
@@ -71,12 +68,8 @@ public class InstalledInstrumentationsTestTest {
         injectShellResponse(String.format(INSTR_OUTPUT_FORMAT, TEST_PKG, TEST_RUNNER,
                 TEST_COVERAGE_TARGET), 1);
 
-        mMockListener.testRunStarted(TEST_PKG, 0);
-        Capture<HashMap<String, Metric>> captureMetrics = new Capture<>();
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(captureMetrics));
         ArgsOptionParser p = new ArgsOptionParser(mInstalledInstrTest);
         p.parse("--size", "small", "--force-abi", ABI);
-        mInstalledInstrTest.setSendCoverage(true);
         EasyMock.replay(mMockTestDevice, mMockListener);
         mInstalledInstrTest.run(mMockListener);
         assertEquals(1, mMockInstrumentationTests.size());
@@ -84,13 +77,6 @@ public class InstalledInstrumentationsTestTest {
         assertEquals(mMockListener, mockInstrumentationTest.getListener());
         assertEquals(TEST_PKG, mockInstrumentationTest.getPackageName());
         assertEquals(TEST_RUNNER, mockInstrumentationTest.getRunnerName());
-        assertEquals(
-                TEST_COVERAGE_TARGET,
-                captureMetrics
-                        .getValue()
-                        .get(InstalledInstrumentationsTest.COVERAGE_TARGET_KEY)
-                        .getMeasurements()
-                        .getSingleString());
         assertEquals("small", mockInstrumentationTest.getTestSize());
         assertEquals(ABI, mockInstrumentationTest.getForceAbi());
 
@@ -156,12 +142,8 @@ public class InstalledInstrumentationsTestTest {
         injectShellResponse(
                 String.format(INSTR_OUTPUT_FORMAT, TEST_PKG, TEST_RUNNER, TEST_COVERAGE_TARGET), 1);
 
-        mMockListener.testRunStarted(TEST_PKG, 0);
-        Capture<HashMap<String, Metric>> captureMetrics = new Capture<>();
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(captureMetrics));
         ArgsOptionParser p = new ArgsOptionParser(mInstalledInstrTest);
         p.parse("--size", "small", "--force-abi", ABI);
-        mInstalledInstrTest.setSendCoverage(true);
         List<IMetricCollector> collectors = new ArrayList<>();
         collectors.add(new BaseDeviceMetricCollector());
         mInstalledInstrTest.setMetricCollectors(collectors);
@@ -172,13 +154,6 @@ public class InstalledInstrumentationsTestTest {
         assertEquals(mMockListener, mockInstrumentationTest.getListener());
         assertEquals(TEST_PKG, mockInstrumentationTest.getPackageName());
         assertEquals(TEST_RUNNER, mockInstrumentationTest.getRunnerName());
-        assertEquals(
-                TEST_COVERAGE_TARGET,
-                captureMetrics
-                        .getValue()
-                        .get(InstalledInstrumentationsTest.COVERAGE_TARGET_KEY)
-                        .getMeasurements()
-                        .getSingleString());
         assertEquals("small", mockInstrumentationTest.getTestSize());
         assertEquals(ABI, mockInstrumentationTest.getForceAbi());
         assertEquals(1, mockInstrumentationTest.getCollectors().size());

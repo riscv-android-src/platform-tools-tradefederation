@@ -59,6 +59,9 @@ python_binary_host {
     libs: [
         "atest_proto",
     ],
+    data: [
+        "tools/updatedb_darwin.sh",
+    ],
     // Make atest's built name to atest-dev
     stem: "atest-dev",
     defaults: ["atest_py2_default"],
@@ -68,10 +71,11 @@ python_library_host {
     name: "atest_module_info",
     defaults: ["atest_lib_default"],
     srcs: [
-        "module_info.py",
+        "atest_error.py",
         "atest_utils.py",
         "constants.py",
-        "constants_default.py"
+        "constants_default.py",
+        "module_info.py",
     ],
 }
 
@@ -100,6 +104,8 @@ python_library_host {
     ],
 }
 
+// Exclude atest_updatedb_unittest due to it's a test for ATest's wrapper of updatedb, but there's
+// no updatedb binary on test server.
 python_test_host {
     name: "atest_unittests",
     main: "atest_run_unittests.py",
@@ -108,6 +114,7 @@ python_test_host {
         "**/*.py",
     ],
     data: [
+        "tools/updatedb_darwin.sh",
         "unittest_data/**/*",
         "unittest_data/**/.*",
     ],
@@ -115,6 +122,7 @@ python_test_host {
         "asuite_lib_test/*.py",
         "proto/*_pb2.py",
         "proto/__init__.py",
+        "tools/atest_updatedb_unittest.py",
     ],
     libs: [
         "py-mock",
@@ -180,6 +188,7 @@ python_library_host {
     name: "asuite_cc_client",
     defaults: ["asuite_default"],
     srcs: [
+        "atest_error.py",
         "atest_utils.py",
         "constants.py",
         "constants_default.py",

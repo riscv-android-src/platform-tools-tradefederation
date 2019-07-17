@@ -48,6 +48,7 @@ public class CreateUserPreparerTest {
         doReturn(10).when(mMockDevice).getCurrentUser();
         doReturn(5).when(mMockDevice).createUser(Mockito.any());
         doReturn(true).when(mMockDevice).switchUser(5);
+        doReturn(true).when(mMockDevice).startUser(5, true);
         mPreparer.setUp(mMockDevice, null);
 
         doReturn(true).when(mMockDevice).removeUser(5);

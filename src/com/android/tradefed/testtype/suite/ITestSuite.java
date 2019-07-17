@@ -18,7 +18,9 @@ package com.android.tradefed.testtype.suite;
 import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.IDeviceConfiguration;
@@ -58,6 +60,7 @@ import com.android.tradefed.testtype.IReportNotExecuted;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
+import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.MultiMap;
@@ -66,6 +69,8 @@ import com.android.tradefed.util.TimeUtil;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -80,6 +85,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Abstract class used to run Test Suite. This class provide the base of how the Suite will be run.
@@ -98,30 +104,8 @@ public abstract class ITestSuite
                 IMetricCollectorReceiver,
                 IConfigurationReceiver,
                 IReportNotExecuted,
-                ITokenRequest {
-
-    /** The Retry Strategy to be used when re-running some tests. */
-    public enum RetryStrategy {
-        /** Rerun all the tests for the number of attempts specified. */
-        ITERATIONS,
-        /**
-         * Rerun all the tests until the max count is reached or a failure occurs whichever come
-         * first.
-         */
-        RERUN_UNTIL_FAILURE,
-        /**
-         * Rerun all the test case failures until passed or the max number of attempts specified.
-         */
-        RETRY_TEST_CASE_FAILURE,
-        /** Rerun all the test run failures until passed or the max number of attempts specified. */
-        RETRY_TEST_RUN_FAILURE,
-        /**
-         * Rerun all the test run and test cases failures until passed or the max number of attempts
-         * specified. Test run failures are rerun in priority (a.k.a. if a run failure and a test
-         * case failure occur, the run failure is rerun).
-         */
-        RETRY_ANY_FAILURE,
-    }
+                ITokenRequest,
+                ITestLoggerReceiver {
 
     public static final String SKIP_SYSTEM_STATUS_CHECKER = "skip-system-status-check";
     public static final String RUNNER_WHITELIST = "runner-whitelist";
@@ -135,6 +119,8 @@ public abstract class ITestSuite
     public static final String TOKEN_KEY = "token";
     public static final String MODULE_METADATA_INCLUDE_FILTER = "module-metadata-include-filter";
     public static final String MODULE_METADATA_EXCLUDE_FILTER = "module-metadata-exclude-filter";
+    public static final String RANDOM_SEED = "random-seed";
+    public static final String REBOOT_BEFORE_TEST = "reboot-before-test";
 
     private static final String PRODUCT_CPU_ABI_KEY = "ro.product.cpu.abi";
 
@@ -183,6 +169,12 @@ public abstract class ITestSuite
         description = "Reboot the device at the last intra-module retry")
     private boolean mRebootAtLastRetry = false;
 
+    @Option(
+        name = REBOOT_BEFORE_TEST,
+        description = "Reboot the device before the test suite starts."
+    )
+    private boolean mRebootBeforeTest = false;
+
     @Option(name = "skip-all-system-status-check",
             description = "Whether all system status check between modules should be skipped")
     private boolean mSkipAllSystemStatusCheck = false;
@@ -211,7 +203,7 @@ public abstract class ITestSuite
     private boolean mRandomOrder = false;
 
     @Option(
-        name = "random-seed",
+        name = RANDOM_SEED,
         description = "Seed to randomize the order of the modules."
     )
     private long mRandomSeed = -1;
@@ -293,13 +285,8 @@ public abstract class ITestSuite
     )
     private boolean mIsolatedModule = false;
 
-    @Option(
-        name = "reboot-before-test",
-        description = "Reboot the device before the test suite starts."
-    )
-    private boolean mRebootBeforeTest = false;
-
-    // [Options relate to module retry and intra-module retry][
+    /** @deprecated to be deleted when next version is deployed */
+    @Deprecated
     @Option(
         name = "max-testcase-run-count",
         description =
@@ -308,14 +295,17 @@ public abstract class ITestSuite
     )
     private int mMaxRunLimit = 1;
 
+    /** @deprecated to be deleted when next version is deployed */
+    @Deprecated
     @Option(
         name = "retry-strategy",
         description =
                 "The retry strategy to be used when re-running some tests with "
                         + "--max-testcase-run-count"
     )
-    private RetryStrategy mRetryStrategy = RetryStrategy.RETRY_TEST_CASE_FAILURE;
+    private RetryStrategy mRetryStrategy = RetryStrategy.NO_RETRY;
 
+    // [Options relate to module retry and intra-module retry][
     @Option(
         name = "merge-attempts",
         description = "Whether or not to use the merge the results of the different attempts."
@@ -341,6 +331,17 @@ public abstract class ITestSuite
 
     // Current modules to run, null if not started to run yet.
     private List<ModuleDefinition> mRunModules = null;
+    // Logger to be used to files.
+    private ITestLogger mCurrentLogger = null;
+    // Whether or not we are currently in split
+    private boolean mIsSplitting = false;
+
+    private DynamicRemoteFileResolver mDynamicResolver = new DynamicRemoteFileResolver();
+
+    @VisibleForTesting
+    void setDynamicResolver(DynamicRemoteFileResolver resolver) {
+        mDynamicResolver = resolver;
+    }
 
     /**
      * Get the current Guice {@link Injector} from the invocation. It should allow us to continue
@@ -382,6 +383,15 @@ public abstract class ITestSuite
         }
     }
 
+    public File getTestsDir() throws FileNotFoundException {
+        IBuildInfo build = getBuildInfo();
+        if (build instanceof IDeviceBuildInfo) {
+            return ((IDeviceBuildInfo) build).getTestsDir();
+        }
+        // TODO: handle multi build?
+        throw new FileNotFoundException("Could not found a tests dir folder.");
+    }
+
     private LinkedHashMap<String, IConfiguration> loadAndFilter() {
         LinkedHashMap<String, IConfiguration> runConfig = loadTests();
         if (runConfig.isEmpty()) {
@@ -391,6 +401,7 @@ public abstract class ITestSuite
         // Apply our guice scope to all modules objects
         applyGuiceInjection(runConfig);
 
+        Set<String> moduleNames = new HashSet<>();
         LinkedHashMap<String, IConfiguration> filteredConfig = new LinkedHashMap<>();
         for (Entry<String, IConfiguration> config : runConfig.entrySet()) {
             if (!mModuleMetadataIncludeFilter.isEmpty()
@@ -411,9 +422,49 @@ public abstract class ITestSuite
             }
             filterPreparers(config.getValue(), mAllowedPreparers);
             filteredConfig.put(config.getKey(), config.getValue());
+            moduleNames.add(config.getValue().getConfigurationDescription().getModuleName());
         }
+
+        if (mBuildInfo != null
+                && mBuildInfo.getRemoteFiles() != null
+                && mBuildInfo.getRemoteFiles().size() > 0) {
+            stageTestArtifacts(moduleNames);
+        }
+
         runConfig.clear();
         return filteredConfig;
+    }
+
+    /** Helper to download all artifacts for the given modules. */
+    private void stageTestArtifacts(Set<String> modules) {
+        CLog.i(String.format("Start to stage test artifacts for %d modules.", modules.size()));
+        long startTime = System.currentTimeMillis();
+        // Include the file if its path contains a folder name matching any of the module.
+        String moduleRegex =
+                modules.stream()
+                        .map(m -> String.format("/%s/", m))
+                        .collect(Collectors.joining("|"));
+        List<String> includeFilters = Arrays.asList(moduleRegex);
+        // Ignore config file as it's part of config zip artifact that's staged already.
+        List<String> excludeFilters = Arrays.asList("[.]config$");
+        for (File remoteFile : mBuildInfo.getRemoteFiles()) {
+            try {
+                mDynamicResolver.resolvePartialDownloadZip(
+                        getTestsDir(), remoteFile.toString(), includeFilters, excludeFilters);
+            } catch (ConfigurationException | FileNotFoundException e) {
+                CLog.e(
+                        String.format(
+                                "Failed to download partial zip from %s for modules: %s",
+                                remoteFile, String.join(", ", modules)));
+                CLog.e(e);
+                throw new RuntimeException(e);
+            }
+        }
+        long elapsedTime = System.currentTimeMillis() - startTime;
+        CLog.i(
+                String.format(
+                        "Staging test artifacts for %d modules finished in %s.",
+                        modules.size(), TimeUtil.formatElapsedTime(elapsedTime)));
     }
 
     /** Helper that creates and returns the list of {@link ModuleDefinition} to be executed. */
@@ -478,6 +529,7 @@ public abstract class ITestSuite
         }
         CLog.i("Randomizing all the modules with seed: %s", randomSeed);
         Collections.shuffle(runModules, new Random(randomSeed));
+        mBuildInfo.addBuildAttribute(RANDOM_SEED, String.valueOf(randomSeed));
     }
 
     private void checkClassLoad(Set<String> classes, String type) {
@@ -518,6 +570,7 @@ public abstract class ITestSuite
     /** Generic run method for all test loaded from {@link #loadTests()}. */
     @Override
     public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        mCurrentLogger = listener;
         // Load and check the module checkers, runners and preparers in black and whitelist
         checkClassLoad(mSystemStatusCheckBlacklist, SKIP_SYSTEM_STATUS_CHECKER);
         checkClassLoad(mAllowedRunners, RUNNER_WHITELIST);
@@ -682,12 +735,17 @@ public abstract class ITestSuite
         // Pass the main invocation logSaver
         module.setLogSaver(mMainConfiguration.getLogSaver());
         // Pass the retry strategy to the module
-        module.setRetryStrategy(mRetryStrategy, mMergeAttempts);
+        module.setRetryStrategy(
+                getConfiguration().getCommandOptions().getRetryStrategy(), mMergeAttempts);
         // Pass the reboot strategy at the last intra-module retry to the module
         module.setRebootAtLastRetry(mRebootAtLastRetry);
 
         // Actually run the module
-        module.run(listener, moduleListeners, failureListener, mMaxRunLimit);
+        module.run(
+                listener,
+                moduleListeners,
+                failureListener,
+                getConfiguration().getCommandOptions().getMaxRetryCount());
 
         if (!mSkipAllSystemStatusCheck) {
             runPostModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
@@ -813,6 +871,11 @@ public abstract class ITestSuite
                 System.currentTimeMillis() - startTime, new HashMap<String, Metric>());
     }
 
+    /** Returns true if we are currently in {@link #split(int)}. */
+    public boolean isSplitting() {
+        return mIsSplitting;
+    }
+
     /** {@inheritDoc} */
     @Override
     public Collection<IRemoteTest> split(int shardCountHint) {
@@ -820,39 +883,47 @@ public abstract class ITestSuite
             // cannot shard or already sharded
             return null;
         }
+        mIsSplitting = true;
+        try {
+            LinkedHashMap<String, IConfiguration> runConfig = loadAndFilter();
+            if (runConfig.isEmpty()) {
+                CLog.i("No config were loaded. Nothing to run.");
+                return null;
+            }
+            injectInfo(runConfig);
 
-        LinkedHashMap<String, IConfiguration> runConfig = loadAndFilter();
-        if (runConfig.isEmpty()) {
-            CLog.i("No config were loaded. Nothing to run.");
-            return null;
+            // We split individual tests on double the shardCountHint to provide better average.
+            // The test pool mechanism prevent this from creating too much overhead.
+            List<ModuleDefinition> splitModules =
+                    ModuleSplitter.splitConfiguration(
+                            runConfig,
+                            shardCountHint,
+                            mShouldMakeDynamicModule,
+                            mIntraModuleSharding);
+            runConfig.clear();
+            runConfig = null;
+
+            // Clean up the parent that will get sharded: It is fine to clean up before copying the
+            // options, because the sharded module is already created/populated so there is no need
+            // to carry these extra data.
+            cleanUpSuiteSetup();
+
+            // create an association of one ITestSuite <=> one ModuleDefinition as the smallest
+            // execution unit supported.
+            List<IRemoteTest> splitTests = new ArrayList<>();
+            for (ModuleDefinition m : splitModules) {
+                ITestSuite suite = createInstance();
+                OptionCopier.copyOptionsNoThrow(this, suite);
+                suite.mIsSharded = true;
+                suite.mDirectModule = m;
+                splitTests.add(suite);
+            }
+            // return the list of ITestSuite with their ModuleDefinition assigned
+            return splitTests;
+        } finally {
+            // Done splitting at that point
+            mIsSplitting = false;
         }
-        injectInfo(runConfig);
-
-        // We split individual tests on double the shardCountHint to provide better average.
-        // The test pool mechanism prevent this from creating too much overhead.
-        List<ModuleDefinition> splitModules =
-                ModuleSplitter.splitConfiguration(
-                        runConfig, shardCountHint, mShouldMakeDynamicModule, mIntraModuleSharding);
-        runConfig.clear();
-        runConfig = null;
-
-        // Clean up the parent that will get sharded: It is fine to clean up before copying the
-        // options, because the sharded module is already created/populated so there is no need
-        // to carry these extra data.
-        cleanUpSuiteSetup();
-
-        // create an association of one ITestSuite <=> one ModuleDefinition as the smallest
-        // execution unit supported.
-        List<IRemoteTest> splitTests = new ArrayList<>();
-        for (ModuleDefinition m : splitModules) {
-            ITestSuite suite = createInstance();
-            OptionCopier.copyOptionsNoThrow(this, suite);
-            suite.mIsSharded = true;
-            suite.mDirectModule = m;
-            splitTests.add(suite);
-        }
-        // return the list of ITestSuite with their ModuleDefinition assigned
-        return splitTests;
     }
 
     /**
@@ -963,9 +1034,14 @@ public abstract class ITestSuite
         mContext = invocationContext;
     }
 
-    /** Set the max number of run attempt for each module. */
-    public final void setMaxRunLimit(int maxRunLimit) {
-        mMaxRunLimit = maxRunLimit;
+    /** {@inheritDoc} */
+    @Override
+    public void setTestLogger(ITestLogger testLogger) {
+        mCurrentLogger = testLogger;
+    }
+
+    public ITestLogger getCurrentTestLogger() {
+        return mCurrentLogger;
     }
 
     /** {@inheritDoc} */
@@ -985,6 +1061,11 @@ public abstract class ITestSuite
     @Override
     public void setConfiguration(IConfiguration configuration) {
         mMainConfiguration = configuration;
+    }
+
+    /** Returns the invocation {@link IConfiguration}. */
+    public final IConfiguration getConfiguration() {
+        return mMainConfiguration;
     }
 
     /** {@inheritDoc} */
@@ -1152,6 +1233,11 @@ public abstract class ITestSuite
     @VisibleForTesting
     final Injector getInjector() {
         return mInjector;
+    }
+
+    /** Sets reboot-before-test to true. */
+    public final void enableRebootBeforeTest() {
+        mRebootBeforeTest = true;
     }
 
     /**

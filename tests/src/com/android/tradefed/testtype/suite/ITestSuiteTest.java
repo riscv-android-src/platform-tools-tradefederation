@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -22,12 +23,15 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.android.ddmlib.IDevice;
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
@@ -77,7 +81,9 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
+import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -143,6 +149,7 @@ public class ITestSuiteTest {
                     config.setTargetPreparer(mPreparer);
                 }
                 config.setTest(new StubCollectingTest());
+                config.getConfigurationDescription().setModuleName(TEST_CONFIG_NAME);
                 testConfig.put(TEST_CONFIG_NAME, config);
 
                 for (int i = 1; i < mNumTests; i++) {
@@ -269,6 +276,7 @@ public class ITestSuiteTest {
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        EasyMock.expect(mMockBuildInfo.getRemoteFiles()).andReturn(null).once();
         mMockSysChecker = EasyMock.createMock(ISystemStatusChecker.class);
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
         mStubMainConfiguration = new Configuration("stub", "stub");
@@ -778,10 +786,8 @@ public class ITestSuiteTest {
         mMockListener.testRunStarted(
                 EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         EasyMock.expectLastCall().times(1);
-        mMockListener.testRunFailed(
-                "runtime"
-                        + TestRunResult.ERROR_DIVIDER
-                        + "Module test only ran 0 out of 1 expected tests.");
+        Capture<String> captured = new Capture<>();
+        mMockListener.testRunFailed(EasyMock.capture(captured));
         EasyMock.expect(
                         mMockDevice.logBugreport(
                                 EasyMock.eq("module-test-failure-SERIAL-bugreport"),
@@ -794,6 +800,12 @@ public class ITestSuiteTest {
         replayMocks();
         mTestSuite.run(mMockListener);
         verifyMocks();
+        String exception = captured.getValue();
+        assertTrue(exception.contains("runtime"));
+        assertTrue(
+                exception.contains(
+                        TestRunResult.ERROR_DIVIDER
+                                + "Module test only ran 0 out of 1 expected tests."));
     }
 
     /**
@@ -804,6 +816,7 @@ public class ITestSuiteTest {
     @Test
     public void testShardModules_notShardable() {
         mTestSuite = new TestSuiteImpl(5);
+        mTestSuite.setBuild(mMockBuildInfo);
         Collection<IRemoteTest> tests = mTestSuite.split(3);
         assertEquals(5, tests.size());
         for (IRemoteTest test : tests) {
@@ -827,6 +840,7 @@ public class ITestSuiteTest {
         // default runtime hint is 0, it is only meant to be used for sharding.
         assertEquals(0l, mTestSuite.getRuntimeHint());
         mTestSuite = new TestSuiteImpl(5);
+        mTestSuite.setBuild(mMockBuildInfo);
         Collection<IRemoteTest> tests = mTestSuite.split(3);
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof TestSuiteImpl);
@@ -1478,7 +1492,9 @@ public class ITestSuiteTest {
         mTestSuite.setDevice(mMockDevice);
         mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setConfiguration(mStubMainConfiguration);
-        mTestSuite.setMaxRunLimit(maxRunLimit);
+        mStubMainConfiguration.getCommandOptions().setMaxRetryCount(maxRunLimit);
+        OptionSetter cmdSetter = new OptionSetter(mStubMainConfiguration.getCommandOptions());
+        cmdSetter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
         mContext = new InvocationContext();
         mTestSuite.setInvocationContext(mContext);
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
@@ -1612,6 +1628,8 @@ public class ITestSuiteTest {
     @Test
     public void testRandomizeTestModulesWithSameSeed() throws Exception {
         mTestSuite = new TestSuiteImpl(5);
+        mTestSuite.setBuild(mMockBuildInfo);
+
         LinkedHashMap<String, IConfiguration> testConfigs = mTestSuite.loadTests();
         List<ModuleDefinition> runModules = getRunModules(testConfigs);
         List<ModuleDefinition> runModules2 = getRunModules(testConfigs);
@@ -1632,6 +1650,8 @@ public class ITestSuiteTest {
     @Test
     public void testRandomizeTestModulesWithDifferentSeed() throws Exception {
         mTestSuite = new TestSuiteImpl(5);
+        mTestSuite.setBuild(mMockBuildInfo);
+
         LinkedHashMap<String, IConfiguration> testConfigs = mTestSuite.loadTests();
         List<ModuleDefinition> runModules = getRunModules(testConfigs);
         List<ModuleDefinition> runModules2 = getRunModules(testConfigs);
@@ -1641,4 +1661,59 @@ public class ITestSuiteTest {
         assertFalse(runModules.toString().equals(runModules2.toString()));
     }
 
+    /**
+     * Test for {@link ITestSuite#randomizeTestModules(List, long)} to make sure the random-seed
+     * be injected into BuildInfo correctly.
+     */
+    @Test
+    public void testSeedwhenRandomization() throws Exception {
+        IBuildInfo mMockInfo = new BuildInfo();
+        mTestSuite.setBuild(mMockInfo);
+
+        List<ModuleDefinition> runModules = getRunModules(mTestSuite.loadTests());
+        mTestSuite.randomizeTestModules(runModules, 123L);
+
+        String randomSeed = mMockInfo.getBuildAttributes().get(ITestSuite.RANDOM_SEED);
+        assertTrue(randomSeed.equals(String.valueOf(123L)));
+    }
+
+    /**
+     * Test for {@link ITestSuite#stageTestArtifacts(Set)} is called when test zip build artifact
+     * staging is delayed.
+     */
+    @Test
+    public void testStageTestArtifacts() throws Exception {
+        String remoteFilePath = "gs://module1/tests.zip";
+        List<String> files =
+                Arrays.asList("dir/test/test.config", "dir/test/file1", "module2/file1");
+        DynamicRemoteFileResolver dynamicResolver =
+                new DynamicRemoteFileResolver() {
+                    @Override
+                    public void resolvePartialDownloadZip(
+                            File destDir,
+                            String remoteFilePath,
+                            List<String> includeFilters,
+                            List<String> excludeFilters)
+                            throws ConfigurationException {
+                        assertEquals(new File("tests_dir"), destDir);
+                        assertEquals(remoteFilePath, remoteFilePath);
+                        assertArrayEquals(new String[] {"/test/"}, includeFilters.toArray());
+                        assertArrayEquals(new String[] {"[.]config$"}, excludeFilters.toArray());
+                    }
+                };
+        mTestSuite.setDynamicResolver(dynamicResolver);
+        IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+        EasyMock.expect(mockBuildInfo.getTestsDir()).andStubReturn(new File("tests_dir"));
+        EasyMock.expect(mockBuildInfo.getRemoteFiles())
+                .andReturn(new HashSet<File>(Arrays.asList(new File(remoteFilePath))))
+                .times(3);
+        mTestSuite.setBuild(mockBuildInfo);
+
+        List<ISystemStatusChecker> checkers = new ArrayList<ISystemStatusChecker>();
+        mTestSuite.setSystemStatusChecker(checkers);
+
+        EasyMock.replay(mockBuildInfo);
+        mTestSuite.run(mMockListener);
+        EasyMock.verify(mockBuildInfo);
+    }
 }

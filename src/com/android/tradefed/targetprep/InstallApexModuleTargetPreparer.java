@@ -23,10 +23,12 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.ApexInfo;
+import com.android.tradefed.device.PackageInfo;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.suite.SuiteApkInstaller;
 import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.BundletoolUtil;
+import com.android.tradefed.util.RunUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -54,23 +56,25 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     private static final String SPLIT_APKS_SUFFIX = ".apks";
     private static final String TRAIN_WITH_APEX_INSTALL_OPTION = "install-multi-package";
 
-    private List<ApexInfo> mTestApexInfoList;
-    private Set<String> mApkToInstall;
-    private List<String> mApkInstalled;
-    private List<String> mSplitsInstallArgs;
+    private List<ApexInfo> mTestApexInfoList = new ArrayList<>();
+    private Set<String> mApkToInstall = new LinkedHashSet<>();
+    private List<String> mApkInstalled = new ArrayList<>();
+    private List<String> mSplitsInstallArgs = new ArrayList<>();
     private BundletoolUtil mBundletoolUtil;
 
     @Option(name = "bundletool-file-name", description = "The file name of the bundletool jar.")
     private String mBundletoolFilename;
 
+    @Option(
+        name = "apex-staging-wait-time",
+        description = "The time in ms to wait for apex staged session ready.",
+        isTimeVal = true
+    )
+    private long mApexStagingWaitTime = 1 * 60 * 1000;
+
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, DeviceNotAvailableException {
-
-        mApkInstalled = new ArrayList<>();
-        mApkToInstall = new LinkedHashSet<>();
-        mTestApexInfoList = new ArrayList<>();
-        mSplitsInstallArgs = new ArrayList<>();
 
         if (getTestsFileName().isEmpty()) {
             CLog.i("No apk/apex module file to install. Skipping.");
@@ -81,31 +85,28 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
 
         List<String> testAppFileNames = getTestsFileName();
         if (containsApks(testAppFileNames)) {
-            try {
-                installUsingBundleTool(buildInfo, device);
-                if (mTestApexInfoList.isEmpty()) {
-                    CLog.i("No Apex module in the train. Skipping reboot.");
-                    return;
-                } else {
-                    device.reboot();
-                }
-            } catch (IOException e) {
-                throw new TargetSetupError(
-                        "Failed to create tmp spec file for device.", device.getDeviceDescriptor());
-            }
-        } else {
-            // Only contain .apk module.
-            if (!containsApex(testAppFileNames)) {
-                super.installer(device, buildInfo, testAppFileNames);
+            installUsingBundleTool(buildInfo, device);
+            if (mTestApexInfoList.isEmpty()) {
+                CLog.i("No Apex module in the train. Skipping reboot.");
                 return;
             } else {
-                // Any kind of combination of apex/apk.
-                installer(device, buildInfo, testAppFileNames);
+                RunUtil.getDefault().sleep(mApexStagingWaitTime);
                 device.reboot();
+            }
+        } else {
+            installer(device, buildInfo, testAppFileNames);
+            if (containsApex(testAppFileNames)
+                    || containsPersistentApk(testAppFileNames, device, buildInfo)) {
+                device.reboot();
+            }
+            if (mTestApexInfoList.isEmpty()) {
+                CLog.i("Train activation succeed.");
+                return;
             }
         }
 
         Set<ApexInfo> activatedApexes = device.getActiveApexes();
+
         if (activatedApexes.isEmpty()) {
             throw new TargetSetupError(
                     String.format(
@@ -133,7 +134,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                             listApexInfo(failToActivateApex).toString(), device.getSerialNumber()),
                     device.getDeviceDescriptor());
         }
-        CLog.i("Installation succeed.");
+        CLog.i("Train activation succeed.");
     }
 
     @Override
@@ -158,21 +159,19 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
 
     // TODO(b/124461631): Remove after ddmlib supports install-multi-package.
     @Override
-    protected void installer(ITestDevice device, IBuildInfo buildInfo, List<String> appNames)
+    protected void installer(
+            ITestDevice device, IBuildInfo buildInfo, List<String> testAppFileNames)
             throws TargetSetupError, DeviceNotAvailableException {
-        for (String appFilename : getTestsFileName()) {
-            File appFile = getLocalPathForFilename(buildInfo, appFilename, device);
-            if (isApex(appFile)) {
-                ApexInfo apexInfo = retrieveApexInfo(appFile, device.getDeviceDescriptor());
-                mTestApexInfoList.add(apexInfo);
-            }
+        if (containsApex(testAppFileNames)) {
+            mTestApexInfoList = collectApexInfoFromApexModules(testAppFileNames, device, buildInfo);
         }
-        if (appNames.size() > 1) {
-            installMultiPackageContainingApex(device, buildInfo, appNames);
-        } else {
-            // Single apex file install.
-            super.installer(device, buildInfo, appNames);
+        if (containsPersistentApk(testAppFileNames, device, buildInfo)) {
+            // When there is a persistent apk in the train, use '--staged' to install full train
+            // Otherwise, do normal install without '--staged'
+            installTrain(device, buildInfo, testAppFileNames, new String[] {"--staged"});
+            return;
         }
+        installTrain(device, buildInfo, testAppFileNames, null);
     }
 
     /**
@@ -183,14 +182,22 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      * @param moduleFilenames List of String. The list of filenames of the mainline modules to be
      *     installed.
      */
-    protected void installMultiPackageContainingApex(
-            ITestDevice device, IBuildInfo buildInfo, Collection<String> moduleFilenames)
+    protected void installTrain(
+            ITestDevice device,
+            IBuildInfo buildInfo,
+            Collection<String> moduleFilenames,
+            final String[] extraArgs)
             throws TargetSetupError, DeviceNotAvailableException {
 
         List<String> apkPackageNames = new ArrayList<>();
         List<String> trainInstallCmd = new ArrayList<>();
 
         trainInstallCmd.add(TRAIN_WITH_APEX_INSTALL_OPTION);
+        if (extraArgs != null) {
+            for (String arg : extraArgs) {
+                trainInstallCmd.add(arg);
+            }
+        }
 
         for (String fileName : moduleFilenames) {
             File moduleFile = getLocalPathForFilename(buildInfo, fileName, device);
@@ -206,6 +213,11 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             }
         }
         String log = device.executeAdbCommand(trainInstallCmd.toArray(new String[0]));
+
+        // Wait until all apexes are fully staged and ready.
+        // TODO: should have adb level solution b/130039562
+        RunUtil.getDefault().sleep(mApexStagingWaitTime);
+
         if (log.contains("Success")) {
             CLog.d(
                     "Train is staged successfully. Cmd: %s, Output: %s.",
@@ -227,7 +239,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      * @param buildInfo build artifact information
      */
     protected void installUsingBundleTool(IBuildInfo buildInfo, ITestDevice device)
-            throws TargetSetupError, DeviceNotAvailableException, IOException {
+            throws TargetSetupError, DeviceNotAvailableException {
         File bundletoolJar = getLocalPathForFilename(buildInfo, getBundletoolFileName(), device);
         if (bundletoolJar == null) {
             throw new TargetSetupError(
@@ -236,7 +248,17 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                     device.getDeviceDescriptor());
         }
         mBundletoolUtil = new BundletoolUtil(bundletoolJar);
-        String deviceSpecFilePath = getBundletoolUtil().generateDeviceSpecFile(device);
+        String deviceSpecFilePath = "";
+        try {
+            deviceSpecFilePath = getBundletoolUtil().generateDeviceSpecFile(device);
+        } catch (IOException e) {
+            throw new TargetSetupError(
+                    String.format(
+                            " Failed to generate device spec file on %s.",
+                            device.getSerialNumber()),
+                    e,
+                    device.getDeviceDescriptor());
+        }
 
         if (getTestsFileName().size() == 1) {
             // Installs single .apks module.
@@ -462,6 +484,64 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             }
         }
         return splitsArgs;
+    }
+
+    /**
+     * Checks if the input files contain any persistent apk.
+     *
+     * @param testAppFileNames The list of the file names of the modules to install
+     * @param device The test device
+     * @param buildInfo build artifact information
+     * @return <code>true</code> if the input files contains a persistent apk module.
+     */
+    protected boolean containsPersistentApk(
+            List<String> testAppFileNames, ITestDevice device, IBuildInfo buildInfo)
+            throws TargetSetupError, DeviceNotAvailableException {
+        for (String moduleFileName : testAppFileNames) {
+            if (moduleFileName.endsWith(APK_SUFFIX) &&
+                isPersistentApk(moduleFileName, device, buildInfo)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks if an apk is a persistent apk.
+     *
+     * @param filename The apk module file to check
+     * @param device The test device
+     * @param buildInfo build artifact information
+     * @return <code>true</code> if this is a persistent apk module.
+     */
+    protected boolean isPersistentApk(String filename, ITestDevice device, IBuildInfo buildInfo)
+            throws TargetSetupError, DeviceNotAvailableException {
+        File moduleFile = getLocalPathForFilename(buildInfo, filename, device);
+        PackageInfo pkgInfo =
+            device.getAppPackageInfo(parsePackageName(moduleFile, device.getDeviceDescriptor()));
+        return pkgInfo.isPersistentApp();
+    }
+
+    /**
+     * Collects apex info from the apex modules for activation check.
+     *
+     * @param testAppFileNames The list of the file names of the modules to install
+     * @param device The test device
+     * @param buildInfo build artifact information
+     * @return a list containing the apexinfo of the apex modules in the input file lists
+     */
+    protected List<ApexInfo> collectApexInfoFromApexModules(
+            List<String> testAppFileNames, ITestDevice device, IBuildInfo buildInfo)
+            throws TargetSetupError {
+        List<ApexInfo> apexInfoList = new ArrayList<>();
+        for (String appFilename : getTestsFileName()) {
+            File appFile = getLocalPathForFilename(buildInfo, appFilename, device);
+            if (isApex(appFile)) {
+                ApexInfo apexInfo = retrieveApexInfo(appFile, device.getDeviceDescriptor());
+                apexInfoList.add(apexInfo);
+            }
+        }
+        return apexInfoList;
     }
 
     @VisibleForTesting

@@ -27,11 +27,8 @@ import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
-import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.testtype.testdefs.XmlDefsTest;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
@@ -52,9 +49,6 @@ public class InstalledInstrumentationsTest
                 IMetricCollectorReceiver,
                 IInvocationContextReceiver {
 
-    /** the metric key name for the test coverage target value */
-    // TODO: move this to a more generic location
-    public static final String COVERAGE_TARGET_KEY = XmlDefsTest.COVERAGE_TARGET_KEY;
     private static final String PM_LIST_CMD = "pm list instrumentation";
     private static final String LINE_SEPARATOR = "\\r?\\n";
 
@@ -94,8 +88,9 @@ public class InstalledInstrumentationsTest
             "if first device becomes unavailable.")
     private boolean mIsResumeMode = false;
 
-    @Option(name = "send-coverage",
-            description = "Send coverage target info to test listeners.")
+    /** @deprecated delete when we are sure it's not used anywhere. */
+    @Deprecated
+    @Option(name = "send-coverage", description = "Send coverage target info to test listeners.")
     private boolean mSendCoverage = false;
 
     @Option(name = "bugreport-on-failure", description = "Sets which failed testcase events " +
@@ -221,15 +216,6 @@ public class InstalledInstrumentationsTest
     }
 
     /**
-     * Set the send coverage flag.
-     * <p/>
-     * Exposed for unit testing.
-     */
-    void setSendCoverage(boolean sendCoverage) {
-        mSendCoverage = sendCoverage;
-    }
-
-    /**
      * Gets the list of {@link InstrumentationTest}s contained within.
      * <p/>
      * Exposed for unit testing.
@@ -342,9 +328,6 @@ public class InstalledInstrumentationsTest
 
             CLog.d("Running test %s on %s", test.getPackageName(), getDevice().getSerialNumber());
 
-            if (mSendCoverage && test.getCoverageTarget() != null) {
-                sendCoverage(test.getPackageName(), test.getCoverageTarget(), listener);
-            }
             test.setDevice(getDevice());
             if (mTestClass != null) {
                 test.setClassName(mTestClass);
@@ -361,26 +344,6 @@ public class InstalledInstrumentationsTest
             // test completed, remove from list
             mTests.remove(0);
         }
-    }
-
-    /**
-     * Forwards the tests coverage target info as a test metric.
-     *
-     * @param packageName
-     * @param coverageTarget
-     * @param listener
-     */
-    private void sendCoverage(String packageName, String coverageTarget,
-            ITestInvocationListener listener) {
-        HashMap<String, Metric> coverageMetric = new HashMap<String, Metric>();
-        Metric metric =
-                Metric.newBuilder()
-                        .setMeasurements(
-                                Measurements.newBuilder().setSingleString(coverageTarget).build())
-                        .build();
-        coverageMetric.put(COVERAGE_TARGET_KEY, metric);
-        listener.testRunStarted(packageName, 0);
-        listener.testRunEnded(0, coverageMetric);
     }
 
     long getShellTimeout() {

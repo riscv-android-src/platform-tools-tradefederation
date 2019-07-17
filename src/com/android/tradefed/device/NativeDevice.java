@@ -56,7 +56,6 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.ProcessInfo;
-import com.android.tradefed.util.PsParser;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
@@ -82,6 +81,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -102,7 +102,7 @@ import javax.annotation.concurrent.GuardedBy;
  */
 public class NativeDevice implements IManagedTestDevice {
 
-    private static final String SD_CARD = "/sdcard/";
+    protected static final String SD_CARD = "/sdcard/";
     /**
      * Allow pauses of up to 2 minutes while receiving bugreport.
      * <p/>
@@ -261,17 +261,26 @@ public class NativeDevice implements IManagedTestDevice {
             mCmd = cmd;
         }
 
+        private void logExceptionAndOutput(CommandResult result) {
+            CLog.w("Command exited with status: %s", result.getStatus().toString());
+            CLog.w("Command stdout:\n%s\n", result.getStdout());
+            CLog.w("Command stderr:\n%s\n", result.getStderr());
+        }
+
         @Override
         public boolean run() throws TimeoutException, IOException {
             CommandResult result = getRunUtil().runTimedCmd(mTimeout, mCmd);
             // TODO: how to determine device not present with command failing for other reasons
             if (result.getStatus() == CommandStatus.EXCEPTION) {
-                throw new IOException();
+                logExceptionAndOutput(result);
+                throw new IOException("CommandStatus was EXCEPTION, details in host log");
             } else if (result.getStatus() == CommandStatus.TIMED_OUT) {
-                throw new TimeoutException();
+                logExceptionAndOutput(result);
+                throw new TimeoutException("CommandStatus was TIMED_OUT, details in host log");
             } else if (result.getStatus() == CommandStatus.FAILED) {
                 // interpret as communication failure
-                throw new IOException();
+                logExceptionAndOutput(result);
+                throw new IOException("CommandStatus was FAILED, details in host log");
             }
             mOutput = result.getStdout();
             return true;
@@ -3337,7 +3346,7 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.w("Property ro.crypto.state is null on device %s", getSerialNumber());
         }
 
-        return "encrypted".equals(output);
+        return "encrypted".equals(output.trim());
     }
 
     /**
@@ -3354,11 +3363,13 @@ public class NativeDevice implements IManagedTestDevice {
             return mIsEncryptionSupported.booleanValue();
         }
         enableAdbRoot();
-        String output = executeShellCommand("vdc cryptfs enablecrypto").trim();
 
-        mIsEncryptionSupported =
-                (output != null
-                        && Pattern.matches("(500)(\\s+)(\\d+)(\\s+)(Usage)(.*)(:)(.*)", output));
+        String output = getProperty("ro.crypto.state");
+        if (output == null || "unsupported".equals(output.trim())) {
+            mIsEncryptionSupported = false;
+            return mIsEncryptionSupported;
+        }
+        mIsEncryptionSupported = true;
         return mIsEncryptionSupported;
     }
 
@@ -3850,6 +3861,12 @@ public class NativeDevice implements IManagedTestDevice {
         throw new UnsupportedOperationException("No support for user's feature.");
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Map<Integer, UserInfo> getUserInfos() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -4135,11 +4152,9 @@ public class NativeDevice implements IManagedTestDevice {
         return device.getClass().getSimpleName();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void preInvocationSetup(IBuildInfo info)
+    public void preInvocationSetup(IBuildInfo info, List<IBuildInfo> testResourceBuildInfos)
             throws TargetSetupError, DeviceNotAvailableException {
         // Default implementation
         mContentProvider = null;
@@ -4153,11 +4168,10 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void postInvocationTearDown() {
+    public void postInvocationTearDown(Throwable exception) {
+        mIsEncryptionSupported = null;
         FileUtil.deleteFile(mExecuteShellCommandLogs);
         mExecuteShellCommandLogs = null;
         // Default implementation
@@ -4169,6 +4183,11 @@ public class NativeDevice implements IManagedTestDevice {
         try {
             // If we never installed it, don't even bother checking for it during tear down.
             if (mContentProvider == null) {
+                return;
+            }
+            if (exception instanceof DeviceNotAvailableException) {
+                CLog.e(
+                        "Skip Tradefed Content Provider teardown due to DeviceNotAvailableException.");
                 return;
             }
             if (TestDeviceState.ONLINE.equals(getDeviceState())) {
@@ -4243,26 +4262,84 @@ public class NativeDevice implements IManagedTestDevice {
         return o == null ? "unknown" : o.toString();
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<ProcessInfo> getProcesses() throws DeviceNotAvailableException {
-        return PsParser.getProcesses(executeShellCommand(PS_COMMAND));
-    }
-
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public ProcessInfo getProcessByName(String processName) throws DeviceNotAvailableException {
-        List<ProcessInfo> processList = getProcesses();
-        for (ProcessInfo processInfo : processList) {
-            if (processName.equals(processInfo.getName())) {
-                return processInfo;
+        String pidString = getProcessPid(processName);
+        if (pidString == null) {
+            return null;
+        }
+        return new ProcessInfo(
+                getProcessUserByPid(pidString),
+                Integer.parseInt(pidString),
+                processName,
+                getProcessStartTimeByPid(pidString));
+    }
+
+    /** Return the process start time since epoch for the given pid string */
+    private long getProcessStartTimeByPid(String pidString) throws DeviceNotAvailableException {
+        String output = executeShellCommand("stat -c%Z /proc/" + pidString);
+        if (output != null && !output.trim().isEmpty()) {
+            try {
+                return Long.parseLong(output.trim());
+            } catch (NumberFormatException e) {
+                return -1L;
+            }
+        }
+        return -1L;
+    }
+
+    /** Return the process user for the given pid string */
+    private String getProcessUserByPid(String pidString) throws DeviceNotAvailableException {
+        String output = executeShellCommand("stat -c%U /proc/" + pidString);
+        if (output != null && !output.trim().isEmpty()) {
+            try {
+                return output.trim();
+            } catch (NumberFormatException e) {
+                return null;
             }
         }
         return null;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Map<Long, String> getBootHistory() throws DeviceNotAvailableException {
+        String output = getProperty(DeviceProperties.BOOT_REASON_HISTORY);
+        /* Sample output:
+        kernel_panic,1556587278
+        reboot,,1556238008
+        reboot,,1556237796
+        reboot,,1556237725
+        */
+        Map<Long, String> bootHistory = new LinkedHashMap<Long, String>();
+        if (Strings.isNullOrEmpty(output)) {
+            return bootHistory;
+        }
+        for (String line : output.split("\\n")) {
+            String infoStr[] = line.split(",");
+            String startStr = infoStr[infoStr.length - 1];
+            try {
+                long startTime = Long.parseLong(startStr.trim());
+                bootHistory.put(startTime, infoStr[0].trim());
+            } catch (NumberFormatException e) {
+                CLog.e("Fail to parse boot time from line %s", line);
+            }
+        }
+        return bootHistory;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Map<Long, String> getBootHistorySince(long utcEpochTime)
+            throws DeviceNotAvailableException {
+        Map<Long, String> bootHistory = new LinkedHashMap<Long, String>();
+        for (Map.Entry<Long, String> entry : getBootHistory().entrySet()) {
+            if (entry.getKey() > utcEpochTime) {
+                bootHistory.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return bootHistory;
     }
 
     /**

@@ -170,6 +170,7 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
         EasyMock.expect(mMockConfig.getTests()).andStubReturn(new ArrayList<>());
+        mMockConfig.resolveDynamicOptions();
         mMockConfig.cleanDynamicOptionFiles();
         IBuildInfo build1 = new BuildInfo();
         EasyMock.expect(mProvider1.getBuild()).andReturn(build1);
@@ -189,6 +190,12 @@ public class TestInvocationMultiTest {
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
+                .andReturn(new LogFile("", "", LogDataType.TEXT));
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
                 .andReturn(new LogFile("", "", LogDataType.TEXT));
         mMockTestListener.invocationEnded(EasyMock.anyLong());
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
@@ -250,6 +257,7 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
         EasyMock.expect(mMockConfig.getTests()).andStubReturn(new ArrayList<>());
+        mMockConfig.resolveDynamicOptions();
         mMockConfig.cleanDynamicOptionFiles();
 
         mMockTestListener.invocationStarted(mContext);
@@ -260,6 +268,12 @@ public class TestInvocationMultiTest {
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
+                .andReturn(new LogFile("", "", LogDataType.TEXT));
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
                 .andReturn(new LogFile("", "", LogDataType.TEXT));
         mMockTestListener.invocationEnded(EasyMock.anyLong());
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
@@ -330,6 +344,7 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
         EasyMock.expect(mMockConfig.getTests()).andStubReturn(new ArrayList<>());
+        mMockConfig.resolveDynamicOptions();
         mMockConfig.cleanDynamicOptionFiles();
 
         mMockTestListener.invocationStarted(mContext);
@@ -340,6 +355,12 @@ public class TestInvocationMultiTest {
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
+                .andReturn(new LogFile("", "", LogDataType.TEXT));
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
                 .andReturn(new LogFile("", "", LogDataType.TEXT));
         mMockTestListener.invocationEnded(EasyMock.anyLong());
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);

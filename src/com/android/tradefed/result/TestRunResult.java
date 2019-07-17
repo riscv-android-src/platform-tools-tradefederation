@@ -18,6 +18,7 @@ package com.android.tradefed.result;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.testtype.retry.MergeStrategy;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.base.Joiner;
@@ -51,7 +52,8 @@ public class TestRunResult {
     // Log files associated with the test run itself (testRunStart / testRunEnd).
     private Map<String, LogFile> mRunLoggedFiles;
     private boolean mIsRunComplete = false;
-    private long mElapsedTime = 0;
+    private long mElapsedTime = 0L;
+    private long mStartTime = 0L;
 
     private TestResult mCurrentTestResult;
 
@@ -163,6 +165,17 @@ public class TestRunResult {
         return mStatusCounts[status.ordinal()];
     }
 
+    /** Returns all the {@link TestResult} in a particular state. */
+    public List<TestResult> getTestsResultsInState(TestStatus status) {
+        List<TestResult> results = new ArrayList<>();
+        for (TestResult r : mTestResults.values()) {
+            if (r.getStatus().equals(status)) {
+                results.add(r);
+            }
+        }
+        return results;
+    }
+
     /** Gets the number of tests in this run. */
     public int getNumTests() {
         return mTestResults.size();
@@ -188,6 +201,11 @@ public class TestRunResult {
         return mElapsedTime;
     }
 
+    /** Returns the start time of the first testRunStart call. */
+    public long getStartTime() {
+        return mStartTime;
+    }
+
     /** Return the run failure error message, <code>null</code> if run did not fail. */
     public String getRunFailureMessage() {
         return mRunFailureError;
@@ -210,6 +228,16 @@ public class TestRunResult {
      * @param testCount the number of expected test cases associated with the test run.
      */
     public void testRunStarted(String runName, int testCount) {
+        testRunStarted(runName, testCount, System.currentTimeMillis());
+    }
+
+    /**
+     * Notify that a test run started.
+     *
+     * @param runName the name associated to the test run for tracking purpose.
+     * @param testCount the number of expected test cases associated with the test run.
+     */
+    public void testRunStarted(String runName, int testCount, long startTime) {
         // A run may be started multiple times due to crashes or other reasons. Normally the first
         // run reflect the expected number of test "testCount". To avoid latter TestRunStarted
         // overrides the expected count, only the first testCount will be recorded.
@@ -225,6 +253,9 @@ public class TestRunResult {
         }
         mTestRunName = runName;
         mIsRunComplete = false;
+        if (mStartTime == 0L) {
+            mStartTime = startTime;
+        }
         // Do not reset mRunFailureError since for re-run we want to preserve previous failures.
     }
 

@@ -18,9 +18,12 @@ Utility functions for atest.
 
 from __future__ import print_function
 
+import hashlib
 import itertools
+import json
 import logging
 import os
+import pickle
 import re
 import subprocess
 import sys
@@ -30,10 +33,15 @@ try:
 except ImportError:
     from urllib.request import urlopen
 
+import atest_error
 import constants
 
-_MAKE_CMD = '%s/build/soong/soong_ui.bash' % os.environ.get(
-    constants.ANDROID_BUILD_TOP)
+from metrics import metrics_base
+
+_MAKE_CMD = ('%s/build/soong/soong_ui.bash' %
+             os.path.relpath(os.environ.get(constants.ANDROID_BUILD_TOP,
+                                            os.getcwd()),
+                             os.getcwd()))
 BUILD_CMD = [_MAKE_CMD, '--make-mode']
 _BASH_RESET_CODE = '\033[0m\n'
 # Arbitrary number to limit stdout for failed runs in _run_limited_output.
@@ -45,7 +53,12 @@ _FAILED_OUTPUT_LINE_LIMIT = 100
 # ex: [ 99% 39710/39711]
 _BUILD_COMPILE_STATUS = re.compile(r'\[\s*(\d{1,3}%\s+)?\d+/\d+\]')
 _BUILD_FAILURE = 'FAILED: '
-
+CMD_RESULT_PATH = os.path.join(os.environ.get(constants.ANDROID_BUILD_TOP,
+                                              os.getcwd()),
+                               'tools/tradefederation/core/atest/test_data',
+                               'sample_test_cmd_result.json')
+TEST_INFO_CACHE_ROOT = os.path.join(os.path.expanduser('~'), '.atest',
+                                    'info_cache')
 
 def _capture_fail_section(full_log):
     """Return the error message from the build output.
@@ -280,34 +293,26 @@ def colorful_print(text, color, highlight=False, auto_wrap=True):
 
 
 def is_external_run():
+    # TODO(b/133905312): remove this function after aidegen calling
+    #       metrics_base.get_user_type directly.
     """Check is external run or not.
+
+    Determine the internal user by passing at least one check:
+      - whose git mail domain is from google
+      - whose hostname is from google
+    Otherwise is external user.
 
     Returns:
         True if this is an external run, False otherwise.
     """
-    try:
-        output = subprocess.check_output(['git', 'config', '--get', 'user.email'],
-                                         universal_newlines=True)
-        if output and output.strip().endswith(constants.INTERNAL_EMAIL):
-            return False
-    except OSError:
-        # OSError can be raised when running atest_unittests on a host
-        # without git being set up.
-        # This happens before atest._configure_logging is called to set up
-        # logging. Therefore, use print to log the error message, instead of
-        # logging.debug.
-        print('Unable to determine if this is an external run, git is not found.')
-    except subprocess.CalledProcessError:
-        print('Unable to determine if this is an external run, email is not '
-              'found in git config.')
-    return True
+    return metrics_base.get_user_type() == metrics_base.EXTERNAL_USER
 
 
 def print_data_collection_notice():
     """Print the data collection notice."""
     anonymous = ''
     user_type = 'INTERNAL'
-    if is_external_run():
+    if metrics_base.get_user_type() == metrics_base.EXTERNAL_USER:
         anonymous = ' anonymous'
         user_type = 'EXTERNAL'
     notice = ('  We collect%s usage statistics in accordance with our Content '
@@ -323,3 +328,149 @@ def print_data_collection_notice():
     colorful_print("Notice:", constants.RED)
     colorful_print("%s" % notice, constants.GREEN)
     print('==================\n')
+
+
+def handle_test_runner_cmd(input_test, test_cmds, do_verification=False,
+                           result_path=CMD_RESULT_PATH):
+    """Handle the runner command of input tests.
+
+    Args:
+        input_test: A string of input tests pass to atest.
+        test_cmds: A list of strings for running input tests.
+        do_verification: A boolean to indicate the action of this method.
+                         True: Do verification without updating result map and
+                               raise DryRunVerificationError if verifying fails.
+                         False: Update result map, if the former command is
+                                different with current command, it will confirm
+                                with user if they want to update or not.
+        result_path: The file path for saving result.
+    """
+    # Always sort test_cmds to make it comparable.
+    test_cmds.sort()
+    full_result_content = {}
+    if os.path.isfile(result_path):
+        with open(result_path) as json_file:
+            full_result_content = json.load(json_file)
+    former_test_cmds = full_result_content.get(input_test, [])
+    if former_test_cmds != test_cmds:
+        if do_verification:
+            raise atest_error.DryRunVerificationError('Dry run verification failed,'
+                                                      'former commands: %s' %
+                                                      former_test_cmds)
+        if former_test_cmds:
+            # If former_test_cmds is different from test_cmds, ask users if they
+            # are willing to update the result.
+            print('Former cmds = %s' % former_test_cmds)
+            print('Current cmds = %s' % test_cmds)
+            try:
+                # TODO(b/137156054):
+                # Move the import statement into a method for that distutils is
+                # not a built-in lib in older python3(b/137017806). Will move it
+                # back when embedded_launcher fully supports Python3.
+                from distutils.util import strtobool
+                if not strtobool(raw_input('Do you want to update former result'
+                                           'with the latest one?(Y/n)')):
+                    print('SKIP updating result!!!')
+                    return
+            except ValueError:
+                # Default action is updating the command result of the input_test.
+                # If the user input is unrecognizable telling yes or no,
+                # "Y" is implicitly applied.
+                pass
+    else:
+        # If current commands are the same as the formers, no need to update
+        # result.
+        return
+    full_result_content[input_test] = test_cmds
+    with open(result_path, 'w') as outfile:
+        json.dump(full_result_content, outfile, indent=0)
+        print('Save result mapping to %s' % result_path)
+
+def _get_hashed_file_name(main_file_name):
+    """Convert the input string to a md5-hashed string. If file_extension is
+       given, returns $(hashed_string).$(file_extension), otherwise
+       $(hashed_string).cache.
+
+    Args:
+        main_file_name: The input string need to be hashed.
+
+    Returns:
+        A string as hashed file name with .cache file extension.
+    """
+    hashed_fn = hashlib.md5(str(main_file_name).encode())
+    hashed_name = hashed_fn.hexdigest()
+    return hashed_name + '.cache'
+
+def get_test_info_cache_path(test_reference, cache_root=TEST_INFO_CACHE_ROOT):
+    """Get the cache path of the desired test_infos.
+
+    Args:
+        test_reference: A string of the test.
+        cache_root: Folder path where stores caches.
+
+    Returns:
+        A string of the path of test_info cache.
+    """
+    return os.path.join(cache_root,
+                        _get_hashed_file_name(test_reference))
+
+def update_test_info_cache(test_reference, test_infos,
+                           cache_root=TEST_INFO_CACHE_ROOT):
+    """Update cache content which stores a set of test_info objects through
+       pickle module, each test_reference will be saved as a cache file.
+
+    Args:
+        test_reference: A string referencing a test.
+        test_infos: A set of TestInfos.
+        cache_root: Folder path for saving caches.
+    """
+    if not os.path.isdir(cache_root):
+        os.makedirs(cache_root)
+    cache_path = get_test_info_cache_path(test_reference, cache_root)
+    # Save test_info to files.
+    try:
+        with open(cache_path, 'wb') as test_info_cache_file:
+            logging.debug('Saving cache %s.', cache_path)
+            pickle.dump(test_infos, test_info_cache_file)
+    except (pickle.PicklingError, TypeError, IOError) as err:
+        # Don't break anything, just log this error, maybe collect the exception
+        # by metrics in the future.
+        logging.debug('Exception raised: %s', err)
+
+def load_test_info_cache(test_reference, cache_root=TEST_INFO_CACHE_ROOT):
+    """Load cache by test_reference to a set of test_infos object.
+
+    Args:
+        test_reference: A string referencing a test.
+        cache_root: Folder path for finding caches.
+
+    Returns:
+        A list of TestInfo namedtuple if cache found, else None.
+    """
+    cache_file = get_test_info_cache_path(test_reference, cache_root)
+    if os.path.isfile(cache_file):
+        logging.debug('Loading cache %s.', cache_file)
+        try:
+            with open(cache_file, 'rb') as config_dictionary_file:
+                return pickle.load(config_dictionary_file)
+        except (pickle.UnpicklingError, EOFError, IOError) as err:
+            # Don't break anything, just log this error, maybe collect the
+            # exception by metrics in the future.
+            logging.debug('Exception raised: %s', err)
+    return None
+
+def clean_test_info_caches(tests, cache_root=TEST_INFO_CACHE_ROOT):
+    """Clean caches of input tests.
+
+    Args:
+        tests: A list of test references.
+        cache_root: Folder path for finding caches.
+    """
+    for test in tests:
+        cache_file = get_test_info_cache_path(test, cache_root)
+        if os.path.isfile(cache_file):
+            logging.debug('Removing cache: %s', cache_file)
+            try:
+                os.remove(cache_file)
+            except IOError as err:
+                logging.debug('Exception raised: %s', err)

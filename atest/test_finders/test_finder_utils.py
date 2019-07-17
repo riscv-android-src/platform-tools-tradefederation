@@ -35,8 +35,17 @@ import constants
 # We want to make sure we don't grab apks with paths in their name since we
 # assume the apk name is the build target.
 _APK_RE = re.compile(r'^[^/]+\.apk$', re.I)
-# RE for check if TEST or TEST_F is in a cc file or not.
-_CC_CLASS_RE = re.compile(r'TEST(_F)?\(', re.I)
+# RE for checking if TEST or TEST_F is in a cc file or not.
+_CC_CLASS_RE = re.compile(r'TEST(_F)?[ ]*\(', re.I)
+# RE for checking if there exists one of the methods in java file.
+_JAVA_METHODS_PATTERN = r'.*[ ]+({0})\(.*'
+# RE for checking if there exists one of the methods in cc file.
+_CC_METHODS_PATTERN = r'[ ]*TEST(_F|_P)?[ ]*\(.*,[ ]*({0})\).*'
+# RE for checking if finding output matches the cc format.
+# e.g. file_path:TEST_F(test_name, method_name){
+_CC_OUTPUT_RE = re.compile(r'(?P<file_path>/.*):[ ]*TEST(_F|_P)?[ ]*\('
+                           r'(?P<test_name>\w+)[ ]*,[ ]*(?P<method_name>\w+)\)'
+                           r'[ ]*\{')
 # Parse package name from the package declaration line of a java or a kotlin file.
 # Group matches "foo.bar" of line "package foo.bar;" or "package foo.bar"
 _PACKAGE_RE = re.compile(r'\s*package\s+(?P<package>[^(;|\s)]+)\s*', re.I)
@@ -46,10 +55,10 @@ _DEVICE_PATH_RE = re.compile(r'.*\/target\/.*', re.I)
 
 # Explanation of FIND_REFERENCE_TYPEs:
 # ----------------------------------
-# 0. CLASS: Name of a java/kotlin class, usually file is named the same (HostTest lives
-#           in HostTest.java or HostTest.kt)
+# 0. CLASS: Name of a java/kotlin class, usually file is named the same
+#    (HostTest lives in HostTest.java or HostTest.kt)
 # 1. QUALIFIED_CLASS: Like CLASS but also contains the package in front like
-#.                    com.android.tradefed.testtype.HostTest.
+#                     com.android.tradefed.testtype.HostTest.
 # 2. PACKAGE: Name of a java package.
 # 3. INTEGRATION: XML file name in one of the 4 integration config directories.
 # 4. CC_CLASS: Name of a cc class.
@@ -57,27 +66,27 @@ _DEVICE_PATH_RE = re.compile(r'.*\/target\/.*', re.I)
 FIND_REFERENCE_TYPE = atest_enum.AtestEnum(['CLASS', 'QUALIFIED_CLASS',
                                             'PACKAGE', 'INTEGRATION', 'CC_CLASS'])
 # Get cpu count.
-_CPU_COUNT = 1
-try:
-    _CPU_COUNT = multiprocessing.cpu_count()
-except NotImplementedError:
-    pass
+_CPU_COUNT = 0 if os.uname()[0] == 'Linux' else multiprocessing.cpu_count()
+
 # Unix find commands for searching for test files based on test type input.
 # Note: Find (unlike grep) exits with status 0 if nothing found.
 FIND_CMDS = {
-    FIND_REFERENCE_TYPE.CLASS: r"find {0} -type d {1} -prune -o -type f "
-                               r"\( -name '*{2}.java' -o -name '*{2}.kt' \) -print",
-    FIND_REFERENCE_TYPE.QUALIFIED_CLASS: r"find {0} -type d {1} -prune -o "
-                                         r"\( -wholename '*{2}.java' "
-                                         r"-o -wholename '*{2}.kt' \) -print",
-    FIND_REFERENCE_TYPE.PACKAGE: r"find {0} -type d {1} -prune -o -wholename "
+    FIND_REFERENCE_TYPE.CLASS: r"find {0} {1} -type f"
+                               r"| egrep '.*/{2}\.(kt|java)$' || true",
+    FIND_REFERENCE_TYPE.QUALIFIED_CLASS: r"find {0} {1} -type f"
+                                         r"| egrep '.*{2}\.(kt|java)$' || true",
+    FIND_REFERENCE_TYPE.PACKAGE: r"find {0} {1} -wholename "
                                  r"'*{2}' -type d -print",
-    FIND_REFERENCE_TYPE.INTEGRATION: r"find {0} -type d {1} -prune -o -wholename "
+    FIND_REFERENCE_TYPE.INTEGRATION: r"find {0} {1} -wholename "
                                      r"'*{2}.xml' -print",
-    FIND_REFERENCE_TYPE.CC_CLASS: r"find {0} -type d {1} -prune -o -type f "
-                                  r"\( -name '*.cpp' -o -name '*.cc' \)"
-                                  r" | xargs -P " + str(_CPU_COUNT) +
-                                  r" grep -s -H -E 'TEST(_F)?\({2},' {{}} + || true"
+    # Searching a test among files where the absolute paths contain *test*.
+    # If users complain atest couldn't find a CC_CLASS, ask them to follow the
+    # convention that the filename or dirname must contain *test*, where *test*
+    # is case-insensitive.
+    FIND_REFERENCE_TYPE.CC_CLASS: r"find {0} {1} -type f -print"
+                                  r"| egrep -i '/*test.*\.(cc|cpp)$'"
+                                  r"| xargs -P" + str(_CPU_COUNT) +
+                                  r" egrep -sH '[ ]*TEST(_F|_P)?[ ]*\({2}' || true"
 }
 
 # XML parsing related constants.
@@ -206,7 +215,38 @@ def get_package_name(file_name):
                 return match.group('package')
 
 
-def extract_test_path(output, is_native_test=False):
+def has_method_in_file(test_path, methods):
+    """Find out if there is at least one method in the file.
+
+    Note: This method doesn't handle if method is in comment sections or not.
+    If the file has any method(even in comment sections), it will return True.
+
+    Args:
+        test_path: A string of absolute path to the test file.
+        methods: A set of method names.
+
+    Returns:
+        Boolean: there is at least one method in test_path.
+    """
+    if not os.path.isfile(test_path):
+        return False
+    methods_re = None
+    if constants.JAVA_EXT_RE.match(test_path):
+        methods_re = re.compile(_JAVA_METHODS_PATTERN.format(
+            '|'.join([r'%s' % x for x in methods])))
+    elif constants.CC_EXT_RE.match(test_path):
+        methods_re = re.compile(_CC_METHODS_PATTERN.format(
+            '|'.join([r'%s' % x for x in methods])))
+    if methods_re:
+        with open(test_path) as test_file:
+            for line in test_file:
+                match = re.match(methods_re, line)
+                if match:
+                    return True
+    return False
+
+
+def extract_test_path(output, methods=None):
     """Extract the test path from the output of a unix 'find' command.
 
     Example of find output for CLASS find cmd:
@@ -214,49 +254,74 @@ def extract_test_path(output, is_native_test=False):
 
     Args:
         output: A string output of a unix 'find' command.
-        is_native_test: A boolean variable of whether to search for a native
-        test or not.
+        methods: A set of method names.
 
     Returns:
-        A string of the test path or None if output is '' or None.
+        A list of the test paths or None if output is '' or None.
     """
     if not output:
         return None
-    tests = output.strip('\n').split('\n')
-    if is_native_test:
-        tests = list(set([path.split(":")[0] for path in tests]))
-    return extract_test_from_tests(tests)
+    verified_tests = set()
+    output_lines = output.strip('\n').split('\n')
+    for test in output_lines:
+        # compare _CC_OUTPUT_RE with output
+        match_obj = _CC_OUTPUT_RE.match(test)
+        if match_obj:
+            # cc/cpp
+            fpath = match_obj.group('file_path')
+            if not methods or match_obj.group('method_name') in methods:
+                verified_tests.add(fpath)
+        else:
+            # java/kt
+            if not methods or has_method_in_file(test, methods):
+                verified_tests.add(test)
+    return extract_test_from_tests(list(verified_tests))
 
 
 def extract_test_from_tests(tests):
     """Extract the test path from the tests.
 
     Return the test to run from tests. If more than one option, prompt the user
-    to select one.
+    to select multiple ones. Supporting formats:
+    - An integer. E.g. 0
+    - Comma-separated integers. E.g. 1,3,5
+    - A range of integers denoted by the starting integer separated from
+      the end integer by a dash, '-'. E.g. 1-3
 
     Args:
         tests: A string list which contains multiple test paths.
 
     Returns:
-        A string of the test path or None if tests is out-of-index or ''.
+        A string list of paths.
     """
     count = len(tests)
-    test_index = 0
-    if count == 0:
-        return None
-    elif count > 1:
+    if count <= 1:
+        return tests if count else None
+    mtests = set()
+    try:
         numbered_list = ['%s: %s' % (i, t) for i, t in enumerate(tests)]
+        numbered_list.append('%s: All' % count)
         print('Multiple tests found:\n{0}'.format('\n'.join(numbered_list)))
-        try:
-            test_index = int(raw_input('Please enter number of test to use '
-                                       'or hit return to keep searching: '))
-            if test_index not in range(count):
-                logging.warn('The input %s is out-of-range(%s).',
-                             test_index, (count-1))
-                return None
-        except ValueError:
-            return None
-    return tests[test_index]
+        test_indices = raw_input("Please enter numbers of test to use. "
+                                 "If none of above option matched, keep "
+                                 "searching for other possible tests."
+                                 "\n(multiple selection is supported,"
+                                 " e.g. '1' or '0,1' or '0-2'): ")
+        for idx in re.sub(r'(\s)', '', test_indices).split(','):
+            indices = idx.split('-')
+            len_indices = len(indices)
+            if len_indices > 0:
+                start_index = min(int(indices[0]), int(indices[len_indices-1]))
+                end_index = max(int(indices[0]), int(indices[len_indices-1]))
+                # One of input is 'All', return all options.
+                if start_index == count or end_index == count:
+                    return tests
+                mtests.update(tests[start_index:(end_index+1)])
+    except (ValueError, IndexError, AttributeError, TypeError) as err:
+        logging.debug('%s', err)
+        print('None of above option matched, keep searching for other'
+              ' possible tests...')
+    return list(mtests)
 
 
 def static_var(varname, value):
@@ -321,23 +386,24 @@ def _get_prune_cond_of_ignored_dirs():
         A string of the prune condition of the ignore dirs.
     """
     out_dirs = _get_ignored_dirs()
-    prune_cond = r'\( -name ".*"'
+    prune_cond = r'-type d \( -name ".*"'
     for out_dir in out_dirs:
         prune_cond += r' -o -path %s' % out_dir
-    prune_cond += r' \)'
+    prune_cond += r' \) -prune -o'
     return prune_cond
 
 
-def run_find_cmd(ref_type, search_dir, target):
+def run_find_cmd(ref_type, search_dir, target, methods=None):
     """Find a path to a target given a search dir and a target name.
 
     Args:
         ref_type: An AtestEnum of the reference type.
         search_dir: A string of the dirpath to search in.
         target: A string of what you're trying to find.
+        methods: A set of method names.
 
     Return:
-        A string of the path to the target.
+        A list of the path to the target.
     """
     prune_cond = _get_prune_cond_of_ignored_dirs()
     find_cmd = FIND_CMDS[ref_type].format(search_dir, prune_cond, target)
@@ -347,12 +413,10 @@ def run_find_cmd(ref_type, search_dir, target):
     out = subprocess.check_output(find_cmd, shell=True)
     logging.debug('%s find completed in %ss', ref_name, time.time() - start)
     logging.debug('%s find cmd out: %s', ref_name, out)
-    if ref_type == FIND_REFERENCE_TYPE.CC_CLASS:
-        return extract_test_path(out, True)
-    return extract_test_path(out)
+    return extract_test_path(out, methods)
 
 
-def find_class_file(search_dir, class_name, is_native_test=False):
+def find_class_file(search_dir, class_name, is_native_test=False, methods=None):
     """Find a path to a class file given a search dir and a class name.
 
     Args:
@@ -360,21 +424,22 @@ def find_class_file(search_dir, class_name, is_native_test=False):
         class_name: A string of the class to search for.
         is_native_test: A boolean variable of whether to search for a native
         test or not.
+        methods: A set of method names.
 
     Return:
-        A string of the path to the java/cc file.
+        A list of the path to the java/cc file.
     """
     if is_native_test:
         find_target = class_name
         ref_type = FIND_REFERENCE_TYPE.CC_CLASS
-        return run_find_cmd(ref_type, search_dir, find_target)
+        return run_find_cmd(ref_type, search_dir, find_target, methods)
     if '.' in class_name:
         find_target = class_name.replace('.', '/')
         ref_type = FIND_REFERENCE_TYPE.QUALIFIED_CLASS
     else:
         find_target = class_name
         ref_type = FIND_REFERENCE_TYPE.CLASS
-    return run_find_cmd(ref_type, search_dir, find_target)
+    return run_find_cmd(ref_type, search_dir, find_target, methods)
 
 
 def is_equal_or_sub_dir(sub_dir, parent_dir):
@@ -762,7 +827,7 @@ def search_integration_dirs(name, int_dirs):
         int_dirs: A list of path needed to be searched.
 
     Returns:
-        A string of the test path.
+        A list of the test path.
         Ask user to select if multiple tests are found.
         None if no matched test found.
     """
@@ -770,10 +835,10 @@ def search_integration_dirs(name, int_dirs):
     test_files = []
     for integration_dir in int_dirs:
         abs_path = os.path.join(root_dir, integration_dir)
-        test_file = run_find_cmd(FIND_REFERENCE_TYPE.INTEGRATION, abs_path,
-                                 name)
-        if test_file:
-            test_files.append(test_file)
+        test_paths = run_find_cmd(FIND_REFERENCE_TYPE.INTEGRATION, abs_path,
+                                  name)
+        if test_paths:
+            test_files.extend(test_paths)
     return extract_test_from_tests(test_files)
 
 

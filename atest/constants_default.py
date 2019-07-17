@@ -16,6 +16,7 @@
 Various globals used by atest.
 """
 
+import re
 
 MODE = 'DEFAULT'
 
@@ -52,6 +53,7 @@ EXIT_CODE_BUILD_FAILURE = 2
 EXIT_CODE_ERROR = 3
 EXIT_CODE_TEST_NOT_FOUND = 4
 EXIT_CODE_TEST_FAILURE = 5
+EXIT_CODE_VERIFY_FAILURE = 6
 
 # Test finder constants.
 MODULE_CONFIG = 'AndroidTest.xml'
@@ -64,6 +66,8 @@ MODULE_CLASS_ROBOLECTRIC = 'ROBOLECTRIC'
 MODULE_CLASS_NATIVE_TESTS = 'NATIVE_TESTS'
 MODULE_CLASS_JAVA_LIBRARIES = 'JAVA_LIBRARIES'
 MODULE_TEST_CONFIG = 'test_config'
+CC_EXT_RE = re.compile(r'.*\.(cc|cpp)$', re.I)
+JAVA_EXT_RE = re.compile(r'.*\.(java|kt)$', re.I)
 
 # Env constants
 ANDROID_BUILD_TOP = 'ANDROID_BUILD_TOP'
@@ -134,6 +138,7 @@ METRICS_URL = 'http://asuite-218222.appspot.com/atest/metrics'
 EXTERNAL = 'EXTERNAL_RUN'
 INTERNAL = 'INTERNAL_RUN'
 INTERNAL_EMAIL = '@google.com'
+INTERNAL_HOSTNAME = '.google.com'
 CONTENT_LICENSES_URL = 'https://source.android.com/setup/start/licenses'
 CONTRIBUTOR_AGREEMENT_URL = {
     'INTERNAL': 'https://cla.developers.google.com/',
@@ -142,6 +147,15 @@ CONTRIBUTOR_AGREEMENT_URL = {
 PRIVACY_POLICY_URL = 'https://policies.google.com/privacy'
 TERMS_SERVICE_URL = 'https://policies.google.com/terms'
 TOOL_NAME = 'atest'
+
+# Detect type for local_detect_event.
+# Next expansion : DETECT_TYPE_XXX = 1
+DETECT_TYPE_BUG_DETECTED = 0
+# Considering a trade-off between speed and size, we set UPPER_LIMIT to 100000
+# to make maximum file space 10M(100000(records)*100(byte/record)) at most.
+# Therefore, to update history file will spend 1 sec at most in each run.
+UPPER_LIMIT = 100000
+TRIM_TO_SIZE = 50000
 
 # VTS plans
 VTS_STAGING_PLAN = 'vts-staging-default'

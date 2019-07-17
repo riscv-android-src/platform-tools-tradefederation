@@ -93,6 +93,17 @@ class AtestArgParser(argparse.ArgumentParser):
                           help='Run the test completely on the host without '
                                'a device. (Note: running a host test that '
                                'requires a device with --host will fail.)')
+        # Option for updating dry-run command mapping result.
+        self.add_argument('-u', '--update-cmd-mapping', action='store_true',
+                          help='Update the test command of input tests. '
+                               'Warning: result will be saved under '
+                               'tools/tradefederation/core/atest/test_data.')
+        # Option for verifying dry-run command mapping result.
+        self.add_argument('-y', '--verify-cmd-mapping', action='store_true',
+                          help='Verify the test command of input tests.')
+        # Option for clearing cache of input test reference .
+        self.add_argument('-c', '--clear-cache', action='store_true',
+                          help='Wipe out the test_infos cache of the test.')
         # This arg actually doesn't consume anything, it's primarily used for the
         # help description and creating custom_args in the NameSpace object.
         self.add_argument('--', dest='custom_args', nargs='*',
