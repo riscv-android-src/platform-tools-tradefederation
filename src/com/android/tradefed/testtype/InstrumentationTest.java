@@ -1002,6 +1002,9 @@ public class InstrumentationTest
         }
         if (mRebootBeforeReRun) {
             mDevice.reboot();
+        } else {
+            // Ensure device is online and responsive before retrying.
+            mDevice.waitForDeviceAvailable();
         }
 
         IRemoteTest testReRunner = null;
