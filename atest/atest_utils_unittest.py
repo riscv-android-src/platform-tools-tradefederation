@@ -42,10 +42,12 @@ TEST_DATA_A = {'test_data_a_1': 'a1',
 TEST_SUITE_A = 'FakeSuiteA'
 TEST_MODULE_CLASS_A = 'FAKE_MODULE_CLASS_A'
 TEST_INSTALL_LOC_A = set(['host', 'device'])
+TEST_FINDER_A = 'MODULE'
 TEST_INFO_A = test_info.TestInfo(TEST_MODULE_NAME_A, TEST_RUNNER_A,
                                  TEST_BUILD_TARGET_A, TEST_DATA_A,
                                  TEST_SUITE_A, TEST_MODULE_CLASS_A,
                                  TEST_INSTALL_LOC_A)
+TEST_INFO_A.test_finder = TEST_FINDER_A
 
 #pylint: disable=protected-access
 class AtestUtilsUnittests(unittest.TestCase):
@@ -362,10 +364,10 @@ class AtestUtilsUnittests(unittest.TestCase):
         """Test method update_test_info_cache and load_test_info_cache."""
         test_reference = 'myTestRefA'
         test_cache_dir = tempfile.mkdtemp()
-        atest_utils.update_test_info_cache(test_reference, TEST_INFO_A,
+        atest_utils.update_test_info_cache(test_reference, [TEST_INFO_A],
                                            test_cache_dir)
-        unittest_utils.assert_equal_testinfos(
-            self, TEST_INFO_A,
+        unittest_utils.assert_equal_testinfo_sets(
+            self, set([TEST_INFO_A]),
             atest_utils.load_test_info_cache(test_reference, test_cache_dir))
 
 if __name__ == "__main__":

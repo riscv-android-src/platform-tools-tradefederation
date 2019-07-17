@@ -18,6 +18,7 @@ Cache Finder class.
 
 import atest_utils
 from test_finders import test_finder_base
+from test_finders import test_info
 
 class CacheFinder(test_finder_base.TestFinderBase):
     """Cache Finder class."""
@@ -26,6 +27,24 @@ class CacheFinder(test_finder_base.TestFinderBase):
     def __init__(self, **kwargs):
         super(CacheFinder, self).__init__()
 
+    def _is_latest_testinfos(self, test_infos):
+        """Check whether test_infos are up-to-date.
+
+        Args:
+            test_infos: A list of TestInfo.
+
+        Returns:
+            True if all keys in test_infos and TestInfo object are equal.
+            Otherwise, False.
+        """
+        sorted_base_ti = sorted(
+            vars(test_info.TestInfo(None, None, None)).keys())
+        for cached_test_info in test_infos:
+            sorted_cache_ti = sorted(vars(cached_test_info).keys())
+            if not sorted_cache_ti == sorted_base_ti:
+                return False
+        return True
+
     def find_test_by_cache(self, test_reference):
         """Find the matched test_infos in saved caches.
 
@@ -33,6 +52,10 @@ class CacheFinder(test_finder_base.TestFinderBase):
             test_reference: A string of the path to the test's file or dir.
 
         Returns:
-            A list of TestInfo namedtuple if cache found, else None.
+            A list of TestInfo namedtuple if cache found and is in latest
+            TestInfo format, else None.
         """
-        return atest_utils.load_test_info_cache(test_reference)
+        test_infos = atest_utils.load_test_info_cache(test_reference)
+        if test_infos and self._is_latest_testinfos(test_infos):
+            return test_infos
+        return None
