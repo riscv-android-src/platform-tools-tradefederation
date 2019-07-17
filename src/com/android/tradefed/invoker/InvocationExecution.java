@@ -161,8 +161,11 @@ public class InvocationExecution implements IInvocationExecution {
 
     @Override
     public boolean shardConfig(
-            IConfiguration config, IInvocationContext context, IRescheduler rescheduler) {
-        return createShardHelper().shardConfig(config, context, rescheduler);
+            IConfiguration config,
+            IInvocationContext context,
+            IRescheduler rescheduler,
+            ITestLogger logger) {
+        return createShardHelper().shardConfig(config, context, rescheduler, logger);
     }
 
     /** Create an return the {@link IShardHelper} to be used. */
@@ -244,27 +247,23 @@ public class InvocationExecution implements IInvocationExecution {
             if (device instanceof ITestLoggerReceiver) {
                 ((ITestLoggerReceiver) context.getDevice(deviceName)).setTestLogger(logger);
             }
-            if (!config.getCommandOptions().shouldSkipPreDeviceSetup()) {
-                device.preInvocationSetup(
-                        context.getBuildInfo(deviceName),
-                        context.getBuildInfos()
-                                .stream()
-                                .filter(buildInfo -> buildInfo.isTestResourceBuild())
-                                .collect(Collectors.toList()));
-            }
+            device.preInvocationSetup(
+                    context.getBuildInfo(deviceName),
+                    context.getBuildInfos()
+                            .stream()
+                            .filter(buildInfo -> buildInfo.isTestResourceBuild())
+                            .collect(Collectors.toList()));
         }
     }
 
     /** {@inheritDoc} */
     @Override
     public final void runDevicePostInvocationTearDown(
-            IInvocationContext context, IConfiguration config) {
+            IInvocationContext context, IConfiguration config, Throwable exception) {
         // Extra tear down step for the device
         for (String deviceName : context.getDeviceConfigNames()) {
             ITestDevice device = context.getDevice(deviceName);
-            if (!config.getCommandOptions().shouldSkipPreDeviceSetup()) {
-                device.postInvocationTearDown();
-            }
+            device.postInvocationTearDown(exception);
         }
     }
 
@@ -390,7 +389,7 @@ public class InvocationExecution implements IInvocationExecution {
         }
 
         // Extra tear down step for the device
-        runDevicePostInvocationTearDown(context, config);
+        runDevicePostInvocationTearDown(context, config, exception);
 
         // After all, run the multi_pre_target_preparer tearDown.
         List<IMultiTargetPreparer> multiPrePreparers = config.getMultiPreTargetPreparers();

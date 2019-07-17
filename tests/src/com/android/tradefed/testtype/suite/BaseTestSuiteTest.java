@@ -30,6 +30,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -284,6 +285,29 @@ public class BaseTestSuiteTest {
         setter.setOptionValue("suite-config-prefix", "doesnotexists");
         setter.setOptionValue("run-suite-tag", "doesnotexists");
         assertNull(mRunner.split(2));
+    }
+
+    /** Ensure that during sharding we don't attempt to log the filter files. */
+    @Test
+    public void testSplit_withFilters() throws Exception {
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite");
+        Set<String> excludeModule = new HashSet<>();
+        for (int i = 0; i < 25; i++) {
+            excludeModule.add("arm64-v8a suite/load-filter-test" + i);
+        }
+        mRunner.setExcludeFilter(excludeModule);
+        ITestLogger logger = EasyMock.createMock(ITestLogger.class);
+        mRunner.setTestLogger(logger);
+
+        EasyMock.replay(logger);
+        Collection<IRemoteTest> tests = mRunner.split(2);
+        assertEquals(4, tests.size());
+        for (IRemoteTest test : tests) {
+            assertTrue(test instanceof BaseTestSuite);
+        }
+        EasyMock.verify(logger);
     }
 
     /**
@@ -646,6 +670,53 @@ public class BaseTestSuiteTest {
                             + "not_instant_app and instant_app when only one expected.'",
                     expected.getMessage());
         }
+        EasyMock.verify(mockDevice);
+    }
+
+    /** Test that loading the option parameterization is gated by the option. */
+    @Test
+    public void testLoadTests_optionalParameterizedModule() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite-parameters");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue("enable-optional-parameterization", "true");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.testtype.suite.TestSuiteStub:"
+                        + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(4, configMap.size());
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized"));
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized[instant]"));
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized[secondary_user]"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/stub-parameterized"));
+        EasyMock.verify(mockDevice);
+    }
+
+    /** Test that we can explicitly request the option parameterization type. */
+    @Test
+    public void testLoadTests_optionalParameterizedModule_filter() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite-parameters");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue("enable-optional-parameterization", "true");
+        setter.setOptionValue("module-parameter", "SECONDARY_USER");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.testtype.suite.TestSuiteStub:"
+                        + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        // Only the secondary_user requested is created
+        assertEquals(1, configMap.size());
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized[secondary_user]"));
         EasyMock.verify(mockDevice);
     }
 }

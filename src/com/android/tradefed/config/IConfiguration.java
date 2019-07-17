@@ -18,7 +18,6 @@ package com.android.tradefed.config;
 
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.ICommandOptions;
-import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
@@ -37,6 +36,7 @@ import com.android.tradefed.util.keystore.IKeyStoreClient;
 import org.json.JSONArray;
 import org.json.JSONException;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -533,14 +533,12 @@ public interface IConfiguration {
     public void validateOptions() throws ConfigurationException;
 
     /**
-     * Validate option values.
+     * Resolve options of {@link File} pointing to a remote location. This requires {@link
+     * #cleanDynamicOptionFiles()} to be called to clean up the files.
      *
-     * <p>Currently this will just validate that all mandatory options have been set
-     *
-     * @param download Whether or not to download the files associated to a remote path
-     * @throws ConfigurationException if config is not valid
+     * @throws ConfigurationException
      */
-    public void validateOptions(boolean download) throws ConfigurationException;
+    public void resolveDynamicOptions() throws ConfigurationException;
 
     /** Delete any files that was downloaded to resolved Option fields of remote files. */
     public void cleanDynamicOptionFiles();
@@ -594,6 +592,9 @@ public interface IConfiguration {
      * @throws IOException
      */
     public void dumpXml(
-            PrintWriter output, List<String> excludeFilters, boolean printDeprecatedOptions)
+            PrintWriter output,
+            List<String> excludeFilters,
+            boolean printDeprecatedOptions,
+            boolean printUnchangedOptions)
             throws IOException;
 }

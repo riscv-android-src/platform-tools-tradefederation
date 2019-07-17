@@ -115,6 +115,7 @@ public class DeviceFlashPreparerTest {
     @Test
     public void testSetup() throws Exception {
         doSetupExpectations();
+        mMockFlasher.setShouldFlashRamdisk(false);
         // report flashing success in normal case
         EasyMock.expect(mMockFlasher.getSystemFlashingStatus())
             .andReturn(CommandStatus.SUCCESS).anyTimes();
@@ -161,6 +162,21 @@ public class DeviceFlashPreparerTest {
         }
     }
 
+    /**
+     * Test {@link DeviceFlashPreparer#setUp(ITestDevice, IBuildInfo)} when ramdisk flashing is
+     * required via parameter but not provided in build info
+     */
+    @Test
+    public void testSetUp_noRamdisk() throws Exception {
+        try {
+            mDeviceFlashPreparer.setShouldFlashRamdisk(true);
+            mDeviceFlashPreparer.setUp(mMockDevice, mMockBuildInfo);
+            fail("IllegalArgumentException not thrown");
+        } catch (IllegalArgumentException e) {
+            // expected
+        }
+    }
+
     /** Test {@link DeviceFlashPreparer#setUp(ITestDevice, IBuildInfo)} when build does not boot. */
     @Test
     public void testSetup_buildError() throws Exception {
@@ -168,6 +184,7 @@ public class DeviceFlashPreparerTest {
         mMockFlasher.overrideDeviceOptions(mMockDevice);
         mMockFlasher.setForceSystemFlash(false);
         mMockFlasher.setDataWipeSkipList(Arrays.asList(new String[]{}));
+        mMockFlasher.setShouldFlashRamdisk(false);
         mMockFlasher.flash(mMockDevice, mMockBuildInfo);
         mMockFlasher.setWipeTimeout(EasyMock.anyLong());
         mMockDevice.waitForDeviceOnline();
@@ -211,6 +228,7 @@ public class DeviceFlashPreparerTest {
         mMockFlasher.overrideDeviceOptions(mMockDevice);
         mMockFlasher.setForceSystemFlash(false);
         mMockFlasher.setDataWipeSkipList(Arrays.asList(new String[]{}));
+        mMockFlasher.setShouldFlashRamdisk(false);
         mMockFlasher.flash(mMockDevice, mMockBuildInfo);
         EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
         mMockFlasher.setWipeTimeout(EasyMock.anyLong());
@@ -236,11 +254,33 @@ public class DeviceFlashPreparerTest {
     @Test
     public void testSetup_flashSkipped() throws Exception {
         doSetupExpectations();
+        mMockFlasher.setShouldFlashRamdisk(false);
         // report flashing status as null (for not flashing system partitions)
         EasyMock.expect(mMockFlasher.getSystemFlashingStatus()).andReturn(null).anyTimes();
         EasyMock.replay(mMockFlasher, mMockDevice);
         mDeviceFlashPreparer.setUp(mMockDevice, mMockBuildInfo);
         EasyMock.verify(mMockFlasher, mMockDevice);
         assertFalse("should not report flashing metrics in normal case", mFlashingMetricsReported);
+    }
+
+    /**
+     * Verifies that the ramdisk flashing parameter is passed down to the device flasher
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testSetup_flashRamdisk() throws Exception {
+        mDeviceFlashPreparer.setShouldFlashRamdisk(true);
+        mMockBuildInfo.setRamdiskFile(new File("foo"), "0");
+        doSetupExpectations();
+        // report flashing success in normal case
+        EasyMock.expect(mMockFlasher.getSystemFlashingStatus())
+                .andReturn(CommandStatus.SUCCESS)
+                .anyTimes();
+        mMockFlasher.setShouldFlashRamdisk(true);
+        EasyMock.expectLastCall();
+        EasyMock.replay(mMockFlasher, mMockDevice);
+        mDeviceFlashPreparer.setUp(mMockDevice, mMockBuildInfo);
+        EasyMock.verify(mMockFlasher, mMockDevice);
     }
 }

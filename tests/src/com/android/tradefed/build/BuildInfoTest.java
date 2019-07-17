@@ -184,11 +184,20 @@ public class BuildInfoTest {
     /** Test that the build info can be described in its proto format. */
     @Test
     public void testProtoSerialization() throws Exception {
+        List<String> remoteFiles = Arrays.asList("remote/file1", "remote/file2");
+        for (String file : remoteFiles) {
+            mBuildInfo.setFile(
+                    IBuildInfo.REMOTE_FILE_PREFIX + file,
+                    new File(file),
+                    IBuildInfo.REMOTE_FILE_VERSION);
+        }
+
         BuildInformation.BuildInfo proto = mBuildInfo.toProto();
+
         assertEquals("1", proto.getBuildId());
         assertEquals(BuildInfo.class.getCanonicalName(), proto.getBuildInfoClass());
         assertEquals("value", proto.getAttributes().get("attribute"));
-        assertEquals(1, proto.getVersionedFileList().size());
+        assertEquals(3, proto.getVersionedFileList().size());
         assertNotNull(proto.getVersionedFileList().get(0));
 
         IBuildInfo deserialized = BuildInfo.fromProto(proto);
@@ -196,6 +205,11 @@ public class BuildInfoTest {
         // Build flavor was not set, so it's null
         assertNull(deserialized.getBuildFlavor());
         assertNotNull(deserialized.getVersionedFile(FILE_KEY));
+
+        // Check the remote files are restored.
+        for (String file : remoteFiles) {
+            assertTrue(deserialized.getRemoteFiles().contains(new File(file)));
+        }
     }
 
     /** Test {@link BuildInfo#getTestResource(List, String)} */

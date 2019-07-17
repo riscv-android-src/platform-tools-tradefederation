@@ -307,6 +307,7 @@ public class InstrumentationFileTestTest {
                     }
                 };
         setRunTestExpectations(secdondSerialRunAnswer);
+        mMockTestDevice.waitForDeviceAvailable();
 
         mInstrumentationFileTest = new InstrumentationFileTest(mMockITest, testsList, true, -1) {
             @Override

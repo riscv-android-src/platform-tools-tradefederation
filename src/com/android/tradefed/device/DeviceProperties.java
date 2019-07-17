@@ -32,4 +32,12 @@ public class DeviceProperties {
     public static final String VARIANT_LEGACY_LESS_EQUAL_O = "ro.product.device";
     /** proprty name to indicate SDK version */
     public static final String SDK_VERSION = "ro.build.version.sdk";
+    /** property name for device brand */
+    public static final String BRAND = "ro.product.brand";
+    /** property name for device product name */
+    public static final String PRODUCT = "ro.product.name";
+    /** property name for device release version, e.g. version 9 for Android Pie */
+    public static final String RELEASE_VERSION = "ro.build.version.release";
+    /** property name for device boot reason history */
+    public static final String BOOT_REASON_HISTORY = "persist.sys.boot.reason.history";
 }

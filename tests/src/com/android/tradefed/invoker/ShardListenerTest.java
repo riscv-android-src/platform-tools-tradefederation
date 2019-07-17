@@ -78,6 +78,27 @@ public class ShardListenerTest {
         EasyMock.verify(mMockListener, mMockDevice);
     }
 
+    /** Test that we can replay events even if invocationEnded hasn't be called yet. */
+    @Test
+    public void testPlayRuns() {
+        mMockListener.invocationStarted(mContext);
+        mMockListener.testRunStarted("run1", 1);
+        TestDescription tid = new TestDescription("class1", "name1");
+        mMockListener.testStarted(tid, 0l);
+        mMockListener.testEnded(tid, 0l, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(0l, new HashMap<String, Metric>());
+        // mMockListener.invocationEnded(0l); On purpose not calling invocationEnded.
+
+        EasyMock.replay(mMockListener, mMockDevice);
+        mShardListener.invocationStarted(mContext);
+        mShardListener.testRunStarted("run1", 1);
+        mShardListener.testStarted(tid, 0l);
+        mShardListener.testEnded(tid, 0l, new HashMap<String, Metric>());
+        mShardListener.testRunEnded(0l, new HashMap<String, Metric>());
+        // mShardListener.invocationEnded(0l); On purpose not calling invocationEnded.
+        EasyMock.verify(mMockListener, mMockDevice);
+    }
+
     /** Ensure that replaying a log without a run (no tests ran) still works. */
     @Test
     public void testLogWithoutRun() {
@@ -195,11 +216,43 @@ public class ShardListenerTest {
         // Log association to re-associate file to the run.
         mockListener.logAssociation("run-file", runFile);
         mockListener.testRunEnded(0l, new HashMap<String, Metric>());
+
+        // The log not associated to the run are replay at invocation level.
+        mockListener.testLog(
+                EasyMock.eq("host_log_of_shard"),
+                EasyMock.eq(LogDataType.TEXT),
+                EasyMock.anyObject());
+        LogFile invocFile = new LogFile("path", "url", false, LogDataType.TEXT, 0L);
+        EasyMock.expect(
+                        mMockSaver.saveLogData(
+                                EasyMock.eq("host_log_of_shard"),
+                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.anyObject()))
+                .andReturn(invocFile);
+        mockListener.testLogSaved(
+                EasyMock.eq("host_log_of_shard"),
+                EasyMock.eq(LogDataType.TEXT),
+                EasyMock.anyObject(),
+                EasyMock.eq(invocFile));
+        mockListener.logAssociation("host_log_of_shard", invocFile);
         mockListener.invocationEnded(0l);
         EasyMock.expect(mockListener.getSummary()).andReturn(null);
 
+        // TODO: Fix the name of end_host_log for each shard
+        EasyMock.expect(
+                        mMockSaver.saveLogData(
+                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
+                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.anyObject()))
+                .andReturn(invocFile);
         mMockSaver.invocationEnded(0L);
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expect(
+                        mMockSaver.saveLogData(
+                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
+                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.anyObject()))
+                .andReturn(invocFile);
+        mMockSaver.invocationEnded(0L);
 
         EasyMock.replay(mockListener, mMockSaver, mMockDevice);
         // Setup of sharding
@@ -223,6 +276,10 @@ public class ShardListenerTest {
                 new ByteArrayInputStreamSource("test file".getBytes()));
         shardedInvocation.testEnded(tid, 0l, new HashMap<String, Metric>());
         shardedInvocation.testRunEnded(0l, new HashMap<String, Metric>());
+        shardedInvocation.testLog(
+                "host_log_of_shard",
+                LogDataType.TEXT,
+                new ByteArrayInputStreamSource("test".getBytes()));
         shardedInvocation.invocationEnded(0L);
 
         EasyMock.verify(mockListener, mMockSaver, mMockDevice);

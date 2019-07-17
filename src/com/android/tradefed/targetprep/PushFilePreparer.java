@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -62,10 +63,11 @@ public class PushFilePreparer extends BaseTargetPreparer
 
     private IAbi mAbi;
 
+    @Deprecated
     @Option(
         name = "push",
         description =
-                "A push-spec, formatted as "
+                "Deprecated. Please use push-file instead. A push-spec, formatted as "
                         + "'/localpath/to/srcfile.txt->/devicepath/to/destfile.txt' "
                         + "or '/localpath/to/srcfile.txt->/devicepath/to/destdir/'. "
                         + "May be repeated. The local path may be relative to the test cases "
@@ -78,9 +80,10 @@ public class PushFilePreparer extends BaseTargetPreparer
         name = "push-file",
         description =
                 "A push-spec, specifying the local file to the path where it should be pushed on "
-                        + "device. May be repeated."
+                        + "device. May be repeated. If multiple files are configured to be pushed "
+                        + "to the same remote path, the latest one will be pushed."
     )
-    private Map<File, String> mPushFileSpecs = new HashMap<>();
+    private Map<File, String> mPushFileSpecs = new LinkedHashMap<>();
 
     @Option(name="post-push", description=
             "A command to run on the device (with `adb shell (yourcommand)`) after all pushes " +
@@ -202,7 +205,28 @@ public class PushFilePreparer extends BaseTargetPreparer
                     }
                 }
             }
-
+            // Search top-level matches
+            for (File searchDir : scanDirs) {
+                try {
+                    Set<File> allMatch = FileUtil.findFilesObject(searchDir, fileName);
+                    if (allMatch.size() > 1) {
+                        CLog.d(
+                                "Several match for filename '%s', searching for top-level match.",
+                                fileName);
+                        for (File f : allMatch) {
+                            // Bias toward direct child / top level nodes
+                            if (f.getParent().equals(searchDir.getAbsolutePath())) {
+                                return f;
+                            }
+                        }
+                    } else if (allMatch.size() == 1) {
+                        return allMatch.iterator().next();
+                    }
+                } catch (IOException e) {
+                    CLog.w("Failed to find test files from directory.");
+                }
+            }
+            // Fall-back to searching everything
             try {
                 // Search the full tests dir if no target dir is available.
                 src = FileUtil.findFile(fileName, null, scanDirs.toArray(new File[] {}));
@@ -224,26 +248,29 @@ public class PushFilePreparer extends BaseTargetPreparer
         if (mRemount) {
             device.remountSystemWritable();
         }
+
+        Map<String, File> remoteToLocalMapping = new HashMap<>();
         for (String pushspec : mPushSpecs) {
             String[] pair = pushspec.split("->");
             if (pair.length != 2) {
                 fail(String.format("Invalid pushspec: '%s'", Arrays.asList(pair)), device);
                 continue;
             }
-            Log.d(LOG_TAG, String.format("Trying to push local '%s' to remote '%s'", pair[0],
-                    pair[1]));
-            File src = new File(pair[0]);
-            String remotePath = pair[1];
-            evaluatePushingPair(device, buildInfo, src, remotePath);
+            remoteToLocalMapping.put(pair[1], new File(pair[0]));
         }
         // Push the file structure
-        for (File src : mPushFileSpecs.keySet()) {
-            String remotePath = mPushFileSpecs.get(src);
+        for (File local : mPushFileSpecs.keySet()) {
+            remoteToLocalMapping.put(mPushFileSpecs.get(local), local);
+        }
+
+        for (String remotePath : remoteToLocalMapping.keySet()) {
+            File local = remoteToLocalMapping.get(remotePath);
             Log.d(
                     LOG_TAG,
                     String.format(
-                            "Trying to push local '%s' to remote '%s'", src.getPath(), remotePath));
-            evaluatePushingPair(device, buildInfo, src, remotePath);
+                            "Trying to push local '%s' to remote '%s'",
+                            local.getPath(), remotePath));
+            evaluatePushingPair(device, buildInfo, local, remotePath);
         }
 
         for (String command : mPostPushCommands) {
@@ -270,18 +297,6 @@ public class PushFilePreparer extends BaseTargetPreparer
                 device.deleteFile(devicePath);
             }
         }
-    }
-
-    private void addPushedFile(ITestDevice device, String remotePath) throws TargetSetupError {
-        if (mFilesPushed.contains(remotePath)) {
-            throw new TargetSetupError(
-                    String.format(
-                            "We pushed two files to the %s location. Check "
-                                    + "your configuration of this target_preparer",
-                            remotePath),
-                    device.getDeviceDescriptor());
-        }
-        mFilesPushed.add(remotePath);
     }
 
     private void evaluatePushingPair(
@@ -325,7 +340,7 @@ public class PushFilePreparer extends BaseTargetPreparer
                 if (deleteContentOnly) {
                     remotePath += "/*";
                 }
-                addPushedFile(device, remotePath);
+                mFilesPushed.add(remotePath);
             }
         } else {
             if (!device.pushFile(src, remotePath)) {
@@ -335,7 +350,7 @@ public class PushFilePreparer extends BaseTargetPreparer
                         device);
                 return;
             } else {
-                addPushedFile(device, remotePath);
+                mFilesPushed.add(remotePath);
             }
         }
     }

@@ -68,7 +68,7 @@ public class DeviceJUnit4ClassRunnerTest {
                             new DynamicRemoteFileResolver() {
                                 @Override
                                 protected IRemoteFileResolver getResolver(String protocol) {
-                                    if (protocol.equals(GcsRemoteFileResolver.PROTOCOL)) {
+                                    if (GcsRemoteFileResolver.PROTOCOL.equals(protocol)) {
                                         IRemoteFileResolver mockResolver =
                                                 Mockito.mock(IRemoteFileResolver.class);
                                         try {
@@ -76,6 +76,7 @@ public class DeviceJUnit4ClassRunnerTest {
                                                     .when(mockResolver)
                                                     .resolveRemoteFiles(
                                                             Mockito.eq(FAKE_REMOTE_FILE_PATH),
+                                                            Mockito.any(),
                                                             Mockito.any());
                                             return mockResolver;
                                         } catch (ConfigurationException e) {

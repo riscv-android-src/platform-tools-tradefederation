@@ -73,23 +73,35 @@ java_library_host {
     ],
 }
 
+// Main Target to build tradefed jar
 java_library_host {
     name: "tradefed",
     defaults: ["tradefed_defaults"],
-    srcs: [
-        "src/**/*.java",
-    ],
     java_resource_dirs: [
         "res",
     ],
-    openjdk9: {
-        javacflags: [
-            "--add-modules=java.xml.bind",
-        ],
-    },
     static_libs: [
+        "tradefed-lib-core",
+        "tradefed-test-framework",
+    ],
+    manifest: "MANIFEST.mf",
+}
+
+java_library_host {
+    name: "tradefed-lib-core",
+    defaults: ["tradefed_defaults"],
+    srcs: [
+        "src/**/*.java",
+        "global_configuration/**/*.java",
+    ],
+    static_libs: [
+        "tradefed-common-util",
+        "tradefed-clearcut-client",
+        "tradefed-result-interfaces",
+        "tradefed-device-build-interfaces",
+        "tradefed-invocation-interfaces",
+        "protobuf-java-util-prebuilt-jar",
         "aoa-helper",
-        "commons-compress-prebuilt",
         "error_prone_annotations-2.0.18",
         "google-api-java-client-min-repackaged",
         "google-api-services-compute",
@@ -112,7 +124,6 @@ java_library_host {
     libs: [
         "loganalysis",
     ],
-    manifest: "MANIFEST.mf",
 }
 
 // Turn off various doclava warnings when generating

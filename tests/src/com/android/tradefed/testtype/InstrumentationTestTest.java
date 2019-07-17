@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollectionOf;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
@@ -42,6 +43,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.CollectingTestListener;
@@ -530,6 +532,8 @@ public class InstrumentationTestTest {
                 .when(mMockTestDevice)
                 .runInstrumentationTests(
                         any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
+        doReturn(true).when(mMockTestDevice).enableAdbRoot();
+        doReturn("").when(mMockTestDevice).executeShellCommand(anyString());
 
         mInstrumentationTest.run(mMockListener);
 
@@ -922,6 +926,9 @@ public class InstrumentationTestTest {
         ITestInvocationListener listener =
                 mInstrumentationTest.addJavaCoverageListenerIfEnabled(mMockListener);
         assertThat(listener).isInstanceOf(JavaCodeCoverageListener.class);
+
+        listener = mInstrumentationTest.addNativeCoverageListenerIfEnabled(mMockListener);
+        assertThat(listener).isInstanceOf(NativeCodeCoverageListener.class);
     }
 
     @Test
@@ -930,6 +937,9 @@ public class InstrumentationTestTest {
 
         ITestInvocationListener listener =
                 mInstrumentationTest.addJavaCoverageListenerIfEnabled(mMockListener);
+        assertThat(listener).isSameAs(mMockListener);
+
+        listener = mInstrumentationTest.addNativeCoverageListenerIfEnabled(mMockListener);
         assertThat(listener).isSameAs(mMockListener);
     }
 
@@ -955,10 +965,13 @@ public class InstrumentationTestTest {
 
         List<IMetricCollector> collectors = new ArrayList<>();
         CalledMetricCollector calledCollector = new CalledMetricCollector();
+        calledCollector.mName = "called";
         CalledMetricCollector notCalledCollector = new CalledMetricCollector();
         notCalledCollector.setDisable(true);
+        notCalledCollector.mName = "not-called";
         collectors.add(notCalledCollector);
         collectors.add(calledCollector);
+        mInstrumentationTest.setInvocationContext(new InvocationContext());
         mInstrumentationTest.setMetricCollectors(collectors);
         mInstrumentationTest.run(mMockListener);
 
@@ -968,16 +981,26 @@ public class InstrumentationTestTest {
         inOrder.verify(mInstrumentationTest).setRunnerArgs(runner.capture());
         inOrder.verify(mMockTestDevice, times(2))
                 .runInstrumentationTests(eq(runner.getValue()), any(ITestLifeCycleReceiver.class));
-
         inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
         inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
-        inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
+        ArgumentCaptor<HashMap<String, Metric>> testCapture1 =
+                ArgumentCaptor.forClass(HashMap.class);
+        inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), testCapture1.capture());
+        HashMap<String, Metric> test1Metric = testCapture1.getValue();
+        assertTrue(test1Metric.containsKey("called"));
+        assertFalse(test1Metric.containsKey("not-called"));
         inOrder.verify(mMockListener).testStarted(eq(TEST2), anyLong());
-        inOrder.verify(mMockListener).testEnded(eq(TEST2), anyLong(), eq(EMPTY_STRING_MAP));
-        inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
-
-        assertTrue(calledCollector.wasCalled);
-        assertFalse(notCalledCollector.wasCalled);
+        ArgumentCaptor<HashMap<String, Metric>> testCapture2 =
+                ArgumentCaptor.forClass(HashMap.class);
+        inOrder.verify(mMockListener).testEnded(eq(TEST2), anyLong(), testCapture2.capture());
+        HashMap<String, Metric> test2Metric = testCapture2.getValue();
+        assertTrue(test2Metric.containsKey("called"));
+        assertFalse(test2Metric.containsKey("not-called"));
+        ArgumentCaptor<HashMap<String, Metric>> runCapture = ArgumentCaptor.forClass(HashMap.class);
+        inOrder.verify(mMockListener).testRunEnded(anyLong(), runCapture.capture());
+        HashMap<String, Metric> runMetric = runCapture.getValue();
+        assertTrue(runMetric.containsKey("called"));
+        assertFalse(runMetric.containsKey("not-called"));
     }
 
     private static class FakeTestRunner extends RemoteAndroidTestRunner {

@@ -46,7 +46,6 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceRecovery;
-import com.android.tradefed.device.INativeDevice;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.StubDevice;
@@ -93,10 +92,10 @@ import com.android.tradefed.util.keystore.StubKeyStoreFactory;
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
@@ -155,6 +154,15 @@ public class TestInvocationTest {
     private IRescheduler mockRescheduler;
     private DeviceDescriptor mFakeDescriptor;
 
+    @BeforeClass
+    public static void setUpClass() throws Exception {
+        try {
+            GlobalConfiguration.createGlobalConfiguration(new String[] {"empty"});
+        } catch (IllegalStateException e) {
+            // Avoid exception in case of multi-init
+        }
+    }
+
     @Before
     public void setUp() throws Exception {
 
@@ -212,10 +220,16 @@ public class TestInvocationTest {
         mMockDevice.preInvocationSetup(
                 (IBuildInfo) EasyMock.anyObject(), EasyMock.<List<IBuildInfo>>anyObject());
         EasyMock.expectLastCall().anyTimes();
-        mMockDevice.postInvocationTearDown();
-        EasyMock.expectLastCall().anyTimes();
-        mFakeDescriptor = new DeviceDescriptor(SERIAL, false, DeviceAllocationState.Available,
-                "unknown", "unknown", "unknown", "unknown", "unknown");
+        mFakeDescriptor =
+                new DeviceDescriptor(
+                        SERIAL,
+                        false,
+                        DeviceAllocationState.Available,
+                        "unknown",
+                        "unknown",
+                        "unknown",
+                        "unknown",
+                        "unknown");
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(mFakeDescriptor);
 
         EasyMock.expect(mMockBuildInfo.getBuildId()).andStubReturn("1");
@@ -229,9 +243,13 @@ public class TestInvocationTest {
 
         // always expect logger initialization and cleanup calls
         mMockLogRegistry.registerLogger(mMockLogger);
+        EasyMock.expectLastCall().times(2);
         mMockLogger.init();
+        EasyMock.expectLastCall().times(2);
         mMockLogger.closeLog();
+        EasyMock.expectLastCall().times(2);
         mMockLogRegistry.unregisterLogger();
+        EasyMock.expectLastCall().times(2);
         mUriCapture = new Capture<List<TestSummary>>();
 
         mStubInvocationMetadata = new InvocationContext();
@@ -351,6 +369,11 @@ public class TestInvocationTest {
 
         setupMockFailureListeners(exception);
         setupInvoke();
+        EasyMock.reset(mMockLogger, mMockLogRegistry);
+        mMockLogRegistry.registerLogger(mMockLogger);
+        mMockLogger.init();
+        mMockLogger.closeLog();
+        mMockLogRegistry.unregisterLogger();
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         CommandOptions cmdOptions = new CommandOptions();
         final String expectedTestTag = "TEST_TAG";
@@ -380,6 +403,12 @@ public class TestInvocationTest {
         setupInvoke();
         setupMockFailureListenersAny(new BuildRetrievalError("No build found to test."), true);
 
+        EasyMock.reset(mMockLogger, mMockLogRegistry);
+        mMockLogRegistry.registerLogger(mMockLogger);
+        mMockLogger.init();
+        mMockLogger.closeLog();
+        mMockLogRegistry.unregisterLogger();
+
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         mStubConfiguration.setTest(test);
         EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
@@ -408,13 +437,20 @@ public class TestInvocationTest {
         IRetriableTest test = EasyMock.createMock(IRetriableTest.class);
         EasyMock.expect(test.isRetriable()).andReturn(Boolean.TRUE);
 
+        setupInvoke();
+
+        EasyMock.reset(mMockLogger, mMockLogRegistry);
+        mMockLogRegistry.registerLogger(mMockLogger);
+        mMockLogger.init();
+        mMockLogger.closeLog();
+        mMockLogRegistry.unregisterLogger();
+
         EasyMock.expect(mockRescheduler.rescheduleCommand()).andReturn(EasyMock.anyBoolean());
         mStubConfiguration.setTest(test);
         mStubConfiguration.getCommandOptions().setLoopMode(false);
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         EasyMock.expectLastCall().times(1);
 
-        setupInvoke();
         setupMockFailureListenersAny(new BuildRetrievalError("No build found to test."), true);
         Capture<IBuildInfo> captured = new Capture<>();
         mMockBuildProvider.cleanUp(EasyMock.capture(captured));
@@ -548,6 +584,9 @@ public class TestInvocationTest {
         setupMockFailureListeners(exception);
         EasyMock.expect(mMockDevice.getBugreport()).andReturn(EMPTY_STREAM_SOURCE);
         setupInvokeWithBuild();
+
+        mMockDevice.postInvocationTearDown(exception);
+
         replayMocks(test);
         EasyMock.replay(mockRescheduler);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
@@ -608,6 +647,12 @@ public class TestInvocationTest {
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
+                                EasyMock.eq(LogDataType.TEXT),
+                                (InputStream) EasyMock.anyObject()))
+                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
                                 EasyMock.eq(LogDataType.TEXT),
                                 (InputStream) EasyMock.anyObject()))
                 .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
@@ -704,6 +749,7 @@ public class TestInvocationTest {
         EasyMock.expectLastCall().times(3);
         mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.stopLogcat();
+        mMockDevice.postInvocationTearDown(null);
         EasyMock.replay(mockRescheduler, resumeListener, resumableTest, mMockPreparer,
                 mMockBuildProvider, mMockLogger, mMockLogSaver, mMockDevice, mMockBuildInfo);
 
@@ -736,6 +782,10 @@ public class TestInvocationTest {
         IRescheduler mockRescheduler = EasyMock.createMock(IRescheduler.class);
         EasyMock.expect(mockRescheduler.rescheduleCommand()).andReturn(EasyMock.anyBoolean());
         mMockBuildProvider.buildNotTested(mMockBuildInfo);
+
+        mMockDevice.postInvocationTearDown(exception);
+        EasyMock.expectLastCall().anyTimes();
+
         setupMockFailureListeners(exception);
         setupNormalInvoke(test);
         EasyMock.replay(mockRescheduler);
@@ -1120,6 +1170,11 @@ public class TestInvocationTest {
         mMockSummaryListener.invocationStarted(mStubInvocationMetadata);
         EasyMock.expect(mMockSummaryListener.getSummary()).andReturn(null);
 
+        if (throwable == null) {
+            mMockDevice.postInvocationTearDown(null);
+            EasyMock.expectLastCall().anyTimes();
+        }
+
         if (!(throwable instanceof BuildRetrievalError)) {
             EasyMock.expect(
                             mMockLogSaver.saveLogData(
@@ -1218,6 +1273,12 @@ public class TestInvocationTest {
                 EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
         mMockSummaryListener.testLog(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
                 EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
+                                EasyMock.eq(LogDataType.TEXT),
+                                (InputStream) EasyMock.anyObject()))
+                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
 
         // invocationEnded, getSummary (mMockTestListener)
         mMockTestListener.invocationEnded(EasyMock.anyLong());
@@ -1235,12 +1296,6 @@ public class TestInvocationTest {
      */
     @Test
     public void testInvoke_shardableTest_legacy() throws Throwable {
-        try {
-            GlobalConfiguration.createGlobalConfiguration(new String[] {"empty"});
-        } catch (IllegalStateException e) {
-            // Avoid exception in case of multi-init
-        }
-
         String command = "empty --test-tag t";
         String[] commandLine = {"empty", "--test-tag", "t"};
         int shardCount = 2;
@@ -1259,6 +1314,11 @@ public class TestInvocationTest {
                 .andReturn(new StubKeyStoreFactory())
                 .times(2);
         setupInvoke();
+        EasyMock.reset(mMockLogger, mMockLogRegistry);
+        mMockLogRegistry.registerLogger(mMockLogger);
+        mMockLogger.init();
+        mMockLogger.closeLog();
+        mMockLogRegistry.unregisterLogger();
         mMockLogSaver.invocationStarted(mStubInvocationMetadata);
         mMockLogSaver.invocationEnded(0L);
         setupNShardInvocation(shardCount, command);
@@ -1485,76 +1545,6 @@ public class TestInvocationTest {
      */
     private interface DeviceConfigTest extends IRemoteTest, IDeviceTest {
 
-    }
-
-    /**
-     * Test {@link INativeDevice#preInvocationSetup(IBuildInfo, List)} is called when command option
-     * skip-pre-device-setup is not set.
-     */
-    @Test
-    public void testNotSkipPreDeviceSetup() throws Throwable {
-        IInvocationContext context = new InvocationContext();
-        ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
-        IDevice idevice = Mockito.mock(IDevice.class);
-        context.addAllocatedDevice("DEFAULT_DEVICE", device1);
-        IBuildInfo testResourceBuildInfo = new BuildInfo();
-        testResourceBuildInfo.setTestResourceBuild(true);
-        context.addDeviceBuildInfo("test-resource", testResourceBuildInfo);
-        List<IBuildInfo> testResourceBuildInfos = new ArrayList<>();
-        testResourceBuildInfos.add(testResourceBuildInfo);
-        EasyMock.expect(device1.getSerialNumber()).andReturn("serial1").anyTimes();
-        EasyMock.expect(device1.getIDevice()).andReturn(idevice).anyTimes();
-
-        device1.preInvocationSetup(
-                (IBuildInfo) EasyMock.anyObject(), EasyMock.eq(testResourceBuildInfos));
-        EasyMock.expectLastCall().once();
-
-        CommandOptions commandOption = new CommandOptions();
-        OptionSetter setter = new OptionSetter(commandOption);
-        setter.setOptionValue("skip-pre-device-setup", "false");
-        mStubConfiguration.setCommandOptions(commandOption);
-        // Not expect isTearDownDisabled.
-        ITestInvocationListener listener = EasyMock.createStrictMock(ITestInvocationListener.class);
-        EasyMock.replay(device1, listener, mMockPreparer);
-        new InvocationExecution()
-                .runDevicePreInvocationSetup(context, mStubConfiguration, listener);
-        EasyMock.verify(device1, listener, mMockPreparer);
-
-    }
-
-    /**
-     * Test {@link INativeDevice#preInvocationSetup(IBuildInfo info)} is not called when command
-     * option skip-pre-device-setup is set.
-     */
-    @Test
-    public void testSkipPreDeviceSetup() throws Throwable {
-        IInvocationContext context = new InvocationContext();
-        ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
-        IDevice idevice = Mockito.mock(IDevice.class);
-        context.addAllocatedDevice("DEFAULT_DEVICE", device1);
-        EasyMock.expect(device1.getSerialNumber()).andReturn("serial1").anyTimes();
-        EasyMock.expect(device1.getIDevice()).andReturn(idevice).anyTimes();
-        EasyMock.expect(device1.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(1);
-        device1.clearLogcat();
-        EasyMock.expectLastCall().once();
-
-        CommandOptions commandOption = new CommandOptions();
-        OptionSetter setter = new OptionSetter(commandOption);
-        setter.setOptionValue("skip-pre-device-setup", "true");
-        mStubConfiguration.setCommandOptions(commandOption);
-
-        EasyMock.expect(mMockPreparer.isDisabled()).andReturn(true);
-        // Not expect isTearDownDisabled
-
-        ITestInvocationListener listener = EasyMock.createStrictMock(ITestInvocationListener.class);
-        listener.testLog(
-                EasyMock.startsWith(LOGCAT_NAME_SETUP),
-                EasyMock.eq(LogDataType.LOGCAT),
-                (InputStreamSource) EasyMock.anyObject());
-
-        EasyMock.replay(device1, listener, mMockPreparer);
-        new InvocationExecution().doSetup(context, mStubConfiguration, listener);
-        EasyMock.verify(device1, listener, mMockPreparer);
     }
 
     /**

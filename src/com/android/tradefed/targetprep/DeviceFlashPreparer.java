@@ -32,6 +32,8 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
@@ -106,6 +108,12 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer implements 
     )
     private Collection<String> mFastbootFlashOptions = new ArrayList<>();
 
+    @Option(
+            name = "flash-ramdisk",
+            description =
+                    "flashes ramdisk (boot partition) in addition " + "to regular system image")
+    private boolean mShouldFlashRamdisk = false;
+
     /**
      * Sets the device boot time
      * <p/>
@@ -176,6 +184,11 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer implements 
         if (!(buildInfo instanceof IDeviceBuildInfo)) {
             throw new IllegalArgumentException("Provided buildInfo is not a IDeviceBuildInfo");
         }
+        IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo) buildInfo;
+        if (mShouldFlashRamdisk && deviceBuild.getRamdiskFile() == null) {
+            throw new IllegalArgumentException(
+                    "ramdisk flashing enabled but no ramdisk file was found in build info");
+        }
         // don't allow interruptions during flashing operations.
         getRunUtil().allowInterrupt(false);
         IDeviceManager deviceManager = getDeviceManager();
@@ -183,7 +196,6 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer implements 
         long flashingTime = -1;
         long start = -1;
         try {
-            IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo)buildInfo;
             checkDeviceProductType(device, deviceBuild);
             device.setRecoveryMode(RecoveryMode.ONLINE);
             IDeviceFlasher flasher = createFlasher(device);
@@ -200,6 +212,7 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer implements 
                 flasher.setUserDataFlashOption(mUserDataFlashOption);
                 flasher.setForceSystemFlash(mForceSystemFlash);
                 flasher.setDataWipeSkipList(mDataWipeSkipList);
+                flasher.setShouldFlashRamdisk(mShouldFlashRamdisk);
                 if (flasher instanceof FastbootDeviceFlasher) {
                     ((FastbootDeviceFlasher) flasher).setFlashOptions(mFastbootFlashOptions);
                 }
@@ -446,5 +459,15 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer implements 
     protected void reportFlashMetrics(String branch, String buildFlavor, String buildId,
             String serial, long queueTime, long flashingTime, CommandStatus flashingStatus) {
         // no-op as default implementation
+    }
+
+    /**
+     * Sets the option for whether ramdisk should be flashed
+     *
+     * @param shouldFlashRamdisk
+     */
+    @VisibleForTesting
+    void setShouldFlashRamdisk(boolean shouldFlashRamdisk) {
+        mShouldFlashRamdisk = shouldFlashRamdisk;
     }
 }

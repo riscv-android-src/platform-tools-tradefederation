@@ -18,10 +18,11 @@ package com.android.tradefed.command;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
-import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionUpdateRule;
+import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.util.UniqueMultiMap;
 
 import java.util.LinkedHashSet;
@@ -122,14 +123,6 @@ public class CommandOptions implements ICommandOptions {
     private boolean mTokenSharding = false;
 
     @Option(
-        name = "skip-pre-device-setup",
-        description =
-                "allow TestInvocation to skip calling device.preInvocationSetup. This is for "
-                        + "delaying device setup when the test runs with VersionedTfLauncher."
-    )
-    private boolean mSkipPreDeviceSetup = false;
-
-    @Option(
         name = "dynamic-sharding",
         description =
                 "Allow to dynamically move IRemoteTest from one shard to another. Only for local "
@@ -177,6 +170,12 @@ public class CommandOptions implements ICommandOptions {
     private boolean mUseParallelRemoteSetup = false;
 
     @Option(
+        name = "report-module-progression",
+        description = "For remote invocation, whether or not to report progress at module level."
+    )
+    private boolean mReportModuleProgression = false;
+
+    @Option(
         name = "auto-collect",
         description =
                 "Specify a set of collectors that will be automatically managed by the harness "
@@ -200,6 +199,30 @@ public class CommandOptions implements ICommandOptions {
         description = "Suffix to add to Tradefed host_log before logging it."
     )
     private String mHostLogSuffix = null;
+
+    // [Options related to auto-retry]
+    @Option(
+        name = "max-testcase-run-count",
+        description =
+                "If the IRemoteTest can have its testcases run multiple times, "
+                        + "the max number of runs for each testcase."
+    )
+    private int mMaxRunLimit = 1;
+
+    @Option(
+        name = "retry-strategy",
+        description =
+                "The retry strategy to be used when re-running some tests with "
+                        + "--max-testcase-run-count"
+    )
+    private RetryStrategy mRetryStrategy = RetryStrategy.NO_RETRY;
+
+    @Option(
+        name = "auto-retry",
+        description =
+                "Whether or not to enable the new auto-retry. This is a feature flag for testing."
+    )
+    private boolean mEnableAutoRetry = false;
 
     /**
      * Set the help mode for the config.
@@ -448,13 +471,6 @@ public class CommandOptions implements ICommandOptions {
 
     /** {@inheritDoc} */
     @Override
-
-    public boolean shouldSkipPreDeviceSetup() {
-        return mSkipPreDeviceSetup;
-    }
-
-    /** {@inheritDoc} */
-    @Override
     public boolean shouldUseDynamicSharding() {
         return mDynamicSharding;
     }
@@ -535,5 +551,35 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean shouldUseParallelRemoteSetup() {
         return mUseParallelRemoteSetup;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldReportModuleProgression() {
+        return mReportModuleProgression;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public int getMaxRetryCount() {
+        return mMaxRunLimit;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setMaxRetryCount(int maxRetryCount) {
+        mMaxRunLimit = maxRetryCount;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public RetryStrategy getRetryStrategy() {
+        return mRetryStrategy;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean isAutoRetryEnabled() {
+        return mEnableAutoRetry;
     }
 }

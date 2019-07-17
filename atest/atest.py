@@ -33,9 +33,11 @@ import time
 import platform
 
 import atest_arg_parser
+import atest_error
 import atest_execution_info
 import atest_metrics
 import atest_utils
+import bug_detector
 import cli_translator
 # pylint: disable=import-error
 import constants
@@ -483,13 +485,19 @@ def _dry_run(results_dir, extra_args, test_infos):
         results_dir: Path for saving atest logs.
         extra_args: Dict of extra args for test runners to utilize.
         test_infos: A list of TestInfos.
+
+    Returns:
+        A list of test commands.
     """
+    all_run_cmds = []
     for test_runner, tests in test_runner_handler.group_tests_by_test_runners(test_infos):
         runner = test_runner(results_dir)
         run_cmds = runner.generate_run_commands(tests, extra_args)
         for run_cmd in run_cmds:
+            all_run_cmds.append(run_cmd)
             print('Would run test via command: %s'
                   % (atest_utils.colorize(run_cmd, constants.GREEN)))
+    return all_run_cmds
 
 def _print_testable_modules(mod_info, suite):
     """Print the testable modules for a given suite.
@@ -534,6 +542,9 @@ def main(argv, results_dir):
         return constants.EXIT_CODE_SUCCESS
     build_targets = set()
     test_infos = set()
+    # Clear cache if user pass -c option
+    if args.clear_cache:
+        atest_utils.clean_test_info_caches(args.tests)
     if _will_run_tests(args):
         build_targets, test_infos = translator.translate(args)
         if not test_infos:
@@ -547,8 +558,22 @@ def main(argv, results_dir):
     build_targets |= test_runner_handler.get_test_runner_reqs(mod_info,
                                                               test_infos)
     extra_args = get_extra_args(args)
+    if args.update_cmd_mapping or args.verify_cmd_mapping:
+        args.dry_run = True
     if args.dry_run:
-        _dry_run(results_dir, extra_args, test_infos)
+        args.tests.sort()
+        dry_run_cmds = _dry_run(results_dir, extra_args, test_infos)
+        if args.verify_cmd_mapping:
+            try:
+                atest_utils.handle_test_runner_cmd(' '.join(args.tests),
+                                                   dry_run_cmds,
+                                                   do_verification=True)
+            except atest_error.DryRunVerificationError as e:
+                atest_utils.colorful_print(str(e), constants.RED)
+                return constants.EXIT_CODE_VERIFY_FAILURE
+        if args.update_cmd_mapping:
+            atest_utils.handle_test_runner_cmd(' '.join(args.tests),
+                                               dry_run_cmds)
         return constants.EXIT_CODE_SUCCESS
     if args.detect_regression:
         build_targets |= (regression_test_runner.RegressionTestRunner('')
@@ -601,6 +626,10 @@ if __name__ == '__main__':
                                                  RESULTS_DIR) as result_file:
         metrics_base.MetricsBase.tool_name = constants.TOOL_NAME
         EXIT_CODE = main(sys.argv[1:], RESULTS_DIR)
+        DETECTOR = bug_detector.BugDetector(sys.argv[1:], EXIT_CODE)
+        metrics.LocalDetectEvent(
+            detect_type=constants.DETECT_TYPE_BUG_DETECTED,
+            result=DETECTOR.caught_result)
         metrics_utils.send_exit_event(EXIT_CODE)
         if result_file:
             print('Execution detail has saved in %s' % result_file.name)

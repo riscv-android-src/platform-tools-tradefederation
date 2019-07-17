@@ -19,6 +19,7 @@ Test Finder Handler module.
 import logging
 
 import atest_enum
+from test_finders import cache_finder
 from test_finders import test_finder_base
 from test_finders import suite_plan_finder
 from test_finders import tf_integration_finder
@@ -29,6 +30,7 @@ _TEST_FINDERS = {
     suite_plan_finder.SuitePlanFinder,
     tf_integration_finder.TFIntegrationFinder,
     module_finder.ModuleFinder,
+    cache_finder.CacheFinder,
 }
 
 # Explanation of REFERENCE_TYPEs:
@@ -51,7 +53,7 @@ _REFERENCE_TYPE = atest_enum.AtestEnum(['MODULE', 'CLASS', 'QUALIFIED_CLASS',
                                         'MODULE_PACKAGE', 'MODULE_FILE_PATH',
                                         'INTEGRATION_FILE_PATH', 'INTEGRATION',
                                         'SUITE', 'CC_CLASS', 'SUITE_PLAN',
-                                        'SUITE_PLAN_FILE_PATH'])
+                                        'SUITE_PLAN_FILE_PATH', 'CACHE'])
 
 _REF_TYPE_TO_FUNC_MAP = {
     _REFERENCE_TYPE.MODULE: module_finder.ModuleFinder.find_test_by_module_name,
@@ -70,6 +72,7 @@ _REF_TYPE_TO_FUNC_MAP = {
     _REFERENCE_TYPE.SUITE_PLAN:suite_plan_finder.SuitePlanFinder.find_test_by_suite_name,
     _REFERENCE_TYPE.SUITE_PLAN_FILE_PATH:
         suite_plan_finder.SuitePlanFinder.find_test_by_suite_path,
+    _REFERENCE_TYPE.CACHE: cache_finder.CacheFinder.find_test_by_cache,
 }
 
 
@@ -124,15 +127,18 @@ def _get_test_reference_types(ref):
         A list of possible REFERENCE_TYPEs (ints) for reference string.
     """
     if ref.startswith('.') or '..' in ref:
-        return [_REFERENCE_TYPE.INTEGRATION_FILE_PATH,
+        return [_REFERENCE_TYPE.CACHE,
+                _REFERENCE_TYPE.INTEGRATION_FILE_PATH,
                 _REFERENCE_TYPE.MODULE_FILE_PATH,
                 _REFERENCE_TYPE.SUITE_PLAN_FILE_PATH]
     if '/' in ref:
         if ref.startswith('/'):
-            return [_REFERENCE_TYPE.INTEGRATION_FILE_PATH,
+            return [_REFERENCE_TYPE.CACHE,
+                    _REFERENCE_TYPE.INTEGRATION_FILE_PATH,
                     _REFERENCE_TYPE.MODULE_FILE_PATH,
                     _REFERENCE_TYPE.SUITE_PLAN_FILE_PATH]
-        return [_REFERENCE_TYPE.INTEGRATION_FILE_PATH,
+        return [_REFERENCE_TYPE.CACHE,
+                _REFERENCE_TYPE.INTEGRATION_FILE_PATH,
                 _REFERENCE_TYPE.MODULE_FILE_PATH,
                 _REFERENCE_TYPE.INTEGRATION,
                 _REFERENCE_TYPE.SUITE_PLAN_FILE_PATH,
@@ -146,12 +152,14 @@ def _get_test_reference_types(ref):
         if '.' in ref:
             if ref_end_is_upper:
                 # Module:fully.qualified.Class or Integration:fully.q.Class
-                return [_REFERENCE_TYPE.INTEGRATION,
+                return [_REFERENCE_TYPE.CACHE,
+                        _REFERENCE_TYPE.INTEGRATION,
                         _REFERENCE_TYPE.MODULE_CLASS]
             # Module:some.package
-            return [_REFERENCE_TYPE.MODULE_PACKAGE]
+            return [_REFERENCE_TYPE.CACHE, _REFERENCE_TYPE.MODULE_PACKAGE]
         # Module:Class or IntegrationName:Class
-        return [_REFERENCE_TYPE.INTEGRATION,
+        return [_REFERENCE_TYPE.CACHE,
+                _REFERENCE_TYPE.INTEGRATION,
                 _REFERENCE_TYPE.MODULE_CLASS]
     if '.' in ref:
         # The string of ref_end possibly includes specific mathods, e.g.
@@ -159,18 +167,21 @@ def _get_test_reference_types(ref):
         if "#" in ref_end:
             ref_end = ref_end.split('#')[0]
         if ref_end in ('java', 'kt', 'bp', 'mk', 'cc', 'cpp'):
-            return [_REFERENCE_TYPE.MODULE_FILE_PATH]
+            return [_REFERENCE_TYPE.CACHE, _REFERENCE_TYPE.MODULE_FILE_PATH]
         if ref_end == 'xml':
-            return [_REFERENCE_TYPE.INTEGRATION_FILE_PATH,
+            return [_REFERENCE_TYPE.CACHE,
+                    _REFERENCE_TYPE.INTEGRATION_FILE_PATH,
                     _REFERENCE_TYPE.SUITE_PLAN_FILE_PATH]
         if ref_end_is_upper:
-            return [_REFERENCE_TYPE.QUALIFIED_CLASS]
-        return [_REFERENCE_TYPE.MODULE,
+            return [_REFERENCE_TYPE.CACHE, _REFERENCE_TYPE.QUALIFIED_CLASS]
+        return [_REFERENCE_TYPE.CACHE,
+                _REFERENCE_TYPE.MODULE,
                 _REFERENCE_TYPE.PACKAGE]
     # Note: We assume that if you're referencing a file in your cwd,
     # that file must have a '.' in its name, i.e. foo.java, foo.xml.
     # If this ever becomes not the case, then we need to include path below.
-    return [_REFERENCE_TYPE.INTEGRATION,
+    return [_REFERENCE_TYPE.CACHE,
+            _REFERENCE_TYPE.INTEGRATION,
             # TODO: Comment in SUITE when it's supported
             # _REFERENCE_TYPE.SUITE,
             _REFERENCE_TYPE.MODULE,

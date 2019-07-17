@@ -16,6 +16,7 @@
 package com.android.tradefed.config;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -32,9 +33,11 @@ import org.junit.runners.JUnit4;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -44,6 +47,7 @@ import javax.annotation.Nonnull;
 @RunWith(JUnit4.class)
 public class DynamicRemoteFileResolverTest {
 
+    @OptionClass(alias = "alias-remote-file")
     private static class RemoteFileOption {
         @Option(name = "remote-file")
         public File remoteFile = null;
@@ -74,7 +78,7 @@ public class DynamicRemoteFileResolverTest {
                 new DynamicRemoteFileResolver() {
                     @Override
                     protected IRemoteFileResolver getResolver(String protocol) {
-                        if (protocol.equals(GcsRemoteFileResolver.PROTOCOL)) {
+                        if (GcsRemoteFileResolver.PROTOCOL.equals(protocol)) {
                             return mMockResolver;
                         }
                         return null;
@@ -106,7 +110,9 @@ public class DynamicRemoteFileResolverTest {
 
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
-                                EasyMock.eq(new File("gs:/fake/path")), EasyMock.anyObject()))
+                                EasyMock.eq(new File("gs:/fake/path")),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
                 .andReturn(fake);
         EasyMock.replay(mMockResolver);
 
@@ -116,6 +122,82 @@ public class DynamicRemoteFileResolverTest {
             File downloaded = downloadedFile.iterator().next();
             // The file has been replaced by the downloaded one.
             assertEquals(downloaded.getAbsolutePath(), object.remoteFile.getAbsolutePath());
+        } finally {
+            for (File f : downloadedFile) {
+                FileUtil.recursiveDelete(f);
+            }
+        }
+        EasyMock.verify(mMockResolver);
+    }
+
+    @Test
+    public void testResolveWithQuery() throws Exception {
+        RemoteFileOption object = new RemoteFileOption();
+        OptionSetter setter =
+                new OptionSetter(object) {
+                    @Override
+                    protected DynamicRemoteFileResolver createResolver() {
+                        return mResolver;
+                    }
+                };
+
+        File fake = FileUtil.createTempFile("gs-option-setter-test", "txt");
+
+        setter.setOptionValue("remote-file", "gs://fake/path?key=value");
+        assertEquals("gs:/fake/path?key=value", object.remoteFile.getPath());
+
+        Map<String, String> testMap = new HashMap<>();
+        testMap.put("key", "value");
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path")),
+                                EasyMock.anyObject(),
+                                EasyMock.eq(testMap)))
+                .andReturn(fake);
+        EasyMock.replay(mMockResolver);
+
+        Set<File> downloadedFile = setter.validateRemoteFilePath();
+        try {
+            assertEquals(1, downloadedFile.size());
+            File downloaded = downloadedFile.iterator().next();
+            // The file has been replaced by the downloaded one.
+            assertEquals(downloaded.getAbsolutePath(), object.remoteFile.getAbsolutePath());
+        } finally {
+            for (File f : downloadedFile) {
+                FileUtil.recursiveDelete(f);
+            }
+        }
+        EasyMock.verify(mMockResolver);
+    }
+
+    /** Test to make sure that a dynamic download marked as "optional" does not throw */
+    @Test
+    public void testResolveOptional() throws Exception {
+        RemoteFileOption object = new RemoteFileOption();
+        OptionSetter setter =
+                new OptionSetter(object) {
+                    @Override
+                    protected DynamicRemoteFileResolver createResolver() {
+                        return mResolver;
+                    }
+                };
+
+        setter.setOptionValue("remote-file", "gs://fake/path?optional=true");
+        assertEquals("gs:/fake/path?optional=true", object.remoteFile.getPath());
+
+        Map<String, String> testMap = new HashMap<>();
+        testMap.put("optional", "true");
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path")),
+                                EasyMock.anyObject(),
+                                EasyMock.eq(testMap)))
+                .andThrow(new ConfigurationException("Failed to download"));
+        EasyMock.replay(mMockResolver);
+
+        Set<File> downloadedFile = setter.validateRemoteFilePath();
+        try {
+            assertEquals(0, downloadedFile.size());
         } finally {
             for (File f : downloadedFile) {
                 FileUtil.recursiveDelete(f);
@@ -143,7 +225,9 @@ public class DynamicRemoteFileResolverTest {
 
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
-                                EasyMock.eq(new File("gs:/fake/path")), EasyMock.anyObject()))
+                                EasyMock.eq(new File("gs:/fake/path")),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
                 .andReturn(fake);
         EasyMock.replay(mMockResolver);
 
@@ -186,16 +270,20 @@ public class DynamicRemoteFileResolverTest {
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs://success/fake/path")),
+                                EasyMock.anyObject(),
                                 EasyMock.anyObject()))
                 .andReturn(fake);
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs://success/fake/path2")),
+                                EasyMock.anyObject(),
                                 EasyMock.anyObject()))
                 .andReturn(fake);
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
-                                EasyMock.eq(new File("gs://failure/test")), EasyMock.anyObject()))
+                                EasyMock.eq(new File("gs://failure/test")),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
                 .andThrow(new ConfigurationException("retrieval error"));
         EasyMock.replay(mMockResolver);
         try {
@@ -229,11 +317,15 @@ public class DynamicRemoteFileResolverTest {
 
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
-                                EasyMock.eq(new File("gs:/fake/path")), EasyMock.anyObject()))
+                                EasyMock.eq(new File("gs:/fake/path")),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
                 .andReturn(fake);
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
-                                EasyMock.eq(new File("gs:/fake/path2")), EasyMock.anyObject()))
+                                EasyMock.eq(new File("gs:/fake/path2")),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
                 .andReturn(fake2);
         EasyMock.replay(mMockResolver);
 
@@ -276,15 +368,21 @@ public class DynamicRemoteFileResolverTest {
 
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
-                                EasyMock.eq(new File("gs:/fake/path")), EasyMock.anyObject()))
+                                EasyMock.eq(new File("gs:/fake/path")),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
                 .andReturn(fake);
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
-                                EasyMock.eq(new File("gs:/fake/path2")), EasyMock.anyObject()))
+                                EasyMock.eq(new File("gs:/fake/path2")),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
                 .andReturn(fake2);
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
-                                EasyMock.eq(new File("gs:/fake/path3")), EasyMock.anyObject()))
+                                EasyMock.eq(new File("gs:/fake/path3")),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
                 .andReturn(fake3);
         EasyMock.replay(mMockResolver);
 
@@ -325,7 +423,9 @@ public class DynamicRemoteFileResolverTest {
         // anymore
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
-                                EasyMock.eq(new File("gs:/fake/path")), EasyMock.anyObject()))
+                                EasyMock.eq(new File("gs:/fake/path")),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
                 .andReturn(fake);
         EasyMock.replay(mMockResolver);
 
@@ -414,6 +514,104 @@ public class DynamicRemoteFileResolverTest {
             File downloaded = downloadedFile.iterator().next();
             // The file has been replaced by the downloaded one.
             assertEquals(downloaded.getAbsolutePath(), object.remoteFile.getAbsolutePath());
+        } finally {
+            for (File f : downloadedFile) {
+                FileUtil.recursiveDelete(f);
+            }
+        }
+        EasyMock.verify(mMockResolver);
+    }
+
+    @Test
+    public void testResolvePartialDownloadZip() throws Exception {
+        List<String> includeFilters = Arrays.asList("test1", "test2");
+        List<String> excludeFilters = Arrays.asList("[.]config");
+
+        Map<String, String> queryArgs = new HashMap<>();
+        queryArgs.put("partial_download_dir", "/tmp");
+        queryArgs.put("include_filters", "test1;test2");
+        queryArgs.put("exclude_filters", "[.]config");
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path")),
+                                EasyMock.eq(null),
+                                EasyMock.eq(queryArgs)))
+                .andReturn(null);
+        EasyMock.replay(mMockResolver);
+
+        mResolver.resolvePartialDownloadZip(
+                new File("/tmp"), "gs:/fake/path", includeFilters, excludeFilters);
+        EasyMock.verify(mMockResolver);
+    }
+
+    /** Ignore any error if the download request is optional. */
+    @Test
+    public void testResolvePartialDownloadZip_optional() throws Exception {
+        List<String> includeFilters = Arrays.asList("test1", "test2");
+        List<String> excludeFilters = Arrays.asList("[.]config");
+
+        Map<String, String> queryArgs = new HashMap<>();
+        queryArgs.put("partial_download_dir", "/tmp");
+        queryArgs.put("include_filters", "test1;test2");
+        queryArgs.put("exclude_filters", "[.]config");
+        queryArgs.put("optional", "true");
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path?optional=true")),
+                                EasyMock.eq(null),
+                                EasyMock.eq(queryArgs)))
+                .andThrow(new ConfigurationException("should not throw this exception."));
+        EasyMock.replay(mMockResolver);
+
+        mResolver.resolvePartialDownloadZip(
+                new File("/tmp"), "gs:/fake/path?optional=true", includeFilters, excludeFilters);
+        EasyMock.verify(mMockResolver);
+    }
+
+    /**
+     * Ensure that the same field on two different objects can be set with different remote values.
+     */
+    @Test
+    public void testResolveTwoObjects() throws Exception {
+        RemoteFileOption object1 = new RemoteFileOption();
+        RemoteFileOption object2 = new RemoteFileOption();
+        OptionSetter setter =
+                new OptionSetter(object1, object2) {
+                    @Override
+                    protected DynamicRemoteFileResolver createResolver() {
+                        return mResolver;
+                    }
+                };
+
+        File fake = FileUtil.createTempFile("gs-option-setter-test", "txt");
+        setter.setOptionValue("alias-remote-file:1:remote-file", "gs://fake/path");
+        assertEquals("gs:/fake/path", object1.remoteFile.getPath());
+
+        File fake2 = FileUtil.createTempFile("gs-option-setter-test", "txt");
+        setter.setOptionValue("alias-remote-file:2:remote-file", "gs://fake2/path2");
+        assertEquals("gs:/fake2/path2", object2.remoteFile.getPath());
+
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path")),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
+                .andReturn(fake);
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake2/path2")),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
+                .andReturn(fake2);
+        EasyMock.replay(mMockResolver);
+
+        Set<File> downloadedFile = setter.validateRemoteFilePath();
+        try {
+            assertEquals(2, downloadedFile.size());
+            assertTrue(downloadedFile.contains(object1.remoteFile));
+            assertTrue(downloadedFile.contains(object2.remoteFile));
+
+            assertFalse(object1.remoteFile.equals(object2.remoteFile));
         } finally {
             for (File f : downloadedFile) {
                 FileUtil.recursiveDelete(f);

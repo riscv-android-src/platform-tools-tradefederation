@@ -23,6 +23,8 @@ import static org.junit.Assert.assertNull;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.ITestDevice;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
@@ -61,6 +63,11 @@ public class BundletoolUtilTest {
                     protected String getAdbPath() {
                         return "adb";
                     }
+
+                    @Override
+                    protected File getBundletoolFile() {
+                        return mBundletoolJar;
+                    }
                 };
     }
 
@@ -88,12 +95,17 @@ public class BundletoolUtilTest {
                                 (String) EasyMock.anyObject(),
                                 (String) EasyMock.anyObject(),
                                 (String) EasyMock.anyObject(),
+                                (String) EasyMock.anyObject(),
                                 (String) EasyMock.anyObject()))
                 .andReturn(res)
                 .once();
+        Path expectedSpecFilePath =
+                Paths.get(mBundletoolJar.getParentFile().getAbsolutePath(), "serial.json");
+
 
         EasyMock.replay(mMockDevice, mMockRuntil);
-        mBundletoolUtil.generateDeviceSpecFile(mMockDevice);
+        String actualSpecFilePath = mBundletoolUtil.generateDeviceSpecFile(mMockDevice);
+        assertEquals(expectedSpecFilePath.toString(), actualSpecFilePath);
         EasyMock.verify(mMockRuntil);
         EasyMock.verify(mMockDevice);
     }

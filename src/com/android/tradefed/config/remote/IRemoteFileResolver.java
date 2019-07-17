@@ -19,6 +19,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 
 import java.io.File;
+import java.util.Map;
 
 import javax.annotation.Nonnull;
 
@@ -36,8 +37,25 @@ public interface IRemoteFileResolver {
      * @return The resolved local file.
      * @throws ConfigurationException if something goes wrong.
      */
-    public @Nonnull File resolveRemoteFiles(File consideredFile, Option option)
-            throws ConfigurationException;
+    public default @Nonnull File resolveRemoteFiles(File consideredFile, Option option)
+            throws ConfigurationException {
+        throw new ConfigurationException("Should not have been called");
+    }
+
+    /**
+     * Resolve the remote file.
+     *
+     * @param consideredFile {@link File} evaluated as remote.
+     * @param option The original option configuring the file.
+     * @param queryArgs The arguments passed as a query to the URL.
+     * @return The resolved local file.
+     * @throws ConfigurationException if something goes wrong.
+     */
+    public default @Nonnull File resolveRemoteFiles(
+            File consideredFile, Option option, Map<String, String> queryArgs)
+            throws ConfigurationException {
+        return resolveRemoteFiles(consideredFile, option);
+    }
 
     /** Returns the associated protocol supported for download. */
     public @Nonnull String getSupportedProtocol();

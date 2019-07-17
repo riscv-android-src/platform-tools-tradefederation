@@ -43,6 +43,8 @@ import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
 
+import com.google.common.base.Joiner;
+
 import org.junit.After;
 import org.junit.Assume;
 
@@ -52,6 +54,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * Base test class for running host JUnit4 style tests. This class provides support to install, run
@@ -601,7 +604,13 @@ public abstract class BaseHostJUnit4Test
                 throw new AssertionError(errorBuilder.toString());
             }
             // Assume not all tests have skipped (and rethrow AssumptionViolatedException if so)
+            List<TestResult> assumpFail =
+                    runResult.getTestsResultsInState(TestStatus.ASSUMPTION_FAILURE);
+            List<String> messages =
+                    assumpFail.stream().map(r -> r.getStackTrace()).collect(Collectors.toList());
+            String errors = Joiner.on("\n\n").join(messages);
             Assume.assumeTrue(
+                    errors,
                     runResult.getNumTests()
                             != runResult.getNumTestsInState(TestStatus.ASSUMPTION_FAILURE));
         }

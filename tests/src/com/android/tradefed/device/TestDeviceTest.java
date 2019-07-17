@@ -48,7 +48,6 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
-import com.android.tradefed.util.UserUtil;
 import com.android.tradefed.util.ZipUtil2;
 
 import junit.framework.TestCase;
@@ -1186,7 +1185,7 @@ public class TestDeviceTest extends TestCase {
      */
     private void setEncryptedUnsupportedExpectations() throws Exception {
         setEnableAdbRootExpectations();
-        injectShellResponse("vdc cryptfs enablecrypto", "\r\n");
+        EasyMock.expect(mMockIDevice.getProperty("ro.crypto.state")).andReturn("unsupported");
     }
 
     /**
@@ -1194,9 +1193,7 @@ public class TestDeviceTest extends TestCase {
      */
     private void setEncryptedSupported() throws Exception {
         setEnableAdbRootExpectations();
-        injectShellResponse("vdc cryptfs enablecrypto",
-                "500 29805 Usage: cryptfs enablecrypto <wipe|inplace> "
-                + "default|password|pin|pattern [passwd] [noui]\r\n");
+        EasyMock.expect(mMockIDevice.getProperty("ro.crypto.state")).andReturn("encrypted");
     }
 
     /**
@@ -2488,6 +2485,46 @@ public class TestDeviceTest extends TestCase {
         assertEquals(3, actual.get(1).intValue());
     }
 
+    /** Test that a single user is handled by {@link TestDevice#listUsers()}. */
+    public void testListUsersInfo_oneUser() throws Exception {
+        final String listUsersCommand = "pm list users";
+        injectShellResponse(
+                listUsersCommand, ArrayUtil.join("\r\n", "Users:", "UserInfo{0:Foo:13} running"));
+        replayMocks();
+        Map<Integer, UserInfo> actual = mTestDevice.getUserInfos();
+        assertNotNull(actual);
+        assertEquals(1, actual.size());
+        UserInfo user0 = actual.get(0);
+        assertEquals(0, user0.userId());
+        assertEquals("Foo", user0.userName());
+        assertEquals(0x13, user0.flag());
+        assertEquals(true, user0.isRunning());
+    }
+
+    /** Test that multiple user is handled by {@link TestDevice#listUsers()}. */
+    public void testListUsersInfo_multiUsers() throws Exception {
+        final String listUsersCommand = "pm list users";
+        injectShellResponse(
+                listUsersCommand,
+                ArrayUtil.join(
+                        "\r\n", "Users:", "UserInfo{0:Foo:13} running", "UserInfo{10:FooBar:14}"));
+        replayMocks();
+        Map<Integer, UserInfo> actual = mTestDevice.getUserInfos();
+        assertNotNull(actual);
+        assertEquals(2, actual.size());
+        UserInfo user0 = actual.get(0);
+        assertEquals(0, user0.userId());
+        assertEquals("Foo", user0.userName());
+        assertEquals(0x13, user0.flag());
+        assertEquals(true, user0.isRunning());
+
+        UserInfo user10 = actual.get(10);
+        assertEquals(10, user10.userId());
+        assertEquals("FooBar", user10.userName());
+        assertEquals(0x14, user10.flag());
+        assertEquals(false, user10.isRunning());
+    }
+
     /**
      * Test that multi user output is handled by {@link TestDevice#getMaxNumberOfUsersSupported()}.
      */
@@ -2982,10 +3019,10 @@ public class TestDeviceTest extends TestCase {
                                         + "UserInfo{12:Secondary:0}\n\t"
                                         + "UserInfo{13:Managed:%x}\n\t"
                                         + "UserInfo{100:Restricted:%x}\n\t",
-                                UserUtil.FLAG_PRIMARY,
-                                UserUtil.FLAG_GUEST,
-                                UserUtil.FLAG_MANAGED_PROFILE,
-                                UserUtil.FLAG_RESTRICTED);
+                                UserInfo.FLAG_PRIMARY,
+                                UserInfo.FLAG_GUEST,
+                                UserInfo.FLAG_MANAGED_PROFILE,
+                                UserInfo.FLAG_RESTRICTED);
                     }
 
                     @Override
@@ -3151,8 +3188,12 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     public String executeShellCommand(String command)
                             throws DeviceNotAvailableException {
-                        test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
-                        test.start();
+                        if (!started) {
+                            started = true;
+                            test.setDaemon(true);
+                            test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
+                            test.start();
+                        }
                         return "";
                     }
 
@@ -3176,6 +3217,7 @@ public class TestDeviceTest extends TestCase {
                         return 100;
                     }
 
+                    boolean started = false;
                     Thread test =
                             new Thread(
                                     new Runnable() {
@@ -4169,9 +4211,7 @@ public class TestDeviceTest extends TestCase {
                         return true;
                     }
                 };
-        injectShellResponse(
-                "vdc cryptfs enablecrypto",
-                "500 8674 Usage with ext4crypt: cryptfs enablecrypto inplace default noui\r\n");
+        EasyMock.expect(mMockIDevice.getProperty("ro.crypto.state")).andReturn("encrypted");
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
         assertTrue(mTestDevice.isEncryptionSupported());
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
@@ -4191,7 +4231,7 @@ public class TestDeviceTest extends TestCase {
                         return true;
                     }
                 };
-        injectShellResponse("vdc cryptfs enablecrypto", "500 8674 Command not recognized\r\n");
+        EasyMock.expect(mMockIDevice.getProperty("ro.crypto.state")).andReturn("unsupported");
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
         assertFalse(mTestDevice.isEncryptionSupported());
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
@@ -4310,7 +4350,7 @@ public class TestDeviceTest extends TestCase {
         mMockWifi.cleanUp();
         replayMocks();
         mTestDevice.getIpAddress();
-        mTestDevice.postInvocationTearDown();
+        mTestDevice.postInvocationTearDown(null);
         verifyMocks();
     }
 
@@ -4380,5 +4420,42 @@ public class TestDeviceTest extends TestCase {
         assertNotNull(source);
         StreamUtil.close(source);
         verifyMocks();
+    }
+
+    /** Test {@link TestDevice#doesFileExist(String)}. */
+    public void testDoesFileExists() throws Exception {
+        injectShellResponse("ls \"/data/local/tmp/file\"", "file");
+        EasyMock.replay(mMockIDevice);
+        assertTrue(mTestDevice.doesFileExist("/data/local/tmp/file"));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test {@link TestDevice#doesFileExist(String)} when the file does not exists. */
+    public void testDoesFileExists_notExists() throws Exception {
+        injectShellResponse(
+                "ls \"/data/local/tmp/file\"",
+                "ls: cannot access 'file': No such file or directory\n");
+        EasyMock.replay(mMockIDevice);
+        assertFalse(mTestDevice.doesFileExist("/data/local/tmp/file"));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /**
+     * Test {@link TestDevice#doesFileExist(String)} when the file exists on an sdcard from another
+     * user.
+     */
+    public void testDoesFileExists_sdcard() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public int getCurrentUser()
+                            throws DeviceNotAvailableException, DeviceRuntimeException {
+                        return 10;
+                    }
+                };
+        injectShellResponse("ls \"/storage/emulated/10/file\"", "file");
+        EasyMock.replay(mMockIDevice);
+        assertTrue(mTestDevice.doesFileExist("/sdcard/file"));
+        EasyMock.verify(mMockIDevice);
     }
 }
