@@ -44,8 +44,28 @@ public class BaseRetryDecision implements IRetryDecision {
     )
     private boolean mRebootAtLastRetry = false;
 
-    private RetryStrategy mRetryStrategy;
-    private int mMaxRetryAttempts;
+    @Option(
+        name = "max-testcase-run-count",
+        description =
+                "If the IRemoteTest can have its testcases run multiple times, "
+                        + "the max number of runs for each testcase."
+    )
+    private int mMaxRetryAttempts = 1;
+
+    @Option(
+        name = "retry-strategy",
+        description =
+                "The retry strategy to be used when re-running some tests with "
+                        + "--max-testcase-run-count"
+    )
+    private RetryStrategy mRetryStrategy = RetryStrategy.NO_RETRY;
+
+    @Option(
+        name = "auto-retry",
+        description =
+                "Whether or not to enable the new auto-retry. This is a feature flag for testing."
+    )
+    private boolean mEnableAutoRetry = false;
 
     private IRemoteTest mCurrentlyConsideredTest;
     private RetryStatsHelper mStatistics;
@@ -53,11 +73,19 @@ public class BaseRetryDecision implements IRetryDecision {
     /** Constructor for the retry decision */
     public BaseRetryDecision() {}
 
-    /** Init the required parameters to make retry decisions. */
     @Override
-    public void init(RetryStrategy strategy, int maxRetryAttempts) {
-        mRetryStrategy = strategy;
-        mMaxRetryAttempts = maxRetryAttempts;
+    public boolean isAutoRetryEnabled() {
+        return mEnableAutoRetry;
+    }
+
+    @Override
+    public RetryStrategy getRetryStrategy() {
+        return mRetryStrategy;
+    }
+
+    @Override
+    public int getMaxRetryCount() {
+        return mMaxRetryAttempts;
     }
 
     @Override

@@ -34,7 +34,6 @@ import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.testtype.retry.MergeStrategy;
 import com.android.tradefed.testtype.retry.RetryStatistics;
-import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -84,8 +83,6 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
 
     // Tracking of the metrics
     private RetryStatistics mRetryStats = null;
-
-    private RetryStrategy mRetryStrategy = RetryStrategy.NO_RETRY;
 
     public GranularRetriableTestWrapper(
             IRemoteTest test,
@@ -161,11 +158,6 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
      */
     public void setLogSaver(ILogSaver logSaver) {
         mLogSaver = logSaver;
-    }
-
-    /** Sets the {@link RetryStrategy} to be used when retrying. */
-    public final void setRetryStrategy(RetryStrategy retryStrategy) {
-        mRetryStrategy = retryStrategy;
     }
 
     /**
@@ -308,7 +300,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
 
     /** Get the merged TestRunResults from each {@link IRemoteTest} run. */
     public final List<TestRunResult> getFinalTestRunResults() {
-        MergeStrategy strategy = MergeStrategy.getMergeStrategy(mRetryStrategy);
+        MergeStrategy strategy = MergeStrategy.getMergeStrategy(mRetryDecision.getRetryStrategy());
         mMainGranularRunListener.setMergeStrategy(strategy);
         return mMainGranularRunListener.getMergedTestRunResults();
     }

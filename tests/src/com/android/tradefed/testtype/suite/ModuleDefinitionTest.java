@@ -59,7 +59,6 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.retry.BaseRetryDecision;
 import com.android.tradefed.testtype.retry.IRetryDecision;
-import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.testtype.suite.module.BaseModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController;
 import com.android.tradefed.testtype.suite.module.TestFailureModuleController;
@@ -101,6 +100,8 @@ public class ModuleDefinitionTest {
     // Extra mock for log saving testing
     private ILogSaver mMockLogSaver;
     private ILogSaverListener mMockLogSaverListener;
+
+    private IRetryDecision mDecision = new BaseRetryDecision();
 
     private interface ITestInterface extends IRemoteTest, IBuildReceiver, IDeviceTest {}
 
@@ -291,7 +292,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
-
+        mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -400,6 +401,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -753,6 +755,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -801,6 +804,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -863,6 +867,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -1022,6 +1027,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         config);
+        mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -1033,9 +1039,9 @@ public class ModuleDefinitionTest {
         mMockListener.testEnded(
                 EasyMock.anyObject(),
                 EasyMock.anyLong(),
-                (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.<HashMap<String, Metric>>anyObject());
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
         mModule.run(mMockListener, null, null);
         verifyMocks();
@@ -1083,6 +1089,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.setRetryDecision(mDecision);
         mModule.setLogSaver(mMockLogSaver);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
@@ -1166,11 +1173,12 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         config);
+        mModule.setRetryDecision(mDecision);
         mModule.setLogSaver(mMockLogSaver);
         mMockListener.testRunStarted(
                 EasyMock.eq("fakeName"), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
         mModule.run(mMockListener, null, failureListener);
         verifyMocks();
@@ -1189,6 +1197,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -1257,6 +1266,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.setRetryDecision(mDecision);
         mModule.setLogSaver(mMockLogSaver);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
@@ -1326,7 +1336,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
-
+        mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -1379,6 +1389,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -1421,9 +1432,11 @@ public class ModuleDefinitionTest {
                         mMultiTargetPrepList,
                         new Configuration("", ""));
         IRetryDecision decision = new BaseRetryDecision();
-        decision.init(RetryStrategy.ITERATIONS, 3);
+        OptionSetter setter = new OptionSetter(decision);
+        setter.setOptionValue("retry-strategy", "ITERATIONS");
+        setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
         mModule.setRetryDecision(decision);
-        mModule.setRetryStrategy(RetryStrategy.ITERATIONS, false);
+        mModule.setMergeAttemps(false);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -1509,9 +1522,11 @@ public class ModuleDefinitionTest {
                         mMultiTargetPrepList,
                         new Configuration("", ""));
         IRetryDecision decision = new BaseRetryDecision();
-        decision.init(RetryStrategy.RETRY_ANY_FAILURE, 3);
+        OptionSetter setter = new OptionSetter(decision);
+        setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
+        setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
         mModule.setRetryDecision(decision);
-        mModule.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE, false);
+        mModule.setMergeAttemps(false);
 
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
