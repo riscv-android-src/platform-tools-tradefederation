@@ -18,6 +18,10 @@ java_library_host {
     srcs: [
         "com/**/*.java",
     ],
+    static_libs: [
+        "longevity-host-lib",
+        "test-composers",
+    ],
     libs: [
         "tradefed-lib-core",
     ],
