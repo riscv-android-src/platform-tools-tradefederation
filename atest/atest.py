@@ -35,7 +35,6 @@ import platform
 import atest_arg_parser
 import atest_error
 import atest_execution_info
-import atest_metrics
 import atest_utils
 import bug_detector
 import cli_translator
@@ -528,7 +527,6 @@ def main(argv, results_dir):
     args = _parse_args(argv)
     _configure_logging(args.verbose)
     _validate_args(args)
-    atest_metrics.log_start_event()
     metrics_utils.get_start_time()
     metrics.AtestStartEvent(
         command_line=' '.join(argv),
