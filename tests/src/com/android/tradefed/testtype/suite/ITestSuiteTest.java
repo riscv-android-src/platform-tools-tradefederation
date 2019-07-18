@@ -1500,6 +1500,7 @@ public class ITestSuiteTest {
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
         setter.setOptionValue("max-testcase-run-count", Integer.toString(maxRunLimit));
+        decision.setInvocationContext(mContext);
         mStubMainConfiguration.setConfigurationObject(
                 Configuration.RETRY_DECISION_TYPE_NAME, decision);
         mContext = new InvocationContext();

@@ -23,6 +23,8 @@ import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -245,10 +247,23 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             mRetryDecision.addLastAttempt(
                     mMainGranularRunListener.getTestRunForAttempts(mMaxRunLimit - 1));
         } finally {
-            mRetryStats = mRetryDecision.getRetryStats();
+            mRetryStats = mRetryDecision.getRetryStatistics();
             // Track how long we spend in retry
             mRetryStats.mRetryTime = System.currentTimeMillis() - startTime;
+            addRetryTime(mRetryStats.mRetryTime);
         }
+    }
+
+    private void addRetryTime(long retryTimeMs) {
+        long totalRetryMs = retryTimeMs;
+        String retryTime =
+                InvocationMetricLogger.getInvocationMetrics()
+                        .get(InvocationMetricKey.AUTO_RETRY_TIME.toString());
+        if (retryTime != null) {
+            totalRetryMs += Long.parseLong(retryTime) + retryTimeMs;
+        }
+        InvocationMetricLogger.addInvocationMetrics(
+                InvocationMetricKey.AUTO_RETRY_TIME, Long.toString(totalRetryMs));
     }
 
     /** The workflow for each individual {@link IRemoteTest} run. */
@@ -325,14 +340,6 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
      */
     public final int getExpectedTestsCount() {
         return mMainGranularRunListener.getExpectedTests();
-    }
-
-    /**
-     * Returns the {@link RetryStatistics} representating the retry information. Null if no retry
-     * occurred.
-     */
-    public final RetryStatistics getRetryStatistics() {
-        return mRetryStats;
     }
 
     /** Returns the listener containing all the results. */
