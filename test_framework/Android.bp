@@ -20,6 +20,7 @@ java_library_host {
     ],
     libs: [
         "tradefed-lib-core",
+        "loganalysis",
     ],
 }
 
