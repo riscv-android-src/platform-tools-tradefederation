@@ -15,12 +15,17 @@
  */
 package com.android.tradefed.testtype.suite;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
@@ -36,8 +41,11 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.retry.BaseRetryDecision;
+import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.testtype.retry.RetryStatistics;
 import com.android.tradefed.testtype.retry.RetryStrategy;
 
@@ -139,7 +147,9 @@ public class GranularRetriableTestWrapperTest {
         }
     }
 
-    private class FakeTest extends BasicFakeTest implements ITestFilterReceiver {
+    private class FakeTest extends BasicFakeTest implements ITestFilterReceiver, IDeviceTest {
+
+        private ITestDevice mDevice;
 
         public FakeTest(ArrayList<TestDescription> testCases) {
             super(testCases);
@@ -180,6 +190,16 @@ public class GranularRetriableTestWrapperTest {
 
         @Override
         public void clearExcludeFilters() {}
+
+        @Override
+        public void setDevice(ITestDevice device) {
+            mDevice = device;
+        }
+
+        @Override
+        public ITestDevice getDevice() {
+            return mDevice;
+        }
     }
 
     private class MultiTestOneRunFakeTest extends FakeTest {
@@ -255,6 +275,9 @@ public class GranularRetriableTestWrapperTest {
         granularTestWrapper.setLogSaver(new FileSystemLogSaver());
         IConfiguration mockModuleConfiguration = Mockito.mock(IConfiguration.class);
         granularTestWrapper.setModuleConfig(mockModuleConfiguration);
+        IRetryDecision decision = new BaseRetryDecision();
+        decision.init(RetryStrategy.RETRY_ANY_FAILURE, maxRunCount);
+        granularTestWrapper.setRetryDecision(decision);
         return granularTestWrapper;
     }
 
@@ -687,6 +710,9 @@ public class GranularRetriableTestWrapperTest {
         testCases.add(fakeTestCase2);
         FakeTest test = new FakeTest(testCases);
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
+        IRetryDecision decision = new BaseRetryDecision();
+        decision.init(RetryStrategy.ITERATIONS, 3);
+        granularTestWrapper.setRetryDecision(decision);
         granularTestWrapper.setRetryStrategy(RetryStrategy.ITERATIONS);
         granularTestWrapper.run(new CollectingTestListener());
 
@@ -719,6 +745,9 @@ public class GranularRetriableTestWrapperTest {
         FakeTest test = new FakeTest(testCases);
         test.addFailedTestCase(fakeTestCase2);
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
+        IRetryDecision decision = new BaseRetryDecision();
+        decision.init(RetryStrategy.RERUN_UNTIL_FAILURE, 3);
+        granularTestWrapper.setRetryDecision(decision);
         granularTestWrapper.setRetryStrategy(RetryStrategy.RERUN_UNTIL_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
 
@@ -819,15 +848,19 @@ public class GranularRetriableTestWrapperTest {
      */
     @Test
     public void testIntraModuleRun_rebootAtLastIntraModuleRetry() throws Exception {
+        IRetryDecision decision = new BaseRetryDecision();
+        decision.init(RetryStrategy.RETRY_ANY_FAILURE, 3);
+        OptionSetter setter = new OptionSetter(decision);
+        setter.setOptionValue("reboot-at-last-retry", "true");
         FakeTest test = new FakeTest();
         test.setRunFailure("I failed!");
         ITestDevice mMockDevice = EasyMock.createMock(ITestDevice.class);
+        test.setDevice(mMockDevice);
         mModuleInvocationContext.addAllocatedDevice("default-device1", mMockDevice);
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
         granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
-        granularTestWrapper.setRebootAtLastRetry(true);
+        granularTestWrapper.setRetryDecision(decision);
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
-        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("SERIAL");
         mMockDevice.reboot();
         EasyMock.replay(mMockDevice);
         granularTestWrapper.run(new CollectingTestListener());
@@ -839,26 +872,28 @@ public class GranularRetriableTestWrapperTest {
      */
     @Test
     public void testIntraModuleRun_rebootMultiDevicesAtLastIntraModuleRetry() throws Exception {
+        IRetryDecision decision = new BaseRetryDecision();
+        decision.init(RetryStrategy.RETRY_ANY_FAILURE, 3);
+        OptionSetter setter = new OptionSetter(decision);
+        setter.setOptionValue("reboot-at-last-retry", "true");
         FakeTest test = new FakeTest();
         test.setRunFailure("I failed!");
         ITestDevice mMockDevice = EasyMock.createMock(ITestDevice.class);
         ITestDevice mMockDevice2 = EasyMock.createMock(ITestDevice.class);
+        test.setDevice(mMockDevice);
         mModuleInvocationContext.addAllocatedDevice("default-device1", mMockDevice);
         mModuleInvocationContext.addAllocatedDevice("default-device2", mMockDevice2);
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
         granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
-        granularTestWrapper.setRebootAtLastRetry(true);
+        granularTestWrapper.setRetryDecision(decision);
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
-        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("SERIAL");
         EasyMock.expect(mMockDevice2.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
-        EasyMock.expect(mMockDevice2.getSerialNumber()).andReturn("SERIAL-2");
         mMockDevice.reboot();
-        mMockDevice2.reboot();
-        EasyMock.replay(mMockDevice);
-        EasyMock.replay(mMockDevice2);
+        // FIXME(b/137769473): add the support for resetting multi-devices.
+        // mMockDevice2.reboot();
+        EasyMock.replay(mMockDevice, mMockDevice2);
         granularTestWrapper.run(new CollectingTestListener());
-        EasyMock.verify(mMockDevice);
-        EasyMock.verify(mMockDevice2);
+        EasyMock.verify(mMockDevice, mMockDevice2);
     }
 
     /** Collector that track if it was called or not */
