@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Copyright (C) 2018 The Android Open Source Project
+<!-- Copyright (C) 2019 The Android Open Source Project
 
      Licensed under the Apache License, Version 2.0 (the "License");
      you may not use this file except in compliance with the License.
@@ -13,15 +13,11 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-<configuration description="Executes the TF unit tests, and reports results using provided build details">
-    <option name="loop" value="false" />
-    <option name="null-device" value="true" />
-    <build_provider class="com.android.tradefed.build.StubBuildProvider" />
-
-    <include name="tf/unit-runner-tests" />
-
-    <logger class="com.android.tradefed.log.FileLogger" />
-    <result_reporter class="com.android.tradefed.result.SubprocessResultsReporter">
-        <option name="output-test-log" value="true" />
-    </result_reporter>
+<configuration description="Executes the TF unit tests">
+    <!-- Use HostTest runner to have JUnit3 and JUnit4 Suite support -->
+    <test class="com.android.tradefed.testtype.HostTest" >
+        <option name="class" value="com.android.loganalysis.UnitTests" />
+        <option name="class" value="com.android.tradefed.UnitTests" />
+        <option name="class" value="com.android.tradefed.prodtests.UnitTests" />
+    </test>
 </configuration>
