@@ -14,11 +14,16 @@
      limitations under the License.
 -->
 <configuration description="Runs all the Android instrumentation tests on an existing device">
+    <option name="compress-files" value="false" />
+
+    <logger class="com.android.tradefed.log.FileLogger">
+        <option name="log-level" value="verbose" />
+        <option name="log-level-display" value="debug" />
+    </logger>
 
     <target_preparer class="com.android.tradefed.targetprep.InstallApkSetup">
         <!-- Use "apk-path" option to specify which apk to install -->
     </target_preparer>
 
     <test class="com.android.tradefed.testtype.InstalledInstrumentationsTest" />
-
 </configuration>
