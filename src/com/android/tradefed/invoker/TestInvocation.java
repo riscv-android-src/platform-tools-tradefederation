@@ -643,6 +643,11 @@ public class TestInvocation implements ITestInvocation {
                             allListeners, config.getCommandOptions().getRetryStrategy());
             allListeners = Arrays.asList(aggregator);
         }
+        // Initialize the retry decision
+        config.getRetryDecision()
+                .init(
+                        config.getCommandOptions().getRetryStrategy(),
+                        config.getCommandOptions().getMaxRetryCount());
 
         if (!config.getPostProcessors().isEmpty()) {
             ITestInvocationListener forwarder = new ResultAndLogForwarder(allListeners);

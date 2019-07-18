@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.retry;
 
+import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 
@@ -27,17 +28,29 @@ import java.util.List;
 public interface IRetryDecision {
 
     /**
+     * Initialize the retry decision with parameters necessary.
+     *
+     * @param strategy The retry strategy to be used.
+     * @param maxRetryAttempts The maximum number of retry expected.
+     */
+    public void init(RetryStrategy strategy, int maxRetryAttempts);
+
+    /**
      * Decide whether or not retry should be attempted. Also make any necessary changes to the
      * {@link IRemoteTest} to be retried (Applying filters, etc.).
      *
      * @param test The {@link IRemoteTest} that just ran.
+     * @param attemptJustExecuted The number of the attempt that we just ran.
      * @param previousResults The list of {@link TestRunResult} of the test that just ran.
      * @return True if we should retry, False otherwise.
+     * @throws DeviceNotAvailableException Can be thrown during device recovery
      */
-    public boolean shouldRetry(IRemoteTest test, List<TestRunResult> previousResults);
+    public boolean shouldRetry(
+            IRemoteTest test, int attemptJustExecuted, List<TestRunResult> previousResults)
+            throws DeviceNotAvailableException;
 
     /**
-     * {@link #shouldRetry(IRemoteTest, List)} will most likely be called before the last retry
+     * {@link #shouldRetry(IRemoteTest, int, List)} will most likely be called before the last retry
      * attempt, so we might be missing the very last attempt results for statistics purpose. This
      * method allows those results to be provided for proper statistics calculations.
      *

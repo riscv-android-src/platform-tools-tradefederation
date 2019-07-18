@@ -56,6 +56,7 @@ import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.ITestCollector;
+import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.testtype.retry.RetryStatistics;
 import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.testtype.suite.module.BaseModuleController;
@@ -138,7 +139,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     private RetryStrategy mRetryStrategy = RetryStrategy.NO_RETRY;
     private boolean mMergeAttempts = true;
-    private boolean mRebootAtLastRetry = false;
+    private IRetryDecision mRetryDecision;
 
     // Token during sharding
     private Set<TokenProperty> mRequiredTokens = new HashSet<>();
@@ -585,7 +586,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         retriableTest.setInvocationContext(mModuleInvocationContext);
         retriableTest.setLogSaver(mLogSaver);
         retriableTest.setRetryStrategy(mRetryStrategy);
-        retriableTest.setRebootAtLastRetry(mRebootAtLastRetry);
+        retriableTest.setRetryDecision(mRetryDecision);
         return retriableTest;
     }
 
@@ -872,9 +873,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         mMergeAttempts = mergeAttempts;
     }
 
-    /** Sets the flag to reboot devices at the last intra-module retry. */
-    public final void setRebootAtLastRetry(boolean rebootAtLastRetry) {
-        mRebootAtLastRetry = rebootAtLastRetry;
+    /** Sets the {@link IRetryDecision} to be used for intra-module retry. */
+    public final void setRetryDecision(IRetryDecision decision) {
+        mRetryDecision = decision;
     }
 
     /** Returns a list of tests that ran in this module. */
