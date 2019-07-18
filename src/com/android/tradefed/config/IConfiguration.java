@@ -31,6 +31,7 @@ import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import org.json.JSONArray;
@@ -110,6 +111,9 @@ public interface IConfiguration {
      * @return the {@link ILogSaver} provided in the configuration.
      */
     public ILogSaver getLogSaver();
+
+    /** Returns the {@link IRetryDecision} used for the invocation. */
+    public IRetryDecision getRetryDecision();
 
     /**
      * Gets the {@link IMultiTargetPreparer}s from the configuration.
