@@ -164,11 +164,6 @@ public abstract class ITestSuite
     @Option(name = "reboot-per-module", description = "Reboot the device before every module run.")
     private boolean mRebootPerModule = false;
 
-    @Deprecated
-    @Option(name = "reboot-at-last-retry",
-        description = "Reboot the device at the last intra-module retry")
-    private boolean mRebootAtLastRetry = false;
-
     @Option(
         name = REBOOT_BEFORE_TEST,
         description = "Reboot the device before the test suite starts."
@@ -737,8 +732,8 @@ public abstract class ITestSuite
         // Pass the retry strategy to the module
         module.setRetryStrategy(
                 getConfiguration().getCommandOptions().getRetryStrategy(), mMergeAttempts);
-        // Pass the reboot strategy at the last intra-module retry to the module
-        module.setRebootAtLastRetry(mRebootAtLastRetry);
+        // Pass the retry decision to be used.
+        module.setRetryDecision(mMainConfiguration.getRetryDecision());
 
         // Actually run the module
         module.run(
