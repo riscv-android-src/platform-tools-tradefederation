@@ -131,8 +131,11 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
                 getGceHandler().cleanUp();
             }
         } finally {
+            // Reset the internal variable
+            mCopiedOptions = null;
             if (mValidationConfig != null) {
                 mValidationConfig.cleanDynamicOptionFiles();
+                mValidationConfig = null;
             }
             // Ensure parent postInvocationTearDown is always called.
             super.postInvocationTearDown(exception);
