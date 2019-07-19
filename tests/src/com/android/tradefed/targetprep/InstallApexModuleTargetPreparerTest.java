@@ -353,11 +353,15 @@ public class InstallApexModuleTargetPreparerTest {
         EasyMock.expect(mMockDevice.executeShellV2Command("ls " + STAGING_DATA_DIR)).andReturn(res);
         mMockDevice.reboot();
         EasyMock.expectLastCall();
-        List<String> trainInstallCmd = new ArrayList<>();
-        trainInstallCmd.add("install-multi-package");
-        trainInstallCmd.add(mFakeApk.getAbsolutePath());
-        EasyMock.expect(mMockDevice.executeAdbCommand(trainInstallCmd.toArray(new String[0])))
-                .andReturn("Success")
+        //TODO:add back once new adb is deployed to the lab
+        // List<String> trainInstallCmd = new ArrayList<>();
+        // trainInstallCmd.add("install-multi-package");
+        // trainInstallCmd.add(mFakeApk.getAbsolutePath());
+        // EasyMock.expect(mMockDevice.executeAdbCommand(trainInstallCmd.toArray(new String[0])))
+        //         .andReturn("Success")
+        //         .once();
+        EasyMock.expect(mMockDevice.installPackage((File) EasyMock.anyObject(), EasyMock.eq(true)))
+                .andReturn(null)
                 .once();
         EasyMock.expect(mMockDevice.uninstallPackage(APK_PACKAGE_NAME)).andReturn(null).once();
 
@@ -723,11 +727,15 @@ public class InstallApexModuleTargetPreparerTest {
     }
 
     private void mockSuccessfulInstallPackageAndReboot(File f) throws Exception {
-        List<String> trainInstallCmd = new ArrayList<>();
-        trainInstallCmd.add("install-multi-package");
-        trainInstallCmd.add(f.getAbsolutePath());
-        EasyMock.expect(mMockDevice.executeAdbCommand(trainInstallCmd.toArray(new String[0])))
-                .andReturn("Success")
+        //TODO:add back once new adb is deployed to the lab
+        // List<String> trainInstallCmd = new ArrayList<>();
+        // trainInstallCmd.add("install-multi-package");
+        // trainInstallCmd.add(f.getAbsolutePath());
+        // EasyMock.expect(mMockDevice.executeAdbCommand(trainInstallCmd.toArray(new String[0])))
+        //         .andReturn("Success")
+        //         .once();
+        EasyMock.expect(mMockDevice.installPackage((File) EasyMock.anyObject(), EasyMock.eq(true)))
+                .andReturn(null)
                 .once();
         mMockDevice.reboot();
         EasyMock.expectLastCall().once();
