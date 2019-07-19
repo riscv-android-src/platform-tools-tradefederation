@@ -47,7 +47,6 @@ import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.retry.BaseRetryDecision;
 import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.testtype.retry.RetryStatistics;
-import com.android.tradefed.testtype.retry.RetryStrategy;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -258,12 +257,12 @@ public class GranularRetriableTestWrapperTest {
     }
 
     private GranularRetriableTestWrapper createGranularTestWrapper(
-            IRemoteTest test, int maxRunCount) {
+            IRemoteTest test, int maxRunCount) throws Exception {
         return createGranularTestWrapper(test, maxRunCount, new ArrayList<>());
     }
 
     private GranularRetriableTestWrapper createGranularTestWrapper(
-            IRemoteTest test, int maxRunCount, List<IMetricCollector> collectors) {
+            IRemoteTest test, int maxRunCount, List<IMetricCollector> collectors) throws Exception {
         GranularRetriableTestWrapper granularTestWrapper =
                 new GranularRetriableTestWrapper(test, null, null, null, maxRunCount);
         granularTestWrapper.setModuleId("test module");
@@ -276,7 +275,9 @@ public class GranularRetriableTestWrapperTest {
         IConfiguration mockModuleConfiguration = Mockito.mock(IConfiguration.class);
         granularTestWrapper.setModuleConfig(mockModuleConfiguration);
         IRetryDecision decision = new BaseRetryDecision();
-        decision.init(RetryStrategy.RETRY_ANY_FAILURE, maxRunCount);
+        OptionSetter setter = new OptionSetter(decision);
+        setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
+        setter.setOptionValue("max-testcase-run-count", Integer.toString(maxRunCount));
         granularTestWrapper.setRetryDecision(decision);
         return granularTestWrapper;
     }
@@ -298,7 +299,6 @@ public class GranularRetriableTestWrapperTest {
                 .run(Mockito.any(ITestInvocationListener.class));
 
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(mockTest, 1);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         try {
             granularTestWrapper.run(new CollectingTestListener());
             fail("Should have thrown an exception.");
@@ -350,7 +350,6 @@ public class GranularRetriableTestWrapperTest {
         int maxRunCount = 5;
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
         // Verify the test runs several times but under the same run name
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
@@ -410,7 +409,6 @@ public class GranularRetriableTestWrapperTest {
         int maxRunCount = 5;
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
         // Verify the test runs several times but under the same run name
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
@@ -471,7 +469,6 @@ public class GranularRetriableTestWrapperTest {
         int maxRunCount = 5;
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
         // Verify the test runs several times but under the same run name
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
@@ -558,7 +555,6 @@ public class GranularRetriableTestWrapperTest {
         int maxRunCount = 3;
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
 
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
@@ -598,7 +594,6 @@ public class GranularRetriableTestWrapperTest {
 
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
         // Two runs.
         assertEquals(2, granularTestWrapper.getTestRunResultCollected().size());
@@ -639,7 +634,6 @@ public class GranularRetriableTestWrapperTest {
         FakeTest test = new FakeTest(testCases);
         test.setRunFailure("I failed!");
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
 
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
@@ -675,7 +669,6 @@ public class GranularRetriableTestWrapperTest {
         test.setRunFailure("I failed!");
         test.setClearRunFailure(3);
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 7);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
 
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
@@ -711,9 +704,10 @@ public class GranularRetriableTestWrapperTest {
         FakeTest test = new FakeTest(testCases);
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
         IRetryDecision decision = new BaseRetryDecision();
-        decision.init(RetryStrategy.ITERATIONS, 3);
+        OptionSetter setter = new OptionSetter(decision);
+        setter.setOptionValue("retry-strategy", "ITERATIONS");
+        setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
         granularTestWrapper.setRetryDecision(decision);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.ITERATIONS);
         granularTestWrapper.run(new CollectingTestListener());
 
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
@@ -746,9 +740,10 @@ public class GranularRetriableTestWrapperTest {
         test.addFailedTestCase(fakeTestCase2);
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
         IRetryDecision decision = new BaseRetryDecision();
-        decision.init(RetryStrategy.RERUN_UNTIL_FAILURE, 3);
+        OptionSetter setter = new OptionSetter(decision);
+        setter.setOptionValue("retry-strategy", "RERUN_UNTIL_FAILURE");
+        setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
         granularTestWrapper.setRetryDecision(decision);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RERUN_UNTIL_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
 
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
@@ -797,7 +792,6 @@ public class GranularRetriableTestWrapperTest {
         test.addTestBecomePass(fakeTestCase1, 5);
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, 7, collectors);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         granularTestWrapper.run(new CollectingTestListener());
 
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
@@ -849,16 +843,16 @@ public class GranularRetriableTestWrapperTest {
     @Test
     public void testIntraModuleRun_rebootAtLastIntraModuleRetry() throws Exception {
         IRetryDecision decision = new BaseRetryDecision();
-        decision.init(RetryStrategy.RETRY_ANY_FAILURE, 3);
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("reboot-at-last-retry", "true");
+        setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
+        setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
         FakeTest test = new FakeTest();
         test.setRunFailure("I failed!");
         ITestDevice mMockDevice = EasyMock.createMock(ITestDevice.class);
         test.setDevice(mMockDevice);
         mModuleInvocationContext.addAllocatedDevice("default-device1", mMockDevice);
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         granularTestWrapper.setRetryDecision(decision);
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
         mMockDevice.reboot();
@@ -873,9 +867,10 @@ public class GranularRetriableTestWrapperTest {
     @Test
     public void testIntraModuleRun_rebootMultiDevicesAtLastIntraModuleRetry() throws Exception {
         IRetryDecision decision = new BaseRetryDecision();
-        decision.init(RetryStrategy.RETRY_ANY_FAILURE, 3);
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("reboot-at-last-retry", "true");
+        setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
+        setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
         FakeTest test = new FakeTest();
         test.setRunFailure("I failed!");
         ITestDevice mMockDevice = EasyMock.createMock(ITestDevice.class);
@@ -884,7 +879,6 @@ public class GranularRetriableTestWrapperTest {
         mModuleInvocationContext.addAllocatedDevice("default-device1", mMockDevice);
         mModuleInvocationContext.addAllocatedDevice("default-device2", mMockDevice2);
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
-        granularTestWrapper.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE);
         granularTestWrapper.setRetryDecision(decision);
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
         EasyMock.expect(mMockDevice2.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
