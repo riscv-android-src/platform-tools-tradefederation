@@ -50,6 +50,7 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.proto.TestRecordProtoUtil;
 
@@ -74,7 +75,6 @@ public class RemoteInvocationExecution extends InvocationExecution {
     public static final long REMOTE_PROCESS_RUNNING_WAIT = 15000L;
     public static final long LAUNCH_EXTRA_DEVICE = 10 * 60 * 1000L;
     public static final long NEW_USER_TIMEOUT = 5 * 60 * 1000L;
-    public static final String REMOTE_VM_VARIABLE = "REMOTE_VM_ENV";
 
     public static final String REMOTE_USER_DIR = "/home/{$USER}/";
     public static final String PROTO_RESULT_NAME = "output.pb";
@@ -329,7 +329,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
         StringBuilder tfCmdBuilder =
                 new StringBuilder("TF_GLOBAL_CONFIG=" + globalConfig.getName());
         // Set an env variable to notify that this a remote environment.
-        tfCmdBuilder.append(" " + REMOTE_VM_VARIABLE + "=1");
+        tfCmdBuilder.append(" " + SystemUtil.REMOTE_VM_VARIABLE + "=1");
         // Disable clearcut in the remote
         tfCmdBuilder.append(" " + ClearcutClient.DISABLE_CLEARCUT_KEY + "=1");
         tfCmdBuilder.append(" ENTRY_CLASS=" + CommandRunner.class.getCanonicalName());
