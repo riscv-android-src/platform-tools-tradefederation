@@ -46,6 +46,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IDisableable;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.QuotationAwareTokenizer;
+import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import com.google.common.base.Joiner;
@@ -1310,10 +1311,14 @@ public class Configuration implements IConfiguration {
     /** {@inheritDoc} */
     @Override
     public void resolveDynamicOptions() throws ConfigurationException {
-        ICommandOptions options = getCommandOptions();
-        if (options.getShardCount() != null && options.getShardIndex() == null) {
-            CLog.w("Skipping download due to local sharding detected.");
-            return;
+        // Resolve regardless of sharding if we are in remote environment because we know that's
+        // where the execution will occur.
+        if (!SystemUtil.isRemoteEnvironment()) {
+            ICommandOptions options = getCommandOptions();
+            if (options.getShardCount() != null && options.getShardIndex() == null) {
+                CLog.w("Skipping download due to local sharding detected.");
+                return;
+            }
         }
 
         ArgsOptionParser argsParser = new ArgsOptionParser(getAllConfigurationObjects());
