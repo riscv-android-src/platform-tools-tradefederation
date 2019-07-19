@@ -48,7 +48,7 @@ public class InstantAppHandlerTest {
         mModuleConfig = new Configuration("test", "test");
     }
 
-    private class TestFilterable implements IRemoteTest, ITestAnnotationFilterReceiver {
+    protected static class TestFilterable implements IRemoteTest, ITestAnnotationFilterReceiver {
 
         public Set<String> mReceivedFiltered = new HashSet<>();
 
