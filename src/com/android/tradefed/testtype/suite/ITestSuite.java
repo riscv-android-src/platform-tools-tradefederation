@@ -730,8 +730,7 @@ public abstract class ITestSuite
         // Pass the main invocation logSaver
         module.setLogSaver(mMainConfiguration.getLogSaver());
         // Pass the retry strategy to the module
-        module.setRetryStrategy(
-                getConfiguration().getCommandOptions().getRetryStrategy(), mMergeAttempts);
+        module.setMergeAttemps(mMergeAttempts);
         // Pass the retry decision to be used.
         module.setRetryDecision(mMainConfiguration.getRetryDecision());
 
@@ -740,7 +739,7 @@ public abstract class ITestSuite
                 listener,
                 moduleListeners,
                 failureListener,
-                getConfiguration().getCommandOptions().getMaxRetryCount());
+                getConfiguration().getRetryDecision().getMaxRetryCount());
 
         if (!mSkipAllSystemStatusCheck) {
             runPostModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);

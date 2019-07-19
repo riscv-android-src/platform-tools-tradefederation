@@ -201,6 +201,7 @@ public class CommandOptions implements ICommandOptions {
     private String mHostLogSuffix = null;
 
     // [Options related to auto-retry]
+    @Deprecated
     @Option(
         name = "max-testcase-run-count",
         description =
@@ -209,6 +210,7 @@ public class CommandOptions implements ICommandOptions {
     )
     private int mMaxRunLimit = 1;
 
+    @Deprecated
     @Option(
         name = "retry-strategy",
         description =
@@ -217,6 +219,7 @@ public class CommandOptions implements ICommandOptions {
     )
     private RetryStrategy mRetryStrategy = RetryStrategy.NO_RETRY;
 
+    @Deprecated
     @Option(
         name = "auto-retry",
         description =
@@ -557,29 +560,5 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean shouldReportModuleProgression() {
         return mReportModuleProgression;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public int getMaxRetryCount() {
-        return mMaxRunLimit;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void setMaxRetryCount(int maxRetryCount) {
-        mMaxRunLimit = maxRetryCount;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public RetryStrategy getRetryStrategy() {
-        return mRetryStrategy;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public boolean isAutoRetryEnabled() {
-        return mEnableAutoRetry;
     }
 }
