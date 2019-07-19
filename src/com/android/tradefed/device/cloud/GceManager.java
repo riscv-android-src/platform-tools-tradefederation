@@ -210,8 +210,18 @@ public class GceManager {
 
     /** Build and return the command to launch GCE. Exposed for testing. */
     protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
-        List<String> gceArgs =
-                ArrayUtil.list(getTestDeviceOptions().getAvdDriverBinary().getAbsolutePath());
+        File avdDriverFile = getTestDeviceOptions().getAvdDriverBinary();
+        if (!avdDriverFile.exists()) {
+            throw new RuntimeException(
+                    String.format(
+                            "Could not find the Acloud driver at %s",
+                            avdDriverFile.getAbsolutePath()));
+        }
+        if (!avdDriverFile.canExecute()) {
+            // Set the executable bit if needed
+            FileUtil.chmodGroupRWX(avdDriverFile);
+        }
+        List<String> gceArgs = ArrayUtil.list(avdDriverFile.getAbsolutePath());
         gceArgs.add(
                 TestDeviceOptions.getCreateCommandByInstanceType(
                         getTestDeviceOptions().getInstanceType()));
