@@ -27,13 +27,14 @@ import java.util.List;
  */
 public interface IRetryDecision {
 
-    /**
-     * Initialize the retry decision with parameters necessary.
-     *
-     * @param strategy The retry strategy to be used.
-     * @param maxRetryAttempts The maximum number of retry expected.
-     */
-    public void init(RetryStrategy strategy, int maxRetryAttempts);
+    /** Whether or not to enable auto-retry. */
+    public boolean isAutoRetryEnabled();
+
+    /** The {@link RetryStrategy} used during auto-retry. */
+    public RetryStrategy getRetryStrategy();
+
+    /** The maximum number of attempts during auto-retry. */
+    public int getMaxRetryCount();
 
     /**
      * Decide whether or not retry should be attempted. Also make any necessary changes to the
