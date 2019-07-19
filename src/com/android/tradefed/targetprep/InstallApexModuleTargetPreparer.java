@@ -171,7 +171,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             installTrain(device, buildInfo, testAppFileNames, new String[] {"--staged"});
             return;
         }
-        installTrain(device, buildInfo, testAppFileNames, null);
+        installTrain(device, buildInfo, testAppFileNames, new String[] {});
     }
 
     /**
@@ -185,9 +185,21 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     protected void installTrain(
             ITestDevice device,
             IBuildInfo buildInfo,
-            Collection<String> moduleFilenames,
+            List<String> moduleFilenames,
             final String[] extraArgs)
             throws TargetSetupError, DeviceNotAvailableException {
+        // TODO(b/137883918):remove after new adb is released, which supports installing
+        // single apk/apex using 'install-multi-package'
+        if (moduleFilenames.size() == 1) {
+            String moduleFileName = moduleFilenames.get(0);
+            File module = getLocalPathForFilename(buildInfo, moduleFileName, device);
+            device.installPackage(module, true, extraArgs);
+            if (moduleFileName.endsWith(APK_SUFFIX)) {
+                String packageName = parsePackageName(module, device.getDeviceDescriptor());
+                mApkInstalled.add(packageName);
+            }
+            return;
+        }
 
         List<String> apkPackageNames = new ArrayList<>();
         List<String> trainInstallCmd = new ArrayList<>();
@@ -498,8 +510,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             List<String> testAppFileNames, ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, DeviceNotAvailableException {
         for (String moduleFileName : testAppFileNames) {
-            if (moduleFileName.endsWith(APK_SUFFIX) &&
-                isPersistentApk(moduleFileName, device, buildInfo)) {
+            if (isPersistentApk(moduleFileName, device, buildInfo)) {
                 return true;
             }
         }
@@ -516,6 +527,9 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      */
     protected boolean isPersistentApk(String filename, ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, DeviceNotAvailableException {
+        if (!filename.endsWith(APK_SUFFIX)) {
+            return false;
+        }
         File moduleFile = getLocalPathForFilename(buildInfo, filename, device);
         PackageInfo pkgInfo =
             device.getAppPackageInfo(parsePackageName(moduleFile, device.getDeviceDescriptor()));
