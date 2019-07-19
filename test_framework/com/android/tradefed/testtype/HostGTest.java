@@ -180,6 +180,8 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
                             String.format("Command run timed out after %d ms", maxTestTimeMs));
                 case EXCEPTION:
                     throw new RuntimeException("Command run failed with exception");
+                default:
+                    break;
             }
         } finally {
             resultParser.flush();
