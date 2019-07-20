@@ -1435,6 +1435,7 @@ public class ModuleDefinitionTest {
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("retry-strategy", "ITERATIONS");
         setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
+        decision.setInvocationContext(mModule.getModuleInvocationContext());
         mModule.setRetryDecision(decision);
         mModule.setMergeAttemps(false);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
@@ -1525,6 +1526,7 @@ public class ModuleDefinitionTest {
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
         setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
+        decision.setInvocationContext(mModule.getModuleInvocationContext());
         mModule.setRetryDecision(decision);
         mModule.setMergeAttemps(false);
 
@@ -1541,6 +1543,9 @@ public class ModuleDefinitionTest {
         EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
         mMockCleaner.tearDown(
                 EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
+        EasyMock.expect(mMockDevice.getIDevice())
+                .andReturn(EasyMock.createMock(IDevice.class))
+                .times(3);
         // We expect a total count on the run start so 4, all aggregated under the same run
         for (int attempt = 0; attempt < 3; attempt++) {
             if (attempt == 0) {
