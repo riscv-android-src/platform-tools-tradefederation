@@ -19,10 +19,10 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
-import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 
@@ -67,6 +67,8 @@ public class BaseRetryDecision implements IRetryDecision {
     )
     private boolean mEnableAutoRetry = false;
 
+    private IInvocationContext mContext;
+
     private IRemoteTest mCurrentlyConsideredTest;
     private RetryStatsHelper mStatistics;
 
@@ -86,6 +88,11 @@ public class BaseRetryDecision implements IRetryDecision {
     @Override
     public int getMaxRetryCount() {
         return mMaxRetryAttempts;
+    }
+
+    @Override
+    public void setInvocationContext(IInvocationContext context) {
+        mContext = context;
     }
 
     @Override
@@ -127,7 +134,7 @@ public class BaseRetryDecision implements IRetryDecision {
         boolean shouldRetry = handleRetryFailures(filterableTest, previousResults);
         if (shouldRetry) {
             // In case of retry, go through the recovery routine
-            recoverStateOfDevices(getDevices(test), attemptJustExecuted);
+            recoverStateOfDevices(getDevices(), attemptJustExecuted);
         }
         return shouldRetry;
     }
@@ -138,7 +145,10 @@ public class BaseRetryDecision implements IRetryDecision {
     }
 
     @Override
-    public RetryStatistics getRetryStats() {
+    public RetryStatistics getRetryStatistics() {
+        if (mStatistics == null) {
+            return new RetryStatsHelper().calculateStatistics();
+        }
         return mStatistics.calculateStatistics();
     }
 
@@ -203,14 +213,8 @@ public class BaseRetryDecision implements IRetryDecision {
     }
 
     /** Returns all the non-stub device associated with the {@link IRemoteTest}. */
-    private List<ITestDevice> getDevices(IRemoteTest test) {
-        List<ITestDevice> listDevices = new ArrayList<>();
-        if (test instanceof IDeviceTest) {
-            ITestDevice device = ((IDeviceTest) test).getDevice();
-            if (device != null) {
-                listDevices.add(device);
-            }
-        }
+    private List<ITestDevice> getDevices() {
+        List<ITestDevice> listDevices = new ArrayList<>(mContext.getDevices());
         // Return all the non-stub device (the one we can actually do some recovery against)
         return listDevices
                 .stream()
@@ -221,10 +225,10 @@ public class BaseRetryDecision implements IRetryDecision {
     /** Recovery attempt on the device to get it a better state before next retry. */
     private void recoverStateOfDevices(List<ITestDevice> devices, int lastAttempt)
             throws DeviceNotAvailableException {
-        // TODO: Support multi-devices recovery
         for (ITestDevice device : devices) {
             if (mRebootAtLastRetry && (lastAttempt == (mMaxRetryAttempts - 2))) {
                 device.reboot();
+                continue;
             }
         }
     }

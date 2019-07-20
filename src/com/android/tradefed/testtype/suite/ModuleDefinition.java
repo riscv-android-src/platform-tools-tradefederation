@@ -485,9 +485,11 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
                     mExpectedTests += retriableTest.getExpectedTestsCount();
                     // Get information about retry
-                    RetryStatistics res = retriableTest.getRetryStatistics();
-                    if (res != null) {
-                        mRetryStats.add(res);
+                    if (mRetryDecision != null) {
+                        RetryStatistics res = mRetryDecision.getRetryStatistics();
+                        if (res != null) {
+                            mRetryStats.add(res);
+                        }
                     }
                 }
                 // After the run, if the test failed (even after retry the final result passed) has

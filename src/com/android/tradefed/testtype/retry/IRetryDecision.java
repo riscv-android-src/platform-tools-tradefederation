@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype.retry;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 
@@ -35,6 +36,9 @@ public interface IRetryDecision {
 
     /** The maximum number of attempts during auto-retry. */
     public int getMaxRetryCount();
+
+    /** Set the current invocation context. */
+    public void setInvocationContext(IInvocationContext context);
 
     /**
      * Decide whether or not retry should be attempted. Also make any necessary changes to the
@@ -60,5 +64,5 @@ public interface IRetryDecision {
     public void addLastAttempt(List<TestRunResult> lastResults);
 
     /** Returns the {@link RetryStatistics} representing the retry. */
-    public RetryStatistics getRetryStats();
+    public RetryStatistics getRetryStatistics();
 }
