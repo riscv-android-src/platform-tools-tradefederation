@@ -33,6 +33,7 @@ import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecution;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.invoker.shard.ShardBuildCloner;
@@ -712,6 +713,8 @@ public class TestInvocation implements ITestInvocation {
             long fetchBuildDuration = System.currentTimeMillis() - start;
             context.addInvocationTimingMetric(IInvocationContext.TimingEvent.FETCH_BUILD,
                     fetchBuildDuration);
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.FETCH_BUILD, Long.toString(fetchBuildDuration));
             CLog.d("Fetch build duration: %s", TimeUtil.formatElapsedTime(fetchBuildDuration));
             if (!providerSuccess) {
                 return;
