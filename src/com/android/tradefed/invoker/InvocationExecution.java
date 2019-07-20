@@ -37,6 +37,8 @@ import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.TestInvocation.Stage;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -227,6 +229,8 @@ public class InvocationExecution implements IInvocationExecution {
             // Setup timing metric. It does not include flashing time on boot tests.
             long setupDuration = System.currentTimeMillis() - start;
             context.addInvocationTimingMetric(IInvocationContext.TimingEvent.SETUP, setupDuration);
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.SETUP, Long.toString(setupDuration));
             CLog.d("Setup duration: %s'", TimeUtil.formatElapsedTime(setupDuration));
             // Upload the setup logcat after setup is complete.
             for (String deviceName : context.getDeviceConfigNames()) {
