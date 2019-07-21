@@ -66,6 +66,8 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.StubTest;
+import com.android.tradefed.testtype.retry.BaseRetryDecision;
+import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.MultiMap;
 
@@ -1492,9 +1494,14 @@ public class ITestSuiteTest {
         mTestSuite.setDevice(mMockDevice);
         mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setConfiguration(mStubMainConfiguration);
-        mStubMainConfiguration.getCommandOptions().setMaxRetryCount(maxRunLimit);
         OptionSetter cmdSetter = new OptionSetter(mStubMainConfiguration.getCommandOptions());
         cmdSetter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
+        IRetryDecision decision = new BaseRetryDecision();
+        OptionSetter setter = new OptionSetter(decision);
+        setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
+        setter.setOptionValue("max-testcase-run-count", Integer.toString(maxRunLimit));
+        mStubMainConfiguration.setConfigurationObject(
+                Configuration.RETRY_DECISION_TYPE_NAME, decision);
         mContext = new InvocationContext();
         mTestSuite.setInvocationContext(mContext);
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);

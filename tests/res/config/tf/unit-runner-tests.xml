@@ -13,17 +13,11 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-<configuration description="Runs all the Android instrumentation tests on an existing device">
-    <option name="compress-files" value="false" />
-
-    <logger class="com.android.tradefed.log.FileLogger">
-        <option name="log-level" value="verbose" />
-        <option name="log-level-display" value="debug" />
-    </logger>
-
-    <target_preparer class="com.android.tradefed.targetprep.InstallApkSetup">
-        <!-- Use "apk-path" option to specify which apk to install -->
-    </target_preparer>
-
-    <test class="com.android.tradefed.testtype.InstalledInstrumentationsTest" />
+<configuration description="Executes the TF unit tests">
+    <!-- Use HostTest runner to have JUnit3 and JUnit4 Suite support -->
+    <test class="com.android.tradefed.testtype.HostTest" >
+        <option name="class" value="com.android.loganalysis.UnitTests" />
+        <option name="class" value="com.android.tradefed.UnitTests" />
+        <option name="class" value="com.android.tradefed.prodtests.UnitTests" />
+    </test>
 </configuration>

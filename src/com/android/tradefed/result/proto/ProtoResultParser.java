@@ -65,6 +65,7 @@ public class ProtoResultParser {
     private boolean mQuietParsing = true;
 
     private boolean mInvocationStarted = false;
+    private boolean mInvocationEnded = false;
 
     /** Ctor. */
     public ProtoResultParser(
@@ -163,6 +164,11 @@ public class ProtoResultParser {
         }
     }
 
+    /** Returns whether or not the parsing reached an invocation ended. */
+    public boolean invocationEndedReached() {
+        return mInvocationEnded;
+    }
+
     private void evalChildrenProto(List<ChildReference> children, boolean isInRun) {
         for (ChildReference child : children) {
             TestRecord childProto = child.getInlineTestRecord();
@@ -255,6 +261,7 @@ public class ProtoResultParser {
         }
 
         log("Invocation ended proto");
+        mInvocationEnded = true;
         if (!mReportInvocation) {
             CLog.d("Skipping invocation ended reporting.");
             return;

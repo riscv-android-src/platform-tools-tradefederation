@@ -15,15 +15,22 @@
  */
 package com.android.tradefed.testtype.retry;
 
+import com.android.tradefed.config.Option;
+import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Base implementation of {@link IRetryDecision}. Base implementation only take local signals into
@@ -31,17 +38,60 @@ import java.util.Set;
  */
 public class BaseRetryDecision implements IRetryDecision {
 
-    private RetryStrategy mRetryStrategy;
+    @Option(
+        name = "reboot-at-last-retry",
+        description = "Reboot the device at the last retry attempt."
+    )
+    private boolean mRebootAtLastRetry = false;
+
+    @Option(
+        name = "max-testcase-run-count",
+        description =
+                "If the IRemoteTest can have its testcases run multiple times, "
+                        + "the max number of runs for each testcase."
+    )
+    private int mMaxRetryAttempts = 1;
+
+    @Option(
+        name = "retry-strategy",
+        description =
+                "The retry strategy to be used when re-running some tests with "
+                        + "--max-testcase-run-count"
+    )
+    private RetryStrategy mRetryStrategy = RetryStrategy.NO_RETRY;
+
+    @Option(
+        name = "auto-retry",
+        description =
+                "Whether or not to enable the new auto-retry. This is a feature flag for testing."
+    )
+    private boolean mEnableAutoRetry = false;
+
     private IRemoteTest mCurrentlyConsideredTest;
     private RetryStatsHelper mStatistics;
 
-    /** Constructor for the retry decision, always based on the {@link RetryStrategy}. */
-    public BaseRetryDecision(RetryStrategy strategy) {
-        mRetryStrategy = strategy;
+    /** Constructor for the retry decision */
+    public BaseRetryDecision() {}
+
+    @Override
+    public boolean isAutoRetryEnabled() {
+        return mEnableAutoRetry;
     }
 
     @Override
-    public boolean shouldRetry(IRemoteTest test, List<TestRunResult> previousResults) {
+    public RetryStrategy getRetryStrategy() {
+        return mRetryStrategy;
+    }
+
+    @Override
+    public int getMaxRetryCount() {
+        return mMaxRetryAttempts;
+    }
+
+    @Override
+    public boolean shouldRetry(
+            IRemoteTest test, int attemptJustExecuted, List<TestRunResult> previousResults)
+            throws DeviceNotAvailableException {
         // Keep track of some results for the test in progress for statistics purpose.
         if (test != mCurrentlyConsideredTest) {
             mCurrentlyConsideredTest = test;
@@ -74,7 +124,12 @@ public class BaseRetryDecision implements IRetryDecision {
         // TODO(b/77548917): Right now we only support ITestFilterReceiver. We should expect to
         // support ITestFile*Filter*Receiver in the future.
         ITestFilterReceiver filterableTest = (ITestFilterReceiver) test;
-        return handleRetryFailures(filterableTest, previousResults);
+        boolean shouldRetry = handleRetryFailures(filterableTest, previousResults);
+        if (shouldRetry) {
+            // In case of retry, go through the recovery routine
+            recoverStateOfDevices(getDevices(test), attemptJustExecuted);
+        }
+        return shouldRetry;
     }
 
     @Override
@@ -144,6 +199,33 @@ public class BaseRetryDecision implements IRetryDecision {
         for (TestDescription testCase : testDescriptions) {
             String filter = testCase.toString();
             test.addIncludeFilter(filter);
+        }
+    }
+
+    /** Returns all the non-stub device associated with the {@link IRemoteTest}. */
+    private List<ITestDevice> getDevices(IRemoteTest test) {
+        List<ITestDevice> listDevices = new ArrayList<>();
+        if (test instanceof IDeviceTest) {
+            ITestDevice device = ((IDeviceTest) test).getDevice();
+            if (device != null) {
+                listDevices.add(device);
+            }
+        }
+        // Return all the non-stub device (the one we can actually do some recovery against)
+        return listDevices
+                .stream()
+                .filter(d -> (!(d.getIDevice() instanceof StubDevice)))
+                .collect(Collectors.toList());
+    }
+
+    /** Recovery attempt on the device to get it a better state before next retry. */
+    private void recoverStateOfDevices(List<ITestDevice> devices, int lastAttempt)
+            throws DeviceNotAvailableException {
+        // TODO: Support multi-devices recovery
+        for (ITestDevice device : devices) {
+            if (mRebootAtLastRetry && (lastAttempt == (mMaxRetryAttempts - 2))) {
+                device.reboot();
+            }
         }
     }
 }

@@ -27,10 +27,10 @@ import com.android.tradefed.device.cloud.NestedDeviceStateMonitor;
 import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.device.cloud.VmRemoteDevice;
-import com.android.tradefed.invoker.RemoteInvocationExecution;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.SystemUtil;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -190,10 +190,7 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
      */
     @VisibleForTesting
     protected boolean isRemoteEnvironment() {
-        if ("1".equals(System.getenv(RemoteInvocationExecution.REMOTE_VM_VARIABLE))) {
-            return true;
-        }
-        return false;
+        return SystemUtil.isRemoteEnvironment();
     }
 
     /** Create a {@link CollectingOutputReceiver}. */

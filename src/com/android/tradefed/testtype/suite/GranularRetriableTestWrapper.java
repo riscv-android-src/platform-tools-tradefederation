@@ -19,8 +19,6 @@ package com.android.tradefed.testtype.suite;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
-import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
@@ -33,11 +31,9 @@ import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.testtype.ITestFilterReceiver;
-import com.android.tradefed.testtype.retry.BaseRetryDecision;
 import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.testtype.retry.MergeStrategy;
 import com.android.tradefed.testtype.retry.RetryStatistics;
-import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -70,6 +66,7 @@ import java.util.Map;
  */
 public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector {
 
+    private IRetryDecision mRetryDecision;
     private IRemoteTest mTest;
     private List<IMetricCollector> mRunMetricCollectors;
     private TestFailureListener mFailureListener;
@@ -87,9 +84,6 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
     // Tracking of the metrics
     private RetryStatistics mRetryStats = null;
 
-    private RetryStrategy mRetryStrategy = RetryStrategy.NO_RETRY;
-    private boolean mRebootAtLastRetry = false;
-
     public GranularRetriableTestWrapper(
             IRemoteTest test,
             ITestInvocationListener mainListener,
@@ -101,6 +95,11 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
         mFailureListener = failureListener;
         mModuleLevelListeners = moduleLevelListeners;
         mMaxRunLimit = maxRunLimit;
+    }
+
+    /** Sets the {@link IRetryDecision} to be used. */
+    public void setRetryDecision(IRetryDecision decision) {
+        mRetryDecision = decision;
     }
 
     /**
@@ -161,16 +160,6 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
         mLogSaver = logSaver;
     }
 
-    /** Sets the {@link RetryStrategy} to be used when retrying. */
-    public final void setRetryStrategy(RetryStrategy retryStrategy) {
-        mRetryStrategy = retryStrategy;
-    }
-
-    /** Sets the flag to reboot devices at the last intra-module retry. */
-    public final void setRebootAtLastRetry(boolean rebootAtLastRetry) {
-        mRebootAtLastRetry = rebootAtLastRetry;
-    }
-
     /**
      * Initialize a new {@link ModuleListener} for each test run.
      *
@@ -225,9 +214,14 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             return;
         }
 
+        if (mRetryDecision == null) {
+            CLog.e("RetryDecision is null. Something is misconfigured this shouldn't happen");
+            return;
+        }
+
         // Bail out early if there is no need to retry at all.
-        IRetryDecision retryDecision = new BaseRetryDecision(mRetryStrategy);
-        if (!retryDecision.shouldRetry(mTest, mMainGranularRunListener.getTestRunForAttempts(0))) {
+        if (!mRetryDecision.shouldRetry(
+                mTest, 0, mMainGranularRunListener.getTestRunForAttempts(0))) {
             return;
         }
 
@@ -237,30 +231,21 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             CLog.d("Starting intra-module retry.");
             for (int attemptNumber = 1; attemptNumber < mMaxRunLimit; attemptNumber++) {
                 boolean retry =
-                        retryDecision.shouldRetry(
+                        mRetryDecision.shouldRetry(
                                 mTest,
+                                attemptNumber - 1,
                                 mMainGranularRunListener.getTestRunForAttempts(attemptNumber - 1));
                 if (!retry) {
                     return;
-                }
-                // Reboot device at the last intra-module retry if reboot-at-last-retry is set.
-                if (mRebootAtLastRetry && (attemptNumber == (mMaxRunLimit-1))) {
-                    for (ITestDevice device : mModuleInvocationContext.getDevices()) {
-                        if (!(device.getIDevice() instanceof StubDevice)) {
-                            CLog.i("Rebooting device: %s at the last intra-module retry.",
-                                    device.getSerialNumber());
-                            device.reboot();
-                        }
-                    }
                 }
                 // Run the tests again
                 intraModuleRun(allListeners);
             }
             // Feed the last attempt if we reached here.
-            retryDecision.addLastAttempt(
+            mRetryDecision.addLastAttempt(
                     mMainGranularRunListener.getTestRunForAttempts(mMaxRunLimit - 1));
         } finally {
-            mRetryStats = retryDecision.getRetryStats();
+            mRetryStats = mRetryDecision.getRetryStats();
             // Track how long we spend in retry
             mRetryStats.mRetryTime = System.currentTimeMillis() - startTime;
         }
@@ -315,7 +300,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
 
     /** Get the merged TestRunResults from each {@link IRemoteTest} run. */
     public final List<TestRunResult> getFinalTestRunResults() {
-        MergeStrategy strategy = MergeStrategy.getMergeStrategy(mRetryStrategy);
+        MergeStrategy strategy = MergeStrategy.getMergeStrategy(mRetryDecision.getRetryStrategy());
         mMainGranularRunListener.setMergeStrategy(strategy);
         return mMainGranularRunListener.getMergedTestRunResults();
     }

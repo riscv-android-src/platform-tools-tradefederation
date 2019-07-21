@@ -56,6 +56,7 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
+import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.testtype.retry.ResultAggregator;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
@@ -635,12 +636,11 @@ public class TestInvocation implements ITestInvocation {
         ITestInvocationListener listener = null;
 
         // Auto retry feature
-        if (config.getCommandOptions().isAutoRetryEnabled()
-                && config.getCommandOptions().getMaxRetryCount() > 1) {
+        IRetryDecision decision = config.getRetryDecision();
+        if (decision.isAutoRetryEnabled() && decision.getMaxRetryCount() > 1) {
             CLog.d("Auto-retry enabled, using the ResultAggregator to handle multiple retries.");
             ResultAggregator aggregator =
-                    new ResultAggregator(
-                            allListeners, config.getCommandOptions().getRetryStrategy());
+                    new ResultAggregator(allListeners, decision.getRetryStrategy());
             allListeners = Arrays.asList(aggregator);
         }
 
