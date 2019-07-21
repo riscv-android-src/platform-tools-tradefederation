@@ -25,7 +25,8 @@ public class InvocationMetricLogger {
     /** Some special named key that we will always populate for the invocation. */
     public enum InvocationMetricKey {
         FETCH_BUILD("fetch_build_time_ms"),
-        SETUP("setup_time_ms");
+        SETUP("setup_time_ms"),
+        AUTO_RETRY_TIME("auto_retry_time_ms");
 
         private final String mKeyName;
 
