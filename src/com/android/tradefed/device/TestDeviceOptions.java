@@ -115,6 +115,14 @@ public class TestDeviceOptions {
             "the minimum battery level required to continue the invocation. Scale: 0-100")
     private Integer mCutoffBattery = null;
 
+    @Option(
+        name = "use-content-provider",
+        description =
+                "Allow to disable the use of the content provider at the device level. "
+                        + "This results in falling back to standard adb push/pull."
+    )
+    private boolean mUseContentProvider = true;
+
     /**
      * Check whether adb root should be enabled on boot for this device
      */
@@ -339,5 +347,10 @@ public class TestDeviceOptions {
     /** @return the wifiutil apk path */
     public String getWifiUtilAPKPath() {
         return mWifiUtilAPKPath;
+    }
+
+    /** Returns whether or not the Tradefed content provider can be used to push/pull files. */
+    public boolean shouldUseContentProvider() {
+        return mUseContentProvider;
     }
 }

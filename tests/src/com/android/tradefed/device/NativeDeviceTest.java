@@ -54,6 +54,7 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.time.Clock;
 import java.util.ArrayList;
@@ -310,7 +311,7 @@ public class NativeDeviceTest extends TestCase {
         // Empty list of childen
         EasyMock.replay(fakeEntry);
         try {
-            boolean res = mTestDevice.pullDir("/sdcard/screenshots/", dir);
+            boolean res = mTestDevice.pullDir("/some_device_path/screenshots/", dir);
             assertTrue(res);
             assertTrue(dir.list().length == 0);
         } finally {
@@ -365,12 +366,12 @@ public class NativeDeviceTest extends TestCase {
         children.add(fakeFile);
         EasyMock.expect(fakeFile.isDirectory()).andReturn(false);
         EasyMock.expect(fakeFile.getName()).andReturn("fakeFile");
-        EasyMock.expect(fakeFile.getFullPath()).andReturn("/sdcard/screenshots/fakeFile");
+        EasyMock.expect(fakeFile.getFullPath()).andReturn("/some_device_path/fakeFile");
 
         children.add(fakeDir);
         EasyMock.expect(fakeDir.isDirectory()).andReturn(true);
         EasyMock.expect(fakeDir.getName()).andReturn("fakeDir");
-        EasyMock.expect(fakeDir.getFullPath()).andReturn("/sdcard/screenshots/fakeDir");
+        EasyMock.expect(fakeDir.getFullPath()).andReturn("/some_device_path/fakeDir");
         // #pullDir is being called on dir fakeDir to pull everything recursively.
         Collection<IFileEntry> fakeDirChildren = new ArrayList<>();
         EasyMock.expect(fakeDir.getChildren(false)).andReturn(fakeDirChildren);
@@ -378,7 +379,7 @@ public class NativeDeviceTest extends TestCase {
 
         EasyMock.replay(fakeEntry, fakeFile, fakeDir);
         try {
-            boolean res = mTestDevice.pullDir("/sdcard/screenshots/", dir);
+            boolean res = mTestDevice.pullDir("/some_device_path/", dir);
             assertTrue(res);
             assertEquals(2, dir.list().length);
             assertTrue(Arrays.asList(dir.list()).contains("fakeFile"));
@@ -438,12 +439,12 @@ public class NativeDeviceTest extends TestCase {
         children.add(fakeFile);
         EasyMock.expect(fakeFile.isDirectory()).andReturn(false);
         EasyMock.expect(fakeFile.getName()).andReturn("fakeFile");
-        EasyMock.expect(fakeFile.getFullPath()).andReturn("/sdcard/screenshots/fakeFile");
+        EasyMock.expect(fakeFile.getFullPath()).andReturn("/some_device_path/fakeFile");
 
         children.add(fakeDir);
         EasyMock.expect(fakeDir.isDirectory()).andReturn(true);
         EasyMock.expect(fakeDir.getName()).andReturn("fakeDir");
-        EasyMock.expect(fakeDir.getFullPath()).andReturn("/sdcard/screenshots/fakeDir");
+        EasyMock.expect(fakeDir.getFullPath()).andReturn("/some_device_path/fakeDir");
         // #pullDir is being called on dir fakeDir to pull everything recursively.
         Collection<IFileEntry> fakeDirChildren = new ArrayList<>();
         IFileEntry secondLevelChildren = EasyMock.createMock(IFileEntry.class);
@@ -454,11 +455,11 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.expect(secondLevelChildren.isDirectory()).andReturn(false);
         EasyMock.expect(secondLevelChildren.getName()).andReturn("secondLevelChildren");
         EasyMock.expect(secondLevelChildren.getFullPath())
-                .andReturn("/sdcard/screenshots/fakeDir/secondLevelChildren");
+                .andReturn("/some_device_path/fakeDir/secondLevelChildren");
 
         EasyMock.replay(fakeEntry, fakeFile, fakeDir, secondLevelChildren);
         try {
-            boolean res = mTestDevice.pullDir("/sdcard/screenshots/", dir);
+            boolean res = mTestDevice.pullDir("/some_device_path/", dir);
             // If one of the pull fails, the full command is considered failed.
             assertFalse(res);
             assertEquals(2, dir.list().length);
@@ -1181,34 +1182,44 @@ public class NativeDeviceTest extends TestCase {
      * Unit test for {@link NativeDevice#getBugreportz()}.
      */
     public void testGetBugreportz() throws IOException {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public void executeShellCommand(
-                    String command, IShellOutputReceiver receiver,
-                    long maxTimeToOutputShellResponse, TimeUnit timeUnit, int retryAttempts)
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public void executeShellCommand(
+                            String command,
+                            IShellOutputReceiver receiver,
+                            long maxTimeToOutputShellResponse,
+                            TimeUnit timeUnit,
+                            int retryAttempts)
                             throws DeviceNotAvailableException {
-                String fakeRep = "OK:/data/0/com.android.shell/bugreports/bugreport1970-10-27.zip";
-                receiver.addOutput(fakeRep.getBytes(), 0, fakeRep.getBytes().length);
-            }
-            @Override
-            public boolean doesFileExist(String destPath) throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public boolean pullFile(String remoteFilePath, File localFile)
-                    throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                assertEquals("rm /data/0/com.android.shell/bugreports/*", command);
-                return null;
-            }
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return 24;
-            }
-        };
+                        String fakeRep =
+                                "OK:/data/0/com.android.shell/bugreports/bugreport1970-10-27.zip";
+                        receiver.addOutput(fakeRep.getBytes(), 0, fakeRep.getBytes().length);
+                    }
+
+                    @Override
+                    public boolean doesFileExist(String destPath)
+                            throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean pullFile(String remoteFilePath, File localFile)
+                            throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public void deleteFile(String deviceFilePath)
+                            throws DeviceNotAvailableException {
+                        assertEquals("/data/0/com.android.shell/bugreports/*", deviceFilePath);
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 24;
+                    }
+                };
         FileInputStreamSource f = null;
         try {
             f = (FileInputStreamSource) mTestDevice.getBugreportz();
@@ -2316,11 +2327,13 @@ public class NativeDeviceTest extends TestCase {
 
     /** Test when {@link NativeDevice#executeShellV2Command(String)} returns a success. */
     public void testExecuteShellV2Command() throws Exception {
+        OutputStream stdout = null, stderr = null;
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.SUCCESS);
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
-                                100, "adb", "-s", "serial", "shell", "some", "command"))
+                                100, stdout, stderr, "adb", "-s", "serial", "shell", "some",
+                                "command"))
                 .andReturn(res);
         EasyMock.replay(mMockRunUtil, mMockIDevice);
         assertNotNull(mTestDevice.executeShellV2Command("some command"));
@@ -2332,12 +2345,14 @@ public class NativeDeviceTest extends TestCase {
      * repeat because of a timeout.
      */
     public void testExecuteShellV2Command_timeout() throws Exception {
+        OutputStream stdout = null, stderr = null;
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.TIMED_OUT);
         res.setStderr("timed out");
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
-                                200L, "adb", "-s", "serial", "shell", "some", "command"))
+                                200L, stdout, stderr, "adb", "-s", "serial", "shell", "some",
+                                "command"))
                 .andReturn(res)
                 .times(2);
         EasyMock.replay(mMockRunUtil, mMockIDevice);
@@ -2355,12 +2370,14 @@ public class NativeDeviceTest extends TestCase {
      * output.
      */
     public void testExecuteShellV2Command_fail() throws Exception {
+        OutputStream stdout = null, stderr = null;
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.FAILED);
         res.setStderr("timed out");
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
-                                200L, "adb", "-s", "serial", "shell", "some", "command"))
+                                200L, stdout, stderr, "adb", "-s", "serial", "shell", "some",
+                                "command"))
                 .andReturn(res)
                 .times(1);
         EasyMock.replay(mMockRunUtil, mMockIDevice);

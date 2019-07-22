@@ -29,6 +29,7 @@ import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice.MountPointInfo;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.device.contentprovider.ContentProviderHandler;
 import com.android.tradefed.host.HostOptions;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -1169,7 +1170,7 @@ public class TestDeviceTest extends TestCase {
      */
     private void setEncryptedUnsupportedExpectations() throws Exception {
         setEnableAdbRootExpectations();
-        injectShellResponse("vdc cryptfs enablecrypto", "\r\n");
+        injectSystemProperty("ro.crypto.state", "unsupported");
     }
 
     /**
@@ -1177,9 +1178,7 @@ public class TestDeviceTest extends TestCase {
      */
     private void setEncryptedSupported() throws Exception {
         setEnableAdbRootExpectations();
-        injectShellResponse("vdc cryptfs enablecrypto",
-                "500 29805 Usage: cryptfs enablecrypto <wipe|inplace> "
-                + "default|password|pin|pattern [passwd] [noui]\r\n");
+        injectSystemProperty("ro.crypto.state", "encrypted");
     }
 
     /**
@@ -2652,8 +2651,12 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     public String executeShellCommand(String command)
                             throws DeviceNotAvailableException {
-                        test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
-                        test.start();
+                        if (!started) {
+                            started = true;
+                            test.setDaemon(true);
+                            test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
+                            test.start();
+                        }
                         return "";
                     }
 
@@ -2677,6 +2680,7 @@ public class TestDeviceTest extends TestCase {
                         return 100;
                     }
 
+                    boolean started = false;
                     Thread test =
                             new Thread(
                                     new Runnable() {
@@ -3632,9 +3636,7 @@ public class TestDeviceTest extends TestCase {
                         return true;
                     }
                 };
-        injectShellResponse(
-                "vdc cryptfs enablecrypto",
-                "500 8674 Usage with ext4crypt: cryptfs enablecrypto inplace default noui\r\n");
+        injectSystemProperty("ro.crypto.state", "encrypted");
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
         assertTrue(mTestDevice.isEncryptionSupported());
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
@@ -3654,7 +3656,7 @@ public class TestDeviceTest extends TestCase {
                         return true;
                     }
                 };
-        injectShellResponse("vdc cryptfs enablecrypto", "500 8674 Command not recognized\r\n");
+        injectSystemProperty("ro.crypto.state", "unsupported");
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
         assertFalse(mTestDevice.isEncryptionSupported());
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
@@ -3672,7 +3674,8 @@ public class TestDeviceTest extends TestCase {
         injectShellResponse("pidof system_server", "929");
         injectShellResponse("am dumpheap 929 /data/dump.hprof", "");
         injectShellResponse("ls \"/data/dump.hprof\"", "/data/dump.hprof");
-        injectShellResponse("rm /data/dump.hprof", "");
+        injectShellResponse("rm -rf \"/data/dump.hprof\"", "");
+
         EasyMock.replay(mMockIDevice, mMockRunUtil);
         File res = mTestDevice.dumpHeap("system_server", "/data/dump.hprof");
         assertNotNull(res);
@@ -3756,6 +3759,11 @@ public class TestDeviceTest extends TestCase {
                             throws DeviceNotAvailableException {
                         return mMockWifi;
                     }
+
+                    @Override
+                    ContentProviderHandler getContentProvider() throws DeviceNotAvailableException {
+                        return null;
+                    }
                 };
         mMockIDevice.executeShellCommand(
                 EasyMock.eq("dumpsys package com.android.tradefed.utils.wifi"),
@@ -3769,5 +3777,76 @@ public class TestDeviceTest extends TestCase {
         mTestDevice.getIpAddress();
         mTestDevice.postInvocationTearDown();
         verifyMocks();
+    }
+
+    // FIXME: Delete this, not necessary
+    // <<<<<<< HEAD
+    // =======
+    //
+    //     /** Test that displays can be collected. */
+    //     public void testListDisplayId() throws Exception {
+    //         OutputStream stdout = null, stderr = null;
+    //         CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+    //         res.setStdout("Display 0 color modes:\nDisplay 5 color modes:\n");
+    //         EasyMock.expect(
+    //                         mMockRunUtil.runTimedCmd(
+    //                                 100L,
+    //                                 stdout,
+    //                                 stderr,
+    //                                 "adb",
+    //                                 "-s",
+    //                                 "serial",
+    //                                 "shell",
+    //                                 "dumpsys",
+    //                                 "SurfaceFlinger",
+    //                                 "|",
+    //                                 "grep",
+    //                                 "'color",
+    //                                 "modes:'"))
+    //                 .andReturn(res);
+    //         replayMocks();
+    //         Set<Integer> displays = mTestDevice.listDisplayIds();
+    //         assertEquals(2, displays.size());
+    //         assertTrue(displays.contains(0));
+    //         assertTrue(displays.contains(5));
+    //         verifyMocks();
+    //     }
+    // >>>>>>> f39a78ced... Hook up pullFile to use content provider.
+
+    /** Test {@link TestDevice#doesFileExist(String)}. */
+    public void testDoesFileExists() throws Exception {
+        injectShellResponse("ls \"/data/local/tmp/file\"", "file");
+        EasyMock.replay(mMockIDevice);
+        assertTrue(mTestDevice.doesFileExist("/data/local/tmp/file"));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test {@link TestDevice#doesFileExist(String)} when the file does not exists. */
+    public void testDoesFileExists_notExists() throws Exception {
+        injectShellResponse(
+                "ls \"/data/local/tmp/file\"",
+                "ls: cannot access 'file': No such file or directory\n");
+        EasyMock.replay(mMockIDevice);
+        assertFalse(mTestDevice.doesFileExist("/data/local/tmp/file"));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /**
+     * Test {@link TestDevice#doesFileExist(String)} when the file exists on an sdcard from another
+     * user.
+     */
+    public void testDoesFileExists_sdcard() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public int getCurrentUser()
+                            throws DeviceNotAvailableException, DeviceRuntimeException {
+                        return 10;
+                    }
+                };
+        injectShellResponse("ls \"/storage/emulated/10/file\"", "file");
+        EasyMock.replay(mMockIDevice);
+        assertTrue(mTestDevice.doesFileExist("/sdcard/file"));
+        EasyMock.verify(mMockIDevice);
     }
 }

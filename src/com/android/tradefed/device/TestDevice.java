@@ -763,6 +763,17 @@ public class TestDevice extends NativeDevice {
         return packages;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public boolean doesFileExist(String deviceFilePath) throws DeviceNotAvailableException {
+        if (deviceFilePath.startsWith(SD_CARD)) {
+            deviceFilePath =
+                    deviceFilePath.replaceFirst(
+                            SD_CARD, String.format("/storage/emulated/%s/", getCurrentUser()));
+        }
+        return super.doesFileExist(deviceFilePath);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -1089,9 +1100,9 @@ public class TestDevice extends NativeDevice {
                 // disable keyguard if option is true
                 prePostBootSetup();
                 return true;
-            } else {
-                RunUtil.getDefault().sleep(getCheckNewUserSleep());
             }
+            RunUtil.getDefault().sleep(getCheckNewUserSleep());
+            executeShellCommand(String.format("am switch-user %d", userId));
         }
         CLog.e("User did not switch in the given %d timeout", timeout);
         return false;
@@ -1387,7 +1398,7 @@ public class TestDevice extends NativeDevice {
         }
         File dump = dumpAndPullHeap(pid, devicePath);
         // Clean the device.
-        executeShellCommand(String.format("rm %s", devicePath));
+        deleteFile(devicePath);
         return dump;
     }
 

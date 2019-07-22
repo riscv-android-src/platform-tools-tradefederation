@@ -203,10 +203,12 @@ public class AndroidJUnitTestTest extends TestCase {
                 EasyMock.<File>anyObject(), EasyMock.<String>anyObject())).andReturn(Boolean.TRUE);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
                 .andReturn("")
-                .times(2);
+                .times(1);
+        mMockTestDevice.deleteFile("/data/local/tmp/ajur");
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFile = FileUtil.createTempFile("testFile", ".txt");
+        FileUtil.writeToFile(TEST1.toString(), tmpFile);
         try {
             mAndroidJUnitTest.setIncludeTestFile(tmpFile);
             mAndroidJUnitTest.run(mMockListener);
@@ -228,7 +230,8 @@ public class AndroidJUnitTestTest extends TestCase {
                 EasyMock.<File>anyObject(), EasyMock.<String>anyObject())).andReturn(Boolean.TRUE);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
                 .andReturn("")
-                .times(2);
+                .times(1);
+        mMockTestDevice.deleteFile("/data/local/tmp/ajur");
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFile = FileUtil.createTempFile("notTestFile", ".txt");
@@ -257,11 +260,14 @@ public class AndroidJUnitTestTest extends TestCase {
                 EasyMock.<String>anyObject())).andReturn(Boolean.TRUE).times(2);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
                 .andReturn("")
-                .times(4);
+                .times(2);
+        mMockTestDevice.deleteFile("/data/local/tmp/ajur");
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
+        FileUtil.writeToFile(TEST1.toString(), tmpFileInclude);
         File tmpFileExclude = FileUtil.createTempFile("excludeFile", ".txt");
+        FileUtil.writeToFile(TEST2.toString(), tmpFileExclude);
         try {
             mAndroidJUnitTest.addIncludeFilter(TEST1.getClassName());
             mAndroidJUnitTest.addExcludeFilter(TEST2.toString());
@@ -325,11 +331,14 @@ public class AndroidJUnitTestTest extends TestCase {
                 .times(2);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
                 .andReturn("")
-                .times(4);
+                .times(2);
+        mMockTestDevice.deleteFile("/data/local/tmp/ajur");
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
+        FileUtil.writeToFile(TEST1.toString(), tmpFileInclude);
         File tmpFileExclude = FileUtil.createTempFile("excludeFile", ".txt");
+        FileUtil.writeToFile(TEST2.toString(), tmpFileExclude);
         try {
             OptionSetter setter = new OptionSetter(mAndroidJUnitTest);
             setter.setOptionValue("test-file-include-filter", tmpFileInclude.getAbsolutePath());
