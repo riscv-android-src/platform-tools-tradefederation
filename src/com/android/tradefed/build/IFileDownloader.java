@@ -46,6 +46,24 @@ public interface IFileDownloader {
     public void downloadFile(String relativeRemotePath, File destFile) throws BuildRetrievalError;
 
     /**
+     * Alternate form of {@link #downloadFile(String, File)}, that allows caller to download a
+     * section of the file and save to a specific destination file.
+     *
+     * @param relativeRemotePath the remote path to the file to download, relative to an
+     *     implementation-specific root.
+     * @param destFile the file to place the downloaded contents into. Should not exist.
+     * @param startOffset the start offset in the remote file.
+     * @param size the number of bytes to download from the remote file. Set it to a negative value
+     *     to download the whole file.
+     * @throws BuildRetrievalError if file could not be downloaded
+     */
+    public default void downloadFile(
+            String remoteFilePath, File destFile, long startOffset, long size)
+            throws BuildRetrievalError {
+        throw new UnsupportedOperationException("Partial downloading is not implemented.");
+    }
+
+    /**
      * Check local file's freshness. If local file is the same as remote file, then it's fresh. If
      * not, local file is stale. This is mainly used for cache. The default implementation will
      * always return true, so if the file is immutable it will never need to check freshness.
