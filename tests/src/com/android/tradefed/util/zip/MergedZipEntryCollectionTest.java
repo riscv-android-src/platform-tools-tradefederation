@@ -46,7 +46,7 @@ public class MergedZipEntryCollectionTest {
         startOffset += info.getCompressedSize() + MergedZipEntryCollection.HEADER_SIZE;
 
         List<MergedZipEntryCollection> collections =
-                MergedZipEntryCollection.CreateCollections(entries);
+                MergedZipEntryCollection.createCollections(entries);
         assertEquals(1, collections.size());
         assertEquals(2, collections.get(0).getZipEntries().size());
         assertEquals(10, collections.get(0).getStartOffset());
@@ -69,7 +69,7 @@ public class MergedZipEntryCollectionTest {
         startOffset += info.getCompressedSize() + MergedZipEntryCollection.HEADER_SIZE;
 
         List<MergedZipEntryCollection> collections =
-                MergedZipEntryCollection.CreateCollections(entries);
+                MergedZipEntryCollection.createCollections(entries);
         assertEquals(2, collections.size());
         assertEquals(1, collections.get(0).getZipEntries().size());
         assertEquals(10, collections.get(0).getStartOffset());
@@ -97,7 +97,7 @@ public class MergedZipEntryCollectionTest {
         startOffset += info.getCompressedSize() + MergedZipEntryCollection.HEADER_SIZE;
 
         List<MergedZipEntryCollection> collections =
-                MergedZipEntryCollection.CreateCollections(entries);
+                MergedZipEntryCollection.createCollections(entries);
         assertEquals(1, collections.size());
         assertEquals(11, collections.get(0).getZipEntries().size());
         assertEquals(10, collections.get(0).getStartOffset());
@@ -123,7 +123,7 @@ public class MergedZipEntryCollectionTest {
         startOffset += info.getCompressedSize() + MergedZipEntryCollection.HEADER_SIZE;
 
         List<MergedZipEntryCollection> collections =
-                MergedZipEntryCollection.CreateCollections(entries);
+                MergedZipEntryCollection.createCollections(entries);
         assertEquals(2, collections.size());
         assertEquals(10, collections.get(0).getZipEntries().size());
         assertEquals(10, collections.get(0).getStartOffset());
