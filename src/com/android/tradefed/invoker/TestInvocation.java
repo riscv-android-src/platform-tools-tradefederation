@@ -638,6 +638,7 @@ public class TestInvocation implements ITestInvocation {
 
         // Auto retry feature
         IRetryDecision decision = config.getRetryDecision();
+        decision.setInvocationContext(context);
         if (decision.isAutoRetryEnabled() && decision.getMaxRetryCount() > 1) {
             CLog.d("Auto-retry enabled, using the ResultAggregator to handle multiple retries.");
             ResultAggregator aggregator =
