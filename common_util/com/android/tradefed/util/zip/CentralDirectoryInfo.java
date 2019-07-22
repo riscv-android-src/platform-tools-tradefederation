@@ -220,4 +220,41 @@ public final class CentralDirectoryInfo {
         mExtraFieldLength = ByteArrayUtil.getInt(data, startOffset + 30, 2);
         mFileCommentLength = ByteArrayUtil.getInt(data, startOffset + 32, 2);
     }
+
+    @Override
+    public boolean equals(Object o) {
+        return this.toString().equals(o.toString());
+    }
+
+    @Override
+    public int hashCode() {
+        return this.toString().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return String.format(
+                "Compression Method: %d\n"
+                        + "Crc: %d\n"
+                        + "Compressed Size: %d\n"
+                        + "Uncompressed Size: %d\n"
+                        + "Local Header Offset: %d\n"
+                        + "Internal File Attributes: %d\n"
+                        + "External File Attributes: %d\n"
+                        + "File Name: %s\n"
+                        + "File Name Length: %d\n"
+                        + "Extra Field Length: %d\n"
+                        + "File Comment Length: %d",
+                mCompressionMethod,
+                mCrc,
+                mCompressedSize,
+                mUncompressedSize,
+                mLocalHeaderOffset,
+                mInternalFileAttributes,
+                mExternalFileAttributes,
+                mFileName,
+                mFileNameLength,
+                mExtraFieldLength,
+                mFileCommentLength);
+    }
 }
