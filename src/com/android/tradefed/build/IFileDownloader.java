@@ -91,7 +91,7 @@ public interface IFileDownloader {
      * @param excludeFilters a list of filters to skip downloading matching files.
      * @throws BuildRetrievalError if files could not be downloaded.
      */
-    public default void downloadPartialFiles(
+    public default void downloadZippedFiles(
             File destDir,
             String remoteFilePath,
             List<String> includeFilters,
