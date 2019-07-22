@@ -25,18 +25,17 @@ import com.android.tradefed.device.cloud.CommonLogRemoteFileUtil.KnownLogFileEnt
 import com.android.tradefed.invoker.RemoteInvocationExecution;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
-import com.android.tradefed.util.FileUtil;
 
 import com.google.common.base.Joiner;
 
 import java.io.File;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -182,15 +181,23 @@ public class NestedRemoteDevice extends TestDevice {
             CLog.e("%s doesn't exists, skip logging it.", launcherLog.getAbsolutePath());
             return;
         }
-        try {
-            // Attempt to print the log
-            CLog.e("Launcher.log content: %s", FileUtil.readStringFromFile(launcherLog));
-        } catch (IOException e) {
-            // Ignore
-            CLog.e(e);
+        // TF runs as the primary user and may get a permission denied to read the launcher.log of
+        // other users. So use the shell to cat the file content.
+        String readLauncherLog =
+                String.format(
+                        "sudo runuser -l %s -c 'cat %s'", username, launcherLog.getAbsolutePath());
+        CommandResult readLauncherLogRes =
+                getRunUtil().runTimedCmd(60000L, readLauncherLog.split(" "));
+        if (!CommandStatus.SUCCESS.equals(readLauncherLogRes.getStatus())) {
+            CLog.e(
+                    "Failed to read Launcher.log content due to: %s",
+                    readLauncherLogRes.getStderr());
+            return;
         }
-        try (InputStreamSource source = new FileInputStreamSource(launcherLog)) {
+        String content = readLauncherLogRes.getStdout();
+        try (InputStreamSource source = new ByteArrayInputStreamSource(content.getBytes())) {
             logger.testLog(logName, LogDataType.TEXT, source);
         }
+        CLog.d("See %s for the launcher.log that failed to start.", logName);
     }
 }
