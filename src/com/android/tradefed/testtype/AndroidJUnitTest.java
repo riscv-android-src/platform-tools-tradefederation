@@ -240,16 +240,21 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
         if (getDevice() == null) {
             throw new IllegalArgumentException("Device has not been set");
         }
+        boolean pushedFile = false;
         // if mIncludeTestFile is set, perform filtering with this file
-        if (mIncludeTestFile != null) {
+        if (mIncludeTestFile != null && mIncludeTestFile.length() > 0) {
             mDeviceIncludeFile = mTestFilterDir.replaceAll("/$", "") + "/" + INCLUDE_FILE;
             pushTestFile(mIncludeTestFile, mDeviceIncludeFile, listener);
+            pushedFile = true;
+            // If an explicit include file filter is provided, do not use the package
+            setTestPackageName(null);
         }
 
         // if mExcludeTestFile is set, perform filtering with this file
         if (mExcludeTestFile != null) {
             mDeviceExcludeFile = mTestFilterDir.replaceAll("/$", "") + "/" + EXCLUDE_FILE;
             pushTestFile(mExcludeTestFile, mDeviceExcludeFile, listener);
+            pushedFile = true;
         }
         if (mTotalShards > 0 && !isShardable() && mShardIndex != 0) {
             // If not shardable, only first shard can run.
@@ -257,11 +262,9 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
             return;
         }
         super.run(listener);
-        if (mIncludeTestFile != null) {
-            removeTestFile(mDeviceIncludeFile);
-        }
-        if (mExcludeTestFile != null) {
-            removeTestFile(mDeviceExcludeFile);
+        if (pushedFile) {
+            // Remove the directory where the files where pushed
+            removeTestFilterDir();
         }
     }
 
@@ -354,6 +357,7 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
         }
         ITestDevice device = getDevice();
         try {
+            CLog.d("Attempting to push filters to %s", destination);
             if (!device.pushFile(testFile, destination)) {
                 String message =
                         String.format(
@@ -370,9 +374,8 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
         }
     }
 
-    private void removeTestFile(String deviceTestFile) throws DeviceNotAvailableException {
-        ITestDevice device = getDevice();
-        device.executeShellCommand(String.format("rm %s", deviceTestFile));
+    private void removeTestFilterDir() throws DeviceNotAvailableException {
+        getDevice().deleteFile(mTestFilterDir);
     }
 
     private void reportEarlyFailure(ITestInvocationListener listener, String errorMessage) {
