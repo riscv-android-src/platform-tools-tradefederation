@@ -344,6 +344,7 @@ import com.android.tradefed.util.net.HttpMultipartPostTest;
 import com.android.tradefed.util.net.XmlRpcHelperTest;
 import com.android.tradefed.util.proto.TestRecordProtoUtilTest;
 import com.android.tradefed.util.proto.TfMetricProtoUtilTest;
+import com.android.tradefed.util.RemoteZipTest;
 import com.android.tradefed.util.sl4a.Sl4aClientTest;
 import com.android.tradefed.util.sl4a.Sl4aEventDispatcherTest;
 import com.android.tradefed.util.statsd.ConfigUtilTest;
@@ -756,6 +757,7 @@ import org.junit.runners.Suite.SuiteClasses;
     PsParserTest.class,
     QuotationAwareTokenizerTest.class,
     RegexTrieTest.class,
+    RemoteZipTest.class,
     RunUtilTest.class,
     SerializationUtilTest.class,
     ShellOutputReceiverStreamTest.class,
