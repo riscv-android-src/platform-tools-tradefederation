@@ -56,7 +56,8 @@ public class DisableSELinuxTargetPreparer extends BaseTargetPreparer implements 
         result = device.executeShellV2Command("setenforce 0");
         if (result.getStatus() != CommandStatus.SUCCESS) {
             throw new TargetSetupError(
-                    "Disabling SELinux failed with status: " + result.getStatus());
+                    "Disabling SELinux failed with status: " + result.getStatus(),
+                    device.getDeviceDescriptor());
         }
         if (!mWasRoot) {
             device.disableAdbRoot();
@@ -73,7 +74,7 @@ public class DisableSELinuxTargetPreparer extends BaseTargetPreparer implements 
             device.enableAdbRoot();
         }
         CLog.d("Enabling SELinux.");
-        CommandResult result = device.executeShellV2Command("setenforce 1");
+        device.executeShellV2Command("setenforce 1");
         if (!mWasRoot) {
             device.disableAdbRoot();
         }
