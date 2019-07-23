@@ -23,6 +23,8 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.BinaryState;
 import com.android.tradefed.util.MultiMap;
@@ -889,14 +891,19 @@ public class DeviceSetup extends BaseTargetPreparer implements ITargetCleaner {
         }
 
         if (mWifiSsid != null && device.connectToWifiNetwork(mWifiSsid, mWifiPsk)) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.WIFI_AP_NAME, mWifiSsid);
             return;
         }
         for (Map.Entry<String, String> ssidToPsk : mWifiSsidToPsk.entrySet()) {
             String psk = "".equals(ssidToPsk.getValue()) ? null : ssidToPsk.getValue();
             if (device.connectToWifiNetwork(ssidToPsk.getKey(), psk)) {
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.WIFI_AP_NAME, ssidToPsk.getKey());
                 return;
             }
         }
+
         // Error message does not acknowledge mWifiSsidToPsk for parity with existing monitoring.
         if (mWifiSsid != null || !mWifiSsidToPsk.isEmpty()) {
             throw new TargetSetupError(
