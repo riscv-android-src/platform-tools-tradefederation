@@ -168,3 +168,8 @@ VTS_TF_MODULE = 'vts-tradefed'
 
 # ATest TF
 ATEST_TF_MODULE = 'atest-tradefed'
+
+# Build environment variable for each build on ATest
+# With SOONG_COLLECT_JAVA_DEPS enabled, out/soong/module_bp_java_deps.json will
+# be generated when make.
+ATEST_BUILD_ENV = {'SOONG_COLLECT_JAVA_DEPS':'true'}
