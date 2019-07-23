@@ -494,7 +494,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 }
                 // After the run, if the test failed (even after retry the final result passed) has
                 // failed, capture a bugreport.
-                if (retriableTest.getResultListener().hasFailed()) {
+                if (retriableTest.getResultListener().hasLastAttemptFailed()) {
                     captureBugreport(listener, getId());
                 }
             }
