@@ -32,6 +32,8 @@ import tempfile
 import time
 import platform
 
+from multiprocessing import Process
+
 import atest_arg_parser
 import atest_error
 import atest_execution_info
@@ -48,6 +50,7 @@ from metrics import metrics
 from metrics import metrics_base
 from metrics import metrics_utils
 from test_runners import regression_test_runner
+from tools import atest_tools
 
 EXPECTED_VARS = frozenset([
     constants.ANDROID_BUILD_TOP,
@@ -64,6 +67,12 @@ RESULT_HEADER_FMT = '\nResults from %(test_type)s:'
 RUN_HEADER_FMT = '\nRunning %(test_count)d %(test_type)s.'
 TEST_COUNT = 'test_count'
 TEST_TYPE = 'test_type'
+
+# Tasks that must run in the build time but unable to build by soong.
+# (e.g subprocesses that invoke host commands.)
+EXTRA_TASKS = {
+    'index-targets': atest_tools.index_targets
+}
 
 
 def _parse_args(argv):
@@ -579,11 +588,19 @@ def main(argv, results_dir):
     # args.steps will be None if none of -bit set, else list of params set.
     steps = args.steps if args.steps else constants.ALL_STEPS
     if build_targets and constants.BUILD_STEP in steps:
+        if constants.TEST_STEP in steps:
+            # Run extra tasks with building deps concurrently.
+            # When only "-b" is given(without -t), will not index targets.
+            for task in EXTRA_TASKS.values():
+                proc = Process(target=task)
+                # Daemonlise proc so it terminates with the main process.
+                proc.daemon = True
+                proc.start()
         # Add module-info.json target to the list of build targets to keep the
         # file up to date.
         build_targets.add(mod_info.module_info_target)
         build_start = time.time()
-        success = atest_utils.build(build_targets, args.verbose,
+        success = atest_utils.build(build_targets, verbose=args.verbose,
                                     env_vars=constants.ATEST_BUILD_ENV)
         metrics.BuildFinishEvent(
             duration=metrics_utils.convert_duration(time.time() - build_start),
