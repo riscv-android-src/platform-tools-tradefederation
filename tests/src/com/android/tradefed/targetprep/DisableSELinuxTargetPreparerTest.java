@@ -122,6 +122,7 @@ public class DisableSELinuxTargetPreparerTest {
         CommandResult result = new CommandResult();
         result.setStdout(ENFORCED);
         result.setStatus(CommandStatus.FAILED);
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null);
         EasyMock.expect(mMockDevice.executeShellV2Command(GETENFORCE)).andReturn(result).once();
         EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(false).once();
         EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(true).once();
