@@ -53,7 +53,7 @@ public class RemoteFileUtil {
         try {
             localFile =
                     FileUtil.createTempFile(
-                            FileUtil.getBaseName(fileName), FileUtil.getExtension(fileName));
+                            FileUtil.getBaseName(fileName) + "_", FileUtil.getExtension(fileName));
             if (fetchRemoteFile(
                     remoteInstance, options, runUtil, timeout, remoteFilePath, localFile)) {
                 return localFile;
