@@ -22,10 +22,12 @@ import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.clearcut.ClearcutClient;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.CommandRunner;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.OptionCopier;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.TestDeviceOptions;
@@ -582,14 +584,18 @@ public class RemoteInvocationExecution extends InvocationExecution {
      */
     @VisibleForTesting
     File createRemoteConfig(IConfiguration config, ITestLogger logger, String resultDirPath)
-            throws IOException {
+            throws IOException, ConfigurationException {
         // Setup the remote reporting to a proto file
         List<ITestInvocationListener> reporters = new ArrayList<>();
         FileProtoResultReporter protoReporter = new FileProtoResultReporter();
+        OptionSetter protoResSetter = new OptionSetter(protoReporter);
         if (config.getCommandOptions().shouldReportModuleProgression()) {
-            protoReporter.setPeriodicWriting(true);
+            protoResSetter.setOptionValue(
+                    FileProtoResultReporter.PERIODIC_PROTO_WRITING_OPTION, "true");
         }
-        protoReporter.setFileOutput(new File(resultDirPath + PROTO_RESULT_NAME));
+        protoResSetter.setOptionValue(
+                FileProtoResultReporter.PROTO_OUTPUT_FILE,
+                new File(resultDirPath + PROTO_RESULT_NAME).getPath());
         reporters.add(protoReporter);
 
         config.setTestInvocationListeners(reporters);

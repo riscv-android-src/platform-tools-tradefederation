@@ -27,14 +27,18 @@ import java.io.IOException;
 /** Proto reporter that dumps the {@link TestRecord} into a file. */
 public class FileProtoResultReporter extends ProtoResultReporter {
 
+    public static final String PROTO_OUTPUT_FILE = "proto-output-file";
+
     @Option(
-        name = "proto-output-file",
+        name = PROTO_OUTPUT_FILE,
         description = "File where the proto output will be saved. If unset, reporter will be inop."
     )
     private File mOutputFile = null;
 
+    public static final String PERIODIC_PROTO_WRITING_OPTION = "periodic-proto-writing";
+
     @Option(
-        name = "periodic-proto-writing",
+        name = PERIODIC_PROTO_WRITING_OPTION,
         description =
                 "Whether or not to output intermediate proto per module following a numbered "
                         + "sequence."
