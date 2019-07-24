@@ -715,7 +715,7 @@ public class TestInvocation implements ITestInvocation {
             context.addInvocationTimingMetric(IInvocationContext.TimingEvent.FETCH_BUILD,
                     fetchBuildDuration);
             InvocationMetricLogger.addInvocationMetrics(
-                    InvocationMetricKey.FETCH_BUILD, Long.toString(fetchBuildDuration));
+                    InvocationMetricKey.FETCH_BUILD, fetchBuildDuration);
             CLog.d("Fetch build duration: %s", TimeUtil.formatElapsedTime(fetchBuildDuration));
             if (!providerSuccess) {
                 return;

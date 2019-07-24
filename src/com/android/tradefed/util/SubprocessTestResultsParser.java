@@ -17,6 +17,8 @@ package com.android.tradefed.util;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ILogSaverListener;
@@ -505,7 +507,25 @@ public class SubprocessTestResultsParser implements Closeable {
             // provider of the running configuration).
             List<IBuildInfo> infos = mContext.getBuildInfos();
             if (!infos.isEmpty()) {
-                infos.get(0).addBuildAttributes(eventEnd.mBuildAttributes);
+                Map<String, String> attributes = eventEnd.mBuildAttributes;
+                for (InvocationMetricKey key : InvocationMetricKey.values()) {
+                    if (!attributes.containsKey(key.toString())) {
+                        continue;
+                    }
+                    attributes.remove(key.toString());
+                    String val = attributes.get(key.toString());
+                    if (key.shouldAdd()) {
+                        try {
+                            InvocationMetricLogger.addInvocationMetrics(key, Long.parseLong(val));
+                        } catch (NumberFormatException e) {
+                            CLog.e("Key %s should have a number value, instead was: %s", key, val);
+                            CLog.e(e);
+                        }
+                    } else {
+                        InvocationMetricLogger.addInvocationMetrics(key, val);
+                    }
+                }
+                infos.get(0).addBuildAttributes(attributes);
             }
         }
     }
