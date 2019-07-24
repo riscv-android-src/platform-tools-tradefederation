@@ -18,6 +18,8 @@ package com.android.tradefed.result.proto;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -32,6 +34,7 @@ import com.android.tradefed.result.proto.LogFileProto.LogFileInfo;
 import com.android.tradefed.result.proto.TestRecordProto.ChildReference;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
+import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.proto.TestRecordProtoUtil;
 
 import com.google.common.base.Strings;
@@ -477,7 +480,28 @@ public class ProtoResultParser {
             return;
         }
         // Copy invocation attributes
-        receiverContext.addInvocationAttributes(endInvocationContext.getAttributes());
+        MultiMap<String, String> attributes = endInvocationContext.getAttributes();
+        for (InvocationMetricKey key : InvocationMetricKey.values()) {
+            if (!attributes.containsKey(key.toString())) {
+                continue;
+            }
+            attributes.remove(key.toString());
+            List<String> values = attributes.get(key.toString());
+
+            for (String val : values) {
+                if (key.shouldAdd()) {
+                    try {
+                        InvocationMetricLogger.addInvocationMetrics(key, Long.parseLong(val));
+                    } catch (NumberFormatException e) {
+                        CLog.e("Key %s should have a number value, instead was: %s", key, val);
+                        CLog.e(e);
+                    }
+                } else {
+                    InvocationMetricLogger.addInvocationMetrics(key, val);
+                }
+            }
+        }
+        receiverContext.addInvocationAttributes(attributes);
     }
 
     private void log(String format, Object... obj) {
