@@ -185,7 +185,6 @@ import com.android.tradefed.suite.checker.UserCheckerTest;
 import com.android.tradefed.targetprep.AllTestAppsInstallSetupTest;
 import com.android.tradefed.targetprep.AoaTargetPreparerTest;
 import com.android.tradefed.targetprep.AppSetupTest;
-import com.android.tradefed.targetprep.BuildInfoAttributePreparerTest;
 import com.android.tradefed.targetprep.CreateUserPreparerTest;
 import com.android.tradefed.targetprep.DefaultTestsZipInstallerTest;
 import com.android.tradefed.targetprep.DeviceFlashPreparerTest;
@@ -212,7 +211,6 @@ import com.android.tradefed.targetprep.SwitchUserTargetPreparerTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
 import com.android.tradefed.targetprep.TestAppInstallSetupTest;
 import com.android.tradefed.targetprep.TestFilePushSetupTest;
-import com.android.tradefed.targetprep.TimeSetterTargetPreparerTest;
 import com.android.tradefed.targetprep.UserCleanerTest;
 import com.android.tradefed.targetprep.adb.AdbStopServerPreparerTest;
 import com.android.tradefed.targetprep.app.NoApkTestSkipperTest;
@@ -581,7 +579,6 @@ import org.junit.runners.Suite.SuiteClasses;
     AllTestAppsInstallSetupTest.class,
     AoaTargetPreparerTest.class,
     AppSetupTest.class,
-    BuildInfoAttributePreparerTest.class,
     CreateUserPreparerTest.class,
     DefaultTestsZipInstallerTest.class,
     DeviceFlashPreparerTest.class,
@@ -608,7 +605,6 @@ import org.junit.runners.Suite.SuiteClasses;
     SystemUpdaterDeviceFlasherTest.class,
     TestAppInstallSetupTest.class,
     TestFilePushSetupTest.class,
-    TimeSetterTargetPreparerTest.class,
     SwitchUserTargetPreparerTest.class,
     UserCleanerTest.class,
 
