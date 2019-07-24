@@ -36,6 +36,8 @@ import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.shard.token.ITokenRequest;
 import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.log.ITestLogger;
@@ -456,6 +458,8 @@ public abstract class ITestSuite
             }
         }
         long elapsedTime = System.currentTimeMillis() - startTime;
+        InvocationMetricLogger.addInvocationMetrics(
+                InvocationMetricKey.STAGE_TESTS_TIME, elapsedTime);
         CLog.i(
                 String.format(
                         "Staging test artifacts for %d modules finished in %s.",
