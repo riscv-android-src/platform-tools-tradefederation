@@ -485,8 +485,8 @@ public class ProtoResultParser {
             if (!attributes.containsKey(key.toString())) {
                 continue;
             }
-            attributes.remove(key.toString());
             List<String> values = attributes.get(key.toString());
+            attributes.remove(key.toString());
 
             for (String val : values) {
                 if (key.shouldAdd()) {
