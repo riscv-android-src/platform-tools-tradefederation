@@ -260,6 +260,18 @@ public class TestDeviceOptions {
 
     // END ====================== Options Related to Virtual Devices ======================
 
+    // Option related to Remote Device only
+
+    public static final String REMOTE_TF_VERSION_OPTION = "remote-tf-version";
+
+    @Option(
+        name = REMOTE_TF_VERSION_OPTION,
+        description =
+                "The TF to push to the remote VM to drive the invocation. If null, current TF "
+                        + "will be pushed."
+    )
+    private File mRemoteTFVersion = null;
+
     /** Check whether adb root should be enabled on boot for this device */
     public boolean isEnableAdbRoot() {
         return mEnableAdbRoot;
@@ -635,6 +647,11 @@ public class TestDeviceOptions {
     /** Returns the password to log in to Chrome OS with. */
     public String getCrosPassword() {
         return mCrosPassword;
+    }
+
+    /** The file pointing to the directory of the Tradefed version to be pushed to the remote. */
+    public File getRemoteTf() {
+        return mRemoteTFVersion;
     }
 
     public static String getCreateCommandByInstanceType(InstanceType type) {
