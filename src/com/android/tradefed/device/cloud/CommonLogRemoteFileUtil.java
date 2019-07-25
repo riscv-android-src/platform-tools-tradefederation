@@ -152,6 +152,10 @@ public class CommonLogRemoteFileUtil {
             CLog.e("GceAvdInfo was null, cannot collect remote files.");
             return;
         }
+        InstanceType type = options.getInstanceType();
+        if (!InstanceType.CUTTLEFISH.equals(type) && !InstanceType.REMOTE_AVD.equals(type)) {
+            return;
+        }
         String pattern =
                 String.format(
                         "/home/%s/cuttlefish_runtime/tombstones/*", options.getInstanceUser());
