@@ -346,6 +346,19 @@ public class SubprocessTestResultsParserTest {
         }
     }
 
+    /** Tests that the parser can be joined immediately if no connection was established. */
+    @Test
+    public void testParser_noConnection() throws Exception {
+        ITestInvocationListener listener = EasyMock.createMock(ITestInvocationListener.class);
+        EasyMock.replay(listener);
+        try (SubprocessTestResultsParser parser =
+                new SubprocessTestResultsParser(listener, true, new InvocationContext())) {
+            // returns immediately as a connection was not established
+            assertTrue(parser.joinReceiver(50, false));
+            EasyMock.verify(listener);
+        }
+    }
+
     /** Tests the parser receiving event on updating test tag. */
     @Test
     public void testParse_testTag() throws Exception {
