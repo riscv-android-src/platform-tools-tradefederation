@@ -508,12 +508,15 @@ public class GceManager {
             GceAvdInfo gceAvd, TestDeviceOptions options, IRunUtil runUtil, String... command) {
         CommandResult res =
                 remoteSshCommandExecution(gceAvd, options, runUtil, BUGREPORT_TIMEOUT, command);
-        if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
-            CLog.e("issue when attempting to execute '%s':", Arrays.asList(command));
-            CLog.e("%s", res.getStderr());
-        }
         // We attempt to get a clean output from our command
         String output = res.getStdout().trim();
+        if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
+            CLog.e("issue when attempting to execute '%s':", Arrays.asList(command));
+            CLog.e("Stderr: %s", res.getStderr());
+        } else if (output.isEmpty()) {
+            CLog.e("Stdout from '%s' was empty", Arrays.asList(command));
+            CLog.e("Stderr: %s", res.getStderr());
+        }
         return output;
     }
 
