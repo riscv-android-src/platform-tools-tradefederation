@@ -198,7 +198,6 @@ import com.android.tradefed.targetprep.InstallAllTestZipAppsSetupTest;
 import com.android.tradefed.targetprep.InstallApexModuleTargetPreparerTest;
 import com.android.tradefed.targetprep.InstallApkSetupTest;
 import com.android.tradefed.targetprep.InstrumentationPreparerTest;
-import com.android.tradefed.targetprep.PreloadedClassesPreparerTest;
 import com.android.tradefed.targetprep.PushFilePreparerTest;
 import com.android.tradefed.targetprep.PythonVirtualenvPreparerTest;
 import com.android.tradefed.targetprep.RebootTargetPreparerTest;
@@ -593,7 +592,6 @@ import org.junit.runners.Suite.SuiteClasses;
     InstallApexModuleTargetPreparerTest.class,
     InstallApkSetupTest.class,
     InstrumentationPreparerTest.class,
-    PreloadedClassesPreparerTest.class,
     PushFilePreparerTest.class,
     PythonVirtualenvPreparerTest.class,
     RebootTargetPreparerTest.class,
