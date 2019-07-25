@@ -48,6 +48,7 @@ public class BaseTestSuite extends ITestSuite {
     public static final String INCLUDE_FILTER_OPTION = "include-filter";
     public static final String EXCLUDE_FILTER_OPTION = "exclude-filter";
     public static final String MODULE_OPTION = "module";
+    public static final char MODULE_OPTION_SHORT_NAME = 'm';
     public static final String TEST_ARG_OPTION = "test-arg";
     public static final String TEST_OPTION = "test";
     public static final char TEST_OPTION_SHORT_NAME = 't';
@@ -70,7 +71,7 @@ public class BaseTestSuite extends ITestSuite {
 
     @Option(
         name = MODULE_OPTION,
-        shortName = 'm',
+        shortName = MODULE_OPTION_SHORT_NAME,
         description = "the test module to run. Only works for configuration in the tests dir.",
         importance = Importance.IF_UNSET
     )
