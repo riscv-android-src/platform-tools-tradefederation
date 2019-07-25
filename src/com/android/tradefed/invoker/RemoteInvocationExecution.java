@@ -37,6 +37,8 @@ import com.android.tradefed.device.cloud.LaunchCvdHelper;
 import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.device.cloud.MultiUserSetupUtil;
 import com.android.tradefed.device.cloud.RemoteFileUtil;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -75,7 +77,8 @@ public class RemoteInvocationExecution extends InvocationExecution {
     public static final long PUSH_TF_TIMEOUT = 150000L;
     public static final long PULL_RESULT_TIMEOUT = 180000L;
     public static final long REMOTE_PROCESS_RUNNING_WAIT = 15000L;
-    public static final long LAUNCH_EXTRA_DEVICE = 10 * 60 * 1000L;
+    public static final long LAUNCH_EXTRA_DEVICE = 15 * 60 * 1000L;
+    public static final long SETUP_REMOTE_DIR_TIMEOUT = 10 * 60 * 1000L;
     public static final long NEW_USER_TIMEOUT = 5 * 60 * 1000L;
 
     public static final String REMOTE_USER_DIR = "/home/{$USER}/";
@@ -166,9 +169,8 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
                 // Log the overhead to start the device
                 long elapsedTime = System.currentTimeMillis() - startTime;
-                context.getBuildInfos()
-                        .get(0)
-                        .addBuildAttribute(SHARDING_DEVICE_SETUP_TIME, Long.toString(elapsedTime));
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.SHARDING_DEVICE_SETUP_TIME, elapsedTime);
             }
         }
 
@@ -698,7 +700,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                         info,
                         options,
                         runUtil,
-                        NEW_USER_TIMEOUT);
+                        SETUP_REMOTE_DIR_TIMEOUT);
         if (homeDirSetup != null) {
             String errorMsg =
                     String.format("Failed to setup home dir: %s", homeDirSetup.getStderr());
