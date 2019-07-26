@@ -389,7 +389,9 @@ public class GTest extends GTestBase implements IDeviceTest {
             mDevice.executeShellCommand("stop");
         }
         // Insert the coverage listener if code coverage collection is enabled.
-        listener = addNativeCoverageListenerIfEnabled(mDevice, listener);
+        listener =
+                addNativeCoverageListenerIfEnabled(
+                        mDevice, mCoverageFlush, mCoverageProcesses, listener);
         NativeCodeCoverageFlusher flusher = new NativeCodeCoverageFlusher(mDevice);
 
         Throwable throwable = null;
@@ -406,10 +408,6 @@ public class GTest extends GTestBase implements IDeviceTest {
             throw t;
         } finally {
             if (!(throwable instanceof DeviceNotAvailableException)) {
-                if (isCoverageEnabled() && mCoverageFlush) {
-                    flusher.forceCoverageFlush(mCoverageProcesses);
-                }
-
                 if (mStopRuntime) {
                     mDevice.executeShellCommand("start");
                     mDevice.waitForDeviceAvailable();

@@ -563,13 +563,19 @@ public abstract class GTestBase
      * Adds a {@link NativeCodeCoverageListener} to the chain if code coverage is enabled.
      *
      * @param device the device to pull the coverage results from
+     * @param coverageFlush whether to flush coverage before pulling the measurements
+     * @param coverageProcesses the processes to flush coverage from
      * @param listener the original listener
      * @return a chained listener if code coverage is enabled, otherwise the original listener
      */
     protected ITestInvocationListener addNativeCoverageListenerIfEnabled(
-            ITestDevice device, ITestInvocationListener listener) {
+            ITestDevice device,
+            boolean coverageFlush,
+            List<String> coverageProcesses,
+            ITestInvocationListener listener) {
         if (mCoverage) {
-            return new NativeCodeCoverageListener(device, listener);
+            return new NativeCodeCoverageListener(
+                    device, coverageFlush, coverageProcesses, listener);
         }
         return listener;
     }

@@ -26,9 +26,11 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.NativeCodeCoverageFlusher;
 import com.android.tradefed.util.ZipUtil;
 
 import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableList;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,6 +39,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * A {@link ResultForwarder} that will pull native coverage measurements off of the device and log
@@ -48,13 +51,31 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
     private static final String COVERAGE_FILE_LIST_COMMAND =
             String.format("find %s -name '*.gcda'", NATIVE_COVERAGE_DEVICE_PATH);
 
+    private final boolean mFlushCoverage;
+    private final List<String> mCoverageProcesses;
     private final ITestDevice mDevice;
+    private final NativeCodeCoverageFlusher mFlusher;
 
     private String mCurrentRunName;
 
     public NativeCodeCoverageListener(ITestDevice device, ITestInvocationListener... listeners) {
         super(listeners);
         mDevice = device;
+        mFlushCoverage = false;
+        mCoverageProcesses = ImmutableList.of();
+        mFlusher = new NativeCodeCoverageFlusher(mDevice);
+    }
+
+    public NativeCodeCoverageListener(
+            ITestDevice device,
+            boolean flushCoverage,
+            List<String> coverageProcesses,
+            ITestInvocationListener... listeners) {
+        super(listeners);
+        mDevice = device;
+        mFlushCoverage = flushCoverage;
+        mCoverageProcesses = ImmutableList.copyOf(coverageProcesses);
+        mFlusher = new NativeCodeCoverageFlusher(mDevice);
     }
 
     @Override
@@ -72,8 +93,15 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
         try {
             localDir = FileUtil.createTempDir("native_coverage");
 
-            // Enable abd root on the device, otherwise the list command will fail.
+            // Enable abd root on the device, otherwise the following commands will fail.
             verify(mDevice.enableAdbRoot(), "Failed to enable adb root.");
+
+            // Flush cross-process coverage.
+            if (mFlushCoverage) {
+                mFlusher.forceCoverageFlush(mCoverageProcesses);
+            }
+
+            // List native coverage files on the device and pull them.
             String findResult = mDevice.executeShellCommand(COVERAGE_FILE_LIST_COMMAND);
 
             Path devicePathRoot = Paths.get(NATIVE_COVERAGE_DEVICE_PATH);
