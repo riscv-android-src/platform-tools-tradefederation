@@ -240,6 +240,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                 if (!retry) {
                     return;
                 }
+                CLog.d("Intra-module retry attempt number %s", attemptNumber);
                 // Run the tests again
                 intraModuleRun(allListeners);
             }
