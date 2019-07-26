@@ -110,14 +110,15 @@ public class DynamicSystemPreparer extends BaseMultiTargetPreparer {
             // the waitForDeviceOnline may block and we need to correct the 'i'
             // which is used to measure timeout accordingly
             if (!isDSURunning(device)) {
-                throw new TargetSetupError("Timeout to boot into DSU");
+                throw new TargetSetupError(
+                        "Timeout to boot into DSU", device.getDeviceDescriptor());
             }
             CommandResult result = device.executeShellV2Command("gsi_tool enable");
             if (CommandStatus.SUCCESS.equals(result.getStatus())) {
                 // success
                 return;
             } else {
-                throw new TargetSetupError("fail on gsi_tool enable");
+                throw new TargetSetupError("fail on gsi_tool enable", device.getDeviceDescriptor());
             }
         } catch (IOException e) {
             CLog.e(e);

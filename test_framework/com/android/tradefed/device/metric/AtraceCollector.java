@@ -189,7 +189,7 @@ public class AtraceCollector extends BaseDeviceMetricCollector {
         }
     }
 
-    private void postProcess(File trace, String id) {
+    private void postProcess(File trace) {
         if (mLogProcessingBinary == null
                 || !mLogProcessingBinary.exists()
                 || !mLogProcessingBinary.canExecute()) {
@@ -265,7 +265,7 @@ public class AtraceCollector extends BaseDeviceMetricCollector {
                                 streamSource);
                     }
 
-                    postProcess(trace, device.getSerialNumber());
+                    postProcess(trace);
                     trace.delete();
                 } else {
                     throw new DeviceRuntimeException("failed to pull log: " + fullLogPath());
