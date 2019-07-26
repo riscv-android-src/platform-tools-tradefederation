@@ -216,6 +216,13 @@ public class RuntimeRestartCollector extends BaseDeviceMetricCollector {
     /** Helper method to add metrics from StatsdStatsReport according to timestamps. */
     private void addStatsdStatsBasedMetrics(
             final Map<String, Metric> metrics, List<Integer> timestampsSecs, String serial) {
+        // Always add a count of system server crashes, regardless of whether there are any.
+        // The statsd metadata-based count is used as the atom-based data can miss runtime restart
+        // instances.
+        // TODO(b/135770315): Re-assess this after the root cause for missing instances in the atom
+        // -based results is found.
+        String countMetricKey = createMetricKey(METRIC_SUFFIX_COUNT, serial);
+        metrics.put(countMetricKey, stringToMetric(String.valueOf(timestampsSecs.size())));
         // If there are runtime restarts, add a comma-separated list of timestamps.
         if (!timestampsSecs.isEmpty()) {
             // Store both the raw timestamp and the formatted, more readable version.
@@ -245,10 +252,6 @@ public class RuntimeRestartCollector extends BaseDeviceMetricCollector {
     /** Helper method to add metrics from the AppCrashOccurred atoms according to timestamps. */
     private void addAtomBasedMetrics(
             final Map<String, Metric> metrics, List<Long> timestampsNanos, String serial) {
-        // Always add a count of system server crashes, regardless of whether there are any.
-        // The atom-based count is used as the statsd-metadata-based one tops out at 20.
-        String countMetricKey = createMetricKey(METRIC_SUFFIX_COUNT, serial);
-        metrics.put(countMetricKey, stringToMetric(String.valueOf(timestampsNanos.size())));
         // If there are runtime restarts, add a comma-separated list of device uptime timestamps.
         if (!timestampsNanos.isEmpty()) {
             // Store both the raw timestamp and the formatted, more readable version.
