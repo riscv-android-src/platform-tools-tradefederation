@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.targetprep;
 
+import com.android.tradefed.build.BootstrapBuildProvider;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -27,7 +28,8 @@ import com.android.tradefed.util.BuildInfoUtil;
  * <p>This is useful for testing devices with builds generated from an external source (e.g.
  * external partner devices)
  *
- * @see {@link DeviceBuildInfoInjector}, {@link BootstrapBuildProvider}
+ * @see DeviceBuildInfoInjector
+ * @see BootstrapBuildProvider
  */
 public class DeviceBuildInfoBootStrapper extends BaseTargetPreparer {
 
