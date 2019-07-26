@@ -30,6 +30,8 @@ import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.retry.ISupportGranularResults;
 
+import com.google.api.client.repackaged.com.google.common.base.Joiner;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -56,6 +58,10 @@ public class ResultAggregator extends CollectingTestListener {
     private boolean mModuleInProgress = false;
     // Stores the results from non-module test runs until they are ready to be replayed.
     private List<TestRunResult> mPureRunResults = new ArrayList<>();
+    //
+    private TestRunResult mDetailedRunResults = null;
+    private boolean mShouldReportFailure = true;
+    private List<String> mAllDetailedFailures = new ArrayList<>();
 
     public ResultAggregator(List<ITestInvocationListener> listeners, RetryStrategy strategy) {
         mAllForwarder = new ResultAndLogForwarder(listeners);
@@ -108,6 +114,7 @@ public class ResultAggregator extends CollectingTestListener {
             forwardTestRunResults(mPureRunResults, mAggregatedForwarder);
             mPureRunResults.clear();
         }
+        forwardDetailedFailure();
         super.invocationEnded(elapsedTime);
         mAllForwarder.invocationEnded(elapsedTime);
     }
@@ -118,6 +125,11 @@ public class ResultAggregator extends CollectingTestListener {
         if (!mPureRunResults.isEmpty()) {
             forwardTestRunResults(mPureRunResults, mAggregatedForwarder);
             mPureRunResults.clear();
+        }
+
+        if (mDetailedRunResults != null) {
+            mShouldReportFailure = true;
+            forwardDetailedFailure();
         }
 
         mModuleInProgress = true;
@@ -140,6 +152,23 @@ public class ResultAggregator extends CollectingTestListener {
             forwardTestRunResults(mPureRunResults, mAggregatedForwarder);
             mPureRunResults.clear();
         }
+
+        if (mDetailedRunResults != null) {
+            if (mDetailedRunResults.getName().equals(name)) {
+                if (!mDetailedRunResults.isRunFailure()) {
+                    if (RetryStrategy.RETRY_ANY_FAILURE.equals(mRetryStrategy)) {
+                        mShouldReportFailure = false;
+                    }
+                }
+                mDetailedForwarder.testRunEnded(
+                        mDetailedRunResults.getElapsedTime(),
+                        mDetailedRunResults.getRunProtoMetrics());
+                mDetailedRunResults = null;
+            } else {
+                mShouldReportFailure = true;
+                forwardDetailedFailure();
+            }
+        }
         super.testRunStarted(name, testCount, attemptNumber, startTime);
         mDetailedForwarder.testRunStarted(name, testCount, attemptNumber, startTime);
     }
@@ -147,7 +176,7 @@ public class ResultAggregator extends CollectingTestListener {
     @Override
     public void testRunFailed(String errorMessage) {
         super.testRunFailed(errorMessage);
-        mDetailedForwarder.testRunFailed(errorMessage);
+        // Don't forward here to the detailed forwarder in case we need to clear it.
     }
 
     @Override
@@ -198,7 +227,10 @@ public class ResultAggregator extends CollectingTestListener {
     @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         super.testRunEnded(elapsedTime, runMetrics);
-        mDetailedForwarder.testRunEnded(elapsedTime, runMetrics);
+        mDetailedRunResults = getCurrentRunResults();
+        if (mDetailedRunResults.isRunFailure()) {
+            mAllDetailedFailures.add(mDetailedRunResults.getRunFailureMessage());
+        }
 
         // If we are not a module and we reach here. This allows to support non-suite scenarios
         if (!mModuleInProgress) {
@@ -209,6 +241,8 @@ public class ResultAggregator extends CollectingTestListener {
 
     @Override
     public void testModuleEnded() {
+        forwardDetailedFailure();
+
         mModuleInProgress = false;
         super.testModuleEnded();
         // We still forward the testModuleEnd to the detailed reporters
@@ -306,5 +340,17 @@ public class ResultAggregator extends CollectingTestListener {
         listener.testRunEnded(result.getElapsedTime(), result.getRunProtoMetrics());
         // Ensure we don't keep track of the results we just forwarded
         clearResultsForName(result.getName());
+    }
+
+    private void forwardDetailedFailure() {
+        if (mDetailedRunResults != null) {
+            if (mDetailedRunResults.isRunFailure() && mShouldReportFailure) {
+                mDetailedForwarder.testRunFailed(Joiner.on("\n\n").join(mAllDetailedFailures));
+                mAllDetailedFailures.clear();
+            }
+            mDetailedForwarder.testRunEnded(
+                    mDetailedRunResults.getElapsedTime(), mDetailedRunResults.getRunProtoMetrics());
+            mDetailedRunResults = null;
+        }
     }
 }
