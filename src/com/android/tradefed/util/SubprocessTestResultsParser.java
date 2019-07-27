@@ -533,8 +533,7 @@ public class SubprocessTestResultsParser implements Closeable {
                     if (!attributes.containsKey(key.toString())) {
                         continue;
                     }
-                    attributes.remove(key.toString());
-                    String val = attributes.get(key.toString());
+                    String val = attributes.remove(key.toString());
                     if (key.shouldAdd()) {
                         try {
                             InvocationMetricLogger.addInvocationMetrics(key, Long.parseLong(val));
