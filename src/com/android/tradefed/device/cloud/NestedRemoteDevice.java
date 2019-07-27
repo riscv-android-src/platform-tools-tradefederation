@@ -183,11 +183,16 @@ public class NestedRemoteDevice extends TestDevice {
         }
         // TF runs as the primary user and may get a permission denied to read the launcher.log of
         // other users. So use the shell to cat the file content.
-        String readLauncherLog =
-                String.format(
-                        "sudo runuser -l %s -c 'cat %s'", username, launcherLog.getAbsolutePath());
         CommandResult readLauncherLogRes =
-                getRunUtil().runTimedCmd(60000L, readLauncherLog.split(" "));
+                getRunUtil()
+                        .runTimedCmd(
+                                60000L,
+                                "sudo",
+                                "runuser",
+                                "-l",
+                                username,
+                                "-c",
+                                String.format("'cat %s'", launcherLog.getAbsolutePath()));
         if (!CommandStatus.SUCCESS.equals(readLauncherLogRes.getStatus())) {
             CLog.e(
                     "Failed to read Launcher.log content due to: %s",
