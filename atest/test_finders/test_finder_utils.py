@@ -404,7 +404,14 @@ def run_find_cmd(ref_type, search_dir, target, methods=None):
 
     Return:
         A list of the path to the target.
+        If the search_dir is inexistent, None will be returned.
     """
+    # If module_info.json is outdated, finding in the search_dir can result in
+    # raising exception. Return null immediately can guild users to run
+    # --rebuild-module-info to resolve the problem.
+    if not os.path.isdir(search_dir):
+        logging.debug('\'%s\' does not exist!', search_dir)
+        return None
     prune_cond = _get_prune_cond_of_ignored_dirs()
     find_cmd = FIND_CMDS[ref_type].format(search_dir, prune_cond, target)
     start = time.time()
