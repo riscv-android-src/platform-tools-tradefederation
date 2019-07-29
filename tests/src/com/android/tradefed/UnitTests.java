@@ -275,6 +275,7 @@ import com.android.tradefed.testtype.suite.module.CarModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.NativeBridgeModuleControllerTest;
 import com.android.tradefed.testtype.suite.params.InstantAppHandlerTest;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelperTest;
+import com.android.tradefed.testtype.suite.params.SecondaryUserHandlerTest;
 import com.android.tradefed.testtype.suite.retry.ResultsPlayerTest;
 import com.android.tradefed.testtype.suite.retry.RetryReschedulerTest;
 import com.android.tradefed.util.AaptParserTest;
@@ -710,6 +711,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // testtype/suite/params
     InstantAppHandlerTest.class,
     ModuleParametersHelperTest.class,
+    SecondaryUserHandlerTest.class,
 
     // testtype/suite/retry
     ResultsPlayerTest.class,

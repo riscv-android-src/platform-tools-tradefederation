@@ -15,13 +15,19 @@
  */
 package com.android.tradefed.testtype.suite.params;
 
+import android.platform.test.annotations.SystemUserOnly;
+
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.targetprep.CreateUserPreparer;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.RunCommandTargetPreparer;
+import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestAnnotationFilterReceiver;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /** Handler for {@link ModuleParameters#SECONDARY_USER}. */
 public class SecondaryUserHandler implements IModuleParameter {
@@ -39,6 +45,21 @@ public class SecondaryUserHandler implements IModuleParameter {
             preparers.add(0, new CreateUserPreparer());
             // Add a preparer to setup the location settings on the new user
             preparers.add(1, createLocationPreparer());
+        }
+
+        // Add filter to exclude @SystemUserOnly
+        for (IRemoteTest test : moduleConfiguration.getTests()) {
+            if (test instanceof ITestAnnotationFilterReceiver) {
+                ITestAnnotationFilterReceiver filterTest = (ITestAnnotationFilterReceiver) test;
+                // Retrieve the current set of excludeAnnotations to maintain for after the
+                // clearing/reset of the annotations.
+                Set<String> excludeAnnotations = new HashSet<>(filterTest.getExcludeAnnotations());
+                // Prevent system user only tests from running
+                excludeAnnotations.add(SystemUserOnly.class.getCanonicalName());
+                // Reset the annotations of the tests
+                filterTest.clearExcludeAnnotations();
+                filterTest.addAllExcludeAnnotation(excludeAnnotations);
+            }
         }
     }
 
