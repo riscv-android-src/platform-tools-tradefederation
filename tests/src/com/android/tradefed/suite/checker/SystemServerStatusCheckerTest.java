@@ -97,6 +97,7 @@ public class SystemServerStatusCheckerTest {
     @Test
     public void testFailToGetSystemServerProcess() throws Exception {
         EasyMock.expect(mMockDevice.getProcessByName(EasyMock.eq("system_server"))).andReturn(null);
+        mMockDevice.reboot();
         EasyMock.replay(mMockDevice);
         assertEquals(CheckStatus.FAILED, mChecker.preExecutionCheck(mMockDevice).getStatus());
         assertEquals(CheckStatus.SUCCESS, mChecker.postExecutionCheck(mMockDevice).getStatus());
