@@ -57,15 +57,18 @@ class TestInfo(object):
         # True if the test should run on host and require no device. The
         # attribute is only set through TEST_MAPPING file.
         self.host = False
+        # A string of test finder
+        self.test_finder = ''
 
     def __str__(self):
         host_info = (' - runs on host without device required.' if self.host
                      else '')
         return ('test_name: %s - test_runner:%s - build_targets:%s - data:%s - '
-                'suite:%s - module_class: %s - install_locations:%s%s' % (
+                'suite:%s - module_class: %s - install_locations:%s%s - '
+                'test_finder:%s' % (
                     self.test_name, self.test_runner, self.build_targets,
                     self.data, self.suite, self.module_class,
-                    self.install_locations, host_info))
+                    self.install_locations, host_info, self.test_finder))
 
     def get_supported_exec_mode(self):
         """Get the supported execution mode of the test.
