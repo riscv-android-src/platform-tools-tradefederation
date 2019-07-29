@@ -39,6 +39,7 @@ from test_finders import module_finder
 
 TEST_MAPPING = 'TEST_MAPPING'
 FUZZY_FINDER = 'FUZZY'
+CACHE_FINDER = 'CACHE'
 
 # Pattern used to identify comments start with '//' or '#' in TEST_MAPPING.
 _COMMENTS_RE = re.compile(r'(?m)[\s\t]*(#|//).*|(\".*?\")')
@@ -98,18 +99,22 @@ class CLITranslator(object):
             except atest_error.TestDiscoveryException as e:
                 find_test_err_msg = e
             if found_test_infos:
+                finder_info = finder.finder_info
                 for test_info in found_test_infos:
                     if tm_test_detail:
                         test_info.data[constants.TI_MODULE_ARG] = (
                             tm_test_detail.options)
                         test_info.from_test_mapping = True
                         test_info.host = tm_test_detail.host
+                    if finder_info != CACHE_FINDER:
+                        test_info.test_finder = finder_info
                     test_infos.add(test_info)
                 test_found = True
-                finder_info = finder.finder_info
                 print("Found '%s' as %s" % (
                     atest_utils.colorize(test, constants.GREEN),
                     finder_info))
+                if finder_info == CACHE_FINDER and test_infos:
+                    test_finders.append(list(test_infos)[0].test_finder)
                 test_finders.append(finder_info)
                 test_info_str = ','.join([str(x) for x in found_test_infos])
                 break
