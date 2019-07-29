@@ -104,6 +104,9 @@ public class RemoteInvocationExecutionTest {
                     ((DeviceSelectionOptions)
                                     reparse.getDeviceConfig().get(0).getDeviceRequirements())
                             .getDeviceTypeRequested());
+            assertEquals(
+                    "",
+                    reparse.getDeviceConfig().get(0).getDeviceOptions().getRemoteTf().getPath());
         } finally {
             FileUtil.deleteFile(res);
         }
