@@ -583,7 +583,8 @@ def main(argv, results_dir):
         # file up to date.
         build_targets.add(mod_info.module_info_target)
         build_start = time.time()
-        success = atest_utils.build(build_targets, args.verbose)
+        success = atest_utils.build(build_targets, args.verbose,
+                                    env_vars=constants.ATEST_BUILD_ENV)
         metrics.BuildFinishEvent(
             duration=metrics_utils.convert_duration(time.time() - build_start),
             success=success,
