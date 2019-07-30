@@ -75,6 +75,7 @@ public class InvocationExecutionTest {
     private IConfiguration mConfig;
     private ITestInvocationListener mMockListener;
     private ITestDevice mMockDevice;
+    private ITestLogger mMockLogger;
 
     @Before
     public void setUp() {
@@ -82,6 +83,7 @@ public class InvocationExecutionTest {
         mContext = new InvocationContext();
         mConfig = new Configuration("test", "test");
         mMockListener = mock(ITestInvocationListener.class);
+        mMockLogger = mock(ITestLogger.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         // Reset the counters
         TestBaseMetricCollector.sTotalInit = 0;
@@ -253,7 +255,7 @@ public class InvocationExecutionTest {
         mContext.addAllocatedDevice("default", mock(ITestDevice.class));
 
         mExec.doSetup(mContext, mConfig, mMockListener);
-        mExec.doTeardown(mContext, mConfig, null, null);
+        mExec.doTeardown(mContext, mConfig, mMockLogger, null);
 
         // Pre multi preparers are always called before.
         InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
@@ -300,7 +302,7 @@ public class InvocationExecutionTest {
         mContext.addAllocatedDevice("default", mock(ITestDevice.class));
         // Ensure that the original error is the one passed around.
         Throwable exception = new Throwable("Original error");
-        mExec.doTeardown(mContext, mConfig, null, exception);
+        mExec.doTeardown(mContext, mConfig, mMockLogger, exception);
 
         InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
 
