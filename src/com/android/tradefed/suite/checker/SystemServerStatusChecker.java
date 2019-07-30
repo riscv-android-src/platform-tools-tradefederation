@@ -16,6 +16,7 @@
 package com.android.tradefed.suite.checker;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -30,6 +31,13 @@ import com.android.tradefed.util.StreamUtil;
  */
 public class SystemServerStatusChecker implements ISystemStatusChecker {
 
+    @Option(
+        name = "disable-recovery-reboot",
+        description =
+                "If status checker is detected down (no process), attempt to reboot the device."
+    )
+    private boolean mShouldRecover = true;
+
     private ProcessInfo mSystemServerProcess;
 
     /** {@inheritDoc} */
@@ -39,6 +47,9 @@ public class SystemServerStatusChecker implements ISystemStatusChecker {
         mSystemServerProcess = device.getProcessByName("system_server");
         StatusCheckerResult result = new StatusCheckerResult(CheckStatus.SUCCESS);
         if (mSystemServerProcess == null) {
+            if (mShouldRecover) {
+                device.reboot();
+            }
             String message = "No valid system_server process is found.";
             CLog.w(message);
             result.setStatus(CheckStatus.FAILED);
