@@ -871,6 +871,11 @@ public class HostTest
                             classes.add(cls);
                             classNames.add(className);
                         }
+                    } catch (UnsupportedClassVersionError ucve) {
+                        throw new IllegalArgumentException(
+                                String.format(
+                                        "Could not load class %s from jar %s. Reason:\n%s",
+                                        className, jarName, StreamUtil.getStackTrace(ucve)));
                     } catch (ClassNotFoundException cnfe) {
                         throw new IllegalArgumentException(
                                 String.format("Cannot find test class %s", className));
