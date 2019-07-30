@@ -114,7 +114,6 @@ java_library_host {
         "junit-params",
         "kxml2-2.3.0",
         "libprotobuf-java-full",
-        "perfetto_config-full",
         "platform-test-annotations",
         "tf-remote-client",
         "tradefed-protos",
