@@ -684,6 +684,13 @@ public class ConfigurationTest extends TestCase {
      * shards are kicked-off in new invocations.
      */
     public void testValidateOptions_localSharding_skipDownload() throws ConfigurationException {
+        mConfig =
+                new Configuration(CONFIG_NAME, CONFIG_DESCRIPTION) {
+                    @Override
+                    protected boolean isRemoteEnvironment() {
+                        return false;
+                    }
+                };
         CommandOptions options = new CommandOptions();
         options.setShardCount(5);
         options.setShardIndex(null);

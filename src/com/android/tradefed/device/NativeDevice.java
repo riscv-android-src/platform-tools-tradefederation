@@ -3828,9 +3828,7 @@ public class NativeDevice implements IManagedTestDevice {
         executeShellCommand("TZ=UTC date -u " + dateString);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public long getDeviceDate() throws DeviceNotAvailableException {
         String deviceTimeString = executeShellCommand("date +%s");
@@ -4331,15 +4329,96 @@ public class NativeDevice implements IManagedTestDevice {
 
     /** {@inheritDoc} */
     @Override
-    public Map<Long, String> getBootHistorySince(long utcEpochTime)
+    public Map<Long, String> getBootHistorySince(long utcEpochTime, TimeUnit timeUnit)
             throws DeviceNotAvailableException {
+        long utcEpochTimeSec = TimeUnit.SECONDS.convert(utcEpochTime, timeUnit);
         Map<Long, String> bootHistory = new LinkedHashMap<Long, String>();
         for (Map.Entry<Long, String> entry : getBootHistory().entrySet()) {
-            if (entry.getKey() > utcEpochTime) {
+            if (entry.getKey() > utcEpochTimeSec) {
                 bootHistory.put(entry.getKey(), entry.getValue());
             }
         }
         return bootHistory;
+    }
+
+    private boolean hasNormalRebootSince(long utcEpochTime, TimeUnit timeUnit)
+            throws DeviceNotAvailableException {
+        Map<Long, String> bootHistory = getBootHistorySince(utcEpochTime, timeUnit);
+        if (bootHistory.isEmpty()) {
+            CLog.w("There is no reboot history since %s", utcEpochTime);
+            return false;
+        }
+
+        CLog.i(
+                "There are new boot history since %d. NewBootHistory = %s",
+                utcEpochTime, bootHistory);
+        // Check if there is reboot reason other than "reboot".
+        // Raise RuntimeException if there is abnormal reboot.
+        for (Map.Entry<Long, String> entry : bootHistory.entrySet()) {
+            if (!"reboot".equals(entry.getValue())) {
+                throw new RuntimeException(
+                        String.format(
+                                "Device %s has abnormal reboot reason %s at %d",
+                                getSerialNumber(), entry.getValue(), entry.getKey()));
+            }
+        }
+        return true;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean deviceSoftRestartedSince(long utcEpochTime, TimeUnit timeUnit)
+            throws DeviceNotAvailableException {
+        ProcessInfo currSystemServerProcess = getProcessByName("system_server");
+        if (currSystemServerProcess == null) {
+            CLog.i("The system_server process is not available on the device.");
+            return true;
+        }
+
+        // The system_server process started at or before utcEpochTime, there is no soft-restart
+        if (currSystemServerProcess.getStartTime()
+                <= TimeUnit.SECONDS.convert(utcEpochTime, timeUnit)) {
+            return false;
+        }
+
+        // The system_server process restarted after device utcEpochTime in second.
+        // Check if there is new reboot history, if no new reboot, device soft-restarted.
+        if (!hasNormalRebootSince(utcEpochTime, timeUnit)) {
+            return true;
+        }
+
+        // There is new reboot history since utcEpochTime, unable to determine soft restart
+        CLog.i(
+                "Unable to determine device soft restarted with system_server process info"
+                        + " and boot history");
+        return false;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean deviceSoftRestarted(ProcessInfo prevSystemServerProcess)
+            throws DeviceNotAvailableException {
+        ProcessInfo currSystemServerProcess = getProcessByName("system_server");
+        if (currSystemServerProcess == null) {
+            CLog.i("The system_server process is not available on the device.");
+            return true;
+        }
+
+        if (currSystemServerProcess.getPid() == prevSystemServerProcess.getPid()
+                && currSystemServerProcess.getStartTime()
+                        == prevSystemServerProcess.getStartTime()) {
+            return false;
+        }
+
+        // The system_server process restarted.
+        // Check boot history with previous system_server start time.
+        if (!hasNormalRebootSince(prevSystemServerProcess.getStartTime(), TimeUnit.SECONDS)) {
+            return true;
+        }
+        CLog.i(
+                "Unable to determine device soft restarted with system_server process info"
+                        + " and boot history");
+        return false;
     }
 
     /**

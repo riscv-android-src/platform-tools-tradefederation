@@ -174,16 +174,12 @@ public class RemoteInvocationExecution extends InvocationExecution {
         }
 
         mRemoteAdbPath = String.format("/home/%s/bin/adb", options.getInstanceUser());
-
-        String tfPath = System.getProperty("TF_JAR_DIR");
-        if (tfPath == null) {
-            listener.invocationFailed(new RuntimeException("Failed to find $TF_JAR_DIR."));
+        // Select the TF version that should be pushed to the remote VM
+        File tfToPush = getLocalTradefedPath(listener, options.getRemoteTf());
+        if (tfToPush == null) {
             return;
         }
-        File currentTf = new File(tfPath).getAbsoluteFile();
-        if (tfPath.equals(".")) {
-            currentTf = new File("").getAbsoluteFile();
-        }
+
         mRemoteTradefedDir = mainRemoteDir + "tradefed/";
         CommandResult createRemoteDir =
                 GceManager.remoteSshCommandExecution(
@@ -205,7 +201,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                             runUtil,
                             PUSH_TF_TIMEOUT,
                             mRemoteTradefedDir,
-                            currentTf);
+                            tfToPush);
             attempt++;
         }
         if (!result) {
@@ -214,7 +210,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
             return;
         }
 
-        mRemoteTradefedDir = mRemoteTradefedDir + currentTf.getName() + "/";
+        mRemoteTradefedDir = mRemoteTradefedDir + tfToPush.getName() + "/";
         CommandResult listRemoteDir =
                 GceManager.remoteSshCommandExecution(
                         info, options, runUtil, 120000L, "ls", "-l", mRemoteTradefedDir);
@@ -610,6 +606,11 @@ public class RemoteInvocationExecution extends InvocationExecution {
             }
         }
 
+        // Unset remote-tf-version to avoid re-downloading from remote VM.
+        OptionSetter deviceOptions =
+                new OptionSetter(config.getDeviceConfig().get(0).getDeviceOptions());
+        deviceOptions.setOptionValue(TestDeviceOptions.REMOTE_TF_VERSION_OPTION, "");
+
         // Dump and log the configuration
         File configFile = FileUtil.createTempFile(config.getName(), ".xml");
         config.dumpXml(
@@ -621,6 +622,24 @@ public class RemoteInvocationExecution extends InvocationExecution {
             logger.testLog(REMOTE_CONFIG, LogDataType.XML, source);
         }
         return configFile;
+    }
+
+    /** Returns the Tradefed version that should be pushed to the remote to drive the invocation. */
+    private File getLocalTradefedPath(ITestInvocationListener listener, File remoteTf) {
+        if (remoteTf != null && remoteTf.exists()) {
+            return remoteTf;
+        }
+
+        String tfPath = System.getProperty("TF_JAR_DIR");
+        if (tfPath == null) {
+            listener.invocationFailed(new RuntimeException("Failed to find $TF_JAR_DIR."));
+            return null;
+        }
+        File currentTf = new File(tfPath).getAbsoluteFile();
+        if (tfPath.equals(".")) {
+            currentTf = new File("").getAbsoluteFile();
+        }
+        return currentTf;
     }
 
     private void fetchAndProcessResults(

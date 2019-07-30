@@ -49,6 +49,7 @@ import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 
 import org.json.JSONArray;
@@ -1313,7 +1314,7 @@ public class Configuration implements IConfiguration {
     public void resolveDynamicOptions() throws ConfigurationException {
         // Resolve regardless of sharding if we are in remote environment because we know that's
         // where the execution will occur.
-        if (!SystemUtil.isRemoteEnvironment()) {
+        if (!isRemoteEnvironment()) {
             ICommandOptions options = getCommandOptions();
             if (options.getShardCount() != null && options.getShardIndex() == null) {
                 CLog.w("Skipping download due to local sharding detected.");
@@ -1325,6 +1326,12 @@ public class Configuration implements IConfiguration {
         CLog.d("Resolve and download remote files from @Option");
         // Setup and validate the GCS File paths
         mRemoteFiles.addAll(argsParser.validateRemoteFilePath());
+    }
+
+    /** Returns whether or not the environment of TF is a remote invocation. */
+    @VisibleForTesting
+    protected boolean isRemoteEnvironment() {
+        return SystemUtil.isRemoteEnvironment();
     }
 
     /** {@inheritDoc} */

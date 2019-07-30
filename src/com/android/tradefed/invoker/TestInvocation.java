@@ -687,7 +687,10 @@ public class TestInvocation implements ITestInvocation {
             }
             getLogRegistry().registerLogger(leveledLogOutput);
             mStatus = "resolving dynamic options";
-            config.resolveDynamicOptions();
+            // Don't resolve for remote invocation, wait until we are inside the remote.
+            if (!RunMode.REMOTE_INVOCATION.equals(mode)) {
+                config.resolveDynamicOptions();
+            }
 
             mStatus = "fetching build";
             for (String deviceName : context.getDeviceConfigNames()) {

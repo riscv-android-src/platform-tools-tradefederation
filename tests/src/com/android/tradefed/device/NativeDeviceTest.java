@@ -50,6 +50,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.ProcessInfo;
 import com.android.tradefed.util.StreamUtil;
 
 import org.easymock.EasyMock;
@@ -2291,7 +2292,176 @@ public class NativeDeviceTest {
         Map<Long, String> history = new LinkedHashMap<Long, String>();
         history.put(1556587278L, "kernel_panic");
         EasyMock.replay(mMockIDevice);
-        assertEquals(history, spy.getBootHistorySince(1556238008L));
+        assertEquals(history, spy.getBootHistorySince(1556238008L, TimeUnit.SECONDS));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test get boot history since */
+    @Test
+    public void testGetBootHistorySinceInMillisecond() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn(
+                        "kernel_panic,1556587278\n"
+                                + "        reboot,,1556238008\n"
+                                + "        reboot,,1556237796\n"
+                                + "        reboot,,1556237725\n")
+                .when(spy)
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
+        Map<Long, String> history = new LinkedHashMap<Long, String>();
+        history.put(1556587278L, "kernel_panic");
+        EasyMock.replay(mMockIDevice);
+        assertEquals(history, spy.getBootHistorySince(1556238008000L, TimeUnit.MILLISECONDS));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test deviceSoftRestartedSince */
+    @Test
+    public void testDeviceSoftRestartedSince() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("914").when(spy).executeShellCommand("pidof system_server");
+        doReturn("1559091922").when(spy).executeShellCommand("stat -c%Z /proc/914");
+        doReturn("system").when(spy).executeShellCommand("stat -c%U /proc/914");
+        doReturn(
+                        "kernel_panic,1556587278\n"
+                                + "        reboot,,1556238008\n"
+                                + "        reboot,,1556237796\n"
+                                + "        reboot,,1556237725\n")
+                .when(spy)
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
+        EasyMock.replay(mMockIDevice);
+        assertFalse(spy.deviceSoftRestartedSince(1559091923L, TimeUnit.SECONDS));
+        assertFalse(spy.deviceSoftRestartedSince(1559091923000L, TimeUnit.MILLISECONDS));
+        assertFalse(spy.deviceSoftRestartedSince(1559091922L, TimeUnit.SECONDS));
+        assertFalse(spy.deviceSoftRestartedSince(1559091922000L, TimeUnit.MILLISECONDS));
+        assertTrue(spy.deviceSoftRestartedSince(1559091921L, TimeUnit.SECONDS));
+        assertTrue(spy.deviceSoftRestartedSince(1559091921000L, TimeUnit.MILLISECONDS));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test deviceSoftRestartedSince return true with system_server stopped */
+    @Test
+    public void testDeviceSoftRestartedSinceWithSystemServerStopped() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("").when(spy).executeShellCommand("pidof system_server");
+        assertTrue(spy.deviceSoftRestartedSince(1559091922L, TimeUnit.SECONDS));
+    }
+
+    /** Test deviceSoftRestartedSince throw RuntimeException with abnormal reboot */
+    @Test
+    public void testDeviceSoftRestartedSinceWithAbnormalReboot() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("914").when(spy).executeShellCommand("pidof system_server");
+        doReturn("1559091999").when(spy).executeShellCommand("stat -c%Z /proc/914");
+        doReturn("system").when(spy).executeShellCommand("stat -c%U /proc/914");
+        doReturn(
+                        "kernel_panic,1559091933\n"
+                                + "        reboot,,1556238008\n"
+                                + "        reboot,,1556237796\n"
+                                + "        reboot,,1556237725\n")
+                .when(spy)
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
+        EasyMock.replay(mMockIDevice);
+        try {
+            spy.deviceSoftRestartedSince(1559091922L, TimeUnit.SECONDS);
+        } catch (RuntimeException e) {
+            //expected
+            return;
+        }
+        fail("RuntimeException is expected");
+    }
+
+    /** Test deviceSoftRestartedSince return false with normal reboot */
+    @Test
+    public void testDeviceSoftRestartedSinceWithNormalReboot() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("914").when(spy).executeShellCommand("pidof system_server");
+        doReturn("1559091992").when(spy).executeShellCommand("stat -c%Z /proc/914");
+        doReturn("system").when(spy).executeShellCommand("stat -c%U /proc/914");
+        doReturn(
+                        "reboot,1559091933\n"
+                                + "        reboot,,1556238008\n"
+                                + "        reboot,,1556237796\n"
+                                + "        reboot,,1556237725\n")
+                .when(spy)
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
+        EasyMock.replay(mMockIDevice);
+        assertFalse(spy.deviceSoftRestartedSince(1559091921L, TimeUnit.SECONDS));
+    }
+
+    /** Test deviceSoftRestarted given the privious system_server {@link ProcessInfo} */
+    @Test
+    public void testDeviceSoftRestarted() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        ProcessInfo prev1 = new ProcessInfo("system", 123, "system_server", 1559000000L);
+        ProcessInfo prev2 = new ProcessInfo("system", 914, "system_server", 1559091922L);
+        doReturn("914").when(spy).executeShellCommand("pidof system_server");
+        doReturn("1559091922").when(spy).executeShellCommand("stat -c%Z /proc/914");
+        doReturn("system").when(spy).executeShellCommand("stat -c%U /proc/914");
+        doReturn(
+                        "kernel_panic,1556587278\n"
+                                + "        reboot,,1556238008\n"
+                                + "        reboot,,1556237796\n"
+                                + "        reboot,,1556237725\n")
+                .when(spy)
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
+        EasyMock.replay(mMockIDevice);
+        assertTrue(spy.deviceSoftRestarted(prev1));
+        assertFalse(spy.deviceSoftRestarted(prev2));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test deviceSoftRestarted return true with system_server stopped */
+    @Test
+    public void testDeviceSoftRestartedWithSystemServerStopped() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("").when(spy).executeShellCommand("pidof system_server");
+        assertTrue(
+                spy.deviceSoftRestarted(
+                        new ProcessInfo("system", 123, "system_server", 1559000000L)));
+    }
+
+    /** Test deviceSoftRestarted throw RuntimeException with abnormal reboot */
+    @Test
+    public void testDeviceSoftRestartedWithAbnormalReboot() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("914").when(spy).executeShellCommand("pidof system_server");
+        doReturn("1559091999").when(spy).executeShellCommand("stat -c%Z /proc/914");
+        doReturn("system").when(spy).executeShellCommand("stat -c%U /proc/914");
+        doReturn(
+                        "kernel_panic,1559091933\n"
+                                + "        reboot,,1556238008\n"
+                                + "        reboot,,1556237796\n"
+                                + "        reboot,,1556237725\n")
+                .when(spy)
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
+        EasyMock.replay(mMockIDevice);
+        try {
+            spy.deviceSoftRestarted(new ProcessInfo("system", 123, "system_server", 1559000000L));
+        } catch (RuntimeException e) {
+            //expected
+            return;
+        }
+        fail("Abnormal reboot is detected, RuntimeException is expected");
+    }
+
+    /** Test ddeviceSoftRestarted return false with normal reboot */
+    @Test
+    public void testDeviceSoftRestartedWithNormalReboot() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("914").doReturn("914").when(spy).executeShellCommand("pidof system_server");
+        doReturn("1559091992").when(spy).executeShellCommand("stat -c%Z /proc/914");
+        doReturn("system").when(spy).executeShellCommand("stat -c%U /proc/914");
+        doReturn(
+                        "reboot,,1559091933\n"
+                                + "        reboot,,1556238008\n"
+                                + "        reboot,,1556237796\n"
+                                + "        reboot,,1556237725\n")
+                .when(spy)
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
+        EasyMock.replay(mMockIDevice);
+        assertFalse(
+                spy.deviceSoftRestarted(
+                        new ProcessInfo("system", 123, "system_server", 1559000000L)));
         EasyMock.verify(mMockIDevice);
     }
 
