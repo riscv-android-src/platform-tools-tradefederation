@@ -16,6 +16,7 @@
 package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.testtype.retry.MergeStrategy;
 
@@ -30,6 +31,8 @@ import java.util.Map;
 
 /** Container for a result of a single test. */
 public class TestResult {
+    // Key that mark that an aggregation is hiding a failure.
+    public static final String IS_FLAKY = "is_flaky";
 
     private TestStatus mStatus;
     private String mStackTrace;
@@ -157,6 +160,14 @@ public class TestResult {
         return a == b || (a != null && a.equals(b));
     }
 
+    private void markFlaky() {
+        mProtoMetrics.put(
+                IS_FLAKY,
+                Metric.newBuilder()
+                        .setMeasurements(Measurements.newBuilder().setSingleString("true").build())
+                        .build());
+    }
+
     /**
      * Merge the attempts for a same test case based on the merging strategy.
      *
@@ -222,6 +233,9 @@ public class TestResult {
                 // We prioritize passing the test due to the merging strategy.
                 if (pass > 0) {
                     mergedResult.setStatus(TestStatus.PASSED);
+                    if (fail > 0) {
+                        mergedResult.markFlaky();
+                    }
                 } else if (fail == 0) {
                     if (ignored > 0) {
                         mergedResult.setStatus(TestStatus.IGNORED);
