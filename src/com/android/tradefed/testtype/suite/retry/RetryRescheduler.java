@@ -34,14 +34,12 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.TextResultReporter;
-import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.BaseTestSuite;
 import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.testtype.suite.SuiteTestFilter;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.QuotationAwareTokenizer;
-import com.android.tradefed.util.TestRecordInterpreter;
 
 import com.google.inject.Inject;
 
@@ -163,12 +161,8 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
             throw new RuntimeException(e);
         }
         // Get previous results
-        TestRecord previousRecord = previousLoader.loadPreviousRecord();
-        CollectingTestListener collectedTests =
-                TestRecordInterpreter.interpreteRecord(previousRecord);
-
+        CollectingTestListener collectedTests = previousLoader.loadPreviousResults();
         previousLoader.cleanUp();
-        previousRecord = null;
 
         // Appropriately update the configuration
         IRemoteTest test = originalConfig.getTests().get(0);

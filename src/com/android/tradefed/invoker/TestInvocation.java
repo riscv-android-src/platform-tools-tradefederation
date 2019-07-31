@@ -407,6 +407,10 @@ public class TestInvocation implements ITestInvocation {
     private void startInvocation(IConfiguration config, IInvocationContext context,
             ITestInvocationListener listener) {
         logStartInvocation(context, config);
+        if (config.getCommandLine() != null) {
+            context.addInvocationAttribute(
+                    TestInvocation.COMMAND_ARGS_KEY, config.getCommandLine());
+        }
         listener.invocationStarted(context);
     }
 
