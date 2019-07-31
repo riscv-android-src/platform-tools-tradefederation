@@ -323,6 +323,8 @@ public class TradefedSandbox implements ISandbox {
                                 createClasspath(mRootFolder), mRunUtil, args, mode, mGlobalConfig);
             } catch (SandboxConfigurationException e) {
                 // TODO: Improve our detection of that scenario
+                CLog.e(e);
+                CLog.e("%s", args[0]);
                 if (e.getMessage().contains(String.format("Can not find local config %s", args[0]))
                         || e.getMessage()
                                 .contains(
@@ -434,9 +436,9 @@ public class TradefedSandbox implements ISandbox {
         File tmpParentConfig = null;
         PrintWriter pw = null;
         try {
-            FileUtil.createTempFile("parent-config", ".xml", mSandboxTmpFolder);
-            parentConfig = ConfigurationFactory.getInstance().createConfigurationFromArgs(args);
+            tmpParentConfig = FileUtil.createTempFile("parent-config", ".xml", mSandboxTmpFolder);
             pw = new PrintWriter(tmpParentConfig);
+            parentConfig = ConfigurationFactory.getInstance().createConfigurationFromArgs(args);
             // Do not print deprecated options to avoid compatibility issues, and do not print
             // unchanged options.
             parentConfig.dumpXml(pw, new ArrayList<>(), false, false);
