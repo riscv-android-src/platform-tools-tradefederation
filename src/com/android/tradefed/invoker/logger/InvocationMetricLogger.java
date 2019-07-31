@@ -27,6 +27,7 @@ public class InvocationMetricLogger {
     /** Some special named key that we will always populate for the invocation. */
     public enum InvocationMetricKey {
         WIFI_AP_NAME("wifi_ap_name", false),
+        CLEARED_RUN_ERROR("cleared_run_error", false),
         FETCH_BUILD("fetch_build_time_ms", true),
         SETUP("setup_time_ms", true),
         SHARDING_DEVICE_SETUP_TIME("remote_device_sharding_setup_ms", true),
