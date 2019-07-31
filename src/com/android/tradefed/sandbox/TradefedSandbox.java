@@ -431,11 +431,12 @@ public class TradefedSandbox implements ISandbox {
 
     private File handleChildMissingConfig(String[] args) {
         IConfiguration parentConfig = null;
+        File tmpParentConfig = null;
+        PrintWriter pw = null;
         try {
+            FileUtil.createTempFile("parent-config", ".xml", mSandboxTmpFolder);
             parentConfig = ConfigurationFactory.getInstance().createConfigurationFromArgs(args);
-            File tmpParentConfig =
-                    FileUtil.createTempFile("parent-config", ".xml", mSandboxTmpFolder);
-            PrintWriter pw = new PrintWriter(tmpParentConfig);
+            pw = new PrintWriter(tmpParentConfig);
             // Do not print deprecated options to avoid compatibility issues, and do not print
             // unchanged options.
             parentConfig.dumpXml(pw, new ArrayList<>(), false, false);
@@ -443,7 +444,10 @@ public class TradefedSandbox implements ISandbox {
         } catch (ConfigurationException | IOException e) {
             CLog.e("Parent doesn't understand the command either:");
             CLog.e(e);
+            FileUtil.deleteFile(tmpParentConfig);
             return null;
+        } finally {
+            StreamUtil.close(pw);
         }
     }
 }

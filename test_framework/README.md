@@ -9,3 +9,4 @@ This directory should contain classes that are:
 * Related to tests (IRemoteTest types)
 * Related to tests setup (ITargetPreparer types)
 * Related to metrics collection during tests (IMetricCollector types)
+* Utilities specific to the tests, preparers or collectors
