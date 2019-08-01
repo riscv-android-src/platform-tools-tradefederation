@@ -27,6 +27,8 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 
+import com.google.common.collect.ImmutableList;
+
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
@@ -198,7 +200,8 @@ public class GTestBaseTest {
         mSetter.setOptionValue("coverage", "true");
 
         ITestInvocationListener listener =
-                gTestBase.addNativeCoverageListenerIfEnabled(mMockTestDevice, mMockListener);
+                gTestBase.addNativeCoverageListenerIfEnabled(
+                        mMockTestDevice, false, ImmutableList.of(), mMockListener);
 
         assertThat(listener).isInstanceOf(NativeCodeCoverageListener.class);
     }
@@ -211,7 +214,8 @@ public class GTestBaseTest {
         mSetter.setOptionValue("coverage", "false");
 
         ITestInvocationListener listener =
-                gTestBase.addNativeCoverageListenerIfEnabled(mMockTestDevice, mMockListener);
+                gTestBase.addNativeCoverageListenerIfEnabled(
+                        mMockTestDevice, false, ImmutableList.of(), mMockListener);
 
         assertThat(listener).isSameAs(mMockListener);
     }
