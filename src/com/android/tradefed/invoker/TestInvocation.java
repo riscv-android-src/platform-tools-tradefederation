@@ -769,6 +769,8 @@ public class TestInvocation implements ITestInvocation {
                     // Log the chunk of parent host_log before sharding
                     reportHostLog(listener, config, TRADEFED_LOG_NAME + BEFORE_SHARDING_SUFFIX);
                     config.getLogSaver().invocationEnded(0L);
+                    // FIXME: The log above is not available to aggregated reporters during
+                    // auto-retry.
                     return;
                 }
             }
