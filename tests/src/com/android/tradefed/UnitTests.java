@@ -275,7 +275,6 @@ import com.android.tradefed.util.TestLoaderTest;
 import com.android.tradefed.util.TestMappingTest;
 import com.android.tradefed.util.TimeUtilTest;
 import com.android.tradefed.util.TimeValTest;
-import com.android.tradefed.util.UserUtilTest;
 import com.android.tradefed.util.ZipUtil2Test;
 import com.android.tradefed.util.ZipUtilTest;
 import com.android.tradefed.util.hostmetric.AbstractHostMonitorTest;
@@ -618,7 +617,6 @@ import org.junit.runners.Suite.SuiteClasses;
     TestMappingTest.class,
     TimeUtilTest.class,
     TimeValTest.class,
-    UserUtilTest.class,
     ZipUtilTest.class,
     ZipUtil2Test.class,
 
