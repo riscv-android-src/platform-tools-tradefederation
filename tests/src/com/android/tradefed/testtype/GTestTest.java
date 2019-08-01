@@ -512,9 +512,6 @@ public class GTestTest {
                 (TimeUnit) EasyMock.anyObject(),
                 EasyMock.anyInt());
 
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 -1")).andReturn("");
-
         replayMocks();
 
         mGTest.run(mMockInvocationListener);
@@ -573,11 +570,6 @@ public class GTestTest {
                 EasyMock.anyLong(),
                 (TimeUnit) EasyMock.anyObject(),
                 EasyMock.anyInt());
-
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(0))).andReturn("1");
-        EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(1))).andReturn("1000");
-        EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 1 1000")).andReturn("");
 
         replayMocks();
 
