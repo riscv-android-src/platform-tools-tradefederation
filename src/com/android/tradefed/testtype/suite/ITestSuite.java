@@ -28,6 +28,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.DeviceProperties;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NullDevice;
 import com.android.tradefed.device.StubDevice;
@@ -713,7 +714,7 @@ public abstract class ITestSuite
             TestFailureListener failureListener)
             throws DeviceNotAvailableException {
         if (mRebootPerModule) {
-            if ("user".equals(mDevice.getProperty("ro.build.type"))) {
+            if ("user".equals(mDevice.getProperty(DeviceProperties.BUILD_TYPE))) {
                 CLog.e(
                         "reboot-per-module should only be used during development, "
                                 + "this is a\" user\" build device");
