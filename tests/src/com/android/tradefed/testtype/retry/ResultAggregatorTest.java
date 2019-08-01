@@ -23,6 +23,8 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.retry.ISupportGranularResults;
 
@@ -60,6 +62,7 @@ public class ResultAggregatorTest {
 
     @Test
     public void testForwarding() {
+        LogFile beforeEnd = new LogFile("path", "url", LogDataType.TEXT);
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
         ILogSaver logger = EasyMock.createMock(ILogSaver.class);
@@ -118,7 +121,9 @@ public class ResultAggregatorTest {
 
         mAggListener.testModuleEnded();
         mDetailedListener.testModuleEnded();
+        mAggListener.logAssociation("before-end", beforeEnd);
         mAggListener.invocationEnded(500L);
+        mDetailedListener.logAssociation("before-end", beforeEnd);
         mDetailedListener.invocationEnded(500L);
 
         EasyMock.replay(mAggListener, mDetailedListener);
@@ -145,6 +150,7 @@ public class ResultAggregatorTest {
         mAggregator.testRunEnded(450L, new HashMap<String, Metric>());
 
         mAggregator.testModuleEnded();
+        mAggregator.logAssociation("before-end", beforeEnd);
         mAggregator.invocationEnded(500L);
         EasyMock.verify(mAggListener, mDetailedListener);
     }
