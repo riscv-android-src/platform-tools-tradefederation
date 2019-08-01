@@ -156,16 +156,6 @@ public class NativeDevice implements IManagedTestDevice {
     /** The time in ms to wait for a recovery that we skip because of the NONE mode */
     static final int NONE_RECOVERY_MODE_DELAY = 1000;
 
-    static final String BUILD_ID_PROP = "ro.build.version.incremental";
-    private static final String PRODUCT_NAME_PROP = "ro.product.name";
-    private static final String BUILD_TYPE_PROP = "ro.build.type";
-    private static final String BUILD_ALIAS_PROP = "ro.build.id";
-    private static final String BUILD_FLAVOR = "ro.build.flavor";
-    private static final String HEADLESS_PROP = "ro.build.headless";
-    static final String BUILD_CODENAME_PROP = "ro.build.version.codename";
-    static final String BUILD_TAGS = "ro.build.tags";
-    private static final String PS_COMMAND = "ps -A || ps";
-
     private static final String SIM_STATE_PROP = "gsm.sim.state";
     private static final String SIM_OPERATOR_PROP = "gsm.operator.alpha";
 
@@ -619,7 +609,7 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public String getBuildAlias() throws DeviceNotAvailableException {
-        String alias = getProperty(BUILD_ALIAS_PROP);
+        String alias = getProperty(DeviceProperties.BUILD_ALIAS);
         if (alias == null || alias.isEmpty()) {
             return getBuildId();
         }
@@ -631,7 +621,7 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public String getBuildId() throws DeviceNotAvailableException {
-        String bid = getProperty(BUILD_ID_PROP);
+        String bid = getProperty(DeviceProperties.BUILD_ID);
         if (bid == null) {
             CLog.w("Could not get device %s build id.", getSerialNumber());
             return IBuildInfo.UNKNOWN_BUILD_ID;
@@ -644,12 +634,12 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public String getBuildFlavor() throws DeviceNotAvailableException {
-        String buildFlavor = getProperty(BUILD_FLAVOR);
+        String buildFlavor = getProperty(DeviceProperties.BUILD_FLAVOR);
         if (buildFlavor != null && !buildFlavor.isEmpty()) {
             return buildFlavor;
         }
-        String productName = getProperty(PRODUCT_NAME_PROP);
-        String buildType = getProperty(BUILD_TYPE_PROP);
+        String productName = getProperty(DeviceProperties.PRODUCT);
+        String buildType = getProperty(DeviceProperties.BUILD_TYPE);
         if (productName == null || buildType == null) {
             CLog.w("Could not get device %s build flavor.", getSerialNumber());
             return null;
@@ -3703,7 +3693,7 @@ public class NativeDevice implements IManagedTestDevice {
     public int getApiLevel() throws DeviceNotAvailableException {
         int apiLevel = UNKNOWN_API_LEVEL;
         try {
-            String prop = getProperty("ro.build.version.sdk");
+            String prop = getProperty(DeviceProperties.SDK_VERSION);
             apiLevel = Integer.parseInt(prop);
         } catch (NumberFormatException nfe) {
             // ignore, return unknown instead
@@ -3715,7 +3705,7 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean checkApiLevelAgainstNextRelease(int strictMinLevel)
             throws DeviceNotAvailableException {
-        String codeName = getProperty(BUILD_CODENAME_PROP).trim();
+        String codeName = getProperty(DeviceProperties.BUILD_CODENAME).trim();
         int apiLevel = getApiLevel() + ("REL".equals(codeName) ? 0 : 1);
         if (strictMinLevel > apiLevel) {
             return false;
@@ -4082,7 +4072,7 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public String getBuildSigningKeys() throws DeviceNotAvailableException {
-        String buildTags = getProperty(BUILD_TAGS);
+        String buildTags = getProperty(DeviceProperties.BUILD_TAGS);
         if (buildTags != null) {
             String[] tags = buildTags.split(",");
             for (String tag : tags) {
@@ -4201,7 +4191,7 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public boolean isHeadless() throws DeviceNotAvailableException {
-        if (getProperty(HEADLESS_PROP) != null) {
+        if (getProperty(DeviceProperties.BUILD_HEADLESS) != null) {
             return true;
         }
         return false;
@@ -4237,8 +4227,8 @@ public class NativeDevice implements IManagedTestDevice {
                     getAllocationState(),
                     getDisplayString(selector.getDeviceProductType(idevice)),
                     getDisplayString(selector.getDeviceProductVariant(idevice)),
-                    getDisplayString(idevice.getProperty("ro.build.version.sdk")),
-                    getDisplayString(idevice.getProperty("ro.build.id")),
+                    getDisplayString(idevice.getProperty(DeviceProperties.SDK_VERSION)),
+                    getDisplayString(idevice.getProperty(DeviceProperties.BUILD_ALIAS)),
                     getDisplayString(getBattery()),
                     getDeviceClass(),
                     getDisplayString(getMacAddress()),
