@@ -25,6 +25,7 @@ import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.retry.ISupportGranularResults;
+import com.android.tradefed.retry.RetryStrategy;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
