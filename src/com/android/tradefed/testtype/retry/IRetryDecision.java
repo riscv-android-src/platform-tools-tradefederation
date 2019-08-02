@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.retry;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.testtype.IRemoteTest;
 
 import java.util.List;

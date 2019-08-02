@@ -31,6 +31,8 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.retry.ISupportGranularResults;
+import com.android.tradefed.retry.MergeStrategy;
+import com.android.tradefed.retry.RetryStrategy;
 
 import com.google.api.client.repackaged.com.google.common.base.Joiner;
 

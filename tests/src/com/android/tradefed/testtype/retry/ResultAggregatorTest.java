@@ -27,6 +27,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.retry.ISupportGranularResults;
+import com.android.tradefed.retry.RetryStrategy;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
