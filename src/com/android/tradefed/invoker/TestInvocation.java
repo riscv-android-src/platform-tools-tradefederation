@@ -638,11 +638,11 @@ public class TestInvocation implements ITestInvocation {
 
         // Auto retry feature
         IRetryDecision decision = config.getRetryDecision();
+        ResultAggregator aggregator = null;
         decision.setInvocationContext(context);
         if (decision.isAutoRetryEnabled() && decision.getMaxRetryCount() > 1) {
             CLog.d("Auto-retry enabled, using the ResultAggregator to handle multiple retries.");
-            ResultAggregator aggregator =
-                    new ResultAggregator(allListeners, decision.getRetryStrategy());
+            aggregator = new ResultAggregator(allListeners, decision.getRetryStrategy());
             allListeners = Arrays.asList(aggregator);
         }
 
@@ -769,8 +769,11 @@ public class TestInvocation implements ITestInvocation {
                     // Log the chunk of parent host_log before sharding
                     reportHostLog(listener, config, TRADEFED_LOG_NAME + BEFORE_SHARDING_SUFFIX);
                     config.getLogSaver().invocationEnded(0L);
-                    // FIXME: The log above is not available to aggregated reporters during
-                    // auto-retry.
+                    if (aggregator != null) {
+                        // The host_log is not available yet to reporters that don't support
+                        // granular results, so forward it.
+                        aggregator.forwardAggregatedInvocationLogs();
+                    }
                     return;
                 }
             }
