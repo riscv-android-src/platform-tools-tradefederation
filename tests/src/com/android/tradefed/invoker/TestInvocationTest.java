@@ -86,6 +86,7 @@ import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.StubTest;
+import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SystemUtil.EnvVariable;
 import com.android.tradefed.util.keystore.StubKeyStoreFactory;
@@ -1350,6 +1351,72 @@ public class TestInvocationTest {
         replayMocks(test, mockRescheduler, shard1, shard2, mGlobalConfiguration);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(test, mockRescheduler, shard1, shard2, mGlobalConfiguration);
+    }
+
+    /** Test that the before sharding log is properly carried even with auto-retry. */
+    @Test
+    public void testInvoke_shardableTest_autoRetry() throws Throwable {
+        List<ITestInvocationListener> listenerList =
+                mStubConfiguration.getTestInvocationListeners();
+        ILogSaverListener logSaverListener = EasyMock.createMock(ILogSaverListener.class);
+        listenerList.add(logSaverListener);
+        mStubConfiguration.setTestInvocationListeners(listenerList);
+
+        logSaverListener.setLogSaver(mMockLogSaver);
+        logSaverListener.invocationStarted(mStubInvocationMetadata);
+
+        String command = "empty --test-tag t";
+        String[] commandLine = {"empty", "--test-tag", "t"};
+        int shardCount = 2;
+        IShardableTest test = EasyMock.createMock(IShardableTest.class);
+        List<IRemoteTest> shards = new ArrayList<>();
+        IRemoteTest shard1 = EasyMock.createMock(IRemoteTest.class);
+        IRemoteTest shard2 = EasyMock.createMock(IRemoteTest.class);
+        shards.add(shard1);
+        shards.add(shard2);
+        EasyMock.expect(test.split()).andReturn(shards);
+        mStubConfiguration.setTest(test);
+        mStubConfiguration.setCommandLine(commandLine);
+
+        IRetryDecision decision = mStubConfiguration.getRetryDecision();
+        OptionSetter decisionSetter = new OptionSetter(decision);
+        decisionSetter.setOptionValue("auto-retry", "true");
+        decisionSetter.setOptionValue("max-testcase-run-count", "2");
+
+        mMockBuildProvider.cleanUp(mMockBuildInfo);
+        // The keystore is cloned for each shard.
+        EasyMock.expect(mGlobalConfiguration.getKeyStoreFactory())
+                .andReturn(new StubKeyStoreFactory())
+                .times(2);
+        setupInvoke();
+        EasyMock.reset(mMockLogger, mMockLogRegistry);
+        mMockLogRegistry.registerLogger(mMockLogger);
+        mMockLogger.init();
+        mMockLogger.closeLog();
+        mMockLogRegistry.unregisterLogger();
+        mMockLogSaver.invocationStarted(mStubInvocationMetadata);
+        mMockLogSaver.invocationEnded(0L);
+        setupNShardInvocation(shardCount, command);
+        // Ensure that the host_log gets logged after sharding.
+        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
+        String logName = "host_log_before_sharding";
+        LogFile loggedFile = new LogFile(PATH, URL, LogDataType.TEXT);
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(logName),
+                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.anyObject()))
+                .andReturn(loggedFile);
+        logSaverListener.logAssociation(logName, loggedFile);
+        mMockLogRegistry.unregisterLogger();
+        EasyMock.expectLastCall();
+        mMockLogger.closeLog();
+        EasyMock.expectLastCall();
+
+        mMockLogRegistry.dumpToGlobalLog(mMockLogger);
+        replayMocks(test, mockRescheduler, shard1, shard2, mGlobalConfiguration, logSaverListener);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
+        verifyMocks(test, mockRescheduler, shard1, shard2, mGlobalConfiguration, logSaverListener);
     }
 
     /**
