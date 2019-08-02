@@ -119,10 +119,18 @@ public class ResultAggregator extends CollectingTestListener {
         forwardDetailedFailure();
         super.invocationEnded(elapsedTime);
         // Make sure to forward the logs for the invocation.
+        forwardAggregatedInvocationLogs();
+        mAllForwarder.invocationEnded(elapsedTime);
+    }
+
+    /**
+     * Forward all the invocation level logs to the result reporters that don't support the granular
+     * results.
+     */
+    public final void forwardAggregatedInvocationLogs() {
         for (Entry<String, LogFile> invocLog : getNonAssociatedLogFiles().entrySet()) {
             mAggregatedForwarder.logAssociation(invocLog.getKey(), invocLog.getValue());
         }
-        mAllForwarder.invocationEnded(elapsedTime);
     }
 
     /** {@inheritDoc} */
