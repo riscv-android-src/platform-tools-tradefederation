@@ -67,8 +67,9 @@ public class BuildTestsZipUtils {
         Collections.reverse(dirs);
 
         List<File> expandedTestDirs = new ArrayList<>();
+        File testsDir = null;
         if (buildInfo != null && buildInfo instanceof IDeviceBuildInfo) {
-            File testsDir = ((IDeviceBuildInfo) buildInfo).getTestsDir();
+            testsDir = ((IDeviceBuildInfo) buildInfo).getTestsDir();
             if (testsDir != null && testsDir.exists()) {
                 expandedTestDirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app"));
                 expandedTestDirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app", apkBase));
@@ -139,6 +140,14 @@ public class BuildTestsZipUtils {
             }
             // If we couldn't find a resource, we delete the tmp file
             FileUtil.deleteFile(apkTempFile);
+        }
+
+        // Try to stage the files from remote zip files.
+        if (testsDir != null) {
+            File apkFile = buildInfo.stageRemoteFile(apkFileName, testsDir);
+            if (apkFile != null) {
+                return apkFile;
+            }
         }
         return null;
     }
