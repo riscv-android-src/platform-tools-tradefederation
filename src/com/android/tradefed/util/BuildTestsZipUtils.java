@@ -81,6 +81,13 @@ public class BuildTestsZipUtils {
                 File testcasesSubDir = FileUtil.findFile(testsDir, apkBase);
                 if (testcasesSubDir != null) {
                     expandedTestDirs.add(testcasesSubDir);
+                } else {
+                    // If there doesn't exist a directory named after apkBase, it's possible that
+                    // the apk is built output to a different module directory. Therefore, try to
+                    // search entire testsDir to locate the apk.
+                    // TODO(dshi): Find a better way to locate apk. Ideally we should start with the
+                    // test module's directory to avoid false-positive result.
+                    expandedTestDirs.add(testsDir);
                 }
             }
         }
