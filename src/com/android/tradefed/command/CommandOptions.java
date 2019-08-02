@@ -22,7 +22,7 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionUpdateRule;
 import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.testtype.retry.RetryStrategy;
+import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.util.UniqueMultiMap;
 
 import java.util.LinkedHashSet;
