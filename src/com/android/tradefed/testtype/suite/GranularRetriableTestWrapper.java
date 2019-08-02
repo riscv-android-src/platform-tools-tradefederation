@@ -30,11 +30,11 @@ import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.retry.MergeStrategy;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.retry.IRetryDecision;
-import com.android.tradefed.testtype.retry.MergeStrategy;
 import com.android.tradefed.testtype.retry.RetryStatistics;
 import com.android.tradefed.util.StreamUtil;
 
