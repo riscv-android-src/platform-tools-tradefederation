@@ -23,6 +23,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 

@@ -18,7 +18,7 @@ package com.android.tradefed.result;
 import static org.junit.Assert.*;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
-import com.android.tradefed.testtype.retry.MergeStrategy;
+import com.android.tradefed.retry.MergeStrategy;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;

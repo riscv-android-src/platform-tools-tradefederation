@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.retry;
 
+import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.testtype.IRemoteTest;
 
 import java.util.List;
