@@ -28,6 +28,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.DeviceProperties;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NullDevice;
 import com.android.tradefed.device.StubDevice;
@@ -46,6 +47,7 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.suite.checker.StatusCheckerResult;
@@ -62,7 +64,6 @@ import com.android.tradefed.testtype.IReportNotExecuted;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
-import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.MultiMap;
@@ -713,7 +714,7 @@ public abstract class ITestSuite
             TestFailureListener failureListener)
             throws DeviceNotAvailableException {
         if (mRebootPerModule) {
-            if ("user".equals(mDevice.getProperty("ro.build.type"))) {
+            if ("user".equals(mDevice.getProperty(DeviceProperties.BUILD_TYPE))) {
                 CLog.e(
                         "reboot-per-module should only be used during development, "
                                 + "this is a\" user\" build device");

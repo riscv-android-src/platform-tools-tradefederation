@@ -16,6 +16,8 @@
 package com.android.tradefed.testtype.retry;
 
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ILogSaver;
@@ -29,6 +31,8 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.retry.ISupportGranularResults;
+import com.android.tradefed.retry.MergeStrategy;
+import com.android.tradefed.retry.RetryStrategy;
 
 import com.google.api.client.repackaged.com.google.common.base.Joiner;
 
@@ -116,7 +120,19 @@ public class ResultAggregator extends CollectingTestListener {
         }
         forwardDetailedFailure();
         super.invocationEnded(elapsedTime);
+        // Make sure to forward the logs for the invocation.
+        forwardAggregatedInvocationLogs();
         mAllForwarder.invocationEnded(elapsedTime);
+    }
+
+    /**
+     * Forward all the invocation level logs to the result reporters that don't support the granular
+     * results.
+     */
+    public final void forwardAggregatedInvocationLogs() {
+        for (Entry<String, LogFile> invocLog : getNonAssociatedLogFiles().entrySet()) {
+            mAggregatedForwarder.logAssociation(invocLog.getKey(), invocLog.getValue());
+        }
     }
 
     /** {@inheritDoc} */
@@ -346,8 +362,19 @@ public class ResultAggregator extends CollectingTestListener {
         if (mDetailedRunResults != null) {
             if (mDetailedRunResults.isRunFailure() && mShouldReportFailure) {
                 mDetailedForwarder.testRunFailed(Joiner.on("\n\n").join(mAllDetailedFailures));
-                mAllDetailedFailures.clear();
+            } else {
+                // Log the run failure that was cleared
+                String value =
+                        InvocationMetricLogger.getInvocationMetrics()
+                                .get(InvocationMetricKey.CLEARED_RUN_ERROR.toString());
+                if (value != null) {
+                    mAllDetailedFailures.add(0, value);
+                }
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.CLEARED_RUN_ERROR,
+                        Joiner.on("\n\n").join(mAllDetailedFailures));
             }
+            mAllDetailedFailures.clear();
             mDetailedForwarder.testRunEnded(
                     mDetailedRunResults.getElapsedTime(), mDetailedRunResults.getRunProtoMetrics());
             mDetailedRunResults = null;

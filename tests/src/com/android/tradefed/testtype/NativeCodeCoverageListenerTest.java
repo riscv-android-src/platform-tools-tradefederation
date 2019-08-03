@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -32,6 +33,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.base.VerifyException;
+import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 
 import org.junit.Before;
@@ -84,12 +86,12 @@ public class NativeCodeCoverageListenerTest {
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
-
-        mCodeCoverageListener = new NativeCodeCoverageListener(mMockDevice, mFakeListener);
     }
 
     @Test
     public void test_logsCoverageZip() throws DeviceNotAvailableException, IOException {
+        mCodeCoverageListener = new NativeCodeCoverageListener(mMockDevice, mFakeListener);
+
         // Setup mocks to write the coverage measurement to the file.
         doReturn(true).when(mMockDevice).enableAdbRoot();
         doReturn(
@@ -138,6 +140,8 @@ public class NativeCodeCoverageListenerTest {
 
     @Test
     public void testNoCoverageFiles_logsEmptyZip() throws DeviceNotAvailableException, IOException {
+        mCodeCoverageListener = new NativeCodeCoverageListener(mMockDevice, mFakeListener);
+
         doReturn(true).when(mMockDevice).enableAdbRoot();
         doReturn("").when(mMockDevice).executeShellCommand(anyString());
 
@@ -159,7 +163,51 @@ public class NativeCodeCoverageListenerTest {
     }
 
     @Test
+    public void testCoverageFlushAllProcesses_flushAllCommandCalled()
+            throws DeviceNotAvailableException, IOException {
+        mCodeCoverageListener =
+                new NativeCodeCoverageListener(
+                        mMockDevice, true, ImmutableList.of(), mFakeListener);
+
+        doReturn(true).when(mMockDevice).enableAdbRoot();
+        doReturn(true).when(mMockDevice).isAdbRoot();
+        doReturn("").when(mMockDevice).executeShellCommand(anyString());
+
+        // Simulate a test run.
+        mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
+        Map<String, String> metric = new HashMap<>();
+        mCodeCoverageListener.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
+
+        // Verify the flush-all-coverage command was called.
+        verify(mMockDevice).executeShellCommand("kill -37 -1");
+    }
+
+    @Test
+    public void testCoverageFlushSpecificProcesses_flushCommandCalled()
+            throws DeviceNotAvailableException, IOException {
+        mCodeCoverageListener =
+                new NativeCodeCoverageListener(
+                        mMockDevice, true, ImmutableList.of("mediaserver", "adbd"), mFakeListener);
+
+        doReturn(true).when(mMockDevice).enableAdbRoot();
+        doReturn(true).when(mMockDevice).isAdbRoot();
+        doReturn("123").when(mMockDevice).getProcessPid("mediaserver");
+        doReturn("56789").when(mMockDevice).getProcessPid("adbd");
+        doReturn("").when(mMockDevice).executeShellCommand(anyString());
+
+        // Simulate a test run.
+        mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
+        Map<String, String> metric = new HashMap<>();
+        mCodeCoverageListener.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
+
+        // Verify the flush-coverage command was called with the specific pids.
+        verify(mMockDevice).executeShellCommand("kill -37 123 56789");
+    }
+
+    @Test
     public void testFailure_unableToPullFile() throws DeviceNotAvailableException {
+        mCodeCoverageListener = new NativeCodeCoverageListener(mMockDevice, mFakeListener);
+
         // Setup mocks.
         doReturn(true).when(mMockDevice).enableAdbRoot();
         doReturn("/data/misc/trace/some/path/to/coverage.gcda\n")

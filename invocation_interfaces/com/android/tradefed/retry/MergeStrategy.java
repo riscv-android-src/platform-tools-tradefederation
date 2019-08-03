@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.testtype.retry;
+package com.android.tradefed.retry;
 
 /** Describes how the results should be aggregated when multiple attempts are present. */
 public enum MergeStrategy {

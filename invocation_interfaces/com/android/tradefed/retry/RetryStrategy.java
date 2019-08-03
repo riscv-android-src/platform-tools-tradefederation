@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.testtype.retry;
+package com.android.tradefed.retry;
 
 /** The Retry Strategy to be used when re-running some tests. */
 public enum RetryStrategy {

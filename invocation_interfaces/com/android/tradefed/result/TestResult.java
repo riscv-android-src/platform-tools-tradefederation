@@ -18,7 +18,7 @@ package com.android.tradefed.result;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.testtype.retry.MergeStrategy;
+import com.android.tradefed.retry.MergeStrategy;
 
 import com.google.common.base.Joiner;
 
