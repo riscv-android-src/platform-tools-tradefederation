@@ -305,4 +305,18 @@ public interface IBuildInfo extends Serializable {
     public default Set<File> getRemoteFiles() {
         return null;
     }
+
+    /**
+     * Stage a file that's part of remote files in the build info's root dir.
+     *
+     * <p>TODO(b/138416078): Remove this interface and its caller when modules required by a test
+     * can be properly built output to the test module's directory itself.
+     *
+     * @param fileName Name of the file to be located in remote files.
+     * @param workingDir a {@link File} object of the directory to stage the file.
+     * @return the {@link File} object of the file staged in local workingDir.
+     */
+    public default File stageRemoteFile(String fileName, File workingDir) {
+        return null;
+    }
 }

@@ -19,6 +19,8 @@ import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.proto.BuildInformation;
 import com.android.tradefed.build.proto.BuildInformation.BuildFile;
 import com.android.tradefed.build.proto.BuildInformation.KeyBuildFilePair;
+import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
@@ -698,7 +700,6 @@ public class BuildInfo implements IBuildInfo {
         return null;
     }
 
-
     /** {@inheritDoc} */
     @Override
     public Set<File> getRemoteFiles() {
@@ -710,5 +711,26 @@ public class BuildInfo implements IBuildInfo {
             }
         }
         return remoteFiles;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public File stageRemoteFile(String fileName, File workingDir) {
+        List<String> includeFilters = Arrays.asList(String.format("/%s$", fileName));
+        for (File file : getRemoteFiles()) {
+            try {
+                new DynamicRemoteFileResolver()
+                        .resolvePartialDownloadZip(
+                                workingDir, file.toString(), includeFilters, null);
+            } catch (ConfigurationException e) {
+                throw new RuntimeException(e);
+            }
+
+            File stagedFile = FileUtil.findFile(workingDir, fileName);
+            if (stagedFile != null) {
+                return stagedFile;
+            }
+        }
+        return null;
     }
 }
