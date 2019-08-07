@@ -314,6 +314,40 @@ public class PushFilePreparerTest {
     }
 
     /**
+     * Test {@link PushFilePreparer#resolveRelativeFilePath(IBuildInfo, String)} can locate a source
+     * file existed in a remote zip of a device build.
+     */
+    @Test
+    public void testResolveRelativeFilePath_withDeviceBuildInfo_remoteZip() throws Exception {
+        IDeviceBuildInfo buildInfo = EasyMock.createStrictMock(IDeviceBuildInfo.class);
+        String fileName = "source_file";
+
+        File testsDir = null;
+        try {
+            testsDir = FileUtil.createTempDir("tests_dir");
+            File hostTestCasesDir = FileUtil.getFileForPath(testsDir, HOST_TESTCASES);
+            FileUtil.mkdirsRWX(hostTestCasesDir);
+            File sourceFile = FileUtil.createTempFile(fileName, null, hostTestCasesDir);
+
+            // Change the file name so direct file search will return null.
+            fileName = sourceFile.getName() + "-2";
+            EasyMock.expect(buildInfo.getFile(fileName)).andReturn(null);
+            EasyMock.expect(buildInfo.getTestsDir()).andReturn(testsDir);
+            EasyMock.expect(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null);
+            EasyMock.expect(buildInfo.stageRemoteFile(EasyMock.eq(fileName), EasyMock.eq(testsDir)))
+                    .andReturn(sourceFile);
+            EasyMock.replay(buildInfo);
+
+            assertEquals(
+                    sourceFile.getAbsolutePath(),
+                    mPreparer.resolveRelativeFilePath(buildInfo, fileName).getAbsolutePath());
+            EasyMock.verify(buildInfo);
+        } finally {
+            FileUtil.recursiveDelete(testsDir);
+        }
+    }
+
+    /**
      * If a folder is found match it first and push it while filtering the abi that are not
      * considered.
      */

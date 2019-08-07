@@ -196,6 +196,7 @@ public class PushFilePreparer extends BaseTargetPreparer
                         } else {
                             CLog.e("Did not find any module directory for '%s'", mModuleName);
                         }
+
                     } catch (IOException e) {
                         CLog.w(
                                 "Something went wrong while searching for the module '%s' "
@@ -232,6 +233,14 @@ public class PushFilePreparer extends BaseTargetPreparer
             } catch (IOException e) {
                 CLog.w("Failed to find test files from directory.");
                 src = null;
+            }
+
+            if (src == null && testDir != null) {
+                // TODO(b/138416078): Once build dependency can be fixed and test required
+                // APKs are all under the test module directory, we can remove this fallback
+                // approach to do individual download from remote artifact.
+                // Try to stage the files from remote zip files.
+                src = buildInfo.stageRemoteFile(fileName, testDir);
             }
         }
         return src;
