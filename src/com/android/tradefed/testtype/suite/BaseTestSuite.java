@@ -248,6 +248,16 @@ public class BaseTestSuite extends ITestSuite {
             mModuleRepo =
                     createModuleLoader(
                             mIncludeFiltersParsed, mExcludeFiltersParsed, mTestArgs, mModuleArgs);
+            if (mForceParameter != null && !mEnableParameter) {
+                throw new IllegalArgumentException(
+                        "'module-parameter' option was specified without "
+                                + "'enable-optional-parameterization'");
+            }
+            if (mEnableOptionalParameter && !mEnableParameter) {
+                throw new IllegalArgumentException(
+                        "'enable-optional-parameterization' option was specified without "
+                                + "'enable-parameterized-modules'");
+            }
             mModuleRepo.setParameterizedModules(mEnableParameter);
             mModuleRepo.setOptionalParameterizedModules(mEnableOptionalParameter);
             mModuleRepo.setModuleParameter(mForceParameter);
