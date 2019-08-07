@@ -78,7 +78,15 @@ public class SuiteApkInstaller extends TestAppInstallSetup {
             IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) buildInfo;
             File testDir = deviceBuildInfo.getTestsDir();
             if (testDir != null && testDir.isDirectory()) {
-                return FileUtil.findFile(testDir, apkFileName);
+                File apkFile = FileUtil.findFile(testDir, apkFileName);
+                if (apkFile == null) {
+                    // TODO(b/138416078): Once build dependency can be fixed and test required
+                    // APKs are all under the test module directory, we can remove this fallback
+                    // approach to do individual download from remote artifact.
+                    // Try to stage the files from remote zip files.
+                    apkFile = buildInfo.stageRemoteFile(apkFileName, testDir);
+                }
+                return apkFile;
             }
         }
         return null;
