@@ -20,6 +20,8 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInvocation;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.SystemUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -76,6 +78,14 @@ public class LogSaverResultForwarder extends ResultForwarder implements ILogSave
             }
             try (InputStream stream = source.createInputStream()) {
                 saver.saveLogData(TestInvocation.TRADEFED_END_HOST_LOG, LogDataType.TEXT, stream);
+                if (SystemUtil.isRemoteEnvironment()) {
+                    // In remote environment, dump to the stdout so we can get the logs in the
+                    // console.
+                    System.out.println(
+                            String.format(
+                                    "===== Result Reporters =====\n%s",
+                                    StreamUtil.getStringFromStream(stream)));
+                }
             }
         } catch (IOException e) {
             CLog.e(e);
