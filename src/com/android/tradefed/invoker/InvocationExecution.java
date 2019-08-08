@@ -42,7 +42,7 @@ import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetr
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.result.FileInputStreamSource;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.InputStreamSource;
@@ -770,7 +770,15 @@ public class InvocationExecution implements IInvocationExecution {
             CLog.e("Could not find adb log file: %s", adbLog);
             return;
         }
-        try (FileInputStreamSource source = new FileInputStreamSource(adbLog)) {
+        CommandResult truncAdb =
+                RunUtil.getDefault()
+                        .runTimedCmd(60000, "tail", "--bytes=10MB", adbLog.getAbsolutePath());
+        if (!CommandStatus.SUCCESS.equals(truncAdb.getStatus())) {
+            CLog.e("Fail to truncate the adb log: %s\n%s", adbLog, truncAdb.getStderr());
+            return;
+        }
+        try (InputStreamSource source =
+                new ByteArrayInputStreamSource(truncAdb.getStdout().getBytes())) {
             logger.testLog("host_adb_log", LogDataType.TEXT, source);
         }
     }
