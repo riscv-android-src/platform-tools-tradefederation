@@ -299,7 +299,7 @@ public class RunUtil implements IRunUtil {
     @Override
     public Process runCmdInBackground(final String... command) throws IOException  {
         final String fullCmd = Arrays.toString(command);
-        CLog.v("Running %s", fullCmd);
+        CLog.v("Running in background: %s", fullCmd);
         return createProcessBuilder(command).start();
     }
 
@@ -308,7 +308,7 @@ public class RunUtil implements IRunUtil {
      */
     @Override
     public Process runCmdInBackground(final List<String> command) throws IOException  {
-        CLog.v("Running %s", command);
+        CLog.v("Running in background: %s", command);
         return createProcessBuilder(command).start();
     }
 
@@ -318,7 +318,7 @@ public class RunUtil implements IRunUtil {
     @Override
     public Process runCmdInBackground(List<String> command, OutputStream output)
             throws IOException {
-        CLog.v("Running %s", command);
+        CLog.v("Running in background: %s", command);
         Process process = createProcessBuilder(command).start();
         inheritIO(
                 process.getInputStream(),
