@@ -183,6 +183,9 @@ def get_extra_args(args):
                 'generate_new_metrics': constants.POST_PATCH_ITERATIONS,
                 'host': constants.HOST,
                 'instant': constants.INSTANT,
+                'iterations': constants.ITERATIONS,
+                'rerun_until_failure': constants.RERUN_UNTIL_FAILURE,
+                'retry_any_failure': constants.RETRY_ANY_FAILURE,
                 'serial': constants.SERIAL,
                 'user_type': constants.USER_TYPE}
     not_match = [k for k in arg_maps if k not in vars(args)]

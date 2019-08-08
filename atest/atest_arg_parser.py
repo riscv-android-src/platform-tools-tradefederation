@@ -24,6 +24,26 @@ import atest_utils
 import constants
 
 
+def _positive_int(value):
+    """Verify value by whether or not a positive integer.
+
+    Args:
+        value: A string of a command-line argument.
+
+    Returns:
+        int of value, if it is an positive integer.
+        Otherwise, raise argparse.ArgumentTypeError.
+    """
+    err_msg = "invalid positive int value: '%s'" % value
+    try:
+        converted_value = int(value)
+        if converted_value < 1:
+            raise argparse.ArgumentTypeError(err_msg)
+        return converted_value
+    except ValueError:
+        raise argparse.ArgumentTypeError(err_msg)
+
+
 class AtestArgParser(argparse.ArgumentParser):
     """Atest wrapper of ArgumentParser."""
 
@@ -106,6 +126,26 @@ class AtestArgParser(argparse.ArgumentParser):
         # Option for clearing cache of input test reference .
         self.add_argument('-c', '--clear-cache', action='store_true',
                           help='Wipe out the test_infos cache of the test.')
+        # A group of options for rerun strategy. They are mutually exclusive in a command line.
+        group = self.add_mutually_exclusive_group()
+        # Option for rerun tests for the specified number iterations.
+        group.add_argument('--iterations', nargs='?',
+                           type=_positive_int, const=10, default=0,
+                           metavar='MAX_ITERATIONS',
+                           help='Rerun all tests, run 10 iterations by default. '
+                                'Accept a positive int for # iterations.')
+        group.add_argument('--rerun-until-failure', nargs='?',
+                           type=_positive_int, const=10, default=0,
+                           metavar='MAX_ITERATIONS',
+                           help='Rerun all tests until a failure occurs or max iterations is '
+                                'reached, run 10 iterations by default. '
+                                'Accept a positive int for # iterations.')
+        group.add_argument('--retry-any-failure', nargs='?',
+                           type=_positive_int, const=10, default=0,
+                           metavar='MAX_ITERATIONS',
+                           help='Rerun failed tests until passed or max iterations is reached, '
+                                'run 10 iterations by default. '
+                                'Accept a positive int for # iterations.')
         # This arg actually doesn't consume anything, it's primarily used for the
         # help description and creating custom_args in the NameSpace object.
         self.add_argument('--', dest='custom_args', nargs='*',
