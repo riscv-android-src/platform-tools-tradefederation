@@ -47,6 +47,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.IHostCleaner;
@@ -59,6 +60,11 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.retry.IRetryDecision;
+import com.android.tradefed.testtype.retry.RetryLogSaverResultForwarder;
+import com.android.tradefed.testtype.retry.RetryStatistics;
+import com.android.tradefed.testtype.suite.ITestSuite;
+import com.android.tradefed.testtype.suite.ModuleListener;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -473,35 +479,59 @@ public class InvocationExecution implements IInvocationExecution {
 
                 updateAutoCollectors(config);
 
-                // We clone the collectors for each IRemoteTest to ensure no state conflicts.
-                List<IMetricCollector> clonedCollectors = new ArrayList<>();
-                // Add automated collectors
-                for (AutoLogCollector auto : config.getCommandOptions().getAutoLogCollectors()) {
-                    clonedCollectors.add(auto.getInstanceForValue());
+                IRetryDecision decision = config.getRetryDecision();
+                // Handle the no-retry use case
+                if (!decision.isAutoRetryEnabled()
+                        || RetryStrategy.NO_RETRY.equals(decision.getRetryStrategy())
+                        || test instanceof ITestSuite) {
+                    runTest(config, context, listener, test);
+                    remainingTests.remove(test);
+                    continue;
                 }
 
-                // Add the collector from the configuration
-                clonedCollectors.addAll(
-                        CollectorHelper.cloneCollectors(config.getMetricCollectors()));
-                if (test instanceof IMetricCollectorReceiver) {
-                    ((IMetricCollectorReceiver) test).setMetricCollectors(clonedCollectors);
-                    // If test can receive collectors then let it handle the how to set them up
-                    test.run(listener);
-                } else {
-                    // Wrap collectors in each other and collection will be sequential, do this in the
-                    // loop to ensure they are always initialized against the right context.
-                    ITestInvocationListener listenerWithCollectors = listener;
-                    for (IMetricCollector collector : clonedCollectors) {
-                        if (collector.isDisabled()) {
-                            CLog.d("%s has been disabled. Skipping.", collector);
-                        } else {
-                            listenerWithCollectors =
-                                    collector.init(context, listenerWithCollectors);
-                        }
-                    }
-                    test.run(listenerWithCollectors);
-                }
+                ModuleListener mainGranularRunListener = new ModuleListener(listener);
+                RetryLogSaverResultForwarder runListener =
+                        initializeListeners(config, listener, mainGranularRunListener);
+                runTest(config, context, runListener, test);
                 remainingTests.remove(test);
+                runListener.incrementAttempt();
+
+                // Avoid entering the loop if no retry to be done.
+                if (!decision.shouldRetry(
+                        test, 0, mainGranularRunListener.getTestRunForAttempts(0))) {
+                    continue;
+                }
+
+                long startTime = System.currentTimeMillis();
+                try {
+                    CLog.d("Starting auto-retry.");
+                    for (int attemptNumber = 1;
+                            attemptNumber < decision.getMaxRetryCount();
+                            attemptNumber++) {
+                        boolean retry =
+                                decision.shouldRetry(
+                                        test,
+                                        attemptNumber - 1,
+                                        mainGranularRunListener.getTestRunForAttempts(
+                                                attemptNumber - 1));
+                        if (!retry) {
+                            continue;
+                        }
+                        CLog.d("auto-retry attempt number %s", attemptNumber);
+                        // Run the tests again
+                        runTest(config, context, runListener, test);
+                        runListener.incrementAttempt();
+                    }
+                    // Feed the last attempt if we reached here.
+                    decision.addLastAttempt(
+                            mainGranularRunListener.getTestRunForAttempts(
+                                    decision.getMaxRetryCount() - 1));
+                } finally {
+                    RetryStatistics retryStats = decision.getRetryStatistics();
+                    // Track how long we spend in retry
+                    retryStats.mRetryTime = System.currentTimeMillis() - startTime;
+                    addRetryTime(retryStats.mRetryTime);
+                }
             }
         } finally {
             TestInvocation.printStageDelimiter(Stage.TEST, true);
@@ -645,6 +675,62 @@ public class InvocationExecution implements IInvocationExecution {
                         BuildInfoFileKey.HOST_LINKED_DIR.getFileKey());
             }
         }
+    }
+
+    private void runTest(
+            IConfiguration config,
+            IInvocationContext context,
+            ITestInvocationListener listener,
+            IRemoteTest test)
+            throws DeviceNotAvailableException {
+        // We clone the collectors for each IRemoteTest to ensure no state conflicts.
+        List<IMetricCollector> clonedCollectors = new ArrayList<>();
+        // Add automated collectors
+        for (AutoLogCollector auto : config.getCommandOptions().getAutoLogCollectors()) {
+            clonedCollectors.add(auto.getInstanceForValue());
+        }
+
+        // Add the collector from the configuration
+        clonedCollectors.addAll(CollectorHelper.cloneCollectors(config.getMetricCollectors()));
+        if (test instanceof IMetricCollectorReceiver) {
+            ((IMetricCollectorReceiver) test).setMetricCollectors(clonedCollectors);
+            // If test can receive collectors then let it handle the how to set them up
+            test.run(listener);
+        } else {
+            // Wrap collectors in each other and collection will be sequential, do this in the
+            // loop to ensure they are always initialized against the right context.
+            ITestInvocationListener listenerWithCollectors = listener;
+            for (IMetricCollector collector : clonedCollectors) {
+                if (collector.isDisabled()) {
+                    CLog.d("%s has been disabled. Skipping.", collector);
+                } else {
+                    listenerWithCollectors = collector.init(context, listenerWithCollectors);
+                }
+            }
+            test.run(listenerWithCollectors);
+        }
+    }
+
+    private RetryLogSaverResultForwarder initializeListeners(
+            IConfiguration config,
+            ITestInvocationListener mainListener,
+            ITestInvocationListener mainGranularLevelListener) {
+        List<ITestInvocationListener> currentTestListeners = new ArrayList<>();
+        currentTestListeners.add(mainGranularLevelListener);
+        currentTestListeners.add(mainListener);
+        return new RetryLogSaverResultForwarder(config.getLogSaver(), currentTestListeners);
+    }
+
+    private void addRetryTime(long retryTimeMs) {
+        long totalRetryMs = retryTimeMs;
+        String retryTime =
+                InvocationMetricLogger.getInvocationMetrics()
+                        .get(InvocationMetricKey.AUTO_RETRY_TIME.toString());
+        if (retryTime != null) {
+            totalRetryMs += Long.parseLong(retryTime) + retryTimeMs;
+        }
+        InvocationMetricLogger.addInvocationMetrics(
+                InvocationMetricKey.AUTO_RETRY_TIME, Long.toString(totalRetryMs));
     }
 
     private void handleLinkingExternalDirs(

@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
@@ -31,6 +32,7 @@ import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.AutoLogCollector;
@@ -46,6 +48,7 @@ import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.suite.TestSuiteStub;
 import com.android.tradefed.util.IDisableable;
 
 import org.easymock.EasyMock;
@@ -188,6 +191,28 @@ public class InvocationExecutionTest {
             }
             return super.init(context, listener);
         }
+    }
+
+    /** Test that the run is retried the number of expected time. */
+    @Test
+    public void testRun_autoRetry() throws Throwable {
+        OptionSetter setter = new OptionSetter(mConfig.getRetryDecision());
+        setter.setOptionValue("retry-strategy", "ITERATIONS");
+        setter.setOptionValue("max-testcase-run-count", "3");
+        setter.setOptionValue("auto-retry", "true");
+        List<IRemoteTest> tests = new ArrayList<>();
+
+        TestSuiteStub stubTest = new TestSuiteStub();
+        OptionSetter testStubSetter = new OptionSetter(stubTest);
+        testStubSetter.setOptionValue("report-test", "true");
+        testStubSetter.setOptionValue("module", "runName");
+        tests.add(stubTest);
+        mConfig.setTests(tests);
+        mExec.runTests(mContext, mConfig, mMockListener);
+
+        verify(mMockListener).testRunStarted("runName", 3, 0);
+        verify(mMockListener).testRunStarted("runName", 3, 1);
+        verify(mMockListener).testRunStarted("runName", 3, 2);
     }
 
     /**
