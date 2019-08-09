@@ -156,6 +156,8 @@ def get_extra_args(args):
         extra_args[constants.POST_PATCH_ITERATIONS] = args.generate_new_metrics
     if args.instant:
         extra_args[constants.INSTANT] = args.instant
+    if args.secondary_user:
+        extra_args[constants.SECONDARY_USER] = args.secondary_user
     if args.host:
         extra_args[constants.HOST] = args.host
     if args.dry_run:
