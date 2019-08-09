@@ -148,6 +148,9 @@ public class NativeDevice implements IManagedTestDevice {
     /** Encrypting with wipe can take up to 20 minutes. */
     private static final long ENCRYPTION_WIPE_TIMEOUT_MIN = 20;
 
+    /** The maximum system_server start delay in seconds after device boot up */
+    private static final int MAX_SYSTEM_SERVER_DELAY_AFTER_BOOT_UP_SEC = 10;
+
     /** The time in ms to wait before starting logcat for a device */
     private int mLogStartDelay = 5*1000;
 
@@ -4257,11 +4260,15 @@ public class NativeDevice implements IManagedTestDevice {
         if (pidString == null) {
             return null;
         }
+        long startTime = getProcessStartTimeByPid(pidString);
+        if (startTime == -1L) {
+            return null;
+        }
         return new ProcessInfo(
                 getProcessUserByPid(pidString),
                 Integer.parseInt(pidString),
                 processName,
-                getProcessStartTimeByPid(pidString));
+                startTime);
     }
 
     /** Return the process start time since epoch for the given pid string */
@@ -4293,7 +4300,9 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@inheritDoc} */
     @Override
     public Map<Long, String> getBootHistory() throws DeviceNotAvailableException {
-        String output = getProperty(DeviceProperties.BOOT_REASON_HISTORY);
+        // getProperty(DeviceProperties.BOOT_REASON_HISTORY) will not be able to handle boot history
+        // output format properly (tracked by b/139192891).
+        String output = executeShellCommand("getprop " + DeviceProperties.BOOT_REASON_HISTORY);
         /* Sample output:
         kernel_panic,1556587278
         reboot,,1556238008
@@ -4355,6 +4364,34 @@ public class NativeDevice implements IManagedTestDevice {
         return true;
     }
 
+    /**
+     * Check current system process is restarted after last reboot
+     *
+     * @param the system_server {@link ProcessInfo}
+     * @return true if system_server process restarted after last reboot; false if not
+     * @throws DeviceNotAvailableException
+     */
+    private boolean checkSystemProcessRestartedAfterLastReboot(ProcessInfo systemServerProcess)
+            throws DeviceNotAvailableException {
+        // If time gap from last reboot to current system_server process start time is more than
+        // MAX_SYSTEM_SERVER_DELAY_AFTER_BOOT_UP seconds, we conclude the system_server restarted
+        // after boot up.
+        if (!hasNormalRebootSince(
+                systemServerProcess.getStartTime() - MAX_SYSTEM_SERVER_DELAY_AFTER_BOOT_UP_SEC,
+                TimeUnit.SECONDS)) {
+            CLog.i(
+                    "Device last reboot is more than %s seconds away from current system_server "
+                            + "process start time. The system_server process restarted after "
+                            + "last boot up",
+                    MAX_SYSTEM_SERVER_DELAY_AFTER_BOOT_UP_SEC);
+            return true;
+        } else {
+            // Current system_server start within MAX_SYSTEM_SERVER_DELAY_AFTER_BOOT_UP
+            // seconds after device last boot up
+            return false;
+        }
+    }
+
     /** {@inheritDoc} */
     @Override
     public boolean deviceSoftRestartedSince(long utcEpochTime, TimeUnit timeUnit)
@@ -4373,26 +4410,29 @@ public class NativeDevice implements IManagedTestDevice {
 
         // The system_server process restarted after device utcEpochTime in second.
         // Check if there is new reboot history, if no new reboot, device soft-restarted.
+        // If there is no normal reboot, soft-restart is detected.
         if (!hasNormalRebootSince(utcEpochTime, timeUnit)) {
             return true;
         }
 
-        // There is new reboot history since utcEpochTime, unable to determine soft restart
-        CLog.i(
-                "Unable to determine device soft restarted with system_server process info"
-                        + " and boot history");
-        return false;
+        // There is new reboot since utcEpochTime. Check if system_server restarted after boot up.
+        return checkSystemProcessRestartedAfterLastReboot(currSystemServerProcess);
     }
 
     /** {@inheritDoc} */
     @Override
     public boolean deviceSoftRestarted(ProcessInfo prevSystemServerProcess)
             throws DeviceNotAvailableException {
+        if (prevSystemServerProcess == null) {
+            CLog.i("The given system_server process is null. Abort deviceSoftRestarted check.");
+            return false;
+        }
         ProcessInfo currSystemServerProcess = getProcessByName("system_server");
         if (currSystemServerProcess == null) {
             CLog.i("The system_server process is not available on the device.");
             return true;
         }
+
 
         if (currSystemServerProcess.getPid() == prevSystemServerProcess.getPid()
                 && currSystemServerProcess.getStartTime()
@@ -4402,13 +4442,15 @@ public class NativeDevice implements IManagedTestDevice {
 
         // The system_server process restarted.
         // Check boot history with previous system_server start time.
+        // If there is no normal reboot, soft-restart is detected
         if (!hasNormalRebootSince(prevSystemServerProcess.getStartTime(), TimeUnit.SECONDS)) {
             return true;
         }
-        CLog.i(
-                "Unable to determine device soft restarted with system_server process info"
-                        + " and boot history");
-        return false;
+
+        // There is reboot since prevSystemServerProcess.getStartTime().
+        // Check if system_server restarted after boot up.
+        return checkSystemProcessRestartedAfterLastReboot(currSystemServerProcess);
+
     }
 
     /**
