@@ -83,6 +83,8 @@ class AtestArgParser(argparse.ArgumentParser):
                                'if the module supports it. Note: running a test '
                                'that does not support instant with --instant '
                                'will result in nothing running.')
+        self.add_argument('--secondary-user', action='store_true',
+                          help='Run test with secondary user.')
         # Options related to Test Mapping
         self.add_argument('-p', '--test-mapping', action='store_true',
                           help='Run tests in TEST_MAPPING files.')
