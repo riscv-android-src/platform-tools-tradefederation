@@ -46,6 +46,7 @@ CUSTOM_ARGS = 'CUSTOM_ARGS'
 DRY_RUN = 'DRY_RUN'
 ANDROID_SERIAL = 'ANDROID_SERIAL'
 INSTANT = 'INSTANT'
+SECONDARY_USER = 'SECONDARY_USER'
 
 # Application exit codes.
 EXIT_CODE_SUCCESS = 0
@@ -190,6 +191,7 @@ JAVA_EXT_RE = re.compile(r'.*\.(java|kt)$')
 CC_OUTPUT_RE = re.compile(r'(?P<file_path>/.*):\s*TEST(_F|_P)?[ ]*\('
                           r'(?P<test_name>\w+)\s*,\s*(?P<method_name>\w+)\)'
                           r'\s*\{')
+CC_GREP_RE = r'^[ ]*TEST(_P|_F)?[ ]*\([[:alnum:]].*,'
 # e.g. /path/to/Javafile.java:package com.android.settings.accessibility
 # grab the path, Javafile(class) and com.android.settings.accessibility(package)
 CLASS_OUTPUT_RE = re.compile(r'(?P<java_path>.*/(?P<class>[A-Z]\w+)\.\w+)[:].*')

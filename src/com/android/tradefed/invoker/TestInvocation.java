@@ -19,6 +19,7 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.CommandRunner.ExitCode;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -626,6 +627,45 @@ public class TestInvocation implements ITestInvocation {
         return false;
     }
 
+    /**
+     * Invoke {@link IConfiguration#resolveDynamicOptions()} to resolve the dynamic files.
+     *
+     * @param context the {@link IInvocationContext} of the invocation.
+     * @param config the {@link IConfiguration} of this test run.
+     * @param rescheduler the {@link IRescheduler}, for rescheduling portions of the invocation for
+     *     execution on another resource(s)
+     * @param listener the {@link ITestInvocation} to report build download failures.
+     * @param invocationPath the {@link IInvocationExecution} driving the invocation.
+     * @param mode The current {@link RunMode} of the invocation.
+     * @return True if we successfully downloaded the build, false otherwise.
+     */
+    private boolean invokeRemoteDynamic(
+            IInvocationContext context,
+            IConfiguration config,
+            IRescheduler rescheduler,
+            ITestInvocationListener listener,
+            IInvocationExecution invocationPath,
+            RunMode mode) {
+        try {
+            // Don't resolve for remote invocation, wait until we are inside the remote.
+            if (!RunMode.REMOTE_INVOCATION.equals(mode)) {
+                config.resolveDynamicOptions();
+            }
+            return true;
+        } catch (RuntimeException | ConfigurationException e) {
+            // Report an empty invocation, so this error is sent to listeners
+            startInvocation(config, context, listener);
+            // Don't want to use #reportFailure, since that will call buildNotTested
+            listener.invocationFailed(e);
+            for (ITestDevice device : context.getDevices()) {
+                invocationPath.reportLogs(device, listener, Stage.ERROR);
+            }
+            reportHostLog(listener, config);
+            listener.invocationEnded(0L);
+            return false;
+        }
+    }
+
     /** {@inheritDoc} */
     @Override
     public void invoke(
@@ -691,9 +731,11 @@ public class TestInvocation implements ITestInvocation {
             }
             getLogRegistry().registerLogger(leveledLogOutput);
             mStatus = "resolving dynamic options";
-            // Don't resolve for remote invocation, wait until we are inside the remote.
-            if (!RunMode.REMOTE_INVOCATION.equals(mode)) {
-                config.resolveDynamicOptions();
+            boolean resolverSuccess =
+                    invokeRemoteDynamic(
+                            context, config, rescheduler, listener, invocationPath, mode);
+            if (!resolverSuccess) {
+                return;
             }
 
             mStatus = "fetching build";
