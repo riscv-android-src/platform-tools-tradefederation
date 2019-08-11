@@ -35,6 +35,9 @@ public class RemoteZip {
     private List<CentralDirectoryInfo> mZipEntries;
     private long mFileSize;
     private IFileDownloader mDownloader;
+    // Last time this object is accessed. The timestamp is used to maintain the cache of RemoteZip
+    // objects.
+    private long mLastAccess;
 
     /**
      * Constructor
@@ -48,6 +51,22 @@ public class RemoteZip {
         mFileSize = fileSize;
         mDownloader = downloader;
         mZipEntries = null;
+        mLastAccess = System.currentTimeMillis();
+    }
+
+    /** Get the remote file path of the remote zip artifact. */
+    public String getRemoteFilePath() {
+        return mRemoteFilePath;
+    }
+
+    /** Get the last time this object is accessed. */
+    public long getLastAccess() {
+        return mLastAccess;
+    }
+
+    /** Update the last access timestamp of the object. */
+    public void setLastAccess(long timestamp) {
+        mLastAccess = timestamp;
     }
 
     /**
