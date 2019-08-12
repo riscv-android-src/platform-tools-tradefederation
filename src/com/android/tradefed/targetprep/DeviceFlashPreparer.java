@@ -470,4 +470,12 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer implements 
     void setShouldFlashRamdisk(boolean shouldFlashRamdisk) {
         mShouldFlashRamdisk = shouldFlashRamdisk;
     }
+
+    protected void setSkipPostFlashFlavorCheck(boolean skipPostFlashFlavorCheck) {
+        mSkipPostFlashFlavorCheck = skipPostFlashFlavorCheck;
+    }
+
+    protected void setSkipPostFlashBuildIdCheck(boolean skipPostFlashBuildIdCheck) {
+        mSkipPostFlashBuildIdCheck = skipPostFlashBuildIdCheck;
+    }
 }

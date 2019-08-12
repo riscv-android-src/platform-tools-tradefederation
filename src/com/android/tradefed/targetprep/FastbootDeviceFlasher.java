@@ -416,11 +416,11 @@ public class FastbootDeviceFlasher implements IDeviceFlasher {
 
     /**
      * Get the boot partition name for this device flasher.
-     * <p/>
-     * Defaults to 'hboot'. Subclasses should override if necessary.
+     *
+     * <p>Defaults to 'bootloader'. Subclasses should override if necessary.
      */
     protected String getBootPartitionName() {
-        return "hboot";
+        return "bootloader";
     }
 
     /**
