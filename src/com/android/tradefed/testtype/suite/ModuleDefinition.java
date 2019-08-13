@@ -56,8 +56,8 @@ import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.ITestCollector;
+import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.testtype.retry.RetryStatistics;
-import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.testtype.suite.module.BaseModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
 import com.android.tradefed.util.StreamUtil;
@@ -136,9 +136,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     // Tracking of retry performance
     private List<RetryStatistics> mRetryStats = new ArrayList<>();
 
-    private RetryStrategy mRetryStrategy = RetryStrategy.NO_RETRY;
     private boolean mMergeAttempts = true;
-    private boolean mRebootAtLastRetry = false;
+    private IRetryDecision mRetryDecision;
 
     // Token during sharding
     private Set<TokenProperty> mRequiredTokens = new HashSet<>();
@@ -486,14 +485,16 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
                     mExpectedTests += retriableTest.getExpectedTestsCount();
                     // Get information about retry
-                    RetryStatistics res = retriableTest.getRetryStatistics();
-                    if (res != null) {
-                        mRetryStats.add(res);
+                    if (mRetryDecision != null) {
+                        RetryStatistics res = mRetryDecision.getRetryStatistics();
+                        if (res != null) {
+                            mRetryStats.add(res);
+                        }
                     }
                 }
                 // After the run, if the test failed (even after retry the final result passed) has
                 // failed, capture a bugreport.
-                if (retriableTest.getResultListener().hasFailed()) {
+                if (retriableTest.getResultListener().hasLastAttemptFailed()) {
                     captureBugreport(listener, getId());
                 }
             }
@@ -584,8 +585,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         retriableTest.setModuleConfig(mModuleConfiguration);
         retriableTest.setInvocationContext(mModuleInvocationContext);
         retriableTest.setLogSaver(mLogSaver);
-        retriableTest.setRetryStrategy(mRetryStrategy);
-        retriableTest.setRebootAtLastRetry(mRebootAtLastRetry);
+        retriableTest.setRetryDecision(mRetryDecision);
         return retriableTest;
     }
 
@@ -866,15 +866,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         mCollectTestsOnly = collectTestsOnly;
     }
 
-    /** Sets the {@link RetryStrategy} to be used when retrying. */
-    public final void setRetryStrategy(RetryStrategy retryStrategy, boolean mergeAttempts) {
-        mRetryStrategy = retryStrategy;
+    /** Sets whether or not we should merge results. */
+    public final void setMergeAttemps(boolean mergeAttempts) {
         mMergeAttempts = mergeAttempts;
     }
 
-    /** Sets the flag to reboot devices at the last intra-module retry. */
-    public final void setRebootAtLastRetry(boolean rebootAtLastRetry) {
-        mRebootAtLastRetry = rebootAtLastRetry;
+    /** Sets the {@link IRetryDecision} to be used for intra-module retry. */
+    public final void setRetryDecision(IRetryDecision decision) {
+        mRetryDecision = decision;
     }
 
     /** Returns a list of tests that ran in this module. */

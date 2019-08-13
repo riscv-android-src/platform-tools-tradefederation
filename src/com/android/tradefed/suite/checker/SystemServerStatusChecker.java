@@ -16,13 +16,14 @@
 package com.android.tradefed.suite.checker;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.suite.checker.StatusCheckerResult.CheckStatus;
 import com.android.tradefed.util.ProcessInfo;
+import com.android.tradefed.util.StreamUtil;
 
-import java.util.Map;
 
 /**
  * Check if the pid of system_server has changed from before and after a module run. A new pid would
@@ -30,8 +31,14 @@ import java.util.Map;
  */
 public class SystemServerStatusChecker implements ISystemStatusChecker {
 
+    @Option(
+        name = "disable-recovery-reboot",
+        description =
+                "If status checker is detected down (no process), attempt to reboot the device."
+    )
+    private boolean mShouldRecover = true;
+
     private ProcessInfo mSystemServerProcess;
-    private Long mModuleStartTime = null;
 
     /** {@inheritDoc} */
     @Override
@@ -40,15 +47,16 @@ public class SystemServerStatusChecker implements ISystemStatusChecker {
         mSystemServerProcess = device.getProcessByName("system_server");
         StatusCheckerResult result = new StatusCheckerResult(CheckStatus.SUCCESS);
         if (mSystemServerProcess == null) {
+            if (mShouldRecover) {
+                device.reboot();
+            }
             String message = "No valid system_server process is found.";
             CLog.w(message);
             result.setStatus(CheckStatus.FAILED);
             result.setBugreportNeeded(true);
             result.setErrorMessage(message);
-            mModuleStartTime = null;
             return result;
         }
-        mModuleStartTime = getCurrentTime();
         return result;
     }
 
@@ -62,48 +70,21 @@ public class SystemServerStatusChecker implements ISystemStatusChecker {
                             + "skipping system_server postExecutionCheck.");
             return new StatusCheckerResult(CheckStatus.SUCCESS);
         }
-        String message = null;
-        ProcessInfo currSystemServerProcess = device.getProcessByName("system_server");
-        if (currSystemServerProcess == null) {
-            message = "system_server is down";
-            CLog.w(message);
+        try {
+            if (!device.deviceSoftRestarted(mSystemServerProcess)) {
+                return new StatusCheckerResult(CheckStatus.SUCCESS);
+            }
+        } catch (RuntimeException e) {
+            CLog.w(StreamUtil.getStackTrace(e));
             StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
             result.setBugreportNeeded(true);
-            result.setErrorMessage(message);
+            result.setErrorMessage(StreamUtil.getStackTrace(e));
             return result;
         }
 
-        if (currSystemServerProcess.getPid() == mSystemServerProcess.getPid()
-                && currSystemServerProcess.getStartTime() == mSystemServerProcess.getStartTime()) {
-            return new StatusCheckerResult(CheckStatus.SUCCESS);
-        }
-        //system_server restarted
-        Map<Long, String> bootHistory =
-                device.getBootHistorySince(mSystemServerProcess.getStartTime());
-        CLog.i("The device reboot with boot history: %s", bootHistory);
-        if (bootHistory.isEmpty()) {
-            message = "system_server restarted without device reboot";
-        } else {
-            message = "system_server restarted with device boot history: " + bootHistory.toString();
-            // Check if there is a TF triggered reboot with device.doReboot
-            long lastExpectedReboot = device.getLastExpectedRebootTimeMillis();
-            if (mModuleStartTime != null && lastExpectedReboot < mModuleStartTime) {
-                // The reboot is not triggered by Tradefed host.
-                CLog.w(
-                        "System_server restarted and Tradefed didn't trigger a reboot: "
-                                + "last expected reboot: %s, module start time: %s, "
-                                + "something went wrong.",
-                        lastExpectedReboot, mModuleStartTime);
-            } else {
-                // The reboot is triggered by Tradefed host
-                CLog.i("Tradefed triggered reboot detected");
-                return new StatusCheckerResult(CheckStatus.SUCCESS);
-            }
-        }
-        CLog.w(message);
         StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
         result.setBugreportNeeded(true);
-        result.setErrorMessage(message);
+        result.setErrorMessage("The system-server crashed during test execution");
         return result;
     }
 

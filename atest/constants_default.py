@@ -16,6 +16,7 @@
 Various globals used by atest.
 """
 
+import os
 import re
 
 MODE = 'DEFAULT'
@@ -45,6 +46,7 @@ CUSTOM_ARGS = 'CUSTOM_ARGS'
 DRY_RUN = 'DRY_RUN'
 ANDROID_SERIAL = 'ANDROID_SERIAL'
 INSTANT = 'INSTANT'
+SECONDARY_USER = 'SECONDARY_USER'
 
 # Application exit codes.
 EXIT_CODE_SUCCESS = 0
@@ -66,8 +68,6 @@ MODULE_CLASS_ROBOLECTRIC = 'ROBOLECTRIC'
 MODULE_CLASS_NATIVE_TESTS = 'NATIVE_TESTS'
 MODULE_CLASS_JAVA_LIBRARIES = 'JAVA_LIBRARIES'
 MODULE_TEST_CONFIG = 'test_config'
-CC_EXT_RE = re.compile(r'.*\.(cc|cpp)$', re.I)
-JAVA_EXT_RE = re.compile(r'.*\.(java|kt)$', re.I)
 
 # Env constants
 ANDROID_BUILD_TOP = 'ANDROID_BUILD_TOP'
@@ -168,3 +168,34 @@ VTS_TF_MODULE = 'vts-tradefed'
 
 # ATest TF
 ATEST_TF_MODULE = 'atest-tradefed'
+
+# Build environment variable for each build on ATest
+# With SOONG_COLLECT_JAVA_DEPS enabled, out/soong/module_bp_java_deps.json will
+# be generated when make.
+ATEST_BUILD_ENV = {'SOONG_COLLECT_JAVA_DEPS':'true'}
+
+# Atest cache root and relative dirs/caches.
+INDEX_DIR = os.path.join(os.getenv(ANDROID_HOST_OUT, ''), 'indexes')
+LOCATE_CACHE = os.path.join(INDEX_DIR, 'mlocate.db')
+INT_INDEX = os.path.join(INDEX_DIR, 'integration.idx')
+CLASS_INDEX = os.path.join(INDEX_DIR, 'classes.idx')
+CC_CLASS_INDEX = os.path.join(INDEX_DIR, 'cc_classes.idx')
+PACKAGE_INDEX = os.path.join(INDEX_DIR, 'packages.idx')
+QCLASS_INDEX = os.path.join(INDEX_DIR, 'fqcn.idx')
+MODULE_INDEX = os.path.join(INDEX_DIR, 'modules.idx')
+
+# Regeular Expressions
+CC_EXT_RE = re.compile(r'.*\.(cc|cpp)$')
+JAVA_EXT_RE = re.compile(r'.*\.(java|kt)$')
+# e.g. /path/to/ccfile.cc: TEST_F(test_name, method_name){
+CC_OUTPUT_RE = re.compile(r'(?P<file_path>/.*):\s*TEST(_F|_P)?[ ]*\('
+                          r'(?P<test_name>\w+)\s*,\s*(?P<method_name>\w+)\)'
+                          r'\s*\{')
+CC_GREP_RE = r'^[ ]*TEST(_P|_F)?[ ]*\([[:alnum:]].*,'
+# e.g. /path/to/Javafile.java:package com.android.settings.accessibility
+# grab the path, Javafile(class) and com.android.settings.accessibility(package)
+CLASS_OUTPUT_RE = re.compile(r'(?P<java_path>.*/(?P<class>[A-Z]\w+)\.\w+)[:].*')
+QCLASS_OUTPUT_RE = re.compile(r'(?P<java_path>.*/(?P<class>[A-Z]\w+)\.\w+)'
+                              r'[:]\s*package\s+(?P<package>[^(;|\s)]+)\s*')
+PACKAGE_OUTPUT_RE = re.compile(r'(?P<java_path>.*)[:]\s*package\s+'
+                               r'(?P<package>[^(;|\s)]+)\s*')

@@ -61,7 +61,8 @@ public class ShardListenerTest {
     @Test
     public void testBufferAndReplay() {
         mMockListener.invocationStarted(mContext);
-        mMockListener.testRunStarted("run1", 1);
+        mMockListener.testRunStarted(
+                EasyMock.eq("run1"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         TestDescription tid = new TestDescription("class1", "name1");
         mMockListener.testStarted(tid, 0l);
         mMockListener.testEnded(tid, 0l, new HashMap<String, Metric>());
@@ -82,7 +83,8 @@ public class ShardListenerTest {
     @Test
     public void testPlayRuns() {
         mMockListener.invocationStarted(mContext);
-        mMockListener.testRunStarted("run1", 1);
+        mMockListener.testRunStarted(
+                EasyMock.eq("run1"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         TestDescription tid = new TestDescription("class1", "name1");
         mMockListener.testStarted(tid, 0l);
         mMockListener.testEnded(tid, 0l, new HashMap<String, Metric>());
@@ -121,19 +123,22 @@ public class ShardListenerTest {
         IInvocationContext module2 = new InvocationContext();
         mMockListener.invocationStarted(mContext);
         mMockListener.testModuleStarted(module1);
-        mMockListener.testRunStarted("run1", 1);
+        mMockListener.testRunStarted(
+                EasyMock.eq("run1"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         TestDescription tid = new TestDescription("class1", "name1");
         mMockListener.testStarted(tid, 0l);
         mMockListener.testEnded(tid, 0l, new HashMap<String, Metric>());
         mMockListener.testRunEnded(0l, new HashMap<String, Metric>());
-        mMockListener.testRunStarted("run2", 1);
+        mMockListener.testRunStarted(
+                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testStarted(tid, 0l);
         mMockListener.testEnded(tid, 0l, new HashMap<String, Metric>());
         mMockListener.testRunEnded(0l, new HashMap<String, Metric>());
         mMockListener.testModuleEnded();
         // expectation on second module
         mMockListener.testModuleStarted(module2);
-        mMockListener.testRunStarted("run3", 1);
+        mMockListener.testRunStarted(
+                EasyMock.eq("run3"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testStarted(tid, 0l);
         mMockListener.testEnded(tid, 0l, new HashMap<String, Metric>());
         mMockListener.testRunEnded(0l, new HashMap<String, Metric>());
@@ -156,6 +161,60 @@ public class ShardListenerTest {
         // 2nd module
         mShardListener.testModuleStarted(module2);
         mShardListener.testRunStarted("run3", 1);
+        mShardListener.testStarted(tid, 0l);
+        mShardListener.testEnded(tid, 0l, new HashMap<String, Metric>());
+        mShardListener.testRunEnded(0l, new HashMap<String, Metric>());
+        mShardListener.testModuleEnded();
+
+        mShardListener.invocationEnded(0l);
+        EasyMock.verify(mMockListener, mMockDevice);
+    }
+
+    @Test
+    public void testBufferAndReplay_withModule_attempts() {
+        IInvocationContext module1 = new InvocationContext();
+        IInvocationContext module2 = new InvocationContext();
+        mMockListener.invocationStarted(mContext);
+        mMockListener.testModuleStarted(module1);
+        mMockListener.testRunStarted(
+                EasyMock.eq("run1"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
+        TestDescription tid = new TestDescription("class1", "name1");
+        mMockListener.testStarted(tid, 0l);
+        mMockListener.testEnded(tid, 0l, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(0l, new HashMap<String, Metric>());
+        mMockListener.testRunStarted(
+                EasyMock.eq("run1"), EasyMock.eq(1), EasyMock.eq(1), EasyMock.anyLong());
+        mMockListener.testStarted(tid, 0l);
+        mMockListener.testEnded(tid, 0l, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(0l, new HashMap<String, Metric>());
+        mMockListener.testModuleEnded();
+        // expectation on second module
+        mMockListener.testModuleStarted(module2);
+        mMockListener.testRunStarted(
+                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
+        mMockListener.testStarted(tid, 0l);
+        mMockListener.testEnded(tid, 0l, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(0l, new HashMap<String, Metric>());
+        mMockListener.testModuleEnded();
+        mMockListener.invocationEnded(0l);
+
+        EasyMock.replay(mMockListener, mMockDevice);
+        mShardListener.setSupportGranularResults(true);
+        mShardListener.invocationStarted(mContext);
+        // 1st module
+        mShardListener.testModuleStarted(module1);
+        mShardListener.testRunStarted("run1", 1, 0);
+        mShardListener.testStarted(tid, 0l);
+        mShardListener.testEnded(tid, 0l, new HashMap<String, Metric>());
+        mShardListener.testRunEnded(0l, new HashMap<String, Metric>());
+        mShardListener.testRunStarted("run1", 1, 1);
+        mShardListener.testStarted(tid, 0l);
+        mShardListener.testEnded(tid, 0l, new HashMap<String, Metric>());
+        mShardListener.testRunEnded(0l, new HashMap<String, Metric>());
+        mShardListener.testModuleEnded();
+        // 2nd module
+        mShardListener.testModuleStarted(module2);
+        mShardListener.testRunStarted("run2", 1, 0);
         mShardListener.testStarted(tid, 0l);
         mShardListener.testEnded(tid, 0l, new HashMap<String, Metric>());
         mShardListener.testRunEnded(0l, new HashMap<String, Metric>());
@@ -207,7 +266,8 @@ public class ShardListenerTest {
                 EasyMock.anyObject(),
                 EasyMock.eq(testFile));
 
-        mockListener.testRunStarted("run1", 1);
+        mockListener.testRunStarted(
+                EasyMock.eq("run1"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         TestDescription tid = new TestDescription("class1", "name1");
         mockListener.testStarted(tid, 0l);
         // Log association played in order for the test.

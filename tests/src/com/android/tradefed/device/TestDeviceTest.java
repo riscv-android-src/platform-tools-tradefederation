@@ -1308,8 +1308,8 @@ public class TestDeviceTest extends TestCase {
      */
     public void testRuntimePermissionSupportedLmpRelease() throws Exception {
         injectSystemProperty("ro.build.version.sdk", "21");
-        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "REL");
-        injectSystemProperty(TestDevice.BUILD_ID_PROP, "1642709");
+        injectSystemProperty(DeviceProperties.BUILD_CODENAME, "REL");
+        injectSystemProperty(DeviceProperties.BUILD_ID, "1642709");
         replayMocks();
         assertFalse(mTestDevice.isRuntimePermissionSupported());
     }
@@ -1321,8 +1321,8 @@ public class TestDeviceTest extends TestCase {
      */
     public void testRuntimePermissionSupportedLmpMr1Dev() throws Exception {
         injectSystemProperty("ro.build.version.sdk", "22");
-        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "REL");
-        injectSystemProperty(TestDevice.BUILD_ID_PROP, "1844090");
+        injectSystemProperty(DeviceProperties.BUILD_CODENAME, "REL");
+        injectSystemProperty(DeviceProperties.BUILD_ID, "1844090");
         replayMocks();
         assertFalse(mTestDevice.isRuntimePermissionSupported());
     }
@@ -1334,8 +1334,8 @@ public class TestDeviceTest extends TestCase {
      */
     public void testRuntimePermissionSupportedNonMncLocal() throws Exception {
         injectSystemProperty("ro.build.version.sdk", "21");
-        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "LMP");
-        injectSystemProperty(TestDevice.BUILD_ID_PROP, "eng.foo.20150414.190304");
+        injectSystemProperty(DeviceProperties.BUILD_CODENAME, "LMP");
+        injectSystemProperty(DeviceProperties.BUILD_ID, "eng.foo.20150414.190304");
         replayMocks();
         assertFalse(mTestDevice.isRuntimePermissionSupported());
     }
@@ -2550,7 +2550,7 @@ public class TestDeviceTest extends TestCase {
      */
     public void testMaxNumberOfRunningUsersSupported() throws Exception {
         injectSystemProperty("ro.build.version.sdk", "28");
-        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "REL");
+        injectSystemProperty(DeviceProperties.BUILD_CODENAME, "REL");
         final String getMaxRunningUsersCommand = "pm get-max-running-users";
         injectShellResponse(getMaxRunningUsersCommand, "Maximum supported running users: 4");
         replayMocks();
@@ -2560,7 +2560,7 @@ public class TestDeviceTest extends TestCase {
     /** Test that invalid output is handled by {@link TestDevice#getMaxNumberOfUsersSupported()}. */
     public void testMaxNumberOfRunningUsersSupported_invalid() throws Exception {
         injectSystemProperty("ro.build.version.sdk", "28");
-        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "REL");
+        injectSystemProperty(DeviceProperties.BUILD_CODENAME, "REL");
         final String getMaxRunningUsersCommand = "pm get-max-running-users";
         injectShellResponse(getMaxRunningUsersCommand, "not the output we expect");
         replayMocks();
@@ -2847,7 +2847,7 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testGetBuildSigningKeys_test_keys() throws Exception {
-        injectSystemProperty(TestDevice.BUILD_TAGS, "test-keys");
+        injectSystemProperty(DeviceProperties.BUILD_TAGS, "test-keys");
         replayMocks();
         assertEquals("test-keys", mTestDevice.getBuildSigningKeys());
     }
@@ -2858,7 +2858,7 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testGetBuildSigningKeys_test_keys_commas() throws Exception {
-        injectSystemProperty(TestDevice.BUILD_TAGS, "test-keys,foo,bar,yadda");
+        injectSystemProperty(DeviceProperties.BUILD_TAGS, "test-keys,foo,bar,yadda");
         replayMocks();
         assertEquals("test-keys", mTestDevice.getBuildSigningKeys());
     }
@@ -2868,7 +2868,7 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testGetBuildSigningKeys_not_matched() throws Exception {
-        injectSystemProperty(TestDevice.BUILD_TAGS, "huh,foo,bar,yadda");
+        injectSystemProperty(DeviceProperties.BUILD_TAGS, "huh,foo,bar,yadda");
         replayMocks();
         assertNull(mTestDevice.getBuildSigningKeys());
     }

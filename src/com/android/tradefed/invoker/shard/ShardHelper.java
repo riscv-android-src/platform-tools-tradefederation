@@ -40,6 +40,7 @@ import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IShardableTest;
+import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 import com.android.tradefed.util.keystore.KeyStoreException;
@@ -69,6 +70,8 @@ public class ShardHelper implements IShardHelper {
         CONFIG_OBJ_TO_CLONE.add(Configuration.LOGGER_TYPE_NAME);
         // Deep clone of log_saver to ensure each shard manages its own logs
         CONFIG_OBJ_TO_CLONE.add(Configuration.LOG_SAVER_TYPE_NAME);
+        // Deep clone RetryDecision to ensure each shard retry independently
+        CONFIG_OBJ_TO_CLONE.add(Configuration.RETRY_DECISION_TYPE_NAME);
     }
 
     /**
@@ -176,7 +179,7 @@ public class ShardHelper implements IShardHelper {
         ShardBuildCloner.cloneBuildInfos(config, shardConfig, context);
 
         shardConfig.setTestInvocationListeners(
-                buildShardListeners(resultCollector, config.getTestInvocationListeners()));
+                buildShardListeners(resultCollector, config, config.getTestInvocationListeners()));
 
         // Set the host_log suffix to avoid similar names
         String suffix = String.format("_shard_index_%s", index);
@@ -317,7 +320,9 @@ public class ShardHelper implements IShardHelper {
      * shard collector.
      */
     private static List<ITestInvocationListener> buildShardListeners(
-            ITestInvocationListener resultCollector, List<ITestInvocationListener> origListeners) {
+            ITestInvocationListener resultCollector,
+            IConfiguration config,
+            List<ITestInvocationListener> origListeners) {
         List<ITestInvocationListener> shardListeners = new ArrayList<ITestInvocationListener>();
         for (ITestInvocationListener l : origListeners) {
             if (l instanceof IShardableListener) {
@@ -325,8 +330,17 @@ public class ShardHelper implements IShardHelper {
             }
         }
         ShardListener origConfigListener = new ShardListener(resultCollector);
+        origConfigListener.setSupportGranularResults(isAutoRetryEnabled(config));
         shardListeners.add(origConfigListener);
         return shardListeners;
+    }
+
+    private static boolean isAutoRetryEnabled(IConfiguration config) {
+        IRetryDecision decision = config.getRetryDecision();
+        if (decision.isAutoRetryEnabled() && decision.getMaxRetryCount() > 0) {
+            return true;
+        }
+        return false;
     }
 
     private Collection<ITokenRequest> extractTokenTests(Collection<IRemoteTest> shardableTests) {

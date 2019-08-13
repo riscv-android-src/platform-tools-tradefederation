@@ -59,13 +59,13 @@ public class FileDownloadCacheWrapper implements IFileDownloader {
 
     /** {@inheritDoc} */
     @Override
-    public void downloadPartialFiles(
+    public void downloadZippedFiles(
             File destDir,
             String remoteFilePath,
             List<String> includeFilters,
             List<String> excludeFilters)
             throws BuildRetrievalError, IOException {
-        mDelegateDownloader.downloadPartialFiles(
+        mDelegateDownloader.downloadZippedFiles(
                 destDir, remoteFilePath, includeFilters, excludeFilters);
     }
 }

@@ -27,7 +27,10 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.suite.params.IModuleParameter;
 import com.android.tradefed.testtype.suite.params.ModuleParameters;
+import com.android.tradefed.testtype.suite.params.ModuleParametersHelper;
+import com.android.tradefed.testtype.suite.params.NegativeHandler;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
 
@@ -51,6 +54,7 @@ public class BaseTestSuite extends ITestSuite {
     public static final String INCLUDE_FILTER_OPTION = "include-filter";
     public static final String EXCLUDE_FILTER_OPTION = "exclude-filter";
     public static final String MODULE_OPTION = "module";
+    public static final char MODULE_OPTION_SHORT_NAME = 'm';
     public static final String TEST_ARG_OPTION = "test-arg";
     public static final String TEST_OPTION = "test";
     public static final char TEST_OPTION_SHORT_NAME = 't';
@@ -74,7 +78,7 @@ public class BaseTestSuite extends ITestSuite {
 
     @Option(
         name = MODULE_OPTION,
-        shortName = 'm',
+        shortName = MODULE_OPTION_SHORT_NAME,
         description = "the test module to run. Only works for configuration in the tests dir.",
         importance = Importance.IF_UNSET
     )
@@ -247,6 +251,16 @@ public class BaseTestSuite extends ITestSuite {
             mModuleRepo =
                     createModuleLoader(
                             mIncludeFiltersParsed, mExcludeFiltersParsed, mTestArgs, mModuleArgs);
+            if (mForceParameter != null && !mEnableParameter) {
+                throw new IllegalArgumentException(
+                        "'module-parameter' option was specified without "
+                                + "'enable-optional-parameterization'");
+            }
+            if (mEnableOptionalParameter && !mEnableParameter) {
+                throw new IllegalArgumentException(
+                        "'enable-optional-parameterization' option was specified without "
+                                + "'enable-parameterized-modules'");
+            }
             mModuleRepo.setParameterizedModules(mEnableParameter);
             mModuleRepo.setOptionalParameterizedModules(mEnableOptionalParameter);
             mModuleRepo.setModuleParameter(mForceParameter);
@@ -376,43 +390,65 @@ public class BaseTestSuite extends ITestSuite {
      * @throws FileNotFoundException if any file is not found.
      */
     protected void setupFilters(File testsDir) throws FileNotFoundException {
-        if (mModuleName != null) {
-            // If this option (-m / --module) is set only the matching unique module should run.
-            Set<File> modules =
-                    SuiteModuleLoader.getModuleNamesMatching(
-                            testsDir, mSuitePrefix, String.format(".*%s.*.config", mModuleName));
-            // If multiple modules match, do exact match.
-            if (modules.size() > 1) {
-                Set<File> newModules = new HashSet<>();
-                String exactModuleName = String.format("%s.config", mModuleName);
-                for (File module : modules) {
-                    if (module.getName().equals(exactModuleName)) {
-                        newModules.add(module);
-                        modules = newModules;
-                        break;
-                    }
+        if (mModuleName == null) {
+            if (mTestName != null) {
+                throw new IllegalArgumentException(
+                        "Test name given without module name. Add --module <module-name>");
+            }
+            return;
+        }
+        // If this option (-m / --module) is set only the matching unique module should run.
+        Set<File> modules =
+                SuiteModuleLoader.getModuleNamesMatching(
+                        testsDir, mSuitePrefix, String.format(".*%s.*.config", mModuleName));
+        // If multiple modules match, do exact match.
+        if (modules.size() > 1) {
+            Set<File> newModules = new HashSet<>();
+            String exactModuleName = String.format("%s.config", mModuleName);
+            for (File module : modules) {
+                if (module.getName().equals(exactModuleName)) {
+                    newModules.add(module);
+                    modules = newModules;
+                    break;
                 }
             }
-            if (modules.size() == 0) {
-                throw new IllegalArgumentException(
-                        String.format("No modules found matching %s", mModuleName));
-            } else if (modules.size() > 1) {
-                throw new IllegalArgumentException(
-                        String.format(
-                                "Multiple modules found matching %s:\n%s\nWhich one did you "
-                                        + "mean?\n",
-                                mModuleName, ArrayUtil.join("\n", modules)));
-            } else {
-                File mod = modules.iterator().next();
-                String moduleName = mod.getName().replace(".config", "");
-                checkFilters(mIncludeFilters, moduleName);
-                checkFilters(mExcludeFilters, moduleName);
-                mIncludeFilters.add(
-                        new SuiteTestFilter(getRequestedAbi(), moduleName, mTestName).toString());
-            }
-        } else if (mTestName != null) {
+        }
+        if (modules.size() == 0) {
             throw new IllegalArgumentException(
-                    "Test name given without module name. Add --module <module-name>");
+                    String.format("No modules found matching %s", mModuleName));
+        } else if (modules.size() > 1) {
+            throw new IllegalArgumentException(
+                    String.format(
+                            "Multiple modules found matching %s:\n%s\nWhich one did you "
+                                    + "mean?\n",
+                            mModuleName, ArrayUtil.join("\n", modules)));
+        } else {
+            File mod = modules.iterator().next();
+            String moduleName = mod.getName().replace(".config", "");
+            checkFilters(mIncludeFilters, moduleName);
+            checkFilters(mExcludeFilters, moduleName);
+            mIncludeFilters.add(
+                    new SuiteTestFilter(getRequestedAbi(), moduleName, mTestName).toString());
+            // Create the matching filters for the parameterized version of it if needed.
+            if (mEnableParameter) {
+                for (ModuleParameters param : ModuleParameters.values()) {
+                    IModuleParameter moduleParam =
+                            ModuleParametersHelper.getParameterHandler(
+                                    param, mEnableOptionalParameter);
+                    if (moduleParam == null) {
+                        continue;
+                    }
+                    if (moduleParam instanceof NegativeHandler) {
+                        continue;
+                    }
+                    String paramModuleName =
+                            String.format(
+                                    "%s[%s]", moduleName, moduleParam.getParameterIdentifier());
+                    mIncludeFilters.add(
+                            new SuiteTestFilter(getRequestedAbi(), paramModuleName, mTestName)
+                                    .toString());
+                }
+            }
         }
     }
 

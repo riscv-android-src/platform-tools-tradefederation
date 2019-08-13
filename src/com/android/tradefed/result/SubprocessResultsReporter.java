@@ -18,6 +18,7 @@ package com.android.tradefed.result;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.util.FileUtil;
@@ -47,6 +48,7 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Implements {@link ITestInvocationListener} to be specified as a result_reporter and forward from
@@ -225,8 +227,10 @@ public class SubprocessResultsReporter
         if (mPrimaryBuildInfo == null) {
             return;
         }
-        InvocationEndedEventInfo eventEnd =
-                new InvocationEndedEventInfo(mPrimaryBuildInfo.getBuildAttributes());
+        Map<String, String> metrics = mPrimaryBuildInfo.getBuildAttributes();
+        // All the invocation level metrics collected
+        metrics.putAll(InvocationMetricLogger.getInvocationMetrics());
+        InvocationEndedEventInfo eventEnd = new InvocationEndedEventInfo(metrics);
         printEvent(SubprocessTestResultsParser.StatusKeys.INVOCATION_ENDED, eventEnd);
         // Upon invocation ended, trigger the end of the socket when the process finishes
         SocketFinisher thread = new SocketFinisher();

@@ -17,3 +17,6 @@ https://source.android.com/devices/tech/test_infra/tradefed/
 
 See more details about Tradefed Architecture at:
 https://source.android.com/devices/tech/test_infra/tradefed/architecture
+
+If you are a tests writer you should start looking in the test_framework/
+component which contains everything needed to write a tests in Tradefed.

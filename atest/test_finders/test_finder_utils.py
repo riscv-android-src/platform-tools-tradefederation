@@ -20,6 +20,7 @@ from __future__ import print_function
 import logging
 import multiprocessing
 import os
+import pickle
 import re
 import subprocess
 import time
@@ -36,16 +37,11 @@ import constants
 # assume the apk name is the build target.
 _APK_RE = re.compile(r'^[^/]+\.apk$', re.I)
 # RE for checking if TEST or TEST_F is in a cc file or not.
-_CC_CLASS_RE = re.compile(r'TEST(_F)?[ ]*\(', re.I)
+_CC_CLASS_RE = re.compile(r'^[ ]*TEST(_F|_P)?[ ]*\(', re.I)
 # RE for checking if there exists one of the methods in java file.
 _JAVA_METHODS_PATTERN = r'.*[ ]+({0})\(.*'
 # RE for checking if there exists one of the methods in cc file.
-_CC_METHODS_PATTERN = r'[ ]*TEST(_F|_P)?[ ]*\(.*,[ ]*({0})\).*'
-# RE for checking if finding output matches the cc format.
-# e.g. file_path:TEST_F(test_name, method_name){
-_CC_OUTPUT_RE = re.compile(r'(?P<file_path>/.*):[ ]*TEST(_F|_P)?[ ]*\('
-                           r'(?P<test_name>\w+)[ ]*,[ ]*(?P<method_name>\w+)\)'
-                           r'[ ]*\{')
+_CC_METHODS_PATTERN = r'^[ ]*TEST(_F|_P)?[ ]*\(.*,[ ]*({0})\).*'
 # Parse package name from the package declaration line of a java or a kotlin file.
 # Group matches "foo.bar" of line "package foo.bar;" or "package foo.bar"
 _PACKAGE_RE = re.compile(r'\s*package\s+(?P<package>[^(;|\s)]+)\s*', re.I)
@@ -86,7 +82,16 @@ FIND_CMDS = {
     FIND_REFERENCE_TYPE.CC_CLASS: r"find {0} {1} -type f -print"
                                   r"| egrep -i '/*test.*\.(cc|cpp)$'"
                                   r"| xargs -P" + str(_CPU_COUNT) +
-                                  r" egrep -sH '[ ]*TEST(_F|_P)?[ ]*\({2}' || true"
+                                  r" egrep -sH '^[ ]*TEST(_F|_P)?[ ]*\({2}' || true"
+}
+
+# Map ref_type with its index file.
+FIND_INDEXES = {
+    FIND_REFERENCE_TYPE.CLASS: constants.CLASS_INDEX,
+    FIND_REFERENCE_TYPE.QUALIFIED_CLASS: constants.QCLASS_INDEX,
+    FIND_REFERENCE_TYPE.PACKAGE: constants.PACKAGE_INDEX,
+    FIND_REFERENCE_TYPE.INTEGRATION: constants.INT_INDEX,
+    FIND_REFERENCE_TYPE.CC_CLASS: constants.CC_CLASS_INDEX
 }
 
 # XML parsing related constants.
@@ -253,7 +258,7 @@ def extract_test_path(output, methods=None):
     /<some_root>/cts/tests/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java
 
     Args:
-        output: A string output of a unix 'find' command.
+        output: A string or list output of a unix 'find' command.
         methods: A set of method names.
 
     Returns:
@@ -262,10 +267,11 @@ def extract_test_path(output, methods=None):
     if not output:
         return None
     verified_tests = set()
-    output_lines = output.strip('\n').split('\n')
-    for test in output_lines:
-        # compare _CC_OUTPUT_RE with output
-        match_obj = _CC_OUTPUT_RE.match(test)
+    if isinstance(output, str):
+        output = output.splitlines()
+    for test in output:
+        # compare CC_OUTPUT_RE with output
+        match_obj = constants.CC_OUTPUT_RE.match(test)
         if match_obj:
             # cc/cpp
             fpath = match_obj.group('file_path')
@@ -404,15 +410,32 @@ def run_find_cmd(ref_type, search_dir, target, methods=None):
 
     Return:
         A list of the path to the target.
+        If the search_dir is inexistent, None will be returned.
     """
-    prune_cond = _get_prune_cond_of_ignored_dirs()
-    find_cmd = FIND_CMDS[ref_type].format(search_dir, prune_cond, target)
-    start = time.time()
+    # If module_info.json is outdated, finding in the search_dir can result in
+    # raising exception. Return null immediately can guild users to run
+    # --rebuild-module-info to resolve the problem.
+    if not os.path.isdir(search_dir):
+        logging.debug('\'%s\' does not exist!', search_dir)
+        return None
     ref_name = FIND_REFERENCE_TYPE[ref_type]
-    logging.debug('Executing %s find cmd: %s', ref_name, find_cmd)
-    out = subprocess.check_output(find_cmd, shell=True)
+    start = time.time()
+    if os.path.isfile(FIND_INDEXES[ref_type]):
+        _dict, out = {}, None
+        with open(FIND_INDEXES[ref_type], 'rb') as index:
+            _dict = pickle.load(index)
+        if _dict.get(target):
+            logging.debug('Found %s in %s', target, FIND_INDEXES[ref_type])
+            out = [path for path in _dict.get(target) if search_dir in path]
+    else:
+        prune_cond = _get_prune_cond_of_ignored_dirs()
+        if '.' in target:
+            target = target.replace('.', '/')
+        find_cmd = FIND_CMDS[ref_type].format(search_dir, prune_cond, target)
+        logging.debug('Executing %s find cmd: %s', ref_name, find_cmd)
+        out = subprocess.check_output(find_cmd, shell=True)
+        logging.debug('%s find cmd out: %s', ref_name, out)
     logging.debug('%s find completed in %ss', ref_name, time.time() - start)
-    logging.debug('%s find cmd out: %s', ref_name, out)
     return extract_test_path(out, methods)
 
 
@@ -430,16 +453,12 @@ def find_class_file(search_dir, class_name, is_native_test=False, methods=None):
         A list of the path to the java/cc file.
     """
     if is_native_test:
-        find_target = class_name
         ref_type = FIND_REFERENCE_TYPE.CC_CLASS
-        return run_find_cmd(ref_type, search_dir, find_target, methods)
-    if '.' in class_name:
-        find_target = class_name.replace('.', '/')
+    elif '.' in class_name:
         ref_type = FIND_REFERENCE_TYPE.QUALIFIED_CLASS
     else:
-        find_target = class_name
         ref_type = FIND_REFERENCE_TYPE.CLASS
-    return run_find_cmd(ref_type, search_dir, find_target, methods)
+    return run_find_cmd(ref_type, search_dir, class_name, methods)
 
 
 def is_equal_or_sub_dir(sub_dir, parent_dir):

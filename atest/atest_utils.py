@@ -59,6 +59,7 @@ CMD_RESULT_PATH = os.path.join(os.environ.get(constants.ANDROID_BUILD_TOP,
                                'sample_test_cmd_result.json')
 TEST_INFO_CACHE_ROOT = os.path.join(os.path.expanduser('~'), '.atest',
                                     'info_cache')
+_DEFAULT_TERMINAL_WIDTH = 80
 
 def _capture_fail_section(full_log):
     """Return the error message from the build output.
@@ -97,9 +98,11 @@ def _run_limited_output(cmd, env_vars=None):
                             stderr=subprocess.STDOUT, env=env_vars)
     sys.stdout.write('\n')
     # Determine the width of the terminal. We'll need to clear this many
-    # characters when carriage returning.
-    _, term_width = os.popen('stty size', 'r').read().split()
-    term_width = int(term_width)
+    # characters when carriage returning. Set default value as 80.
+    term_width = _DEFAULT_TERMINAL_WIDTH
+    stty_size = os.popen('stty size').read()
+    if stty_size:
+        term_width = int(stty_size.split()[1])
     white_space = " " * int(term_width)
     full_output = []
     while proc.poll() is None:

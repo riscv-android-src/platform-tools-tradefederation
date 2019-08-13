@@ -40,7 +40,6 @@ public class ModuleListener extends CollectingTestListener {
     private boolean mTestFailed = false;
     private int mTestsRan = 1;
     private ITestInvocationListener mMainListener;
-    private boolean mHasFailed = false;
 
     private boolean mCollectTestsOnly = false;
     /** Track runs in progress for logging purpose */
@@ -82,7 +81,6 @@ public class ModuleListener extends CollectingTestListener {
     /** {@inheritDoc} */
     @Override
     public void testRunFailed(String errorMessage) {
-        mHasFailed = true;
         CLog.d("ModuleListener.testRunFailed(%s)", errorMessage);
         super.testRunFailed(errorMessage);
     }
@@ -94,9 +92,9 @@ public class ModuleListener extends CollectingTestListener {
         mRunInProgress = false;
     }
 
-    /** Returns whether or not the listener session has failed. */
-    public boolean hasFailed() {
-        return mHasFailed;
+    /** Returns whether or not the listener last retry session has failed. */
+    public boolean hasLastAttemptFailed() {
+        return getCurrentRunResults().isRunFailure();
     }
 
     /** {@inheritDoc} */

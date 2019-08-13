@@ -62,7 +62,7 @@ public class MergedZipEntryCollection {
      *  @return a list of {@link MergedZipEntryCollection}, each contains a list of
      *    {@link CentralDirectoryInfo} that are stored closely inside the zip file.
      */
-    public static List<MergedZipEntryCollection> CreateCollections(
+    public static List<MergedZipEntryCollection> createCollections(
             List<CentralDirectoryInfo> zipEntries) {
         if (zipEntries.size() == 0) {
             return new ArrayList<MergedZipEntryCollection>();

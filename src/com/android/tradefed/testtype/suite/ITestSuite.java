@@ -28,6 +28,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.DeviceProperties;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NullDevice;
 import com.android.tradefed.device.StubDevice;
@@ -36,6 +37,8 @@ import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.shard.token.ITokenRequest;
 import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.log.ITestLogger;
@@ -44,6 +47,7 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.suite.checker.StatusCheckerResult;
@@ -60,7 +64,6 @@ import com.android.tradefed.testtype.IReportNotExecuted;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
-import com.android.tradefed.testtype.retry.RetryStrategy;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.MultiMap;
@@ -163,11 +166,6 @@ public abstract class ITestSuite
     // Options for suite runner behavior
     @Option(name = "reboot-per-module", description = "Reboot the device before every module run.")
     private boolean mRebootPerModule = false;
-
-    @Deprecated
-    @Option(name = "reboot-at-last-retry",
-        description = "Reboot the device at the last intra-module retry")
-    private boolean mRebootAtLastRetry = false;
 
     @Option(
         name = REBOOT_BEFORE_TEST,
@@ -461,6 +459,8 @@ public abstract class ITestSuite
             }
         }
         long elapsedTime = System.currentTimeMillis() - startTime;
+        InvocationMetricLogger.addInvocationMetrics(
+                InvocationMetricKey.STAGE_TESTS_TIME, elapsedTime);
         CLog.i(
                 String.format(
                         "Staging test artifacts for %d modules finished in %s.",
@@ -714,7 +714,7 @@ public abstract class ITestSuite
             TestFailureListener failureListener)
             throws DeviceNotAvailableException {
         if (mRebootPerModule) {
-            if ("user".equals(mDevice.getProperty("ro.build.type"))) {
+            if ("user".equals(mDevice.getProperty(DeviceProperties.BUILD_TYPE))) {
                 CLog.e(
                         "reboot-per-module should only be used during development, "
                                 + "this is a\" user\" build device");
@@ -735,17 +735,16 @@ public abstract class ITestSuite
         // Pass the main invocation logSaver
         module.setLogSaver(mMainConfiguration.getLogSaver());
         // Pass the retry strategy to the module
-        module.setRetryStrategy(
-                getConfiguration().getCommandOptions().getRetryStrategy(), mMergeAttempts);
-        // Pass the reboot strategy at the last intra-module retry to the module
-        module.setRebootAtLastRetry(mRebootAtLastRetry);
+        module.setMergeAttemps(mMergeAttempts);
+        // Pass the retry decision to be used.
+        module.setRetryDecision(mMainConfiguration.getRetryDecision());
 
         // Actually run the module
         module.run(
                 listener,
                 moduleListeners,
                 failureListener,
-                getConfiguration().getCommandOptions().getMaxRetryCount());
+                getConfiguration().getRetryDecision().getMaxRetryCount());
 
         if (!mSkipAllSystemStatusCheck) {
             runPostModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
