@@ -370,9 +370,12 @@ public class ResultAggregator extends CollectingTestListener {
                 if (value != null) {
                     mAllDetailedFailures.add(0, value);
                 }
-                InvocationMetricLogger.addInvocationMetrics(
-                        InvocationMetricKey.CLEARED_RUN_ERROR,
-                        Joiner.on("\n\n").join(mAllDetailedFailures));
+                // If there are failure, track them
+                if (!mAllDetailedFailures.isEmpty()) {
+                    InvocationMetricLogger.addInvocationMetrics(
+                            InvocationMetricKey.CLEARED_RUN_ERROR,
+                            Joiner.on("\n\n").join(mAllDetailedFailures));
+                }
             }
             mAllDetailedFailures.clear();
             mDetailedForwarder.testRunEnded(
