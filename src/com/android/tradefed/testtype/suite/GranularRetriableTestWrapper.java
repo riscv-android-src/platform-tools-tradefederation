@@ -28,13 +28,13 @@ import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetr
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.retry.MergeStrategy;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.retry.IRetryDecision;
+import com.android.tradefed.testtype.retry.RetryLogSaverResultForwarder;
 import com.android.tradefed.testtype.retry.RetryStatistics;
 import com.android.tradefed.util.StreamUtil;
 
@@ -346,38 +346,6 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
     /** Returns the listener containing all the results. */
     public ModuleListener getResultListener() {
         return mMainGranularRunListener;
-    }
-
-    /** Forwarder that also handles passing the current attempt we are at. */
-    private class RetryLogSaverResultForwarder extends LogSaverResultForwarder {
-
-        private int mAttemptNumber = 0;
-
-        public RetryLogSaverResultForwarder(
-                ILogSaver logSaver, List<ITestInvocationListener> listeners) {
-            super(logSaver, listeners);
-        }
-
-        @Override
-        public void testRunStarted(String runName, int testCount) {
-            super.testRunStarted(runName, testCount, mAttemptNumber);
-        }
-
-        @Override
-        public void testRunStarted(String runName, int testCount, int attemptNumber) {
-            if (attemptNumber != mAttemptNumber) {
-                CLog.w(
-                        "Test reported an attempt %s, while the suite is at attempt %s",
-                        attemptNumber, mAttemptNumber);
-            }
-            // We enforce our attempt number
-            super.testRunStarted(runName, testCount, mAttemptNumber);
-        }
-
-        /** Increment the attempt number. */
-        public void incrementAttempt() {
-            mAttemptNumber++;
-        }
     }
 
     @Override
