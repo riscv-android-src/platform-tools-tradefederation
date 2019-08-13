@@ -44,7 +44,6 @@ import java.util.Map;
 @OptionClass(alias = "installed-instrumentation")
 public class InstalledInstrumentationsTest
         implements IDeviceTest,
-                IResumableTest,
                 IShardableTest,
                 IMetricCollectorReceiver,
                 IInvocationContextReceiver {
@@ -344,6 +343,7 @@ public class InstalledInstrumentationsTest
             // test completed, remove from list
             mTests.remove(0);
         }
+        mTests = null;
     }
 
     long getShellTimeout() {
@@ -367,19 +367,6 @@ public class InstalledInstrumentationsTest
         InstrumentationTest test = new InstrumentationTest();
         test.setEnforceFormat(false);
         return test;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isResumable() {
-        // hack to not resume if tests were never run
-        // TODO: fix this properly in TestInvocation
-        if (mTests == null) {
-            return false;
-        }
-        return mIsResumeMode;
     }
 
     @Override
