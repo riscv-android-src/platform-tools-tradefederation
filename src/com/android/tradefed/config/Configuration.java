@@ -42,6 +42,7 @@ import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
+import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IDisableable;
 import com.android.tradefed.util.MultiMap;
@@ -103,6 +104,7 @@ public class Configuration implements IConfiguration {
     public static final String SANDBOX_TYPE_NAME = "sandbox";
     public static final String SANBOX_OPTIONS_TYPE_NAME = "sandbox_options";
     public static final String RETRY_DECISION_TYPE_NAME = "retry_decision";
+    public static final String COVERAGE_OPTIONS_TYPE_NAME = "coverage";
 
     private static Map<String, ObjTypeInfo> sObjTypeMap = null;
     private static Set<String> sMultiDeviceSupportedTag = null;
@@ -191,6 +193,8 @@ public class Configuration implements IConfiguration {
                     new ObjTypeInfo(BasePostProcessor.class, true));
             sObjTypeMap.put(SANBOX_OPTIONS_TYPE_NAME, new ObjTypeInfo(SandboxOptions.class, false));
             sObjTypeMap.put(RETRY_DECISION_TYPE_NAME, new ObjTypeInfo(IRetryDecision.class, false));
+            sObjTypeMap.put(
+                    COVERAGE_OPTIONS_TYPE_NAME, new ObjTypeInfo(CoverageOptions.class, false));
         }
         return sObjTypeMap;
     }
@@ -245,6 +249,7 @@ public class Configuration implements IConfiguration {
         setConfigurationDescriptor(new ConfigurationDescriptor());
         setDeviceMetricCollectors(new ArrayList<>());
         setPostProcessors(new ArrayList<>());
+        setCoverageOptions(new CoverageOptions());
         setConfigurationObjectNoThrow(SANBOX_OPTIONS_TYPE_NAME, new SandboxOptions());
         setConfigurationObjectNoThrow(RETRY_DECISION_TYPE_NAME, new BaseRetryDecision());
     }
@@ -483,6 +488,13 @@ public class Configuration implements IConfiguration {
     @Override
     public List<IDeviceConfiguration> getDeviceConfig() {
         return (List<IDeviceConfiguration>)getConfigurationObjectList(DEVICE_NAME);
+    }
+
+    /** {@inheritDoc} */
+    @SuppressWarnings("unchecked")
+    @Override
+    public CoverageOptions getCoverageOptions() {
+        return (CoverageOptions) getConfigurationObject(COVERAGE_OPTIONS_TYPE_NAME);
     }
 
     /**
@@ -785,6 +797,12 @@ public class Configuration implements IConfiguration {
     @Override
     public void setDeviceConfigList(List<IDeviceConfiguration> deviceConfigs) {
         setConfigurationObjectListNoThrow(DEVICE_NAME, deviceConfigs);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setCoverageOptions(CoverageOptions coverageOptions) {
+        setConfigurationObjectNoThrow(COVERAGE_OPTIONS_TYPE_NAME, coverageOptions);
     }
 
     /**
