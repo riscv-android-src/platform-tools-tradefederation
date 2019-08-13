@@ -208,7 +208,10 @@ public class BaseRetryDecision implements IRetryDecision {
         // Limit the re-run to the failure we include, so clear filters then put our failures
         test.clearIncludeFilters();
         for (TestDescription testCase : testDescriptions) {
-            String filter = testCase.toString();
+            // We have to retry without the parameters since some runner don't support it.
+            String filter =
+                    String.format(
+                            "%s#%s", testCase.getClassName(), testCase.getTestNameWithoutParams());
             test.addIncludeFilter(filter);
         }
     }
