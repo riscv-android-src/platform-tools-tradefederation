@@ -529,8 +529,11 @@ public class FastbootDeviceFlasherTest {
             EasyMock.expect(mockBuild.getBootloaderImageFile()).andReturn(bootloaderFake);
             CommandResult res = new CommandResult(CommandStatus.SUCCESS);
             res.setStderr("flashing");
-            EasyMock.expect(mMockDevice.executeFastbootCommand(EasyMock.eq("flash"),
-                    EasyMock.eq("hboot"), EasyMock.eq(bootloaderFake.getAbsolutePath())))
+            EasyMock.expect(
+                            mMockDevice.executeFastbootCommand(
+                                    EasyMock.eq("flash"),
+                                    EasyMock.eq("bootloader"),
+                                    EasyMock.eq(bootloaderFake.getAbsolutePath())))
                     .andReturn(res);
             mMockDevice.rebootIntoBootloader();
             EasyMock.expectLastCall();

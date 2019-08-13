@@ -767,7 +767,7 @@ public class InvocationExecution implements IInvocationExecution {
         String uid = uidRes.getStdout().trim();
         File adbLog = new File(tmpDir, String.format("adb.%s.log", uid));
         if (!adbLog.exists()) {
-            CLog.e("Could not find adb log file: %s", adbLog);
+            CLog.i("Did not find adb log file: %s, upload skipped.", adbLog);
             return;
         }
         CommandResult truncAdb =
