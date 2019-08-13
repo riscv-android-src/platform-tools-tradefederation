@@ -20,6 +20,8 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInvocation;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.SystemUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -69,9 +71,22 @@ public class LogSaverResultForwarder extends ResultForwarder implements ILogSave
 
     private void reportEndHostLog(ILogSaver saver) {
         LogRegistry registry = (LogRegistry) LogRegistry.getLogRegistry();
-        try (InputStreamSource source = registry.getLogger().getLog();
-                InputStream stream = source.createInputStream()) {
-            saver.saveLogData(TestInvocation.TRADEFED_END_HOST_LOG, LogDataType.TEXT, stream);
+        try (InputStreamSource source = registry.getLogger().getLog()) {
+            if (source == null) {
+                CLog.e("%s stream was null, skip saving it.", TestInvocation.TRADEFED_END_HOST_LOG);
+                return;
+            }
+            try (InputStream stream = source.createInputStream()) {
+                saver.saveLogData(TestInvocation.TRADEFED_END_HOST_LOG, LogDataType.TEXT, stream);
+                if (SystemUtil.isRemoteEnvironment()) {
+                    // In remote environment, dump to the stdout so we can get the logs in the
+                    // console.
+                    System.out.println(
+                            String.format(
+                                    "===== Result Reporters =====\n%s",
+                                    StreamUtil.getStringFromStream(stream)));
+                }
+            }
         } catch (IOException e) {
             CLog.e(e);
         }
@@ -88,6 +103,10 @@ public class LogSaverResultForwarder extends ResultForwarder implements ILogSave
     public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
         testLogForward(dataName, dataType, dataStream);
         try {
+            if (dataStream == null) {
+                CLog.w("Skip forwarding of '%s', data stream is null.", dataName);
+                return;
+            }
             LogFile logFile = mLogSaver.saveLogData(dataName, dataType,
                     dataStream.createInputStream());
             for (ITestInvocationListener listener : getListeners()) {

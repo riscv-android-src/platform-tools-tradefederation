@@ -19,6 +19,7 @@ java_library_host {
         "com/**/*.java",
     ],
     libs: [
+        "ddmlib-prebuilt",
         "guava",
         "tradefed-common-util",
         "tradefed-protos",

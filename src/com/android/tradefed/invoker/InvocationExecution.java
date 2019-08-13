@@ -37,9 +37,12 @@ import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.TestInvocation.Stage;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.InputStreamSource;
@@ -56,7 +59,10 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.SystemUtil.EnvVariable;
 import com.android.tradefed.util.TimeUtil;
@@ -227,6 +233,7 @@ public class InvocationExecution implements IInvocationExecution {
             // Setup timing metric. It does not include flashing time on boot tests.
             long setupDuration = System.currentTimeMillis() - start;
             context.addInvocationTimingMetric(IInvocationContext.TimingEvent.SETUP, setupDuration);
+            InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.SETUP, setupDuration);
             CLog.d("Setup duration: %s'", TimeUtil.formatElapsedTime(setupDuration));
             // Upload the setup logcat after setup is complete.
             for (String deviceName : context.getDeviceConfigNames()) {
@@ -403,6 +410,9 @@ public class InvocationExecution implements IInvocationExecution {
         if (deferredThrowable == null) {
             deferredThrowable = preTargetTearDownException;
         }
+
+        // Collect adb logs.
+        logHostAdb(logger);
 
         if (deferredThrowable != null) {
             throw deferredThrowable;
@@ -737,6 +747,39 @@ public class InvocationExecution implements IInvocationExecution {
             config.getCommandOptions()
                     .getAutoLogCollectors()
                     .add(AutoLogCollector.LOGCAT_ON_FAILURE);
+        }
+    }
+
+    /** Collect the logs from $TMPDIR/adb.$UID.log. */
+    @VisibleForTesting
+    void logHostAdb(ITestLogger logger) {
+        String tmpDir = "/tmp";
+        if (System.getenv("TMPDIR") != null) {
+            tmpDir = System.getenv("TMPDIR");
+        }
+        CommandResult uidRes =
+                RunUtil.getDefault()
+                        .runTimedCmd(60000, "id", "-u", System.getProperty("user.name"));
+        if (!CommandStatus.SUCCESS.equals(uidRes.getStatus())) {
+            CLog.e("Failed to collect UID for adb logs: %s", uidRes.getStderr());
+            return;
+        }
+        String uid = uidRes.getStdout().trim();
+        File adbLog = new File(tmpDir, String.format("adb.%s.log", uid));
+        if (!adbLog.exists()) {
+            CLog.i("Did not find adb log file: %s, upload skipped.", adbLog);
+            return;
+        }
+        CommandResult truncAdb =
+                RunUtil.getDefault()
+                        .runTimedCmd(60000, "tail", "--bytes=10MB", adbLog.getAbsolutePath());
+        if (!CommandStatus.SUCCESS.equals(truncAdb.getStatus())) {
+            CLog.e("Fail to truncate the adb log: %s\n%s", adbLog, truncAdb.getStderr());
+            return;
+        }
+        try (InputStreamSource source =
+                new ByteArrayInputStreamSource(truncAdb.getStdout().getBytes())) {
+            logger.testLog("host_adb_log", LogDataType.TEXT, source);
         }
     }
 

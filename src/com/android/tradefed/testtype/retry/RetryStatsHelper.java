@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Set;
 
 /** Calculate the retry statistics and metrics based on attempts comparison. */
-public class RetryStatsHelper {
+final class RetryStatsHelper {
 
     private List<List<TestRunResult>> mResults = new ArrayList<>();
     private RetryStatistics mStats = new RetryStatistics();

@@ -20,6 +20,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.DeviceProperties;
 import com.android.tradefed.device.ITestDevice;
 
 /**
@@ -67,8 +68,11 @@ public class DeviceBuildInfoInjector extends BaseTargetPreparer {
             buildInfo.addBuildAttribute(DeviceBuildDescriptor.DEVICE_BUILD_FLAVOR,
                     mOverrideDeviceBuildFlavor);
         } else {
-            String buildFlavor = String.format("%s-%s", device.getProperty("ro.product.name"),
-                    device.getProperty("ro.build.type"));
+            String buildFlavor =
+                    String.format(
+                            "%s-%s",
+                            device.getProperty(DeviceProperties.PRODUCT),
+                            device.getProperty(DeviceProperties.BUILD_TYPE));
             buildInfo.addBuildAttribute(DeviceBuildDescriptor.DEVICE_BUILD_FLAVOR, buildFlavor);
         }
         buildInfo.addBuildAttribute(DeviceBuildDescriptor.DEVICE_DESC,

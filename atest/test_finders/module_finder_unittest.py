@@ -290,6 +290,7 @@ class ModuleFinderUnittests(unittest.TestCase):
         mock_checkoutput.return_value = ''
         self.assertIsNone(self.mod_finder.find_test_by_package_name('Not pkg'))
 
+    @mock.patch('os.path.isdir', return_value=False)
     @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
                        return_value=False)
     @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets')
@@ -297,7 +298,7 @@ class ModuleFinderUnittests(unittest.TestCase):
     @mock.patch('os.path.isfile', side_effect=unittest_utils.isfile_side_effect)
     #pylint: disable=unused-argument
     def test_find_test_by_module_and_package(self, _isfile, mock_checkoutput,
-                                             mock_build, _vts):
+                                             mock_build, _vts, _isdir):
         """Test find_test_by_module_and_package."""
         self.mod_finder.module_info.is_auto_gen_test_config.return_value = False
         self.mod_finder.module_info.is_robolectric_test.return_value = False
@@ -308,7 +309,11 @@ class ModuleFinderUnittests(unittest.TestCase):
                     constants.MODULE_CLASS: []}
         self.mod_finder.module_info.get_module_info.return_value = mod_info
         t_infos = self.mod_finder.find_test_by_module_and_package(MODULE_PACKAGE)
+        self.assertEqual(t_infos, None)
+        _isdir.return_value = True
+        t_infos = self.mod_finder.find_test_by_module_and_package(MODULE_PACKAGE)
         unittest_utils.assert_equal_testinfos(self, t_infos[0], uc.PACKAGE_INFO)
+
         # with method, raises
         module_pkg_with_method = '%s:%s#%s' % (uc.MODULE2_NAME, uc.PACKAGE,
                                                uc.METHOD_NAME)

@@ -15,14 +15,16 @@
  */
 package com.android.tradefed.device.cloud;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotEquals;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceStateMonitor;
 import com.android.tradefed.device.TestDeviceOptions;
+import com.android.tradefed.log.ITestLogger;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -38,6 +40,7 @@ public class ManagedRemoteDeviceTest {
     private IDevice mIDevice;
     private IDeviceStateMonitor mStateMonitor;
     private IDeviceMonitor mDeviceMonitor;
+    private ITestLogger mMockLogger;
 
     @BeforeClass
     public static void setUpClass() throws Exception {
@@ -53,7 +56,9 @@ public class ManagedRemoteDeviceTest {
         mIDevice = Mockito.mock(IDevice.class);
         mStateMonitor = Mockito.mock(IDeviceStateMonitor.class);
         mDeviceMonitor = Mockito.mock(IDeviceMonitor.class);
+        mMockLogger = Mockito.mock(ITestLogger.class);
         mDevice = new ManagedRemoteDevice(mIDevice, mStateMonitor, mDeviceMonitor);
+        mDevice.setTestLogger(mMockLogger);
     }
 
     @Test
@@ -63,6 +68,11 @@ public class ManagedRemoteDeviceTest {
         TestDeviceOptions get = mDevice.getOptions();
         assertFalse(get.equals(originalOptions));
         TestDeviceOptions get2 = mDevice.getOptions();
-        assertTrue(get2.equals(get));
+        // Same during the same session
+        assertEquals(get2, get);
+
+        mDevice.postInvocationTearDown(null);
+        TestDeviceOptions get3 = mDevice.getOptions();
+        assertNotEquals(get2, get3);
     }
 }

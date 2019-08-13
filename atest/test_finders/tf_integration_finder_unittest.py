@@ -63,12 +63,19 @@ class TFIntegrationFinderUnittests(unittest.TestCase):
                        return_value=uc.FULL_CLASS_NAME)
     @mock.patch('subprocess.check_output')
     @mock.patch('os.path.exists', return_value=True)
-    @mock.patch('os.path.isfile', return_value=True)
+    @mock.patch('os.path.isfile', return_value=False)
+    @mock.patch('os.path.isdir', return_value=False)
     #pylint: disable=unused-argument
-    def test_find_test_by_integration_name(self, _isfile, _path, mock_find,
+    def test_find_test_by_integration_name(self, _isdir, _isfile, _path, mock_find,
                                            _fcqn, _build):
-        """Test find_test_by_integration_name."""
+        """Test find_test_by_integration_name.
+
+        Note that _isfile is always False since we don't index integration tests.
+        """
         mock_find.return_value = os.path.join(uc.ROOT, uc.INT_DIR, uc.INT_NAME + '.xml')
+        t_infos = self.tf_finder.find_test_by_integration_name(uc.INT_NAME)
+        self.assertEqual(len(t_infos), 0)
+        _isdir.return_value = True
         t_infos = self.tf_finder.find_test_by_integration_name(uc.INT_NAME)
         unittest_utils.assert_equal_testinfos(self, t_infos[0], uc.INT_INFO)
         t_infos = self.tf_finder.find_test_by_integration_name(INT_NAME_CLASS)

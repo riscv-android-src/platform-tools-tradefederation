@@ -17,6 +17,7 @@ package com.android.tradefed.device.metric;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.never;
 
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -115,6 +116,40 @@ public class DebugHostLogOnFailureCollectorTest {
         Mockito.verify(mMockListener).testStarted(Mockito.eq(test), Mockito.anyLong());
         Mockito.verify(mMockListener).testFailed(Mockito.eq(test), Mockito.any());
         Mockito.verify(mMockListener)
+                .testLog(
+                        Mockito.eq("class#test-debug-hostlog-on-failure"),
+                        Mockito.eq(LogDataType.TEXT),
+                        Mockito.any());
+        Mockito.verify(mMockListener)
+                .testEnded(
+                        Mockito.eq(test),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        Mockito.verify(mMockListener).testRunEnded(0L, new HashMap<String, Metric>());
+    }
+
+    /** Test when we fail to obtain the host_log from the start of the collector. */
+    @Test
+    public void testCollect_null() throws Exception {
+        TestDescription test = new TestDescription("class", "test");
+        // Buffer at testRunStarted, then the one we want to log
+        Mockito.when(mMockLogger.getLog()).thenReturn(null);
+        mTestListener = mCollector.init(mContext, mMockListener);
+        mTestListener.testRunStarted("runName", 1);
+        mTestListener.testStarted(test);
+        mTestListener.testFailed(test, "I failed");
+        mTestListener.testEnded(test, new HashMap<String, Metric>());
+        mTestListener.testRunEnded(0L, new HashMap<String, Metric>());
+
+        // Ensure the callback went through
+        assertTrue(mCollector.mOnTestStartCalled);
+        assertTrue(mCollector.mOnTestFailCalled);
+
+        Mockito.verify(mMockListener).testRunStarted("runName", 1);
+        Mockito.verify(mMockListener).testStarted(Mockito.eq(test), Mockito.anyLong());
+        Mockito.verify(mMockListener).testFailed(Mockito.eq(test), Mockito.any());
+        // No file is logged
+        Mockito.verify(mMockListener, never())
                 .testLog(
                         Mockito.eq("class#test-debug-hostlog-on-failure"),
                         Mockito.eq(LogDataType.TEXT),

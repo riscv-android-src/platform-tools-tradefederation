@@ -59,6 +59,7 @@ import java.util.HashMap;
         Test test = new TestIdentifierResult(testId);
         // TODO: is it accurate to represent the trace as AssertionFailedError?
         mJUnitListener.addFailure(test, new AssertionFailedError(trace));
+        Log.i(LOG_TAG, String.format("Test %s failed with:\n %s", testId.toString(), trace));
     }
 
     @Override
@@ -82,7 +83,7 @@ import java.util.HashMap;
     @Override
     public void testRunFailed(String errorMessage) {
         // TODO: no run failed method on TestListener - would be good to propagate this up
-        Log.e(LOG_TAG, String.format("run failed: %s", errorMessage));
+        Log.e(LOG_TAG, String.format("Run failed: %s", errorMessage));
     }
 
     /**
@@ -107,7 +108,7 @@ import java.util.HashMap;
     /** {@inheritDoc} */
     @Override
     public void testStarted(TestDescription test) {
-        Log.d(LOG_TAG, test.toString());
+        Log.d(LOG_TAG, String.format("Starting test: %s", test.toString()));
         mJUnitListener.startTest(new TestIdentifierResult(test));
     }
 

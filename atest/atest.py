@@ -32,10 +32,11 @@ import tempfile
 import time
 import platform
 
+from multiprocessing import Process
+
 import atest_arg_parser
 import atest_error
 import atest_execution_info
-import atest_metrics
 import atest_utils
 import bug_detector
 import cli_translator
@@ -49,6 +50,7 @@ from metrics import metrics
 from metrics import metrics_base
 from metrics import metrics_utils
 from test_runners import regression_test_runner
+from tools import atest_tools
 
 EXPECTED_VARS = frozenset([
     constants.ANDROID_BUILD_TOP,
@@ -65,6 +67,12 @@ RESULT_HEADER_FMT = '\nResults from %(test_type)s:'
 RUN_HEADER_FMT = '\nRunning %(test_count)d %(test_type)s.'
 TEST_COUNT = 'test_count'
 TEST_TYPE = 'test_type'
+
+# Tasks that must run in the build time but unable to build by soong.
+# (e.g subprocesses that invoke host commands.)
+EXTRA_TASKS = {
+    'index-targets': atest_tools.index_targets
+}
 
 
 def _parse_args(argv):
@@ -157,6 +165,8 @@ def get_extra_args(args):
         extra_args[constants.POST_PATCH_ITERATIONS] = args.generate_new_metrics
     if args.instant:
         extra_args[constants.INSTANT] = args.instant
+    if args.secondary_user:
+        extra_args[constants.SECONDARY_USER] = args.secondary_user
     if args.host:
         extra_args[constants.HOST] = args.host
     if args.dry_run:
@@ -528,7 +538,6 @@ def main(argv, results_dir):
     args = _parse_args(argv)
     _configure_logging(args.verbose)
     _validate_args(args)
-    atest_metrics.log_start_event()
     metrics_utils.get_start_time()
     metrics.AtestStartEvent(
         command_line=' '.join(argv),
@@ -581,11 +590,20 @@ def main(argv, results_dir):
     # args.steps will be None if none of -bit set, else list of params set.
     steps = args.steps if args.steps else constants.ALL_STEPS
     if build_targets and constants.BUILD_STEP in steps:
+        if constants.TEST_STEP in steps:
+            # Run extra tasks with building deps concurrently.
+            # When only "-b" is given(without -t), will not index targets.
+            for task in EXTRA_TASKS.values():
+                proc = Process(target=task)
+                # Daemonlise proc so it terminates with the main process.
+                proc.daemon = True
+                proc.start()
         # Add module-info.json target to the list of build targets to keep the
         # file up to date.
         build_targets.add(mod_info.module_info_target)
         build_start = time.time()
-        success = atest_utils.build(build_targets, args.verbose)
+        success = atest_utils.build(build_targets, verbose=args.verbose,
+                                    env_vars=constants.ATEST_BUILD_ENV)
         metrics.BuildFinishEvent(
             duration=metrics_utils.convert_duration(time.time() - build_start),
             success=success,

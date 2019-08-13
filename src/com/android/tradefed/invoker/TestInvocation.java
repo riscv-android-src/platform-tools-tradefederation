@@ -19,6 +19,7 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.CommandRunner.ExitCode;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -33,6 +34,7 @@ import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecution;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.invoker.shard.ShardBuildCloner;
@@ -56,6 +58,7 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
+import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.testtype.retry.ResultAggregator;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
@@ -484,10 +487,14 @@ public class TestInvocation implements ITestInvocation {
             ITestInvocationListener listener, IConfiguration config, String name) {
         ILeveledLogOutput logger = config.getLogOutput();
         try (InputStreamSource globalLogSource = logger.getLog()) {
-            if (config.getCommandOptions().getHostLogSuffix() != null) {
-                name += config.getCommandOptions().getHostLogSuffix();
+            if (globalLogSource != null) {
+                if (config.getCommandOptions().getHostLogSuffix() != null) {
+                    name += config.getCommandOptions().getHostLogSuffix();
+                }
+                listener.testLog(name, LogDataType.TEXT, globalLogSource);
+            } else {
+                CLog.i("Skip logging %s to a file with logger '%s'", name, logger);
             }
-            listener.testLog(name, LogDataType.TEXT, globalLogSource);
         }
         // once tradefed log is reported, all further log calls for this invocation can get lost
         // unregister logger so future log calls get directed to the tradefed global log
@@ -620,6 +627,45 @@ public class TestInvocation implements ITestInvocation {
         return false;
     }
 
+    /**
+     * Invoke {@link IConfiguration#resolveDynamicOptions()} to resolve the dynamic files.
+     *
+     * @param context the {@link IInvocationContext} of the invocation.
+     * @param config the {@link IConfiguration} of this test run.
+     * @param rescheduler the {@link IRescheduler}, for rescheduling portions of the invocation for
+     *     execution on another resource(s)
+     * @param listener the {@link ITestInvocation} to report build download failures.
+     * @param invocationPath the {@link IInvocationExecution} driving the invocation.
+     * @param mode The current {@link RunMode} of the invocation.
+     * @return True if we successfully downloaded the build, false otherwise.
+     */
+    private boolean invokeRemoteDynamic(
+            IInvocationContext context,
+            IConfiguration config,
+            IRescheduler rescheduler,
+            ITestInvocationListener listener,
+            IInvocationExecution invocationPath,
+            RunMode mode) {
+        try {
+            // Don't resolve for remote invocation, wait until we are inside the remote.
+            if (!RunMode.REMOTE_INVOCATION.equals(mode)) {
+                config.resolveDynamicOptions();
+            }
+            return true;
+        } catch (RuntimeException | ConfigurationException e) {
+            // Report an empty invocation, so this error is sent to listeners
+            startInvocation(config, context, listener);
+            // Don't want to use #reportFailure, since that will call buildNotTested
+            listener.invocationFailed(e);
+            for (ITestDevice device : context.getDevices()) {
+                invocationPath.reportLogs(device, listener, Stage.ERROR);
+            }
+            reportHostLog(listener, config);
+            listener.invocationEnded(0L);
+            return false;
+        }
+    }
+
     /** {@inheritDoc} */
     @Override
     public void invoke(
@@ -635,12 +681,12 @@ public class TestInvocation implements ITestInvocation {
         ITestInvocationListener listener = null;
 
         // Auto retry feature
-        if (config.getCommandOptions().isAutoRetryEnabled()
-                && config.getCommandOptions().getMaxRetryCount() > 1) {
+        IRetryDecision decision = config.getRetryDecision();
+        ResultAggregator aggregator = null;
+        decision.setInvocationContext(context);
+        if (decision.isAutoRetryEnabled() && decision.getMaxRetryCount() > 1) {
             CLog.d("Auto-retry enabled, using the ResultAggregator to handle multiple retries.");
-            ResultAggregator aggregator =
-                    new ResultAggregator(
-                            allListeners, config.getCommandOptions().getRetryStrategy());
+            aggregator = new ResultAggregator(allListeners, decision.getRetryStrategy());
             allListeners = Arrays.asList(aggregator);
         }
 
@@ -685,7 +731,12 @@ public class TestInvocation implements ITestInvocation {
             }
             getLogRegistry().registerLogger(leveledLogOutput);
             mStatus = "resolving dynamic options";
-            config.resolveDynamicOptions();
+            boolean resolverSuccess =
+                    invokeRemoteDynamic(
+                            context, config, rescheduler, listener, invocationPath, mode);
+            if (!resolverSuccess) {
+                return;
+            }
 
             mStatus = "fetching build";
             for (String deviceName : context.getDeviceConfigNames()) {
@@ -712,6 +763,8 @@ public class TestInvocation implements ITestInvocation {
             long fetchBuildDuration = System.currentTimeMillis() - start;
             context.addInvocationTimingMetric(IInvocationContext.TimingEvent.FETCH_BUILD,
                     fetchBuildDuration);
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.FETCH_BUILD, fetchBuildDuration);
             CLog.d("Fetch build duration: %s", TimeUtil.formatElapsedTime(fetchBuildDuration));
             if (!providerSuccess) {
                 return;
@@ -762,6 +815,11 @@ public class TestInvocation implements ITestInvocation {
                     // Log the chunk of parent host_log before sharding
                     reportHostLog(listener, config, TRADEFED_LOG_NAME + BEFORE_SHARDING_SUFFIX);
                     config.getLogSaver().invocationEnded(0L);
+                    if (aggregator != null) {
+                        // The host_log is not available yet to reporters that don't support
+                        // granular results, so forward it.
+                        aggregator.forwardAggregatedInvocationLogs();
+                    }
                     return;
                 }
             }

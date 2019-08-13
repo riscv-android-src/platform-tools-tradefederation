@@ -1332,6 +1332,7 @@ public interface INativeDevice {
      * Helper method runs the "pidof" and "stat" command and returns {@link ProcessInfo} object with
      * PID and process start time of the given process.
      *
+     * @param processName the proces name String.
      * @return ProcessInfo of given processName
      */
     public ProcessInfo getProcessByName(String processName) throws DeviceNotAvailableException;
@@ -1345,18 +1346,50 @@ public interface INativeDevice {
 
     /**
      * Helper method collects the boot history map with boot time and boot reason since the given
-     * time in second since epoch from device. The current device utcEpochTime in second can be
-     * obtained by adb shell command "date +%s". Method {@link #getDeviceDate} uses adb shell
-     * command "date +%s" to get device UTC Time since Epoch and return the value in scale of
-     * millisecond.
+     * time since epoch from device and the time unit specified. The current device utcEpochTime in
+     * Millisecond can be obtained by method {@link #getDeviceDate}.
      *
+     * @param utcEpochTime the device time since Epoch.
+     * @param timeUnit the time unit <code>TimeUnit</code>.
      * @return Map of boot time (UTC time in second since Epoch) and boot reason
      */
-    public Map<Long, String> getBootHistorySince(long utcEpochTime)
+    public Map<Long, String> getBootHistorySince(long utcEpochTime, TimeUnit timeUnit)
             throws DeviceNotAvailableException;
 
-    /** Returns the pid of the service or null if something went wrong. */
+    /**
+     * Returns the pid of the service or null if something went wrong.
+     *
+     * @param process The proces name String.
+     */
     public String getProcessPid(String process) throws DeviceNotAvailableException;
+
+    /**
+     * Helper method to check whether device soft-restarted since the UTC time since epoch from
+     * device and its {@link TimeUnit}. Soft-Restart refers to system_server restarted outside of a
+     * device hard reboot (for example: requested reboot). The current device utcEpochTime in
+     * Milliseccond can be obtained by method {@link #getDeviceDate}.
+     *
+     * @param utcEpochTime the device time in second since epoch.
+     * @param timeUnit the time unit <code>TimeUnit</code> for the given utcEpochTime.
+     * @return {@code true} if device soft-restarted
+     * @throws RuntimeException if device has abnormal boot reason
+     * @throws DeviceNotAvailableException
+     */
+    public boolean deviceSoftRestartedSince(long utcEpochTime, TimeUnit timeUnit)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Helper method to check if device soft-restarted by comparing current system_server with
+     * previous system_server {@link ProcessInfo}. Use {@link #getProcessByName} to get {@link
+     * ProcessInfo}.
+     *
+     * @param prevSystemServerProcess the previous system_server process {@link ProcessInfo}.
+     * @return {@code true} if device soft-restarted
+     * @throws RuntimeException if device has abnormal boot reason
+     * @throws DeviceNotAvailableException
+     */
+    public boolean deviceSoftRestarted(ProcessInfo prevSystemServerProcess)
+            throws DeviceNotAvailableException;
 
     /**
      * Log a message in the logcat of the device. This is a safe call that will not throw even if

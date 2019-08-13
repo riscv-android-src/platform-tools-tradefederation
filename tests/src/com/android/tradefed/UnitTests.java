@@ -184,7 +184,7 @@ import com.android.tradefed.suite.checker.UserCheckerTest;
 import com.android.tradefed.targetprep.AllTestAppsInstallSetupTest;
 import com.android.tradefed.targetprep.AoaTargetPreparerTest;
 import com.android.tradefed.targetprep.AppSetupTest;
-import com.android.tradefed.targetprep.BuildInfoAttributePreparerTest;
+import com.android.tradefed.targetprep.BaseTargetPreparerTest;
 import com.android.tradefed.targetprep.CreateUserPreparerTest;
 import com.android.tradefed.targetprep.DefaultTestsZipInstallerTest;
 import com.android.tradefed.targetprep.DeviceFlashPreparerTest;
@@ -198,7 +198,6 @@ import com.android.tradefed.targetprep.InstallAllTestZipAppsSetupTest;
 import com.android.tradefed.targetprep.InstallApexModuleTargetPreparerTest;
 import com.android.tradefed.targetprep.InstallApkSetupTest;
 import com.android.tradefed.targetprep.InstrumentationPreparerTest;
-import com.android.tradefed.targetprep.PreloadedClassesPreparerTest;
 import com.android.tradefed.targetprep.PushFilePreparerTest;
 import com.android.tradefed.targetprep.PythonVirtualenvPreparerTest;
 import com.android.tradefed.targetprep.RebootTargetPreparerTest;
@@ -211,7 +210,6 @@ import com.android.tradefed.targetprep.SwitchUserTargetPreparerTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
 import com.android.tradefed.targetprep.TestAppInstallSetupTest;
 import com.android.tradefed.targetprep.TestFilePushSetupTest;
-import com.android.tradefed.targetprep.TimeSetterTargetPreparerTest;
 import com.android.tradefed.targetprep.UserCleanerTest;
 import com.android.tradefed.targetprep.adb.AdbStopServerPreparerTest;
 import com.android.tradefed.targetprep.app.NoApkTestSkipperTest;
@@ -278,6 +276,7 @@ import com.android.tradefed.testtype.suite.module.CarModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.NativeBridgeModuleControllerTest;
 import com.android.tradefed.testtype.suite.params.InstantAppHandlerTest;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelperTest;
+import com.android.tradefed.testtype.suite.params.SecondaryUserHandlerTest;
 import com.android.tradefed.testtype.suite.retry.ResultsPlayerTest;
 import com.android.tradefed.testtype.suite.retry.RetryReschedulerTest;
 import com.android.tradefed.util.AaptParserTest;
@@ -344,6 +343,7 @@ import com.android.tradefed.util.net.HttpMultipartPostTest;
 import com.android.tradefed.util.net.XmlRpcHelperTest;
 import com.android.tradefed.util.proto.TestRecordProtoUtilTest;
 import com.android.tradefed.util.proto.TfMetricProtoUtilTest;
+import com.android.tradefed.util.RemoteZipTest;
 import com.android.tradefed.util.sl4a.Sl4aClientTest;
 import com.android.tradefed.util.sl4a.Sl4aEventDispatcherTest;
 import com.android.tradefed.util.statsd.ConfigUtilTest;
@@ -578,7 +578,7 @@ import org.junit.runners.Suite.SuiteClasses;
     AllTestAppsInstallSetupTest.class,
     AoaTargetPreparerTest.class,
     AppSetupTest.class,
-    BuildInfoAttributePreparerTest.class,
+    BaseTargetPreparerTest.class,
     CreateUserPreparerTest.class,
     DefaultTestsZipInstallerTest.class,
     DeviceFlashPreparerTest.class,
@@ -593,7 +593,6 @@ import org.junit.runners.Suite.SuiteClasses;
     InstallApexModuleTargetPreparerTest.class,
     InstallApkSetupTest.class,
     InstrumentationPreparerTest.class,
-    PreloadedClassesPreparerTest.class,
     PushFilePreparerTest.class,
     PythonVirtualenvPreparerTest.class,
     RebootTargetPreparerTest.class,
@@ -605,7 +604,6 @@ import org.junit.runners.Suite.SuiteClasses;
     SystemUpdaterDeviceFlasherTest.class,
     TestAppInstallSetupTest.class,
     TestFilePushSetupTest.class,
-    TimeSetterTargetPreparerTest.class,
     SwitchUserTargetPreparerTest.class,
     UserCleanerTest.class,
 
@@ -715,6 +713,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // testtype/suite/params
     InstantAppHandlerTest.class,
     ModuleParametersHelperTest.class,
+    SecondaryUserHandlerTest.class,
 
     // testtype/suite/retry
     ResultsPlayerTest.class,
@@ -756,6 +755,7 @@ import org.junit.runners.Suite.SuiteClasses;
     PsParserTest.class,
     QuotationAwareTokenizerTest.class,
     RegexTrieTest.class,
+    RemoteZipTest.class,
     RunUtilTest.class,
     SerializationUtilTest.class,
     ShellOutputReceiverStreamTest.class,

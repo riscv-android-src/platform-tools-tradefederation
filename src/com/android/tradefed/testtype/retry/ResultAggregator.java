@@ -16,6 +16,8 @@
 package com.android.tradefed.testtype.retry;
 
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ILogSaver;
@@ -29,6 +31,10 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.retry.ISupportGranularResults;
+import com.android.tradefed.retry.MergeStrategy;
+import com.android.tradefed.retry.RetryStrategy;
+
+import com.google.api.client.repackaged.com.google.common.base.Joiner;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -56,6 +62,10 @@ public class ResultAggregator extends CollectingTestListener {
     private boolean mModuleInProgress = false;
     // Stores the results from non-module test runs until they are ready to be replayed.
     private List<TestRunResult> mPureRunResults = new ArrayList<>();
+    //
+    private TestRunResult mDetailedRunResults = null;
+    private boolean mShouldReportFailure = true;
+    private List<String> mAllDetailedFailures = new ArrayList<>();
 
     public ResultAggregator(List<ITestInvocationListener> listeners, RetryStrategy strategy) {
         mAllForwarder = new ResultAndLogForwarder(listeners);
@@ -108,8 +118,21 @@ public class ResultAggregator extends CollectingTestListener {
             forwardTestRunResults(mPureRunResults, mAggregatedForwarder);
             mPureRunResults.clear();
         }
+        forwardDetailedFailure();
         super.invocationEnded(elapsedTime);
+        // Make sure to forward the logs for the invocation.
+        forwardAggregatedInvocationLogs();
         mAllForwarder.invocationEnded(elapsedTime);
+    }
+
+    /**
+     * Forward all the invocation level logs to the result reporters that don't support the granular
+     * results.
+     */
+    public final void forwardAggregatedInvocationLogs() {
+        for (Entry<String, LogFile> invocLog : getNonAssociatedLogFiles().entrySet()) {
+            mAggregatedForwarder.logAssociation(invocLog.getKey(), invocLog.getValue());
+        }
     }
 
     /** {@inheritDoc} */
@@ -118,6 +141,11 @@ public class ResultAggregator extends CollectingTestListener {
         if (!mPureRunResults.isEmpty()) {
             forwardTestRunResults(mPureRunResults, mAggregatedForwarder);
             mPureRunResults.clear();
+        }
+
+        if (mDetailedRunResults != null) {
+            mShouldReportFailure = true;
+            forwardDetailedFailure();
         }
 
         mModuleInProgress = true;
@@ -140,6 +168,23 @@ public class ResultAggregator extends CollectingTestListener {
             forwardTestRunResults(mPureRunResults, mAggregatedForwarder);
             mPureRunResults.clear();
         }
+
+        if (mDetailedRunResults != null) {
+            if (mDetailedRunResults.getName().equals(name)) {
+                if (!mDetailedRunResults.isRunFailure()) {
+                    if (RetryStrategy.RETRY_ANY_FAILURE.equals(mRetryStrategy)) {
+                        mShouldReportFailure = false;
+                    }
+                }
+                mDetailedForwarder.testRunEnded(
+                        mDetailedRunResults.getElapsedTime(),
+                        mDetailedRunResults.getRunProtoMetrics());
+                mDetailedRunResults = null;
+            } else {
+                mShouldReportFailure = true;
+                forwardDetailedFailure();
+            }
+        }
         super.testRunStarted(name, testCount, attemptNumber, startTime);
         mDetailedForwarder.testRunStarted(name, testCount, attemptNumber, startTime);
     }
@@ -147,7 +192,7 @@ public class ResultAggregator extends CollectingTestListener {
     @Override
     public void testRunFailed(String errorMessage) {
         super.testRunFailed(errorMessage);
-        mDetailedForwarder.testRunFailed(errorMessage);
+        // Don't forward here to the detailed forwarder in case we need to clear it.
     }
 
     @Override
@@ -198,7 +243,10 @@ public class ResultAggregator extends CollectingTestListener {
     @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         super.testRunEnded(elapsedTime, runMetrics);
-        mDetailedForwarder.testRunEnded(elapsedTime, runMetrics);
+        mDetailedRunResults = getCurrentRunResults();
+        if (mDetailedRunResults.isRunFailure()) {
+            mAllDetailedFailures.add(mDetailedRunResults.getRunFailureMessage());
+        }
 
         // If we are not a module and we reach here. This allows to support non-suite scenarios
         if (!mModuleInProgress) {
@@ -209,6 +257,8 @@ public class ResultAggregator extends CollectingTestListener {
 
     @Override
     public void testModuleEnded() {
+        forwardDetailedFailure();
+
         mModuleInProgress = false;
         super.testModuleEnded();
         // We still forward the testModuleEnd to the detailed reporters
@@ -306,5 +356,28 @@ public class ResultAggregator extends CollectingTestListener {
         listener.testRunEnded(result.getElapsedTime(), result.getRunProtoMetrics());
         // Ensure we don't keep track of the results we just forwarded
         clearResultsForName(result.getName());
+    }
+
+    private void forwardDetailedFailure() {
+        if (mDetailedRunResults != null) {
+            if (mDetailedRunResults.isRunFailure() && mShouldReportFailure) {
+                mDetailedForwarder.testRunFailed(Joiner.on("\n\n").join(mAllDetailedFailures));
+            } else {
+                // Log the run failure that was cleared
+                String value =
+                        InvocationMetricLogger.getInvocationMetrics()
+                                .get(InvocationMetricKey.CLEARED_RUN_ERROR.toString());
+                if (value != null) {
+                    mAllDetailedFailures.add(0, value);
+                }
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.CLEARED_RUN_ERROR,
+                        Joiner.on("\n\n").join(mAllDetailedFailures));
+            }
+            mAllDetailedFailures.clear();
+            mDetailedForwarder.testRunEnded(
+                    mDetailedRunResults.getElapsedTime(), mDetailedRunResults.getRunProtoMetrics());
+            mDetailedRunResults = null;
+        }
     }
 }

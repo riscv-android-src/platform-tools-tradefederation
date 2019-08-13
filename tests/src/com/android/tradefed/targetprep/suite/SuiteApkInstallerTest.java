@@ -260,6 +260,42 @@ public class SuiteApkInstallerTest {
         }
     }
 
+    /**
+     * Test that {@link SuiteApkInstaller#getLocalPathForFilename(IBuildInfo, String, ITestDevice)}
+     * returns the apk file retrieved from remote artifacts.
+     */
+    @Test
+    public void testGetLocalPathForFileName_remoteZip() throws Exception {
+        mPreparer =
+                new SuiteApkInstaller() {
+                    @Override
+                    protected File getRootDir(IBuildInfo buildInfo) throws FileNotFoundException {
+                        return null;
+                    }
+                };
+        IDeviceBuildInfo deviceBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+        File tmpDir = null;
+        try {
+            tmpDir = FileUtil.createTempDir("test");
+            Mockito.doReturn(null).when(mMockBuildInfo).getFile("foo.apk");
+            EasyMock.expect(deviceBuildInfo.getTestsDir()).andReturn(tmpDir);
+            // Change the name so direct file search will return null.
+            File tmpApk = FileUtil.createTempFile("suite-apk-installer-2", ".apk", tmpDir);
+            EasyMock.expect(
+                            deviceBuildInfo.stageRemoteFile(
+                                    EasyMock.eq("suite-apk-installer.apk"), EasyMock.eq(tmpDir)))
+                    .andReturn(tmpApk);
+            EasyMock.replay(deviceBuildInfo);
+            File apk =
+                    mPreparer.getLocalPathForFilename(
+                            deviceBuildInfo, "suite-apk-installer.apk", mMockDevice);
+            assertEquals(tmpApk.getAbsolutePath(), apk.getAbsolutePath());
+            EasyMock.verify(deviceBuildInfo);
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
     /** If the file is found in the build shared resources directory, use it. */
     @Test
     public void testGetLocalPathForFileName_inSharedDir() throws Exception {

@@ -444,8 +444,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         else:
             search_dir = self.root_dir
         package_paths = test_finder_utils.run_find_cmd(
-            test_finder_utils.FIND_REFERENCE_TYPE.PACKAGE, search_dir,
-            package.replace('.', '/'))
+            test_finder_utils.FIND_REFERENCE_TYPE.PACKAGE, search_dir, package)
         # Package path will be the full path to the dir represented by package.
         if not package_paths:
             return None
