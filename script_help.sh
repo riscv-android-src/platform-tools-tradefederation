@@ -26,7 +26,7 @@
 
 checkPath() {
     if ! type -P "$1" &> /dev/null; then
-        echo "Unable to find $1 in path."
+        echo "Unable to find $1."
         exit
     fi;
 }
@@ -38,10 +38,17 @@ checkFile() {
     fi;
 }
 
-checkPath java
+# All to specify an alternative Java binary, other than the one on PATH
+TF_JAVA="java"
+if [ ! -z "${TF_JAVA_HOME}" ]; then
+  # following similar convention as JAVA_HOME
+  TF_JAVA=${TF_JAVA_HOME}/bin/java
+fi
+
+checkPath ${TF_JAVA}
 
 # check java version
-java_version_string=$(java -version 2>&1)
+java_version_string=$(${TF_JAVA} -version 2>&1)
 JAVA_VERSION=$(echo "$java_version_string" | grep 'version [ "]\(1\.8\|9\).*[ "]')
 if [ "${JAVA_VERSION}" == "" ]; then
     echo "Wrong java version. 1.8 or 9 is required. Found $java_version_string"
