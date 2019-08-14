@@ -13,16 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.testtype.retry;
+package com.android.tradefed.retry;
 
-import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.testtype.IRemoteTest;
 
 import java.util.List;
 
 /**
  * Structure holding the statistics for a retry session of one {@link IRemoteTest}. Not all fields
- * might be populated depending of the {@link RetryStrategy}.
+ * might be populated depending of the {@link com.android.tradefed.retry.RetryStrategy}.
  */
 public class RetryStatistics {
     // The time spent in retry. Always populated if retries or iterations occurred

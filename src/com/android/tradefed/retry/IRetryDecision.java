@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.testtype.retry;
+package com.android.tradefed.retry;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.TestRunResult;
-import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.testtype.IRemoteTest;
 
 import java.util.List;
@@ -32,7 +31,7 @@ public interface IRetryDecision {
     /** Whether or not to enable auto-retry. */
     public boolean isAutoRetryEnabled();
 
-    /** The {@link RetryStrategy} used during auto-retry. */
+    /** The {@link com.android.tradefed.retry.RetryStrategy} used during auto-retry. */
     public RetryStrategy getRetryStrategy();
 
     /** The maximum number of attempts during auto-retry. */
