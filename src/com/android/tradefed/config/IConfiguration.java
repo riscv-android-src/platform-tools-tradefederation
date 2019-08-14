@@ -27,11 +27,11 @@ import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.postprocessor.IPostProcessor;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import org.json.JSONArray;
