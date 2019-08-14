@@ -78,7 +78,9 @@ public class LogSaverResultForwarder extends ResultForwarder implements ILogSave
             }
             try (InputStream stream = source.createInputStream()) {
                 saver.saveLogData(TestInvocation.TRADEFED_END_HOST_LOG, LogDataType.TEXT, stream);
-                if (SystemUtil.isRemoteEnvironment()) {
+            }
+            if (SystemUtil.isRemoteEnvironment()) {
+                try (InputStream stream = source.createInputStream()) {
                     // In remote environment, dump to the stdout so we can get the logs in the
                     // console.
                     System.out.println(
