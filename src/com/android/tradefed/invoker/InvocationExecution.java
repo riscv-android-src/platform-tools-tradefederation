@@ -489,7 +489,7 @@ public class InvocationExecution implements IInvocationExecution {
                     continue;
                 }
 
-                ModuleListener mainGranularRunListener = new ModuleListener(listener);
+                ModuleListener mainGranularRunListener = new ModuleListener(null);
                 RetryLogSaverResultForwarder runListener =
                         initializeListeners(config, listener, mainGranularRunListener);
                 runTest(config, context, runListener, test);
@@ -718,7 +718,15 @@ public class InvocationExecution implements IInvocationExecution {
         List<ITestInvocationListener> currentTestListeners = new ArrayList<>();
         currentTestListeners.add(mainGranularLevelListener);
         currentTestListeners.add(mainListener);
-        return new RetryLogSaverResultForwarder(config.getLogSaver(), currentTestListeners);
+        return new RetryLogSaverResultForwarder(config.getLogSaver(), currentTestListeners) {
+            @Override
+            public void testLog(
+                    String dataName, LogDataType dataType, InputStreamSource dataStream) {
+                // We know for sure that the sub-listeners are LogSaverResultForwarder
+                // so we delegate to them to save and generate the logAssociation.
+                testLogForward(dataName, dataType, dataStream);
+            }
+        };
     }
 
     private void addRetryTime(long retryTimeMs) {
