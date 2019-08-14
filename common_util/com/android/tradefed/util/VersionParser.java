@@ -37,8 +37,11 @@ public class VersionParser {
      */
     private static String getPackageVersion() {
         Package p = VersionParser.class.getPackage();
-        if (p != null && !DEFAULT_IMPLEMENTATION_VERSION.equals(p.getImplementationVersion())) {
-            return p.getImplementationVersion();
+        if (p != null) {
+            String packageVersion = p.getImplementationVersion();
+            if (packageVersion != null && !DEFAULT_IMPLEMENTATION_VERSION.equals(packageVersion)) {
+                return packageVersion;
+            }
         }
         File dir = getTradefedJarDir();
         if (dir != null) {
