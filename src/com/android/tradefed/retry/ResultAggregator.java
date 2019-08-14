@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.testtype.retry;
+package com.android.tradefed.retry;
 
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
@@ -31,8 +31,6 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.retry.ISupportGranularResults;
-import com.android.tradefed.retry.MergeStrategy;
-import com.android.tradefed.retry.RetryStrategy;
 
 import com.google.api.client.repackaged.com.google.common.base.Joiner;
 
