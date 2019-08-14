@@ -41,12 +41,12 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.retry.BaseRetryDecision;
+import com.android.tradefed.retry.IRetryDecision;
+import com.android.tradefed.retry.RetryStatistics;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
-import com.android.tradefed.testtype.retry.BaseRetryDecision;
-import com.android.tradefed.testtype.retry.IRetryDecision;
-import com.android.tradefed.testtype.retry.RetryStatistics;
 
 import org.easymock.EasyMock;
 import org.junit.Before;

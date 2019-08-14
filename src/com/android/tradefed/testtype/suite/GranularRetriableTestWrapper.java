@@ -29,13 +29,13 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.MergeStrategy;
+import com.android.tradefed.retry.RetryLogSaverResultForwarder;
+import com.android.tradefed.retry.RetryStatistics;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.testtype.ITestFilterReceiver;
-import com.android.tradefed.testtype.retry.IRetryDecision;
-import com.android.tradefed.testtype.retry.RetryLogSaverResultForwarder;
-import com.android.tradefed.testtype.retry.RetryStatistics;
 import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.annotations.VisibleForTesting;
