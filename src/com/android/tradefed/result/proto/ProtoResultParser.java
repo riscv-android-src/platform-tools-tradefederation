@@ -156,7 +156,16 @@ public class ProtoResultParser {
      * @throws IOException
      */
     public void processFileProto(File protoFile) throws IOException {
-        TestRecord record = TestRecordProtoUtil.readFromFile(protoFile);
+        TestRecord record = null;
+        try {
+            record = TestRecordProtoUtil.readFromFile(protoFile);
+        } catch (InvalidProtocolBufferException e) {
+            // Log the proto that failed to parse
+            try (FileInputStreamSource protoFail = new FileInputStreamSource(protoFile, true)) {
+                mListener.testLog("failed-result-protobuf", LogDataType.PB, protoFail);
+            }
+            throw e;
+        }
         if (!mInvocationStarted) {
             handleInvocationStart(record);
             mInvocationStarted = true;
