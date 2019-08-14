@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
@@ -41,8 +42,11 @@ import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.ILogSaver;
+import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
+import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.targetprep.IHostCleaner;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
@@ -76,7 +80,9 @@ public class InvocationExecutionTest {
     private InvocationExecution mExec;
     private IInvocationContext mContext;
     private IConfiguration mConfig;
+    private ILogSaver mLogSaver;
     private ITestInvocationListener mMockListener;
+    private ILogSaverListener mMockLogListener;
     private ITestDevice mMockDevice;
     private ITestLogger mMockLogger;
 
@@ -85,7 +91,10 @@ public class InvocationExecutionTest {
         mExec = new InvocationExecution();
         mContext = new InvocationContext();
         mConfig = new Configuration("test", "test");
+        mLogSaver = mock(ILogSaver.class);
+        mConfig.setLogSaver(mLogSaver);
         mMockListener = mock(ITestInvocationListener.class);
+        mMockLogListener = mock(ILogSaverListener.class);
         mMockLogger = mock(ITestLogger.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         // Reset the counters
@@ -206,13 +215,50 @@ public class InvocationExecutionTest {
         OptionSetter testStubSetter = new OptionSetter(stubTest);
         testStubSetter.setOptionValue("report-test", "true");
         testStubSetter.setOptionValue("module", "runName");
+        testStubSetter.setOptionValue("log-fake-files", "true");
         tests.add(stubTest);
         mConfig.setTests(tests);
-        mExec.runTests(mContext, mConfig, mMockListener);
+        mExec.runTests(mContext, mConfig, mMockLogListener);
 
-        verify(mMockListener).testRunStarted("runName", 3, 0);
-        verify(mMockListener).testRunStarted("runName", 3, 1);
-        verify(mMockListener).testRunStarted("runName", 3, 2);
+        verify(mMockLogListener).testRunStarted("runName", 3, 0);
+        verify(mMockLogListener).testRunStarted("runName", 3, 1);
+        verify(mMockLogListener).testRunStarted("runName", 3, 2);
+
+        verify(mMockLogListener, times(3))
+                .testLog(Mockito.eq("TestStub#test1-file"), Mockito.any(), Mockito.any());
+    }
+
+    /**
+     * Ensure that when logging file during auto-retry we don't multi-associate the files due to the
+     * two LogSaverResultForwarder being used.
+     */
+    @Test
+    public void testRun_autoRetry_throughForwarder() throws Throwable {
+        OptionSetter setter = new OptionSetter(mConfig.getRetryDecision());
+        setter.setOptionValue("retry-strategy", "ITERATIONS");
+        setter.setOptionValue("max-testcase-run-count", "3");
+        setter.setOptionValue("auto-retry", "true");
+        List<IRemoteTest> tests = new ArrayList<>();
+
+        TestSuiteStub stubTest = new TestSuiteStub();
+        OptionSetter testStubSetter = new OptionSetter(stubTest);
+        testStubSetter.setOptionValue("report-test", "true");
+        testStubSetter.setOptionValue("module", "runName");
+        testStubSetter.setOptionValue("log-fake-files", "true");
+        tests.add(stubTest);
+        mConfig.setTests(tests);
+        LogSaverResultForwarder forwarder =
+                new LogSaverResultForwarder(mConfig.getLogSaver(), Arrays.asList(mMockLogListener));
+        mExec.runTests(mContext, mConfig, forwarder);
+
+        verify(mMockLogListener).testRunStarted("runName", 3, 0);
+        verify(mMockLogListener).testRunStarted("runName", 3, 1);
+        verify(mMockLogListener).testRunStarted("runName", 3, 2);
+
+        verify(mMockLogListener, times(3))
+                .testLog(Mockito.eq("TestStub#test1-file"), Mockito.any(), Mockito.any());
+        verify(mMockLogListener, times(3))
+                .logAssociation(Mockito.eq("TestStub#test1-file"), Mockito.any());
     }
 
     /**
