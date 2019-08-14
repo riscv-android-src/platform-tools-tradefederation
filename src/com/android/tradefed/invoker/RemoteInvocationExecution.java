@@ -443,7 +443,11 @@ public class RemoteInvocationExecution extends InvocationExecution {
                                 mRemoteTradefedDir + PROTO_RESULT_NAME + currentIndex);
                 if (resultFile != null) {
                     currentIndex++;
-                    parser.processFileProto(resultFile);
+                    try {
+                        parser.processFileProto(resultFile);
+                    } finally {
+                        FileUtil.deleteFile(resultFile);
+                    }
                     // Don't sleep in that case since we might have more file to process, this will
                     // sleep next time we don't find a file to process on the remote.
                     continue;
