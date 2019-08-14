@@ -40,7 +40,7 @@ import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
-import com.android.tradefed.testtype.retry.BaseRetryDecision;
+import com.android.tradefed.retry.BaseRetryDecision;
 
 import org.easymock.Capture;
 import org.easymock.EasyMock;
