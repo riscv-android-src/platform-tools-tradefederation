@@ -56,7 +56,7 @@ EXPECTED_VARS = frozenset([
     constants.ANDROID_BUILD_TOP,
     'ANDROID_TARGET_OUT_TESTCASES',
     constants.ANDROID_OUT])
-TEST_RUN_DIR_PREFIX = 'atest_run_%s_'
+TEST_RUN_DIR_PREFIX = "%Y%m%d_%H%M"
 CUSTOM_ARG_FLAG = '--'
 OPTION_NOT_FOR_TEST_MAPPING = (
     'Option `%s` does not work for running tests in TEST_MAPPING files')
@@ -147,14 +147,15 @@ def _missing_environment_variables():
 
 
 def make_test_run_dir():
-    """Make the test run dir in tmp.
+    """Make the test run dir in ATEST_RESULT_ROOT.
 
     Returns:
         A string of the dir path.
     """
-    utc_epoch_time = int(time.time())
-    prefix = TEST_RUN_DIR_PREFIX % utc_epoch_time
-    return tempfile.mkdtemp(prefix=prefix)
+    if not os.path.exists(constants.ATEST_RESULT_ROOT):
+        os.makedirs(constants.ATEST_RESULT_ROOT)
+    ctime = time.strftime(TEST_RUN_DIR_PREFIX, time.localtime())
+    return tempfile.mkdtemp(prefix='%s_' % ctime, dir=constants.ATEST_RESULT_ROOT)
 
 
 def get_extra_args(args):
