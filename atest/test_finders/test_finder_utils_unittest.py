@@ -128,9 +128,6 @@ class TestFinderUtilsUnittests(unittest.TestCase):
         paths = [os.path.join(uc.ROOT, CLASS_DIR, uc.CLASS_NAME + '.java')]
         unittest_utils.assert_strict_equal(
             self, test_finder_utils.extract_test_path(FIND_TWO), paths)
-        paths = None
-        unittest_utils.assert_strict_equal(
-            self, test_finder_utils.extract_test_path(uc.FIND_ONE, 'method'), paths)
         has_method.return_value = True
         paths = [os.path.join(uc.ROOT, CLASS_DIR, uc.CLASS_NAME + '.java')]
         unittest_utils.assert_strict_equal(
