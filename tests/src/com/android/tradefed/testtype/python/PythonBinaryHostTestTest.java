@@ -97,7 +97,11 @@ public class PythonBinaryHostTestTest {
                             mMockRunUtil.runTimedCmd(
                                     EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
                     .andReturn(res);
-            mMockListener.testRunStarted(binary.getName(), 5);
+            mMockListener.testRunStarted(
+                    EasyMock.eq(binary.getName()),
+                    EasyMock.eq(5),
+                    EasyMock.eq(0),
+                    EasyMock.anyLong());
             mMockListener.testLog(
                     EasyMock.eq(binary.getName() + "-stderr"),
                     EasyMock.eq(LogDataType.TEXT),
@@ -137,7 +141,11 @@ public class PythonBinaryHostTestTest {
                             mMockRunUtil.runTimedCmd(
                                     EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
                     .andReturn(res);
-            mMockListener.testRunStarted(binary.getName(), 5);
+            mMockListener.testRunStarted(
+                    EasyMock.eq(binary.getName()),
+                    EasyMock.eq(5),
+                    EasyMock.eq(0),
+                    EasyMock.anyLong());
             mMockListener.testLog(
                     EasyMock.eq(binary.getName() + "-stderr"),
                     EasyMock.eq(LogDataType.TEXT),
@@ -212,7 +220,11 @@ public class PythonBinaryHostTestTest {
                             mMockRunUtil.runTimedCmd(
                                     EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
                     .andReturn(res);
-            mMockListener.testRunStarted(binary.getName(), 5);
+            mMockListener.testRunStarted(
+                    EasyMock.eq(binary.getName()),
+                    EasyMock.eq(5),
+                    EasyMock.eq(0),
+                    EasyMock.anyLong());
             mMockListener.testLog(
                     EasyMock.eq(binary.getName() + "-stderr"),
                     EasyMock.eq(LogDataType.TEXT),

@@ -18,6 +18,8 @@ package com.android.tradefed.result.proto;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -32,6 +34,7 @@ import com.android.tradefed.result.proto.LogFileProto.LogFileInfo;
 import com.android.tradefed.result.proto.TestRecordProto.ChildReference;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
+import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.proto.TestRecordProtoUtil;
 
 import com.google.common.base.Strings;
@@ -65,6 +68,7 @@ public class ProtoResultParser {
     private boolean mQuietParsing = true;
 
     private boolean mInvocationStarted = false;
+    private boolean mInvocationEnded = false;
 
     /** Ctor. */
     public ProtoResultParser(
@@ -152,7 +156,16 @@ public class ProtoResultParser {
      * @throws IOException
      */
     public void processFileProto(File protoFile) throws IOException {
-        TestRecord record = TestRecordProtoUtil.readFromFile(protoFile);
+        TestRecord record = null;
+        try {
+            record = TestRecordProtoUtil.readFromFile(protoFile);
+        } catch (InvalidProtocolBufferException e) {
+            // Log the proto that failed to parse
+            try (FileInputStreamSource protoFail = new FileInputStreamSource(protoFile, true)) {
+                mListener.testLog("failed-result-protobuf", LogDataType.PB, protoFail);
+            }
+            throw e;
+        }
         if (!mInvocationStarted) {
             handleInvocationStart(record);
             mInvocationStarted = true;
@@ -161,6 +174,11 @@ public class ProtoResultParser {
         } else {
             evalProto(record, false);
         }
+    }
+
+    /** Returns whether or not the parsing reached an invocation ended. */
+    public boolean invocationEndedReached() {
+        return mInvocationEnded;
     }
 
     private void evalChildrenProto(List<ChildReference> children, boolean isInRun) {
@@ -236,7 +254,9 @@ public class ProtoResultParser {
         // Get final context in case it changed.
         Any anyDescription = endInvocationProto.getDescription();
         if (!anyDescription.is(Context.class)) {
-            throw new RuntimeException("Expected Any description of type Context");
+            throw new RuntimeException(
+                    String.format(
+                            "Expected Any description of type Context, was %s", anyDescription));
         }
         try {
             IInvocationContext context =
@@ -253,6 +273,7 @@ public class ProtoResultParser {
         }
 
         log("Invocation ended proto");
+        mInvocationEnded = true;
         if (!mReportInvocation) {
             CLog.d("Skipping invocation ended reporting.");
             return;
@@ -468,7 +489,28 @@ public class ProtoResultParser {
             return;
         }
         // Copy invocation attributes
-        receiverContext.addInvocationAttributes(endInvocationContext.getAttributes());
+        MultiMap<String, String> attributes = endInvocationContext.getAttributes();
+        for (InvocationMetricKey key : InvocationMetricKey.values()) {
+            if (!attributes.containsKey(key.toString())) {
+                continue;
+            }
+            List<String> values = attributes.get(key.toString());
+            attributes.remove(key.toString());
+
+            for (String val : values) {
+                if (key.shouldAdd()) {
+                    try {
+                        InvocationMetricLogger.addInvocationMetrics(key, Long.parseLong(val));
+                    } catch (NumberFormatException e) {
+                        CLog.e("Key %s should have a number value, instead was: %s", key, val);
+                        CLog.e(e);
+                    }
+                } else {
+                    InvocationMetricLogger.addInvocationMetrics(key, val);
+                }
+            }
+        }
+        receiverContext.addInvocationAttributes(attributes);
     }
 
     private void log(String format, Object... obj) {

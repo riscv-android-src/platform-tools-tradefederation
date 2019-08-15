@@ -44,6 +44,7 @@ public class AggregatePostProcessor extends BasePostProcessor {
     private static final String STATS_KEY_VAR = "var";
     private static final String STATS_KEY_STDEV = "stdev";
     private static final String STATS_KEY_MEDIAN = "median";
+    private static final String STATS_KEY_TOTAL = "total";
     // Separator for final upload
     private static final String STATS_KEY_SEPARATOR = "-";
 
@@ -186,6 +187,7 @@ public class AggregatePostProcessor extends BasePostProcessor {
         stats.put(STATS_KEY_VAR, variance);
         stats.put(STATS_KEY_STDEV, Math.sqrt(variance));
         stats.put(STATS_KEY_MEDIAN, median);
+        stats.put(STATS_KEY_TOTAL, sum);
         return stats;
     }
 }

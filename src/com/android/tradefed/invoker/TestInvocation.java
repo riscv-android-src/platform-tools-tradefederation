@@ -19,6 +19,7 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.CommandRunner.ExitCode;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -32,6 +33,8 @@ import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.guice.InvocationScope;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecution;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.invoker.shard.ShardBuildCloner;
@@ -49,6 +52,8 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultAndLogForwarder;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.retry.IRetryDecision;
+import com.android.tradefed.retry.ResultAggregator;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.DeviceFailedToBootError;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -91,7 +96,8 @@ public class TestInvocation implements ITestInvocation {
      */
     private static final String BATTERY_ATTRIBUTE_FORMAT_KEY = "%s-battery-%s";
 
-    static final String TRADEFED_LOG_NAME = "host_log";
+    public static final String TRADEFED_LOG_NAME = "host_log";
+    public static final String TRADEFED_END_HOST_LOG = "end_host_log";
     /** Suffix used on host_log for the part before sharding occurs. */
     static final String BEFORE_SHARDING_SUFFIX = "_before_sharding";
     static final String DEVICE_LOG_NAME_PREFIX = "device_logcat_";
@@ -339,20 +345,30 @@ public class TestInvocation implements ITestInvocation {
                     invocationPath.reportLogs(device, listener, Stage.TEARDOWN);
                 }
                 if (mStopRequested) {
-                    CLog.e(
-                            "====================================================================="
-                                    + "====");
-                    CLog.e(
+                    String message =
                             "Invocation was interrupted due to TradeFed stop, results will be "
-                                    + "affected.");
-                    CLog.e(
-                            "====================================================================="
-                                    + "====");
+                                    + "affected.";
+                    listener.invocationFailed(new RuntimeException(message));
+                    PrettyPrintDelimiter.printStageDelimiter(message);
                 }
                 reportHostLog(listener, config);
+
                 elapsedTime = System.currentTimeMillis() - startTime;
                 if (!resumed) {
-                    listener.invocationEnded(elapsedTime);
+                    // Init a log for the end of the host_log.
+                    ILeveledLogOutput endHostLog = config.getLogOutput();
+                    endHostLog.init();
+                    getLogRegistry().registerLogger(endHostLog);
+                    PrettyPrintDelimiter.printStageDelimiter("===== Result Reporters =====");
+                    try {
+                        // Copy the invocation metrics to the context
+                        ((InvocationContext) context).logInvocationMetrics();
+                        listener.invocationEnded(elapsedTime);
+                    } finally {
+                        InvocationMetricLogger.clearInvocationMetrics();
+                        endHostLog.closeLog();
+                        getLogRegistry().unregisterLogger();
+                    }
                 }
             } finally {
                 invocationPath.cleanUpBuilds(context, config);
@@ -471,10 +487,14 @@ public class TestInvocation implements ITestInvocation {
             ITestInvocationListener listener, IConfiguration config, String name) {
         ILeveledLogOutput logger = config.getLogOutput();
         try (InputStreamSource globalLogSource = logger.getLog()) {
-            if (config.getCommandOptions().getHostLogSuffix() != null) {
-                name += config.getCommandOptions().getHostLogSuffix();
+            if (globalLogSource != null) {
+                if (config.getCommandOptions().getHostLogSuffix() != null) {
+                    name += config.getCommandOptions().getHostLogSuffix();
+                }
+                listener.testLog(name, LogDataType.TEXT, globalLogSource);
+            } else {
+                CLog.i("Skip logging %s to a file with logger '%s'", name, logger);
             }
-            listener.testLog(name, LogDataType.TEXT, globalLogSource);
         }
         // once tradefed log is reported, all further log calls for this invocation can get lost
         // unregister logger so future log calls get directed to the tradefed global log
@@ -607,6 +627,45 @@ public class TestInvocation implements ITestInvocation {
         return false;
     }
 
+    /**
+     * Invoke {@link IConfiguration#resolveDynamicOptions()} to resolve the dynamic files.
+     *
+     * @param context the {@link IInvocationContext} of the invocation.
+     * @param config the {@link IConfiguration} of this test run.
+     * @param rescheduler the {@link IRescheduler}, for rescheduling portions of the invocation for
+     *     execution on another resource(s)
+     * @param listener the {@link ITestInvocation} to report build download failures.
+     * @param invocationPath the {@link IInvocationExecution} driving the invocation.
+     * @param mode The current {@link RunMode} of the invocation.
+     * @return True if we successfully downloaded the build, false otherwise.
+     */
+    private boolean invokeRemoteDynamic(
+            IInvocationContext context,
+            IConfiguration config,
+            IRescheduler rescheduler,
+            ITestInvocationListener listener,
+            IInvocationExecution invocationPath,
+            RunMode mode) {
+        try {
+            // Don't resolve for remote invocation, wait until we are inside the remote.
+            if (!RunMode.REMOTE_INVOCATION.equals(mode)) {
+                config.resolveDynamicOptions();
+            }
+            return true;
+        } catch (RuntimeException | ConfigurationException e) {
+            // Report an empty invocation, so this error is sent to listeners
+            startInvocation(config, context, listener);
+            // Don't want to use #reportFailure, since that will call buildNotTested
+            listener.invocationFailed(e);
+            for (ITestDevice device : context.getDevices()) {
+                invocationPath.reportLogs(device, listener, Stage.ERROR);
+            }
+            reportHostLog(listener, config);
+            listener.invocationEnded(0L);
+            return false;
+        }
+    }
+
     /** {@inheritDoc} */
     @Override
     public void invoke(
@@ -620,6 +679,17 @@ public class TestInvocation implements ITestInvocation {
         allListeners.addAll(config.getTestInvocationListeners());
         allListeners.addAll(Arrays.asList(extraListeners));
         ITestInvocationListener listener = null;
+
+        // Auto retry feature
+        IRetryDecision decision = config.getRetryDecision();
+        ResultAggregator aggregator = null;
+        decision.setInvocationContext(context);
+        if (decision.isAutoRetryEnabled() && decision.getMaxRetryCount() > 1) {
+            CLog.d("Auto-retry enabled, using the ResultAggregator to handle multiple retries.");
+            aggregator = new ResultAggregator(allListeners, decision.getRetryStrategy());
+            allListeners = Arrays.asList(aggregator);
+        }
+
         if (!config.getPostProcessors().isEmpty()) {
             ITestInvocationListener forwarder = new ResultAndLogForwarder(allListeners);
             // Post-processors are the first layer around the final reporters.
@@ -654,13 +724,21 @@ public class TestInvocation implements ITestInvocation {
         scope.seed(IRescheduler.class, rescheduler);
         scope.seedConfiguration(config);
         try {
-            mStatus = "fetching build";
             ILeveledLogOutput leveledLogOutput = config.getLogOutput();
             leveledLogOutput.init();
             if (leveledLogOutput instanceof BaseLeveledLogOutput) {
                 ((BaseLeveledLogOutput) leveledLogOutput).initFilters(config);
             }
-            getLogRegistry().registerLogger(config.getLogOutput());
+            getLogRegistry().registerLogger(leveledLogOutput);
+            mStatus = "resolving dynamic options";
+            boolean resolverSuccess =
+                    invokeRemoteDynamic(
+                            context, config, rescheduler, listener, invocationPath, mode);
+            if (!resolverSuccess) {
+                return;
+            }
+
+            mStatus = "fetching build";
             for (String deviceName : context.getDeviceConfigNames()) {
                 context.getDevice(deviceName).clearLastConnectedWifiNetwork();
                 context.getDevice(deviceName)
@@ -685,6 +763,8 @@ public class TestInvocation implements ITestInvocation {
             long fetchBuildDuration = System.currentTimeMillis() - start;
             context.addInvocationTimingMetric(IInvocationContext.TimingEvent.FETCH_BUILD,
                     fetchBuildDuration);
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.FETCH_BUILD, fetchBuildDuration);
             CLog.d("Fetch build duration: %s", TimeUtil.formatElapsedTime(fetchBuildDuration));
             if (!providerSuccess) {
                 return;
@@ -712,7 +792,7 @@ public class TestInvocation implements ITestInvocation {
                         CLog.e(e);
                         setExitCode(ExitCode.THROWABLE_EXCEPTION, e);
                         try {
-                            invocationPath.runDevicePostInvocationTearDown(context, config);
+                            invocationPath.runDevicePostInvocationTearDown(context, config, e);
                         } finally {
                             listener.invocationFailed(e);
                             // Reports the logs
@@ -726,7 +806,8 @@ public class TestInvocation implements ITestInvocation {
                     }
                 }
 
-                boolean sharding = invocationPath.shardConfig(config, context, rescheduler);
+                boolean sharding =
+                        invocationPath.shardConfig(config, context, rescheduler, listener);
                 if (sharding) {
                     CLog.i(
                             "Invocation for %s has been sharded, rescheduling",
@@ -734,6 +815,11 @@ public class TestInvocation implements ITestInvocation {
                     // Log the chunk of parent host_log before sharding
                     reportHostLog(listener, config, TRADEFED_LOG_NAME + BEFORE_SHARDING_SUFFIX);
                     config.getLogSaver().invocationEnded(0L);
+                    if (aggregator != null) {
+                        // The host_log is not available yet to reporters that don't support
+                        // granular results, so forward it.
+                        aggregator.forwardAggregatedInvocationLogs();
+                    }
                     return;
                 }
             }
@@ -745,7 +831,7 @@ public class TestInvocation implements ITestInvocation {
                 CLog.e("No tests to run");
                 if (deviceInit) {
                     // If we did an early setup, do the tear down.
-                    invocationPath.runDevicePostInvocationTearDown(context, config);
+                    invocationPath.runDevicePostInvocationTearDown(context, config, null);
                 }
                 listener.invocationEnded(0L);
                 return;
@@ -838,18 +924,19 @@ public class TestInvocation implements ITestInvocation {
                 return;
             }
             try {
-                if (log != null && !FileUtil.readStringFromFile(log).isEmpty()) {
-                    try (InputStreamSource source = new FileInputStreamSource(log)) {
-                        logger.testLog(
-                                String.format(
-                                        "executeShellCommandLog_%s", device.getSerialNumber()),
-                                LogDataType.TEXT,
-                                source);
-                    }
+                if (FileUtil.readStringFromFile(log).isEmpty()) {
+                    CLog.d("executeShellCommandLog file was empty, skip logging.");
+                    return;
                 }
             } catch (IOException e) {
                 // Ignored
                 CLog.e(e);
+            }
+            try (InputStreamSource source = new FileInputStreamSource(log)) {
+                logger.testLog(
+                        String.format("executeShellCommandLog_%s", device.getSerialNumber()),
+                        LogDataType.TEXT,
+                        source);
             }
         }
     }

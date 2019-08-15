@@ -38,6 +38,7 @@ import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInvocation.Stage;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.sandbox.SandboxOptions;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -59,12 +60,14 @@ public class ParentSandboxInvocationExecutionTest {
     private SandboxOptions mOptions;
     private ITargetCleaner mMockPreparer;
     private ITestDevice mMockDevice;
+    private ITestLogger mMockLogger;
 
     @Before
     public void setUp() {
         mMockFactory = Mockito.mock(IConfigurationFactory.class);
         mMockPreparer = Mockito.mock(ITargetCleaner.class);
         mMockDevice = Mockito.mock(ITestDevice.class);
+        mMockLogger = Mockito.mock(ITestLogger.class);
 
         mParentSandbox =
                 new ParentSandboxInvocationExecution() {
@@ -108,7 +111,7 @@ public class ParentSandboxInvocationExecutionTest {
                 .createConfigurationFromArgs(new String[] {"parent-config"});
 
         mParentSandbox.doSetup(mContext, mConfig, null);
-        mParentSandbox.doTeardown(mContext, mConfig, null, null);
+        mParentSandbox.doTeardown(mContext, mConfig, mMockLogger, null);
         mParentSandbox.doCleanUp(mContext, mConfig, null);
 
         verify(mMockFactory, times(1)).createConfigurationFromArgs(Mockito.any());
@@ -132,7 +135,7 @@ public class ParentSandboxInvocationExecutionTest {
         doReturn(new StubDevice("stub")).when(mMockDevice).getIDevice();
 
         mParentSandbox.doSetup(mContext, mConfig, null);
-        mParentSandbox.doTeardown(mContext, mConfig, null, null);
+        mParentSandbox.doTeardown(mContext, mConfig, mMockLogger, null);
         mParentSandbox.doCleanUp(mContext, mConfig, null);
         mParentSandbox.reportLogs(
                 mMockDevice, configParent.getTestInvocationListeners().get(0), Stage.ERROR);

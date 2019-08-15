@@ -210,8 +210,18 @@ public class GceManager {
 
     /** Build and return the command to launch GCE. Exposed for testing. */
     protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
-        List<String> gceArgs =
-                ArrayUtil.list(getTestDeviceOptions().getAvdDriverBinary().getAbsolutePath());
+        File avdDriverFile = getTestDeviceOptions().getAvdDriverBinary();
+        if (!avdDriverFile.exists()) {
+            throw new RuntimeException(
+                    String.format(
+                            "Could not find the Acloud driver at %s",
+                            avdDriverFile.getAbsolutePath()));
+        }
+        if (!avdDriverFile.canExecute()) {
+            // Set the executable bit if needed
+            FileUtil.chmodGroupRWX(avdDriverFile);
+        }
+        List<String> gceArgs = ArrayUtil.list(avdDriverFile.getAbsolutePath());
         gceArgs.add(
                 TestDeviceOptions.getCreateCommandByInstanceType(
                         getTestDeviceOptions().getInstanceType()));
@@ -222,6 +232,14 @@ public class GceManager {
                 getTestDeviceOptions().getInstanceType())) {
             gceArgs.add("--avd-type");
             gceArgs.add("cheeps");
+
+            if (getTestDeviceOptions().getCrosUser() != null
+                    && getTestDeviceOptions().getCrosPassword() != null) {
+                gceArgs.add("--user");
+                gceArgs.add(getTestDeviceOptions().getCrosUser());
+                gceArgs.add("--password");
+                gceArgs.add(getTestDeviceOptions().getCrosPassword());
+            }
         }
 
         // If args passed by gce-driver-param do not contain build_id or branch,
@@ -291,11 +309,16 @@ public class GceManager {
         gceArgs.add("delete");
         // Add extra args.
         File f = null;
+        File config = null;
         try {
+            config = FileUtil.createTempFile(getAvdConfigFile().getName(), "config");
             gceArgs.add("--instance_names");
             gceArgs.add(mGceAvdInfo.instanceName());
             gceArgs.add("--config_file");
-            gceArgs.add(getAvdConfigFile().getAbsolutePath());
+            // Copy the config in case it comes from a dynamic file. In order to ensure Acloud has
+            // the file until it's done with it.
+            FileUtil.copyFile(getAvdConfigFile(), config);
+            gceArgs.add(config.getAbsolutePath());
             if (getTestDeviceOptions().getSerivceAccountJsonKeyFile() != null) {
                 gceArgs.add("--service_account_json_private_key_path");
                 gceArgs.add(
@@ -316,8 +339,11 @@ public class GceManager {
                             "Failed to tear down GCE %s with the following arg, %s",
                             mGceAvdInfo.instanceName(), gceArgs);
                 }
+                FileUtil.deleteFile(config);
             } else {
-                getRunUtil().runCmdInBackground(gceArgs.toArray(new String[gceArgs.size()]));
+                Process p = getRunUtil().runCmdInBackground(gceArgs);
+                AcloudDeleteCleaner cleaner = new AcloudDeleteCleaner(p, config);
+                cleaner.start();
             }
         } catch (IOException e) {
             CLog.e("failed to create log file for GCE Teardown");
@@ -490,12 +516,15 @@ public class GceManager {
             GceAvdInfo gceAvd, TestDeviceOptions options, IRunUtil runUtil, String... command) {
         CommandResult res =
                 remoteSshCommandExecution(gceAvd, options, runUtil, BUGREPORT_TIMEOUT, command);
-        if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
-            CLog.e("issue when attempting to execute '%s':", Arrays.asList(command));
-            CLog.e("%s", res.getStderr());
-        }
         // We attempt to get a clean output from our command
         String output = res.getStdout().trim();
+        if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
+            CLog.e("issue when attempting to execute '%s':", Arrays.asList(command));
+            CLog.e("Stderr: %s", res.getStderr());
+        } else if (output.isEmpty()) {
+            CLog.e("Stdout from '%s' was empty", Arrays.asList(command));
+            CLog.e("Stderr: %s", res.getStderr());
+        }
         return output;
     }
 
@@ -627,5 +656,31 @@ public class GceManager {
                     mTestResourceBuildInfos, getTestDeviceOptions().getAvdConfigTestResourceName());
         }
         return getTestDeviceOptions().getAvdConfigFile();
+    }
+
+    /**
+     * Thread that helps cleaning the copied config when the process is done. This ensures acloud is
+     * not missing its config until its done.
+     */
+    private class AcloudDeleteCleaner extends Thread {
+        private Process mProcess;
+        private File mConfigFile;
+
+        public AcloudDeleteCleaner(Process p, File config) {
+            setDaemon(true);
+            setName("acloud-delete-cleaner");
+            mProcess = p;
+            mConfigFile = config;
+        }
+
+        @Override
+        public void run() {
+            try {
+                mProcess.waitFor();
+            } catch (InterruptedException e) {
+                CLog.e(e);
+            }
+            FileUtil.deleteFile(mConfigFile);
+        }
     }
 }

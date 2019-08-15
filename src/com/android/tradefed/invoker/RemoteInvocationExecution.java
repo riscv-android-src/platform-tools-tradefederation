@@ -19,12 +19,16 @@ import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.StubBuildProvider;
+import com.android.tradefed.clearcut.ClearcutClient;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.CommandRunner;
+import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.OptionCopier;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.TestDeviceOptions;
@@ -34,6 +38,8 @@ import com.android.tradefed.device.cloud.LaunchCvdHelper;
 import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.device.cloud.MultiUserSetupUtil;
 import com.android.tradefed.device.cloud.RemoteFileUtil;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -49,6 +55,7 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.proto.TestRecordProtoUtil;
 
@@ -71,9 +78,9 @@ public class RemoteInvocationExecution extends InvocationExecution {
     public static final long PUSH_TF_TIMEOUT = 150000L;
     public static final long PULL_RESULT_TIMEOUT = 180000L;
     public static final long REMOTE_PROCESS_RUNNING_WAIT = 15000L;
-    public static final long LAUNCH_EXTRA_DEVICE = 10 * 60 * 1000L;
+    public static final long LAUNCH_EXTRA_DEVICE = 15 * 60 * 1000L;
+    public static final long SETUP_REMOTE_DIR_TIMEOUT = 10 * 60 * 1000L;
     public static final long NEW_USER_TIMEOUT = 5 * 60 * 1000L;
-    public static final String REMOTE_VM_VARIABLE = "REMOTE_VM_ENV";
 
     public static final String REMOTE_USER_DIR = "/home/{$USER}/";
     public static final String PROTO_RESULT_NAME = "output.pb";
@@ -163,23 +170,18 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
                 // Log the overhead to start the device
                 long elapsedTime = System.currentTimeMillis() - startTime;
-                context.getBuildInfos()
-                        .get(0)
-                        .addBuildAttribute(SHARDING_DEVICE_SETUP_TIME, Long.toString(elapsedTime));
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.SHARDING_DEVICE_SETUP_TIME, elapsedTime);
             }
         }
 
         mRemoteAdbPath = String.format("/home/%s/bin/adb", options.getInstanceUser());
-
-        String tfPath = System.getProperty("TF_JAR_DIR");
-        if (tfPath == null) {
-            listener.invocationFailed(new RuntimeException("Failed to find $TF_JAR_DIR."));
+        // Select the TF version that should be pushed to the remote VM
+        File tfToPush = getLocalTradefedPath(listener, options.getRemoteTf());
+        if (tfToPush == null) {
             return;
         }
-        File currentTf = new File(tfPath).getAbsoluteFile();
-        if (tfPath.equals(".")) {
-            currentTf = new File("").getAbsoluteFile();
-        }
+
         mRemoteTradefedDir = mainRemoteDir + "tradefed/";
         CommandResult createRemoteDir =
                 GceManager.remoteSshCommandExecution(
@@ -201,7 +203,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                             runUtil,
                             PUSH_TF_TIMEOUT,
                             mRemoteTradefedDir,
-                            currentTf);
+                            tfToPush);
             attempt++;
         }
         if (!result) {
@@ -210,7 +212,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
             return;
         }
 
-        mRemoteTradefedDir = mRemoteTradefedDir + currentTf.getName() + "/";
+        mRemoteTradefedDir = mRemoteTradefedDir + tfToPush.getName() + "/";
         CommandResult listRemoteDir =
                 GceManager.remoteSshCommandExecution(
                         info, options, runUtil, 120000L, "ls", "-l", mRemoteTradefedDir);
@@ -241,6 +243,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                     new String[] {
                         GlobalConfiguration.SCHEDULER_TYPE_NAME,
                         GlobalConfiguration.HOST_OPTIONS_TYPE_NAME,
+                        DynamicRemoteFileResolver.DYNAMIC_RESOLVER,
                         "android-build"
                     };
             try {
@@ -295,7 +298,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
             Throwable exception)
             throws Throwable {
         // Only run device post invocation teardown
-        super.runDevicePostInvocationTearDown(context, config);
+        super.runDevicePostInvocationTearDown(context, config, exception);
     }
 
     @Override
@@ -328,7 +331,9 @@ public class RemoteInvocationExecution extends InvocationExecution {
         StringBuilder tfCmdBuilder =
                 new StringBuilder("TF_GLOBAL_CONFIG=" + globalConfig.getName());
         // Set an env variable to notify that this a remote environment.
-        tfCmdBuilder.append(" " + REMOTE_VM_VARIABLE + "=1");
+        tfCmdBuilder.append(" " + SystemUtil.REMOTE_VM_VARIABLE + "=1");
+        // Disable clearcut in the remote
+        tfCmdBuilder.append(" " + ClearcutClient.DISABLE_CLEARCUT_KEY + "=1");
         tfCmdBuilder.append(" ENTRY_CLASS=" + CommandRunner.class.getCanonicalName());
         tfCmdBuilder.append(" ./tradefed.sh " + mRemoteTradefedDir + configFile.getName());
         if (config.getCommandOptions().shouldUseRemoteSandboxMode()) {
@@ -351,45 +356,57 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
         // Monitor the remote invocation to ensure it's completing. Block until timeout or stops
         // running.
-        boolean stillRunning =
-                isStillRunning(
-                        currentInvocationListener, configFile, info, options, runUtil, config);
+        boolean stillRunning = true;
+        try {
+            stillRunning =
+                    isStillRunning(
+                            currentInvocationListener,
+                            configFile,
+                            info,
+                            options,
+                            runUtil,
+                            config,
+                            context);
+        } finally {
+            // Fetch the logs for debugging
+            File stdoutFile =
+                    RemoteFileUtil.fetchRemoteFile(
+                            info,
+                            options,
+                            runUtil,
+                            PULL_RESULT_TIMEOUT,
+                            mRemoteTradefedDir + STDOUT_FILE);
+            if (stdoutFile != null) {
+                try (InputStreamSource source = new FileInputStreamSource(stdoutFile, true)) {
+                    currentInvocationListener.testLog(STDOUT_FILE, LogDataType.TEXT, source);
+                }
+            }
 
-        // Fetch the logs
-        File stdoutFile =
-                RemoteFileUtil.fetchRemoteFile(
-                        info,
-                        options,
-                        runUtil,
-                        PULL_RESULT_TIMEOUT,
-                        mRemoteTradefedDir + STDOUT_FILE);
-        if (stdoutFile != null) {
-            try (InputStreamSource source = new FileInputStreamSource(stdoutFile, true)) {
-                currentInvocationListener.testLog(STDOUT_FILE, LogDataType.TEXT, source);
+            File stderrFile =
+                    RemoteFileUtil.fetchRemoteFile(
+                            info,
+                            options,
+                            runUtil,
+                            PULL_RESULT_TIMEOUT,
+                            mRemoteTradefedDir + STDERR_FILE);
+            if (stderrFile != null) {
+                try (InputStreamSource source = new FileInputStreamSource(stderrFile, true)) {
+                    currentInvocationListener.testLog(STDERR_FILE, LogDataType.TEXT, source);
+                }
             }
         }
 
-        File stderrFile =
-                RemoteFileUtil.fetchRemoteFile(
-                        info,
-                        options,
-                        runUtil,
-                        PULL_RESULT_TIMEOUT,
-                        mRemoteTradefedDir + STDERR_FILE);
-        if (stderrFile != null) {
-            try (InputStreamSource source = new FileInputStreamSource(stderrFile, true)) {
-                currentInvocationListener.testLog(STDERR_FILE, LogDataType.TEXT, source);
-            }
+        // If not result in progress are reported, parse the full results at the end.
+        if (!config.getCommandOptions().shouldReportModuleProgression()) {
+            fetchAndProcessResults(
+                    stillRunning,
+                    currentInvocationListener,
+                    context,
+                    info,
+                    options,
+                    runUtil,
+                    mRemoteTradefedDir);
         }
-
-        fetchAndProcessResults(
-                stillRunning,
-                currentInvocationListener,
-                context,
-                info,
-                options,
-                runUtil,
-                mRemoteTradefedDir);
     }
 
     private boolean isStillRunning(
@@ -398,7 +415,9 @@ public class RemoteInvocationExecution extends InvocationExecution {
             GceAvdInfo info,
             TestDeviceOptions options,
             IRunUtil runUtil,
-            IConfiguration config) {
+            IConfiguration config,
+            IInvocationContext context)
+            throws IOException {
         long maxTimeout = config.getCommandOptions().getInvocationTimeout();
         Long endTime = null;
         if (maxTimeout > 0L) {
@@ -406,7 +425,35 @@ public class RemoteInvocationExecution extends InvocationExecution {
         }
         boolean stillRunning = true;
         int errorConnectCount = 0;
+        int currentIndex = 0;
+        ProtoResultParser parser =
+                new ProtoResultParser(
+                        currentInvocationListener,
+                        context, /* Don't report invocation level */
+                        false,
+                        "remote-");
         while (stillRunning) {
+            if (config.getCommandOptions().shouldReportModuleProgression()) {
+                File resultFile =
+                        RemoteFileUtil.fetchRemoteFile(
+                                info,
+                                options,
+                                runUtil,
+                                PULL_RESULT_TIMEOUT,
+                                mRemoteTradefedDir + PROTO_RESULT_NAME + currentIndex);
+                if (resultFile != null) {
+                    currentIndex++;
+                    try {
+                        parser.processFileProto(resultFile);
+                    } finally {
+                        FileUtil.deleteFile(resultFile);
+                    }
+                    // Don't sleep in that case since we might have more file to process, this will
+                    // sleep next time we don't find a file to process on the remote.
+                    continue;
+                }
+            }
+
             CommandResult psRes =
                     GceManager.remoteSshCommandExecution(
                             info,
@@ -441,6 +488,31 @@ public class RemoteInvocationExecution extends InvocationExecution {
             }
             if (stillRunning) {
                 RunUtil.getDefault().sleep(REMOTE_PROCESS_RUNNING_WAIT);
+            }
+        }
+
+        File resultFile = null;
+        if (config.getCommandOptions().shouldReportModuleProgression()) {
+            // Process all remaining proto files available
+            do {
+                resultFile =
+                        RemoteFileUtil.fetchRemoteFile(
+                                info,
+                                options,
+                                runUtil,
+                                PULL_RESULT_TIMEOUT,
+                                mRemoteTradefedDir + PROTO_RESULT_NAME + currentIndex);
+                if (resultFile != null) {
+                    currentIndex++;
+                    parser.processFileProto(resultFile);
+                }
+            } while (resultFile != null);
+
+            if (!parser.invocationEndedReached()) {
+                currentInvocationListener.invocationFailed(
+                        new RuntimeException(
+                                "Parsing of results protos might be incomplete: invocation ended "
+                                        + "of remote execution was not found."));
             }
         }
         return stillRunning;
@@ -516,11 +588,18 @@ public class RemoteInvocationExecution extends InvocationExecution {
      */
     @VisibleForTesting
     File createRemoteConfig(IConfiguration config, ITestLogger logger, String resultDirPath)
-            throws IOException {
+            throws IOException, ConfigurationException {
         // Setup the remote reporting to a proto file
         List<ITestInvocationListener> reporters = new ArrayList<>();
         FileProtoResultReporter protoReporter = new FileProtoResultReporter();
-        protoReporter.setFileOutput(new File(resultDirPath + PROTO_RESULT_NAME));
+        OptionSetter protoResSetter = new OptionSetter(protoReporter);
+        if (config.getCommandOptions().shouldReportModuleProgression()) {
+            protoResSetter.setOptionValue(
+                    FileProtoResultReporter.PERIODIC_PROTO_WRITING_OPTION, "true");
+        }
+        protoResSetter.setOptionValue(
+                FileProtoResultReporter.PROTO_OUTPUT_FILE,
+                new File(resultDirPath + PROTO_RESULT_NAME).getPath());
         reporters.add(protoReporter);
 
         config.setTestInvocationListeners(reporters);
@@ -533,13 +612,40 @@ public class RemoteInvocationExecution extends InvocationExecution {
             }
         }
 
+        // Unset remote-tf-version to avoid re-downloading from remote VM.
+        OptionSetter deviceOptions =
+                new OptionSetter(config.getDeviceConfig().get(0).getDeviceOptions());
+        deviceOptions.setOptionValue(TestDeviceOptions.REMOTE_TF_VERSION_OPTION, "");
+
         // Dump and log the configuration
         File configFile = FileUtil.createTempFile(config.getName(), ".xml");
-        config.dumpXml(new PrintWriter(configFile));
+        config.dumpXml(
+                new PrintWriter(configFile),
+                new ArrayList<String>(),
+                /* print deprecated */ true,
+                /* print unchanged*/ false);
         try (InputStreamSource source = new FileInputStreamSource(configFile)) {
             logger.testLog(REMOTE_CONFIG, LogDataType.XML, source);
         }
         return configFile;
+    }
+
+    /** Returns the Tradefed version that should be pushed to the remote to drive the invocation. */
+    private File getLocalTradefedPath(ITestInvocationListener listener, File remoteTf) {
+        if (remoteTf != null && remoteTf.exists()) {
+            return remoteTf;
+        }
+
+        String tfPath = System.getProperty("TF_JAR_DIR");
+        if (tfPath == null) {
+            listener.invocationFailed(new RuntimeException("Failed to find $TF_JAR_DIR."));
+            return null;
+        }
+        File currentTf = new File(tfPath).getAbsoluteFile();
+        if (tfPath.equals(".")) {
+            currentTf = new File("").getAbsoluteFile();
+        }
+        return currentTf;
     }
 
     private void fetchAndProcessResults(
@@ -619,7 +725,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                         info,
                         options,
                         runUtil,
-                        NEW_USER_TIMEOUT);
+                        SETUP_REMOTE_DIR_TIMEOUT);
         if (homeDirSetup != null) {
             String errorMsg =
                     String.format("Failed to setup home dir: %s", homeDirSetup.getStderr());

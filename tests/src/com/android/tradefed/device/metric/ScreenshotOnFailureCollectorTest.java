@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.device.metric;
 
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -50,7 +51,7 @@ public class ScreenshotOnFailureCollectorTest {
         mCollector = new ScreenshotOnFailureCollector();
         mContext = new InvocationContext();
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
-        mTestListener = mCollector.init(mContext, mMockListener);
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("serial");
     }
 
@@ -72,6 +73,7 @@ public class ScreenshotOnFailureCollectorTest {
                 EasyMock.anyObject());
 
         EasyMock.replay(mMockListener, mMockDevice);
+        mTestListener = mCollector.init(mContext, mMockListener);
         mTestListener.testStarted(test);
         mTestListener.testFailed(test, "I failed");
         mTestListener.testEnded(test, new HashMap<String, Metric>());

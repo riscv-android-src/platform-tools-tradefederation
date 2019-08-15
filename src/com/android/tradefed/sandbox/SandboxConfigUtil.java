@@ -86,13 +86,14 @@ public class SandboxConfigUtil {
             mCmdArgs.add(arg);
         }
         CommandResult result = runUtil.runTimedCmd(DUMP_TIMEOUT, mCmdArgs.toArray(new String[0]));
-        CLog.d("stdout: %s", result.getStdout());
-        if (result.getStderr() != null && !result.getStderr().isEmpty()) {
-            CLog.d("stderr: %s", result.getStderr());
-        }
         if (CommandStatus.SUCCESS.equals(result.getStatus())) {
             return destination;
         }
+
+        if (result.getStderr() != null && !result.getStderr().isEmpty()) {
+            CLog.d("stderr: %s", result.getStderr());
+        }
+
         FileUtil.deleteFile(destination);
         // Do not delete the global configuration file here in this case, it might still be used.
         String errorMessage = "Error when dumping the config.";

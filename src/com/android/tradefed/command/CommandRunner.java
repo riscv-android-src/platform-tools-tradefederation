@@ -16,6 +16,8 @@
 
 package com.android.tradefed.command;
 
+import com.android.tradefed.clearcut.ClearcutClient;
+import com.android.tradefed.clearcut.TerminateClearcutClient;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.device.NoDeviceException;
@@ -77,7 +79,13 @@ public class CommandRunner {
     public void run(String[] args) {
         try {
             initGlobalConfig(args);
+
+            ClearcutClient client = new ClearcutClient();
+            Runtime.getRuntime().addShutdownHook(new TerminateClearcutClient(client));
+            client.notifyTradefedStartEvent();
+
             mScheduler = getCommandScheduler();
+            mScheduler.setClearcutClient(client);
             mScheduler.start();
             mScheduler.addCommand(args);
         } catch (ConfigurationException e) {

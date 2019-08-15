@@ -80,7 +80,8 @@ class ModuleInfo(object):
             logging.debug('Generating %s - this is required for '
                           'initial runs.', _MODULE_INFO)
             atest_utils.build([module_info_target],
-                              logging.getLogger().isEnabledFor(logging.DEBUG))
+                              verbose=logging.getLogger().isEnabledFor(logging.DEBUG),
+                              env_vars=constants.ATEST_BUILD_ENV)
         return module_info_target, module_file_path
 
     def _load_module_info_file(self, force_build, module_file):

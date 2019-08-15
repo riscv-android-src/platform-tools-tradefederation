@@ -23,6 +23,7 @@ import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.proto.ConfigurationDescription.Metadata;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.suite.ITestSuite;
@@ -341,6 +342,14 @@ public class InvocationContext implements IInvocationContext {
     @SuppressWarnings("unused")
     private void unlock() {
         mLocked = false;
+    }
+
+    /** Log the {@link InvocationMetricLogger} attributes to the invocation. */
+    public void logInvocationMetrics() {
+        Map<String, String> metrics = InvocationMetricLogger.getInvocationMetrics();
+        if (!metrics.isEmpty()) {
+            mInvocationAttributes.putAll(new MultiMap<>(metrics));
+        }
     }
 
     /** {@inheritDoc} */

@@ -211,6 +211,7 @@ public class TradefedSandbox implements ISandbox {
             return e;
         }
 
+        PrettyPrintDelimiter.printStageDelimiter("Sandbox Configuration Preparation");
         // Prepare the configuration
         Exception res = prepareConfiguration(context, config, listener);
         if (res != null) {
@@ -322,13 +323,21 @@ public class TradefedSandbox implements ISandbox {
                                 createClasspath(mRootFolder), mRunUtil, args, mode, mGlobalConfig);
             } catch (SandboxConfigurationException e) {
                 // TODO: Improve our detection of that scenario
+                CLog.e(e);
+                CLog.e("%s", args[0]);
                 if (e.getMessage().contains(String.format("Can not find local config %s", args[0]))
                         || e.getMessage()
                                 .contains(
                                         String.format(
                                                 "Could not find configuration '%s'", args[0]))) {
+                    CLog.w(
+                            "Child version doesn't contains '%s'. Attempting to backfill missing parent configuration.",
+                            args[0]);
                     File parentConfig = handleChildMissingConfig(args);
                     if (parentConfig != null) {
+                        try (InputStreamSource source = new FileInputStreamSource(parentConfig)) {
+                            listener.testLog("sandbox-parent-config", LogDataType.XML, source);
+                        }
                         try {
                             mSerializedConfiguration =
                                     SandboxConfigUtil.dumpConfigForVersion(
@@ -424,18 +433,23 @@ public class TradefedSandbox implements ISandbox {
 
     private File handleChildMissingConfig(String[] args) {
         IConfiguration parentConfig = null;
+        File tmpParentConfig = null;
+        PrintWriter pw = null;
         try {
+            tmpParentConfig = FileUtil.createTempFile("parent-config", ".xml", mSandboxTmpFolder);
+            pw = new PrintWriter(tmpParentConfig);
             parentConfig = ConfigurationFactory.getInstance().createConfigurationFromArgs(args);
-            File tmpParentConfig =
-                    FileUtil.createTempFile("parent-config", ".xml", mSandboxTmpFolder);
-            PrintWriter pw = new PrintWriter(tmpParentConfig);
-            // Do not print deprecated options to avoid compatibility issues
-            parentConfig.dumpXml(pw, new ArrayList<>(), false);
+            // Do not print deprecated options to avoid compatibility issues, and do not print
+            // unchanged options.
+            parentConfig.dumpXml(pw, new ArrayList<>(), false, false);
             return tmpParentConfig;
         } catch (ConfigurationException | IOException e) {
             CLog.e("Parent doesn't understand the command either:");
             CLog.e(e);
+            FileUtil.deleteFile(tmpParentConfig);
             return null;
+        } finally {
+            StreamUtil.close(pw);
         }
     }
 }

@@ -32,10 +32,13 @@ import tempfile
 import time
 import platform
 
+from multiprocessing import Process
+
 import atest_arg_parser
+import atest_error
 import atest_execution_info
-import atest_metrics
 import atest_utils
+import bug_detector
 import cli_translator
 # pylint: disable=import-error
 import constants
@@ -47,6 +50,7 @@ from metrics import metrics
 from metrics import metrics_base
 from metrics import metrics_utils
 from test_runners import regression_test_runner
+from tools import atest_tools
 
 EXPECTED_VARS = frozenset([
     constants.ANDROID_BUILD_TOP,
@@ -63,6 +67,12 @@ RESULT_HEADER_FMT = '\nResults from %(test_type)s:'
 RUN_HEADER_FMT = '\nRunning %(test_count)d %(test_type)s.'
 TEST_COUNT = 'test_count'
 TEST_TYPE = 'test_type'
+
+# Tasks that must run in the build time but unable to build by soong.
+# (e.g subprocesses that invoke host commands.)
+EXTRA_TASKS = {
+    'index-targets': atest_tools.index_targets
+}
 
 
 def _parse_args(argv):
@@ -155,6 +165,8 @@ def get_extra_args(args):
         extra_args[constants.POST_PATCH_ITERATIONS] = args.generate_new_metrics
     if args.instant:
         extra_args[constants.INSTANT] = args.instant
+    if args.secondary_user:
+        extra_args[constants.SECONDARY_USER] = args.secondary_user
     if args.host:
         extra_args[constants.HOST] = args.host
     if args.dry_run:
@@ -483,13 +495,19 @@ def _dry_run(results_dir, extra_args, test_infos):
         results_dir: Path for saving atest logs.
         extra_args: Dict of extra args for test runners to utilize.
         test_infos: A list of TestInfos.
+
+    Returns:
+        A list of test commands.
     """
+    all_run_cmds = []
     for test_runner, tests in test_runner_handler.group_tests_by_test_runners(test_infos):
         runner = test_runner(results_dir)
         run_cmds = runner.generate_run_commands(tests, extra_args)
         for run_cmd in run_cmds:
+            all_run_cmds.append(run_cmd)
             print('Would run test via command: %s'
                   % (atest_utils.colorize(run_cmd, constants.GREEN)))
+    return all_run_cmds
 
 def _print_testable_modules(mod_info, suite):
     """Print the testable modules for a given suite.
@@ -520,7 +538,6 @@ def main(argv, results_dir):
     args = _parse_args(argv)
     _configure_logging(args.verbose)
     _validate_args(args)
-    atest_metrics.log_start_event()
     metrics_utils.get_start_time()
     metrics.AtestStartEvent(
         command_line=' '.join(argv),
@@ -534,6 +551,9 @@ def main(argv, results_dir):
         return constants.EXIT_CODE_SUCCESS
     build_targets = set()
     test_infos = set()
+    # Clear cache if user pass -c option
+    if args.clear_cache:
+        atest_utils.clean_test_info_caches(args.tests)
     if _will_run_tests(args):
         build_targets, test_infos = translator.translate(args)
         if not test_infos:
@@ -547,8 +567,22 @@ def main(argv, results_dir):
     build_targets |= test_runner_handler.get_test_runner_reqs(mod_info,
                                                               test_infos)
     extra_args = get_extra_args(args)
+    if args.update_cmd_mapping or args.verify_cmd_mapping:
+        args.dry_run = True
     if args.dry_run:
-        _dry_run(results_dir, extra_args, test_infos)
+        args.tests.sort()
+        dry_run_cmds = _dry_run(results_dir, extra_args, test_infos)
+        if args.verify_cmd_mapping:
+            try:
+                atest_utils.handle_test_runner_cmd(' '.join(args.tests),
+                                                   dry_run_cmds,
+                                                   do_verification=True)
+            except atest_error.DryRunVerificationError as e:
+                atest_utils.colorful_print(str(e), constants.RED)
+                return constants.EXIT_CODE_VERIFY_FAILURE
+        if args.update_cmd_mapping:
+            atest_utils.handle_test_runner_cmd(' '.join(args.tests),
+                                               dry_run_cmds)
         return constants.EXIT_CODE_SUCCESS
     if args.detect_regression:
         build_targets |= (regression_test_runner.RegressionTestRunner('')
@@ -556,11 +590,20 @@ def main(argv, results_dir):
     # args.steps will be None if none of -bit set, else list of params set.
     steps = args.steps if args.steps else constants.ALL_STEPS
     if build_targets and constants.BUILD_STEP in steps:
+        if constants.TEST_STEP in steps:
+            # Run extra tasks with building deps concurrently.
+            # When only "-b" is given(without -t), will not index targets.
+            for task in EXTRA_TASKS.values():
+                proc = Process(target=task)
+                # Daemonlise proc so it terminates with the main process.
+                proc.daemon = True
+                proc.start()
         # Add module-info.json target to the list of build targets to keep the
         # file up to date.
         build_targets.add(mod_info.module_info_target)
         build_start = time.time()
-        success = atest_utils.build(build_targets, args.verbose)
+        success = atest_utils.build(build_targets, verbose=args.verbose,
+                                    env_vars=constants.ATEST_BUILD_ENV)
         metrics.BuildFinishEvent(
             duration=metrics_utils.convert_duration(time.time() - build_start),
             success=success,
@@ -601,6 +644,10 @@ if __name__ == '__main__':
                                                  RESULTS_DIR) as result_file:
         metrics_base.MetricsBase.tool_name = constants.TOOL_NAME
         EXIT_CODE = main(sys.argv[1:], RESULTS_DIR)
+        DETECTOR = bug_detector.BugDetector(sys.argv[1:], EXIT_CODE)
+        metrics.LocalDetectEvent(
+            detect_type=constants.DETECT_TYPE_BUG_DETECTED,
+            result=DETECTOR.caught_result)
         metrics_utils.send_exit_event(EXIT_CODE)
         if result_file:
             print('Execution detail has saved in %s' % result_file.name)

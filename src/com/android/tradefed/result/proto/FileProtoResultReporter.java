@@ -27,15 +27,18 @@ import java.io.IOException;
 /** Proto reporter that dumps the {@link TestRecord} into a file. */
 public class FileProtoResultReporter extends ProtoResultReporter {
 
-    @Option(
-        name = "proto-output-file",
-        description = "File where the proto output will be saved",
-        mandatory = true
-    )
-    private File mOutputFile;
+    public static final String PROTO_OUTPUT_FILE = "proto-output-file";
 
     @Option(
-        name = "periodic-proto-writing",
+        name = PROTO_OUTPUT_FILE,
+        description = "File where the proto output will be saved. If unset, reporter will be inop."
+    )
+    private File mOutputFile = null;
+
+    public static final String PERIODIC_PROTO_WRITING_OPTION = "periodic-proto-writing";
+
+    @Option(
+        name = PERIODIC_PROTO_WRITING_OPTION,
         description =
                 "Whether or not to output intermediate proto per module following a numbered "
                         + "sequence."
@@ -44,7 +47,6 @@ public class FileProtoResultReporter extends ProtoResultReporter {
 
     // Current index of the sequence of proto output
     private int mIndex = 0;
-    private File mCurrentOutputFile;
 
     @Override
     public void processStartInvocation(
@@ -74,9 +76,6 @@ public class FileProtoResultReporter extends ProtoResultReporter {
     /** Sets the file where to output the result. */
     public void setFileOutput(File output) {
         mOutputFile = output;
-        if (mPeriodicWriting) {
-            mCurrentOutputFile = new File(mOutputFile.getAbsolutePath() + mIndex);
-        }
     }
 
     /** Enable writing each module individualy to a file. */
@@ -85,12 +84,15 @@ public class FileProtoResultReporter extends ProtoResultReporter {
     }
 
     private void writeProto(TestRecord record) {
+        if (mOutputFile == null) {
+            return;
+        }
         File outputFile = mOutputFile;
         if (mPeriodicWriting) {
-            outputFile = mCurrentOutputFile;
+            outputFile = new File(mOutputFile.getAbsolutePath() + mIndex);
         }
-        try {
-            record.writeDelimitedTo(new FileOutputStream(outputFile));
+        try (FileOutputStream output = new FileOutputStream(outputFile)) {
+            record.writeDelimitedTo(output);
             if (mPeriodicWriting) {
                 nextOutputFile();
             }
@@ -102,6 +104,5 @@ public class FileProtoResultReporter extends ProtoResultReporter {
 
     private void nextOutputFile() {
         mIndex++;
-        mCurrentOutputFile = new File(mOutputFile.getAbsolutePath() + mIndex);
     }
 }
