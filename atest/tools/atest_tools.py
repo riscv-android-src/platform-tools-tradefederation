@@ -259,8 +259,8 @@ def _index_packages(output, index):
     """Index Java packages.
     The data structure is like:
     {
-        'a.b.c.d': {'/path1/to/a/b/c/d/FooTestCase.java',
-                    '/path2/to/a/b/c/d/FooTestCase.kt'}
+        'a.b.c.d': {'/path1/to/a/b/c/d/',
+                    '/path2/to/a/b/c/d/'
     }
 
     Args:
@@ -270,7 +270,7 @@ def _index_packages(output, index):
     logging.debug('indexing packages.')
     _dump_index(dump_file=index,
                 output=output, output_re=constants.PACKAGE_OUTPUT_RE,
-                key='package', value='java_path')
+                key='package', value='java_dir')
 
 def _index_qualified_classes(output, index):
     """Index Fully Qualified Java Classes(FQCN).
