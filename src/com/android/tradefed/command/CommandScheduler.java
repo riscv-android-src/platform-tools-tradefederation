@@ -19,6 +19,7 @@ package com.android.tradefed.command;
 import com.android.ddmlib.DdmPreferences;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.clearcut.ClearcutClient;
 import com.android.tradefed.command.CommandFileParser.CommandLine;
 import com.android.tradefed.command.CommandFileWatcher.ICommandFileListener;
 import com.android.tradefed.command.CommandRunner.ExitCode;
@@ -164,6 +165,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     /** The last {@link InvocationThread} that ran error code and error stack*/
     private ExitCode mLastInvocationExitCode = ExitCode.NO_ERROR;
     private Throwable mLastInvocationThrowable = null;
+
+    /** Client to report metric data of the harness. */
+    private ClearcutClient mClient = null;
 
     @Option(name = "reload-cmdfiles", description =
             "Whether to enable the command file autoreload mechanism")
@@ -731,7 +735,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 // state during the interruption we at least do minimal tear down of devices with
                 // their built-in clean up.
                 CLog.d("Attempting postInvocationTearDown in stopInvocation");
-                device.postInvocationTearDown();
+                device.postInvocationTearDown(null);
             }
             // If invocation is not currently in an interruptible state we provide a timer
             // after which it will become interruptible.
@@ -997,6 +1001,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             exit(manager);
             cleanUp();
             CLog.logAndDisplay(LogLevel.INFO, "All done");
+            if (mClient != null) {
+                mClient.stop();
+            }
         } finally {
             // Make sure that we don't quit with messages still in the buffers
             System.err.flush();
@@ -1204,7 +1211,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 CLog.logAndDisplay(LogLevel.ERROR, "Failed to get json command usage: %s", e);
             }
         } else if (config.getCommandOptions().isDryRunMode()) {
-            config.validateOptions(false);
+            config.validateOptions();
             String cmdLine = QuotationAwareTokenizer.combineTokens(args);
             CLog.d("Dry run mode; skipping adding command: %s", cmdLine);
             if (config.getCommandOptions().isNoisyDryRunMode()) {
@@ -2246,5 +2253,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     @Override
     public synchronized int getReadyCommandCount() {
         return mReadyCommands.size();
+    }
+
+    @Override
+    public void setClearcutClient(ClearcutClient client) {
+        mClient = client;
     }
 }

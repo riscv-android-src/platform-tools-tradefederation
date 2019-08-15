@@ -16,6 +16,8 @@
 
 package com.android.tradefed.device.metric;
 
+import static org.junit.Assert.assertTrue;
+
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -28,18 +30,19 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.Pair;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
-
+import java.io.File;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
-
-import java.io.File;
-import java.util.HashMap;
 
 /** Unit tests for {@link PerfettoPullerMetricCollector}. */
 @RunWith(JUnit4.class)
@@ -69,7 +72,6 @@ public class PerfettoPullerMetricCollectorTest {
         OptionSetter setter = new OptionSetter(mPerfettoMetricCollector);
         setter.setOptionValue("pull-pattern-keys", "perfettofile");
         HashMap<String, Metric> currentMetrics = new HashMap<>();
-        currentMetrics.put("perfettofile", TfMetricProtoUtil.stringToMetric("/data/trace.pb"));
 
         Mockito.when(mMockDevice.pullFile(Mockito.eq("/data/trace.pb")))
                 .thenReturn(new File("trace"));
@@ -78,8 +80,8 @@ public class PerfettoPullerMetricCollectorTest {
         mPerfettoMetricCollector.testStarted(testDesc);
         mPerfettoMetricCollector.testEnded(testDesc, currentMetrics);
 
-        Mockito.verify(mMockListener)
-                .testLog(Mockito.eq("trace"), Mockito.eq(LogDataType.PB), Mockito.any());
+        assertTrue("Trace duration available but not expected.",
+                currentMetrics.size() == 0);
     }
 
     @Test
@@ -106,6 +108,75 @@ public class PerfettoPullerMetricCollectorTest {
         Mockito.verify(mPerfettoMetricCollector).runHostCommand(Mockito.any());
         Mockito.verify(mMockListener)
                 .testLog(Mockito.eq("trace"), Mockito.eq(LogDataType.PB), Mockito.any());
+        assertTrue("Expected two metrics that includes success status",
+                currentMetrics.get("perfetto_trace_extractor_status").getMeasurements()
+                        .getSingleString().equals("1"));
+        assertTrue("Trace duration metrics not available but expected.",
+                currentMetrics.get("perfetto_trace_extractor_runtime").getMeasurements()
+                        .getSingleDouble() >= 0);
+    }
+
+    @Test
+    public void testScriptFailureStatus() throws Exception {
+
+        OptionSetter setter = new OptionSetter(mPerfettoMetricCollector);
+        setter.setOptionValue("pull-pattern-keys", "perfettofile");
+        setter.setOptionValue("perfetto-binary-path", "trx");
+        HashMap<String, Metric> currentMetrics = new HashMap<>();
+        currentMetrics.put("perfettofile", TfMetricProtoUtil.stringToMetric("/data/trace.pb"));
+        Mockito.when(mMockDevice.pullFile(Mockito.eq("/data/trace.pb")))
+                .thenReturn(new File("trace"));
+
+        TestDescription testDesc = new TestDescription("xyz", "abc");
+        CommandResult cr = new CommandResult();
+        cr.setStatus(CommandStatus.FAILED);
+        cr.setStdout("abc:efg");
+
+        Mockito.doReturn(cr).when(mPerfettoMetricCollector).runHostCommand(Mockito.any());
+
+        mPerfettoMetricCollector.testStarted(testDesc);
+        mPerfettoMetricCollector.testEnded(testDesc, currentMetrics);
+
+        Mockito.verify(mPerfettoMetricCollector).runHostCommand(Mockito.any());
+        Mockito.verify(mMockListener)
+                .testLog(Mockito.eq("trace"), Mockito.eq(LogDataType.PB), Mockito.any());
+        assertTrue("Expected two metrics that includes failure status",
+                currentMetrics.get("perfetto_trace_extractor_status").getMeasurements()
+                        .getSingleString().equals("0"));
+        assertTrue("Trace duration metrics not available but expected.",
+                currentMetrics.get("perfetto_trace_extractor_runtime").getMeasurements()
+                        .getSingleDouble() >= 0);
+    }
+
+    @Test
+    public void testBinaryArgs() throws Exception {
+        OptionSetter setter = new OptionSetter(mPerfettoMetricCollector);
+        setter.setOptionValue("pull-pattern-keys", "perfettofile");
+        setter.setOptionValue("perfetto-binary-path", "trx");
+        setter.setOptionValue("perfetto-binary-args", "--uno");
+        setter.setOptionValue("perfetto-binary-args", "--dos");
+        setter.setOptionValue("perfetto-binary-args", "--tres");
+        HashMap<String, Metric> currentMetrics = new HashMap<>();
+        currentMetrics.put("perfettofile", TfMetricProtoUtil.stringToMetric("/data/trace.pb"));
+        Mockito.when(mMockDevice.pullFile(Mockito.eq("/data/trace.pb")))
+                .thenReturn(new File("trace"));
+
+        TestDescription testDesc = new TestDescription("xyz", "abc");
+        CommandResult cr = new CommandResult();
+        cr.setStatus(CommandStatus.SUCCESS);
+        cr.setStdout("abc:efg");
+
+        Mockito.doReturn(cr).when(mPerfettoMetricCollector).runHostCommand(Mockito.any());
+
+        mPerfettoMetricCollector.testStarted(testDesc);
+        mPerfettoMetricCollector.testEnded(testDesc, currentMetrics);
+
+        ArgumentCaptor<String[]> captor = ArgumentCaptor.forClass(String[].class);
+        Mockito.verify(mPerfettoMetricCollector).runHostCommand(captor.capture());
+        List<String> args = Arrays.asList(captor.getValue());
+        Assert.assertTrue(args.contains("--uno"));
+        Assert.assertTrue(args.contains("--dos"));
+        Assert.assertTrue(args.contains("--tres"));
     }
 
     @Test

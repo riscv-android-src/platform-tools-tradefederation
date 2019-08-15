@@ -118,7 +118,7 @@ public class MultiUserSetupUtil {
             TestDeviceOptions options,
             IRunUtil runUtil,
             long timeoutMs) {
-        StringBuilder copyCommandBuilder = new StringBuilder("sudo cp ");
+        StringBuilder copyCommandBuilder = new StringBuilder("sudo cp --reflink=auto ");
         for (String file : FILE_TO_BE_COPIED) {
             copyCommandBuilder.append(" /home/" + mainRootUser + "/" + file);
         }

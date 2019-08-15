@@ -43,6 +43,8 @@ import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.retry.IRetryDecision;
+import com.android.tradefed.retry.RetryStatistics;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetCleaner;
@@ -56,7 +58,6 @@ import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.ITestCollector;
-import com.android.tradefed.testtype.suite.ITestSuite.RetryStrategy;
 import com.android.tradefed.testtype.suite.module.BaseModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
 import com.android.tradefed.util.StreamUtil;
@@ -106,8 +107,6 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     public static final String RETRY_SUCCESS_COUNT = "MODULE_RETRY_SUCCESS";
     public static final String RETRY_FAIL_COUNT = "MODULE_RETRY_FAILED";
 
-    private static final String FLAKE_DATE_PREFIX = "FLAKE_DATA:";
-
     private final IInvocationContext mModuleInvocationContext;
     private final IConfiguration mModuleConfiguration;
     private ILogSaver mLogSaver;
@@ -135,15 +134,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private long mStartTestTime = 0l;
 
     // Tracking of retry performance
-    private long mRetryTime = 0L;
-    /** The number of test cases that passed after a failed attempt */
-    private long mSuccessRetried = 0L;
-    /** The number of test cases that remained failed after all retry attempts */
-    private long mFailedRetried = 0L;
+    private List<RetryStatistics> mRetryStats = new ArrayList<>();
 
-    private RetryStrategy mRetryStrategy = RetryStrategy.RETRY_TEST_CASE_FAILURE;
     private boolean mMergeAttempts = true;
-    private boolean mRebootAtLastRetry = false;
+    private IRetryDecision mRetryDecision;
 
     // Token during sharding
     private Set<TokenProperty> mRequiredTokens = new HashSet<>();
@@ -491,15 +485,16 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
                     mExpectedTests += retriableTest.getExpectedTestsCount();
                     // Get information about retry
-                    mRetryTime += retriableTest.getRetryTime();
-                    mSuccessRetried += retriableTest.getRetrySuccess();
-                    mFailedRetried += retriableTest.getRetryFailed();
-
-                    addAttemptStatsToBuild(mBuild, retriableTest.getAttemptSuccessStats());
+                    if (mRetryDecision != null) {
+                        RetryStatistics res = mRetryDecision.getRetryStatistics();
+                        if (res != null) {
+                            mRetryStats.add(res);
+                        }
+                    }
                 }
                 // After the run, if the test failed (even after retry the final result passed) has
                 // failed, capture a bugreport.
-                if (retriableTest.hasFailed()) {
+                if (retriableTest.getResultListener().hasLastAttemptFailed()) {
                     captureBugreport(listener, getId());
                 }
             }
@@ -590,8 +585,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         retriableTest.setModuleConfig(mModuleConfiguration);
         retriableTest.setInvocationContext(mModuleInvocationContext);
         retriableTest.setLogSaver(mLogSaver);
-        retriableTest.setRetryStrategy(mRetryStrategy);
-        retriableTest.setRebootAtLastRetry(mRebootAtLastRetry);
+        retriableTest.setRetryDecision(mRetryDecision);
         return retriableTest;
     }
 
@@ -655,13 +649,16 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         metricsProto.put(
                 TEST_TIME, TfMetricProtoUtil.createSingleValue(elapsedTime, "milliseconds"));
         // Report all the retry informations
-        if (mRetryTime > 0L) {
+        if (!mRetryStats.isEmpty()) {
+            RetryStatistics agg = RetryStatistics.aggregateStatistics(mRetryStats);
             metricsProto.put(
-                    RETRY_TIME, TfMetricProtoUtil.createSingleValue(mRetryTime, "milliseconds"));
+                    RETRY_TIME,
+                    TfMetricProtoUtil.createSingleValue(agg.mRetryTime, "milliseconds"));
             metricsProto.put(
-                    RETRY_SUCCESS_COUNT, TfMetricProtoUtil.createSingleValue(mSuccessRetried, ""));
+                    RETRY_SUCCESS_COUNT,
+                    TfMetricProtoUtil.createSingleValue(agg.mRetrySuccess, ""));
             metricsProto.put(
-                    RETRY_FAIL_COUNT, TfMetricProtoUtil.createSingleValue(mFailedRetried, ""));
+                    RETRY_FAIL_COUNT, TfMetricProtoUtil.createSingleValue(agg.mRetryFailure, ""));
         }
 
         if (totalExpectedTests != numResults) {
@@ -869,15 +866,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         mCollectTestsOnly = collectTestsOnly;
     }
 
-    /** Sets the {@link RetryStrategy} to be used when retrying. */
-    public final void setRetryStrategy(RetryStrategy retryStrategy, boolean mergeAttempts) {
-        mRetryStrategy = retryStrategy;
+    /** Sets whether or not we should merge results. */
+    public final void setMergeAttemps(boolean mergeAttempts) {
         mMergeAttempts = mergeAttempts;
     }
 
-    /** Sets the flag to reboot devices at the last intra-module retry. */
-    public final void setRebootAtLastRetry(boolean rebootAtLastRetry) {
-        mRebootAtLastRetry = rebootAtLastRetry;
+    /** Sets the {@link IRetryDecision} to be used for intra-module retry. */
+    public final void setRetryDecision(IRetryDecision decision) {
+        mRetryDecision = decision;
     }
 
     /** Returns a list of tests that ran in this module. */
@@ -967,12 +963,5 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             return controller.shouldRunModule(mModuleInvocationContext);
         }
         return RunStrategy.RUN;
-    }
-
-    private void addAttemptStatsToBuild(IBuildInfo build, Map<String, Integer> attemptStats) {
-        for (Entry<String, Integer> entry : attemptStats.entrySet()) {
-            String key = String.format("%s%s:%s", FLAKE_DATE_PREFIX, getId(), entry.getKey());
-            build.addBuildAttribute(key, Integer.toString(entry.getValue()));
-        }
     }
 }

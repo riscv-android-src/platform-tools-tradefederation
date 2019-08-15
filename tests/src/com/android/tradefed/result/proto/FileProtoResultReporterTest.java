@@ -20,6 +20,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.android.tradefed.config.ConfigurationDescriptor;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
@@ -93,9 +94,10 @@ public class FileProtoResultReporterTest {
 
     @Test
     public void testWriteResults_periodic() throws Exception {
+        OptionSetter setter = new OptionSetter(mReporter);
+        setter.setOptionValue("periodic-proto-writing", "true");
+        setter.setOptionValue("proto-output-file", mOutput.getAbsolutePath());
         TestDescription test1 = new TestDescription("class1", "test1");
-        mReporter.setPeriodicWriting(true);
-        mReporter.setFileOutput(mOutput);
         IInvocationContext context = new InvocationContext();
         context.setConfigurationDescriptor(new ConfigurationDescriptor());
         context.addInvocationAttribute("test", "test");

@@ -46,6 +46,8 @@ import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.retry.BaseRetryDecision;
+import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.targetprep.BaseTargetPreparer;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetCleaner;
@@ -57,7 +59,6 @@ import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
-import com.android.tradefed.testtype.suite.ITestSuite.RetryStrategy;
 import com.android.tradefed.testtype.suite.module.BaseModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController;
 import com.android.tradefed.testtype.suite.module.TestFailureModuleController;
@@ -99,6 +100,8 @@ public class ModuleDefinitionTest {
     // Extra mock for log saving testing
     private ILogSaver mMockLogSaver;
     private ILogSaverListener mMockLogSaverListener;
+
+    private IRetryDecision mDecision = new BaseRetryDecision();
 
     private interface ITestInterface extends IRemoteTest, IBuildReceiver, IDeviceTest {}
 
@@ -289,7 +292,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
-
+        mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -398,6 +401,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -413,7 +417,11 @@ public class ModuleDefinitionTest {
                 EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
         // Exception thrown during tear down do not bubble up to invocation.
         EasyMock.expectLastCall().andThrow(new RuntimeException("teardown failed"));
-        mMockListener.testRunStarted(MODULE_NAME, testCount);
+        mMockListener.testRunStarted(
+                EasyMock.eq(MODULE_NAME),
+                EasyMock.eq(testCount),
+                EasyMock.eq(0),
+                EasyMock.anyLong());
         for (int i = 0; i < 1; i++) {
             mMockListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
             mMockListener.testEnded(
@@ -557,7 +565,8 @@ public class ModuleDefinitionTest {
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
         mMockCleaner.tearDown(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo),
                 EasyMock.isNull());
-        mMockListener.testRunStarted(EasyMock.eq(MODULE_NAME), EasyMock.eq(1));
+        mMockListener.testRunStarted(
+                EasyMock.eq(MODULE_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
@@ -594,7 +603,8 @@ public class ModuleDefinitionTest {
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
         mMockCleaner.tearDown(
                 EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
-        mMockListener.testRunStarted(EasyMock.eq(MODULE_NAME), EasyMock.eq(1));
+        mMockListener.testRunStarted(
+                EasyMock.eq(MODULE_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
@@ -628,7 +638,8 @@ public class ModuleDefinitionTest {
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
         mMockCleaner.tearDown(
                 EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
-        mMockListener.testRunStarted(EasyMock.eq(MODULE_NAME), EasyMock.eq(1));
+        mMockListener.testRunStarted(
+                EasyMock.eq(MODULE_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
@@ -668,12 +679,14 @@ public class ModuleDefinitionTest {
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
         mMockCleaner.tearDown(
                 EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
-        mMockListener.testRunStarted(EasyMock.eq(MODULE_NAME), EasyMock.eq(1));
+        mMockListener.testRunStarted(
+                EasyMock.eq(MODULE_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         // Ensure that module listeners receive the callbacks too.
-        mockModuleListener.testRunStarted(EasyMock.eq(MODULE_NAME), EasyMock.eq(1));
+        mockModuleListener.testRunStarted(
+                EasyMock.eq(MODULE_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         mockModuleListener.testRunFailed(EasyMock.contains(exceptionMessage));
         mockModuleListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
@@ -710,7 +723,8 @@ public class ModuleDefinitionTest {
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
         mMockCleaner.tearDown(
                 EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
-        mMockListener.testRunStarted(EasyMock.eq(MODULE_NAME), EasyMock.eq(1));
+        mMockListener.testRunStarted(
+                EasyMock.eq(MODULE_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
@@ -741,6 +755,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -789,6 +804,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -851,6 +867,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -892,7 +909,8 @@ public class ModuleDefinitionTest {
         // Only one module
         assertEquals(1, mModule.getTestsResults().size());
         assertEquals(2, mModule.getTestsResults().get(0).getNumCompleteTests());
-        assertEquals("assert error", mModule.getTestsResults().get(0).getRunFailureMessage());
+        assertTrue(
+                mModule.getTestsResults().get(0).getRunFailureMessage().contains("assert error"));
         verifyMocks();
     }
 
@@ -1009,6 +1027,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         config);
+        mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -1020,9 +1039,9 @@ public class ModuleDefinitionTest {
         mMockListener.testEnded(
                 EasyMock.anyObject(),
                 EasyMock.anyLong(),
-                (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.<HashMap<String, Metric>>anyObject());
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
         mModule.run(mMockListener, null, null);
         verifyMocks();
@@ -1070,6 +1089,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.setRetryDecision(mDecision);
         mModule.setLogSaver(mMockLogSaver);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
@@ -1104,7 +1124,8 @@ public class ModuleDefinitionTest {
                 EasyMock.eq(loggedFile));
         mMockLogSaverListener.logAssociation("testlogclass", loggedFile);
 
-        mMockLogSaverListener.testRunStarted(MODULE_NAME, 0);
+        mMockLogSaverListener.testRunStarted(
+                EasyMock.eq(MODULE_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
         mMockLogSaverListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
@@ -1152,11 +1173,12 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         config);
+        mModule.setRetryDecision(mDecision);
         mModule.setLogSaver(mMockLogSaver);
         mMockListener.testRunStarted(
                 EasyMock.eq("fakeName"), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
         mModule.run(mMockListener, null, failureListener);
         verifyMocks();
@@ -1175,6 +1197,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -1243,6 +1266,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.setRetryDecision(mDecision);
         mModule.setLogSaver(mMockLogSaver);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
@@ -1271,7 +1295,11 @@ public class ModuleDefinitionTest {
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
-        mMockLogSaverListener.testRunStarted(MODULE_NAME, testCount);
+        mMockLogSaverListener.testRunStarted(
+                EasyMock.eq(MODULE_NAME),
+                EasyMock.eq(testCount),
+                EasyMock.eq(0),
+                EasyMock.anyLong());
         for (int i = 0; i < testCount; i++) {
             mMockLogSaverListener.testStarted(
                     (TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
@@ -1308,7 +1336,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
-
+        mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -1361,6 +1389,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -1379,7 +1408,7 @@ public class ModuleDefinitionTest {
 
         mMockListener.testRunStarted(
                 EasyMock.eq("fakeName"), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed("early failure!");
+        mMockListener.testRunFailed(EasyMock.contains("early failure!"));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
@@ -1402,7 +1431,13 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
-        mModule.setRetryStrategy(RetryStrategy.ITERATIONS, false);
+        IRetryDecision decision = new BaseRetryDecision();
+        OptionSetter setter = new OptionSetter(decision);
+        setter.setOptionValue("retry-strategy", "ITERATIONS");
+        setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
+        decision.setInvocationContext(mModule.getModuleInvocationContext());
+        mModule.setRetryDecision(decision);
+        mModule.setMergeAttemps(false);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -1487,7 +1522,13 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
-        mModule.setRetryStrategy(RetryStrategy.RETRY_ANY_FAILURE, false);
+        IRetryDecision decision = new BaseRetryDecision();
+        OptionSetter setter = new OptionSetter(decision);
+        setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
+        setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
+        decision.setInvocationContext(mModule.getModuleInvocationContext());
+        mModule.setRetryDecision(decision);
+        mModule.setMergeAttemps(false);
 
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
@@ -1502,6 +1543,9 @@ public class ModuleDefinitionTest {
         EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
         mMockCleaner.tearDown(
                 EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
+        EasyMock.expect(mMockDevice.getIDevice())
+                .andReturn(EasyMock.createMock(IDevice.class))
+                .times(3);
         // We expect a total count on the run start so 4, all aggregated under the same run
         for (int attempt = 0; attempt < 3; attempt++) {
             if (attempt == 0) {

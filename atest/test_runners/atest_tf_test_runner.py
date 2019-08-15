@@ -280,6 +280,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 build_req.add(executable)
         return build_req
 
+    # pylint: disable=too-many-branches
     @staticmethod
     def _parse_extra_args(extra_args):
         """Convert the extra args into something tf can understand.
@@ -325,6 +326,12 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 args_to_append.append('--enable-parameterized-modules')
                 args_to_append.append('--module-parameter')
                 args_to_append.append('instant_app')
+                continue
+            if constants.SECONDARY_USER == arg:
+                args_to_append.append('--enable-parameterized-modules')
+                args_to_append.append('--enable-optional-parameterization')
+                args_to_append.append('--module-parameter')
+                args_to_append.append('secondary_user')
                 continue
             args_not_supported.append(arg)
         return args_to_append, args_not_supported
@@ -500,6 +507,10 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         if test_infos[0].from_test_mapping:
             args.extend(constants.TEST_MAPPING_RESULT_SERVER_ARGS)
         test_infos = self._flatten_test_infos(test_infos)
+        # In order to do dry-run verification, sort it to make each run has the
+        # same result
+        test_infos = list(test_infos)
+        test_infos.sort()
 
         for info in test_infos:
             args.extend([constants.TF_INCLUDE_FILTER, info.test_name])

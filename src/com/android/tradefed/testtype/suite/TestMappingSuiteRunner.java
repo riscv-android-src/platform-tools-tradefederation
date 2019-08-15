@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.suite;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.testmapping.TestInfo;
 import com.android.tradefed.util.testmapping.TestMapping;
 import com.android.tradefed.util.testmapping.TestOption;
@@ -29,6 +30,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+
 /**
  * Implementation of {@link BaseTestSuite} to run tests specified by option include-filter, or
  * TEST_MAPPING files from build, as a suite.
@@ -55,6 +58,14 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
                         + "--include-filter arg."
     )
     private Set<String> mKeywords = new HashSet<>();
+
+    @Option(
+        name = "force-test-mapping-module",
+        description =
+                "Run the specified tests only. The tests loaded from all TEST_MAPPING files in "
+                        + "the source code will be filtered again to force run the specified tests."
+    )
+    private Set<String> mTestModulesForced = new HashSet<>();
 
     /** Special definition in the test mapping structure. */
     private static final String TEST_MAPPING_INCLUDE_FILTER = "include-filter";
@@ -91,6 +102,11 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
             throw new RuntimeException(
                     "Must specify --test-mapping-test-group when applying --test-mapping-keyword.");
         }
+        if (mTestGroup == null && !mTestModulesForced.isEmpty()) {
+            throw new RuntimeException(
+                    "Must specify --test-mapping-test-group when applying "
+                            + "--force-test-mapping-module.");
+        }
         if (mTestGroup != null && !includeFilter.isEmpty()) {
             throw new RuntimeException(
                     "If options --test-mapping-test-group is set, option --include-filter should "
@@ -101,6 +117,14 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
             Set<TestInfo> testsToRun =
                     TestMapping.getTests(
                             getBuildInfo(), mTestGroup, getPrioritizeHostConfig(), mKeywords);
+            if (!mTestModulesForced.isEmpty()) {
+                CLog.i("Filtering tests for the given names: %s", mTestModulesForced);
+                testsToRun =
+                        testsToRun
+                                .stream()
+                                .filter(testInfo -> mTestModulesForced.contains(testInfo.getName()))
+                                .collect(Collectors.toSet());
+            }
             if (testsToRun.isEmpty()) {
                 throw new RuntimeException(
                         String.format("No test found for the given group: %s.", mTestGroup));
