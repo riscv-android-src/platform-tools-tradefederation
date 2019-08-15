@@ -278,9 +278,13 @@ def extract_test_path(output, methods=None):
             if not methods or match_obj.group('method_name') in methods:
                 verified_tests.add(fpath)
         else:
+            # TODO (b/138997521) - Atest checks has_method_in_file of a class
+            #  without traversing its parent classes. A workaround for this is
+            #  do not check has_method_in_file. Uncomment below when a solution
+            #  to it is applied.
             # java/kt
-            if not methods or has_method_in_file(test, methods):
-                verified_tests.add(test)
+            #if not methods or has_method_in_file(test, methods):
+            verified_tests.add(test)
     return extract_test_from_tests(list(verified_tests))
 
 
