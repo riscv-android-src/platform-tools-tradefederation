@@ -665,6 +665,16 @@ public interface ITestDevice extends INativeDevice {
     ArrayList<Integer> listUsers() throws DeviceNotAvailableException;
 
     /**
+     * Gets the Map of useId to {@link UserInfo} on the device. Will throw {@link
+     * DeviceRuntimeException} if output from device is not as expected.
+     *
+     * @return the list of UserInfo objects.
+     * @throws DeviceNotAvailableException
+     * @throws DeviceRuntimeException
+     */
+    public Map<Integer, UserInfo> getUserInfos() throws DeviceNotAvailableException;
+
+    /**
      * Get the maximum number of supported users. Defaults to 0.
      *
      * @return an integer indicating the number of supported users
