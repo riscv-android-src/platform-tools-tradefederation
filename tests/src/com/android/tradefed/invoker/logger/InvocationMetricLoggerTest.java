@@ -16,7 +16,7 @@
 package com.android.tradefed.invoker.logger;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertNotSame;
 
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 
@@ -33,18 +33,30 @@ public class InvocationMetricLoggerTest {
 
     @Test
     public void testLogMetrics() throws Exception {
-        Map<String, String> result = logMetric(InvocationMetricKey.FETCH_BUILD, "TEST");
+        Map<String, String> result = logMetric(InvocationMetricKey.FETCH_BUILD, "TEST", null);
         assertEquals("TEST", result.get(InvocationMetricKey.FETCH_BUILD.toString()));
-        // Ensure that it wasn't added in current ThreadGroup
-        assertNull(
+        // Ensure that it wasn't set to the current ThreadGroup
+        assertNotSame(
+                "TEST",
                 InvocationMetricLogger.getInvocationMetrics()
                         .get(InvocationMetricKey.FETCH_BUILD.toString()));
     }
 
-    private Map<String, String> logMetric(InvocationMetricKey key, String value) throws Exception {
+    @Test
+    public void testLogMetrics_appendString() throws Exception {
+        Map<String, String> result =
+                logMetric(InvocationMetricKey.STAGE_TESTS_INDIVIDUAL_DOWNLOADS, "file1", "file2");
+        // Ensure that the metric value is appended.
+        assertEquals(
+                "file1,file2",
+                result.get(InvocationMetricKey.STAGE_TESTS_INDIVIDUAL_DOWNLOADS.toString()));
+    }
+
+    private Map<String, String> logMetric(InvocationMetricKey key, String value, String value2)
+            throws Exception {
         String uuid = UUID.randomUUID().toString();
         ThreadGroup testGroup = new ThreadGroup("unit-test-group-" + uuid);
-        TestRunnable runnable = new TestRunnable(key, value);
+        TestRunnable runnable = new TestRunnable(key, value, value2);
         Thread testThread = new Thread(testGroup, runnable);
         testThread.setName("InvocationMetricLoggerTest-test-thread");
         testThread.setDaemon(true);
@@ -57,16 +69,21 @@ public class InvocationMetricLoggerTest {
 
         private InvocationMetricKey mKey;
         private String mValue;
+        private String mValue2 = null;
         private Map<String, String> mResultMap;
 
-        public TestRunnable(InvocationMetricKey key, String value) {
+        public TestRunnable(InvocationMetricKey key, String value, String value2) {
             mKey = key;
             mValue = value;
+            mValue2 = value2;
         }
 
         @Override
         public void run() {
             InvocationMetricLogger.addInvocationMetrics(mKey, mValue);
+            if (mValue2 != null) {
+                InvocationMetricLogger.addInvocationMetrics(mKey, mValue2);
+            }
             mResultMap = InvocationMetricLogger.getInvocationMetrics();
         }
 
