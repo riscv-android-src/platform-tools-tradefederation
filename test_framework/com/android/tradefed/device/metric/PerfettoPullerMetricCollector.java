@@ -59,6 +59,12 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
     private List<File> mScriptFiles = new ArrayList<>();
 
     @Option(
+        name = "perfetto-binary-args",
+        description = "Extra arguments to be passed to the binaries."
+    )
+    private List<String> mPerfettoBinaryArgs = new ArrayList<>();
+
+    @Option(
             name = "perfetto-metric-prefix",
             description = "Prefix to be used with the metrics collected from perfetto.")
     private String mMetricPrefix = "perfetto";
@@ -98,6 +104,7 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
 
             List<String> commandArgsList = new ArrayList<String>();
             commandArgsList.add(scriptFile.getAbsolutePath());
+            commandArgsList.addAll(mPerfettoBinaryArgs);
             commandArgsList.add("-trace_file");
             commandArgsList.add(metricFile.getAbsolutePath());
 
@@ -168,7 +175,7 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
      * @return return the command results.
      */
     @VisibleForTesting
-    protected CommandResult runHostCommand(String[] commandArgs) {
+    CommandResult runHostCommand(String[] commandArgs) {
         return RunUtil.getDefault().runTimedCmd(mScriptTimeoutMs, commandArgs);
     }
 
@@ -185,4 +192,3 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
         return null;
     }
 }
-
