@@ -1430,6 +1430,7 @@ public class TestInvocationTest {
         OptionSetter decisionSetter = new OptionSetter(decision);
         decisionSetter.setOptionValue("auto-retry", "true");
         decisionSetter.setOptionValue("max-testcase-run-count", "2");
+        decisionSetter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
 
         mMockBuildProvider.cleanUp(mMockBuildInfo);
         // The keystore is cloned for each shard.

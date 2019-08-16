@@ -66,7 +66,7 @@ public class BaseRetryDecision implements IRetryDecision {
         description =
                 "Whether or not to enable the new auto-retry. This is a feature flag for testing."
     )
-    private boolean mEnableAutoRetry = false;
+    private boolean mEnableAutoRetry = true;
 
     private IInvocationContext mContext;
 
