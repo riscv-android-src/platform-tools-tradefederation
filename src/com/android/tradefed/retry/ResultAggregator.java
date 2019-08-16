@@ -33,6 +33,7 @@ import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.retry.ISupportGranularResults;
 
 import com.google.api.client.repackaged.com.google.common.base.Joiner;
+import com.google.common.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -297,6 +298,17 @@ public class ResultAggregator extends CollectingTestListener {
         }
     }
 
+    @VisibleForTesting
+    String getInvocationMetricRunError() {
+        return InvocationMetricLogger.getInvocationMetrics()
+                .get(InvocationMetricKey.CLEARED_RUN_ERROR.toString());
+    }
+
+    @VisibleForTesting
+    void addInvocationMetricRunError(String errors) {
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.CLEARED_RUN_ERROR, errors);
+    }
+
     private void forwardTestResults(
             Map<TestDescription, TestResult> testResults, ITestInvocationListener listener) {
         for (Map.Entry<TestDescription, TestResult> testEntry : testResults.entrySet()) {
@@ -362,17 +374,13 @@ public class ResultAggregator extends CollectingTestListener {
                 mDetailedForwarder.testRunFailed(Joiner.on("\n\n").join(mAllDetailedFailures));
             } else {
                 // Log the run failure that was cleared
-                String value =
-                        InvocationMetricLogger.getInvocationMetrics()
-                                .get(InvocationMetricKey.CLEARED_RUN_ERROR.toString());
+                String value = getInvocationMetricRunError();
                 if (value != null) {
                     mAllDetailedFailures.add(0, value);
                 }
                 // If there are failure, track them
                 if (!mAllDetailedFailures.isEmpty()) {
-                    InvocationMetricLogger.addInvocationMetrics(
-                            InvocationMetricKey.CLEARED_RUN_ERROR,
-                            Joiner.on("\n\n").join(mAllDetailedFailures));
+                    addInvocationMetricRunError(Joiner.on("\n\n").join(mAllDetailedFailures));
                 }
             }
             mAllDetailedFailures.clear();
