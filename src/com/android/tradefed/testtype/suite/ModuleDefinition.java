@@ -28,6 +28,8 @@ import com.android.tradefed.device.metric.LogcatOnFailureCollector;
 import com.android.tradefed.device.metric.ScreenshotOnFailureCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.ITestLogger;
@@ -488,6 +490,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     if (mRetryDecision != null) {
                         RetryStatistics res = mRetryDecision.getRetryStatistics();
                         if (res != null) {
+                            addRetryTime(res.mRetryTime);
                             mRetryStats.add(res);
                         }
                     }
@@ -963,5 +966,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             return controller.shouldRunModule(mModuleInvocationContext);
         }
         return RunStrategy.RUN;
+    }
+
+    private void addRetryTime(long retryTimeMs) {
+        InvocationMetricLogger.addInvocationMetrics(
+                InvocationMetricKey.AUTO_RETRY_TIME, retryTimeMs);
     }
 }

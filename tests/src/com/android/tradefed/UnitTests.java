@@ -168,6 +168,7 @@ import com.android.tradefed.result.proto.ProtoResultReporterTest;
 import com.android.tradefed.result.proto.StreamProtoResultReporterTest;
 import com.android.tradefed.result.suite.FormattedGeneratorReporterTest;
 import com.android.tradefed.result.suite.XmlSuiteResultFormatterTest;
+import com.android.tradefed.retry.ResultAggregatorTest;
 import com.android.tradefed.sandbox.SandboxConfigDumpTest;
 import com.android.tradefed.sandbox.SandboxConfigUtilTest;
 import com.android.tradefed.sandbox.SandboxInvocationRunnerTest;
@@ -254,7 +255,6 @@ import com.android.tradefed.testtype.junit4.BaseHostJUnit4TestTest;
 import com.android.tradefed.testtype.junit4.DeviceParameterizedRunnerTest;
 import com.android.tradefed.testtype.junit4.LongevityHostRunnerTest;
 import com.android.tradefed.testtype.python.PythonBinaryHostTestTest;
-import com.android.tradefed.testtype.retry.ResultAggregatorTest;
 import com.android.tradefed.testtype.suite.AtestRunnerTest;
 import com.android.tradefed.testtype.suite.BaseTestSuiteTest;
 import com.android.tradefed.testtype.suite.GranularRetriableTestWrapperTest;
@@ -576,6 +576,9 @@ import org.junit.runners.Suite.SuiteClasses;
     FormattedGeneratorReporterTest.class,
     XmlSuiteResultFormatterTest.class,
 
+    // retry
+    ResultAggregatorTest.class,
+
     // targetprep
     AllTestAppsInstallSetupTest.class,
     AoaTargetPreparerTest.class,
@@ -684,9 +687,6 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // testtype/python
     PythonBinaryHostTestTest.class,
-
-    // testtype/retry
-    ResultAggregatorTest.class,
 
     // testtype/suite
     AtestRunnerTest.class,
