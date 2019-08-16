@@ -198,7 +198,7 @@ public class GceManager {
      */
     protected String extractInstanceName(String bootupLogs) {
         if (bootupLogs != null) {
-            final String pattern = "'name': '(((gce-)|(ins-))(.*?))'";
+            final String pattern = "'name': u?'(((gce-)|(ins-))(.*?))'";
             Pattern namePattern = Pattern.compile(pattern);
             Matcher matcher = namePattern.matcher(bootupLogs);
             if (matcher.find()) {
