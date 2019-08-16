@@ -1514,13 +1514,22 @@ public class ITestSuiteTest {
                 .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
         EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
                 .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
-        // The main listener get the aggregated message failures.
-        expectTestRun(
-                mMockListener,
-                String.format(
-                        "%s\n\n%s\n\n%s",
-                        mTestFailedMessage, mTestFailedMessage, mTestFailedMessage),
-                true);
+        // The main listener get the granular message failures since auto-retry is enabled.
+        mMockListener.testModuleStarted(EasyMock.anyObject());
+        for (int i = 0; i < maxRunLimit; i++) {
+            mMockListener.testRunStarted(
+                    EasyMock.eq(TEST_CONFIG_NAME),
+                    EasyMock.eq(1),
+                    EasyMock.eq(i),
+                    EasyMock.anyLong());
+            TestDescription testId = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
+            mMockListener.testStarted(testId, 0);
+            mMockListener.testFailed(testId, mTestFailedMessage);
+            mMockListener.testEnded(testId, 5, new HashMap<String, Metric>());
+            mMockListener.testRunEnded(
+                    EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        }
+        mMockListener.testModuleEnded();
         // Verify that when the suite is intra-module retried, the moduleListener receives every
         // run attempt's result.
         expectIntraModuleTestRun(moduleListener, maxRunLimit, true);
@@ -1692,8 +1701,6 @@ public class ITestSuiteTest {
     @Test
     public void testStageTestArtifacts() throws Exception {
         String remoteFilePath = "gs://module1/tests.zip";
-        List<String> files =
-                Arrays.asList("dir/test/test.config", "dir/test/file1", "module2/file1");
         DynamicRemoteFileResolver dynamicResolver =
                 new DynamicRemoteFileResolver() {
                     @Override
