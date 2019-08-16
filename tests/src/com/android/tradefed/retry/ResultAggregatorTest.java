@@ -13,7 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.testtype.retry;
+package com.android.tradefed.retry;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.config.ConfigurationDef;
@@ -27,8 +30,6 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.retry.ISupportGranularResults;
-import com.android.tradefed.retry.ResultAggregator;
-import com.android.tradefed.retry.RetryStrategy;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -38,12 +39,13 @@ import org.junit.runners.JUnit4;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 /** Unit tests for {@link ResultAggregator}. */
 @RunWith(JUnit4.class)
 public class ResultAggregatorTest {
 
-    private ResultAggregator mAggregator;
+    private TestableResultAggregator mAggregator;
     private ILogSaverListener mAggListener;
     private ITestDetailedReceiver mDetailedListener;
     private IInvocationContext mInvocationContext;
@@ -51,6 +53,26 @@ public class ResultAggregatorTest {
 
     private interface ITestDetailedReceiver
             extends ISupportGranularResults, ITestInvocationListener, ILogSaverListener {}
+
+    private class TestableResultAggregator extends ResultAggregator {
+
+        private String mCurrentRunError = null;
+
+        public TestableResultAggregator(
+                List<ITestInvocationListener> listeners, RetryStrategy strategy) {
+            super(listeners, strategy);
+        }
+
+        @Override
+        String getInvocationMetricRunError() {
+            return mCurrentRunError;
+        }
+
+        @Override
+        void addInvocationMetricRunError(String errors) {
+            mCurrentRunError = errors;
+        }
+    }
 
     @Before
     public void setUp() {
@@ -130,7 +152,7 @@ public class ResultAggregatorTest {
 
         EasyMock.replay(mAggListener, mDetailedListener);
         mAggregator =
-                new ResultAggregator(
+                new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
         mAggregator.setLogSaver(logger);
@@ -155,6 +177,7 @@ public class ResultAggregatorTest {
         mAggregator.logAssociation("before-end", beforeEnd);
         mAggregator.invocationEnded(500L);
         EasyMock.verify(mAggListener, mDetailedListener);
+        assertEquals("run fail", mAggregator.getInvocationMetricRunError());
     }
 
     @Test
@@ -224,7 +247,7 @@ public class ResultAggregatorTest {
 
         EasyMock.replay(mAggListener, mDetailedListener);
         mAggregator =
-                new ResultAggregator(
+                new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
         mAggregator.setLogSaver(logger);
@@ -249,6 +272,7 @@ public class ResultAggregatorTest {
         mAggregator.testModuleEnded();
         mAggregator.invocationEnded(500L);
         EasyMock.verify(mAggListener, mDetailedListener);
+        assertNull(mAggregator.getInvocationMetricRunError());
     }
 
     @Test
@@ -311,7 +335,7 @@ public class ResultAggregatorTest {
 
         EasyMock.replay(mAggListener, mDetailedListener);
         mAggregator =
-                new ResultAggregator(
+                new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
         mAggregator.setLogSaver(logger);
@@ -329,6 +353,7 @@ public class ResultAggregatorTest {
         mAggregator.testModuleEnded();
         mAggregator.invocationEnded(500L);
         EasyMock.verify(mAggListener, mDetailedListener);
+        assertNull(mAggregator.getInvocationMetricRunError());
     }
 
     @Test
@@ -391,7 +416,7 @@ public class ResultAggregatorTest {
 
         EasyMock.replay(mAggListener, mDetailedListener);
         mAggregator =
-                new ResultAggregator(
+                new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
         mAggregator.setLogSaver(logger);
@@ -413,6 +438,7 @@ public class ResultAggregatorTest {
 
         mAggregator.invocationEnded(500L);
         EasyMock.verify(mAggListener, mDetailedListener);
+        assertEquals("I failed", mAggregator.getInvocationMetricRunError());
     }
 
     @Test
@@ -477,7 +503,7 @@ public class ResultAggregatorTest {
 
         EasyMock.replay(mAggListener, mDetailedListener);
         mAggregator =
-                new ResultAggregator(
+                new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
         mAggregator.setLogSaver(logger);
@@ -500,6 +526,7 @@ public class ResultAggregatorTest {
 
         mAggregator.invocationEnded(500L);
         EasyMock.verify(mAggListener, mDetailedListener);
+        assertNull(mAggregator.getInvocationMetricRunError());
     }
 
     @Test
@@ -580,7 +607,7 @@ public class ResultAggregatorTest {
 
         EasyMock.replay(mAggListener, mDetailedListener);
         mAggregator =
-                new ResultAggregator(
+                new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
         mAggregator.setLogSaver(logger);
@@ -608,6 +635,7 @@ public class ResultAggregatorTest {
 
         mAggregator.invocationEnded(500L);
         EasyMock.verify(mAggListener, mDetailedListener);
+        assertNull(mAggregator.getInvocationMetricRunError());
     }
 
     /** Test aggregation of results coming from a module first then from a simple test run. */
@@ -706,7 +734,7 @@ public class ResultAggregatorTest {
 
         EasyMock.replay(mAggListener, mDetailedListener);
         mAggregator =
-                new ResultAggregator(
+                new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
         mAggregator.setLogSaver(logger);
@@ -742,6 +770,7 @@ public class ResultAggregatorTest {
 
         mAggregator.invocationEnded(500L);
         EasyMock.verify(mAggListener, mDetailedListener);
+        assertEquals("I failed", mAggregator.getInvocationMetricRunError());
     }
 
     /** Test aggregation of results coming from a simple test run first then from a module. */
@@ -840,7 +869,7 @@ public class ResultAggregatorTest {
 
         EasyMock.replay(mAggListener, mDetailedListener);
         mAggregator =
-                new ResultAggregator(
+                new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
         mAggregator.setLogSaver(logger);
@@ -876,6 +905,7 @@ public class ResultAggregatorTest {
 
         mAggregator.invocationEnded(500L);
         EasyMock.verify(mAggListener, mDetailedListener);
+        assertNull(mAggregator.getInvocationMetricRunError());
     }
 
     @Test
@@ -975,7 +1005,7 @@ public class ResultAggregatorTest {
 
         EasyMock.replay(mAggListener, mDetailedListener);
         mAggregator =
-                new ResultAggregator(
+                new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
         mAggregator.setLogSaver(logger);
@@ -1013,6 +1043,7 @@ public class ResultAggregatorTest {
 
         mAggregator.invocationEnded(500L);
         EasyMock.verify(mAggListener, mDetailedListener);
+        assertNull(mAggregator.getInvocationMetricRunError());
     }
 
     /** Test when two modules follow each others. */
@@ -1117,7 +1148,7 @@ public class ResultAggregatorTest {
 
         EasyMock.replay(mAggListener, mDetailedListener);
         mAggregator =
-                new ResultAggregator(
+                new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
         mAggregator.setLogSaver(logger);
@@ -1156,6 +1187,7 @@ public class ResultAggregatorTest {
 
         mAggregator.invocationEnded(500L);
         EasyMock.verify(mAggListener, mDetailedListener);
+        assertNull(mAggregator.getInvocationMetricRunError());
     }
 
     @Test
@@ -1232,7 +1264,7 @@ public class ResultAggregatorTest {
 
         EasyMock.replay(mAggListener, mDetailedListener);
         mAggregator =
-                new ResultAggregator(
+                new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
         mAggregator.setLogSaver(logger);
@@ -1264,5 +1296,6 @@ public class ResultAggregatorTest {
 
         mAggregator.invocationEnded(500L);
         EasyMock.verify(mAggListener, mDetailedListener);
+        assertEquals("failed2\n\nfailed3", mAggregator.getInvocationMetricRunError());
     }
 }
