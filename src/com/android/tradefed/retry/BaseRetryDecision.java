@@ -25,6 +25,7 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.retry.IAutoRetriableTest;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -65,7 +66,7 @@ public class BaseRetryDecision implements IRetryDecision {
         description =
                 "Whether or not to enable the new auto-retry. This is a feature flag for testing."
     )
-    private boolean mEnableAutoRetry = false;
+    private boolean mEnableAutoRetry = true;
 
     private IInvocationContext mContext;
 
@@ -121,22 +122,31 @@ public class BaseRetryDecision implements IRetryDecision {
         }
 
         mStatistics.addResultsFromRun(previousResults);
-        if (!(test instanceof ITestFilterReceiver)) {
+        if (test instanceof ITestFilterReceiver) {
+            // TODO(b/77548917): Right now we only support ITestFilterReceiver. We should expect to
+            // support ITestFile*Filter*Receiver in the future.
+            ITestFilterReceiver filterableTest = (ITestFilterReceiver) test;
+            boolean shouldRetry = handleRetryFailures(filterableTest, previousResults);
+            if (shouldRetry) {
+                // In case of retry, go through the recovery routine
+                recoverStateOfDevices(getDevices(), attemptJustExecuted);
+            }
+            return shouldRetry;
+        } else if (test instanceof IAutoRetriableTest) {
+            // Routine for IRemoteTest that don't support filters but still needs retry.
+            IAutoRetriableTest autoRetryTest = (IAutoRetriableTest) test;
+            boolean shouldRetry = autoRetryTest.shouldRetry(attemptJustExecuted, previousResults);
+            if (shouldRetry) {
+                autoRetryTest.recoverStateOfDevices(getDevices(), attemptJustExecuted);
+            }
+            return shouldRetry;
+        } else {
             CLog.d(
-                    "%s does not implement ITestFilterReceiver, thus cannot work with auto-retry.",
+                    "%s does not implement ITestFilterReceiver or IAutoRetriableTest, thus "
+                            + "cannot work with auto-retry.",
                     test);
             return false;
         }
-
-        // TODO(b/77548917): Right now we only support ITestFilterReceiver. We should expect to
-        // support ITestFile*Filter*Receiver in the future.
-        ITestFilterReceiver filterableTest = (ITestFilterReceiver) test;
-        boolean shouldRetry = handleRetryFailures(filterableTest, previousResults);
-        if (shouldRetry) {
-            // In case of retry, go through the recovery routine
-            recoverStateOfDevices(getDevices(), attemptJustExecuted);
-        }
-        return shouldRetry;
     }
 
     @Override

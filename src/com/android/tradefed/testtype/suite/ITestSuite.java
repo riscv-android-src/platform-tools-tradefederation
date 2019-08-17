@@ -47,6 +47,7 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
@@ -734,10 +735,18 @@ public abstract class ITestSuite
         module.setMetricCollectors(CollectorHelper.cloneCollectors(mMetricCollectors));
         // Pass the main invocation logSaver
         module.setLogSaver(mMainConfiguration.getLogSaver());
-        // Pass the retry strategy to the module
+
+        IRetryDecision decision = mMainConfiguration.getRetryDecision();
+        // Pass whether we should merge the attempts of not
+        if (mMergeAttempts
+                && decision.getMaxRetryCount() > 1
+                && !RetryStrategy.NO_RETRY.equals(decision.getRetryStrategy())) {
+            CLog.d("Overriding '--merge-attempts' to false for auto-retry.");
+            mMergeAttempts = false;
+        }
         module.setMergeAttemps(mMergeAttempts);
         // Pass the retry decision to be used.
-        module.setRetryDecision(mMainConfiguration.getRetryDecision());
+        module.setRetryDecision(decision);
 
         // Actually run the module
         module.run(
