@@ -91,7 +91,7 @@ public class TestDevice extends NativeDevice {
     private static final String[] SETTINGS_NAMESPACE = {"system", "secure", "global"};
 
     /** user pattern in the output of "pm list users" = TEXT{<id>:<name>:<flags>} TEXT * */
-    private static final String USER_PATTERN = "(.*?\\{)(\\d+)(:)(.*)(:)(\\d+)(\\}.*)";
+    private static final String USER_PATTERN = "(.*?\\{)(\\d+)(:)(.*)(:)(\\w+)(\\}.*)";
     /** Pattern to find the display ids of "dumpsys SurfaceFlinger" */
     private static final String DISPLAY_ID_PATTERN = "(Display )(?<id>\\d+)( color modes:)";
 
