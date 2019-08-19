@@ -593,11 +593,6 @@ public class InvocationExecution implements IInvocationExecution {
      */
     void updateInvocationContext(IInvocationContext context, IConfiguration config) {
         // TODO: Once reporting on context is done, only set context attributes
-        if (config.getCommandLine() != null) {
-            // TODO: obfuscate the password if any.
-            context.addInvocationAttribute(
-                    TestInvocation.COMMAND_ARGS_KEY, config.getCommandLine());
-        }
         if (config.getCommandOptions().getShardCount() != null) {
             context.addInvocationAttribute(
                     "shard_count", config.getCommandOptions().getShardCount().toString());
