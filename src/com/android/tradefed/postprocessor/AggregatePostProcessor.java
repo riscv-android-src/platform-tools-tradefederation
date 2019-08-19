@@ -110,8 +110,8 @@ public class AggregatePostProcessor extends BasePostProcessor {
         for (Map.Entry<String, Metric> entry : rawMetrics.entrySet()) {
             String values = entry.getValue().getMeasurements().getSingleString();
             List<String> splitVals = Arrays.asList(values.split(",", 0));
-            // Build stats only for the keys with more than one value.
-            if (isAllDoubleValues(splitVals) && splitVals.size() > 1) {
+            // Build stats for keys with any values, even only one.
+            if (isAllDoubleValues(splitVals)) {
                 buildStats(entry.getKey(), splitVals, aggregateMetrics);
             }
         }
