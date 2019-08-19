@@ -29,6 +29,10 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.retry.BaseRetryDecision;
+import com.android.tradefed.testtype.retry.IAutoRetriableTest;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
@@ -39,6 +43,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** Runs all instrumentation found on current device. */
 @OptionClass(alias = "installed-instrumentation")
@@ -46,7 +51,8 @@ public class InstalledInstrumentationsTest
         implements IDeviceTest,
                 IShardableTest,
                 IMetricCollectorReceiver,
-                IInvocationContextReceiver {
+                IInvocationContextReceiver,
+                IAutoRetriableTest {
 
     private static final String PM_LIST_CMD = "pm list instrumentation";
     private static final String LINE_SEPARATOR = "\\r?\\n";
@@ -191,6 +197,25 @@ public class InstalledInstrumentationsTest
             description = AbiFormatter.FORCE_ABI_DESCRIPTION,
             importance = Importance.IF_UNSET)
     private String mForceAbi = null;
+
+    @Override
+    public boolean shouldRetry(int attemptJustExecuted, List<TestRunResult> previousResults)
+            throws DeviceNotAvailableException {
+        if (BaseRetryDecision.hasRunFailures(previousResults)) {
+            return true;
+        }
+
+        // In case of test case failure, we retry with filters.
+        Set<TestDescription> previousFailedTests =
+                BaseRetryDecision.getFailedTestCases(previousResults);
+        if (!previousFailedTests.isEmpty()) {
+            CLog.d("Retrying %s", this.getClass());
+            return true;
+        }
+
+        CLog.d("No test run or test case failures. No need to retry.");
+        return false;
+    }
 
     /**
      * {@inheritDoc}
