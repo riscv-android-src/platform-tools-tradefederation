@@ -21,6 +21,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.retry.ISupportGranularResults;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
@@ -55,7 +56,10 @@ import java.util.Map;
  * the subprocess the results of tests, test runs, test invocations.
  */
 public class SubprocessResultsReporter
-        implements ITestInvocationListener, ILogSaverListener, AutoCloseable {
+        implements ITestInvocationListener,
+                ILogSaverListener,
+                AutoCloseable,
+                ISupportGranularResults {
 
     @Option(name = "subprocess-report-file", description = "the file where to log the events.")
     private File mReportFile = null;
@@ -74,6 +78,11 @@ public class SubprocessResultsReporter
 
     private boolean mPrintWarning = true;
     private boolean mCancelled = false;
+
+    @Override
+    public boolean supportGranularResults() {
+        return true;
+    }
 
     /** {@inheritDoc} */
     @Override
