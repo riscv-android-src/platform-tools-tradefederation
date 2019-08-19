@@ -173,6 +173,16 @@ public class BaseRetryDecision implements IRetryDecision {
         return failedTestCases;
     }
 
+    /** Returns true if there are any run failures in the previous results. */
+    public static boolean hasRunFailures(List<TestRunResult> previousResults) {
+        for (TestRunResult run : previousResults) {
+            if (run != null && run.isRunFailure()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private boolean handleRetryFailures(
             ITestFilterReceiver test, List<TestRunResult> previousResults) {
         if (hasRunFailures(previousResults)) {
@@ -195,16 +205,6 @@ public class BaseRetryDecision implements IRetryDecision {
     private boolean hasAnyFailures(List<TestRunResult> previousResults) {
         for (TestRunResult run : previousResults) {
             if (run != null && (run.isRunFailure() || run.hasFailedTests())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /** Returns true if there are any run failures in the previous results. */
-    private boolean hasRunFailures(List<TestRunResult> previousResults) {
-        for (TestRunResult run : previousResults) {
-            if (run != null && run.isRunFailure()) {
                 return true;
             }
         }
