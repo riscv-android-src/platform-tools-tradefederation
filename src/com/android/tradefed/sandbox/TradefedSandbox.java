@@ -45,6 +45,7 @@ import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessTestResultsParser;
+import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import java.io.File;
@@ -87,7 +88,7 @@ public class TradefedSandbox implements ISandbox {
     @Override
     public CommandResult run(IConfiguration config, ITestLogger logger) throws Throwable {
         List<String> mCmdArgs = new ArrayList<>();
-        mCmdArgs.add("java");
+        mCmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
         mCmdArgs.add(String.format("-Djava.io.tmpdir=%s", mSandboxTmpFolder.getAbsolutePath()));
         mCmdArgs.add(String.format("-DTF_JAR_DIR=%s", mRootFolder.getAbsolutePath()));
         mCmdArgs.add("-cp");
