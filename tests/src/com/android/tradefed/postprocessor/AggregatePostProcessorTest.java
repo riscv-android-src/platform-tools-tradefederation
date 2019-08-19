@@ -475,8 +475,7 @@ public class AggregatePostProcessorTest {
     }
 
     /**
-     *  Test empty processed run metrics when there is one double value associated with
-     *  the key.
+     * Test collecting processed run metrics when there is one double value associated with the key.
      */
     @Test
     public void testSingleValueProcessRunMetrics() {
@@ -491,7 +490,24 @@ public class AggregatePostProcessorTest {
         Map<String, Metric.Builder> processedMetrics =
                 mProcessor.processRunMetrics(runMetrics);
 
-        Assert.assertEquals(0, processedMetrics.size());
+        Assert.assertTrue(
+                processedMetrics.containsKey(String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_MIN)));
+        Assert.assertTrue(
+                processedMetrics.containsKey(String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_MAX)));
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_MEAN)));
+        Assert.assertTrue(
+                processedMetrics.containsKey(String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_VAR)));
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_STDEV)));
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_MEDIAN)));
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_TOTAL)));
     }
 
     /**
