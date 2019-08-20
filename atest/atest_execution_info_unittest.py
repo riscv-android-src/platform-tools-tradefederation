@@ -32,7 +32,8 @@ RESULT_TEST_TEMPLATE = test_runner_base.TestResult(
     test_time='(10ms)',
     runner_total=None,
     group_total=2,
-    additional_info={}
+    additional_info={},
+    test_run_name='com.android.UnitTests'
 )
 
 # pylint: disable=protected-access
