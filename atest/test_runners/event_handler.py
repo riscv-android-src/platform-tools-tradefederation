@@ -84,6 +84,7 @@ class EventHandler(object):
 
     def _run_started(self, event_data):
         # Technically there can be more than one run per module.
+        self.state['test_run_name'] = event_data.setdefault('runName', '')
         self.state['current_group_total'] = event_data['testCount']
         self.state['test_count'] = 0
         self.state['last_failed'] = None
@@ -124,7 +125,8 @@ class EventHandler(object):
             test_time='',
             runner_total=None,
             group_total=self.state['current_group_total'],
-            additional_info={}))
+            additional_info={},
+            test_run_name=self.state['test_run_name']))
 
     def _invocation_failed(self, event_data):
         # Broadest possible failure. May not even start the module/test run.
@@ -138,7 +140,8 @@ class EventHandler(object):
             test_time='',
             runner_total=None,
             group_total=self.state['current_group_total'],
-            additional_info={}))
+            additional_info={},
+            test_run_name=self.state['test_run_name']))
 
     def _run_ended(self, event_data):
         pass
@@ -186,7 +189,8 @@ class EventHandler(object):
             test_time=test_time,
             runner_total=None,
             additional_info=additional_info,
-            group_total=self.state['current_group_total']))
+            group_total=self.state['current_group_total'],
+            test_run_name=self.state['test_run_name']))
 
     def _log_association(self, event_data):
         pass
@@ -250,7 +254,8 @@ class EventHandler(object):
                     test_time='',
                     runner_total=None,
                     group_total=self.state['current_group_total'],
-                    additional_info={}))
+                    additional_info={},
+                    test_run_name=self.state['test_run_name']))
             raise EventHandleError(EVENTS_NOT_BALANCED % (start_event,
                                                           event_name))
 
