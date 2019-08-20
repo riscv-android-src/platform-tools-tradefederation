@@ -1491,6 +1491,7 @@ public class ITestSuiteTest {
                         return testConfig;
                     }
                 };
+        mTestSuite.disableAutoRetryTimeReporting();
         mTestSuite.setDevice(mMockDevice);
         mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setConfiguration(mStubMainConfiguration);

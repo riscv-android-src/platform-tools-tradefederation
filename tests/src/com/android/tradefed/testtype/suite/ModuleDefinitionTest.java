@@ -292,6 +292,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.disableAutoRetryReportingTime();
         mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
@@ -401,6 +402,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.disableAutoRetryReportingTime();
         mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
@@ -1431,6 +1433,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.disableAutoRetryReportingTime();
         IRetryDecision decision = new BaseRetryDecision();
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("retry-strategy", "ITERATIONS");
@@ -1522,6 +1525,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.disableAutoRetryReportingTime();
         IRetryDecision decision = new BaseRetryDecision();
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
