@@ -167,6 +167,7 @@ import com.android.tradefed.result.proto.ProtoResultReporterTest;
 import com.android.tradefed.result.proto.StreamProtoResultReporterTest;
 import com.android.tradefed.result.suite.FormattedGeneratorReporterTest;
 import com.android.tradefed.result.suite.XmlSuiteResultFormatterTest;
+import com.android.tradefed.retry.ResultAggregatorTest;
 import com.android.tradefed.sandbox.SandboxConfigDumpTest;
 import com.android.tradefed.sandbox.SandboxConfigUtilTest;
 import com.android.tradefed.sandbox.SandboxInvocationRunnerTest;
@@ -192,6 +193,7 @@ import com.android.tradefed.targetprep.DeviceSetupTest;
 import com.android.tradefed.targetprep.DeviceStorageFillerTest;
 import com.android.tradefed.targetprep.DeviceStringPusherTest;
 import com.android.tradefed.targetprep.DisableSELinuxTargetPreparerTest;
+import com.android.tradefed.targetprep.DynamicSystemPreparerTest;
 import com.android.tradefed.targetprep.FastbootDeviceFlasherTest;
 import com.android.tradefed.targetprep.FlashingResourcesParserTest;
 import com.android.tradefed.targetprep.InstallAllTestZipAppsSetupTest;
@@ -213,7 +215,6 @@ import com.android.tradefed.targetprep.TestFilePushSetupTest;
 import com.android.tradefed.targetprep.UserCleanerTest;
 import com.android.tradefed.targetprep.adb.AdbStopServerPreparerTest;
 import com.android.tradefed.targetprep.app.NoApkTestSkipperTest;
-import com.android.tradefed.targetprep.multi.DynamicSystemPreparerTest;
 import com.android.tradefed.targetprep.multi.MergeMultiBuildTargetPreparerTest;
 import com.android.tradefed.targetprep.multi.MixImageZipPreparerTest;
 import com.android.tradefed.targetprep.suite.SuiteApkInstallerTest;
@@ -253,7 +254,6 @@ import com.android.tradefed.testtype.junit4.BaseHostJUnit4TestTest;
 import com.android.tradefed.testtype.junit4.DeviceParameterizedRunnerTest;
 import com.android.tradefed.testtype.junit4.LongevityHostRunnerTest;
 import com.android.tradefed.testtype.python.PythonBinaryHostTestTest;
-import com.android.tradefed.testtype.retry.ResultAggregatorTest;
 import com.android.tradefed.testtype.suite.AtestRunnerTest;
 import com.android.tradefed.testtype.suite.BaseTestSuiteTest;
 import com.android.tradefed.testtype.suite.GranularRetriableTestWrapperTest;
@@ -574,6 +574,9 @@ import org.junit.runners.Suite.SuiteClasses;
     FormattedGeneratorReporterTest.class,
     XmlSuiteResultFormatterTest.class,
 
+    // retry
+    ResultAggregatorTest.class,
+
     // targetprep
     AllTestAppsInstallSetupTest.class,
     AoaTargetPreparerTest.class,
@@ -682,9 +685,6 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // testtype/python
     PythonBinaryHostTestTest.class,
-
-    // testtype/retry
-    ResultAggregatorTest.class,
 
     // testtype/suite
     AtestRunnerTest.class,

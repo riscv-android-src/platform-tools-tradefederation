@@ -13,21 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.targetprep.multi;
+package com.android.tradefed.targetprep;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.matches;
 import static org.mockito.Mockito.doAnswer;
 
-import com.android.tradefed.build.DeviceBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.IInvocationContext;
-import com.android.tradefed.invoker.InvocationContext;
-import com.android.tradefed.targetprep.BuildError;
-import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -44,14 +40,13 @@ import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-/** Unit tests for {@link com.android.tradefed.targetprep.multi.DynamicSystemPreparer}. */
+/** Unit tests for {@link DynamicSystemPreparer}. */
 @RunWith(JUnit4.class)
 public class DynamicSystemPreparerTest {
     // Input build info.
     private static final String SYSTEM_IMAGE_NAME = "system.img";
 
-    private IInvocationContext mMockContext;
-    private IDeviceBuildInfo mSystemBuild;
+    private IBuildInfo mBuildInfo;
     private ITestDevice mMockDevice;
     private File mSystemImageZip;
     // The object under test.
@@ -59,33 +54,21 @@ public class DynamicSystemPreparerTest {
 
     @Before
     public void setUp() throws IOException {
-        mMockContext = Mockito.mock(InvocationContext.class);
-
         mMockDevice = Mockito.mock(ITestDevice.class);
-        ITestDevice mockSystem = Mockito.mock(ITestDevice.class);
         mSystemImageZip = createImageZip(SYSTEM_IMAGE_NAME);
-        mSystemBuild = createDeviceBuildInfo(mSystemImageZip);
-
-        Mockito.when(mMockContext.getDevice("device")).thenReturn(mMockDevice);
-        Mockito.when(mMockContext.getDevice("system")).thenReturn(mockSystem);
-        Mockito.when(mMockContext.getBuildInfo(mockSystem)).thenReturn(mSystemBuild);
+        mBuildInfo = new BuildInfo();
+        mBuildInfo.setFile("system-img.zip", mSystemImageZip, "0");
 
         mPreparer = new DynamicSystemPreparer();
     }
 
     @After
     public void tearDown() {
-        if (mSystemBuild != null) {
-            mSystemBuild.cleanUp();
-            mSystemBuild = null;
+        if (mBuildInfo != null) {
+            mBuildInfo.cleanUp();
+            mBuildInfo = null;
         }
         FileUtil.deleteFile(mSystemImageZip);
-    }
-
-    private IDeviceBuildInfo createDeviceBuildInfo(File imageZip) {
-        IDeviceBuildInfo buildInfo = new DeviceBuildInfo();
-        buildInfo.setDeviceImageFile(imageZip, "");
-        return buildInfo;
     }
 
     private File createImageDir(String... fileNames) throws IOException {
@@ -113,11 +96,8 @@ public class DynamicSystemPreparerTest {
     }
 
     @Test
-    public void testSetUp()
-            throws TargetSetupError, BuildError, DeviceNotAvailableException, IOException {
-
-        File systemgz = new File("system.raw.gz");
-        Mockito.when(mMockDevice.pushFile(systemgz, "/sdcard/system.raw.gz"))
+    public void testSetUp() throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        Mockito.when(mMockDevice.pushFile(Mockito.any(), Mockito.eq("/sdcard/system.raw.gz")))
                 .thenReturn(Boolean.TRUE);
         doAnswer(
                         new Answer<Object>() {
@@ -136,6 +116,6 @@ public class DynamicSystemPreparerTest {
         res.setStdout("");
         res.setStatus(CommandStatus.SUCCESS);
         Mockito.when(mMockDevice.executeShellV2Command("gsi_tool enable")).thenReturn(res);
-        mPreparer.setUp(mMockContext);
+        mPreparer.setUp(mMockDevice, mBuildInfo);
     }
 }

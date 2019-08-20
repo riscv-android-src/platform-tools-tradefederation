@@ -15,13 +15,18 @@
  */
 package com.android.tradefed.testtype;
 
+import com.android.tradefed.testtype.retry.IAutoRetriableTest;
+
 /**
  * A {@link IRemoteTest} that supports retrying if the test aborted before completion.
+ *
+ * @deprecated Retry is now supported at harness level or through {@link IAutoRetriableTest}.
  */
-public interface IRetriableTest extends IRemoteTest{
+@Deprecated
+public interface IRetriableTest extends IRemoteTest {
 
-    /**
-     * @return {@code true} if the test is currently retriable.
-     */
-    public boolean isRetriable();
+    /** @return {@code true} if the test is currently retriable. */
+    public default boolean isRetriable() {
+        return false;
+    }
 }

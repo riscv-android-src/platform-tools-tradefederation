@@ -37,6 +37,7 @@ import com.android.tradefed.util.IRunUtil.EnvPriority;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessTestResultsParser;
+import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.UniqueMultiMap;
 
@@ -152,7 +153,7 @@ public abstract class SubprocessTfLauncher
         String jarClasspath = FileUtil.getPath(mRootDir, "*");
 
         mCmdArgs = new ArrayList<String>();
-        mCmdArgs.add("java");
+        mCmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
 
         try {
             mTmpDir = FileUtil.createTempDir("subprocess-" + tfBuild.getBuildId());
