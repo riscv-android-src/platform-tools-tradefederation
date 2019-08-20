@@ -32,9 +32,8 @@ import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.FileLogger;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.TestDescription;
-import com.android.tradefed.result.proto.ProtoResultReporter;
-import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.suite.BaseTestSuite;
@@ -67,7 +66,7 @@ public class RetryReschedulerTest {
     private IConfigurationFactory mMockFactory;
     private BaseTestSuite mSuite;
 
-    private TestRecord mFakeRecord;
+    private CollectingTestListener mFakeRecord;
 
     @Before
     public void setUp() throws Exception {
@@ -111,7 +110,7 @@ public class RetryReschedulerTest {
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
-        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+        EasyMock.expect(mMockLoader.loadPreviousResults()).andReturn(mFakeRecord);
         mMockRequirements.setSerial();
 
         mRescheduledConfiguration.setTests(EasyMock.anyObject());
@@ -152,7 +151,7 @@ public class RetryReschedulerTest {
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
-        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+        EasyMock.expect(mMockLoader.loadPreviousResults()).andReturn(mFakeRecord);
         // Shard count is carried from retry attempt
         EasyMock.reset(mMockCommandOptions);
         mMockCommandOptions.setShardCount(2);
@@ -195,7 +194,7 @@ public class RetryReschedulerTest {
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
-        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+        EasyMock.expect(mMockLoader.loadPreviousResults()).andReturn(mFakeRecord);
 
         mRescheduledConfiguration.setTests(EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
@@ -234,7 +233,7 @@ public class RetryReschedulerTest {
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
-        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+        EasyMock.expect(mMockLoader.loadPreviousResults()).andReturn(mFakeRecord);
 
         mRescheduledConfiguration.setTests(EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
@@ -273,7 +272,7 @@ public class RetryReschedulerTest {
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
-        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+        EasyMock.expect(mMockLoader.loadPreviousResults()).andReturn(mFakeRecord);
 
         mRescheduledConfiguration.setTests(EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
@@ -318,7 +317,7 @@ public class RetryReschedulerTest {
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
-        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+        EasyMock.expect(mMockLoader.loadPreviousResults()).andReturn(mFakeRecord);
 
         mRescheduledConfiguration.setTests(EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
@@ -357,7 +356,7 @@ public class RetryReschedulerTest {
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
-        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+        EasyMock.expect(mMockLoader.loadPreviousResults()).andReturn(mFakeRecord);
 
         mRescheduledConfiguration.setTests(EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
@@ -400,7 +399,7 @@ public class RetryReschedulerTest {
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
-        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+        EasyMock.expect(mMockLoader.loadPreviousResults()).andReturn(mFakeRecord);
 
         mRescheduledConfiguration.setTests(EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
@@ -441,7 +440,7 @@ public class RetryReschedulerTest {
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
-        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+        EasyMock.expect(mMockLoader.loadPreviousResults()).andReturn(mFakeRecord);
 
         mRescheduledConfiguration.setTests(EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
@@ -479,7 +478,7 @@ public class RetryReschedulerTest {
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
-        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+        EasyMock.expect(mMockLoader.loadPreviousResults()).andReturn(mFakeRecord);
 
         mRescheduledConfiguration.setTests(EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
@@ -528,7 +527,7 @@ public class RetryReschedulerTest {
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
-        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+        EasyMock.expect(mMockLoader.loadPreviousResults()).andReturn(mFakeRecord);
 
         mRescheduledConfiguration.setTests(EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
@@ -590,13 +589,7 @@ public class RetryReschedulerTest {
             int parameterized,
             boolean failedParam,
             IAbi abi) {
-        ProtoResultReporter reporter =
-                new ProtoResultReporter() {
-                    @Override
-                    public void processFinalProto(TestRecord finalRecord) {
-                        mFakeRecord = finalRecord;
-                    }
-                };
+        CollectingTestListener reporter = new CollectingTestListener();
         IInvocationContext context = new InvocationContext();
         context.setConfigurationDescriptor(new ConfigurationDescriptor());
         context.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, new BuildInfo());
@@ -642,5 +635,6 @@ public class RetryReschedulerTest {
             reporter.testRunEnded(500L, new HashMap<String, Metric>());
         }
         reporter.invocationEnded(0L);
+        mFakeRecord = reporter;
     }
 }

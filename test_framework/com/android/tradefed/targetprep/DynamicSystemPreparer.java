@@ -13,18 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.targetprep.multi;
+package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.targetprep.BuildError;
-import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -35,23 +32,20 @@ import java.io.IOException;
 import org.apache.commons.compress.archivers.zip.ZipFile;
 
 /**
- * An {@link com.android.tradefed.targetprep.multi.IMultiTargetPreparer} that set up a system
- * build's images on top of a device build with the Dynamic System Update
+ * An {@link ITargetPreparer} that sets up a system image on top of a device build with the Dynamic
+ * System Update.
  */
 @OptionClass(alias = "dynamic-system-update")
-public class DynamicSystemPreparer extends BaseMultiTargetPreparer {
+public class DynamicSystemPreparer extends BaseTargetPreparer implements ITargetCleaner {
     static final int DSU_MAX_WAIT_SEC = 10 * 60;
 
-    private static final String DEST_PATH = "/sdcard";
-
-    @Option(name = "device-label", description = "the label for the device.")
-    private String mDeviceLabel = "device";
+    private static final String DEST_PATH = "/sdcard/system.raw.gz";
 
     @Option(
-        name = "system-label",
-        description = "the label for the null-device used to store the system image information."
+        name = "system-image-zip-name",
+        description = "The name of the zip file containing system.img."
     )
-    private String mSystemLabel = "system";
+    private String mSystemImageZipName = "system-img.zip";
 
     private boolean isDSURunning(ITestDevice device) throws DeviceNotAvailableException {
         CollectingOutputReceiver receiver = new CollectingOutputReceiver();
@@ -60,33 +54,31 @@ public class DynamicSystemPreparer extends BaseMultiTargetPreparer {
     }
 
     @Override
-    public void setUp(IInvocationContext context)
+    public void setUp(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
-
-        ITestDevice device = context.getDevice(mDeviceLabel);
-
-        ITestDevice systemNullDevice = context.getDevice(mSystemLabel);
-        IDeviceBuildInfo systemBuildInfo =
-                (IDeviceBuildInfo) context.getBuildInfo(systemNullDevice);
-
-        File systemImage = null;
-        File systemImageGZ = null;
+        File systemImageZipFile = buildInfo.getFile(mSystemImageZipName);
+        if (systemImageZipFile == null) {
+            throw new BuildError(
+                    "Cannot find " + mSystemImageZipName + " in build info.",
+                    device.getDeviceDescriptor());
+        }
 
         ZipFile zipFile = null;
+        File systemImage = null;
+        File systemImageGZ = null;
         try {
-            zipFile = new ZipFile(systemBuildInfo.getDeviceImageFile());
+            zipFile = new ZipFile(systemImageZipFile);
             systemImage = ZipUtil2.extractFileFromZip(zipFile, "system.img");
             //     The prequest here is the system.img must be an unsparsed image.
             //     Is there any way to detect the actual format and convert it accordingly.
-            systemImageGZ = new File("system.raw.gz");
+            systemImageGZ = FileUtil.createTempFile("system", ".raw.gz");
             long rawSize = systemImage.length();
             ZipUtil.gzipFile(systemImage, systemImageGZ);
-            String remotePath = String.format("%s/%s", DEST_PATH, systemImageGZ.getName());
-            CLog.i("Pushing %s to %s", systemImageGZ.getAbsolutePath(), remotePath);
-            if (!device.pushFile(systemImageGZ, remotePath)) {
+            CLog.i("Pushing %s to %s", systemImageGZ.getAbsolutePath(), DEST_PATH);
+            if (!device.pushFile(systemImageGZ, DEST_PATH)) {
                 throw new TargetSetupError(
                         String.format(
-                                "Failed to push %s to %s", systemImageGZ.getName(), remotePath),
+                                "Failed to push %s to %s", systemImageGZ.getName(), DEST_PATH),
                         device.getDeviceDescriptor());
             }
             device.setProperty("persist.sys.fflag.override.settings_dynamic_system", "true");
@@ -96,7 +88,7 @@ public class DynamicSystemPreparer extends BaseMultiTargetPreparer {
                             + "-n com.android.dynsystem/com.android.dynsystem.VerificationActivity "
                             + "-a android.os.image.action.START_INSTALL "
                             + "-d file://"
-                            + remotePath
+                            + DEST_PATH
                             + " "
                             + "--el KEY_SYSTEM_SIZE "
                             + rawSize
@@ -132,13 +124,12 @@ public class DynamicSystemPreparer extends BaseMultiTargetPreparer {
     }
 
     @Override
-    public void tearDown(IInvocationContext context, Throwable e)
+    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
         if (e instanceof DeviceNotAvailableException) {
             CLog.e("skip tearDown on DeviceNotAvailableException");
             return;
         }
-        ITestDevice device = context.getDevice(mDeviceLabel);
         // Disable the DynamicSystemUpdate installation
         device.executeShellCommand("gsi_tool disable");
         // Enable the one-shot mode when DynamicSystemUpdate is disabled

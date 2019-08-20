@@ -106,7 +106,7 @@ public class GceManagerTest {
                         + "reehugger, zone us-central1-f, body:{'networkInterfaces': [{'network': "
                         + "u'https://www.googleapis.com/compute/v1/projects/android-treehugger/glo"
                         + "bal/networks/default', 'accessConfigs': [{'type': 'ONE_TO_ONE_NAT', 'na"
-                        + "me': 'External NAT'}]}], 'name': 'gce-x86-phone-userdebug-fastbuild-lin"
+                        + "me': 'External NAT'}]}], 'name': u'gce-x86-phone-userdebug-fastbuild-lin"
                         + "ux-3266697-144fcf59', 'serviceAccounts': [{'email': 'default', 'scopes'"
                         + ": ['https://www.googleapis.com/auth/devstorage.read_only', 'https://www"
                         + ".googleapis.com/auth/logging.write']}], 'disks': [{'autoDelete': True, "

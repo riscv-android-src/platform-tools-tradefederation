@@ -54,6 +54,7 @@ import com.android.tradefed.result.ResultAndLogForwarder;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.ResultAggregator;
+import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.DeviceFailedToBootError;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -408,6 +409,10 @@ public class TestInvocation implements ITestInvocation {
     private void startInvocation(IConfiguration config, IInvocationContext context,
             ITestInvocationListener listener) {
         logStartInvocation(context, config);
+        if (config.getCommandLine() != null) {
+            context.addInvocationAttribute(
+                    TestInvocation.COMMAND_ARGS_KEY, config.getCommandLine());
+        }
         listener.invocationStarted(context);
     }
 
@@ -684,7 +689,9 @@ public class TestInvocation implements ITestInvocation {
         IRetryDecision decision = config.getRetryDecision();
         ResultAggregator aggregator = null;
         decision.setInvocationContext(context);
-        if (decision.isAutoRetryEnabled() && decision.getMaxRetryCount() > 1) {
+        if (decision.isAutoRetryEnabled()
+                && decision.getMaxRetryCount() > 1
+                && !RetryStrategy.NO_RETRY.equals(decision.getRetryStrategy())) {
             CLog.d("Auto-retry enabled, using the ResultAggregator to handle multiple retries.");
             aggregator = new ResultAggregator(allListeners, decision.getRetryStrategy());
             allListeners = Arrays.asList(aggregator);

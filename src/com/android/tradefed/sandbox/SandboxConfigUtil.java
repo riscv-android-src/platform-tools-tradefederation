@@ -25,6 +25,7 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.IRunUtil.EnvPriority;
+import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.TimeUtil;
 
 import com.google.common.base.Joiner;
@@ -76,7 +77,7 @@ public class SandboxConfigUtil {
             throw e;
         }
         List<String> mCmdArgs = new ArrayList<>();
-        mCmdArgs.add("java");
+        mCmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
         mCmdArgs.add("-cp");
         mCmdArgs.add(classpath);
         mCmdArgs.add(SandboxConfigDump.class.getCanonicalName());

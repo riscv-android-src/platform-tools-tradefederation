@@ -33,7 +33,8 @@ public class InvocationMetricLogger {
         SHARDING_DEVICE_SETUP_TIME("remote_device_sharding_setup_ms", true),
         AUTO_RETRY_TIME("auto_retry_time_ms", true),
         STAGE_TESTS_TIME("stage_tests_time_ms", true),
-        STAGE_TESTS_BYTES("stage_tests_bytes", true);
+        STAGE_TESTS_BYTES("stage_tests_bytes", true),
+        STAGE_TESTS_INDIVIDUAL_DOWNLOADS("stage_tests_individual_downloads", true);
 
         private final String mKeyName;
         // Whether or not to add the value when the key is added again.
@@ -94,6 +95,12 @@ public class InvocationMetricLogger {
      * @param value The value of the invocation metric.
      */
     public static void addInvocationMetrics(InvocationMetricKey key, String value) {
+        if (key.shouldAdd()) {
+            String existingVal = getInvocationMetrics().get(key.toString());
+            if (existingVal != null) {
+                value = String.format("%s,%s", existingVal, value);
+            }
+        }
         addInvocationMetrics(key.toString(), value);
     }
 
