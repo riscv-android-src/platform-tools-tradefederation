@@ -1712,8 +1712,7 @@ public class ITestSuiteTest {
                         assertEquals(new File("tests_dir"), destDir);
                         assertEquals(remoteFilePath, remoteFilePath);
                         assertArrayEquals(new String[] {"/test/"}, includeFilters.toArray());
-                        assertArrayEquals(
-                                new String[] {"[.]config$", "[.]jar$"}, excludeFilters.toArray());
+                        assertArrayEquals(new String[] {"[.]config$"}, excludeFilters.toArray());
                     }
                 };
         mTestSuite.setDynamicResolver(dynamicResolver);
