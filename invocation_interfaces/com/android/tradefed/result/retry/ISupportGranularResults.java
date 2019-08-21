@@ -21,7 +21,7 @@ import com.android.tradefed.result.ITestInvocationListener;
  * Interface specifying whether a {@link ITestInvocationListener} supports receiving the granular
  * results or not.
  */
-public interface ISupportGranularResults {
+public interface ISupportGranularResults extends ITestInvocationListener {
 
     /** Returns True if the reporter support granular results, false otherwise. */
     public boolean supportGranularResults();
