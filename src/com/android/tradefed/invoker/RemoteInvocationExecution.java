@@ -137,11 +137,16 @@ public class RemoteInvocationExecution extends InvocationExecution {
         if (config.getCommandOptions().getShardCount() != null
                 && config.getCommandOptions().getShardIndex() == null) {
             if (config.getCommandOptions().getShardCount() > 1) {
+                int instanceCount = config.getCommandOptions().getShardCount();
+                if (!context.getBuildInfos().get(0).getBuildId().startsWith("P")) {
+                    instanceCount += config.getCommandOptions().getExtraRemotePostsubmitInstance();
+                    config.getCommandOptions().setShardCount(instanceCount);
+                }
                 boolean parallel = config.getCommandOptions().shouldUseParallelRemoteSetup();
                 long startTime = System.currentTimeMillis();
                 // For each device after the first one we need to start a new device.
                 if (!parallel) {
-                    for (int i = 2; i < config.getCommandOptions().getShardCount() + 1; i++) {
+                    for (int i = 2; i < instanceCount + 1; i++) {
                         boolean res = startDevice(listener, i, info, options, runUtil, null);
                         if (!res) {
                             return;
@@ -151,7 +156,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                     // Parallel setup of devices
                     Semaphore token = new Semaphore(MAX_WORKER_THREAD);
                     List<StartDeviceThread> threads = new ArrayList<>();
-                    for (int i = 2; i < config.getCommandOptions().getShardCount() + 1; i++) {
+                    for (int i = 2; i < instanceCount + 1; i++) {
                         StartDeviceThread sdt =
                                 new StartDeviceThread(listener, i, info, options, runUtil, token);
                         threads.add(sdt);
