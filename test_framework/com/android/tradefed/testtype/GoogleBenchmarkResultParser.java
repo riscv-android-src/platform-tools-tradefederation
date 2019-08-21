@@ -80,8 +80,16 @@ public class GoogleBenchmarkResultParser {
                     testResults = parseJsonToMap(testRes);
                 } catch (JSONException e) {
                     CLog.e(e);
-                    mTestListener.testFailed(testId,String.format("Test failed to generate "
-                                + "proper results: %s", e.getMessage()));
+                    mTestListener.testFailed(
+                            testId,
+                            String.format(
+                                    "Test failed to generate " + "proper results: %s",
+                                    e.getMessage()));
+                }
+                // Check iterations to make sure it actual ran
+                String iterations = testResults.get("iterations");
+                if (iterations != null && "0".equals(iterations.trim())) {
+                    mTestListener.testIgnored(testId);
                 }
                 mTestListener.testEnded(testId, TfMetricProtoUtil.upgradeConvert(testResults));
             }
