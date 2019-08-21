@@ -137,6 +137,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     // Tracking of retry performance
     private List<RetryStatistics> mRetryStats = new ArrayList<>();
+    private boolean mDisableAutoRetryTimeReporting = false;
 
     private boolean mMergeAttempts = true;
     private IRetryDecision mRetryDecision;
@@ -929,6 +930,15 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         return mPreparersPerDevice.get(deviceName);
     }
 
+    /**
+     * When running unit tests for ModuleDefinition we don't want to unnecessarily report some auto
+     * retry times.
+     */
+    @VisibleForTesting
+    void disableAutoRetryReportingTime() {
+        mDisableAutoRetryTimeReporting = true;
+    }
+
     /** Returns the {@link IInvocationContext} associated with the module. */
     public IInvocationContext getModuleInvocationContext() {
         return mModuleInvocationContext;
@@ -969,6 +979,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     private void addRetryTime(long retryTimeMs) {
+        if (retryTimeMs <= 0 || mDisableAutoRetryTimeReporting) {
+            return;
+        }
         InvocationMetricLogger.addInvocationMetrics(
                 InvocationMetricKey.AUTO_RETRY_TIME, retryTimeMs);
     }
