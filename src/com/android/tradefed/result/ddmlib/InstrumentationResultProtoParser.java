@@ -141,12 +141,12 @@ public class InstrumentationResultProtoParser implements IShellOutputReceiver {
     }
 
     /**
-     * Preprocess the instrumentation session status which includes the instrumentation test
-     * results and the session status code to shell output format for further processing by
+     * Preprocess the instrumentation session status which includes the instrumentation test results
+     * and the session status code to shell output format for further processing by
      * InstrumentationResultParser.
      *
-     * @param SessionStatus The {@link SessionStatus} holding the current instrumentation session
-     *            info collected during the test run.
+     * @param sessionStatus The {@link SessionStatus} holding the current instrumentation session
+     *     info collected during the test run.
      */
     public void processSessionStatus(SessionStatus sessionStatus) {
 
