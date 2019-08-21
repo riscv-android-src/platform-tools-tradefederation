@@ -27,7 +27,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.testtype.InstrumentationTest;
+import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ZipUtil;
@@ -64,6 +64,7 @@ public class TestMappingSuiteRunnerTest {
     private static final String DISABLED_PRESUBMIT_TESTS = "disabled-presubmit-tests";
 
     private TestMappingSuiteRunner mRunner;
+    private OptionSetter mOptionSetter;
     private IDeviceBuildInfo mBuildInfo;
     private ITestDevice mMockDevice;
 
@@ -74,6 +75,9 @@ public class TestMappingSuiteRunnerTest {
         mRunner = new AbiTestMappingSuite();
         mRunner.setBuild(mBuildInfo);
         mRunner.setDevice(mMockDevice);
+
+        mOptionSetter = new OptionSetter(mRunner);
+        mOptionSetter.setOptionValue("suite-config-prefix", "suite");
 
         EasyMock.expect(mBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null);
         EasyMock.expect(mBuildInfo.getTestsDir()).andReturn(new File(NON_EXISTING_DIR));
@@ -102,9 +106,8 @@ public class TestMappingSuiteRunnerTest {
      */
     @Test(expected = RuntimeException.class)
     public void testLoadTests_conflictTestGroup() throws Exception {
-        OptionSetter setter = new OptionSetter(mRunner);
-        setter.setOptionValue("include-filter", "test1");
-        setter.setOptionValue("test-mapping-test-group", "group");
+        mOptionSetter.setOptionValue("include-filter", "test1");
+        mOptionSetter.setOptionValue("test-mapping-test-group", "group");
         mRunner.loadTests();
     }
 
@@ -120,9 +123,8 @@ public class TestMappingSuiteRunnerTest {
      */
     @Test(expected = RuntimeException.class)
     public void testLoadTests_conflictKeyword() throws Exception {
-        OptionSetter setter = new OptionSetter(mRunner);
-        setter.setOptionValue("include-filter", "test1");
-        setter.setOptionValue("test-mapping-keyword", "key1");
+        mOptionSetter.setOptionValue("include-filter", "test1");
+        mOptionSetter.setOptionValue("test-mapping-keyword", "key1");
         mRunner.loadTests();
     }
 
@@ -133,8 +135,7 @@ public class TestMappingSuiteRunnerTest {
     public void testLoadTests_testMappingsZip() throws Exception {
         File tempDir = null;
         try {
-            OptionSetter setter = new OptionSetter(mRunner);
-            setter.setOptionValue("test-mapping-test-group", "postsubmit");
+            mOptionSetter.setOptionValue("test-mapping-test-group", "postsubmit");
 
             tempDir = FileUtil.createTempDir("test_mapping");
 
@@ -178,15 +179,12 @@ public class TestMappingSuiteRunnerTest {
             assertTrue(mRunner.getIncludeFilter().contains("suite/stub2 filter.com"));
 
             // Check module-arg work as expected.
-            InstrumentationTest test =
-                    (InstrumentationTest) configMap.get("arm64-v8a instrument").getTests().get(0);
-            assertEquals("some-name", test.getRunName());
+            StubTest test = (StubTest) configMap.get("arm64-v8a suite/stub2").getTests().get(0);
+            assertTrue(test.getRunTest());
 
-            assertEquals(6, configMap.size());
-            assertTrue(configMap.containsKey(ABI_1 + " instrument"));
+            assertEquals(4, configMap.size());
             assertTrue(configMap.containsKey(ABI_1 + " suite/stub1"));
             assertTrue(configMap.containsKey(ABI_1 + " suite/stub2"));
-            assertTrue(configMap.containsKey(ABI_2 + " instrument"));
             assertTrue(configMap.containsKey(ABI_2 + " suite/stub1"));
             assertTrue(configMap.containsKey(ABI_2 + " suite/stub2"));
 
@@ -194,7 +192,6 @@ public class TestMappingSuiteRunnerTest {
             Map<String, Integer> testSouceCount = new HashMap<>();
             testSouceCount.put("suite/stub1", 1);
             testSouceCount.put("suite/stub2", 1);
-            testSouceCount.put("instrument", 1);
 
             for (IConfiguration config : configMap.values()) {
                 assertTrue(testSouceCount.containsKey(config.getName()));
@@ -219,9 +216,8 @@ public class TestMappingSuiteRunnerTest {
     public void testLoadTests_testMappingsZipFoundTestsWithKeywords() throws Exception {
         File tempDir = null;
         try {
-            OptionSetter setter = new OptionSetter(mRunner);
-            setter.setOptionValue("test-mapping-keyword", "key_1");
-            setter.setOptionValue("test-mapping-test-group", "presubmit");
+            mOptionSetter.setOptionValue("test-mapping-keyword", "key_1");
+            mOptionSetter.setOptionValue("test-mapping-test-group", "presubmit");
 
             tempDir = FileUtil.createTempDir("test_mapping");
 
@@ -291,9 +287,8 @@ public class TestMappingSuiteRunnerTest {
     public void testLoadTests_testMappingsZipFailWithKeywords() throws Exception {
         File tempDir = null;
         try {
-            OptionSetter setter = new OptionSetter(mRunner);
-            setter.setOptionValue("test-mapping-keyword", "key_2");
-            setter.setOptionValue("test-mapping-test-group", "presubmit");
+            mOptionSetter.setOptionValue("test-mapping-keyword", "key_2");
+            mOptionSetter.setOptionValue("test-mapping-test-group", "presubmit");
 
             tempDir = FileUtil.createTempDir("test_mapping");
 
@@ -341,8 +336,7 @@ public class TestMappingSuiteRunnerTest {
     public void testLoadTests_testMappingsZipHostTests() throws Exception {
         File tempDir = null;
         try {
-            OptionSetter setter = new OptionSetter(mRunner);
-            setter.setOptionValue("test-mapping-test-group", "presubmit");
+            mOptionSetter.setOptionValue("test-mapping-test-group", "presubmit");
 
             tempDir = FileUtil.createTempDir("test_mapping");
 
@@ -396,8 +390,7 @@ public class TestMappingSuiteRunnerTest {
     public void testLoadTests_shard() throws Exception {
         File tempDir = null;
         try {
-            OptionSetter setter = new OptionSetter(mRunner);
-            setter.setOptionValue("test-mapping-test-group", "postsubmit");
+            mOptionSetter.setOptionValue("test-mapping-test-group", "postsubmit");
 
             tempDir = FileUtil.createTempDir("test_mapping");
 
@@ -424,7 +417,7 @@ public class TestMappingSuiteRunnerTest {
             EasyMock.replay(mockBuildInfo);
 
             Collection<IRemoteTest> tests = mRunner.split(2);
-            assertEquals(6, tests.size());
+            assertEquals(4, tests.size());
             EasyMock.verify(mockBuildInfo);
         } finally {
             FileUtil.recursiveDelete(tempDir);
@@ -436,8 +429,7 @@ public class TestMappingSuiteRunnerTest {
     public void testLoadTests_noTest() throws Exception {
         File tempDir = null;
         try {
-            OptionSetter setter = new OptionSetter(mRunner);
-            setter.setOptionValue("test-mapping-test-group", "none-exist");
+            mOptionSetter.setOptionValue("test-mapping-test-group", "none-exist");
 
             tempDir = FileUtil.createTempDir("test_mapping");
 
@@ -465,8 +457,7 @@ public class TestMappingSuiteRunnerTest {
      */
     @Test
     public void testLoadTestsForMultiAbi() throws Exception {
-        OptionSetter setter = new OptionSetter(mRunner);
-        setter.setOptionValue("include-filter", "suite/stubAbi");
+        mOptionSetter.setOptionValue("include-filter", "suite/stubAbi");
 
         ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
         mRunner.setDevice(mockDevice);
@@ -488,9 +479,8 @@ public class TestMappingSuiteRunnerTest {
     public void testLoadTestsWithModule() throws Exception {
         File tempDir = null;
         try {
-            OptionSetter setter = new OptionSetter(mRunner);
-            setter.setOptionValue("test-mapping-test-group", "postsubmit");
-            setter.setOptionValue("force-test-mapping-module", "suite/stub1");
+            mOptionSetter.setOptionValue("test-mapping-test-group", "postsubmit");
+            mOptionSetter.setOptionValue("force-test-mapping-module", "suite/stub1");
 
             tempDir = FileUtil.createTempDir("test_mapping");
 
@@ -540,10 +530,9 @@ public class TestMappingSuiteRunnerTest {
     public void testLoadTestsWithMultiModules() throws Exception {
         File tempDir = null;
         try {
-            OptionSetter setter = new OptionSetter(mRunner);
-            setter.setOptionValue("test-mapping-test-group", "postsubmit");
-            setter.setOptionValue("force-test-mapping-module", "suite/stub1");
-            setter.setOptionValue("force-test-mapping-module", "suite/stub2");
+            mOptionSetter.setOptionValue("test-mapping-test-group", "postsubmit");
+            mOptionSetter.setOptionValue("force-test-mapping-module", "suite/stub1");
+            mOptionSetter.setOptionValue("force-test-mapping-module", "suite/stub2");
 
             tempDir = FileUtil.createTempDir("test_mapping");
 
