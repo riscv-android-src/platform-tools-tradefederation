@@ -40,9 +40,6 @@ import java.io.IOException;
  */
 @OptionClass(alias = "perfetto-preparer")
 public class PerfettoPreparer extends BaseTargetPreparer implements ITargetCleaner {
-
-    private static final String LOG_TAG = "PerfettoPreparer";
-
     // Perfetto have access only to the config files under /data/misc/perfetto-traces/
     // in the device.
     private static final String DEVICE_CONFIG_PATH = "/data/misc/perfetto-traces/trace_config.pb";
@@ -72,7 +69,7 @@ public class PerfettoPreparer extends BaseTargetPreparer implements ITargetClean
         // format and push it to the device under /data/misc/perfetto-traces/
 
         if (mBinaryPerfettoConfigFile != null && mTextprotoPerfettoConfigFile != null) {
-            CLog.w(LOG_TAG, "Both binary and text proto options are set. Using binary option.");
+            CLog.w("Both binary and text proto options are set. Using binary option.");
         }
         if (mBinaryPerfettoConfigFile != null) {
             if (!mBinaryPerfettoConfigFile.exists()) {
@@ -126,7 +123,7 @@ public class PerfettoPreparer extends BaseTargetPreparer implements ITargetClean
             }
         } else {
             // Log the error and return
-            CLog.w(LOG_TAG, message);
+            CLog.w(message);
         }
     }
 
