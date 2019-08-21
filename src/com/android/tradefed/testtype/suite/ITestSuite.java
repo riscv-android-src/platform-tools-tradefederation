@@ -444,8 +444,9 @@ public abstract class ITestSuite
                         .map(m -> String.format("/%s/", m))
                         .collect(Collectors.joining("|"));
         List<String> includeFilters = Arrays.asList(moduleRegex);
-        // Ignore config file as it's part of config zip artifact that's staged already.
-        List<String> excludeFilters = Arrays.asList("[.]config$");
+        // Ignore config files as they are part of config zip artifact that's staged already.
+        // Ignore jar files as they are part of sandbox setup.
+        List<String> excludeFilters = Arrays.asList("[.]config$", "[.]jar$");
         for (File remoteFile : mBuildInfo.getRemoteFiles()) {
             try {
                 mDynamicResolver.resolvePartialDownloadZip(
