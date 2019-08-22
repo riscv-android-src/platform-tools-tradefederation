@@ -26,6 +26,7 @@ import mock
 
 import atest_error
 import atest_utils
+import constants
 import unittest_utils
 from test_finders import test_info
 
@@ -369,6 +370,17 @@ class AtestUtilsUnittests(unittest.TestCase):
         unittest_utils.assert_equal_testinfo_sets(
             self, set([TEST_INFO_A]),
             atest_utils.load_test_info_cache(test_reference, test_cache_dir))
+
+    @mock.patch('os.getcwd')
+    def test_get_build_cmd(self, mock_cwd):
+        """Test method get_build_cmd."""
+        build_top = '/home/a/b/c'
+        rel_path = 'd/e'
+        mock_cwd.return_value = os.path.join(build_top, rel_path)
+        os_environ_mock = {constants.ANDROID_BUILD_TOP: build_top}
+        with mock.patch.dict('os.environ', os_environ_mock, clear=True):
+            expected_cmd = ['../../build/soong/soong_ui.bash', '--make-mode']
+            self.assertEqual(expected_cmd, atest_utils.get_build_cmd())
 
 if __name__ == "__main__":
     unittest.main()
