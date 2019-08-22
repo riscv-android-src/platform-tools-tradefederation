@@ -173,6 +173,9 @@ public class HostTest
     private boolean mSkipTestClassCheck = false;
 
     private List<Object> mTestMethods;
+
+    // Initialized as -1 to indicate that this value needs to be recalculated
+    // when test count is requested.
     private int mNumTestCases = -1;
 
     private static final String EXCLUDE_NO_TEST_FAILURE = "org.junit.runner.manipulation.Filter";

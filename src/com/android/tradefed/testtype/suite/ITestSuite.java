@@ -335,6 +335,8 @@ public abstract class ITestSuite
     // Whether or not we are currently in split
     private boolean mIsSplitting = false;
 
+    private boolean mDisableAutoRetryTimeReporting = false;
+
     private DynamicRemoteFileResolver mDynamicResolver = new DynamicRemoteFileResolver();
 
     @VisibleForTesting
@@ -498,6 +500,9 @@ public abstract class ITestSuite
                             preparersPerDevice,
                             config.getValue().getMultiTargetPreparers(),
                             config.getValue());
+            if (mDisableAutoRetryTimeReporting) {
+                module.disableAutoRetryReportingTime();
+            }
             module.setDevice(mDevice);
             module.setDeviceInfos(mDeviceInfos);
             module.setBuild(mBuildInfo);
@@ -1352,5 +1357,9 @@ public abstract class ITestSuite
             return false;
         }
         return true;
+    }
+
+    void disableAutoRetryTimeReporting() {
+        mDisableAutoRetryTimeReporting = true;
     }
 }
