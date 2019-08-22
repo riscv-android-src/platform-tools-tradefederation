@@ -308,7 +308,6 @@ import com.android.tradefed.util.LocalRunInstructionBuilderTest;
 import com.android.tradefed.util.LogcatEventParserTest;
 import com.android.tradefed.util.MultiMapTest;
 import com.android.tradefed.util.NativeCodeCoverageFlusherTest;
-import com.android.tradefed.util.NullUtilTest;
 import com.android.tradefed.util.PairTest;
 import com.android.tradefed.util.PropertyChangerTest;
 import com.android.tradefed.util.PsParserTest;
@@ -748,7 +747,6 @@ import org.junit.runners.Suite.SuiteClasses;
     MultiMapTest.class,
     MergedZipEntryCollectionTest.class,
     NativeCodeCoverageFlusherTest.class,
-    NullUtilTest.class,
     PairTest.class,
     PsParserTest.class,
     QuotationAwareTokenizerTest.class,
