@@ -327,11 +327,11 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 args_to_append.append('--module-parameter')
                 args_to_append.append('instant_app')
                 continue
-            if constants.SECONDARY_USER == arg:
+            if constants.USER_TYPE == arg:
                 args_to_append.append('--enable-parameterized-modules')
                 args_to_append.append('--enable-optional-parameterization')
                 args_to_append.append('--module-parameter')
-                args_to_append.append('secondary_user')
+                args_to_append.append(extra_args[arg])
                 continue
             args_not_supported.append(arg)
         return args_to_append, args_not_supported
