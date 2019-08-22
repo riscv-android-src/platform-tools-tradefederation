@@ -68,6 +68,7 @@ import com.android.tradefed.testtype.suite.ModuleListener;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.PrettyPrintDelimiter;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.SystemUtil.EnvVariable;
@@ -504,7 +505,7 @@ public class InvocationExecution implements IInvocationExecution {
 
                 long startTime = System.currentTimeMillis();
                 try {
-                    CLog.d("Starting auto-retry.");
+                    PrettyPrintDelimiter.printStageDelimiter("Starting auto-retry");
                     for (int attemptNumber = 1;
                             attemptNumber < decision.getMaxRetryCount();
                             attemptNumber++) {
@@ -517,7 +518,7 @@ public class InvocationExecution implements IInvocationExecution {
                         if (!retry) {
                             continue;
                         }
-                        CLog.d("auto-retry attempt number %s", attemptNumber);
+                        CLog.d("auto-retry attempt number '%s'", attemptNumber);
                         // Run the tests again
                         runTest(config, context, runListener, test);
                         runListener.incrementAttempt();
