@@ -153,26 +153,25 @@ def get_extra_args(args):
     steps = args.steps or constants.ALL_STEPS
     if constants.INSTALL_STEP not in steps:
         extra_args[constants.DISABLE_INSTALL] = None
-    if args.disable_teardown:
-        extra_args[constants.DISABLE_TEARDOWN] = args.disable_teardown
-    if args.generate_baseline:
-        extra_args[constants.PRE_PATCH_ITERATIONS] = args.generate_baseline
-    if args.serial:
-        extra_args[constants.SERIAL] = args.serial
-    if args.all_abi:
-        extra_args[constants.ALL_ABI] = args.all_abi
-    if args.generate_new_metrics:
-        extra_args[constants.POST_PATCH_ITERATIONS] = args.generate_new_metrics
-    if args.instant:
-        extra_args[constants.INSTANT] = args.instant
-    if args.secondary_user:
-        extra_args[constants.SECONDARY_USER] = args.secondary_user
-    if args.host:
-        extra_args[constants.HOST] = args.host
-    if args.dry_run:
-        extra_args[constants.DRY_RUN] = args.dry_run
-    if args.custom_args:
-        extra_args[constants.CUSTOM_ARGS] = args.custom_args
+    # The key and its value of the dict can be called via:
+    # if args.aaaa:
+    #     extra_args[constants.AAAA] = args.aaaa
+    arg_maps = {'all_abi': constants.ALL_ABI,
+                'custom_args': constants.CUSTOM_ARGS,
+                'disable_teardown': constants.DISABLE_TEARDOWN,
+                'dry_run': constants.DRY_RUN,
+                'generate_baseline': constants.PRE_PATCH_ITERATIONS,
+                'generate_new_metrics': constants.POST_PATCH_ITERATIONS,
+                'host': constants.HOST,
+                'instant': constants.INSTANT,
+                'serial': constants.SERIAL,
+                'user_type': constants.USER_TYPE}
+    not_match = [k for k in arg_maps if k not in vars(args)]
+    if not_match:
+        raise AttributeError('%s object has no attribute %s'
+                             %(type(args).__name__, not_match))
+    extra_args.update({arg_maps.get(k): v for k, v in vars(args).items()
+                       if arg_maps.get(k) and v})
     return extra_args
 
 
