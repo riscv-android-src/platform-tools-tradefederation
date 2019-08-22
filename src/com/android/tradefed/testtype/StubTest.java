@@ -75,6 +75,11 @@ public class StubTest implements IShardableTest, IConfigurationReceiver {
 
     private IConfiguration mConfig;
 
+    /* Get whether the stub test trigger some test callbacks on the invocation. */
+    public boolean getRunTest() {
+        return mRunTest;
+    }
+
     /**
      * {@inheritDoc}
      */
