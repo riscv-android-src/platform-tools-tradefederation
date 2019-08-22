@@ -176,6 +176,14 @@ public class CommandOptions implements ICommandOptions {
     private boolean mReportModuleProgression = false;
 
     @Option(
+        name = "extra-postsubmit-remote-instance",
+        description =
+                "Option that allows to run more instances in the remote VM in postsubmit. "
+                        + "Used for experimentation."
+    )
+    private int mExtraRemoteInstancePostsubmit = 0;
+
+    @Option(
         name = "auto-collect",
         description =
                 "Specify a set of collectors that will be automatically managed by the harness "
@@ -560,5 +568,11 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean shouldReportModuleProgression() {
         return mReportModuleProgression;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public int getExtraRemotePostsubmitInstance() {
+        return mExtraRemoteInstancePostsubmit;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,10 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.invoker.monitor;
+package com.android.tradefed.result.retry;
 
-/** Class holding all the data related to an invocation. */
-public class InvocationData {
+import com.android.tradefed.result.ITestInvocationListener;
 
-    public String mInvocationId = null;
+/**
+ * Interface specifying whether a {@link ITestInvocationListener} supports receiving the granular
+ * results or not.
+ */
+public interface ISupportGranularResults extends ITestInvocationListener {
+
+    /** Returns True if the reporter support granular results, false otherwise. */
+    public boolean supportGranularResults();
 }

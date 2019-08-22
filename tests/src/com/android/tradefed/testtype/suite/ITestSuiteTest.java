@@ -1491,11 +1491,10 @@ public class ITestSuiteTest {
                         return testConfig;
                     }
                 };
+        mTestSuite.disableAutoRetryTimeReporting();
         mTestSuite.setDevice(mMockDevice);
         mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setConfiguration(mStubMainConfiguration);
-        OptionSetter cmdSetter = new OptionSetter(mStubMainConfiguration.getCommandOptions());
-        cmdSetter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
         IRetryDecision decision = new BaseRetryDecision();
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");

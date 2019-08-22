@@ -18,18 +18,16 @@ package com.android.tradefed.testtype;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.result.ITestInvocationListener;
 
-import junit.framework.Test;
-
 /**
  * A test that reports results directly to a {@link ITestInvocationListener}.
- * <p/>
- * This has the following benefits over a JUnit {@link Test}
+ *
+ * <p>This has the following benefits over a JUnit.
+ *
  * <ul>
- * <li> easier to report the results of a test that has been run remotely on an Android device, as
- * the results of a remote test don't need to be unnecessarily marshalled and unmarshalled from
- * {@link Test} objects.
- * </li>
- * <li> supports reporting test metrics</li>
+ *   <li> easier to report the results of a test that has been run remotely on an Android device, as
+ *       the results of a remote test don't need to be unnecessarily marshalled and unmarshalled
+ *       from JUnit Test objects.
+ *   <li> supports reporting test metrics
  * </ul>
  */
 public interface IRemoteTest {
