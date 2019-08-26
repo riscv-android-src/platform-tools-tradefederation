@@ -1450,6 +1450,10 @@ public class TestInvocationTest {
         EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
         String logName = "host_log_before_sharding";
         LogFile loggedFile = new LogFile(PATH, URL, LogDataType.TEXT);
+        for (ITestInvocationListener listener : listenerList) {
+            listener.testLog(
+                    EasyMock.eq(logName), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+        }
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.eq(logName),
