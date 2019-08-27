@@ -335,8 +335,8 @@ public class ConfigurationDef {
         if (!rejectedObjects.isEmpty()) {
             throw new ClassNotFoundConfigurationException(
                     String.format(
-                            "Failed to load some objects in the configuration: %s",
-                            rejectedObjects),
+                            "Failed to load some objects in the configuration '%s': %s",
+                            getName(), rejectedObjects),
                     cause,
                     rejectedObjects);
         }
