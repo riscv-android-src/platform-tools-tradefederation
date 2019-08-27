@@ -182,16 +182,13 @@ public class TestMapping {
 
         for (TestInfo test : mTestCollection.getOrDefault(testGroup, new HashSet<>())) {
             if (disabledTests != null && disabledTests.contains(test.getName())) {
-                CLog.d("Test is disabled: %s.", test);
                 continue;
             }
             if (test.getHostOnly() != hostOnly) {
-                CLog.d("Test doesn't match the host requirement: %s.", test);
                 continue;
             }
             // Skip the test if no keyword is specified but the test requires certain keywords.
             if ((keywords == null || keywords.isEmpty()) && !test.getKeywords().isEmpty()) {
-                CLog.d("Test %s requires keywords: %s. Skip the test.", test, test.getKeywords());
                 continue;
             }
             // Skip the test if any of the required keywords is not specified by the test.
@@ -199,9 +196,6 @@ public class TestMapping {
                 Boolean allKeywordsFound = true;
                 for (String keyword : keywords) {
                     if (!test.getKeywords().contains(keyword)) {
-                        CLog.d(
-                                "Test %s doesn't have required keyword: %s. Skip the test.",
-                                test, keyword);
                         allKeywordsFound = false;
                         break;
                     }
