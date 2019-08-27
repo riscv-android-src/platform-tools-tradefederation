@@ -25,6 +25,7 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.NativeCodeCoverageFlusher;
 import com.android.tradefed.util.ZipUtil;
@@ -68,13 +69,12 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
 
     public NativeCodeCoverageListener(
             ITestDevice device,
-            boolean flushCoverage,
-            List<String> coverageProcesses,
+            CoverageOptions coverageOptions,
             ITestInvocationListener... listeners) {
         super(listeners);
         mDevice = device;
-        mFlushCoverage = flushCoverage;
-        mCoverageProcesses = ImmutableList.copyOf(coverageProcesses);
+        mFlushCoverage = coverageOptions.isCoverageFlushEnabled();
+        mCoverageProcesses = coverageOptions.getCoverageProcesses();
         mFlusher = new NativeCodeCoverageFlusher(mDevice);
     }
 
