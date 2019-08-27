@@ -159,6 +159,13 @@ public class ResultAggregator extends CollectingTestListener {
         mAllForwarder.setLogSaver(logSaver);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
+        super.testLog(dataName, dataType, dataStream);
+        mAllForwarder.testLog(dataName, dataType, dataStream);
+    }
+
     // ====== Forwarders to the detailed result reporters
 
     @Override
