@@ -32,5 +32,7 @@ fi
 # Note: must leave $RDBG_FLAG and $TRADEFED_OPTS unquoted so that they go away
 # when unset
 exec ${TF_JAVA} $RDBG_FLAG -XX:+HeapDumpOnOutOfMemoryError \
+  --add-opens=java.base/java.nio=ALL-UNNAMED \
+  --add-opens=java.base/sun.reflect.annotation=ALL-UNNAMED \
   -XX:-OmitStackTraceInFastThrow $TRADEFED_OPTS \
   -cp "${TF_PATH}" -DTF_JAR_DIR=${TF_JAR_DIR} $CONSOLE_CLASS "$@"

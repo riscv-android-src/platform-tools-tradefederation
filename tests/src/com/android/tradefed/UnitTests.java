@@ -135,6 +135,7 @@ import com.android.tradefed.log.TerribleFailureEmailHandlerTest;
 import com.android.tradefed.postprocessor.AggregatePostProcessorTest;
 import com.android.tradefed.postprocessor.AveragePostProcessorTest;
 import com.android.tradefed.postprocessor.BasePostProcessorTest;
+import com.android.tradefed.result.ATestFileSystemLogSaverTest;
 import com.android.tradefed.result.BugreportCollectorTest;
 import com.android.tradefed.result.CollectingTestListenerTest;
 import com.android.tradefed.result.ConsoleResultReporterTest;
@@ -308,7 +309,6 @@ import com.android.tradefed.util.LocalRunInstructionBuilderTest;
 import com.android.tradefed.util.LogcatEventParserTest;
 import com.android.tradefed.util.MultiMapTest;
 import com.android.tradefed.util.NativeCodeCoverageFlusherTest;
-import com.android.tradefed.util.NullUtilTest;
 import com.android.tradefed.util.PairTest;
 import com.android.tradefed.util.PropertyChangerTest;
 import com.android.tradefed.util.PsParserTest;
@@ -533,6 +533,7 @@ import org.junit.runners.Suite.SuiteClasses;
     BasePostProcessorTest.class,
 
     // result
+    ATestFileSystemLogSaverTest.class,
     BugreportCollectorTest.class,
     CollectingTestListenerTest.class,
     ConsoleResultReporterTest.class,
@@ -748,7 +749,6 @@ import org.junit.runners.Suite.SuiteClasses;
     MultiMapTest.class,
     MergedZipEntryCollectionTest.class,
     NativeCodeCoverageFlusherTest.class,
-    NullUtilTest.class,
     PairTest.class,
     PsParserTest.class,
     QuotationAwareTokenizerTest.class,
