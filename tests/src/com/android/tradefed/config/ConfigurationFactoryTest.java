@@ -1581,7 +1581,9 @@ public class ConfigurationFactoryTest extends TestCase {
         } catch (ClassNotFoundConfigurationException expected) {
             assertTrue(
                     expected.getMessage()
-                            .contains("Failed to load some objects in the configuration:"));
+                            .contains(
+                                    "Failed to load some objects in the configuration "
+                                            + "'multi-device-incorrect':"));
             assertEquals(
                     "device1:build_provider",
                     expected.getRejectedObjects().get("com.android.tradefed.build.doesnotexists"));
