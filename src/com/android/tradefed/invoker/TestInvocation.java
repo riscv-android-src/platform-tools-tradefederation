@@ -60,7 +60,6 @@ import com.android.tradefed.targetprep.DeviceFailedToBootError;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
-import com.android.tradefed.testtype.IRetriableTest;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.PrettyPrintDelimiter;
@@ -248,14 +247,14 @@ public class TestInvocation implements ITestInvocation {
                     badDevice.setRecoveryMode(RecoveryMode.NONE);
                 }
             }
-            reportFailure(e, listener, config, context, rescheduler, invocationPath);
+            reportFailure(e, listener, config, context, invocationPath);
         } catch (TargetSetupError e) {
             exception = e;
             CLog.e("Caught exception while running invocation");
             CLog.e(e);
             bugreportName = TARGET_SETUP_ERROR_BUGREPORT_NAME;
             badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
-            reportFailure(e, listener, config, context, rescheduler, invocationPath);
+            reportFailure(e, listener, config, context, invocationPath);
         } catch (DeviceNotAvailableException e) {
             exception = e;
             // log a warning here so its captured before reportLogs is called
@@ -269,7 +268,7 @@ public class TestInvocation implements ITestInvocation {
             }
             resumed = resume(config, context, rescheduler, System.currentTimeMillis() - startTime);
             if (!resumed) {
-                reportFailure(e, listener, config, context, rescheduler, invocationPath);
+                reportFailure(e, listener, config, context, invocationPath);
             } else {
                 CLog.i("Rescheduled failed invocation for resume");
             }
@@ -281,18 +280,18 @@ public class TestInvocation implements ITestInvocation {
             throw e;
         } catch (RunInterruptedException e) {
             CLog.w("Invocation interrupted");
-            reportFailure(e, listener, config, context, rescheduler, invocationPath);
+            reportFailure(e, listener, config, context, invocationPath);
         } catch (AssertionError e) {
             exception = e;
             CLog.e("Caught AssertionError while running invocation: %s", e.toString());
             CLog.e(e);
-            reportFailure(e, listener, config, context, rescheduler, invocationPath);
+            reportFailure(e, listener, config, context, invocationPath);
         } catch (Throwable t) {
             exception = t;
             // log a warning here so its captured before reportLogs is called
             CLog.e("Unexpected exception when running invocation: %s", t.toString());
             CLog.e(t);
-            reportFailure(t, listener, config, context, rescheduler, invocationPath);
+            reportFailure(t, listener, config, context, invocationPath);
             throw t;
         } finally {
             for (ITestDevice device : context.getDevices()) {
@@ -334,7 +333,6 @@ public class TestInvocation implements ITestInvocation {
                             listener,
                             config,
                             context,
-                            rescheduler,
                             invocationPath);
                 }
             }
@@ -462,26 +460,12 @@ public class TestInvocation implements ITestInvocation {
             ITestInvocationListener listener,
             IConfiguration config,
             IInvocationContext context,
-            IRescheduler rescheduler,
             IInvocationExecution invocationPath) {
         // Always report the failure
         listener.invocationFailed(exception);
-        // Reset the build (if necessary) and decide if we should reschedule the configuration.
-        boolean shouldReschedule =
-                invocationPath.resetBuildAndReschedule(exception, listener, config, context);
-        if (shouldReschedule) {
-            rescheduleTest(config, rescheduler);
-        }
-    }
-
-    private void rescheduleTest(IConfiguration config, IRescheduler rescheduler) {
-        for (IRemoteTest test : config.getTests()) {
-            if (!config.getCommandOptions().isLoopMode() && test instanceof IRetriableTest &&
-                    ((IRetriableTest) test).isRetriable()) {
-                rescheduler.rescheduleCommand();
-                return;
-            }
-        }
+        // Reset the build (if necessary)
+        // TODO: Remove the "Reschedule" part
+        invocationPath.resetBuildAndReschedule(exception, listener, config, context);
     }
 
     private void reportHostLog(ITestInvocationListener listener, IConfiguration config) {
@@ -613,7 +597,6 @@ public class TestInvocation implements ITestInvocation {
             }
             // In case of build not found issues.
             mStatus = "(no build to test)";
-            rescheduleTest(config, rescheduler);
             // Set the exit code to error
             buildException = new BuildRetrievalError("No build found to test.");
             setExitCode(ExitCode.NO_BUILD, buildException);
