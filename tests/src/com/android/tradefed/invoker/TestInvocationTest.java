@@ -1986,7 +1986,8 @@ public class TestInvocationTest {
         }
 
         @Override
-        public Map<String, Builder> processRunMetrics(HashMap<String, Metric> rawMetrics) {
+        public Map<String, Builder> processRunMetricsAndLogs(
+                HashMap<String, Metric> rawMetrics, Map<String, LogFile> runLogs) {
             Map<String, Builder> post = new LinkedHashMap<>();
             post.put(mName, Metric.newBuilder());
             return post;

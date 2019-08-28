@@ -85,7 +85,8 @@ public class AggregatePostProcessorTest {
             metricBuilder.getMeasurementsBuilder().setSingleString(singularDoubleMetrics.get(i));
             Metric currentTestMetric = metricBuilder.build();
             testMetrics.put(singularDoubleKey, currentTestMetric);
-            processedMetrics = mProcessor.processTestMetrics(TEST_1, testMetrics);
+            processedMetrics =
+                    mProcessor.processTestMetricsAndLogs(TEST_1, testMetrics, new HashMap<>());
         }
 
         Assert.assertTrue(
@@ -186,7 +187,8 @@ public class AggregatePostProcessorTest {
             metricBuilder.getMeasurementsBuilder().setSingleString(listDoubleMetrics.get(i));
             Metric currentTestMetric = metricBuilder.build();
             testMetrics.put(listDoubleKey, currentTestMetric);
-            processedMetrics = mProcessor.processTestMetrics(TEST_1, testMetrics);
+            processedMetrics =
+                    mProcessor.processTestMetricsAndLogs(TEST_1, testMetrics, new HashMap<>());
         }
 
         Assert.assertTrue(
@@ -276,7 +278,8 @@ public class AggregatePostProcessorTest {
             metricBuilder.getMeasurementsBuilder().setSingleString(nonNumericMetrics.get(i));
             Metric currentTestMetric = metricBuilder.build();
             testMetrics.put(nonNumericKey, currentTestMetric);
-            processedMetrics = mProcessor.processTestMetrics(TEST_1, testMetrics);
+            processedMetrics =
+                    mProcessor.processTestMetricsAndLogs(TEST_1, testMetrics, new HashMap<>());
         }
 
         Assert.assertFalse(
@@ -317,7 +320,8 @@ public class AggregatePostProcessorTest {
             metricBuilder.getMeasurementsBuilder().setSingleString("");
             Metric currentTestMetric = metricBuilder.build();
             testMetrics.put(emptyResultKey, currentTestMetric);
-            processedMetrics = mProcessor.processTestMetrics(TEST_1, testMetrics);
+            processedMetrics =
+                    mProcessor.processTestMetricsAndLogs(TEST_1, testMetrics, new HashMap<>());
         }
 
         Assert.assertFalse(
@@ -359,7 +363,7 @@ public class AggregatePostProcessorTest {
         Metric currentTestMetric = metricBuilder.build();
         testMetrics.put(singleRunKey, currentTestMetric);
         Map<String, Metric.Builder> processedMetrics =
-                mProcessor.processTestMetrics(TEST_1, testMetrics);
+                mProcessor.processTestMetricsAndLogs(TEST_1, testMetrics, new HashMap<>());
 
         Assert.assertTrue(
                 processedMetrics.containsKey(
@@ -449,7 +453,7 @@ public class AggregatePostProcessorTest {
         Metric currentRunMetric = metricBuilder.build();
         runMetrics.put(key, currentRunMetric);
         Map<String, Metric.Builder> processedMetrics =
-                mProcessor.processRunMetrics(runMetrics);
+                mProcessor.processRunMetricsAndLogs(runMetrics, new HashMap<>());
 
         Assert.assertTrue(
                 processedMetrics.containsKey(
@@ -488,7 +492,7 @@ public class AggregatePostProcessorTest {
         Metric currentRunMetric = metricBuilder.build();
         runMetrics.put(key, currentRunMetric);
         Map<String, Metric.Builder> processedMetrics =
-                mProcessor.processRunMetrics(runMetrics);
+                mProcessor.processRunMetricsAndLogs(runMetrics, new HashMap<>());
 
         Assert.assertTrue(
                 processedMetrics.containsKey(String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_MIN)));
@@ -524,7 +528,7 @@ public class AggregatePostProcessorTest {
         Metric currentRunMetric = metricBuilder.build();
         runMetrics.put(key, currentRunMetric);
         Map<String, Metric.Builder> processedMetrics =
-                mProcessor.processRunMetrics(runMetrics);
+                mProcessor.processRunMetricsAndLogs(runMetrics, new HashMap<>());
 
         Assert.assertEquals(0, processedMetrics.size());
     }
@@ -558,14 +562,18 @@ public class AggregatePostProcessorTest {
             metricBuilder1.getMeasurementsBuilder().setSingleString(test1Metrics.get(i));
             Metric currentTest1Metric = metricBuilder1.build();
             currentTest1Metrics.put(test1Key, currentTest1Metric);
-            processedTest1Metrics = mProcessor.processTestMetrics(TEST_1, currentTest1Metrics);
+            processedTest1Metrics =
+                    mProcessor.processTestMetricsAndLogs(
+                            TEST_1, currentTest1Metrics, new HashMap<>());
 
             HashMap<String, Metric> currentTest2Metrics = new HashMap<String, Metric>();
             Metric.Builder metricBuilder2 = Metric.newBuilder();
             metricBuilder2.getMeasurementsBuilder().setSingleString(test2Metrics.get(i));
             Metric currentTest2Metric = metricBuilder2.build();
             currentTest2Metrics.put(test2Key, currentTest2Metric);
-            processedTest2Metrics = mProcessor.processTestMetrics(TEST_2, currentTest2Metrics);
+            processedTest2Metrics =
+                    mProcessor.processTestMetricsAndLogs(
+                            TEST_2, currentTest2Metrics, new HashMap<>());
         }
 
         Assert.assertTrue(
