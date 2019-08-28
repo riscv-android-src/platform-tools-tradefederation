@@ -252,7 +252,7 @@ class RobolectricTestRunner(test_runner_base.TestRunnerBase):
         """
         run_cmds = []
         for test_info in test_infos:
-            robo_command = atest_utils.BUILD_CMD + [str(test_info.test_name)]
+            robo_command = atest_utils.get_build_cmd() + [str(test_info.test_name)]
             run_cmd = ' '.join(x for x in robo_command)
             if constants.DRY_RUN in extra_args:
                 run_cmd = run_cmd.replace(
