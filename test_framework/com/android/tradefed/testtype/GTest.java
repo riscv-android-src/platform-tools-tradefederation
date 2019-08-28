@@ -428,11 +428,7 @@ public class GTest extends GTestBase implements IDeviceTest {
         CoverageOptions options = getCoverageOptions();
 
         if (options.isCoverageEnabled() && options.getCoverageToolchains().contains(GCOV)) {
-            return new NativeCodeCoverageListener(
-                    mDevice,
-                    options.isCoverageFlushEnabled(),
-                    options.getCoverageProcesses(),
-                    listener);
+            return new NativeCodeCoverageListener(mDevice, options, listener);
         }
         return listener;
     }
