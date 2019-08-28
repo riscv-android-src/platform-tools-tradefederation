@@ -38,11 +38,6 @@ import constants
 
 from metrics import metrics_base
 
-_MAKE_CMD = ('%s/build/soong/soong_ui.bash' %
-             os.path.relpath(os.environ.get(constants.ANDROID_BUILD_TOP,
-                                            os.getcwd()),
-                             os.getcwd()))
-BUILD_CMD = [_MAKE_CMD, '--make-mode']
 _BASH_RESET_CODE = '\033[0m\n'
 # Arbitrary number to limit stdout for failed runs in _run_limited_output.
 # Reason for its use is that the make command itself has its own carriage
@@ -60,6 +55,19 @@ CMD_RESULT_PATH = os.path.join(os.environ.get(constants.ANDROID_BUILD_TOP,
 TEST_INFO_CACHE_ROOT = os.path.join(os.path.expanduser('~'), '.atest',
                                     'info_cache')
 _DEFAULT_TERMINAL_WIDTH = 80
+
+def get_build_cmd():
+    """Compose build command with relative path and flag "--make-mode".
+
+    Returns:
+        A list of soong build command.
+    """
+    make_cmd = ('%s/build/soong/soong_ui.bash' %
+                os.path.relpath(os.environ.get(constants.ANDROID_BUILD_TOP,
+                                               os.getcwd()),
+                                os.getcwd()))
+    return [make_cmd, '--make-mode']
+
 
 def _capture_fail_section(full_log):
     """Return the error message from the build output.
@@ -158,7 +166,7 @@ def build(build_targets, verbose=False, env_vars=None):
     print('\n%s\n%s' % (colorize("Building Dependencies...", constants.CYAN),
                         ', '.join(build_targets)))
     logging.debug('Building Dependencies: %s', ' '.join(build_targets))
-    cmd = BUILD_CMD + list(build_targets)
+    cmd = get_build_cmd() + list(build_targets)
     logging.debug('Executing command: %s', cmd)
     try:
         if verbose:
