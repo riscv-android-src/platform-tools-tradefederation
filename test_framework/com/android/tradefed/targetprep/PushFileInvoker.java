@@ -28,7 +28,10 @@ import java.util.concurrent.TimeUnit;
 /**
  * A {@link ITargetPreparer} that pushes files from tests zip onto device, mark them as executable
  * and invokes the binary or script on device. See also {@link TestFilePushSetup}.
+ *
+ * @deprecated Use {@link PushFilePreparer} instead
  */
+@Deprecated
 @OptionClass(alias = "push-file-invoker")
 public class PushFileInvoker extends TestFilePushSetup {
 
