@@ -87,6 +87,7 @@ public class InstrumentationFileTestTest {
         mMockITest.setConfiguration(new Configuration("", ""));
         mMockITest.setDevice(mMockTestDevice);
         mMockITest.setPackageName(TEST_PACKAGE_VALUE);
+        mMockITest.setConfiguration(new Configuration("name", "description"));
         mMockITest = Mockito.spy(mMockITest);
     }
 
