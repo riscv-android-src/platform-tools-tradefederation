@@ -25,15 +25,17 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
+import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.base.VerifyException;
-import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 
 import org.junit.Before;
@@ -80,12 +82,20 @@ public class NativeCodeCoverageListenerTest {
 
     LogFileReader mFakeListener = new LogFileReader();
 
+    /** Options for coverage. */
+    CoverageOptions mCoverageOptions = null;
+
+    OptionSetter mCoverageOptionsSetter = null;
+
     /** Object under test. */
     NativeCodeCoverageListener mCodeCoverageListener;
 
     @Before
-    public void setUp() {
+    public void setUp() throws ConfigurationException {
         MockitoAnnotations.initMocks(this);
+
+        mCoverageOptions = new CoverageOptions();
+        mCoverageOptionsSetter = new OptionSetter(mCoverageOptions);
     }
 
     @Test
@@ -164,10 +174,11 @@ public class NativeCodeCoverageListenerTest {
 
     @Test
     public void testCoverageFlushAllProcesses_flushAllCommandCalled()
-            throws DeviceNotAvailableException, IOException {
+            throws ConfigurationException, DeviceNotAvailableException, IOException {
+        mCoverageOptionsSetter.setOptionValue("coverage-flush", "true");
+
         mCodeCoverageListener =
-                new NativeCodeCoverageListener(
-                        mMockDevice, true, ImmutableList.of(), mFakeListener);
+                new NativeCodeCoverageListener(mMockDevice, mCoverageOptions, mFakeListener);
 
         doReturn(true).when(mMockDevice).enableAdbRoot();
         doReturn(true).when(mMockDevice).isAdbRoot();
@@ -184,10 +195,13 @@ public class NativeCodeCoverageListenerTest {
 
     @Test
     public void testCoverageFlushSpecificProcesses_flushCommandCalled()
-            throws DeviceNotAvailableException, IOException {
+            throws ConfigurationException, DeviceNotAvailableException, IOException {
+        mCoverageOptionsSetter.setOptionValue("coverage-flush", "true");
+        mCoverageOptionsSetter.setOptionValue("coverage-processes", "mediaserver");
+        mCoverageOptionsSetter.setOptionValue("coverage-processes", "adbd");
+
         mCodeCoverageListener =
-                new NativeCodeCoverageListener(
-                        mMockDevice, true, ImmutableList.of("mediaserver", "adbd"), mFakeListener);
+                new NativeCodeCoverageListener(mMockDevice, mCoverageOptions, mFakeListener);
 
         doReturn(true).when(mMockDevice).enableAdbRoot();
         doReturn(true).when(mMockDevice).isAdbRoot();
