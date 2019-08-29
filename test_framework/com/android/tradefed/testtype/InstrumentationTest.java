@@ -16,6 +16,9 @@
 
 package com.android.tradefed.testtype;
 
+import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.GCOV;
+import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.JACOCO;
+
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
@@ -26,6 +29,8 @@ import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner.TestSize;
 import com.android.ddmlib.testrunner.InstrumentationResultParser;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
@@ -69,6 +74,7 @@ public class InstrumentationTest
                 IResumableTest,
                 ITestCollector,
                 IAbiReceiver,
+                IConfigurationReceiver,
                 IInvocationContextReceiver,
                 IMetricCollectorReceiver {
 
@@ -243,6 +249,8 @@ public class InstrumentationTest
     )
     protected boolean mDebug = false;
 
+    /** @deprecated Use the --coverage option in CoverageOptions instead. */
+    @Deprecated
     @Option(
         name = "coverage",
         description =
@@ -301,8 +309,21 @@ public class InstrumentationTest
 
     private boolean mIsRerun = false;
 
+    private IConfiguration mConfig = null;
+
     private IInvocationContext mContext;
     private List<IMetricCollector> mCollectors = new ArrayList<>();
+
+    /** {@inheritDoc} */
+    @Override
+    public void setConfiguration(IConfiguration config) {
+        mConfig = config;
+    }
+
+    /** Gets the {@link IConfiguration} for this test. */
+    public IConfiguration getConfiguration() {
+        return mConfig;
+    }
 
     /**
      * {@inheritDoc}
@@ -606,12 +627,6 @@ public class InstrumentationTest
         return mForceAbi;
     }
 
-    /** Sets the --coverage option for testing. */
-    @VisibleForTesting
-    void setCoverage(boolean coverageEnabled) {
-        mCoverage = coverageEnabled;
-    }
-
     /** Sets the --merge-coverage-measurements option for testing. */
     @VisibleForTesting
     void setMergeCoverageMeasurements(boolean merge) {
@@ -853,7 +868,7 @@ public class InstrumentationTest
         if (mDebug) {
             mRunner.setDebug(true);
         }
-        if (mCoverage) {
+        if (mConfig.getCoverageOptions().isCoverageEnabled()) {
             mRunner.addInstrumentationArg("coverage", "true");
         }
 
@@ -921,7 +936,8 @@ public class InstrumentationTest
      * if this feature is disabled.
      */
     ITestInvocationListener addJavaCoverageListenerIfEnabled(ITestInvocationListener listener) {
-        if (mCoverage) {
+        if (mConfig.getCoverageOptions().isCoverageEnabled()
+                && mConfig.getCoverageOptions().getCoverageToolchains().contains(JACOCO)) {
             return new JavaCodeCoverageListener(getDevice(), mMergeCoverageMeasurements, listener);
         }
         return listener;
@@ -932,7 +948,8 @@ public class InstrumentationTest
      * listener} if this feature is disabled.
      */
     ITestInvocationListener addNativeCoverageListenerIfEnabled(ITestInvocationListener listener) {
-        if (mCoverage) {
+        if (mConfig.getCoverageOptions().isCoverageEnabled()
+                && mConfig.getCoverageOptions().getCoverageToolchains().contains(GCOV)) {
             return new NativeCodeCoverageListener(getDevice(), listener);
         }
         return listener;
@@ -980,7 +997,7 @@ public class InstrumentationTest
                 }
             }
             // Don't re-run any completed tests, unless this is a coverage run.
-            if (!mCoverage) {
+            if (!mConfig.getCoverageOptions().isCoverageEnabled()) {
                 expectedTests.removeAll(testTracker.getCurrentRunResults().getCompletedTests());
             }
             rerunTests(expectedTests, listener);
