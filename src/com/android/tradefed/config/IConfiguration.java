@@ -286,6 +286,13 @@ public interface IConfiguration {
     public void setLogOutput(ILeveledLogOutput logger);
 
     /**
+     * Set the {@link IRetryDecision}, replacing any existing value.
+     *
+     * @param decisionRetry
+     */
+    public void setRetryDecision(IRetryDecision decisionRetry);
+
+    /**
      * Set the {@link ILogSaver}, replacing any existing value.
      *
      * @param logSaver
