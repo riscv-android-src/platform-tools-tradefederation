@@ -105,7 +105,6 @@ public class RemoteInvocationExecution extends InvocationExecution {
             ITestInvocationListener listener)
             throws DeviceNotAvailableException, BuildRetrievalError {
         // TODO: handle multiple devices/build config
-        updateInvocationContext(context, config);
         StubBuildProvider stubProvider = new StubBuildProvider();
 
         String deviceName = config.getDeviceConfig().get(0).getDeviceName();
