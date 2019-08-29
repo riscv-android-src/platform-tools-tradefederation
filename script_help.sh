@@ -49,12 +49,18 @@ checkPath ${TF_JAVA}
 
 # check java version
 java_version_string=$(${TF_JAVA} -version 2>&1)
-JAVA_VERSION=$(echo "$java_version_string" | grep 'version [ "]\(1\.8\|9\).*[ "]')
+JAVA_VERSION=$(echo "$java_version_string" | grep 'version [ "]\(1\.8\|9\|11\).*[ "]')
 if [ "${JAVA_VERSION}" == "" ]; then
-    echo "Wrong java version. 1.8 or 9 is required. Found $java_version_string"
+    echo "Wrong java version. 1.8, 9 or 11 is required. Found $java_version_string"
     echo "PATH value:"
     echo "$PATH"
     exit 8
+fi
+
+# check if java is above 9 and supports add-opens
+JAVA_VERSION=$(echo "$java_version_string" | grep 'version [ "]\(9\|11\).*[ "]')
+if [ "${JAVA_VERSION}" != "" ]; then
+    ADD_OPENS_FLAG="--add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/sun.reflect.annotation=ALL-UNNAMED"
 fi
 
 # check debug flag and set up remote debugging
