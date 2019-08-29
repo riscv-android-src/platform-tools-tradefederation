@@ -877,6 +877,12 @@ public class Configuration implements IConfiguration {
         setConfigurationObjectNoThrow(LOG_SAVER_TYPE_NAME, logSaver);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void setRetryDecision(IRetryDecision decisionRetry) {
+        setConfigurationObjectNoThrow(RETRY_DECISION_TYPE_NAME, decisionRetry);
+    }
+
     /** Sets the {@link ConfigurationDescriptor} to be used in the configuration. */
     private void setConfigurationDescriptor(ConfigurationDescriptor configDescriptor) {
         setConfigurationObjectNoThrow(CONFIGURATION_DESCRIPTION_TYPE_NAME, configDescriptor);
