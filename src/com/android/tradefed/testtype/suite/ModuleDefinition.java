@@ -878,6 +878,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     /** Sets the {@link IRetryDecision} to be used for intra-module retry. */
     public final void setRetryDecision(IRetryDecision decision) {
         mRetryDecision = decision;
+        // Carry the retry decision to the module configuration
+        mModuleConfiguration.setRetryDecision(decision);
     }
 
     /** Returns a list of tests that ran in this module. */
