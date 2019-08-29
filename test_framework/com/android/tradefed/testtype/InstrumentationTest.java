@@ -48,6 +48,8 @@ import com.android.tradefed.result.LogcatCrashResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.ddmlib.DefaultRemoteAndroidTestRunner;
+import com.android.tradefed.retry.IRetryDecision;
+import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.ListInstrumentationParser;
@@ -310,7 +312,6 @@ public class InstrumentationTest
     private boolean mIsRerun = false;
 
     private IConfiguration mConfig = null;
-
     private IInvocationContext mContext;
     private List<IMetricCollector> mCollectors = new ArrayList<>();
 
@@ -999,6 +1000,14 @@ public class InstrumentationTest
             // Don't re-run any completed tests, unless this is a coverage run.
             if (!mConfig.getCoverageOptions().isCoverageEnabled()) {
                 expectedTests.removeAll(testTracker.getCurrentRunResults().getCompletedTests());
+                IRetryDecision decision = mConfig.getRetryDecision();
+                if (!RetryStrategy.NO_RETRY.equals(decision.getRetryStrategy())
+                        && decision.getMaxRetryCount() > 1) {
+                    // Delegate retry to the module/invocation level.
+                    // This prevents the InstrumentationTest retry from re-running by itself and
+                    // creating overhead.
+                    return;
+                }
             }
             rerunTests(expectedTests, listener);
         }
