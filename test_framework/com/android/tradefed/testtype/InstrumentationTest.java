@@ -939,6 +939,7 @@ public class InstrumentationTest
     ITestInvocationListener addJavaCoverageListenerIfEnabled(ITestInvocationListener listener) {
         if (mConfig.getCoverageOptions().isCoverageEnabled()
                 && mConfig.getCoverageOptions().getCoverageToolchains().contains(JACOCO)) {
+            // TODO(b/137857876): Pass cross-process coverage options to the Java listener.
             return new JavaCodeCoverageListener(getDevice(), mMergeCoverageMeasurements, listener);
         }
         return listener;
@@ -951,7 +952,8 @@ public class InstrumentationTest
     ITestInvocationListener addNativeCoverageListenerIfEnabled(ITestInvocationListener listener) {
         if (mConfig.getCoverageOptions().isCoverageEnabled()
                 && mConfig.getCoverageOptions().getCoverageToolchains().contains(GCOV)) {
-            return new NativeCodeCoverageListener(getDevice(), listener);
+            return new NativeCodeCoverageListener(
+                    getDevice(), mConfig.getCoverageOptions(), listener);
         }
         return listener;
     }
