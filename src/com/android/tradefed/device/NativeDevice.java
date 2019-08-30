@@ -4371,7 +4371,7 @@ public class NativeDevice implements IManagedTestDevice {
     /**
      * Check current system process is restarted after last reboot
      *
-     * @param the system_server {@link ProcessInfo}
+     * @param systemServerProcess the system_server {@link ProcessInfo}
      * @return true if system_server process restarted after last reboot; false if not
      * @throws DeviceNotAvailableException
      */
