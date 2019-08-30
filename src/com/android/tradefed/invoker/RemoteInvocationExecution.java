@@ -93,9 +93,13 @@ public class RemoteInvocationExecution extends InvocationExecution {
     private static final int MAX_CONNECTION_REFUSED_COUNT = 3;
     private static final int MAX_PUSH_TF_ATTEMPTS = 3;
     private static final int MAX_WORKER_THREAD = 3;
+    private static final String TRADEFED_EARLY_TERMINATION =
+            "Remote Tradefed might have terminated early.\nRemote Stderr:\n%s";
 
     private String mRemoteTradefedDir = null;
     private String mRemoteAdbPath = null;
+    private ProtoResultParser mProtoParser = null;
+    private String mRemoteConsoleStdErr = null;
 
     @Override
     public boolean fetchBuild(
@@ -359,19 +363,14 @@ public class RemoteInvocationExecution extends InvocationExecution {
         // Sleep a bit to let the process start
         RunUtil.getDefault().sleep(10000L);
 
+        mProtoParser = new ProtoResultParser(currentInvocationListener, context, false, "remote-");
         // Monitor the remote invocation to ensure it's completing. Block until timeout or stops
         // running.
         boolean stillRunning = true;
         try {
             stillRunning =
                     isStillRunning(
-                            currentInvocationListener,
-                            configFile,
-                            info,
-                            options,
-                            runUtil,
-                            config,
-                            context);
+                            currentInvocationListener, configFile, info, options, runUtil, config);
         } finally {
             // Fetch the logs for debugging
             File stdoutFile =
@@ -395,6 +394,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                             PULL_RESULT_TIMEOUT,
                             mRemoteTradefedDir + STDERR_FILE);
             if (stderrFile != null) {
+                mRemoteConsoleStdErr = FileUtil.readStringFromFile(stderrFile);
                 try (InputStreamSource source = new FileInputStreamSource(stderrFile, true)) {
                     currentInvocationListener.testLog(STDERR_FILE, LogDataType.TEXT, source);
                 }
@@ -406,11 +406,20 @@ public class RemoteInvocationExecution extends InvocationExecution {
             fetchAndProcessResults(
                     stillRunning,
                     currentInvocationListener,
-                    context,
                     info,
                     options,
                     runUtil,
                     mRemoteTradefedDir);
+        } else {
+            if (!mProtoParser.invocationEndedReached()) {
+                String message =
+                        String.format(
+                                "Parsing of results protos might be incomplete: invocation ended "
+                                        + "of remote execution was not found. "
+                                        + TRADEFED_EARLY_TERMINATION,
+                                mRemoteConsoleStdErr);
+                currentInvocationListener.invocationFailed(new RuntimeException(message));
+            }
         }
     }
 
@@ -420,8 +429,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
             GceAvdInfo info,
             TestDeviceOptions options,
             IRunUtil runUtil,
-            IConfiguration config,
-            IInvocationContext context)
+            IConfiguration config)
             throws IOException {
         long maxTimeout = config.getCommandOptions().getInvocationTimeout();
         Long endTime = null;
@@ -431,12 +439,6 @@ public class RemoteInvocationExecution extends InvocationExecution {
         boolean stillRunning = true;
         int errorConnectCount = 0;
         int currentIndex = 0;
-        ProtoResultParser parser =
-                new ProtoResultParser(
-                        currentInvocationListener,
-                        context, /* Don't report invocation level */
-                        false,
-                        "remote-");
         while (stillRunning) {
             if (config.getCommandOptions().shouldReportModuleProgression()) {
                 File resultFile =
@@ -449,7 +451,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 if (resultFile != null) {
                     currentIndex++;
                     try {
-                        parser.processFileProto(resultFile);
+                        mProtoParser.processFileProto(resultFile);
                     } finally {
                         FileUtil.deleteFile(resultFile);
                     }
@@ -509,16 +511,9 @@ public class RemoteInvocationExecution extends InvocationExecution {
                                 mRemoteTradefedDir + PROTO_RESULT_NAME + currentIndex);
                 if (resultFile != null) {
                     currentIndex++;
-                    parser.processFileProto(resultFile);
+                    mProtoParser.processFileProto(resultFile);
                 }
             } while (resultFile != null);
-
-            if (!parser.invocationEndedReached()) {
-                currentInvocationListener.invocationFailed(
-                        new RuntimeException(
-                                "Parsing of results protos might be incomplete: invocation ended "
-                                        + "of remote execution was not found."));
-            }
         }
         return stillRunning;
     }
@@ -656,7 +651,6 @@ public class RemoteInvocationExecution extends InvocationExecution {
     private void fetchAndProcessResults(
             boolean wasStillRunning,
             ITestInvocationListener invocationListener,
-            IInvocationContext context,
             GceAvdInfo info,
             TestDeviceOptions options,
             IRunUtil runUtil,
@@ -678,16 +672,16 @@ public class RemoteInvocationExecution extends InvocationExecution {
             invocationListener.invocationFailed(
                     new RuntimeException(
                             String.format(
-                                    "Could not find remote result file at %s",
-                                    resultDirPath + PROTO_RESULT_NAME)));
+                                    "Could not find remote result file at %s. "
+                                            + TRADEFED_EARLY_TERMINATION,
+                                    resultDirPath + PROTO_RESULT_NAME,
+                                    mRemoteConsoleStdErr)));
             return;
         }
         CLog.d("Fetched remote result file!");
         // Report result to listener.
         try {
-            ProtoResultParser parser =
-                    new ProtoResultParser(invocationListener, context, false, "remote-");
-            parser.processFinalizedProto(TestRecordProtoUtil.readFromFile(resultFile));
+            mProtoParser.processFinalizedProto(TestRecordProtoUtil.readFromFile(resultFile));
         } finally {
             FileUtil.deleteFile(resultFile);
         }
