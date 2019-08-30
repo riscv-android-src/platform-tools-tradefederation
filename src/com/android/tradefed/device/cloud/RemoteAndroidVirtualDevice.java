@@ -190,6 +190,10 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                 CommonLogRemoteFileUtil.fetchCommonFiles(
                         mTestLogger, mGceAvd, getOptions(), getRunUtil());
 
+                // Fetch all tombstones if any.
+                CommonLogRemoteFileUtil.fetchTombstones(
+                        mTestLogger, mGceAvd, getOptions(), getRunUtil());
+
                 // Cleanup GCE first to make sure ssh tunnel has nowhere to go.
                 if (!getOptions().shouldSkipTearDown()) {
                     getGceHandler().shutdownGce();
