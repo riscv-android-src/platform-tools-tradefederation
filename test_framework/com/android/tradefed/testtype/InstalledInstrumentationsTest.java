@@ -16,6 +16,8 @@
 package com.android.tradefed.testtype;
 
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
@@ -52,7 +54,8 @@ public class InstalledInstrumentationsTest
                 IShardableTest,
                 IMetricCollectorReceiver,
                 IInvocationContextReceiver,
-                IAutoRetriableTest {
+                IAutoRetriableTest,
+                IConfigurationReceiver {
 
     private static final String PM_LIST_CMD = "pm list instrumentation";
     private static final String LINE_SEPARATOR = "\\r?\\n";
@@ -190,6 +193,7 @@ public class InstalledInstrumentationsTest
     private int mShardIndex = 0;
     private List<IMetricCollector> mMetricCollectorList = new ArrayList<>();
     private IInvocationContext mContext;
+    private IConfiguration mConfiguration;
 
     private List<InstrumentationTest> mTests = null;
 
@@ -215,6 +219,11 @@ public class InstalledInstrumentationsTest
 
         CLog.d("No test run or test case failures. No need to retry.");
         return false;
+    }
+
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mConfiguration = configuration;
     }
 
     /**
@@ -353,6 +362,7 @@ public class InstalledInstrumentationsTest
             CLog.d("Running test %s on %s", test.getPackageName(), getDevice().getSerialNumber());
 
             test.setDevice(getDevice());
+            test.setConfiguration(mConfiguration);
             if (mTestClass != null) {
                 test.setClassName(mTestClass);
                 if (mTestPackageName != null) {
