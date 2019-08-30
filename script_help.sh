@@ -26,14 +26,14 @@
 
 checkPath() {
     if ! type -P "$1" &> /dev/null; then
-        echo "Unable to find $1."
+        >&2 echo "Unable to find $1."
         exit
     fi;
 }
 
 checkFile() {
     if [ ! -f "$1" ]; then
-        echo "Unable to locate $1"
+        >&2 echo "Unable to locate $1"
         exit
     fi;
 }
@@ -51,9 +51,9 @@ checkPath ${TF_JAVA}
 java_version_string=$(${TF_JAVA} -version 2>&1)
 JAVA_VERSION=$(echo "$java_version_string" | grep 'version [ "]\(1\.8\|9\|11\).*[ "]')
 if [ "${JAVA_VERSION}" == "" ]; then
-    echo "Wrong java version. 1.8, 9 or 11 is required. Found $java_version_string"
-    echo "PATH value:"
-    echo "$PATH"
+    >&2 echo "Wrong java version. 1.8, 9 or 11 is required. Found $java_version_string"
+    >&2 echo "PATH value:"
+    >&2 echo "$PATH"
     exit 8
 fi
 
@@ -87,7 +87,7 @@ elif [ ! -z "${ANDROID_HOST_OUT}" ]; then
 fi
 
 if [ -z "${TF_PATH}" ]; then
-    echo "ERROR: Could not find tradefed jar files"
+    >&2 echo "ERROR: Could not find tradefed jar files"
     exit
 fi
 
