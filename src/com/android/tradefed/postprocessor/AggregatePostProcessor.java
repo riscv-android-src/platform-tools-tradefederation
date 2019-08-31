@@ -17,6 +17,7 @@ package com.android.tradefed.postprocessor;
 
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -54,8 +55,10 @@ public class AggregatePostProcessor extends BasePostProcessor {
             new HashMap<String, ArrayListMultimap<String, Metric>>();
 
     @Override
-    public Map<String, Metric.Builder> processTestMetrics(
-            TestDescription testDescription, HashMap<String, Metric> testMetrics) {
+    public Map<String, Metric.Builder> processTestMetricsAndLogs(
+            TestDescription testDescription,
+            HashMap<String, Metric> testMetrics,
+            Map<String, LogFile> testLogs) {
         // TODO(b/118708851): Move this processing elsewhere once AnTS is ready.
         // Use the string representation of the test description to key the tests.
         String fullTestName = testDescription.toString();
@@ -103,7 +106,8 @@ public class AggregatePostProcessor extends BasePostProcessor {
     }
 
     @Override
-    public Map<String, Metric.Builder> processRunMetrics(HashMap<String, Metric> rawMetrics) {
+    public Map<String, Metric.Builder> processRunMetricsAndLogs(
+            HashMap<String, Metric> rawMetrics, Map<String, LogFile> runLogs) {
         // Aggregate the test run metrics which has comma separated values which can be
         // parsed to double values.
         Map<String, Metric.Builder> aggregateMetrics = new HashMap<String, Metric.Builder>();

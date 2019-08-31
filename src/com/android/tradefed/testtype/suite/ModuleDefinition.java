@@ -19,6 +19,7 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
@@ -437,6 +438,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 if (test instanceof IInvocationContextReceiver) {
                     ((IInvocationContextReceiver) test)
                             .setInvocationContext(mModuleInvocationContext);
+                }
+                if (test instanceof IConfigurationReceiver) {
+                    ((IConfigurationReceiver) test).setConfiguration(mModuleConfiguration);
                 }
                 if (test instanceof ISystemStatusCheckerReceiver) {
                     // We do not pass down Status checker because they are already running at the
@@ -878,6 +882,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     /** Sets the {@link IRetryDecision} to be used for intra-module retry. */
     public final void setRetryDecision(IRetryDecision decision) {
         mRetryDecision = decision;
+        // Carry the retry decision to the module configuration
+        mModuleConfiguration.setRetryDecision(decision);
     }
 
     /** Returns a list of tests that ran in this module. */
