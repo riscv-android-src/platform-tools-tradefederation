@@ -25,6 +25,7 @@ import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
@@ -103,7 +104,8 @@ public class ModuleDefinitionTest {
 
     private IRetryDecision mDecision = new BaseRetryDecision();
 
-    private interface ITestInterface extends IRemoteTest, IBuildReceiver, IDeviceTest {}
+    private interface ITestInterface
+            extends IRemoteTest, IBuildReceiver, IDeviceTest, IConfigurationReceiver {}
 
     /** Test implementation that allows us to exercise different use cases * */
     private class TestObject implements ITestInterface {
@@ -114,6 +116,7 @@ public class ModuleDefinitionTest {
         private boolean mShouldThrow;
         private boolean mDeviceUnresponsive = false;
         private boolean mThrowError = false;
+        private IConfiguration mConfig;
 
         public TestObject(String runName, int numTest, boolean shouldThrow) {
             mRunName = runName;
@@ -139,6 +142,7 @@ public class ModuleDefinitionTest {
 
         @Override
         public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+            Assert.assertNotNull(mConfig);
             listener.testRunStarted(mRunName, mNumTest);
             for (int i = 0; i < mNumTest; i++) {
                 TestDescription test = new TestDescription(mRunName + "class", "test" + i);
@@ -170,6 +174,11 @@ public class ModuleDefinitionTest {
         @Override
         public ITestDevice getDevice() {
             return mDevice;
+        }
+
+        @Override
+        public void setConfiguration(IConfiguration configuration) {
+            mConfig = configuration;
         }
     }
 
@@ -343,6 +352,7 @@ public class ModuleDefinitionTest {
         mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
         mMockTest.setBuild(EasyMock.eq(mMockBuildInfo));
         mMockTest.setDevice(EasyMock.eq(mMockDevice));
+        mMockTest.setConfiguration(EasyMock.anyObject());
         mMockTest.run((ITestInvocationListener) EasyMock.anyObject());
         EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
         mMockCleaner.tearDown(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo),
@@ -370,6 +380,7 @@ public class ModuleDefinitionTest {
         mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
         mMockTest.setBuild(EasyMock.eq(mMockBuildInfo));
         mMockTest.setDevice(EasyMock.eq(mMockDevice));
+        mMockTest.setConfiguration(EasyMock.anyObject());
         mMockTest.run((ITestInvocationListener) EasyMock.anyObject());
         EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
         mMockCleaner.tearDown(
@@ -501,6 +512,7 @@ public class ModuleDefinitionTest {
         EasyMock.expect(mMockCleaner.isDisabled()).andStubReturn(true);
         mMockTest.setBuild(EasyMock.eq(mMockBuildInfo));
         mMockTest.setDevice(EasyMock.eq(mMockDevice));
+        mMockTest.setConfiguration(EasyMock.anyObject());
         mMockTest.run((ITestInvocationListener) EasyMock.anyObject());
         mMockListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
@@ -526,6 +538,7 @@ public class ModuleDefinitionTest {
         mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
         mMockTest.setBuild(EasyMock.eq(mMockBuildInfo));
         mMockTest.setDevice(EasyMock.eq(mMockDevice));
+        mMockTest.setConfiguration(EasyMock.anyObject());
         mMockTest.run((ITestInvocationListener) EasyMock.anyObject());
         EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(true);
         // But no teardown expected from Cleaner.
@@ -1070,6 +1083,9 @@ public class ModuleDefinitionTest {
         public ITestDevice getDevice() {
             return null;
         }
+
+        @Override
+        public void setConfiguration(IConfiguration configuration) {}
     }
 
     /**
