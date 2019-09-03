@@ -407,10 +407,6 @@ public class TestInvocation implements ITestInvocation {
     private void startInvocation(IConfiguration config, IInvocationContext context,
             ITestInvocationListener listener) {
         logStartInvocation(context, config);
-        if (config.getCommandLine() != null) {
-            context.addInvocationAttribute(
-                    TestInvocation.COMMAND_ARGS_KEY, config.getCommandLine());
-        }
         listener.invocationStarted(context);
     }
 
@@ -706,6 +702,7 @@ public class TestInvocation implements ITestInvocation {
             mode = RunMode.REMOTE_INVOCATION;
         }
         IInvocationExecution invocationPath = createInvocationExec(mode);
+        updateInvocationContext(context, config);
 
         // Create the Guice scope
         InvocationScope scope = getInvocationScope();
@@ -929,5 +926,37 @@ public class TestInvocation implements ITestInvocation {
                         source);
             }
         }
+    }
+
+    /**
+     * Update the {@link IInvocationContext} with additional info from the {@link IConfiguration}.
+     *
+     * @param context the {@link IInvocationContext}
+     * @param config the {@link IConfiguration}
+     */
+    private void updateInvocationContext(IInvocationContext context, IConfiguration config) {
+        if (config.getCommandLine() != null) {
+            context.addInvocationAttribute(
+                    TestInvocation.COMMAND_ARGS_KEY, config.getCommandLine());
+        }
+        if (config.getCommandOptions().getShardCount() != null) {
+            context.addInvocationAttribute(
+                    "shard_count", config.getCommandOptions().getShardCount().toString());
+        }
+        if (config.getCommandOptions().getShardIndex() != null) {
+            context.addInvocationAttribute(
+                    "shard_index", config.getCommandOptions().getShardIndex().toString());
+        }
+        context.setTestTag(getTestTag(config));
+    }
+
+    /** Helper to create the test tag from the configuration. */
+    private String getTestTag(IConfiguration config) {
+        String testTag = config.getCommandOptions().getTestTag();
+        if (config.getCommandOptions().getTestTagSuffix() != null) {
+            testTag =
+                    String.format("%s-%s", testTag, config.getCommandOptions().getTestTagSuffix());
+        }
+        return testTag;
     }
 }
