@@ -102,7 +102,6 @@ public class InvocationExecution implements IInvocationExecution {
             throws DeviceNotAvailableException, BuildRetrievalError {
         String currentDeviceName = null;
         try {
-            updateInvocationContext(context, config);
             // TODO: evaluate fetching build in parallel
             for (String deviceName : context.getDeviceConfigNames()) {
                 currentDeviceName = deviceName;
@@ -145,7 +144,6 @@ public class InvocationExecution implements IInvocationExecution {
                 IBuildInfo errorBuild = e.getBuildInfo();
                 updateBuild(errorBuild, config);
                 context.addDeviceBuildInfo(currentDeviceName, errorBuild);
-                updateInvocationContext(context, config);
             }
             throw e;
         }
@@ -584,25 +582,6 @@ public class InvocationExecution implements IInvocationExecution {
                 listener.testLog(name, LogDataType.TEXT, emulatorOutput);
             }
         }
-    }
-
-    /**
-     * Update the {@link IInvocationContext} with additional info from the {@link IConfiguration}.
-     *
-     * @param context the {@link IInvocationContext}
-     * @param config the {@link IConfiguration}
-     */
-    void updateInvocationContext(IInvocationContext context, IConfiguration config) {
-        // TODO: Once reporting on context is done, only set context attributes
-        if (config.getCommandOptions().getShardCount() != null) {
-            context.addInvocationAttribute(
-                    "shard_count", config.getCommandOptions().getShardCount().toString());
-        }
-        if (config.getCommandOptions().getShardIndex() != null) {
-            context.addInvocationAttribute(
-                    "shard_index", config.getCommandOptions().getShardIndex().toString());
-        }
-        context.setTestTag(getTestTag(config));
     }
 
     /** Helper to create the test tag from the configuration. */
