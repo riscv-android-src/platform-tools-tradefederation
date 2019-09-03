@@ -17,6 +17,7 @@ package com.android.tradefed.config;
 
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.LocalDeviceBuildProvider;
+import com.android.tradefed.config.ConfigurationDef.ConfigObjectDef;
 import com.android.tradefed.config.ConfigurationFactory.ConfigId;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -24,6 +25,9 @@ import com.android.tradefed.targetprep.DeviceWiper;
 import com.android.tradefed.targetprep.StubTargetPreparer;
 import com.android.tradefed.targetprep.multi.StubMultiTargetPreparer;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.StreamUtil;
+
+import com.google.common.base.Joiner;
 
 import junit.framework.TestCase;
 
@@ -36,11 +40,16 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 /**
  * Unit tests for {@link ConfigurationFactory}
@@ -57,6 +66,14 @@ public class ConfigurationFactoryTest extends TestCase {
     private static final String GLOBAL_TEST_CONFIG = "global-config";
     private static final String INCLUDE_CONFIG = "include-config";
 
+    private static final List<String> JAR_TO_CHECK = new ArrayList<>();
+
+    static {
+        JAR_TO_CHECK.add("tradefed-contrib.jar");
+        JAR_TO_CHECK.add("tf-contrib-tests.jar");
+        JAR_TO_CHECK.add("google-tradefed-contrib.jar");
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -72,10 +89,8 @@ public class ConfigurationFactoryTest extends TestCase {
                 };
     }
 
-    /**
-     * Sanity test to ensure all config names on classpath are loadable
-     */
-    public void testLoadAllConfigs() throws ConfigurationException {
+    /** Sanity test to ensure all config names on classpath are loadable */
+    public void testLoadAllConfigs() throws Exception {
         ConfigurationFactory spyFactory = Mockito.spy(mRealFactory);
         Mockito.doReturn(new HashSet<String>()).when(spyFactory).getConfigNamesFromTestCases(null);
 
@@ -83,6 +98,40 @@ public class ConfigurationFactoryTest extends TestCase {
         spyFactory.loadAllConfigs(false);
         assertTrue(spyFactory.getMapConfig().size() > 0);
         Mockito.verify(spyFactory, Mockito.times(1)).getConfigNamesFromTestCases(null);
+
+        // Verify that there is no cross-referencing between core and contrib:
+        // core configs should not use any contrib object.
+        Map<String, String> configAndJar = spyFactory.getConfigSetFromClasspathFromJar(null);
+        Map<String, List<String>> classInContribJars = getClassInContribJar();
+
+        List<String> exceptionConfigJar = new ArrayList<>();
+        for (Entry<ConfigId, ConfigurationDef> entry : spyFactory.getMapConfig().entrySet()) {
+            String configName = entry.getKey().name;
+            String jarName = configAndJar.get(configName);
+            if (JAR_TO_CHECK.contains(jarName)) {
+                continue;
+            }
+
+            ConfigurationDef cDef = entry.getValue();
+            for (List<ConfigObjectDef> cObjects : cDef.getObjectClassMap().values()) {
+                for (ConfigObjectDef o : cObjects) {
+                    for (String contribJar : classInContribJars.keySet()) {
+                        if (classInContribJars.get(contribJar).contains(o.mClassName)) {
+                            exceptionConfigJar.add(
+                                    String.format(
+                                            "%s is a core-configuration (%s). It shouldn't contain a contrib objects '%s' from %s.",
+                                            configName, jarName, o.mClassName, contribJar));
+                        }
+                    }
+                }
+            }
+        }
+        if (!exceptionConfigJar.isEmpty()) {
+            fail(
+                    String.format(
+                            "Found some dependencies of core on contrib:\n%s",
+                            Joiner.on("\n").join(exceptionConfigJar)));
+        }
     }
 
     /**
@@ -1737,5 +1786,60 @@ public class ConfigurationFactoryTest extends TestCase {
         } finally {
             FileUtil.deleteFile(tmpConfig);
         }
+    }
+
+    private static String getClassName(String name) {
+        // -6 because of .class
+        return name.substring(0, name.length() - 6).replace('/', '.');
+    }
+
+    private Map<String, List<String>> getClassInContribJar() throws IOException {
+        Map<String, List<String>> jarToObject = new LinkedHashMap<String, List<String>>();
+        for (File jar : getListOfBuiltJars()) {
+            List<String> objects = new ArrayList<>();
+            JarFile jarFile = null;
+            try {
+                jarFile = new JarFile(jar);
+                Enumeration<JarEntry> e = jarFile.entries();
+
+                while (e.hasMoreElements()) {
+                    JarEntry je = e.nextElement();
+                    if (je.isDirectory()
+                            || !je.getName().endsWith(".class")
+                            || je.getName().contains("$")) {
+                        continue;
+                    }
+                    String className = getClassName(je.getName());
+                    objects.add(className);
+                }
+            } finally {
+                StreamUtil.close(jarFile);
+            }
+            jarToObject.put(jar.getName(), objects);
+        }
+        return jarToObject;
+    }
+
+    private List<File> getListOfBuiltJars() {
+        // testJarPath is the path of the jar file that contains this test
+        // class.  We assume the other jars live in the same dir as this test
+        // class' jar.
+        String testJarPath =
+                ConfigurationFactoryTest.class
+                        .getProtectionDomain()
+                        .getCodeSource()
+                        .getLocation()
+                        .getPath();
+        File jarFilePath = new File(testJarPath);
+        String jarFileParentPath = jarFilePath.getParent();
+        List<File> listOfJars = new ArrayList<File>();
+        File jarToCheck;
+        for (String jar : JAR_TO_CHECK) {
+            jarToCheck = new File(jarFileParentPath, jar);
+            if (jarToCheck.exists()) {
+                listOfJars.add(jarToCheck);
+            }
+        }
+        return listOfJars;
     }
 }
