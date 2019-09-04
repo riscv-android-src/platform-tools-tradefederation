@@ -743,18 +743,6 @@ public class RemoteInvocationExecution extends InvocationExecution {
             return false;
         }
 
-        // Setup the tuntap interface if needed
-        CommandResult tapSetup =
-                MultiUserSetupUtil.setupNetworkInterface(
-                        userId, info, options, runUtil, NEW_USER_TIMEOUT);
-        if (tapSetup != null) {
-            String errorMsg =
-                    String.format("Failed to setup network interface: %s", tapSetup.getStderr());
-            CLog.e(errorMsg);
-            listener.invocationFailed(new RuntimeException(errorMsg));
-            return false;
-        }
-
         List<String> startCommand = LaunchCvdHelper.createSimpleDeviceCommand(username, true);
         if (token != null) {
             token.acquire();
