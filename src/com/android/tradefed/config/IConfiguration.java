@@ -556,14 +556,14 @@ public interface IConfiguration {
 
     /**
      * Resolve options of {@link File} pointing to a remote location. This requires {@link
-     * #cleanDynamicOptionFiles()} to be called to clean up the files.
+     * #cleanConfigurationData()} to be called to clean up the files.
      *
      * @throws ConfigurationException
      */
     public void resolveDynamicOptions() throws ConfigurationException;
 
     /** Delete any files that was downloaded to resolved Option fields of remote files. */
-    public void cleanDynamicOptionFiles();
+    public void cleanConfigurationData();
 
     /**
      * Sets the command line used to create this {@link IConfiguration}.
