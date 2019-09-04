@@ -462,6 +462,8 @@ public class GTestTest {
         final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
 
         MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage"))
+                .andReturn("");
         EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 -1")).andReturn("");
         EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
@@ -518,6 +520,8 @@ public class GTestTest {
         final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
 
         MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage"))
+                .andReturn("");
         // Get the pids to flush coverage data.
         EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(0))).andReturn("1");
