@@ -1360,9 +1360,12 @@ public class Configuration implements IConfiguration {
 
     /** {@inheritDoc} */
     @Override
-    public void cleanDynamicOptionFiles() {
+    public void cleanConfigurationData() {
         for (File file : mRemoteFiles) {
             FileUtil.recursiveDelete(file);
+        }
+        for (Object o : getAllConfigurationObjects()) {
+            OptionSetter.sChangedFields.remove(o);
         }
     }
 
