@@ -17,6 +17,7 @@ Classes for bug events history
 """
 
 import datetime
+import logging
 import json
 import os
 
@@ -79,10 +80,14 @@ class BugDetector(object):
         Returns:
             An object of loading from a history.
         """
+        history = {}
         if os.path.exists(self.file):
             with open(self.file) as json_file:
-                return json.load(json_file)
-        return {}
+                try:
+                    history = json.load(json_file)
+                except ValueError as e:
+                    logging.debug(e)
+        return history
 
     def detect_bug_caught(self):
         """Detection of catching bugs.
