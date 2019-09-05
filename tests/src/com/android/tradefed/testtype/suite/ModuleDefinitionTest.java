@@ -24,6 +24,8 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
+import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.OptionSetter;
@@ -67,6 +69,7 @@ import com.android.tradefed.testtype.suite.module.TestFailureModuleController;
 import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -271,6 +274,15 @@ public class ModuleDefinitionTest {
         @Override
         public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
             throw new RuntimeException("early failure!");
+        }
+    }
+
+    @BeforeClass
+    public static void SetUpClass() throws ConfigurationException {
+        try {
+            GlobalConfiguration.createGlobalConfiguration(new String[] {"empty"});
+        } catch (IllegalStateException e) {
+            // Expected outside IDE.
         }
     }
 
