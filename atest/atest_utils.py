@@ -27,6 +27,7 @@ import pickle
 import re
 import subprocess
 import sys
+
 try:
     # If PYTHON2
     from urllib2 import urlopen
@@ -55,6 +56,7 @@ CMD_RESULT_PATH = os.path.join(os.environ.get(constants.ANDROID_BUILD_TOP,
 TEST_INFO_CACHE_ROOT = os.path.join(os.path.expanduser('~'), '.atest',
                                     'info_cache')
 _DEFAULT_TERMINAL_WIDTH = 80
+
 
 def get_build_cmd():
     """Compose build command with relative path and flag "--make-mode".
