@@ -273,13 +273,6 @@ public abstract class ITestSuite
     private Set<String> mAllowedPreparers = new HashSet<>();
 
     @Option(
-        name = "enable-module-dynamic-download",
-        description =
-                "Whether or not to allow the downloading of dynamic @option files at module level."
-    )
-    private boolean mEnableDynamicDownload = false;
-
-    @Option(
         name = "intra-module-sharding",
         description = "Whether or not to allow intra-module sharding."
     )
@@ -760,7 +753,6 @@ public abstract class ITestSuite
         // Pass the retry decision to be used.
         module.setRetryDecision(decision);
 
-        module.setEnableDynamicDownload(mEnableDynamicDownload);
         // Actually run the module
         module.run(
                 listener,
