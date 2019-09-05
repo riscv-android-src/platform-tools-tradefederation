@@ -4304,9 +4304,7 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@inheritDoc} */
     @Override
     public Map<Long, String> getBootHistory() throws DeviceNotAvailableException {
-        // getProperty(DeviceProperties.BOOT_REASON_HISTORY) will not be able to handle boot history
-        // output format properly (tracked by b/139192891).
-        String output = executeShellCommand("getprop " + DeviceProperties.BOOT_REASON_HISTORY);
+        String output = getProperty(DeviceProperties.BOOT_REASON_HISTORY);
         /* Sample output:
         kernel_panic,1556587278
         reboot,,1556238008
@@ -4371,7 +4369,7 @@ public class NativeDevice implements IManagedTestDevice {
     /**
      * Check current system process is restarted after last reboot
      *
-     * @param the system_server {@link ProcessInfo}
+     * @param systemServerProcess the system_server {@link ProcessInfo}
      * @return true if system_server process restarted after last reboot; false if not
      * @throws DeviceNotAvailableException
      */
