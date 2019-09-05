@@ -353,6 +353,7 @@ public class ProtoResultParser {
         // If we find debugging information, the test run failed and we reflect it.
         if (runProto.hasDebugInfo()) {
             mListener.testRunFailed(runProto.getDebugInfo().getErrorMessage());
+            log("Test run failure proto: %s", runProto.getDebugInfo().getErrorMessage());
         }
         handleLogs(runProto);
         log("Test run ended proto: %s", runProto.getTestRecordId());
