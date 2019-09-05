@@ -1403,9 +1403,9 @@ public class TestDevice extends NativeDevice {
                 // disable keyguard if option is true
                 prePostBootSetup();
                 return true;
+            } else {
+                RunUtil.getDefault().sleep(getCheckNewUserSleep());
             }
-            RunUtil.getDefault().sleep(getCheckNewUserSleep());
-            executeShellCommand(String.format("am switch-user %d", userId));
         }
         CLog.e("User did not switch in the given %d timeout", timeout);
         return false;
