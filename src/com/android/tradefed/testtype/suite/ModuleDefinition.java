@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.suite;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationDescriptor;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -145,6 +146,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     // Token during sharding
     private Set<TokenProperty> mRequiredTokens = new HashSet<>();
+
+    private boolean mEnableDynamicDownload = false;
 
     /**
      * Constructor
@@ -339,47 +342,13 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // Exception generated during setUp or run of the tests
         Throwable preparationException = null;
         DeviceNotAvailableException runException = null;
+        // Resolve dynamic files
+        preparationException = invokeRemoteDynamic(mModuleConfiguration);
         // Setup
         long prepStartTime = getCurrentTime();
-
-        for (int i = 0; i < mModuleInvocationContext.getDeviceConfigNames().size(); i++) {
-            String deviceName = mModuleInvocationContext.getDeviceConfigNames().get(i);
-            ITestDevice device = mModuleInvocationContext.getDevice(deviceName);
-            if (i >= mPreparersPerDevice.size()) {
-                CLog.d(
-                        "Main configuration has more devices than the module configuration. '%s' "
-                                + "will not run any preparation.",
-                        deviceName);
-                continue;
-            }
-            List<ITargetPreparer> preparers = mPreparersPerDevice.get(deviceName);
-            if (preparers == null) {
-                CLog.w(
-                        "Module configuration devices mismatch the main configuration "
-                                + "(Missing device '%s'), resolving preparers by index.",
-                        deviceName);
-                String key = new ArrayList<>(mPreparersPerDevice.keySet()).get(i);
-                preparers = mPreparersPerDevice.get(key);
-            }
-            for (ITargetPreparer preparer : preparers) {
-                preparationException =
-                        runPreparerSetup(
-                                device,
-                                mModuleInvocationContext.getBuildInfo(deviceName),
-                                preparer,
-                                listener);
-                if (preparationException != null) {
-                    mIsFailedModule = true;
-                    CLog.e("Some preparation step failed. failing the module %s", getId());
-                    break;
-                }
-            }
-            if (preparationException != null) {
-                // If one device errored out, we skip the remaining devices.
-                break;
-            }
+        if (preparationException == null) {
+            preparationException = runTargetPreparation(listener);
         }
-
         // Skip multi-preparation if preparation already failed.
         if (preparationException == null) {
             for (IMultiTargetPreparer multiPreparer : mMultiPreparers) {
@@ -529,6 +498,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 mElapsedTearDown = getCurrentTime() - cleanStartTime;
                 // finalize results
                 if (preparationException == null) {
+                    mModuleConfiguration.cleanConfigurationData();
                     if (mMergeAttempts) {
                         reportFinalResults(
                                 listener, mExpectedTests, mTestsResults, null, tearDownException);
@@ -959,6 +929,11 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         listener.testModuleEnded();
     }
 
+    /** Whether or not to enable dynamic download at module level. */
+    public void setEnableDynamicDownload(boolean enableDynamicDownload) {
+        mEnableDynamicDownload = enableDynamicDownload;
+    }
+
     /**
      * Allow to load a module_controller object to tune how should a particular module run.
      *
@@ -990,5 +965,60 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
         InvocationMetricLogger.addInvocationMetrics(
                 InvocationMetricKey.AUTO_RETRY_TIME, retryTimeMs);
+    }
+
+    private Throwable runTargetPreparation(ITestLogger logger) {
+        Throwable preparationException = null;
+        for (int i = 0; i < mModuleInvocationContext.getDeviceConfigNames().size(); i++) {
+            String deviceName = mModuleInvocationContext.getDeviceConfigNames().get(i);
+            ITestDevice device = mModuleInvocationContext.getDevice(deviceName);
+            if (i >= mPreparersPerDevice.size()) {
+                CLog.d(
+                        "Main configuration has more devices than the module configuration. '%s' "
+                                + "will not run any preparation.",
+                        deviceName);
+                continue;
+            }
+            List<ITargetPreparer> preparers = mPreparersPerDevice.get(deviceName);
+            if (preparers == null) {
+                CLog.w(
+                        "Module configuration devices mismatch the main configuration "
+                                + "(Missing device '%s'), resolving preparers by index.",
+                        deviceName);
+                String key = new ArrayList<>(mPreparersPerDevice.keySet()).get(i);
+                preparers = mPreparersPerDevice.get(key);
+            }
+            for (ITargetPreparer preparer : preparers) {
+                preparationException =
+                        runPreparerSetup(
+                                device,
+                                mModuleInvocationContext.getBuildInfo(deviceName),
+                                preparer,
+                                logger);
+                if (preparationException != null) {
+                    mIsFailedModule = true;
+                    CLog.e("Some preparation step failed. failing the module %s", getId());
+                    // If one device errored out, we skip the remaining devices.
+                    return preparationException;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Handle calling the {@link IConfiguration#resolveDynamicOptions()}. */
+    private Exception invokeRemoteDynamic(IConfiguration moduleConfiguration) {
+        if (!mEnableDynamicDownload) {
+            return null;
+        }
+        // TODO: Add elapsed time tracking
+        try {
+            CLog.d("Attempting to resolve dynamic files from %s", getId());
+            moduleConfiguration.resolveDynamicOptions();
+            return null;
+        } catch (RuntimeException | ConfigurationException e) {
+            mIsFailedModule = true;
+            return e;
+        }
     }
 }
