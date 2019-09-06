@@ -21,6 +21,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.targetprep.DeviceFlashPreparer;
 
 import java.io.File;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -56,4 +57,7 @@ public interface IHostOptions {
 
     /** Validate that the options set on {@link IHostOptions} are valid. */
     void validateOptions() throws ConfigurationException;
+
+    /** Get labels for the host. */
+    public List<String> getLabels();
 }
