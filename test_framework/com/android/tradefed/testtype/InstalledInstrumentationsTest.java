@@ -189,6 +189,14 @@ public class InstalledInstrumentationsTest
     )
     private boolean mIsolatedStorage = true;
 
+    @Option(
+        name = "window-animation",
+        description =
+                "If set to false, the '--no-window-animation' flag will be passed to the am "
+                        + "instrument command. Only works for ICS or later."
+    )
+    private boolean mWindowAnimation = true;
+
     private int mTotalShards = 0;
     private int mShardIndex = 0;
     private List<IMetricCollector> mMetricCollectorList = new ArrayList<>();
