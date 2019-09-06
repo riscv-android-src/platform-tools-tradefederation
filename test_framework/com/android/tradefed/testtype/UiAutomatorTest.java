@@ -150,6 +150,14 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
     )
     private boolean mIsolatedStorage = true;
 
+    @Option(
+        name = "window-animation",
+        description =
+                "If set to false, the '--no-window-animation' flag will be passed to the am "
+                        + "instrument command. Only works for ICS or later."
+    )
+    private boolean mWindowAnimation = true;
+
     /**
      * {@inheritDoc}
      */
@@ -238,13 +246,21 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
                     new RemoteAndroidTestRunner(mPackage, mRunnerName, getDevice().getIDevice());
             String runOptions = "";
             // hidden-api-checks flag only exists in P and after.
-            if (!mHiddenApiChecks && getDevice().getApiLevel() >= 28) {
+            // Using a temp variable to consolidate the dynamic checks
+            int apiLevel = (!mHiddenApiChecks) || (!mWindowAnimation)
+                    ? getDevice().getApiLevel() : 0;
+            if (!mHiddenApiChecks && apiLevel >= 28) {
                 runOptions += "--no-hidden-api-checks ";
             }
             // isolated-storage flag only exists in Q and after.
             if (!mIsolatedStorage && getDevice().checkApiLevelAgainstNextRelease(29)) {
                 runOptions += "--no-isolated-storage ";
             }
+            // window-animation flag only exists in ICS and after.
+            if (!mWindowAnimation && apiLevel >= 14) {
+                runOptions += "--no-window-animation ";
+            }
+
             // Set the run options if any.
             if (!runOptions.isEmpty()) {
                 runner.setRunOptions(runOptions);
