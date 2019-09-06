@@ -429,6 +429,12 @@ public abstract class ITestSuite
                 continue;
             }
             filterPreparers(config.getValue(), mAllowedPreparers);
+
+            // Copy the CoverageOptions from the main configuration to the module configuration.
+            if (mMainConfiguration != null) {
+                config.getValue().setCoverageOptions(mMainConfiguration.getCoverageOptions());
+            }
+
             filteredConfig.put(config.getKey(), config.getValue());
             moduleNames.add(config.getValue().getConfigurationDescription().getModuleName());
         }
