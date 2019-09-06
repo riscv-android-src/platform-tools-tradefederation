@@ -291,6 +291,14 @@ public class InstrumentationTest
     )
     private boolean mIsolatedStorage = true;
 
+    @Option(
+        name = "window-animation",
+        description =
+                "If set to false, the '--no-window-animation' flag will be passed to the am "
+                        + "instrument command. Only works for ICS or later."
+    )
+    private boolean mWindowAnimation = true;
+
     private IAbi mAbi = null;
 
     private Collection<String> mInstallArgs = new ArrayList<>();
@@ -665,13 +673,21 @@ public class InstrumentationTest
         String abiName = resolveAbiName();
         String runOptions = "";
         // hidden-api-checks flag only exists in P and after.
-        if (!mHiddenApiChecks && getDevice().getApiLevel() >= 28) {
+        // Using a temp variable to consolidate the dynamic checks
+        int apiLevel = (!mHiddenApiChecks) || (!mWindowAnimation)
+                ? getDevice().getApiLevel() : 0;
+        if (!mHiddenApiChecks && apiLevel >= 28) {
             runOptions += "--no-hidden-api-checks ";
         }
         // isolated-storage flag only exists in Q and after.
         if (!mIsolatedStorage && getDevice().checkApiLevelAgainstNextRelease(29)) {
             runOptions += "--no-isolated-storage ";
         }
+        // window-animation flag only exists in ICS and after
+        if (!mWindowAnimation && apiLevel >= 14) {
+            runOptions += "--no-window-animation ";
+        }
+
         if (abiName != null) {
             mInstallArgs.add(String.format("--abi %s", abiName));
             runOptions += String.format("--abi %s", abiName);

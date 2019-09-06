@@ -562,6 +562,60 @@ public abstract class BaseHostJUnit4Test
             Map<String, String> instrumentationArgs,
             List<ITestLifeCycleReceiver> extraListeners)
             throws DeviceNotAvailableException {
+        return runDeviceTests(
+                device,
+                runner,
+                pkgName,
+                testClassName,
+                testMethodName,
+                userId,
+                testTimeoutMs,
+                maxTimeToOutputMs,
+                maxInstrumentationTimeoutMs,
+                checkResults,
+                isHiddenApiCheckDisabled,
+                isIsolatedStorageDisabled,
+                false, // leave window animations enabled for existing invocations
+                instrumentationArgs,
+                extraListeners);
+    }
+
+    /**
+     * Method to run an installed instrumentation package. Use {@link #getLastDeviceRunResults()}
+     * right after to get the details of results.
+     *
+     * @param device the device agaisnt which to run the instrumentation.
+     * @param pkgName the name of the package to run.
+     * @param testClassName the name of the test class to run.
+     * @param testMethodName the name of the test method in the class to be run.
+     * @param userId the id of the user to run the test against. can be null.
+     * @param testTimeoutMs the timeout in millisecond to be applied to each test case.
+     * @param maxTimeToOutputMs the max timeout the test has to start outputting something.
+     * @param maxInstrumentationTimeoutMs the max timeout the full instrumentation has to complete.
+     * @param checkResults whether or not the results are checked for crashes.
+     * @param isHiddenApiCheckDisabled whether or not we should disable the hidden api check.
+     * @param isIsolatedStorageDisabled whether or not we should disable isolated storage.
+     * @param isWindowAnimationDisabled whether or not we should disable window animation.
+     * @param instrumentationArgs arguments to pass to the instrumentation.
+     * @return True if it succeeded without failure. False otherwise.
+     */
+    public final boolean runDeviceTests(
+            ITestDevice device,
+            String runner,
+            String pkgName,
+            String testClassName,
+            String testMethodName,
+            Integer userId,
+            Long testTimeoutMs,
+            Long maxTimeToOutputMs,
+            Long maxInstrumentationTimeoutMs,
+            boolean checkResults,
+            boolean isHiddenApiCheckDisabled,
+            boolean isIsolatedStorageDisabled,
+            boolean isWindowAnimationDisabled,
+            Map<String, String> instrumentationArgs,
+            List<ITestLifeCycleReceiver> extraListeners)
+            throws DeviceNotAvailableException {
         TestRunResult runResult =
                 doRunTests(
                         device,
@@ -575,6 +629,7 @@ public abstract class BaseHostJUnit4Test
                         maxInstrumentationTimeoutMs,
                         isHiddenApiCheckDisabled,
                         isIsolatedStorageDisabled,
+                        isWindowAnimationDisabled,
                         instrumentationArgs,
                         extraListeners);
         mLatestInstruRes = runResult;
@@ -638,19 +693,28 @@ public abstract class BaseHostJUnit4Test
             Long maxInstrumentationTimeoutMs,
             boolean isHiddenApiCheckDisabled,
             boolean isIsolatedStorageDisabled,
+            boolean isWindowAnimationDisabled,
             Map<String, String> instrumentationArgs,
             List<ITestLifeCycleReceiver> extraListeners)
             throws DeviceNotAvailableException {
         RemoteAndroidTestRunner testRunner = createTestRunner(pkgName, runner, device);
         String runOptions = "";
         // hidden-api-checks flag only exists in P and after.
-        if (isHiddenApiCheckDisabled && (device.getApiLevel() >= 28)) {
+        // Using a temp variable to consolidate the dynamic checks
+        int apiLevel = isHiddenApiCheckDisabled || isWindowAnimationDisabled
+                ? device.getApiLevel() : 0;
+        if (isHiddenApiCheckDisabled && (apiLevel >= 28)) {
             runOptions += "--no-hidden-api-checks ";
         }
         // isolated-storage flag only exists in Q and after.
         if (isIsolatedStorageDisabled && device.checkApiLevelAgainstNextRelease(29)) {
             runOptions += "--no-isolated-storage ";
         }
+        // window-animation flag only exists in ICS and after
+        if (isWindowAnimationDisabled && apiLevel >= 14) {
+            runOptions += "--no-window-animation ";
+        }
+
         if (getAbi() != null) {
             runOptions += String.format("--abi %s", getAbi().getName());
         }

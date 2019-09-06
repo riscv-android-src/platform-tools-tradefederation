@@ -38,6 +38,7 @@ public class DeviceTestRunOptions {
     private boolean mCheckResults = true; // optional
     private boolean mDisableHiddenApiCheck = false; // optional
     private boolean mDisableIsolatedStorage = false; // optional
+    private boolean mDisableWindowAnimation = false; // optional
     private Map<String, String> mInstrumentationArgs = new LinkedHashMap<>(); // optional
     private List<ITestLifeCycleReceiver> mExtraListeners = new ArrayList<>(); // optional
 
@@ -183,6 +184,19 @@ public class DeviceTestRunOptions {
 
     public boolean isIsolatedStorageDisabled() {
         return mDisableIsolatedStorage;
+    }
+
+    /**
+     * sets whether or not to add the --no-window-animation to the 'am instrument' used from the
+     * host side.
+     */
+    public DeviceTestRunOptions setDisableWindowAnimation(boolean disableWindowAnimation) {
+        this.mDisableWindowAnimation = disableWindowAnimation;
+        return this;
+    }
+
+    public boolean isWindowAnimationDisabled() {
+        return mDisableWindowAnimation;
     }
 
     /** Add an argument that will be passed to the instrumentation. */
