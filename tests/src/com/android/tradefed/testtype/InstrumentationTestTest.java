@@ -231,6 +231,18 @@ public class InstrumentationTestTest {
         assertThat(runner.getRunOptions()).contains("--no-isolated-storage");
     }
 
+    /** Test normal run scenario with --no-isolated-storage specified */
+    @Test
+    public void testRun_windowAnimation() throws Exception {
+        doReturn(14).when(mMockTestDevice).getApiLevel();
+        OptionSetter setter = new OptionSetter(mInstrumentationTest);
+        setter.setOptionValue("window-animation", "false");
+        RemoteAndroidTestRunner runner =
+                (RemoteAndroidTestRunner)
+                        mInstrumentationTest.createRemoteAndroidTestRunner("", "", mMockIDevice);
+        assertThat(runner.getRunOptions()).contains("--no-window-animation");
+    }
+
     /** Test normal run scenario with a test class specified. */
     @Test
     public void testRun_class() {

@@ -38,6 +38,7 @@ import com.google.common.annotations.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -59,12 +60,17 @@ public class ResultAggregator extends CollectingTestListener {
     private RetryStrategy mRetryStrategy;
     // Track whether or not a module was started.
     private boolean mModuleInProgress = false;
-    // Stores the results from non-module test runs until they are ready to be replayed.
-    private List<TestRunResult> mPureRunResults = new ArrayList<>();
-    //
+
+    // Holders for results in progress
     private TestRunResult mDetailedRunResults = null;
     private boolean mShouldReportFailure = true;
     private List<String> mAllDetailedFailures = new ArrayList<>();
+
+    // In some configuration of non-module retry, all attempts of runs might not be adjacent. We
+    // track that a special handling needs to be applied for this case.
+    private boolean mUnorderedRetry = true;
+    // Stores the results from non-module test runs until they are ready to be replayed.
+    private final Map<String, List<TestRunResult>> mPureRunResultForAgg = new LinkedHashMap<>();
 
     public ResultAggregator(List<ITestInvocationListener> listeners, RetryStrategy strategy) {
         mAllForwarder = new ResultAndLogForwarder(listeners);
@@ -113,10 +119,13 @@ public class ResultAggregator extends CollectingTestListener {
     /** {@inheritDoc} */
     @Override
     public void invocationEnded(long elapsedTime) {
-        if (!mPureRunResults.isEmpty()) {
-            forwardTestRunResults(mPureRunResults, mAggregatedForwarder);
-            mPureRunResults.clear();
+        if (!mPureRunResultForAgg.isEmpty()) {
+            for (String name : mPureRunResultForAgg.keySet()) {
+                forwardTestRunResults(mPureRunResultForAgg.get(name), mAggregatedForwarder);
+            }
+            mPureRunResultForAgg.clear();
         }
+
         forwardDetailedFailure();
         super.invocationEnded(elapsedTime);
         // Make sure to forward the logs for the invocation.
@@ -137,9 +146,12 @@ public class ResultAggregator extends CollectingTestListener {
     /** {@inheritDoc} */
     @Override
     public void testModuleStarted(IInvocationContext moduleContext) {
-        if (!mPureRunResults.isEmpty()) {
-            forwardTestRunResults(mPureRunResults, mAggregatedForwarder);
-            mPureRunResults.clear();
+        mUnorderedRetry = false;
+        if (!mPureRunResultForAgg.isEmpty()) {
+            for (String name : mPureRunResultForAgg.keySet()) {
+                forwardTestRunResults(mPureRunResultForAgg.get(name), mAggregatedForwarder);
+            }
+            mPureRunResultForAgg.clear();
         }
 
         if (mDetailedRunResults != null) {
@@ -170,9 +182,13 @@ public class ResultAggregator extends CollectingTestListener {
 
     @Override
     public void testRunStarted(String name, int testCount, int attemptNumber, long startTime) {
-        if (!mPureRunResults.isEmpty() && !mPureRunResults.get(0).getName().equals(name)) {
-            forwardTestRunResults(mPureRunResults, mAggregatedForwarder);
-            mPureRunResults.clear();
+        // Due to retries happening after several other testRunStart, we need to wait before making
+        // the forwarding.
+        if (!mUnorderedRetry) {
+            if (!mPureRunResultForAgg.isEmpty() && mPureRunResultForAgg.get(name) != null) {
+                forwardTestRunResults(mPureRunResultForAgg.get(name), mAggregatedForwarder);
+                mPureRunResultForAgg.remove(name);
+            }
         }
 
         if (mDetailedRunResults != null) {
@@ -256,8 +272,11 @@ public class ResultAggregator extends CollectingTestListener {
 
         // If we are not a module and we reach here. This allows to support non-suite scenarios
         if (!mModuleInProgress) {
-            // We can't forward yet otherwise we might not have aggregated simple runs.
-            mPureRunResults.add(getCurrentRunResults());
+            List<TestRunResult> results =
+                    mPureRunResultForAgg.getOrDefault(
+                            getCurrentRunResults().getName(), new ArrayList<>());
+            results.add(getCurrentRunResults());
+            mPureRunResultForAgg.put(getCurrentRunResults().getName(), results);
         }
     }
 
@@ -303,6 +322,7 @@ public class ResultAggregator extends CollectingTestListener {
         for (String name : resultNames) {
             clearResultsForName(name);
         }
+        mUnorderedRetry = true;
     }
 
     @VisibleForTesting
