@@ -29,7 +29,6 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -67,6 +66,8 @@ import java.util.regex.PatternSyntaxException;
  */
 @SuppressWarnings("rawtypes")
 public class OptionSetter {
+    /** Keep track of which option was modified on a given object. */
+    public static final Map<Object, String> sChangedFields = new HashMap<>();
 
     static final String BOOL_FALSE_PREFIX = "no-";
     private static final HashMap<Class<?>, Handler> handlers = new HashMap<Class<?>, Handler>();
@@ -535,33 +536,8 @@ public class OptionSetter {
 
         }
         Option option = field.getAnnotation(Option.class);
-        updateOptionChangedField(option);
+        sChangedFields.put(optionSource, option.name());
         return fieldWasSet;
-    }
-
-    /**
-     * Change the {@link Option#isChanged()} field to True if we are setting a value on that option.
-     * This will help to track which options are used.
-     */
-    @SuppressWarnings("unchecked")
-    private static void updateOptionChangedField(Option option) {
-        Object handler = Proxy.getInvocationHandler(option);
-        Field f;
-        try {
-            // "memberValues" is a special field for annotation and their method current values.
-            f = handler.getClass().getDeclaredField("memberValues");
-        } catch (NoSuchFieldException | SecurityException e) {
-            throw new IllegalStateException(e);
-        }
-        f.setAccessible(true);
-        Map<String, Object> memberValues;
-        try {
-            memberValues = (Map<String, Object>) f.get(handler);
-            // Set the #isChanged() method return to true.
-            memberValues.put("isChanged", true);
-        } catch (IllegalArgumentException | IllegalAccessException e) {
-            throw new IllegalStateException(e);
-        }
     }
 
     /**
