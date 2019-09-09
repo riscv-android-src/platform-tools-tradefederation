@@ -149,12 +149,17 @@ public class ConfigurationUtil {
             boolean printDeprecatedOptions,
             boolean printUnchangedOptions)
             throws IOException {
+        Object comparisonBaseObj = null;
+        if (!printUnchangedOptions) {
+            try {
+                comparisonBaseObj = obj.getClass().newInstance();
+            } catch (InstantiationException | IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
         for (Field field : OptionSetter.getOptionFieldsForClass(obj.getClass())) {
             Option option = field.getAnnotation(Option.class);
-            String changedOption = OptionSetter.sChangedFields.get(obj);
-            if (!printUnchangedOptions && !option.name().equals(changedOption)) {
-                continue;
-            }
             Deprecated deprecatedAnnotation = field.getAnnotation(Deprecated.class);
             // If enabled, skip @Deprecated options
             if (!printDeprecatedOptions && deprecatedAnnotation != null) {
@@ -163,7 +168,15 @@ public class ConfigurationUtil {
             Object fieldVal = OptionSetter.getFieldValue(field, obj);
             if (fieldVal == null) {
                 continue;
-            } else if (fieldVal instanceof Collection) {
+            }
+            if (comparisonBaseObj != null) {
+                Object compField = OptionSetter.getFieldValue(field, comparisonBaseObj);
+                if (fieldVal.equals(compField)) {
+                    continue;
+                }
+            }
+
+            if (fieldVal instanceof Collection) {
                 for (Object entry : (Collection) fieldVal) {
                     dumpOptionToXml(serializer, option.name(), null, entry.toString());
                 }
