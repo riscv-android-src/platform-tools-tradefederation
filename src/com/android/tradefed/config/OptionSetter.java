@@ -66,9 +66,6 @@ import java.util.regex.PatternSyntaxException;
  */
 @SuppressWarnings("rawtypes")
 public class OptionSetter {
-    /** Keep track of which option was modified on a given object. */
-    public static final Map<Object, String> sChangedFields = new HashMap<>();
-
     static final String BOOL_FALSE_PREFIX = "no-";
     private static final HashMap<Class<?>, Handler> handlers = new HashMap<Class<?>, Handler>();
     static final char NAMESPACE_SEPARATOR = ':';
@@ -535,8 +532,6 @@ public class OptionSetter {
                     "internal error when setting option '%s'", optionName), e);
 
         }
-        Option option = field.getAnnotation(Option.class);
-        sChangedFields.put(optionSource, option.name());
         return fieldWasSet;
     }
 

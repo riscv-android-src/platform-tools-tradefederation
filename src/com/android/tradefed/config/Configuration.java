@@ -1364,9 +1364,6 @@ public class Configuration implements IConfiguration {
         for (File file : mRemoteFiles) {
             FileUtil.recursiveDelete(file);
         }
-        for (Object o : getAllConfigurationObjects()) {
-            OptionSetter.sChangedFields.remove(o);
-        }
     }
 
     /**
