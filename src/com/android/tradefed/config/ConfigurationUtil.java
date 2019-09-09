@@ -151,8 +151,7 @@ public class ConfigurationUtil {
             throws IOException {
         for (Field field : OptionSetter.getOptionFieldsForClass(obj.getClass())) {
             Option option = field.getAnnotation(Option.class);
-            String changedOption = OptionSetter.sChangedFields.get(obj);
-            if (!printUnchangedOptions && !option.name().equals(changedOption)) {
+            if (!printUnchangedOptions && !option.isChanged()) {
                 continue;
             }
             Deprecated deprecatedAnnotation = field.getAnnotation(Deprecated.class);

@@ -46,7 +46,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -791,37 +790,5 @@ public class ConfigurationTest extends TestCase {
         } finally {
             FileUtil.deleteFile(test);
         }
-    }
-
-    /** Ensure that the dump xml only considere trully changed option on the same object. */
-    public void testDumpChangedOption() throws Exception {
-        CommandOptions options1 = new CommandOptions();
-        Configuration one = new Configuration("test", "test");
-        one.setCommandOptions(options1);
-        StringWriter sw = new StringWriter();
-        PrintWriter pw = new PrintWriter(sw);
-        one.dumpXml(pw, new ArrayList<>(), true, false);
-        String noOption = sw.toString();
-        assertTrue(
-                noOption.contains(
-                        "<cmd_options class=\"com.android.tradefed.command.CommandOptions\" />"));
-
-        OptionSetter setter = new OptionSetter(options1);
-        setter.setOptionValue("retry-strategy", "ITERATIONS");
-        sw = new StringWriter();
-        pw = new PrintWriter(sw);
-        one.dumpXml(pw, new ArrayList<>(), true, false);
-        String withOption = sw.toString();
-        assertTrue(withOption.contains("<option name=\"retry-strategy\" value=\"ITERATIONS\" />"));
-
-        CommandOptions options2 = new CommandOptions();
-        one.setCommandOptions(options2);
-        sw = new StringWriter();
-        pw = new PrintWriter(sw);
-        one.dumpXml(pw, new ArrayList<>(), true, false);
-        String differentObject = sw.toString();
-        assertTrue(
-                differentObject.contains(
-                        "<cmd_options class=\"com.android.tradefed.command.CommandOptions\" />"));
     }
 }
