@@ -844,7 +844,7 @@ public class TestInvocation implements ITestInvocation {
             // Ensure log is unregistered and closed
             getLogRegistry().unregisterLogger();
             config.getLogOutput().closeLog();
-            config.cleanConfigurationData();
+            config.cleanDynamicOptionFiles();
         }
     }
 
