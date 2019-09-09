@@ -21,15 +21,13 @@ import com.android.tradefed.result.ITestInvocationListener;
 
 import java.util.List;
 
-/**
- * Mock for InstrumentationTest.
- */
-public class MockInstrumentationTest extends InstrumentationTest {
+/** Mock for InstrumentationTest. */
+public class MockInstrumentationTest extends AndroidJUnitTest {
 
     private ITestInvocationListener mListener = null;
     private DeviceNotAvailableException mException = null;
     private List<IMetricCollector> mCollectors = null;
-    
+
     @Override
     public void run(final ITestInvocationListener listener)
             throws DeviceNotAvailableException {
