@@ -247,7 +247,7 @@ public final class TestsPoolPoller
                             test.getClass());
                     CLog.w(e);
                 } finally {
-                    validationConfig.cleanDynamicOptionFiles();
+                    validationConfig.cleanConfigurationData();
                 }
             }
         } finally {
