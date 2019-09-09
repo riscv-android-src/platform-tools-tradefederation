@@ -2260,7 +2260,7 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237796\n"
                                 + "        reboot,,1556237725\n")
                 .when(spy)
-                .executeShellCommand("getprop " + DeviceProperties.BOOT_REASON_HISTORY);
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
         Map<Long, String> history = new LinkedHashMap<Long, String>();
         history.put(1556587278L, "kernel_panic");
         history.put(1556238008L, "reboot");
@@ -2275,9 +2275,7 @@ public class NativeDeviceTest {
     @Test
     public void testGetBootHistoryEmpty() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
-        doReturn("")
-                .when(spy)
-                .executeShellCommand("getprop " + DeviceProperties.BOOT_REASON_HISTORY);
+        doReturn("").when(spy).getProperty(DeviceProperties.BOOT_REASON_HISTORY);
         EasyMock.replay(mMockIDevice);
         assertTrue(spy.getBootHistory().isEmpty());
         EasyMock.verify(mMockIDevice);
@@ -2287,9 +2285,7 @@ public class NativeDeviceTest {
     @Test
     public void testGetBootHistoryInvalid() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
-        doReturn("invalid output")
-                .when(spy)
-                .executeShellCommand("getprop " + DeviceProperties.BOOT_REASON_HISTORY);
+        doReturn("invalid output").when(spy).getProperty(DeviceProperties.BOOT_REASON_HISTORY);
         EasyMock.replay(mMockIDevice);
         assertTrue(spy.getBootHistory().isEmpty());
         EasyMock.verify(mMockIDevice);
@@ -2305,7 +2301,7 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237796\n"
                                 + "        reboot,,1556237725\n")
                 .when(spy)
-                .executeShellCommand("getprop " + DeviceProperties.BOOT_REASON_HISTORY);
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
         Map<Long, String> history = new LinkedHashMap<Long, String>();
         history.put(1556587278L, "kernel_panic");
         EasyMock.replay(mMockIDevice);
@@ -2323,7 +2319,7 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237796\n"
                                 + "        reboot,,1556237725\n")
                 .when(spy)
-                .executeShellCommand("getprop " + DeviceProperties.BOOT_REASON_HISTORY);
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
         Map<Long, String> history = new LinkedHashMap<Long, String>();
         history.put(1556587278L, "kernel_panic");
         EasyMock.replay(mMockIDevice);
@@ -2344,7 +2340,7 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237796\n"
                                 + "        reboot,,1556237725\n")
                 .when(spy)
-                .executeShellCommand("getprop " + DeviceProperties.BOOT_REASON_HISTORY);
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
         EasyMock.replay(mMockIDevice);
         assertFalse(spy.deviceSoftRestartedSince(1559091923L, TimeUnit.SECONDS));
         assertFalse(spy.deviceSoftRestartedSince(1559091923000L, TimeUnit.MILLISECONDS));
@@ -2376,7 +2372,7 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237796\n"
                                 + "        reboot,,1556237725\n")
                 .when(spy)
-                .executeShellCommand("getprop " + DeviceProperties.BOOT_REASON_HISTORY);
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
         EasyMock.replay(mMockIDevice);
         try {
             spy.deviceSoftRestartedSince(1559091922L, TimeUnit.SECONDS);
@@ -2400,7 +2396,7 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237796\n"
                                 + "        reboot,,1556237725\n")
                 .when(spy)
-                .executeShellCommand("getprop " + DeviceProperties.BOOT_REASON_HISTORY);
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
         EasyMock.replay(mMockIDevice);
         assertFalse(spy.deviceSoftRestartedSince(1559091921L, TimeUnit.SECONDS));
         EasyMock.verify(mMockIDevice);
@@ -2419,7 +2415,7 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237796\n"
                                 + "        reboot,,1556237725\n")
                 .when(spy)
-                .executeShellCommand("getprop " + DeviceProperties.BOOT_REASON_HISTORY);
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
         EasyMock.replay(mMockIDevice);
         assertTrue(spy.deviceSoftRestartedSince(1559091921L, TimeUnit.SECONDS));
         EasyMock.verify(mMockIDevice);
@@ -2440,7 +2436,8 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237796\n"
                                 + "        reboot,,1556237725\n")
                 .when(spy)
-                .executeShellCommand("getprop " + DeviceProperties.BOOT_REASON_HISTORY);
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
+        ;
         EasyMock.replay(mMockIDevice);
         assertTrue(spy.deviceSoftRestarted(prev1));
         assertFalse(spy.deviceSoftRestarted(prev2));
@@ -2470,7 +2467,7 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237796\n"
                                 + "        reboot,,1556237725\n")
                 .when(spy)
-                .executeShellCommand("getprop " + DeviceProperties.BOOT_REASON_HISTORY);
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
         EasyMock.replay(mMockIDevice);
         try {
             spy.deviceSoftRestarted(new ProcessInfo("system", 123, "system_server", 1559000000L));
@@ -2494,7 +2491,7 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237796\n"
                                 + "        reboot,,1556237725\n")
                 .when(spy)
-                .executeShellCommand("getprop " + DeviceProperties.BOOT_REASON_HISTORY);
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
         EasyMock.replay(mMockIDevice);
         assertFalse(
                 spy.deviceSoftRestarted(
@@ -2515,7 +2512,7 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237796\n"
                                 + "        reboot,,1556237725\n")
                 .when(spy)
-                .executeShellCommand("getprop " + DeviceProperties.BOOT_REASON_HISTORY);
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
         EasyMock.replay(mMockIDevice);
         assertTrue(
                 spy.deviceSoftRestarted(
