@@ -120,4 +120,10 @@ public @interface Option {
      * ignored completely for options that are {@link Collection}s or {@link Map}s.
      */
     OptionUpdateRule updateRule() default OptionUpdateRule.LAST;
+
+    /**
+     * Internal Only - Do not set. Specify whether the field value was changed from its default
+     * value or not.
+     */
+    boolean isChanged() default false;
 }
