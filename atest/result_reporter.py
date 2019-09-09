@@ -147,6 +147,7 @@ class ResultReporter(object):
         self.failed_tests = []
         self.all_test_results = []
         self.pre_test = None
+        self.log_path = None
 
     def process_test_result(self, test):
         """Given the results of a single test, update stats and print results.
@@ -246,6 +247,8 @@ class ResultReporter(object):
             print(au.colorize(message, constants.RED))
             print('-'*len(message))
             self.print_failed_tests()
+        if self.log_path:
+            print('Test Logs have saved in %s' % self.log_path)
         return tests_ret
 
     def print_failed_tests(self):
