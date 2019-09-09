@@ -95,7 +95,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             os.environ['APE_API_KEY'] = ape_api_key
         else:
             logging.debug('APE_API_KEY not set, some GTS tests may fail'
-                          'without authentication.')
+                          ' without authentication.')
 
     def run_tests(self, test_infos, extra_args, reporter):
         """Run the list of test_infos. See base class for more.
