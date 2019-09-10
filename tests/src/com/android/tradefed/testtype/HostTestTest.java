@@ -54,6 +54,7 @@ import org.junit.Rule;
 import org.junit.runner.RunWith;
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.JUnit4;
+import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
 import org.mockito.Mockito;
@@ -272,6 +273,17 @@ public class HostTestTest extends TestCase {
         }
     }
 
+    /** Test Class completely ignored */
+    @Ignore
+    @RunWith(JUnit4.class)
+    public static class Junit4IgnoredClass {
+        @org.junit.Test
+        public void testPass() {}
+
+        @org.junit.Test
+        public void testPass2() {}
+    }
+
     /**
      * Test class that run a test throwing an {@link AssumptionViolatedException} which should be
      * handled as the testAssumptionFailure.
@@ -337,6 +349,13 @@ public class HostTestTest extends TestCase {
     })
     public class Junit4SuiteClass {
     }
+
+    @RunWith(Suite.class)
+    @SuiteClasses({
+        Junit4TestClass.class,
+        Junit4IgnoredClass.class,
+    })
+    public class Junit4SuiteClassWithIgnored {}
 
     /**
      * JUnit4 runner that implements {@link ISetOptionReceiver} but does not actually have the
@@ -1169,6 +1188,43 @@ public class HostTestTest extends TestCase {
 
     /**
      * Test for {@link HostTest#run(ITestInvocationListener)}, for test with Junit4 style and
+     * handling of @Ignored on the class.
+     */
+    public void testRun_junit4style_class_ignored() throws Exception {
+        mHostTest.setClassName(Junit4IgnoredClass.class.getName());
+        TestDescription test1 = new TestDescription(Junit4IgnoredClass.class.getName(), "No Tests");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testIgnored(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        assertEquals(1, mHostTest.countTestCases());
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test for {@link HostTest#run(ITestInvocationListener)}, for test with Junit4 style and
+     * handling of @Ignored on the class and collect-tests-only.
+     */
+    public void testRun_junit4style_class_ignored_collect() throws Exception {
+        mHostTest.setCollectTestsOnly(true);
+        mHostTest.setClassName(Junit4IgnoredClass.class.getName());
+        TestDescription test1 = new TestDescription(Junit4IgnoredClass.class.getName(), "No Tests");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testIgnored(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        assertEquals(1, mHostTest.countTestCases());
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test for {@link HostTest#run(ITestInvocationListener)}, for test with Junit4 style and
      * handling of Assume.
      */
     public void testRun_junit4style_assumeFailure() throws Exception {
@@ -1330,6 +1386,27 @@ public class HostTestTest extends TestCase {
         EasyMock.expectLastCall().times(expectedRun);
         EasyMock.replay(mListener);
         hostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /** Test a Junit4 suite with Ignored class in it. */
+    public void testRun_junit_suite_mix_ignored() throws Exception {
+        mHostTest.setClassName(Junit4SuiteClassWithIgnored.class.getName());
+        TestDescription test1 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
+        TestDescription test2 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
+        TestDescription test3 = new TestDescription(Junit4IgnoredClass.class.getName(), "No Tests");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(3));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test2));
+        mListener.testEnded(EasyMock.eq(test2), (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test3));
+        mListener.testIgnored(test3);
+        mListener.testEnded(EasyMock.eq(test3), (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        assertEquals(3, mHostTest.countTestCases());
+        mHostTest.run(mListener);
         EasyMock.verify(mListener);
     }
 
