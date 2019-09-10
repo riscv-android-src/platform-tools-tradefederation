@@ -45,6 +45,7 @@ EXEC_DEPENDENCIES = ('adb', 'aapt')
 
 TRADEFED_EXIT_MSG = ('TradeFed subprocess exited early with exit code=%s.')
 
+LOG_FOLDER_NAME = 'log'
 
 class TradeFedExitError(Exception):
     """Raised when TradeFed exists before test run has finished."""
@@ -54,18 +55,22 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
     """TradeFed Test Runner class."""
     NAME = 'AtestTradefedTestRunner'
     EXECUTABLE = 'atest_tradefed.sh'
-    _TF_TEMPLATE = 'template/local_min'
+    _TF_TEMPLATE = 'template/atest_local_min'
     _RUN_CMD = ('{exe} {template} --template:map '
-                'test=atest {args}')
+                'test=atest --atest-log-file-path {log_path} {args}')
     _BUILD_REQ = {'tradefed-core'}
 
     def __init__(self, results_dir, module_info=None, **kwargs):
         """Init stuff for base class."""
         super(AtestTradefedTestRunner, self).__init__(results_dir, **kwargs)
         self.module_info = module_info
+        self.log_path = os.path.join(results_dir, LOG_FOLDER_NAME)
+        if not os.path.exists(self.log_path):
+            os.makedirs(self.log_path)
         self.run_cmd_dict = {'exe': self.EXECUTABLE,
                              'template': self._TF_TEMPLATE,
-                             'args': ''}
+                             'args': '',
+                             'log_path': self.log_path}
         self.is_verbose = logging.getLogger().isEnabledFor(logging.DEBUG)
         self.root_dir = os.environ.get(constants.ANDROID_BUILD_TOP)
 
@@ -90,7 +95,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             os.environ['APE_API_KEY'] = ape_api_key
         else:
             logging.debug('APE_API_KEY not set, some GTS tests may fail'
-                          'without authentication.')
+                          ' without authentication.')
 
     def run_tests(self, test_infos, extra_args, reporter):
         """Run the list of test_infos. See base class for more.
@@ -103,6 +108,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         Returns:
             0 if tests succeed, non-zero otherwise.
         """
+        reporter.log_path = self.log_path
         # Set google service key if it's available or found before running tests.
         self._try_set_gts_authentication_key()
         if os.getenv(test_runner_base.OLD_OUTPUT_ENV_VAR):
