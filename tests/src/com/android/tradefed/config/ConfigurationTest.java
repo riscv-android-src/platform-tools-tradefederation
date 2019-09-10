@@ -824,4 +824,32 @@ public class ConfigurationTest extends TestCase {
                 differentObject.contains(
                         "<cmd_options class=\"com.android.tradefed.command.CommandOptions\" />"));
     }
+
+    /** Ensure we print modified option if they are structures. */
+    public void testDumpChangedOption_structure() throws Exception {
+        CommandOptions options1 = new CommandOptions();
+        Configuration one = new Configuration("test", "test");
+        one.setCommandOptions(options1);
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        one.dumpXml(pw, new ArrayList<>(), true, false);
+        String noOption = sw.toString();
+        assertTrue(
+                noOption.contains(
+                        "<cmd_options class=\"com.android.tradefed.command.CommandOptions\" />"));
+
+        OptionSetter setter = new OptionSetter(options1);
+        setter.setOptionValue("invocation-data", "key", "value");
+        setter.setOptionValue("auto-collect", "LOGCAT_ON_FAILURE");
+        sw = new StringWriter();
+        pw = new PrintWriter(sw);
+        one.dumpXml(pw, new ArrayList<>(), true, false);
+        String withOption = sw.toString();
+        assertTrue(
+                withOption.contains(
+                        "<option name=\"invocation-data\" key=\"key\" value=\"value\" />"));
+        assertTrue(
+                withOption.contains(
+                        "<option name=\"auto-collect\" value=\"LOGCAT_ON_FAILURE\" />"));
+    }
 }
