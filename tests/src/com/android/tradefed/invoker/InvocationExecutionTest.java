@@ -514,5 +514,6 @@ public class InvocationExecutionTest {
                 info.cleanUp();
             }
         }
+        assertTrue(mContext.getAttributes().containsKey(InvocationExecution.JAVA_VERSION_KEY));
     }
 }

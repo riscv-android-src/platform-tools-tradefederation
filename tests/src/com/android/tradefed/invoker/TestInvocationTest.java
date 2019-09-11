@@ -602,6 +602,9 @@ public class TestInvocationTest {
      */
     @Test
     public void testInvoke_resume() throws Throwable {
+        IInvocationContext invocationContext2 = new InvocationContext();
+        invocationContext2.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
+        invocationContext2.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockBuildInfo);
         IResumableTest resumableTest = EasyMock.createMock(IResumableTest.class);
         mStubConfiguration.setTest(resumableTest);
         ITestInvocationListener resumeListener = EasyMock.createStrictMock(
@@ -696,7 +699,7 @@ public class TestInvocationTest {
         EasyMock.expectLastCall().times(2);
         mMockDevice.startLogcat();
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
-        mMockLogSaver.invocationStarted(mStubInvocationMetadata);
+        mMockLogSaver.invocationStarted(invocationContext2);
         mMockDevice.setRecovery(mMockRecovery);
         resumableTest.run((ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(3);
@@ -761,7 +764,7 @@ public class TestInvocationTest {
             // expect
         }
         // now call again, and expect invocation to be resumed properly
-        mTestInvocation.invoke(mStubInvocationMetadata, capturedConfig.getValue(), mockRescheduler);
+        mTestInvocation.invoke(invocationContext2, capturedConfig.getValue(), mockRescheduler);
 
         EasyMock.verify(mockRescheduler, resumeListener, resumableTest, mMockPreparer,
                 mMockBuildProvider, mMockLogger, mMockLogSaver, mMockDevice, mMockBuildInfo);
