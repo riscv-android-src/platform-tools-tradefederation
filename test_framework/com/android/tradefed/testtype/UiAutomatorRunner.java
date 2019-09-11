@@ -365,4 +365,9 @@ public class UiAutomatorRunner implements IRemoteAndroidTestRunner {
     public void setMaxTimeout(long maxTimeout, TimeUnit unit) {
         mMaxTimeout = unit.toMillis(maxTimeout);
     }
+
+    @Override
+    public void setAdditionalTestOutputLocation(String additionalTestDataPath) {
+        addInstrumentationArg("additionalTestOutputDir", additionalTestDataPath);
+    }
 }
