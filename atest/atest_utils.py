@@ -34,6 +34,7 @@ try:
 except ImportError:
     from urllib.request import urlopen
 
+import atest_decorator
 import atest_error
 import constants
 
@@ -237,7 +238,7 @@ def is_test_mapping(args):
         not args.tests or
         (len(args.tests) == 1 and args.tests[0][0] == ':'))
 
-
+@atest_decorator.static_var("cached_has_colors", {})
 def _has_colors(stream):
     """Check the the output stream is colorful.
 
@@ -247,20 +248,28 @@ def _has_colors(stream):
     Returns:
         True if the file stream can interpreter the ANSI color code.
     """
+    cached_has_colors = _has_colors.cached_has_colors
+    if stream in cached_has_colors:
+        return cached_has_colors[stream]
+    else:
+        cached_has_colors[stream] = True
     # Following from Python cookbook, #475186
     if not hasattr(stream, "isatty"):
+        cached_has_colors[stream] = False
         return False
     if not stream.isatty():
         # Auto color only on TTYs
+        cached_has_colors[stream] = False
         return False
     try:
         import curses
         curses.setupterm()
-        return curses.tigetnum("colors") > 2
+        cached_has_colors[stream] = curses.tigetnum("colors") > 2
     # pylint: disable=broad-except
     except Exception as err:
         logging.debug('Checking colorful raised exception: %s', err)
-        return False
+        cached_has_colors[stream] = False
+    return cached_has_colors[stream]
 
 
 def colorize(text, color, highlight=False):
