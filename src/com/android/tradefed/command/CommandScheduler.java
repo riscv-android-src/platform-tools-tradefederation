@@ -1061,7 +1061,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                         // make sure not to record since it may contains password
                         System.out.println(
                                 String.format(
-                                        "The command %s will be rescheduled.",
+                                        "Command will be rescheduled: %s",
                                         Arrays.toString(cmd.getCommandTracker().getArgs())));
                         mUnscheduledWarning.add(cmd);
                     }
