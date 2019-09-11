@@ -15,7 +15,7 @@
  */
 package com.android.tradefed.targetprep;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
@@ -36,9 +36,9 @@ import java.util.ArrayList;
 @RunWith(JUnit4.class)
 public class BaseTargetPreparerTest {
 
-    private static class DisabledBaseTargetPreparer extends BaseTargetPreparer {
+    public static class DisabledBaseTargetPreparer extends BaseTargetPreparer {
 
-        DisabledBaseTargetPreparer() {
+        public DisabledBaseTargetPreparer() {
             setDisable(true);
         }
 
@@ -57,11 +57,12 @@ public class BaseTargetPreparerTest {
         config.setTargetPreparer(preparer);
         File configFile = FileUtil.createTempFile("base-target-prep-config", ".xml");
         try (PrintWriter pw = new PrintWriter(configFile)) {
-            config.dumpXml(pw, new ArrayList<>(), false, false);
+            config.dumpXml(pw, new ArrayList<>(), false, true);
             String value = FileUtil.readStringFromFile(configFile);
+            // Default value is set in the constructor.
             assertTrue(value.contains("<option name=\"disable\" value=\"true\" />"));
-            // Disable-tear-down was not modified so it should not appear.
-            assertFalse(value.contains("disable-tear-down"));
+            // Default value is the one untouched from the option.
+            assertTrue(value.contains("<option name=\"disable-tear-down\" value=\"false\" />"));
         } finally {
             FileUtil.deleteFile(configFile);
         }
