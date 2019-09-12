@@ -399,6 +399,10 @@ public class GTest extends GTestBase implements IDeviceTest {
         Throwable throwable = null;
         try {
             if (getCoverageOptions().isCoverageEnabled()) {
+                // Clang will no longer create directories that are part of the GCOV_PREFIX
+                // environment variable. Force create the /data/misc/trace/testcoverage dir to
+                // prevent "No such file or directory" errors when writing test coverage to disk.
+                mDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage");
                 flusher.forceCoverageFlush(getCoverageOptions().getCoverageProcesses());
                 flusher.clearCoverageMeasurements();
             }
