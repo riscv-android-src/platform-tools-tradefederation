@@ -134,7 +134,7 @@ public class TestInvocation implements ITestInvocation {
     }
 
     private String mStatus = "(not invoked)";
-    private boolean mStopRequested = false;
+    private String mStopCause = null;
 
     /**
      * A {@link ResultForwarder} for forwarding resumed invocations.
@@ -343,10 +343,12 @@ public class TestInvocation implements ITestInvocation {
                 for (ITestDevice device : context.getDevices()) {
                     invocationPath.reportLogs(device, listener, Stage.TEARDOWN);
                 }
-                if (mStopRequested) {
+                if (mStopCause != null) {
                     String message =
-                            "Invocation was interrupted due to TradeFed stop, results will be "
-                                    + "affected.";
+                            String.format(
+                                    "Invocation was interrupted due to: %s, results will be "
+                                            + "affected.",
+                                    mStopCause);
                     listener.invocationFailed(new RuntimeException(message));
                     PrettyPrintDelimiter.printStageDelimiter(message);
                 }
@@ -871,8 +873,8 @@ public class TestInvocation implements ITestInvocation {
     }
 
     @Override
-    public void notifyInvocationStopped() {
-        mStopRequested = true;
+    public void notifyInvocationStopped(String message) {
+        mStopCause = message;
     }
 
     /**
