@@ -126,6 +126,7 @@ import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecutionTest
 import com.android.tradefed.invoker.shard.ShardHelperTest;
 import com.android.tradefed.invoker.shard.StrictShardHelperTest;
 import com.android.tradefed.invoker.shard.TestsPoolPollerTest;
+import com.android.tradefed.invoker.shard.token.TelephonyTokenProviderTest;
 import com.android.tradefed.invoker.shard.token.TokenProviderHelperTest;
 import com.android.tradefed.log.FileLoggerTest;
 import com.android.tradefed.log.HistoryLoggerTest;
@@ -276,6 +277,7 @@ import com.android.tradefed.testtype.suite.TfSuiteRunnerTest;
 import com.android.tradefed.testtype.suite.ValidateSuiteConfigHelperTest;
 import com.android.tradefed.testtype.suite.module.BaseModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.CarModuleControllerTest;
+import com.android.tradefed.testtype.suite.module.MinApiLevelModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.NativeBridgeModuleControllerTest;
 import com.android.tradefed.testtype.suite.params.InstantAppHandlerTest;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelperTest;
@@ -517,6 +519,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TestsPoolPollerTest.class,
 
     // invoker.shard.token
+    TelephonyTokenProviderTest.class,
     TokenProviderHelperTest.class,
 
     // invoker.sandbox
@@ -711,6 +714,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // testtype/suite/module
     BaseModuleControllerTest.class,
     CarModuleControllerTest.class,
+    MinApiLevelModuleControllerTest.class,
     NativeBridgeModuleControllerTest.class,
 
     // testtype/suite/params

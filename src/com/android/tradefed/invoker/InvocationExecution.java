@@ -92,6 +92,7 @@ import java.util.stream.Collectors;
 public class InvocationExecution implements IInvocationExecution {
 
     public static final String ADB_VERSION_KEY = "adb_version";
+    public static final String JAVA_VERSION_KEY = "java_version";
 
     @Override
     public boolean fetchBuild(
@@ -148,7 +149,7 @@ public class InvocationExecution implements IInvocationExecution {
             throw e;
         }
         createSharedResources(context);
-        setAdbVersion(context);
+        setBinariesVersion(context);
         return true;
     }
 
@@ -798,10 +799,14 @@ public class InvocationExecution implements IInvocationExecution {
         }
     }
 
-    private void setAdbVersion(IInvocationContext context) {
+    private void setBinariesVersion(IInvocationContext context) {
         String version = getAdbVersion();
         if (version != null) {
             context.addInvocationAttribute(ADB_VERSION_KEY, version);
+        }
+        String javaVersion = System.getProperty("java.version");
+        if (javaVersion != null && !javaVersion.isEmpty()) {
+            context.addInvocationAttribute(JAVA_VERSION_KEY, javaVersion);
         }
     }
 
