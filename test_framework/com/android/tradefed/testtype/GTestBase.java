@@ -295,6 +295,8 @@ public abstract class GTestBase
     @Override
     public void clearIncludeFilters() {
         mIncludeFilters.clear();
+        // Clear the filter file key, to not impact the base filters.
+        mTestFilterKey = null;
     }
 
     /** {@inheritDoc} */
@@ -394,26 +396,34 @@ public abstract class GTestBase
             mExcludeFilters.add(mTestNameNegativeFilter);
         }
         if (mTestFilterKey != null) {
-            if (!mIncludeFilters.isEmpty() || !mExcludeFilters.isEmpty()) {
-                CLog.w("Using json file filter, --include/exclude-filter will be ignored.");
-            }
             String fileFilters = loadFilter(path);
             if (fileFilters != null && !fileFilters.isEmpty()) {
-                filter.append(GTEST_FLAG_FILTER);
-                filter.append("=");
-                filter.append(fileFilters);
+                if (fileFilters.startsWith("-")) {
+                    for (String filterString : fileFilters.substring(1).split(":")) {
+                        mExcludeFilters.add(filterString);
+                    }
+                } else {
+                    String[] filterStrings = fileFilters.split("-");
+                    for (String filterString : filterStrings[0].split(":")) {
+                        mIncludeFilters.add(filterString);
+                    }
+                    if (filterStrings.length == 2) {
+                        for (String filterString : filterStrings[1].split(":")) {
+                            mExcludeFilters.add(filterString);
+                        }
+                    }
+                }
             }
-        } else {
-            if (!mIncludeFilters.isEmpty() || !mExcludeFilters.isEmpty()) {
-                filter.append(GTEST_FLAG_FILTER);
-                filter.append("=");
-                if (!mIncludeFilters.isEmpty()) {
-                    filter.append(ArrayUtil.join(":", mIncludeFilters));
-                }
-                if (!mExcludeFilters.isEmpty()) {
-                    filter.append("-");
-                    filter.append(ArrayUtil.join(":", mExcludeFilters));
-                }
+        }
+        if (!mIncludeFilters.isEmpty() || !mExcludeFilters.isEmpty()) {
+            filter.append(GTEST_FLAG_FILTER);
+            filter.append("=");
+            if (!mIncludeFilters.isEmpty()) {
+                filter.append(ArrayUtil.join(":", mIncludeFilters));
+            }
+            if (!mExcludeFilters.isEmpty()) {
+                filter.append("-");
+                filter.append(ArrayUtil.join(":", mExcludeFilters));
             }
         }
         String filterFlag = filter.toString();
