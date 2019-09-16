@@ -599,6 +599,48 @@ public class GTestTest {
         doTestFilter(String.format("%s=%s", GTEST_FLAG_FILTER, "Foo1.*:Foo2.*"));
     }
 
+    @Test
+    public void testFileFilter_negative() throws Exception {
+        String fileFilter = "presubmit";
+        mSetter.setOptionValue("test-filter-key", fileFilter);
+        String expectedFilterFile =
+                String.format("%s/test1%s", GTest.DEFAULT_NATIVETEST_PATH, GTest.FILTER_EXTENSION);
+        String fakeContent =
+                "{\n"
+                        + "    \"presubmit\": {\n"
+                        + "        \"filter\": \"Foo1.*-Foo2.*\"\n"
+                        + "    },\n"
+                        + "    \"continuous\": {\n"
+                        + "        \"filter\": \"Foo1.*:Foo2.*:Bar.*\"\n"
+                        + "    }\n"
+                        + "}\n";
+        EasyMock.expect(mMockITestDevice.doesFileExist(expectedFilterFile)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("cat \"" + expectedFilterFile + "\""))
+                .andReturn(fakeContent);
+        doTestFilter(String.format("%s=%s", GTEST_FLAG_FILTER, "Foo1.*-Foo2.*"));
+    }
+
+    @Test
+    public void testFileFilter_negativeOnly() throws Exception {
+        String fileFilter = "presubmit";
+        mSetter.setOptionValue("test-filter-key", fileFilter);
+        String expectedFilterFile =
+                String.format("%s/test1%s", GTest.DEFAULT_NATIVETEST_PATH, GTest.FILTER_EXTENSION);
+        String fakeContent =
+                "{\n"
+                        + "    \"presubmit\": {\n"
+                        + "        \"filter\": \"-Foo1.*:Foo2.*\"\n"
+                        + "    },\n"
+                        + "    \"continuous\": {\n"
+                        + "        \"filter\": \"Foo1.*:Foo2.*:Bar.*\"\n"
+                        + "    }\n"
+                        + "}\n";
+        EasyMock.expect(mMockITestDevice.doesFileExist(expectedFilterFile)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("cat \"" + expectedFilterFile + "\""))
+                .andReturn(fakeContent);
+        doTestFilter(String.format("%s=%s", GTEST_FLAG_FILTER, "-Foo1.*:Foo2.*"));
+    }
+
     /**
      * Test the include filtering by providing a non existing filter. No filter will be applied in
      * this case.
