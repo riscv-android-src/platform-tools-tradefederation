@@ -20,6 +20,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
 
 /**
  * Target preparer that performs "adb root" or "adb unroot" based on option "force-root".
@@ -41,6 +42,10 @@ public class RootTargetPreparer extends BaseTargetPreparer implements ITargetCle
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        // Ignore setUp if it's a stub device, since there is no real device to set up.
+        if (device.getIDevice() instanceof StubDevice) {
+            return;
+        }
         mWasRoot = device.isAdbRoot();
         if (!mWasRoot && mForceRoot && !device.enableAdbRoot()) {
             throw new TargetSetupError("Failed to adb root device", device.getDeviceDescriptor());
@@ -52,6 +57,10 @@ public class RootTargetPreparer extends BaseTargetPreparer implements ITargetCle
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
+        // Ignore tearDown if it's a stub device, since there is no real device to clean.
+        if (device.getIDevice() instanceof StubDevice) {
+            return;
+        }
         if (!mWasRoot && mForceRoot) {
             device.disableAdbRoot();
         } else if (mWasRoot && !mForceRoot) {
