@@ -172,8 +172,6 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
                 }
                 allTestMetrics.put(reportingUnit, runResultMetrics);
                 resultsName.append(String.format("%s%s", reportingUnit, RESULT_SEPARATOR));
-            } else {
-                CLog.d("Skipping metrics for %s because results are empty.", runResult.getName());
             }
 
             // Parse test metrics
@@ -192,8 +190,6 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
                 if (testResult.getMetrics().size() > 0) {
                     JSONObject testResultMetrics = new JSONObject(testResult.getMetrics());
                     allTestMetrics.put(reportingUnit, testResultMetrics);
-                } else {
-                    CLog.d("Skipping metrics for %s because results are empty.", testDescription);
                 }
             }
         }
