@@ -292,8 +292,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
     }
 
     @Override
-    public void doSetup(
-            IInvocationContext context, IConfiguration config, ITestInvocationListener listener)
+    public void doSetup(IInvocationContext context, IConfiguration config, ITestLogger logger)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         // Skip
     }

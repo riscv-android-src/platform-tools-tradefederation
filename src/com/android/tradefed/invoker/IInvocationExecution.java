@@ -68,15 +68,13 @@ public interface IInvocationExecution {
      *
      * @param context the {@link IInvocationContext} of the invocation.
      * @param config the {@link IConfiguration} of this test run.
-     * @param listener the {@link ITestInvocation} to report setup failures.
+     * @param logger the {@link ITestLogger} to report setup failures logs.
      * @throws TargetSetupError
      * @throws BuildError
      * @throws DeviceNotAvailableException
      */
     public default void doSetup(
-            IInvocationContext context,
-            IConfiguration config,
-            final ITestInvocationListener listener)
+            IInvocationContext context, IConfiguration config, final ITestLogger logger)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {}
 
     /**
@@ -185,8 +183,8 @@ public interface IInvocationExecution {
      * Report some device logs at different stage of the invocation. For example: logcat.
      *
      * @param device The device to report logs from.
-     * @param listener The logger for the logs.
+     * @param logger The logger for the logs.
      * @param stage The stage of the invocation we are at.
      */
-    public void reportLogs(ITestDevice device, ITestInvocationListener listener, Stage stage);
+    public void reportLogs(ITestDevice device, ITestLogger logger, Stage stage);
 }
