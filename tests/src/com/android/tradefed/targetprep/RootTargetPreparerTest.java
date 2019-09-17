@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.targetprep;
 
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
@@ -31,12 +32,15 @@ public class RootTargetPreparerTest {
 
     private RootTargetPreparer mRootTargetPreparer;
     private ITestDevice mMockDevice;
+    private IDevice mMockIDevice;
     private IBuildInfo mMockBuildInfo;
 
     @Before
     public void setUp() {
         mRootTargetPreparer = new RootTargetPreparer();
         mMockDevice = EasyMock.createMock(ITestDevice.class);
+        mMockIDevice = EasyMock.createMock(IDevice.class);
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(mMockIDevice);
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
     }
 
