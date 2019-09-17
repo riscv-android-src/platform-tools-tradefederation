@@ -38,6 +38,7 @@ import atest_error
 import constants
 
 from metrics import metrics_base
+from metrics import metrics_utils
 
 _BASH_RESET_CODE = '\033[0m\n'
 # Arbitrary number to limit stdout for failed runs in _run_limited_output.
@@ -486,9 +487,12 @@ def update_test_info_cache(test_reference, test_infos,
             logging.debug('Saving cache %s.', cache_path)
             pickle.dump(test_infos, test_info_cache_file)
     except (pickle.PicklingError, TypeError, IOError) as err:
-        # Don't break anything, just log this error, maybe collect the exception
-        # by metrics in the future.
+        # Don't break anything, just log this error, and collect the exception
+        # by metrics.
         logging.debug('Exception raised: %s', err)
+        metrics_utils.handle_exc_and_send_exit_event(
+            constants.ACCESS_CACHE_FAILURE)
+
 
 def load_test_info_cache(test_reference, cache_root=TEST_INFO_CACHE_ROOT):
     """Load cache by test_reference to a set of test_infos object.
@@ -507,9 +511,11 @@ def load_test_info_cache(test_reference, cache_root=TEST_INFO_CACHE_ROOT):
             with open(cache_file, 'rb') as config_dictionary_file:
                 return pickle.load(config_dictionary_file)
         except (pickle.UnpicklingError, EOFError, IOError) as err:
-            # Don't break anything, just log this error, maybe collect the
-            # exception by metrics in the future.
+            # Don't break anything, just log this error, and collect the
+            # exception by metrics.
             logging.debug('Exception raised: %s', err)
+            metrics_utils.handle_exc_and_send_exit_event(
+                constants.ACCESS_CACHE_FAILURE)
     return None
 
 def clean_test_info_caches(tests, cache_root=TEST_INFO_CACHE_ROOT):
@@ -527,3 +533,5 @@ def clean_test_info_caches(tests, cache_root=TEST_INFO_CACHE_ROOT):
                 os.remove(cache_file)
             except IOError as err:
                 logging.debug('Exception raised: %s', err)
+                metrics_utils.handle_exc_and_send_exit_event(
+                    constants.ACCESS_CACHE_FAILURE)

@@ -57,6 +57,11 @@ EXIT_CODE_TEST_NOT_FOUND = 4
 EXIT_CODE_TEST_FAILURE = 5
 EXIT_CODE_VERIFY_FAILURE = 6
 
+# Codes of specific events. These are exceptions that don't stop anything
+# but sending metrics.
+ACCESS_CACHE_FAILURE = 101
+ACCESS_HISTORY_FAILURE = 102
+
 # Test finder constants.
 MODULE_CONFIG = 'AndroidTest.xml'
 MODULE_COMPATIBILITY_SUITES = 'compatibility_suites'
