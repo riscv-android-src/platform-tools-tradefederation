@@ -181,6 +181,9 @@ public class TestDevice extends NativeDevice {
                         return response[0] == null;
                     }
                 };
+        CLog.v(
+                "Installing package file %s with args %s on %s",
+                packageFile.getAbsolutePath(), extraArgs.toString(), getSerialNumber());
         performDeviceAction(String.format("install %s", packageFile.getAbsolutePath()),
                 installAction, MAX_RETRY_ATTEMPTS);
         return response[0];
