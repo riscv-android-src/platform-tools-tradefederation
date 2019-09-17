@@ -50,6 +50,7 @@ public class GoogleBenchmarkResultParserTest {
     private static final String GBENCH_OUTPUT_FILE_4 = "gbench_output4.json";
     private static final String GBENCH_OUTPUT_FILE_5 = "gbench_output5.json";
     private static final String GBENCH_OUTPUT_FILE_6 = "gbench_output6.json";
+    private static final String GBENCH_OUTPUT_FILE_7 = "gbench_output7.json";
 
     private static final String TEST_RUN = "test_run";
 
@@ -198,6 +199,33 @@ public class GoogleBenchmarkResultParserTest {
                 new GoogleBenchmarkResultParser(TEST_RUN, mMockInvocationListener);
         resultParser.parse(contents);
         EasyMock.verify(mMockInvocationListener);
+    }
+
+    /** Tests that errors reported in JSON are parsed and appropriately reported */
+    @Test
+    public void testParse_benchmarkError() throws Exception {
+        ITestInvocationListener mMockInvocationListener =
+                EasyMock.createMock(ITestInvocationListener.class);
+
+        mMockInvocationListener.testStarted((TestDescription) EasyMock.anyObject());
+        EasyMock.expectLastCall().times(4);
+        mMockInvocationListener.testEnded(
+                EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        EasyMock.expectLastCall().times(4);
+        Capture<String> capture = new Capture<>();
+        mMockInvocationListener.testFailed(
+                (TestDescription) EasyMock.anyObject(), (String) EasyMock.capture(capture));
+        EasyMock.expectLastCall().times(1);
+
+        EasyMock.replay(mMockInvocationListener);
+        CollectingOutputReceiver contents = readInFile(GBENCH_OUTPUT_FILE_7);
+        GoogleBenchmarkResultParser resultParser =
+                new GoogleBenchmarkResultParser(TEST_RUN, mMockInvocationListener);
+        resultParser.parse(contents);
+        EasyMock.verify(mMockInvocationListener);
+        assertEquals(
+                "Benchmark reported an error: synchronizeKernelRCU() failed with errno=13",
+                capture.getValue());
     }
 
     /** Test for {@link GoogleBenchmarkResultParser#parseJsonToMap(JSONObject)} */
