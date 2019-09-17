@@ -52,10 +52,11 @@ _BUILD_FAILURE = 'FAILED: '
 CMD_RESULT_PATH = os.path.join(os.environ.get(constants.ANDROID_BUILD_TOP,
                                               os.getcwd()),
                                'tools/tradefederation/core/atest/test_data',
-                               'sample_test_cmd_result.json')
+                               'test_commands.json')
 TEST_INFO_CACHE_ROOT = os.path.join(os.path.expanduser('~'), '.atest',
                                     'info_cache')
 _DEFAULT_TERMINAL_WIDTH = 80
+_BUILD_CMD = 'build/soong/soong_ui.bash'
 
 
 def get_build_cmd():
@@ -64,10 +65,10 @@ def get_build_cmd():
     Returns:
         A list of soong build command.
     """
-    make_cmd = ('%s/build/soong/soong_ui.bash' %
-                os.path.relpath(os.environ.get(constants.ANDROID_BUILD_TOP,
-                                               os.getcwd()),
-                                os.getcwd()))
+    make_cmd = ('%s/%s' %
+                (os.path.relpath(os.environ.get(
+                    constants.ANDROID_BUILD_TOP, os.getcwd()), os.getcwd()),
+                 _BUILD_CMD))
     return [make_cmd, '--make-mode']
 
 
@@ -358,17 +359,15 @@ def handle_test_runner_cmd(input_test, test_cmds, do_verification=False,
                                 with user if they want to update or not.
         result_path: The file path for saving result.
     """
-    # Always sort test_cmds to make it comparable.
-    test_cmds.sort()
     full_result_content = {}
     if os.path.isfile(result_path):
         with open(result_path) as json_file:
             full_result_content = json.load(json_file)
     former_test_cmds = full_result_content.get(input_test, [])
-    if former_test_cmds != test_cmds:
+    if not _are_identical_cmds(test_cmds, former_test_cmds):
         if do_verification:
             raise atest_error.DryRunVerificationError('Dry run verification failed,'
-                                                      'former commands: %s' %
+                                                      ' former commands: %s' %
                                                       former_test_cmds)
         if former_test_cmds:
             # If former_test_cmds is different from test_cmds, ask users if they
@@ -398,6 +397,47 @@ def handle_test_runner_cmd(input_test, test_cmds, do_verification=False,
     with open(result_path, 'w') as outfile:
         json.dump(full_result_content, outfile, indent=0)
         print('Save result mapping to %s' % result_path)
+
+
+def _are_identical_cmds(current_cmds, former_cmds):
+    """Tell two commands are identical. Note that '--atest-log-file-path' is not
+    considered a critical argument, therefore, it will be removed during
+    the comparison. Also, atest can be ran in any place, so verifying relative
+    path is regardless as well.
+
+    Args:
+        current_cmds: A list of strings for running input tests.
+        former_cmds: A list of strings recorded from the previous run.
+
+    Returns:
+        True if both commands are identical, False otherwise.
+    """
+    def _normalize(cmd_list):
+        """Method that normalize commands.
+
+        Args:
+            cmd_list: A list with one element. E.g. ['cmd arg1 arg2 True']
+
+        Returns:
+            A list with elements. E.g. ['cmd', 'arg1', 'arg2', 'True']
+        """
+        _cmd = ''.join(cmd_list).encode('utf-8').split()
+        for cmd in _cmd:
+            if cmd.startswith('--atest-log-file-path'):
+                _cmd.remove(cmd)
+                continue
+            if _BUILD_CMD in cmd:
+                _cmd.remove(cmd)
+                _cmd.append(os.path.join('./', _BUILD_CMD))
+                continue
+        return _cmd
+
+    _current_cmds = _normalize(current_cmds)
+    _former_cmds = _normalize(former_cmds)
+    # Always sort cmd list to make it comparable.
+    _current_cmds.sort()
+    _former_cmds.sort()
+    return _current_cmds == _former_cmds
 
 def _get_hashed_file_name(main_file_name):
     """Convert the input string to a md5-hashed string. If file_extension is
