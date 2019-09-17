@@ -57,7 +57,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
     EXECUTABLE = 'atest_tradefed.sh'
     _TF_TEMPLATE = 'template/atest_local_min'
     _RUN_CMD = ('{exe} {template} --template:map '
-                'test=atest --atest-log-file-path {log_path} {args}')
+                'test=atest --atest-log-file-path={log_path} {args}')
     _BUILD_REQ = {'tradefed-core'}
 
     def __init__(self, results_dir, module_info=None, **kwargs):
