@@ -38,6 +38,7 @@ import atest_error
 import constants
 
 from metrics import metrics_base
+from metrics import metrics_utils
 
 _BASH_RESET_CODE = '\033[0m\n'
 # Arbitrary number to limit stdout for failed runs in _run_limited_output.
@@ -52,10 +53,11 @@ _BUILD_FAILURE = 'FAILED: '
 CMD_RESULT_PATH = os.path.join(os.environ.get(constants.ANDROID_BUILD_TOP,
                                               os.getcwd()),
                                'tools/tradefederation/core/atest/test_data',
-                               'sample_test_cmd_result.json')
+                               'test_commands.json')
 TEST_INFO_CACHE_ROOT = os.path.join(os.path.expanduser('~'), '.atest',
                                     'info_cache')
 _DEFAULT_TERMINAL_WIDTH = 80
+_BUILD_CMD = 'build/soong/soong_ui.bash'
 
 
 def get_build_cmd():
@@ -64,10 +66,10 @@ def get_build_cmd():
     Returns:
         A list of soong build command.
     """
-    make_cmd = ('%s/build/soong/soong_ui.bash' %
-                os.path.relpath(os.environ.get(constants.ANDROID_BUILD_TOP,
-                                               os.getcwd()),
-                                os.getcwd()))
+    make_cmd = ('%s/%s' %
+                (os.path.relpath(os.environ.get(
+                    constants.ANDROID_BUILD_TOP, os.getcwd()), os.getcwd()),
+                 _BUILD_CMD))
     return [make_cmd, '--make-mode']
 
 
@@ -358,17 +360,15 @@ def handle_test_runner_cmd(input_test, test_cmds, do_verification=False,
                                 with user if they want to update or not.
         result_path: The file path for saving result.
     """
-    # Always sort test_cmds to make it comparable.
-    test_cmds.sort()
     full_result_content = {}
     if os.path.isfile(result_path):
         with open(result_path) as json_file:
             full_result_content = json.load(json_file)
     former_test_cmds = full_result_content.get(input_test, [])
-    if former_test_cmds != test_cmds:
+    if not _are_identical_cmds(test_cmds, former_test_cmds):
         if do_verification:
             raise atest_error.DryRunVerificationError('Dry run verification failed,'
-                                                      'former commands: %s' %
+                                                      ' former commands: %s' %
                                                       former_test_cmds)
         if former_test_cmds:
             # If former_test_cmds is different from test_cmds, ask users if they
@@ -398,6 +398,47 @@ def handle_test_runner_cmd(input_test, test_cmds, do_verification=False,
     with open(result_path, 'w') as outfile:
         json.dump(full_result_content, outfile, indent=0)
         print('Save result mapping to %s' % result_path)
+
+
+def _are_identical_cmds(current_cmds, former_cmds):
+    """Tell two commands are identical. Note that '--atest-log-file-path' is not
+    considered a critical argument, therefore, it will be removed during
+    the comparison. Also, atest can be ran in any place, so verifying relative
+    path is regardless as well.
+
+    Args:
+        current_cmds: A list of strings for running input tests.
+        former_cmds: A list of strings recorded from the previous run.
+
+    Returns:
+        True if both commands are identical, False otherwise.
+    """
+    def _normalize(cmd_list):
+        """Method that normalize commands.
+
+        Args:
+            cmd_list: A list with one element. E.g. ['cmd arg1 arg2 True']
+
+        Returns:
+            A list with elements. E.g. ['cmd', 'arg1', 'arg2', 'True']
+        """
+        _cmd = ''.join(cmd_list).encode('utf-8').split()
+        for cmd in _cmd:
+            if cmd.startswith('--atest-log-file-path'):
+                _cmd.remove(cmd)
+                continue
+            if _BUILD_CMD in cmd:
+                _cmd.remove(cmd)
+                _cmd.append(os.path.join('./', _BUILD_CMD))
+                continue
+        return _cmd
+
+    _current_cmds = _normalize(current_cmds)
+    _former_cmds = _normalize(former_cmds)
+    # Always sort cmd list to make it comparable.
+    _current_cmds.sort()
+    _former_cmds.sort()
+    return _current_cmds == _former_cmds
 
 def _get_hashed_file_name(main_file_name):
     """Convert the input string to a md5-hashed string. If file_extension is
@@ -446,9 +487,12 @@ def update_test_info_cache(test_reference, test_infos,
             logging.debug('Saving cache %s.', cache_path)
             pickle.dump(test_infos, test_info_cache_file)
     except (pickle.PicklingError, TypeError, IOError) as err:
-        # Don't break anything, just log this error, maybe collect the exception
-        # by metrics in the future.
+        # Don't break anything, just log this error, and collect the exception
+        # by metrics.
         logging.debug('Exception raised: %s', err)
+        metrics_utils.handle_exc_and_send_exit_event(
+            constants.ACCESS_CACHE_FAILURE)
+
 
 def load_test_info_cache(test_reference, cache_root=TEST_INFO_CACHE_ROOT):
     """Load cache by test_reference to a set of test_infos object.
@@ -467,9 +511,11 @@ def load_test_info_cache(test_reference, cache_root=TEST_INFO_CACHE_ROOT):
             with open(cache_file, 'rb') as config_dictionary_file:
                 return pickle.load(config_dictionary_file)
         except (pickle.UnpicklingError, EOFError, IOError) as err:
-            # Don't break anything, just log this error, maybe collect the
-            # exception by metrics in the future.
+            # Don't break anything, just log this error, and collect the
+            # exception by metrics.
             logging.debug('Exception raised: %s', err)
+            metrics_utils.handle_exc_and_send_exit_event(
+                constants.ACCESS_CACHE_FAILURE)
     return None
 
 def clean_test_info_caches(tests, cache_root=TEST_INFO_CACHE_ROOT):
@@ -487,3 +533,5 @@ def clean_test_info_caches(tests, cache_root=TEST_INFO_CACHE_ROOT):
                 os.remove(cache_file)
             except IOError as err:
                 logging.debug('Exception raised: %s', err)
+                metrics_utils.handle_exc_and_send_exit_event(
+                    constants.ACCESS_CACHE_FAILURE)

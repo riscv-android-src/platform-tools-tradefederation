@@ -23,6 +23,8 @@ import os
 
 import constants
 
+from metrics import metrics_utils
+
 _META_FILE = os.path.join(os.path.expanduser('~'),
                           '.config', 'asuite', 'atest_history.json')
 _DETECT_OPTION_FILTER = ['-v', '--verbose']
@@ -87,6 +89,8 @@ class BugDetector(object):
                     history = json.load(json_file)
                 except ValueError as e:
                     logging.debug(e)
+                    metrics_utils.handle_exc_and_send_exit_event(
+                        constants.ACCESS_HISTORY_FAILURE)
         return history
 
     def detect_bug_caught(self):
@@ -128,4 +132,9 @@ class BugDetector(object):
             self.history = dict(
                 sorted_history[(num_history - constants.TRIM_TO_SIZE):])
         with open(self.file, 'w') as outfile:
-            json.dump(self.history, outfile, indent=0)
+            try:
+                json.dump(self.history, outfile, indent=0)
+            except ValueError as e:
+                logging.debug(e)
+                metrics_utils.handle_exc_and_send_exit_event(
+                    constants.ACCESS_HISTORY_FAILURE)
