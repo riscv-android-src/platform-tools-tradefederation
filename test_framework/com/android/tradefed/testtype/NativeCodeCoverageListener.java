@@ -40,7 +40,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 
 /**
  * A {@link ResultForwarder} that will pull native coverage measurements off of the device and log
@@ -53,7 +52,6 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
             String.format("find %s -name '*.gcda'", NATIVE_COVERAGE_DEVICE_PATH);
 
     private final boolean mFlushCoverage;
-    private final List<String> mCoverageProcesses;
     private final ITestDevice mDevice;
     private final NativeCodeCoverageFlusher mFlusher;
 
@@ -63,8 +61,7 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
         super(listeners);
         mDevice = device;
         mFlushCoverage = false;
-        mCoverageProcesses = ImmutableList.of();
-        mFlusher = new NativeCodeCoverageFlusher(mDevice);
+        mFlusher = new NativeCodeCoverageFlusher(mDevice, ImmutableList.of());
     }
 
     public NativeCodeCoverageListener(
@@ -74,8 +71,7 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
         super(listeners);
         mDevice = device;
         mFlushCoverage = coverageOptions.isCoverageFlushEnabled();
-        mCoverageProcesses = coverageOptions.getCoverageProcesses();
-        mFlusher = new NativeCodeCoverageFlusher(mDevice);
+        mFlusher = new NativeCodeCoverageFlusher(mDevice, coverageOptions.getCoverageProcesses());
     }
 
     @Override
@@ -98,7 +94,7 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
 
             // Flush cross-process coverage.
             if (mFlushCoverage) {
-                mFlusher.forceCoverageFlush(mCoverageProcesses);
+                mFlusher.forceCoverageFlush();
             }
 
             // List native coverage files on the device and pull them.

@@ -394,17 +394,18 @@ public class GTest extends GTestBase implements IDeviceTest {
         }
         // Insert the coverage listener if code coverage collection is enabled.
         listener = addNativeCoverageListenerIfEnabled(listener);
-        NativeCodeCoverageFlusher flusher = new NativeCodeCoverageFlusher(mDevice);
+        NativeCodeCoverageFlusher flusher =
+                new NativeCodeCoverageFlusher(mDevice, getCoverageOptions().getCoverageProcesses());
 
         Throwable throwable = null;
         try {
             if (getCoverageOptions().isCoverageEnabled()) {
+                flusher.resetCoverage();
+
                 // Clang will no longer create directories that are part of the GCOV_PREFIX
                 // environment variable. Force create the /data/misc/trace/testcoverage dir to
                 // prevent "No such file or directory" errors when writing test coverage to disk.
                 mDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage");
-                flusher.forceCoverageFlush(getCoverageOptions().getCoverageProcesses());
-                flusher.clearCoverageMeasurements();
             }
             doRunAllTestsInSubdirectory(testPath, mDevice, listener);
         } catch (Throwable t) {
