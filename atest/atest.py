@@ -650,6 +650,14 @@ def main(argv, results_dir):
                 None, regression_args, reporter)
     metrics.RunTestsFinishEvent(
         duration=metrics_utils.convert_duration(time.time() - test_start))
+    preparation_time = atest_execution_info.preparation_time(test_start)
+    if preparation_time:
+        # Send the preparation time only if it's set.
+        metrics.RunnerFinishEvent(
+            duration=metrics_utils.convert_duration(preparation_time),
+            success=True,
+            runner_name=constants.TF_PREPARATION,
+            test=[])
     if tests_exit_code != constants.EXIT_CODE_SUCCESS:
         tests_exit_code = constants.EXIT_CODE_TEST_FAILURE
     return tests_exit_code
