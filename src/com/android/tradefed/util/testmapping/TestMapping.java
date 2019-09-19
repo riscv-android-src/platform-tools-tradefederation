@@ -287,7 +287,7 @@ public class TestMapping {
             FileUtil.recursiveDelete(testMappingsDir);
         }
 
-        return TestMapping.mergeTests(tests);
+        return tests;
     }
 
     /**

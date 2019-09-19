@@ -110,6 +110,20 @@ public class SuiteModuleLoader {
         mExcludedModuleParameters = excludedParams;
     }
 
+    /** Main loading of configurations, looking into the specified files */
+    public LinkedHashMap<String, IConfiguration> loadConfigsFromSpecifiedPaths(
+            List<File> listConfigFiles,
+            Set<IAbi> abis,
+            String suiteTag) {
+        LinkedHashMap<String, IConfiguration> toRun = new LinkedHashMap<>();
+        for (File configFile : listConfigFiles) {
+            toRun.putAll(
+                    loadOneConfig(
+                            configFile.getName(), configFile.getAbsolutePath(), abis, suiteTag));
+        }
+        return toRun;
+    }
+
     /** Main loading of configurations, looking into a folder */
     public LinkedHashMap<String, IConfiguration> loadConfigsFromDirectory(
             List<File> testsDirs,
@@ -123,11 +137,7 @@ public class SuiteModuleLoader {
                 ConfigurationUtil.getConfigNamesFileFromDirs(suitePrefix, testsDirs, patterns));
         // Ensure stable initial order of configurations.
         Collections.sort(listConfigFiles);
-        for (File configFile : listConfigFiles) {
-            toRun.putAll(
-                    loadOneConfig(
-                            configFile.getName(), configFile.getAbsolutePath(), abis, suiteTag));
-        }
+        toRun.putAll(loadConfigsFromSpecifiedPaths(listConfigFiles, abis, suiteTag));
         return toRun;
     }
 
