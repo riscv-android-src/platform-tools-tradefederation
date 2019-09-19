@@ -619,4 +619,54 @@ public class DynamicRemoteFileResolverTest {
         }
         EasyMock.verify(mMockResolver);
     }
+
+    /** Ensure that if the same value is set on two different objects we still resolve both. */
+    @Test
+    public void testResolveTwoObjects_sameValue() throws Exception {
+        RemoteFileOption object1 = new RemoteFileOption();
+        RemoteFileOption object2 = new RemoteFileOption();
+        OptionSetter setter =
+                new OptionSetter(object1, object2) {
+                    @Override
+                    protected DynamicRemoteFileResolver createResolver() {
+                        return mResolver;
+                    }
+                };
+
+        File fake = FileUtil.createTempFile("gs-option-setter-test", "txt");
+        setter.setOptionValue("alias-remote-file:1:remote-file", "gs://fake/path");
+        assertEquals("gs:/fake/path", object1.remoteFile.getPath());
+
+        File fake2 = FileUtil.createTempFile("gs-option-setter-test", "txt");
+        setter.setOptionValue("alias-remote-file:2:remote-file", "gs://fake/path");
+        assertEquals("gs:/fake/path", object2.remoteFile.getPath());
+
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path")),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
+                .andReturn(fake);
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path")),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
+                .andReturn(fake2);
+        EasyMock.replay(mMockResolver);
+
+        Set<File> downloadedFile = setter.validateRemoteFilePath();
+        try {
+            assertEquals(2, downloadedFile.size());
+            assertTrue(downloadedFile.contains(object1.remoteFile));
+            assertTrue(downloadedFile.contains(object2.remoteFile));
+
+            assertFalse(object1.remoteFile.equals(object2.remoteFile));
+        } finally {
+            for (File f : downloadedFile) {
+                FileUtil.recursiveDelete(f);
+            }
+        }
+        EasyMock.verify(mMockResolver);
+    }
 }
