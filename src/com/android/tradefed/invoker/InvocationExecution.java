@@ -97,6 +97,7 @@ public class InvocationExecution implements IInvocationExecution {
 
     public static final String ADB_VERSION_KEY = "adb_version";
     public static final String JAVA_VERSION_KEY = "java_version";
+    public static final String JAVA_CLASSPATH_KEY = "java_classpath";
     // Track which preparer ran in setup to ensure we don't trigger tearDown if setup was skipped.
     private Set<IMultiTargetPreparer> mTrackMultiPreparers = null;
     private Map<String, Set<ITargetPreparer>> mTrackTargetPreparers = null;
@@ -829,6 +830,10 @@ public class InvocationExecution implements IInvocationExecution {
         String javaVersion = System.getProperty("java.version");
         if (javaVersion != null && !javaVersion.isEmpty()) {
             context.addInvocationAttribute(JAVA_VERSION_KEY, javaVersion);
+        }
+        String javaClasspath = System.getProperty("java.class.path");
+        if (javaClasspath != null && !javaClasspath.isEmpty()) {
+            context.addInvocationAttribute(JAVA_CLASSPATH_KEY, javaClasspath);
         }
     }
 
