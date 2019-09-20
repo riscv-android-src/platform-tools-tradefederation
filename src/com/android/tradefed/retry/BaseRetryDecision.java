@@ -71,6 +71,7 @@ public class BaseRetryDecision implements IRetryDecision {
     private IInvocationContext mContext;
 
     private IRemoteTest mCurrentlyConsideredTest;
+    private Set<TestDescription> mPreviouslyFailing;
     private RetryStatsHelper mStatistics;
 
     /** Constructor for the retry decision */
@@ -104,6 +105,7 @@ public class BaseRetryDecision implements IRetryDecision {
         if (test != mCurrentlyConsideredTest) {
             mCurrentlyConsideredTest = test;
             mStatistics = new RetryStatsHelper();
+            mPreviouslyFailing = new HashSet<>();
         }
 
         switch (mRetryStrategy) {
@@ -191,6 +193,9 @@ public class BaseRetryDecision implements IRetryDecision {
 
         // In case of test case failure, we retry with filters.
         Set<TestDescription> previousFailedTests = getFailedTestCases(previousResults);
+        if (!mPreviouslyFailing.isEmpty()) {
+            previousFailedTests.retainAll(mPreviouslyFailing);
+        }
         if (!previousFailedTests.isEmpty()) {
             CLog.d("Retrying the test case failure.");
             addRetriedTestsToIncludeFilters(test, previousFailedTests);
@@ -222,6 +227,7 @@ public class BaseRetryDecision implements IRetryDecision {
                     String.format(
                             "%s#%s", testCase.getClassName(), testCase.getTestNameWithoutParams());
             test.addIncludeFilter(filter);
+            mPreviouslyFailing.add(testCase);
         }
     }
 
