@@ -41,6 +41,8 @@ import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.UniqueMultiMap;
 
+import com.google.api.client.repackaged.com.google.common.base.Joiner;
+
 import org.junit.Assert;
 
 import java.io.File;
@@ -117,6 +119,28 @@ public abstract class SubprocessTfLauncher
     // Temp global configuration filtered from the parent process.
     private String mFilteredGlobalConfig = null;
 
+    private static final List<String> TRADEFED_JARS =
+            new ArrayList<>(
+                    Arrays.asList(
+                            // Loganalysis
+                            "loganalysis.jar",
+                            "loganalysis-tests.jar",
+                            // Aosp Tf jars
+                            "tradefed.jar",
+                            "tradefed-tests.jar",
+                            // libs
+                            "tools-common-prebuilt.jar",
+                            // Aosp contrib jars
+                            "tradefed-contrib.jar",
+                            "tf-contrib-tests.jar",
+                            // Google Tf jars
+                            "google-tf-prod-tests.jar",
+                            "google-tf-prod-metatests.jar",
+                            "google-tradefed.jar",
+                            "google-tradefed-tests.jar",
+                            // Google contrib jars
+                            "google-tradefed-contrib.jar"));
+
     /** Timeout to wait for the events received from subprocess to finish being processed.*/
     private static final long EVENT_THREAD_JOIN_TIMEOUT_MS = 30 * 1000;
 
@@ -172,8 +196,17 @@ public abstract class SubprocessTfLauncher
         Assert.assertNotNull(mBuildInfo);
         Assert.assertNotNull(mConfigName);
         IFolderBuildInfo tfBuild = (IFolderBuildInfo) mBuildInfo;
-        mRootDir = tfBuild.getRootDir().getAbsolutePath();
-        String jarClasspath = FileUtil.getPath(mRootDir, "*");
+        File rootDirFile = tfBuild.getRootDir();
+        mRootDir = rootDirFile.getAbsolutePath();
+        String jarClasspath = "";
+        List<String> paths = new ArrayList<>();
+        for (String jar : TRADEFED_JARS) {
+            File f = FileUtil.findFile(rootDirFile, jar);
+            if (f != null && f.exists()) {
+                paths.add(f.getAbsolutePath());
+            }
+        }
+        jarClasspath = Joiner.on(":").join(paths);
 
         mCmdArgs = new ArrayList<String>();
         mCmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
