@@ -27,6 +27,7 @@ import time
 import xml.etree.ElementTree as ET
 
 # pylint: disable=import-error
+import atest_decorator
 import atest_error
 import atest_enum
 import constants
@@ -336,17 +337,7 @@ def extract_test_from_tests(tests):
     return list(mtests)
 
 
-def static_var(varname, value):
-    """Decorator to cache static variable."""
-
-    def fun_var_decorate(func):
-        """Set the static variable in a function."""
-        setattr(func, varname, value)
-        return func
-    return fun_var_decorate
-
-
-@static_var("cached_ignore_dirs", [])
+@atest_decorator.static_var("cached_ignore_dirs", [])
 def _get_ignored_dirs():
     """Get ignore dirs in find command.
 
