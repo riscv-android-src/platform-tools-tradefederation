@@ -72,6 +72,7 @@ python_library_host {
     defaults: ["atest_lib_default"],
     srcs: [
         "atest_error.py",
+        "atest_decorator.py",
         "atest_utils.py",
         "constants.py",
         "constants_default.py",
@@ -189,6 +190,7 @@ python_library_host {
     defaults: ["asuite_default"],
     srcs: [
         "atest_error.py",
+        "atest_decorator.py",
         "atest_utils.py",
         "constants.py",
         "constants_default.py",
