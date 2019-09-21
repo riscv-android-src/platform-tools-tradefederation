@@ -171,6 +171,7 @@ import com.android.tradefed.result.proto.ProtoResultReporterTest;
 import com.android.tradefed.result.proto.StreamProtoResultReporterTest;
 import com.android.tradefed.result.suite.FormattedGeneratorReporterTest;
 import com.android.tradefed.result.suite.XmlSuiteResultFormatterTest;
+import com.android.tradefed.retry.BaseRetryDecisionTest;
 import com.android.tradefed.retry.ResultAggregatorTest;
 import com.android.tradefed.sandbox.SandboxConfigDumpTest;
 import com.android.tradefed.sandbox.SandboxConfigUtilTest;
@@ -581,6 +582,7 @@ import org.junit.runners.Suite.SuiteClasses;
     XmlSuiteResultFormatterTest.class,
 
     // retry
+    BaseRetryDecisionTest.class,
     ResultAggregatorTest.class,
 
     // targetprep
