@@ -137,6 +137,7 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
 
     }
 
+
     private Entry<String, File> pullMetricFile(
             String pattern, final Map<String, String> currentMetrics) {
         Pattern p = Pattern.compile(pattern);
@@ -148,7 +149,7 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
                         continue;
                     }
                     try {
-                        File attemptPull = device.pullFile(entry.getValue());
+                        File attemptPull = retrieveFile(device, entry.getValue());
                         if (attemptPull != null) {
                             if (mCleanUp) {
                                 device.deleteFile(entry.getValue());
@@ -168,6 +169,19 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
         // Not a hard failure, just nice to know
         CLog.d("Could not find a device file associated to pattern '%s'.", pattern);
         return null;
+    }
+
+    /**
+     * Pull the file from the specified path in the device.
+     *
+     * @param device which has the file.
+     * @param remoteFilePath location in the device.
+     * @return File retrieved from the given path in the device.
+     * @throws DeviceNotAvailableException
+     */
+    protected File retrieveFile(ITestDevice device, String remoteFilePath)
+            throws DeviceNotAvailableException {
+        return device.pullFile(remoteFilePath);
     }
 
     /**
