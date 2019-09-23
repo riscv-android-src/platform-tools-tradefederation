@@ -672,7 +672,6 @@ if __name__ == '__main__':
         metrics.LocalDetectEvent(
             detect_type=constants.DETECT_TYPE_BUG_DETECTED,
             result=DETECTOR.caught_result)
-        metrics_utils.send_exit_event(EXIT_CODE)
         if result_file:
             print('Execution detail has saved in %s' % result_file.name)
     sys.exit(EXIT_CODE)
