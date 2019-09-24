@@ -132,6 +132,7 @@ public abstract class SubprocessTfLauncher
                             "tools-common-prebuilt.jar",
                             // jar in older branches
                             "tf-prod-tests.jar",
+                            "tf-prod-metatests.jar",
                             // Aosp contrib jars
                             "tradefed-contrib.jar",
                             "tf-contrib-tests.jar",
