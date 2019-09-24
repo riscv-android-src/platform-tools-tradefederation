@@ -24,6 +24,8 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.FailedTestEventInfo;
@@ -39,6 +41,8 @@ import com.android.tradefed.util.SubprocessEventHelper.TestRunFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestStartedEventInfo;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
+
+import com.google.common.base.Strings;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -500,9 +504,30 @@ public class SubprocessTestResultsParser implements Closeable {
         public void handleEvent(String eventJson) throws JSONException {
             LogAssociationEventInfo assosInfo =
                     new LogAssociationEventInfo(new JSONObject(eventJson));
-            if (mListener instanceof ILogSaverListener) {
-                String name = String.format("subprocess-%s", assosInfo.mDataName);
-                ((ILogSaverListener) mListener).logAssociation(name, assosInfo.mLoggedFile);
+            LogFile file = assosInfo.mLoggedFile;
+            if (Strings.isNullOrEmpty(file.getPath())) {
+                CLog.e("Log '%s' was registered but without a path.", assosInfo.mDataName);
+                return;
+            }
+            File path = new File(file.getPath());
+            String name = String.format("subprocess-%s", assosInfo.mDataName);
+            if (Strings.isNullOrEmpty(file.getUrl()) && path.exists()) {
+                try (InputStreamSource source = new FileInputStreamSource(path)) {
+                    LogDataType type = file.getType();
+                    // File might have already been compressed
+                    if (file.getPath().endsWith(LogDataType.ZIP.getFileExt())) {
+                        type = LogDataType.ZIP;
+                    }
+                    CLog.d("Logging %s from subprocess: %s ", assosInfo.mDataName, file.getPath());
+                    mListener.testLog(name, type, source);
+                }
+            } else {
+                CLog.d(
+                        "Logging %s from subprocess. url: %s, path: %s",
+                        name, file.getUrl(), file.getPath());
+                if (mListener instanceof ILogSaverListener) {
+                    ((ILogSaverListener) mListener).logAssociation(name, assosInfo.mLoggedFile);
+                }
             }
         }
     }
