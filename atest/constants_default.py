@@ -61,6 +61,7 @@ EXIT_CODE_VERIFY_FAILURE = 6
 # but sending metrics.
 ACCESS_CACHE_FAILURE = 101
 ACCESS_HISTORY_FAILURE = 102
+IMPORT_FAILURE = 103
 
 # Test finder constants.
 MODULE_CONFIG = 'AndroidTest.xml'
