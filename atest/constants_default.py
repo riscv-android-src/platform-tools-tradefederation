@@ -111,6 +111,7 @@ TF_ATEST_INCLUDE_FILTER_VALUE_FMT = '{test_name}:{test_filter}'
 TF_MODULE_ARG = '--module-arg'
 TF_MODULE_ARG_VALUE_FMT = '{test_name}:{option_name}:{option_value}'
 TF_SUITE_FILTER_ARG_VALUE_FMT = '"{test_name} {option_value}"'
+TF_SKIP_LOADING_CONFIG_JAR = '--skip-loading-config-jar'
 
 # Suite Plans
 SUITE_PLANS = frozenset(['cts'])
