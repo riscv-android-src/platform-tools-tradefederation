@@ -133,6 +133,23 @@ METHOD2_INFO = test_info.TestInfo(
     data={constants.TI_REL_CONFIG: uc.CONFIG_FILE,
           constants.TI_FILTER: frozenset([METHOD2_FILTER])})
 
+INT_INFO = test_info.TestInfo(
+    uc.INT_NAME,
+    atf_tr.AtestTradefedTestRunner.NAME,
+    set(),
+    test_finder='INTEGRATION')
+
+MOD_INFO = test_info.TestInfo(
+    uc.MODULE_NAME,
+    atf_tr.AtestTradefedTestRunner.NAME,
+    set(),
+    test_finder='MODULE')
+
+MOD_INFO_NO_TEST_FINDER = test_info.TestInfo(
+    uc.MODULE_NAME,
+    atf_tr.AtestTradefedTestRunner.NAME,
+    set())
+
 EVENTS_NORMAL = [
     ('TEST_MODULE_STARTED', {
         'moduleContextFileName':'serial-util1146216{974}2772610436.ser',
@@ -444,6 +461,28 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         test_infos = self.tr._flatten_test_infos({CLASS3_INFO, CLASS4_INFO})
         unittest_utils.assert_equal_testinfo_sets(self, test_infos,
                                                   {FLAT2_CLASS_INFO})
+
+    def test_create_test_args(self):
+        """Test _create_test_args method."""
+        # Only compile '--skip-loading-config-jar' in TF if it's not
+        # INTEGRATION finder or the finder property isn't set.
+        args = self.tr._create_test_args([MOD_INFO])
+        self.assertTrue(constants.TF_SKIP_LOADING_CONFIG_JAR in args)
+
+        args = self.tr._create_test_args([INT_INFO])
+        self.assertFalse(constants.TF_SKIP_LOADING_CONFIG_JAR in args)
+
+        args = self.tr._create_test_args([MOD_INFO_NO_TEST_FINDER])
+        self.assertFalse(constants.TF_SKIP_LOADING_CONFIG_JAR in args)
+
+        args = self.tr._create_test_args([MOD_INFO_NO_TEST_FINDER, INT_INFO])
+        self.assertFalse(constants.TF_SKIP_LOADING_CONFIG_JAR in args)
+
+        args = self.tr._create_test_args([MOD_INFO_NO_TEST_FINDER])
+        self.assertFalse(constants.TF_SKIP_LOADING_CONFIG_JAR in args)
+
+        args = self.tr._create_test_args([MOD_INFO_NO_TEST_FINDER, INT_INFO, MOD_INFO])
+        self.assertFalse(constants.TF_SKIP_LOADING_CONFIG_JAR in args)
 
 
 if __name__ == '__main__':
