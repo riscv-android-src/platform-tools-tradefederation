@@ -47,6 +47,8 @@ TRADEFED_EXIT_MSG = ('TradeFed subprocess exited early with exit code=%s.')
 
 LOG_FOLDER_NAME = 'log'
 
+_INTEGRATION_FINDERS = frozenset(['', 'INTEGRATION', 'INTEGRATION_FILE_PATH'])
+
 class TradeFedExitError(Exception):
     """Raised when TradeFed exists before test run has finished."""
 
@@ -434,6 +436,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             no_filters = False
             filters = set()
             test_runner = None
+            test_finder = None
             build_targets = set()
             data = {}
             module_args = []
@@ -442,6 +445,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 # Extend data with constants.TI_MODULE_ARG instead of overwriting.
                 module_args.extend(test_info_i.data.get(constants.TI_MODULE_ARG, []))
                 test_runner = test_info_i.test_runner
+                test_finder = test_info_i.test_finder
                 build_targets |= test_info_i.build_targets
                 test_filters = test_info_i.data.get(constants.TI_FILTER)
                 if not test_filters or no_filters:
@@ -456,6 +460,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             results.add(
                 test_info.TestInfo(test_name=module,
                                    test_runner=test_runner,
+                                   test_finder=test_finder,
                                    build_targets=build_targets,
                                    data=data))
         return results
@@ -517,8 +522,12 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         # same result
         test_infos = list(test_infos)
         test_infos.sort()
-
+        has_integration_test = False
         for info in test_infos:
+            # Integration test exists in TF's jar, so it must have the option
+            # if it's integration finder.
+            if info.test_finder in _INTEGRATION_FINDERS:
+                has_integration_test = True
             args.extend([constants.TF_INCLUDE_FILTER, info.test_name])
             filters = set()
             for test_filter in info.data.get(constants.TI_FILTER, []):
@@ -544,4 +553,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                             test_name=info.test_name, option_name=option[0],
                             option_value=option[1]))
                     args.extend([constants.TF_MODULE_ARG, module_arg])
+        # TODO (b/141090547) Pass the config path to TF to load configs.
+        # Compile option in TF if finder is not INTEGRATION or not set.
+        if not has_integration_test:
+            args.append(constants.TF_SKIP_LOADING_CONFIG_JAR)
         return args
