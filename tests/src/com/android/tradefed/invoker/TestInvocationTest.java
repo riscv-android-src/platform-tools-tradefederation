@@ -1200,21 +1200,6 @@ public class TestInvocationTest {
                     EasyMock.eq(LogDataType.LOGCAT),
                     (InputStreamSource) EasyMock.anyObject());
         } else {
-            // Handle test logcat listeners
-            EasyMock.expect(
-                            mMockLogSaver.saveLogData(
-                                    EasyMock.startsWith(LOGCAT_NAME_TEST),
-                                    EasyMock.eq(LogDataType.LOGCAT),
-                                    (InputStream) EasyMock.anyObject()))
-                    .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
-            mMockTestListener.testLog(
-                    EasyMock.startsWith(LOGCAT_NAME_TEST),
-                    EasyMock.eq(LogDataType.LOGCAT),
-                    (InputStreamSource) EasyMock.anyObject());
-            mMockSummaryListener.testLog(
-                    EasyMock.startsWith(LOGCAT_NAME_TEST),
-                    EasyMock.eq(LogDataType.LOGCAT),
-                    (InputStreamSource) EasyMock.anyObject());
             // Handle build error bugreport listeners
             if (throwable instanceof BuildError) {
                 EasyMock.expect(
@@ -1225,6 +1210,22 @@ public class TestInvocationTest {
                                                         + SERIAL),
                                         EasyMock.anyObject()))
                         .andReturn(true);
+            } else {
+                // Handle test logcat listeners
+                EasyMock.expect(
+                                mMockLogSaver.saveLogData(
+                                        EasyMock.startsWith(LOGCAT_NAME_TEST),
+                                        EasyMock.eq(LogDataType.LOGCAT),
+                                        (InputStream) EasyMock.anyObject()))
+                        .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
+                mMockTestListener.testLog(
+                        EasyMock.startsWith(LOGCAT_NAME_TEST),
+                        EasyMock.eq(LogDataType.LOGCAT),
+                        (InputStreamSource) EasyMock.anyObject());
+                mMockSummaryListener.testLog(
+                        EasyMock.startsWith(LOGCAT_NAME_TEST),
+                        EasyMock.eq(LogDataType.LOGCAT),
+                        (InputStreamSource) EasyMock.anyObject());
             }
             // Handle teardown logcat listeners
             EasyMock.expect(
