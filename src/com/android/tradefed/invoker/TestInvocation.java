@@ -135,6 +135,7 @@ public class TestInvocation implements ITestInvocation {
 
     private String mStatus = "(not invoked)";
     private String mStopCause = null;
+    private boolean mTestStarted = false;
 
     /**
      * A {@link ResultForwarder} for forwarding resumed invocations.
@@ -294,8 +295,11 @@ public class TestInvocation implements ITestInvocation {
             reportFailure(t, listener, config, context, invocationPath);
             throw t;
         } finally {
-            for (ITestDevice device : context.getDevices()) {
-                invocationPath.reportLogs(device, listener, Stage.TEST);
+            // Only capture logcat for TEST if we started the test phase.
+            if (mTestStarted) {
+                for (ITestDevice device : context.getDevices()) {
+                    invocationPath.reportLogs(device, listener, Stage.TEST);
+                }
             }
             getRunUtil().allowInterrupt(false);
             if (config.getCommandOptions().takeBugreportOnInvocationEnded() ||
@@ -394,6 +398,7 @@ public class TestInvocation implements ITestInvocation {
         logDeviceBatteryLevel(context, "initial -> setup");
         invocationPath.doSetup(context, config, listener);
         logDeviceBatteryLevel(context, "setup -> test");
+        mTestStarted = true;
         invocationPath.runTests(context, config, listener);
         logDeviceBatteryLevel(context, "after test");
     }
