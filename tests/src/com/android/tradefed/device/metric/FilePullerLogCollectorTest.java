@@ -15,8 +15,10 @@
  */
 package com.android.tradefed.device.metric;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
@@ -47,11 +49,13 @@ public class FilePullerLogCollectorTest {
     private ITestInvocationListener mMockListener;
     private IInvocationContext mContext;
     private ITestDevice mMockDevice;
+    private IDevice mMockIDevice;
 
     @Before
     public void setUp() throws Exception {
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
+        mMockIDevice = EasyMock.createMock(IDevice.class);
         mContext = new InvocationContext();
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
         mCollector = new FilePullerLogCollector();
@@ -73,6 +77,7 @@ public class FilePullerLogCollectorTest {
 
         Capture<HashMap<String, Metric>> capture = new Capture<>();
         mMockListener.testStarted(test, 0L);
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
         EasyMock.expect(mMockDevice.pullFile("/data/local/tmp/log1.txt"))
                 .andReturn(new File("file"));
         mMockDevice.deleteFile("/data/local/tmp/log1.txt");
@@ -136,6 +141,7 @@ public class FilePullerLogCollectorTest {
 
         Capture<HashMap<String, Metric>> capture = new Capture<>();
         mMockListener.testStarted(test, 0L);
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
         EasyMock.expect(mMockDevice.pullFile("/data/local/tmp/log1.txt"))
                 .andReturn(new File("file"));
         mMockDevice.deleteFile("/data/local/tmp/log1.txt");
