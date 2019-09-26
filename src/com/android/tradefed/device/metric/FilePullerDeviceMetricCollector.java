@@ -18,6 +18,7 @@ package com.android.tradefed.device.metric;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.util.FileUtil;
@@ -142,6 +143,10 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
         for (Entry<String, String> entry : currentMetrics.entrySet()) {
             if (p.matcher(entry.getKey()).find()) {
                 for (ITestDevice device : getDevices()) {
+                    // Skip StubDevices
+                    if (device.getIDevice() instanceof StubDevice) {
+                        continue;
+                    }
                     try {
                         File attemptPull = device.pullFile(entry.getValue());
                         if (attemptPull != null) {
@@ -177,6 +182,10 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
         try {
             File tmpDestDir = FileUtil.createTempDir("host_tmp");
             for (ITestDevice device : getDevices()) {
+                // Skip StubDevices
+                if (device.getIDevice() instanceof StubDevice) {
+                    continue;
+                }
                 try {
                     if (device.pullDir(keyDirectory, tmpDestDir)) {
                         if (mCleanUp) {
