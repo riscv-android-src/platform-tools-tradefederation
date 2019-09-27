@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.result;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
@@ -48,7 +47,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -71,7 +69,7 @@ public class SubprocessResultsReporter
     @Option(name = "output-test-log", description = "Option to report test logs to parent process.")
     private boolean mOutputTestlog = false;
 
-    private IBuildInfo mPrimaryBuildInfo = null;
+    private IInvocationContext mContext = null;
     private Socket mReportSocket = null;
     private Object mLock = new Object();
     private PrintWriter mPrintWriter = null;
@@ -192,10 +190,8 @@ public class SubprocessResultsReporter
         InvocationStartedEventInfo info =
                 new InvocationStartedEventInfo(context.getTestTag(), System.currentTimeMillis());
         printEvent(SubprocessTestResultsParser.StatusKeys.INVOCATION_STARTED, info);
-
-        // Save off primary build info so that we can parse it later during invocation ended.
-        List<IBuildInfo> infos = context.getBuildInfos();
-        mPrimaryBuildInfo = infos.isEmpty() ? null : infos.get(0);
+        // Save off the context so that we can parse it later during invocation ended.
+        mContext = context;
     }
 
     /** {@inheritDoc} */
@@ -233,10 +229,11 @@ public class SubprocessResultsReporter
      */
     @Override
     public void invocationEnded(long elapsedTime) {
-        if (mPrimaryBuildInfo == null) {
+        if (mContext == null) {
             return;
         }
-        Map<String, String> metrics = mPrimaryBuildInfo.getBuildAttributes();
+
+        Map<String, String> metrics = mContext.getAttributes().getUniqueMap();
         // All the invocation level metrics collected
         metrics.putAll(InvocationMetricLogger.getInvocationMetrics());
         InvocationEndedEventInfo eventEnd = new InvocationEndedEventInfo(metrics);
