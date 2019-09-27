@@ -58,8 +58,9 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
     NAME = 'AtestTradefedTestRunner'
     EXECUTABLE = 'atest_tradefed.sh'
     _TF_TEMPLATE = 'template/atest_local_min'
+    _LOG_ARGS = '--logcat-on-failure --atest-log-file-path={log_path}'
     _RUN_CMD = ('{exe} {template} --template:map '
-                'test=atest --atest-log-file-path={log_path} {args}')
+                'test=atest {log_args} {args}')
     _BUILD_REQ = {'tradefed-core'}
 
     def __init__(self, results_dir, module_info=None, **kwargs):
@@ -69,10 +70,11 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         self.log_path = os.path.join(results_dir, LOG_FOLDER_NAME)
         if not os.path.exists(self.log_path):
             os.makedirs(self.log_path)
+        log_args = {'log_path': self.log_path}
         self.run_cmd_dict = {'exe': self.EXECUTABLE,
                              'template': self._TF_TEMPLATE,
                              'args': '',
-                             'log_path': self.log_path}
+                             'log_args': self._LOG_ARGS.format(**log_args)}
         self.is_verbose = logging.getLogger().isEnabledFor(logging.DEBUG)
         self.root_dir = os.environ.get(constants.ANDROID_BUILD_TOP)
 
