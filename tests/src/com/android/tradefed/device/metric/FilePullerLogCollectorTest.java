@@ -22,6 +22,7 @@ import com.android.ddmlib.IDevice;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -61,6 +62,32 @@ public class FilePullerLogCollectorTest {
         mCollector = new FilePullerLogCollector();
         OptionSetter setter = new OptionSetter(mCollector);
         setter.setOptionValue("pull-pattern-keys", "log.*");
+    }
+
+    /** Test that metrics and files are logged but nothing is pulled since it's a stub device. */
+    @Test
+    public void testSkipStub() throws Exception {
+        ITestInvocationListener listener = mCollector.init(mContext, mMockListener);
+        TestDescription test = new TestDescription("class", "test");
+        Map<String, String> metrics = new HashMap<>();
+        metrics.put("log1", "/data/local/tmp/log1.txt");
+        metrics.put("another_metrics", "57");
+
+        Capture<HashMap<String, Metric>> capture = new Capture<>();
+        mMockListener.testStarted(test, 0L);
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
+        mMockListener.testEnded(EasyMock.eq(test), EasyMock.eq(50L), EasyMock.capture(capture));
+
+        EasyMock.replay(mMockDevice, mMockListener);
+        listener.testStarted(test, 0L);
+        listener.testEnded(test, 50L, TfMetricProtoUtil.upgradeConvert(metrics));
+        EasyMock.verify(mMockDevice, mMockListener);
+        HashMap<String, Metric> metricCaptured = capture.getValue();
+        assertEquals(
+                "57", metricCaptured.get("another_metrics").getMeasurements().getSingleString());
+        assertEquals(
+                "/data/local/tmp/log1.txt",
+                metricCaptured.get("log1").getMeasurements().getSingleString());
     }
 
     /**
