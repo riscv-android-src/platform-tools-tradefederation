@@ -142,7 +142,10 @@ public abstract class SubprocessTfLauncher
                             "google-tradefed.jar",
                             "google-tradefed-tests.jar",
                             // Google contrib jars
-                            "google-tradefed-contrib.jar"));
+                            "google-tradefed-contrib.jar",
+                            // Older jar required for coverage tests
+                            "jack-jacoco-reporter.jar",
+                            "emmalib.jar"));
 
     /** Timeout to wait for the events received from subprocess to finish being processed.*/
     private static final long EVENT_THREAD_JOIN_TIMEOUT_MS = 30 * 1000;
