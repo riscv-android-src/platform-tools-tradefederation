@@ -598,7 +598,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         long elapsedTime = 0l;
         HashMap<String, Metric> metricsProto = new HashMap<>();
         if (attempt != null) {
-            listener.testRunStarted(getId(), totalExpectedTests, attempt, mStartTestTime);
+            long startTime =
+                    listResults.isEmpty() ? mStartTestTime : listResults.get(0).getStartTime();
+            listener.testRunStarted(getId(), totalExpectedTests, attempt, startTime);
         } else {
             listener.testRunStarted(getId(), totalExpectedTests, 0, mStartTestTime);
         }
@@ -663,7 +665,12 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 ((ILogSaverListener) listener).logAssociation(logFile.getKey(), logFile.getValue());
             }
         }
-        listener.testRunEnded(getCurrentTime() - mStartTestTime, metricsProto);
+        // Allow each attempt to have its own start/end time
+        if (attempt != null) {
+            listener.testRunEnded(elapsedTime, metricsProto);
+        } else {
+            listener.testRunEnded(getCurrentTime() - mStartTestTime, metricsProto);
+        }
     }
 
     private void forwardTestResults(
