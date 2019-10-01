@@ -29,8 +29,6 @@ import com.android.ddmlib.SyncException.SyncError;
 import com.android.ddmlib.SyncService;
 import com.android.ddmlib.TimeoutException;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
-import com.android.ddmlib.testrunner.ITestRunListener;
-import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;
@@ -45,8 +43,6 @@ import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.SnapshotInputStreamSource;
-import com.android.tradefed.result.StubTestRunListener;
-import com.android.tradefed.result.ddmlib.TestRunToTestInvocationForwarder;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.Bugreport;
@@ -828,100 +824,33 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@inheritDoc} */
     @Override
     public boolean runInstrumentationTests(
-            final IRemoteAndroidTestRunner runner,
-            final Collection<ITestLifeCycleReceiver> listeners)
+            IRemoteAndroidTestRunner runner,
+            long shellTimeout,
+            TimeUnit shellTimeoutUnit,
+            long overallTimeout,
+            TimeUnit overallTimeoutUnit,
+            Collection<ITestLifeCycleReceiver> listeners)
             throws DeviceNotAvailableException {
-        RunFailureListener failureListener = new RunFailureListener();
-        List<ITestRunListener> runListeners = new ArrayList<>();
-        runListeners.add(failureListener);
-        runListeners.add(new TestRunToTestInvocationForwarder(listeners));
-
-        DeviceAction runTestsAction =
-                new DeviceAction() {
-                    @Override
-                    public boolean run()
-                            throws IOException, TimeoutException, AdbCommandRejectedException,
-                                    ShellCommandUnresponsiveException, InstallException,
-                                    SyncException {
-                        runner.run(runListeners);
-                        return true;
-                    }
-                };
-        boolean result = performDeviceAction(String.format("run %s instrumentation tests",
-                runner.getPackageName()), runTestsAction, 0);
-        if (failureListener.isRunFailure()) {
-            // run failed, might be system crash. Ensure device is up
-            if (mStateMonitor.waitForDeviceAvailable(5 * 1000) == null) {
-                // device isn't up, recover
-                recoverDevice();
-            }
-        }
-        return result;
+        throw new UnsupportedOperationException("No support for Activity Manager's features");
     }
 
     /** {@inheritDoc} */
     @Override
-    public boolean runInstrumentationTestsAsUser(
-            final IRemoteAndroidTestRunner runner,
-            int userId,
-            final Collection<ITestLifeCycleReceiver> listeners)
+    public boolean runInstrumentationTests(
+            IRemoteAndroidTestRunner runner, Collection<ITestLifeCycleReceiver> listeners)
             throws DeviceNotAvailableException {
-        String oldRunTimeOptions = appendUserRunTimeOptionToRunner(runner, userId);
-        boolean result = runInstrumentationTests(runner, listeners);
-        resetUserRunTimeOptionToRunner(runner, oldRunTimeOptions);
-        return result;
+        throw new UnsupportedOperationException("No support for Activity Manager's features");
     }
 
-    /**
-     * Helper method to add user run time option to {@link RemoteAndroidTestRunner}
-     *
-     * @param runner {@link IRemoteAndroidTestRunner}
-     * @param userId the integer of the user id to run as.
-     * @return original run time options.
-     */
-    private String appendUserRunTimeOptionToRunner(final IRemoteAndroidTestRunner runner, int userId) {
-        if (runner instanceof RemoteAndroidTestRunner) {
-            String original = ((RemoteAndroidTestRunner) runner).getRunOptions();
-            String userRunTimeOption = String.format("--user %s", Integer.toString(userId));
-            String updated = (original != null) ? (original + " " + userRunTimeOption)
-                    : userRunTimeOption;
-            ((RemoteAndroidTestRunner) runner).setRunOptions(updated);
-            return original;
-        } else {
-            throw new IllegalStateException(String.format("%s runner does not support multi-user",
-                    runner.getClass().getName()));
-        }
-    }
-
-    /**
-     * Helper method to reset the run time options to {@link RemoteAndroidTestRunner}
-     *
-     * @param runner {@link IRemoteAndroidTestRunner}
-     * @param oldRunTimeOptions
-     */
-    private void resetUserRunTimeOptionToRunner(final IRemoteAndroidTestRunner runner,
-            String oldRunTimeOptions) {
-        if (runner instanceof RemoteAndroidTestRunner) {
-            if (oldRunTimeOptions != null) {
-                ((RemoteAndroidTestRunner) runner).setRunOptions(oldRunTimeOptions);
-            }
-        } else {
-            throw new IllegalStateException(String.format("%s runner does not support multi-user",
-                    runner.getClass().getName()));
-        }
-    }
-
-    private static class RunFailureListener extends StubTestRunListener {
-        private boolean mIsRunFailure = false;
-
-        @Override
-        public void testRunFailed(String message) {
-            mIsRunFailure = true;
-        }
-
-        public boolean isRunFailure() {
-            return mIsRunFailure;
-        }
+    /** {@inheritDoc} */
+    @Override
+    public boolean runInstrumentationTests(
+            IRemoteAndroidTestRunner runner,
+            long shellTimeout,
+            long overallTimeout,
+            ITestLifeCycleReceiver... listeners)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Activity Manager's features");
     }
 
     /** {@inheritDoc} */
@@ -929,9 +858,41 @@ public class NativeDevice implements IManagedTestDevice {
     public boolean runInstrumentationTests(
             IRemoteAndroidTestRunner runner, ITestLifeCycleReceiver... listeners)
             throws DeviceNotAvailableException {
-        List<ITestLifeCycleReceiver> listenerList = new ArrayList<>();
-        listenerList.addAll(Arrays.asList(listeners));
-        return runInstrumentationTests(runner, listenerList);
+        throw new UnsupportedOperationException("No support for Activity Manager's features");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean runInstrumentationTestsAsUser(
+            IRemoteAndroidTestRunner runner,
+            long shellTimeout,
+            long overallTimeout,
+            int userId,
+            Collection<ITestLifeCycleReceiver> listeners)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Activity Manager's features");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean runInstrumentationTestsAsUser(
+            IRemoteAndroidTestRunner runner,
+            int userId,
+            Collection<ITestLifeCycleReceiver> listeners)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Activity Manager's features");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean runInstrumentationTestsAsUser(
+            IRemoteAndroidTestRunner runner,
+            long shellTimeout,
+            long overallTimeout,
+            int userId,
+            ITestLifeCycleReceiver... listeners)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Activity Manager's features");
     }
 
     /** {@inheritDoc} */
@@ -939,10 +900,7 @@ public class NativeDevice implements IManagedTestDevice {
     public boolean runInstrumentationTestsAsUser(
             IRemoteAndroidTestRunner runner, int userId, ITestLifeCycleReceiver... listeners)
             throws DeviceNotAvailableException {
-        String oldRunTimeOptions = appendUserRunTimeOptionToRunner(runner, userId);
-        boolean result = runInstrumentationTests(runner, listeners);
-        resetUserRunTimeOptionToRunner(runner, oldRunTimeOptions);
-        return result;
+        throw new UnsupportedOperationException("No support for Activity Manager's features");
     }
 
     /**
