@@ -861,7 +861,6 @@ public class TestDeviceTest extends TestCase {
         EasyMock.expect(mockRunner.getPackageName()).andStubReturn("com.example");
         Collection<ITestLifeCycleReceiver> listeners = new ArrayList<>(0);
         mockRunner.setMaxTimeToOutputResponse(EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
-        mockRunner.setMaxTimeout(EasyMock.anyLong(), (TimeUnit) EasyMock.anyObject());
         // expect runner.run command to be called
         Collection<ITestRunListener> expectedMock = EasyMock.anyObject();
         mockRunner.run(expectedMock);
@@ -879,7 +878,6 @@ public class TestDeviceTest extends TestCase {
         ITestLifeCycleReceiver listener = EasyMock.createMock(ITestLifeCycleReceiver.class);
         listeners.add(listener);
         mockRunner.setMaxTimeToOutputResponse(EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
-        mockRunner.setMaxTimeout(EasyMock.anyLong(), (TimeUnit) EasyMock.anyObject());
         Collection<ITestRunListener> expectedMock = EasyMock.anyObject();
         mockRunner.run(expectedMock);
         EasyMock.expectLastCall().andThrow(new IOException());
@@ -906,7 +904,6 @@ public class TestDeviceTest extends TestCase {
         ITestLifeCycleReceiver listener = EasyMock.createMock(ITestLifeCycleReceiver.class);
         listeners.add(listener);
         mockRunner.setMaxTimeToOutputResponse(EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
-        mockRunner.setMaxTimeout(EasyMock.anyLong(), (TimeUnit) EasyMock.anyObject());
         Collection<ITestRunListener> expectedMock = EasyMock.anyObject();
         mockRunner.run(expectedMock);
         EasyMock.expectLastCall().andThrow(new IOException());
