@@ -23,10 +23,16 @@ import com.android.ddmlib.RawImage;
 import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.SyncException;
 import com.android.ddmlib.TimeoutException;
+import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
+import com.android.ddmlib.testrunner.ITestRunListener;
+import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FileInputStreamSource;
+import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.StubTestRunListener;
+import com.android.tradefed.result.ddmlib.TestRunToTestInvocationForwarder;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.KeyguardControllerState;
@@ -43,6 +49,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -114,6 +121,9 @@ public class TestDevice extends NativeDevice {
     private static final String APEX_SUFFIX = ".apex";
     private static final String APEX_ARG = "--apex";
 
+    private static final long DEFAULT_INSTR_SHELL_TIMEOUT = 60 * 1000; // 60s
+
+    private static final long DEFAULT_INSTR_TIMEOUT = 10 * 60 * 1000; // 10m
     /**
      * @param device
      * @param stateMonitor
@@ -1773,5 +1783,203 @@ public class TestDevice extends NativeDevice {
             }
         }
         return displays;
+    }
+
+    private static class RunFailureListener extends StubTestRunListener {
+        private boolean mIsRunFailure = false;
+
+        @Override
+        public void testRunFailed(String message) {
+            mIsRunFailure = true;
+        }
+
+        public boolean isRunFailure() {
+            return mIsRunFailure;
+        }
+    }
+
+    /**
+     * Helper method to reset the run time options to {@link RemoteAndroidTestRunner}
+     *
+     * @param runner {@link IRemoteAndroidTestRunner}
+     * @param oldRunTimeOptions
+     */
+    private void resetUserRunTimeOptionToRunner(
+            final IRemoteAndroidTestRunner runner, String oldRunTimeOptions) {
+        if (runner instanceof RemoteAndroidTestRunner) {
+            if (oldRunTimeOptions != null) {
+                ((RemoteAndroidTestRunner) runner).setRunOptions(oldRunTimeOptions);
+            }
+        } else {
+            throw new IllegalStateException(
+                    String.format(
+                            "%s runner does not support multi-user", runner.getClass().getName()));
+        }
+    }
+
+    /**
+     * Helper method to add user run time option to {@link RemoteAndroidTestRunner}
+     *
+     * @param runner {@link IRemoteAndroidTestRunner}
+     * @param userId the integer of the user id to run as.
+     * @return original run time options.
+     */
+    private String appendUserRunTimeOptionToRunner(
+            final IRemoteAndroidTestRunner runner, int userId) {
+        if (runner instanceof RemoteAndroidTestRunner) {
+            String original = ((RemoteAndroidTestRunner) runner).getRunOptions();
+            String userRunTimeOption = String.format("--user %s", Integer.toString(userId));
+            String updated =
+                    (original != null) ? (original + " " + userRunTimeOption) : userRunTimeOption;
+            ((RemoteAndroidTestRunner) runner).setRunOptions(updated);
+            return original;
+        } else {
+            throw new IllegalStateException(
+                    String.format(
+                            "%s runner does not support multi-user", runner.getClass().getName()));
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean runInstrumentationTests(
+            final IRemoteAndroidTestRunner runner,
+            long shellTimeout,
+            TimeUnit shellTimeoutUnit,
+            long overallTimeout,
+            TimeUnit overallTimeoutUnit,
+            final Collection<ITestLifeCycleReceiver> listeners)
+            throws DeviceNotAvailableException {
+        RunFailureListener failureListener = new RunFailureListener();
+        List<ITestRunListener> runListeners = new ArrayList<>();
+        runListeners.add(failureListener);
+        runListeners.add(new TestRunToTestInvocationForwarder(listeners));
+        runner.setMaxTimeToOutputResponse(shellTimeout, shellTimeoutUnit);
+        runner.setMaxTimeout(overallTimeout, overallTimeoutUnit);
+
+        DeviceAction runTestsAction =
+                new DeviceAction() {
+                    @Override
+                    public boolean run()
+                            throws IOException, TimeoutException, AdbCommandRejectedException,
+                                    ShellCommandUnresponsiveException, InstallException,
+                                    SyncException {
+                        runner.run(runListeners);
+                        return true;
+                    }
+                };
+        boolean result =
+                performDeviceAction(
+                        String.format("run %s instrumentation tests", runner.getPackageName()),
+                        runTestsAction,
+                        0);
+        if (failureListener.isRunFailure()) {
+            // run failed, might be system crash. Ensure device is up
+            if (mStateMonitor.waitForDeviceAvailable(5 * 1000) == null) {
+                // device isn't up, recover
+                recoverDevice();
+            }
+        }
+        return result;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean runInstrumentationTests(
+            final IRemoteAndroidTestRunner runner,
+            final Collection<ITestLifeCycleReceiver> listeners)
+            throws DeviceNotAvailableException {
+        return runInstrumentationTests(
+                runner,
+                DEFAULT_INSTR_SHELL_TIMEOUT,
+                TimeUnit.MILLISECONDS,
+                DEFAULT_INSTR_SHELL_TIMEOUT,
+                TimeUnit.MILLISECONDS,
+                listeners);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean runInstrumentationTestsAsUser(
+            final IRemoteAndroidTestRunner runner,
+            long shellTimeout,
+            long overallTimeout,
+            int userId,
+            final Collection<ITestLifeCycleReceiver> listeners)
+            throws DeviceNotAvailableException {
+        String oldRunTimeOptions = appendUserRunTimeOptionToRunner(runner, userId);
+        boolean result =
+                runInstrumentationTests(
+                        runner,
+                        shellTimeout,
+                        TimeUnit.MILLISECONDS,
+                        overallTimeout,
+                        TimeUnit.MILLISECONDS,
+                        listeners);
+        resetUserRunTimeOptionToRunner(runner, oldRunTimeOptions);
+        return result;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean runInstrumentationTestsAsUser(
+            final IRemoteAndroidTestRunner runner,
+            int userId,
+            final Collection<ITestLifeCycleReceiver> listeners)
+            throws DeviceNotAvailableException {
+        return runInstrumentationTestsAsUser(
+                runner, DEFAULT_INSTR_SHELL_TIMEOUT, DEFAULT_INSTR_TIMEOUT, userId, listeners);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean runInstrumentationTests(
+            IRemoteAndroidTestRunner runner,
+            long shellTimeout,
+            long overallTimeout,
+            ITestLifeCycleReceiver... listeners)
+            throws DeviceNotAvailableException {
+        List<ITestLifeCycleReceiver> listenerList = new ArrayList<>();
+        listenerList.addAll(Arrays.asList(listeners));
+        return runInstrumentationTests(
+                runner,
+                shellTimeout,
+                TimeUnit.MILLISECONDS,
+                overallTimeout,
+                TimeUnit.MILLISECONDS,
+                listenerList);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean runInstrumentationTests(
+            IRemoteAndroidTestRunner runner, ITestLifeCycleReceiver... listeners)
+            throws DeviceNotAvailableException {
+        return runInstrumentationTests(
+                runner, DEFAULT_INSTR_SHELL_TIMEOUT, DEFAULT_INSTR_TIMEOUT, listeners);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean runInstrumentationTestsAsUser(
+            IRemoteAndroidTestRunner runner,
+            long shellTimeout,
+            long overallTimeout,
+            int userId,
+            ITestLifeCycleReceiver... listeners)
+            throws DeviceNotAvailableException {
+        String oldRunTimeOptions = appendUserRunTimeOptionToRunner(runner, userId);
+        boolean result = runInstrumentationTests(runner, shellTimeout, overallTimeout, listeners);
+        resetUserRunTimeOptionToRunner(runner, oldRunTimeOptions);
+        return result;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean runInstrumentationTestsAsUser(
+            IRemoteAndroidTestRunner runner, int userId, ITestLifeCycleReceiver... listeners)
+            throws DeviceNotAvailableException {
+        return runInstrumentationTestsAsUser(
+                runner, DEFAULT_INSTR_SHELL_TIMEOUT, DEFAULT_INSTR_TIMEOUT, userId, listeners);
     }
 }

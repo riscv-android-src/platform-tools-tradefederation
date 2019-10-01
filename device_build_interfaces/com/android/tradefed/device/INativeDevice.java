@@ -18,13 +18,11 @@ package com.android.tradefed.device;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.Log.LogLevel;
-import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.ITestDevice.MountPointInfo;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.log.ITestLogger;
-import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.Bugreport;
@@ -37,7 +35,6 @@ import com.google.errorprone.annotations.MustBeClosed;
 import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -481,60 +478,6 @@ public interface INativeDevice {
      * recovered.
      */
     public CommandResult fastbootWipePartition(String partition) throws DeviceNotAvailableException;
-
-    /**
-     * Runs instrumentation tests, and provides device recovery.
-     *
-     * <p>If connection with device is lost before test run completes, and recovery succeeds, all
-     * listeners will be informed of testRunFailed and "false" will be returned. The test command
-     * will not be rerun. It is left to callers to retry if necessary.
-     *
-     * <p>If connection with device is lost before test run completes, and recovery fails, all
-     * listeners will be informed of testRunFailed and DeviceNotAvailableException will be thrown.
-     *
-     * @param runner the {@link IRemoteAndroidTestRunner} which runs the tests
-     * @param listeners the test result listeners
-     * @return <code>true</code> if test command completed. <code>false</code> if it failed to
-     *     complete due to device communication exception, but recovery succeeded
-     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
-     *     recovered. ie test command failed to complete and recovery failed.
-     */
-    public boolean runInstrumentationTests(
-            IRemoteAndroidTestRunner runner, Collection<ITestLifeCycleReceiver> listeners)
-            throws DeviceNotAvailableException;
-
-    /**
-     * Convenience method for performing {@link #runInstrumentationTests(IRemoteAndroidTestRunner,
-     * Collection)} with one or more listeners passed as parameters.
-     *
-     * @param runner the {@link IRemoteAndroidTestRunner} which runs the tests
-     * @param listeners the test result listener(s)
-     * @return <code>true</code> if test command completed. <code>false</code> if it failed to
-     *     complete, but recovery succeeded
-     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
-     *     recovered. ie test command failed to complete and recovery failed.
-     */
-    public boolean runInstrumentationTests(
-            IRemoteAndroidTestRunner runner, ITestLifeCycleReceiver... listeners)
-            throws DeviceNotAvailableException;
-
-    /**
-     * Same as {@link ITestDevice#runInstrumentationTests(IRemoteAndroidTestRunner, Collection)} but
-     * runs the test for the given user.
-     */
-    public boolean runInstrumentationTestsAsUser(
-            IRemoteAndroidTestRunner runner,
-            int userId,
-            Collection<ITestLifeCycleReceiver> listeners)
-            throws DeviceNotAvailableException;
-
-    /**
-     * Same as {@link ITestDevice#runInstrumentationTests(IRemoteAndroidTestRunner,
-     * ITestLifeCycleReceiver...)} but runs the test for a given user.
-     */
-    public boolean runInstrumentationTestsAsUser(
-            IRemoteAndroidTestRunner runner, int userId, ITestLifeCycleReceiver... listeners)
-            throws DeviceNotAvailableException;
 
     /**
      * Check whether platform on device supports runtime permission granting
