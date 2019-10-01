@@ -136,6 +136,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private long mElapsedTearDown = 0l;
 
     private long mStartTestTime = 0l;
+    private Long mStartModuleRunDate = null;
 
     // Tracking of retry performance
     private List<RetryStatistics> mRetryStats = new ArrayList<>();
@@ -326,6 +327,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             TestFailureListener failureListener,
             int maxRunLimit)
             throws DeviceNotAvailableException {
+        mStartModuleRunDate = System.currentTimeMillis();
         // Load extra configuration for the module from module_controller
         // TODO: make module_controller a full TF object
         boolean skipTestCases = false;
@@ -929,7 +931,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     /** Report completely not executed modules. */
     public final void reportNotExecuted(ITestInvocationListener listener, String message) {
-        listener.testModuleStarted(getModuleInvocationContext());
+        if (mStartModuleRunDate == null) {
+            listener.testModuleStarted(getModuleInvocationContext());
+        }
         listener.testRunStarted(getId(), 0, 0, System.currentTimeMillis());
         listener.testRunFailed(message);
         listener.testRunEnded(0, new HashMap<String, Metric>());
