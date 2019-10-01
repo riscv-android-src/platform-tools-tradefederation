@@ -17,15 +17,19 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
+import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
+import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.util.KeyguardControllerState;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Provides an reliable and slightly higher level API to a ddmlib {@link IDevice}.
@@ -928,4 +932,112 @@ public interface ITestDevice extends INativeDevice {
      * @throws DeviceNotAvailableException
      */
     public Set<Integer> listDisplayIds() throws DeviceNotAvailableException;
+
+    /**
+     * Runs instrumentation tests, and provides device recovery.
+     *
+     * <p>If connection with device is lost before test run completes, and recovery succeeds, all
+     * listeners will be informed of testRunFailed and "false" will be returned. The test command
+     * will not be rerun. It is left to callers to retry if necessary.
+     *
+     * <p>If connection with device is lost before test run completes, and recovery fails, all
+     * listeners will be informed of testRunFailed and DeviceNotAvailableException will be thrown.
+     *
+     * @param runner the {@link IRemoteAndroidTestRunner} which runs the tests
+     * @param shellTimeout the timeout for how often the instrumentation should generate output
+     *     before deemed unresponsive
+     * @param overallTimeout the overall timeout for how long the instrumentation can run
+     * @param listeners the test result listeners
+     * @return <code>true</code> if test command completed. <code>false</code> if it failed to
+     *     complete due to device communication exception, but recovery succeeded
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered. ie test command failed to complete and recovery failed.
+     */
+    public boolean runInstrumentationTests(
+            IRemoteAndroidTestRunner runner,
+            long shellTimeout,
+            TimeUnit shellTimeoutUnit,
+            long overallTimeout,
+            TimeUnit overallTimeoutUnit,
+            Collection<ITestLifeCycleReceiver> listeners)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Same as {@link #runInstrumentationTests(IRemoteAndroidTestRunner, long, long,
+     * ITestLifeCycleReceiver...)} but runs with default timeout params.
+     */
+    public boolean runInstrumentationTests(
+            IRemoteAndroidTestRunner runner, Collection<ITestLifeCycleReceiver> listeners)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Convenience method for performing {@link #runInstrumentationTests(IRemoteAndroidTestRunner,
+     * Collection)} with one or more listeners passed as parameters.
+     *
+     * @param runner the {@link IRemoteAndroidTestRunner} which runs the tests
+     * @param shellTimeout the timeout for how often the instrumentation should generate output
+     *     before deemed unresponsive
+     * @param overallTimeout the overall timeout for how long the instrumentation can run
+     * @param listeners the test result listener(s)
+     * @return <code>true</code> if test command completed. <code>false</code> if it failed to
+     *     complete, but recovery succeeded
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered. ie test command failed to complete and recovery failed.
+     */
+    public boolean runInstrumentationTests(
+            IRemoteAndroidTestRunner runner,
+            long shellTimeout,
+            long overallTimeout,
+            ITestLifeCycleReceiver... listeners)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Same as {@link #runInstrumentationTests(IRemoteAndroidTestRunner, long, long, Collection)}
+     * but runs with default timeout params
+     */
+    public boolean runInstrumentationTests(
+            IRemoteAndroidTestRunner runner, ITestLifeCycleReceiver... listeners)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Same as {@link #runInstrumentationTests(IRemoteAndroidTestRunner, long, long, Collection)}
+     * but runs the test for the given user.
+     */
+    public boolean runInstrumentationTestsAsUser(
+            IRemoteAndroidTestRunner runner,
+            long shellTimeout,
+            long overallTimeout,
+            int userId,
+            Collection<ITestLifeCycleReceiver> listeners)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Same as {@link #runInstrumentationTestsAsUser(IRemoteAndroidTestRunner, long, long, int,
+     * Collection)} but runs with default timeout params
+     */
+    public boolean runInstrumentationTestsAsUser(
+            IRemoteAndroidTestRunner runner,
+            int userId,
+            Collection<ITestLifeCycleReceiver> listeners)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Same as {@link ITestDevice#runInstrumentationTests(IRemoteAndroidTestRunner,
+     * ITestLifeCycleReceiver...)} but runs the test for a given user.
+     */
+    public boolean runInstrumentationTestsAsUser(
+            IRemoteAndroidTestRunner runner,
+            long shellTimeout,
+            long overallTimeout,
+            int userId,
+            ITestLifeCycleReceiver... listeners)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Same as {@link #runInstrumentationTestsAsUser(IRemoteAndroidTestRunner, long, long, int,
+     * ITestLifeCycleReceiver...)} but runs with default timeout params
+     */
+    public boolean runInstrumentationTestsAsUser(
+            IRemoteAndroidTestRunner runner, int userId, ITestLifeCycleReceiver... listeners)
+            throws DeviceNotAvailableException;
 }
