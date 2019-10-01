@@ -50,10 +50,14 @@ import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.ddmlib.DefaultRemoteAndroidTestRunner;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStrategy;
+import com.android.tradefed.testtype.coverage.CoverageOptions;
+import com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.JavaCodeCoverageFlusher;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
+import com.android.tradefed.util.NativeCodeCoverageFlusher;
 import com.android.tradefed.util.StringEscapeUtils;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -913,6 +917,24 @@ public class InstrumentationTest
             mRunner.addInstrumentationArg("listener", ArrayUtil.join(",", mExtraDeviceListener));
         }
 
+        // Clear coverage measurements on the device before running.
+        if (mConfiguration != null
+                && mConfiguration.getCoverageOptions().isCoverageFlushEnabled()) {
+            CoverageOptions options = mConfiguration.getCoverageOptions();
+
+            if (options.getCoverageToolchains().contains(Toolchain.GCOV)) {
+                NativeCodeCoverageFlusher flusher = new NativeCodeCoverageFlusher(mDevice);
+                flusher.forceCoverageFlush(options.getCoverageProcesses());
+                flusher.clearCoverageMeasurements();
+            }
+
+            if (options.getCoverageToolchains().contains(Toolchain.JACOCO)) {
+                JavaCodeCoverageFlusher flusher =
+                        new JavaCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
+                flusher.resetCoverage();
+            }
+        }
+
         if (testsToRun == null) {
             // Failed to collect the tests or collection is off. Just try to run them all.
             mDevice.runInstrumentationTests(mRunner, listener);
@@ -958,8 +980,11 @@ public class InstrumentationTest
         }
         if (mConfiguration.getCoverageOptions().isCoverageEnabled()
                 && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(JACOCO)) {
-            // TODO(b/137857876): Pass cross-process coverage options to the Java listener.
-            return new JavaCodeCoverageListener(getDevice(), mMergeCoverageMeasurements, listener);
+            return new JavaCodeCoverageListener(
+                    getDevice(),
+                    mConfiguration.getCoverageOptions(),
+                    mMergeCoverageMeasurements,
+                    listener);
         }
         return listener;
     }
