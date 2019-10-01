@@ -807,12 +807,12 @@ public class ConfigurationTest extends TestCase {
                         "<cmd_options class=\"com.android.tradefed.command.CommandOptions\" />"));
 
         OptionSetter setter = new OptionSetter(options1);
-        setter.setOptionValue("retry-strategy", "ITERATIONS");
+        setter.setOptionValue("test-tag", "tag-value");
         sw = new StringWriter();
         pw = new PrintWriter(sw);
         one.dumpXml(pw, new ArrayList<>(), true, false);
         String withOption = sw.toString();
-        assertTrue(withOption.contains("<option name=\"retry-strategy\" value=\"ITERATIONS\" />"));
+        assertTrue(withOption.contains("<option name=\"test-tag\" value=\"tag-value\" />"));
 
         CommandOptions options2 = new CommandOptions();
         one.setCommandOptions(options2);
