@@ -39,6 +39,8 @@ import java.util.stream.Collectors;
  */
 public class BaseRetryDecision implements IRetryDecision {
 
+    private static final int ABORT_MAX_FAILURES = 50;
+
     @Option(
         name = "reboot-at-last-retry",
         description = "Reboot the device at the last retry attempt."
@@ -195,7 +197,16 @@ public class BaseRetryDecision implements IRetryDecision {
         Set<TestDescription> previousFailedTests = getFailedTestCases(previousResults);
         if (!mPreviouslyFailing.isEmpty()) {
             previousFailedTests.retainAll(mPreviouslyFailing);
+            mPreviouslyFailing.retainAll(previousFailedTests);
         }
+        // Abort if number of failures is high for a given one test
+        if (previousFailedTests.size() > ABORT_MAX_FAILURES) {
+            CLog.d(
+                    "Found %s failures, skipping auto-retry to avoid large overhead.",
+                    previousFailedTests.size());
+            return false;
+        }
+
         if (!previousFailedTests.isEmpty()) {
             CLog.d("Retrying the test case failure.");
             addRetriedTestsToIncludeFilters(test, previousFailedTests);
