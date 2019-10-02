@@ -214,7 +214,8 @@ public class TestInvocation implements ITestInvocation {
             ITestInvocationListener listener,
             boolean devicePreSetupDone)
             throws Throwable {
-
+        ReportHostLog reportThread = new ReportHostLog(listener, config);
+        Runtime.getRuntime().addShutdownHook(reportThread);
         boolean resumed = false;
         String bugreportName = null;
         long startTime = System.currentTimeMillis();
@@ -357,6 +358,8 @@ public class TestInvocation implements ITestInvocation {
                     PrettyPrintDelimiter.printStageDelimiter(message);
                 }
                 reportHostLog(listener, config);
+                // If host_log is reported, remove the hook
+                Runtime.getRuntime().removeShutdownHook(reportThread);
 
                 elapsedTime = System.currentTimeMillis() - startTime;
                 if (!resumed) {
@@ -965,5 +968,23 @@ public class TestInvocation implements ITestInvocation {
                     String.format("%s-%s", testTag, config.getCommandOptions().getTestTagSuffix());
         }
         return testTag;
+    }
+
+    /** Helper Thread that ensures host_log is reported in case of killed JVM */
+    private class ReportHostLog extends Thread {
+
+        private ITestInvocationListener mListener;
+        private IConfiguration mConfiguration;
+
+        public ReportHostLog(ITestInvocationListener listener, IConfiguration config) {
+            mListener = listener;
+            mConfiguration = config;
+        }
+
+        @Override
+        public void run() {
+            // Report all the logs that always be reported anyway.
+            reportHostLog(mListener, mConfiguration);
+        }
     }
 }
