@@ -157,8 +157,17 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
 
             Map<String, InputStreamFactory> dummyFiles =
                     createDummyInputStreamFactories(mDummyFileNames);
-            dummyFiles = replaceExistingEntries(dummyFiles, files);
-            filesNotInDeviceBuild.putAll(dummyFiles);
+            Map<String, InputStreamFactory> dummyFilesNotInDeviceBuild =
+                    replaceExistingEntries(dummyFiles, files);
+            // The purpose of the dummy files is to make fastboot shrink product partition.
+            // Some devices don't have product partition and image. If the dummy file names are not
+            // found in device build, they are ignored so that devices with and without product
+            // partition can share configurations.
+            if (!dummyFilesNotInDeviceBuild.isEmpty()) {
+                CLog.w(
+                        "Skip creating dummy images: %s",
+                        String.join(",", dummyFilesNotInDeviceBuild.keySet()));
+            }
 
             if (resourceBuildInfo != null) {
                 // Get specified files from resource build and replace those in device build.

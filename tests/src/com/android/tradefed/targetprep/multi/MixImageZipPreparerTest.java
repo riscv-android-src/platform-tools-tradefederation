@@ -134,6 +134,7 @@ public class MixImageZipPreparerTest {
         mPreparer = new MixImageZipPreparer();
         mPreparer.addSystemFileName(SYSTEM_IMAGE_NAME);
         mPreparer.addDummyFileName(PRODUCT_IMAGE_NAME);
+        mPreparer.addDummyFileName("not_in_device_build.img");
     }
 
     private void setUpResource() throws IOException {
