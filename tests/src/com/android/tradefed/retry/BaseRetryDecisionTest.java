@@ -168,6 +168,22 @@ public class BaseRetryDecisionTest {
         assertFalse(res3);
     }
 
+    /** Ensure we abort the retry if there are too many failed test cases. */
+    @Test
+    public void testAbortTooManyFailures() throws Exception {
+        TestRunResult result = new TestRunResult();
+        result.testRunStarted("TEST", 60);
+        for (int i = 0; i < 60; i++) {
+            TestDescription test = new TestDescription("class", "method" + i);
+            result.testStarted(test);
+            result.testFailed(test, "failure" + i);
+            result.testEnded(test, new HashMap<String, Metric>());
+        }
+        result.testRunEnded(500, new HashMap<String, Metric>());
+        boolean res = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result));
+        assertFalse(res);
+    }
+
     private TestRunResult createResult(boolean failure1, boolean failure2) {
         TestRunResult result = new TestRunResult();
         result.testRunStarted("TEST", 2);

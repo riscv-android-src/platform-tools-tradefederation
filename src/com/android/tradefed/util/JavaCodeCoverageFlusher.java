@@ -32,7 +32,7 @@ import java.util.Set;
  * A utility class that resets and forces a flush of Java code coverage measurements from processes
  * running on the device.
  */
-public final class JavaCodeCoverageFlusher {
+public class JavaCodeCoverageFlusher {
 
     private static final String COVERAGE_RESET_FORMAT =
             "am attach-agent %s /system/lib/libdumpcoverage.so=reset";
