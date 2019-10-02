@@ -2256,6 +2256,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     }
 
     @Override
+    public synchronized int getExecutingCommandCount() {
+        return mExecutingCommands.size();
+    }
+
+    @Override
     public void setClearcutClient(ClearcutClient client) {
         mClient = client;
     }
