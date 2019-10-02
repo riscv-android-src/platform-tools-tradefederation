@@ -312,12 +312,17 @@ public class ContentProviderHandler {
             return true;
         }
 
+        CLog.d("Received from content provider:\n%s", listCommandResult);
         String[] listResult = listCommandResult.split("[\\r\\n]+");
 
         for (String row : listResult) {
             HashMap<String, String> columnValues = parseQueryResultRow(row);
             boolean isDirectory = Boolean.valueOf(columnValues.get(COLUMN_DIRECTORY));
             String name = columnValues.get(COLUMN_NAME);
+            if (name == null) {
+                CLog.w("Output from the content provider doesn't seem well formatted:\n%s", row);
+                return false;
+            }
             String path = columnValues.get(COLUMN_ABSOLUTE_PATH);
 
             File localChild = new File(localDir, name);
