@@ -1804,4 +1804,57 @@ public class ITestSuiteTest {
         mTestSuite.run(mMockListener);
         EasyMock.verify(mockBuildInfo);
     }
+
+    /** Test for {@link ITestSuite#reportNotExecuted(ITestInvocationListener, String)}. */
+    @Test
+    public void testReportNotExecuted() {
+        mMockListener.testModuleStarted(EasyMock.anyObject());
+        mMockListener.testRunStarted(
+                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
+        mMockListener.testRunFailed("Injected message");
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testModuleEnded();
+
+        EasyMock.replay(mMockListener);
+        mTestSuite.reportNotExecuted(mMockListener, "Injected message");
+        EasyMock.verify(mMockListener);
+    }
+
+    /**
+     * Test for {@link ITestSuite#reportNotExecuted(ITestInvocationListener, String)} with a module
+     * in progress.
+     */
+    @Test
+    public void testReportNotExecuted_moduleInProgress() {
+        ModuleDefinition m =
+                new ModuleDefinition(
+                        "in-progress",
+                        new ArrayList<>(),
+                        new HashMap<>(),
+                        new ArrayList<>(),
+                        new Configuration("", ""));
+        mTestSuite.setModuleInProgress(m);
+        mMockListener.testModuleStarted(EasyMock.anyObject());
+        mMockListener.testRunStarted(
+                EasyMock.eq("in-progress"), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
+        mMockListener.testRunFailed(
+                "Module in-progress was interrupted after starting. Results might not be "
+                        + "accurate or complete.");
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testModuleEnded();
+        // The non-executed module gets reported too.
+        mMockListener.testModuleStarted(EasyMock.anyObject());
+        mMockListener.testRunStarted(
+                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
+        mMockListener.testRunFailed("Injected message");
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testModuleEnded();
+
+        EasyMock.replay(mMockListener);
+        mTestSuite.reportNotExecuted(mMockListener, "Injected message");
+        EasyMock.verify(mMockListener);
+    }
 }
