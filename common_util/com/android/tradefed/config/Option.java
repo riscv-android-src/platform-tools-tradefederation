@@ -88,21 +88,24 @@ public @interface Option {
 
     /**
      * Whether the option represents a time value.
-     * <p />
-     * If this is a time value, time-specific suffixes will be parsed.  The field <emph>MUST</emph>
-     * be a {@code long} or {@code Long} for this flag to be valid.  A
-     * {@code ConfigurationException} will be thrown otherwise.
-     * <p />
-     * The default unit is millis.  The configuration framework will accept {@code s} for seconds
-     * (1000 millis), {@code m} for minutes (60 seconds), {@code h} for hours (60 minutes),
-     * or {@code d} for days (24 hours).
-     * <p />
-     * Units may be mixed and matched, so long as each unit appears at most once, and so long as
-     * all units which do appear are listed in decreasing order of scale.  So, for instance,
-     * {@code h} may only appear before {@code m}, and may only appear after {@code d}.  As a
-     * specific example, "1d2h3m4s5ms" would be a valid time value, as would "4" or "4ms".  All
-     * embedded whitespace is discarded.
+     *
+     * <p>If this is a time value, time-specific suffixes will be parsed. The field
+     * <emph>MUST</emph> be a {@code long} or {@code Long} for this flag to be valid. A {@code
+     * ConfigurationException} will be thrown otherwise.
+     *
+     * <p>The default unit is millis. The configuration framework will accept {@code s} for seconds
+     * (1000 millis), {@code m} for minutes (60 seconds), {@code h} for hours (60 minutes), or
+     * {@code d} for days (24 hours).
+     *
+     * <p>Units may be mixed and matched, so long as each unit appears at most once, and so long as
+     * all units which do appear are listed in decreasing order of scale. So, for instance, {@code
+     * h} may only appear before {@code m}, and may only appear after {@code d}. As a specific
+     * example, "1d2h3m4s5ms" would be a valid time value, as would "4" or "4ms". All embedded
+     * whitespace is discarded.
+     *
+     * @deprecated use Duration type instead.
      */
+    @Deprecated
     boolean isTimeVal() default false;
 
     /**
