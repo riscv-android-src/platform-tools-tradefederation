@@ -390,7 +390,7 @@ public interface ITestDevice extends INativeDevice {
      *     screenshot was not successful.
      * @throws DeviceNotAvailableException
      */
-    public InputStreamSource getScreenshot(int displayId) throws DeviceNotAvailableException;
+    public InputStreamSource getScreenshot(long displayId) throws DeviceNotAvailableException;
 
     /**
      * Clears the last connected wifi network. This should be called when starting a new invocation
@@ -927,5 +927,5 @@ public interface ITestDevice extends INativeDevice {
      * @return The list of displays. Default always returns the default display 0.
      * @throws DeviceNotAvailableException
      */
-    public Set<Integer> listDisplayIds() throws DeviceNotAvailableException;
+    public Set<Long> listDisplayIds() throws DeviceNotAvailableException;
 }
