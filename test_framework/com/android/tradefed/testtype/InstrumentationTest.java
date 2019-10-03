@@ -923,9 +923,9 @@ public class InstrumentationTest
             CoverageOptions options = mConfiguration.getCoverageOptions();
 
             if (options.getCoverageToolchains().contains(Toolchain.GCOV)) {
-                NativeCodeCoverageFlusher flusher = new NativeCodeCoverageFlusher(mDevice);
-                flusher.forceCoverageFlush(options.getCoverageProcesses());
-                flusher.clearCoverageMeasurements();
+                NativeCodeCoverageFlusher flusher =
+                        new NativeCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
+                flusher.resetCoverage();
             }
 
             if (options.getCoverageToolchains().contains(Toolchain.JACOCO)) {
