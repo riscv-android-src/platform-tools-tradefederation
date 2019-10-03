@@ -466,7 +466,6 @@ public class GTestTest {
                 .andReturn("");
         EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 -1")).andReturn("");
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.executeShellCommand("rm -rf /data/misc/trace/*"))
                 .andReturn("");
         EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
@@ -529,7 +528,6 @@ public class GTestTest {
         EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 1 1000")).andReturn("");
 
         // Clear the coverage data.
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.executeShellCommand("rm -rf /data/misc/trace/*"))
                 .andReturn("");
         EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
