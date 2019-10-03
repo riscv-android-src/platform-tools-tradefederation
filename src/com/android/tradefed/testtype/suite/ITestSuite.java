@@ -337,6 +337,7 @@ public abstract class ITestSuite
 
     // Current modules to run, null if not started to run yet.
     private List<ModuleDefinition> mRunModules = null;
+    private ModuleDefinition mModuleInProgress = null;
     // Logger to be used to files.
     private ITestLogger mCurrentLogger = null;
     // Whether or not we are currently in split
@@ -656,6 +657,7 @@ public abstract class ITestSuite
                             .addDeviceBuildInfo(deviceName, mContext.getBuildInfo(deviceName));
                 }
                 listener.testModuleStarted(module.getModuleInvocationContext());
+                mModuleInProgress = module;
                 // Trigger module start on module level listener too
                 new ResultForwarder(moduleListeners)
                         .testModuleStarted(module.getModuleInvocationContext());
@@ -667,6 +669,7 @@ public abstract class ITestSuite
                     // clear out module invocation context since we are now done with module
                     // execution
                     listener.testModuleEnded();
+                    mModuleInProgress = null;
                 }
                 // Module isolation routine
                 moduleIsolation(mContext, listener);
@@ -1113,6 +1116,16 @@ public abstract class ITestSuite
             runModules = createExecutionList();
         }
 
+        if (mModuleInProgress != null) {
+            // TODO: Ensure in-progress data make sense
+            String inProgressMessage =
+                    String.format(
+                            "Module %s was interrupted after starting. Results might not be "
+                                    + "accurate or complete.",
+                            mModuleInProgress.getId());
+            mModuleInProgress.reportNotExecuted(listener, inProgressMessage);
+        }
+
         while (!runModules.isEmpty()) {
             ModuleDefinition module = runModules.remove(0);
             module.reportNotExecuted(listener, message);
@@ -1375,5 +1388,10 @@ public abstract class ITestSuite
 
     void disableAutoRetryTimeReporting() {
         mDisableAutoRetryTimeReporting = true;
+    }
+
+    @VisibleForTesting
+    void setModuleInProgress(ModuleDefinition moduleInProgress) {
+        mModuleInProgress = moduleInProgress;
     }
 }
