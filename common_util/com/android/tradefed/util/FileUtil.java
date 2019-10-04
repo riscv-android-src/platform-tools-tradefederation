@@ -563,13 +563,30 @@ public class FileUtil {
      * @throws FileNotFoundException
      */
     public static String readStringFromFile(File sourceFile) throws IOException {
-        FileInputStream is = null;
-        try {
-            // no need to buffer since StreamUtil does
-            is = new FileInputStream(sourceFile);
-            return StreamUtil.getStringFromStream(is);
-        } finally {
-            StreamUtil.close(is);
+        return readStringFromFile(sourceFile, 0, 0);
+    }
+
+    /**
+     * A helper method for reading partial string data from a file
+     *
+     * @param sourceFile the file to read from
+     * @param startOffset the start offset to read from the file.
+     * @param length the number of bytes to read of the file.
+     * @throws IOException
+     * @throws FileNotFoundException
+     */
+    public static String readStringFromFile(File sourceFile, long startOffset, long length)
+            throws IOException {
+        try (FileInputStream is = new FileInputStream(sourceFile)) {
+            if (startOffset < 0) {
+                startOffset = 0;
+            }
+            long fileLength = sourceFile.length();
+            is.skip(startOffset);
+            if (length <= 0 || fileLength <= startOffset + length) {
+                return StreamUtil.getStringFromStream(is);
+            }
+            return StreamUtil.getStringFromStream(is, length);
         }
     }
 
