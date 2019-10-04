@@ -110,14 +110,25 @@ public class StreamUtilTest extends TestCase {
     }
 
     /**
-     * Verify that {@link com.android.tradefed.util.StreamUtil#getStringFromStream} works as
-     * expected.
+     * Verify that {@link com.android.tradefed.util.StreamUtil#getStringFromStream(InputStream)}
+     * works as expected.
      */
     public void testGetStringFromStream() throws Exception {
         final String contents = "this is a string";
         final String output = StreamUtil.getStringFromStream(
                 new ByteArrayInputStream(contents.getBytes()));
         assertEquals(contents, output);
+    }
+
+    /**
+     * Verify that {@link com.android.tradefed.util.StreamUtil#getStringFromStream(InputStream,
+     * long)} works as expected.
+     */
+    public void testGetStringFromStream_withLength() throws Exception {
+        final String contents = "this is a string";
+        final String output =
+                StreamUtil.getStringFromStream(new ByteArrayInputStream(contents.getBytes()), 5);
+        assertEquals("this ", output);
     }
 
     /**
