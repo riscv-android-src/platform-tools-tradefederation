@@ -3188,12 +3188,8 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     public String executeShellCommand(String command)
                             throws DeviceNotAvailableException {
-                        if (!started) {
-                            started = true;
-                            test.setDaemon(true);
-                            test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
-                            test.start();
-                        }
+                        test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
+                        test.start();
                         return "";
                     }
 
@@ -3217,7 +3213,6 @@ public class TestDeviceTest extends TestCase {
                         return 100;
                     }
 
-                    boolean started = false;
                     Thread test =
                             new Thread(
                                     new Runnable() {
@@ -3917,11 +3912,11 @@ public class TestDeviceTest extends TestCase {
             Assert.assertEquals(3000, testImage.data.length);
             byte[] result = mTestDevice.compressRawImage(testImage, "PNG", true);
             // Size after compressing can vary a bit depending of the JDK
-            if (result.length != 107 && result.length != 117 && result.length != 139) {
+            if (result.length != 107 && result.length != 117) {
                 fail(
                         String.format(
                                 "Should have compress the length as expected, got %s, "
-                                        + "expected 107 or 117 or 139",
+                                        + "expected 107 or 117",
                                 result.length));
             }
 
@@ -3929,7 +3924,13 @@ public class TestDeviceTest extends TestCase {
             Assert.assertEquals(3000, testImage.data.length);
             result = mTestDevice.compressRawImage(testImage, "JPEG", true);
             // Size after compressing as JPEG
-            Assert.assertEquals(1041, result.length);
+            if (result.length != 1041 && result.length != 851) {
+                fail(
+                        String.format(
+                                "Should have compress the length as expected, got %s, "
+                                        + "expected 851 or 1041",
+                                result.length));
+            }
         } finally {
             if (testImage != null) {
                 testImage.data = null;
@@ -4376,10 +4377,10 @@ public class TestDeviceTest extends TestCase {
                                 "modes:'"))
                 .andReturn(res);
         replayMocks();
-        Set<Integer> displays = mTestDevice.listDisplayIds();
+        Set<Long> displays = mTestDevice.listDisplayIds();
         assertEquals(2, displays.size());
-        assertTrue(displays.contains(0));
-        assertTrue(displays.contains(5));
+        assertTrue(displays.contains(0L));
+        assertTrue(displays.contains(5L));
         verifyMocks();
     }
 
