@@ -69,6 +69,9 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
     _RUN_CMD = ('{exe} {template} --template:map '
                 'test=atest {log_args} {args}')
     _BUILD_REQ = {'tradefed-core'}
+    _RERUN_OPTION_GROUP = [constants.ITERATIONS,
+                           constants.RERUN_UNTIL_FAILURE,
+                           constants.RETRY_ANY_FAILURE]
 
     def __init__(self, results_dir, module_info=None, **kwargs):
         """Init stuff for base class."""
@@ -120,6 +123,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             0 if tests succeed, non-zero otherwise.
         """
         reporter.log_path = self.log_path
+        reporter.rerun_options = self._extract_rerun_options(extra_args)
         # Set google service key if it's available or found before running tests.
         self._try_set_gts_authentication_key()
         if os.getenv(test_runner_base.OLD_OUTPUT_ENV_VAR):
@@ -606,3 +610,16 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         if not has_integration_test:
             args.append(constants.TF_SKIP_LOADING_CONFIG_JAR)
         return args
+
+    def _extract_rerun_options(self, extra_args):
+        """Extract rerun options to a string for output.
+
+        Args:
+            extra_args: Dict of extra args for test runners to use.
+
+        Returns: A string of rerun options.
+        """
+        extracted_options = ['{} {}'.format(arg, extra_args[arg])
+                             for arg in extra_args
+                             if arg in self._RERUN_OPTION_GROUP]
+        return ' '.join(extracted_options)

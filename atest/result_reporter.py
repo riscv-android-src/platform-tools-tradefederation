@@ -154,6 +154,7 @@ class ResultReporter(object):
         self.pre_test = None
         self.log_path = None
         self.silent = silent
+        self.rerun_options = ''
 
     def process_test_result(self, test):
         """Given the results of a single test, update stats and print results.
@@ -226,6 +227,8 @@ class ResultReporter(object):
             return tests_ret
         print('\n%s' % au.colorize('Summary', constants.CYAN))
         print('-------')
+        if self.rerun_options:
+            print(self.rerun_options)
         failed_sum = len(self.failed_tests)
         for runner_name, groups in self.runners.items():
             if groups == UNSUPPORTED_FLAG:
