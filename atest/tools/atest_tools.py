@@ -29,6 +29,8 @@ import sys
 import constants
 import module_info
 
+from metrics import metrics_utils
+
 MAC_UPDB_SRC = os.path.join(os.path.dirname(__file__), 'updatedb_darwin.sh')
 MAC_UPDB_DST = os.path.join(os.getenv(constants.ANDROID_HOST_OUT, ''), 'bin')
 UPDATEDB = 'updatedb'
@@ -339,6 +341,8 @@ def index_targets(output_cache=constants.LOCATE_CACHE, **kwargs):
     # (b/141588997)
     except subprocess.CalledProcessError as err:
         logging.error('Executing %s error.', UPDATEDB)
+        metrics_utils.handle_exc_and_send_exit_event(
+            constants.MLOCATEDB_LOCKED)
         if err.output:
             logging.error(err.output)
         _delete_indexes()
