@@ -640,7 +640,7 @@ public class DeviceManager implements IDeviceManager {
                 deviceState = FreeDeviceState.UNAVAILABLE;
             }
         }
-        if (ideviceToReturn instanceof TcpDevice) {
+        if (ideviceToReturn instanceof TcpDevice || ideviceToReturn instanceof VmRemoteDevice) {
             // Make sure the device goes back to the original state.
             managedDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
         }

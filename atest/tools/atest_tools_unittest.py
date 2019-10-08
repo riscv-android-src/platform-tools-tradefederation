@@ -22,6 +22,7 @@ import platform
 import subprocess
 import sys
 import unittest
+import mock
 
 import atest_tools
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -35,8 +36,12 @@ PRUNEPATH = uc.TEST_CONFIG_DATA_DIR
 class AtestToolsUnittests(unittest.TestCase):
     """"Unittest Class for atest_tools.py."""
 
-    def test_index_targets(self):
+    @mock.patch('module_info.ModuleInfo.get_testable_modules')
+    @mock.patch('module_info.ModuleInfo.__init__')
+    def test_index_targets(self, mock_mod_info, mock_testable_mod):
         """Test method index_targets."""
+        mock_mod_info.return_value = None
+        mock_testable_mod.return_value = set()
         if atest_tools.has_command('updatedb'):
             atest_tools.run_updatedb(SEARCH_ROOT, uc.LOCATE_CACHE,
                                      prunepaths=PRUNEPATH)
@@ -59,7 +64,8 @@ class AtestToolsUnittests(unittest.TestCase):
                                       class_index=uc.CLASS_INDEX,
                                       qclass_index=uc.QCLASS_INDEX,
                                       cc_class_index=uc.CC_CLASS_INDEX,
-                                      package_index=uc.PACKAGE_INDEX)
+                                      package_index=uc.PACKAGE_INDEX,
+                                      module_index=uc.MODULE_INDEX)
             _dict = {}
             # Test finding a Java class
             with open(uc.CLASS_INDEX, 'rb') as _cache:
@@ -82,7 +88,8 @@ class AtestToolsUnittests(unittest.TestCase):
                                  uc.CLASS_INDEX,
                                  uc.QCLASS_INDEX,
                                  uc.CC_CLASS_INDEX,
-                                 uc.PACKAGE_INDEX)
+                                 uc.PACKAGE_INDEX,
+                                 uc.MODULE_INDEX)
             for idx in targets_to_delete:
                 os.remove(idx)
         else:

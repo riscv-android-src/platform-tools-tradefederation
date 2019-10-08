@@ -19,6 +19,8 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
+import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.StreamUtil;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -87,18 +89,27 @@ public class FileProtoResultReporter extends ProtoResultReporter {
         if (mOutputFile == null) {
             return;
         }
-        File outputFile = mOutputFile;
-        if (mPeriodicWriting) {
-            outputFile = new File(mOutputFile.getAbsolutePath() + mIndex);
-        }
-        try (FileOutputStream output = new FileOutputStream(outputFile)) {
+        FileOutputStream output = null;
+        File tmpFile = null;
+        try {
+            tmpFile = FileUtil.createTempFile("tmp-proto", "", mOutputFile.getParentFile());
+            File outputFile = mOutputFile;
+            if (mPeriodicWriting) {
+                outputFile = new File(mOutputFile.getAbsolutePath() + mIndex);
+            }
+            // Write to the tmp file
+            output = new FileOutputStream(tmpFile);
             record.writeDelimitedTo(output);
             if (mPeriodicWriting) {
                 nextOutputFile();
             }
+            // Move the tmp file to the new name when done writing.
+            tmpFile.renameTo(outputFile);
         } catch (IOException e) {
             CLog.e(e);
             throw new RuntimeException(e);
+        } finally {
+            StreamUtil.close(output);
         }
     }
 

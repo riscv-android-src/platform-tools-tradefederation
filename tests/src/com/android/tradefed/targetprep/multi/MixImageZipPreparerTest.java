@@ -58,6 +58,7 @@ public class MixImageZipPreparerTest {
     // Input build info.
     private static final String VENDOR_IMAGE_NAME = "vendor.img";
     private static final String SYSTEM_IMAGE_NAME = "system.img";
+    private static final String PRODUCT_IMAGE_NAME = "product.img";
     private static final String VBMETA_IMAGE_NAME = "vbmeta.img";
     private static final String SYSTEM_BUILD_FLAVOR = "system_flavor";
     private static final String SYSTEM_BUILD_ID = "123456";
@@ -116,7 +117,11 @@ public class MixImageZipPreparerTest {
         ITestDevice mockSystem = Mockito.mock(ITestDevice.class);
         mDeviceImageZip =
                 createImageZip(
-                        DEVICE_CONTENT, VENDOR_IMAGE_NAME, SYSTEM_IMAGE_NAME, VBMETA_IMAGE_NAME);
+                        DEVICE_CONTENT,
+                        VENDOR_IMAGE_NAME,
+                        SYSTEM_IMAGE_NAME,
+                        PRODUCT_IMAGE_NAME,
+                        VBMETA_IMAGE_NAME);
         mSystemImageZip = createImageZip(SYSTEM_CONTENT, SYSTEM_IMAGE_NAME);
         mDeviceBuild = createDeviceBuildInfo("device_flavor", "device_build_id", mDeviceImageZip);
         mSystemBuild = createDeviceBuildInfo(SYSTEM_BUILD_FLAVOR, SYSTEM_BUILD_ID, mSystemImageZip);
@@ -128,6 +133,8 @@ public class MixImageZipPreparerTest {
 
         mPreparer = new MixImageZipPreparer();
         mPreparer.addSystemFileName(SYSTEM_IMAGE_NAME);
+        mPreparer.addDummyFileName(PRODUCT_IMAGE_NAME);
+        mPreparer.addDummyFileName("not_in_device_build.img");
     }
 
     private void setUpResource() throws IOException {
@@ -228,6 +235,7 @@ public class MixImageZipPreparerTest {
         try {
             verifyImage(DEVICE_CONTENT, mixedImageDir, VENDOR_IMAGE_NAME);
             verifyImage(SYSTEM_CONTENT, mixedImageDir, SYSTEM_IMAGE_NAME);
+            verifyImage("\0", mixedImageDir, PRODUCT_IMAGE_NAME);
             if (mResourceBuild != null) {
                 verifyImage(RESOURCE_CONTENT, mixedImageDir, VBMETA_IMAGE_NAME);
             }

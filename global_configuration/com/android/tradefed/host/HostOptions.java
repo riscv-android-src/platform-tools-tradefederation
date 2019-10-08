@@ -21,7 +21,9 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -65,9 +67,10 @@ public class HostOptions implements IHostOptions {
     )
     private Map<String, File> mJsonServiceAccountMap = new HashMap<>();
 
-    /**
-     * {@inheritDoc}
-     */
+    @Option(name = "label", description = "Labels to describe the host.")
+    private List<String> mLabels = new ArrayList<>();
+
+    /** {@inheritDoc} */
     @Override
     public Integer getConcurrentFlasherLimit() {
         return mConcurrentFlasherLimit;
@@ -107,5 +110,11 @@ public class HostOptions implements IHostOptions {
     @Override
     public void validateOptions() throws ConfigurationException {
         // Validation of host options
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<String> getLabels() {
+        return new ArrayList<>(mLabels);
     }
 }

@@ -331,6 +331,9 @@ public class SuiteResultReporter extends CollectingTestListener {
         }
         mSummary.append("============== Modules Retries Information ==============\n");
         for (String t : mModuleRetrySuccess.keySet()) {
+            if (mModuleRetryTime.get(t) == 0L) {
+                continue;
+            }
             mSummary.append(
                     String.format(
                             "    %s:\n"

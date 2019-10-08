@@ -29,11 +29,11 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.JUnit4ResultForwarder;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.host.PrettyTestEventLogger;
 import com.android.tradefed.testtype.junit4.CarryDnaeError;
+import com.android.tradefed.testtype.junit4.JUnit4ResultForwarder;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.JUnit4TestFilter;
 import com.android.tradefed.util.StreamUtil;
@@ -46,6 +46,7 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
+import org.junit.Ignore;
 import org.junit.internal.runners.ErrorReportingRunner;
 import org.junit.runner.Description;
 import org.junit.runner.JUnitCore;
@@ -58,6 +59,7 @@ import org.junit.runners.Suite.SuiteClasses;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -173,6 +175,9 @@ public class HostTest
     private boolean mSkipTestClassCheck = false;
 
     private List<Object> mTestMethods;
+
+    // Initialized as -1 to indicate that this value needs to be recalculated
+    // when test count is requested.
     private int mNumTestCases = -1;
 
     private static final String EXCLUDE_NO_TEST_FAILURE = "org.junit.runner.manipulation.Filter";
@@ -645,8 +650,8 @@ public class HostTest
         JUnit4ResultForwarder list = new JUnit4ResultForwarder(listener);
         runnerCore.addListener(list);
 
-        // If no tests are remaining after filtering, it returns an Error Runner.
         if (!(checkRunner instanceof ErrorReportingRunner)) {
+            // If no tests are remaining after filtering, it returns an Error Runner.
             long startTime = System.currentTimeMillis();
             listener.testRunStarted(className, checkRunner.testCount());
             try {
@@ -659,6 +664,13 @@ public class HostTest
             } catch (CarryDnaeError e) {
                 throw e.getDeviceNotAvailableException();
             } finally {
+                for (Description d : findIgnoredClass(checkRunner.getDescription())) {
+                    TestDescription testDescription =
+                            new TestDescription(d.getClassName(), "No Tests");
+                    listener.testStarted(testDescription);
+                    listener.testIgnored(testDescription);
+                    listener.testEnded(testDescription, new HashMap<String, Metric>());
+                }
                 listener.testRunEnded(
                         System.currentTimeMillis() - startTime, new HashMap<String, Metric>());
             }
@@ -678,6 +690,26 @@ public class HostTest
                 listener.testRunEnded(0, new HashMap<String, Metric>());
             }
         }
+    }
+
+    /** Search and return all the classes that are @Ignored */
+    private List<Description> findIgnoredClass(Description description) {
+        List<Description> ignoredClass = new ArrayList<>();
+        if (description.isSuite()) {
+            for (Description childDescription : description.getChildren()) {
+                ignoredClass.addAll(findIgnoredClass(childDescription));
+            }
+        } else {
+            if (description.getMethodName() == null) {
+                for (Annotation a : description.getAnnotations()) {
+                    if (a.annotationType() != null && a.annotationType().equals(Ignore.class)) {
+                        ignoredClass.add(description);
+                        break;
+                    }
+                }
+            }
+        }
+        return ignoredClass;
     }
 
     /**

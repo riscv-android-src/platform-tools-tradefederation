@@ -199,4 +199,7 @@ public interface ICommandOptions {
 
     /** Whether or not to report progression of remote invocation at module level. */
     public boolean shouldReportModuleProgression();
+
+    /** Whether or not to start extra instances in the remote VM in postsubmit. */
+    public int getExtraRemotePostsubmitInstance();
 }

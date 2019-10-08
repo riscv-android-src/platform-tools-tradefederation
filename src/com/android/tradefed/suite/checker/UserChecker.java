@@ -160,7 +160,7 @@ public class UserChecker implements ISystemStatusChecker {
 
     /** Return the userId of a matching user, or -1 if none match. */
     private int findMatchingUser(Collection<UserInfo> usersInfo) {
-        for (UserInfo userInfo : mPreUsersInfo.values()) {
+        for (UserInfo userInfo : usersInfo) {
             if (userInfo.isUserType(mUserToSwitchTo, mPreCurrentUserInfo.userId())) {
                 return userInfo.userId();
             }

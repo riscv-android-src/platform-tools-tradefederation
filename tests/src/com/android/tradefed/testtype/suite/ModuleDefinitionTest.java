@@ -24,7 +24,10 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
+import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
@@ -46,6 +49,8 @@ import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.retry.BaseRetryDecision;
+import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.targetprep.BaseTargetPreparer;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetCleaner;
@@ -57,8 +62,6 @@ import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
-import com.android.tradefed.testtype.retry.BaseRetryDecision;
-import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.testtype.suite.module.BaseModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController;
 import com.android.tradefed.testtype.suite.module.TestFailureModuleController;
@@ -66,6 +69,7 @@ import com.android.tradefed.testtype.suite.module.TestFailureModuleController;
 import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -103,7 +107,8 @@ public class ModuleDefinitionTest {
 
     private IRetryDecision mDecision = new BaseRetryDecision();
 
-    private interface ITestInterface extends IRemoteTest, IBuildReceiver, IDeviceTest {}
+    private interface ITestInterface
+            extends IRemoteTest, IBuildReceiver, IDeviceTest, IConfigurationReceiver {}
 
     /** Test implementation that allows us to exercise different use cases * */
     private class TestObject implements ITestInterface {
@@ -114,6 +119,7 @@ public class ModuleDefinitionTest {
         private boolean mShouldThrow;
         private boolean mDeviceUnresponsive = false;
         private boolean mThrowError = false;
+        private IConfiguration mConfig;
 
         public TestObject(String runName, int numTest, boolean shouldThrow) {
             mRunName = runName;
@@ -139,6 +145,7 @@ public class ModuleDefinitionTest {
 
         @Override
         public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+            Assert.assertNotNull(mConfig);
             listener.testRunStarted(mRunName, mNumTest);
             for (int i = 0; i < mNumTest; i++) {
                 TestDescription test = new TestDescription(mRunName + "class", "test" + i);
@@ -170,6 +177,11 @@ public class ModuleDefinitionTest {
         @Override
         public ITestDevice getDevice() {
             return mDevice;
+        }
+
+        @Override
+        public void setConfiguration(IConfiguration configuration) {
+            mConfig = configuration;
         }
     }
 
@@ -265,6 +277,15 @@ public class ModuleDefinitionTest {
         }
     }
 
+    @BeforeClass
+    public static void SetUpClass() throws ConfigurationException {
+        try {
+            GlobalConfiguration.createGlobalConfiguration(new String[] {"empty"});
+        } catch (IllegalStateException e) {
+            // Expected outside IDE.
+        }
+    }
+
     @Before
     public void setUp() {
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
@@ -292,6 +313,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.disableAutoRetryReportingTime();
         mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
@@ -342,6 +364,7 @@ public class ModuleDefinitionTest {
         mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
         mMockTest.setBuild(EasyMock.eq(mMockBuildInfo));
         mMockTest.setDevice(EasyMock.eq(mMockDevice));
+        mMockTest.setConfiguration(EasyMock.anyObject());
         mMockTest.run((ITestInvocationListener) EasyMock.anyObject());
         EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
         mMockCleaner.tearDown(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo),
@@ -369,6 +392,7 @@ public class ModuleDefinitionTest {
         mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
         mMockTest.setBuild(EasyMock.eq(mMockBuildInfo));
         mMockTest.setDevice(EasyMock.eq(mMockDevice));
+        mMockTest.setConfiguration(EasyMock.anyObject());
         mMockTest.run((ITestInvocationListener) EasyMock.anyObject());
         EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
         mMockCleaner.tearDown(
@@ -401,6 +425,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.disableAutoRetryReportingTime();
         mModule.setRetryDecision(mDecision);
         mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
         mModule.getModuleInvocationContext()
@@ -499,6 +524,7 @@ public class ModuleDefinitionTest {
         EasyMock.expect(mMockCleaner.isDisabled()).andStubReturn(true);
         mMockTest.setBuild(EasyMock.eq(mMockBuildInfo));
         mMockTest.setDevice(EasyMock.eq(mMockDevice));
+        mMockTest.setConfiguration(EasyMock.anyObject());
         mMockTest.run((ITestInvocationListener) EasyMock.anyObject());
         mMockListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
@@ -524,6 +550,7 @@ public class ModuleDefinitionTest {
         mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
         mMockTest.setBuild(EasyMock.eq(mMockBuildInfo));
         mMockTest.setDevice(EasyMock.eq(mMockDevice));
+        mMockTest.setConfiguration(EasyMock.anyObject());
         mMockTest.run((ITestInvocationListener) EasyMock.anyObject());
         EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(true);
         // But no teardown expected from Cleaner.
@@ -1068,6 +1095,9 @@ public class ModuleDefinitionTest {
         public ITestDevice getDevice() {
             return null;
         }
+
+        @Override
+        public void setConfiguration(IConfiguration configuration) {}
     }
 
     /**
@@ -1431,6 +1461,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.disableAutoRetryReportingTime();
         IRetryDecision decision = new BaseRetryDecision();
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("retry-strategy", "ITERATIONS");
@@ -1522,6 +1553,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         new Configuration("", ""));
+        mModule.disableAutoRetryReportingTime();
         IRetryDecision decision = new BaseRetryDecision();
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");

@@ -46,7 +46,7 @@ CUSTOM_ARGS = 'CUSTOM_ARGS'
 DRY_RUN = 'DRY_RUN'
 ANDROID_SERIAL = 'ANDROID_SERIAL'
 INSTANT = 'INSTANT'
-SECONDARY_USER = 'SECONDARY_USER'
+USER_TYPE = 'USER_TYPE'
 
 # Application exit codes.
 EXIT_CODE_SUCCESS = 0
@@ -56,6 +56,12 @@ EXIT_CODE_ERROR = 3
 EXIT_CODE_TEST_NOT_FOUND = 4
 EXIT_CODE_TEST_FAILURE = 5
 EXIT_CODE_VERIFY_FAILURE = 6
+
+# Codes of specific events. These are exceptions that don't stop anything
+# but sending metrics.
+ACCESS_CACHE_FAILURE = 101
+ACCESS_HISTORY_FAILURE = 102
+IMPORT_FAILURE = 103
 
 # Test finder constants.
 MODULE_CONFIG = 'AndroidTest.xml'
@@ -105,6 +111,7 @@ TF_ATEST_INCLUDE_FILTER_VALUE_FMT = '{test_name}:{test_filter}'
 TF_MODULE_ARG = '--module-arg'
 TF_MODULE_ARG_VALUE_FMT = '{test_name}:{option_name}:{option_value}'
 TF_SUITE_FILTER_ARG_VALUE_FMT = '"{test_name} {option_value}"'
+TF_SKIP_LOADING_CONFIG_JAR = '--skip-loading-config-jar'
 
 # Suite Plans
 SUITE_PLANS = frozenset(['cts'])
@@ -147,6 +154,7 @@ CONTRIBUTOR_AGREEMENT_URL = {
 PRIVACY_POLICY_URL = 'https://policies.google.com/privacy'
 TERMS_SERVICE_URL = 'https://policies.google.com/terms'
 TOOL_NAME = 'atest'
+TF_PREPARATION = 'tf-preparation'
 
 # Detect type for local_detect_event.
 # Next expansion : DETECT_TYPE_XXX = 1
@@ -197,5 +205,5 @@ CC_GREP_RE = r'^[ ]*TEST(_P|_F)?[ ]*\([[:alnum:]].*,'
 CLASS_OUTPUT_RE = re.compile(r'(?P<java_path>.*/(?P<class>[A-Z]\w+)\.\w+)[:].*')
 QCLASS_OUTPUT_RE = re.compile(r'(?P<java_path>.*/(?P<class>[A-Z]\w+)\.\w+)'
                               r'[:]\s*package\s+(?P<package>[^(;|\s)]+)\s*')
-PACKAGE_OUTPUT_RE = re.compile(r'(?P<java_path>.*)[:]\s*package\s+'
+PACKAGE_OUTPUT_RE = re.compile(r'(?P<java_dir>/.*/).*[.](java|kt)[:]\s*package\s+'
                                r'(?P<package>[^(;|\s)]+)\s*')

@@ -134,7 +134,7 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
             // Reset the internal variable
             mCopiedOptions = null;
             if (mValidationConfig != null) {
-                mValidationConfig.cleanDynamicOptionFiles();
+                mValidationConfig.cleanConfigurationData();
                 mValidationConfig = null;
             }
             // Ensure parent postInvocationTearDown is always called.

@@ -27,11 +27,12 @@ import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.postprocessor.IPostProcessor;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.testtype.retry.IRetryDecision;
+import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import org.json.JSONArray;
@@ -167,6 +168,13 @@ public interface IConfiguration {
     public IDeviceSelection getDeviceRequirements();
 
     /**
+     * Gets the {@link CoverageOptions} to use from the configuration.
+     *
+     * @return the {@link CoverageOptions} provided in the configuration.
+     */
+    public CoverageOptions getCoverageOptions();
+
+    /**
      * Generic interface to get the configuration object with the given type name.
      *
      * @param typeName the unique type of the configuration object
@@ -276,6 +284,13 @@ public interface IConfiguration {
      * @param logger
      */
     public void setLogOutput(ILeveledLogOutput logger);
+
+    /**
+     * Set the {@link IRetryDecision}, replacing any existing value.
+     *
+     * @param decisionRetry
+     */
+    public void setRetryDecision(IRetryDecision decisionRetry);
 
     /**
      * Set the {@link ILogSaver}, replacing any existing value.
@@ -425,6 +440,9 @@ public interface IConfiguration {
      */
     public void setDeviceOptions(TestDeviceOptions deviceOptions);
 
+    /** Set the {@link CoverageOptions}, replacing any existing values. */
+    public void setCoverageOptions(CoverageOptions coverageOptions);
+
     /**
      * Generic method to set the config object with the given name, replacing any existing value.
      *
@@ -538,14 +556,14 @@ public interface IConfiguration {
 
     /**
      * Resolve options of {@link File} pointing to a remote location. This requires {@link
-     * #cleanDynamicOptionFiles()} to be called to clean up the files.
+     * #cleanConfigurationData()} to be called to clean up the files.
      *
      * @throws ConfigurationException
      */
     public void resolveDynamicOptions() throws ConfigurationException;
 
     /** Delete any files that was downloaded to resolved Option fields of remote files. */
-    public void cleanDynamicOptionFiles();
+    public void cleanConfigurationData();
 
     /**
      * Sets the command line used to create this {@link IConfiguration}.
