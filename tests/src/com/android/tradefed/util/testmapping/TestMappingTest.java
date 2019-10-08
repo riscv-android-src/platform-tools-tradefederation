@@ -169,12 +169,10 @@ public class TestMappingTest {
             assertEquals(0, tests.size());
 
             tests = TestMapping.getTests(mockBuildInfo, "presubmit", true, null);
-            assertEquals(1, tests.size());
+            assertEquals(2, tests.size());
             Set<String> names = new HashSet<String>();
             for (TestInfo test : tests) {
                 names.add(test.getName());
-                // Make sure the tests for `test1` are merged and no option is kept.
-                assertTrue(test.getOptions().isEmpty());
                 if (test.getName().equals("test1")) {
                     assertTrue(test.getHostOnly());
                 } else {
