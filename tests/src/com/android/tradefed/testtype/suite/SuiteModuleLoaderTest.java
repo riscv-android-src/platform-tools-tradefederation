@@ -17,6 +17,7 @@ package com.android.tradefed.testtype.suite;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.config.IConfiguration;
@@ -286,5 +287,84 @@ public class SuiteModuleLoaderTest {
         assertEquals(1, stubTest.getExcludeFilters().size());
         assertEquals(
                 "NativeDnsAsyncTest#Async_Cancel", stubTest.getExcludeFilters().iterator().next());
+    }
+
+    /**
+     * Test that the configuration can be found if specifying specific path.
+     */
+    @Test
+    public void testLoadConfigsFromSpecifiedPaths_OneModule() throws Exception {
+        createModuleConfig("module1");
+        File module1 = new File(mTestsDir, "module1" + SuiteModuleLoader.CONFIG_EXT);
+
+        mRepo =
+                new SuiteModuleLoader(
+                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new ArrayList<>(),
+                        new ArrayList<>());
+
+        LinkedHashMap<String, IConfiguration> res =
+            mRepo.loadConfigsFromSpecifiedPaths(
+                Arrays.asList(module1), mAbis, null);
+        assertEquals(1, res.size());
+        assertNotNull(res.get("armeabi-v7a module1"));
+    }
+
+    /**
+     * Test that multiple configurations can be found if specifying specific paths.
+     */
+    @Test
+    public void testLoadConfigsFromSpecifiedPaths_MultipleModules() throws Exception {
+        createModuleConfig("module1");
+        File module1 = new File(mTestsDir, "module1" + SuiteModuleLoader.CONFIG_EXT);
+        createModuleConfig("module2");
+        File module2 = new File(mTestsDir, "module2" + SuiteModuleLoader.CONFIG_EXT);
+
+        mRepo =
+                new SuiteModuleLoader(
+                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new ArrayList<>(),
+                        new ArrayList<>());
+
+        LinkedHashMap<String, IConfiguration> res =
+            mRepo.loadConfigsFromSpecifiedPaths(
+                Arrays.asList(module1, module2), mAbis, null);
+        assertEquals(2, res.size());
+        assertNotNull(res.get("armeabi-v7a module1"));
+        assertNotNull(res.get("armeabi-v7a module2"));
+    }
+
+    /**
+     * Test that configuration can be found correctly if specifying specific paths but someone is
+     * excluded.
+     */
+    @Test
+    public void testLoadConfigsFromSpecifiedPaths_WithExcludeFilter() throws Exception {
+        createModuleConfig("module1");
+        File module1 = new File(mTestsDir, "module1" + SuiteModuleLoader.CONFIG_EXT);
+        createModuleConfig("module2");
+        File module2 = new File(mTestsDir, "module2" + SuiteModuleLoader.CONFIG_EXT);
+
+        Map<String, List<SuiteTestFilter>> excludeFilters = new LinkedHashMap<>();
+        SuiteTestFilter filter =
+            SuiteTestFilter.createFrom(
+                "armeabi-v7a module2");
+        excludeFilters.put("armeabi-v7a module2", Arrays.asList(filter));
+
+        mRepo =
+            new SuiteModuleLoader(
+                new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                excludeFilters,
+                new ArrayList<>(),
+                new ArrayList<>());
+
+        LinkedHashMap<String, IConfiguration> res =
+            mRepo.loadConfigsFromSpecifiedPaths(
+                Arrays.asList(module1, module2), mAbis, null);
+        assertEquals(1, res.size());
+        assertNotNull(res.get("armeabi-v7a module1"));
+        assertNull(res.get("armeabi-v7a module2"));
     }
 }
