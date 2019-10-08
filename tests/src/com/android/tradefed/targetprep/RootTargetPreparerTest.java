@@ -15,7 +15,9 @@
  */
 package com.android.tradefed.targetprep;
 
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 
 import org.easymock.EasyMock;
@@ -30,12 +32,15 @@ public class RootTargetPreparerTest {
 
     private RootTargetPreparer mRootTargetPreparer;
     private ITestDevice mMockDevice;
+    private IDevice mMockIDevice;
     private IBuildInfo mMockBuildInfo;
 
     @Before
     public void setUp() {
         mRootTargetPreparer = new RootTargetPreparer();
         mMockDevice = EasyMock.createMock(ITestDevice.class);
+        mMockIDevice = EasyMock.createMock(IDevice.class);
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(mMockIDevice);
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
     }
 
@@ -65,6 +70,47 @@ public class RootTargetPreparerTest {
     public void testSetUpFail() throws Exception {
         EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(false).once();
         EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(false).once();
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null).once();
+        EasyMock.replay(mMockDevice, mMockBuildInfo);
+
+        mRootTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
+    }
+
+    @Test
+    public void testSetUpSuccess_rootBefore_forceUnroot() throws Exception {
+        OptionSetter setter = new OptionSetter(mRootTargetPreparer);
+        setter.setOptionValue("force-root", "false");
+
+        EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(true).once();
+        EasyMock.expect(mMockDevice.disableAdbRoot()).andReturn(true).once();
+        EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(true).once();
+        EasyMock.replay(mMockDevice, mMockBuildInfo);
+
+        mRootTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
+        mRootTargetPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
+        EasyMock.verify(mMockDevice, mMockBuildInfo);
+    }
+
+    @Test
+    public void testSetUpSuccess_notRootBefore_forceUnroot() throws Exception {
+        OptionSetter setter = new OptionSetter(mRootTargetPreparer);
+        setter.setOptionValue("force-root", "false");
+
+        EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(false).once();
+        EasyMock.replay(mMockDevice, mMockBuildInfo);
+
+        mRootTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
+        mRootTargetPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
+        EasyMock.verify(mMockDevice, mMockBuildInfo);
+    }
+
+    @Test(expected = TargetSetupError.class)
+    public void testSetUpFail_forceUnroot() throws Exception {
+        OptionSetter setter = new OptionSetter(mRootTargetPreparer);
+        setter.setOptionValue("force-root", "false");
+
+        EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(true).once();
+        EasyMock.expect(mMockDevice.disableAdbRoot()).andReturn(false).once();
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null).once();
         EasyMock.replay(mMockDevice, mMockBuildInfo);
 

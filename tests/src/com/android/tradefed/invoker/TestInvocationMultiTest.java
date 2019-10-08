@@ -40,7 +40,7 @@ import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
-import com.android.tradefed.testtype.retry.BaseRetryDecision;
+import com.android.tradefed.retry.BaseRetryDecision;
 
 import org.easymock.Capture;
 import org.easymock.EasyMock;
@@ -174,7 +174,7 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
         EasyMock.expect(mMockConfig.getTests()).andStubReturn(new ArrayList<>());
         mMockConfig.resolveDynamicOptions();
-        mMockConfig.cleanDynamicOptionFiles();
+        mMockConfig.cleanConfigurationData();
         IBuildInfo build1 = new BuildInfo();
         EasyMock.expect(mProvider1.getBuild()).andReturn(build1);
         // Second build is not found
@@ -274,7 +274,7 @@ public class TestInvocationMultiTest {
         mMockConfig.resolveDynamicOptions();
         EasyMock.expectLastCall().andThrow(configException);
 
-        mMockConfig.cleanDynamicOptionFiles();
+        mMockConfig.cleanConfigurationData();
 
         mMockTestListener.invocationStarted(mContext);
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
@@ -344,7 +344,7 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
         EasyMock.expect(mMockConfig.getTests()).andStubReturn(new ArrayList<>());
         mMockConfig.resolveDynamicOptions();
-        mMockConfig.cleanDynamicOptionFiles();
+        mMockConfig.cleanConfigurationData();
 
         mMockTestListener.invocationStarted(mContext);
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
@@ -431,7 +431,7 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
         EasyMock.expect(mMockConfig.getTests()).andStubReturn(new ArrayList<>());
         mMockConfig.resolveDynamicOptions();
-        mMockConfig.cleanDynamicOptionFiles();
+        mMockConfig.cleanConfigurationData();
 
         mMockTestListener.invocationStarted(mContext);
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);

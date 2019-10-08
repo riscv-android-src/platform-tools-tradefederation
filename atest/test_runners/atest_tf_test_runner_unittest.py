@@ -43,10 +43,13 @@ TEST_INFO_DIR = '/tmp/atest_run_1510085893_pi_Nbi'
 METRICS_DIR = '%s/baseline-metrics' % TEST_INFO_DIR
 METRICS_DIR_ARG = '--metrics-folder %s ' % METRICS_DIR
 RUN_CMD_ARGS = '{metrics}--log-level WARN{serial}'
+LOG_ARGS = atf_tr.AtestTradefedTestRunner._LOG_ARGS.format(
+    log_path=os.path.join(TEST_INFO_DIR, atf_tr.LOG_FOLDER_NAME))
 RUN_CMD = atf_tr.AtestTradefedTestRunner._RUN_CMD.format(
     exe=atf_tr.AtestTradefedTestRunner.EXECUTABLE,
     template=atf_tr.AtestTradefedTestRunner._TF_TEMPLATE,
-    args=RUN_CMD_ARGS)
+    args=RUN_CMD_ARGS,
+    log_args=LOG_ARGS)
 FULL_CLASS2_NAME = 'android.jank.cts.ui.SomeOtherClass'
 CLASS2_FILTER = test_info.TestFilter(FULL_CLASS2_NAME, frozenset())
 METHOD2_FILTER = test_info.TestFilter(uc.FULL_CLASS_NAME, frozenset([uc.METHOD2_NAME]))
@@ -131,6 +134,23 @@ METHOD2_INFO = test_info.TestInfo(
     set(),
     data={constants.TI_REL_CONFIG: uc.CONFIG_FILE,
           constants.TI_FILTER: frozenset([METHOD2_FILTER])})
+
+INT_INFO = test_info.TestInfo(
+    uc.INT_NAME,
+    atf_tr.AtestTradefedTestRunner.NAME,
+    set(),
+    test_finder='INTEGRATION')
+
+MOD_INFO = test_info.TestInfo(
+    uc.MODULE_NAME,
+    atf_tr.AtestTradefedTestRunner.NAME,
+    set(),
+    test_finder='MODULE')
+
+MOD_INFO_NO_TEST_FINDER = test_info.TestInfo(
+    uc.MODULE_NAME,
+    atf_tr.AtestTradefedTestRunner.NAME,
+    set())
 
 EVENTS_NORMAL = [
     ('TEST_MODULE_STARTED', {
@@ -443,6 +463,28 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         test_infos = self.tr._flatten_test_infos({CLASS3_INFO, CLASS4_INFO})
         unittest_utils.assert_equal_testinfo_sets(self, test_infos,
                                                   {FLAT2_CLASS_INFO})
+
+    def test_create_test_args(self):
+        """Test _create_test_args method."""
+        # Only compile '--skip-loading-config-jar' in TF if it's not
+        # INTEGRATION finder or the finder property isn't set.
+        args = self.tr._create_test_args([MOD_INFO])
+        self.assertTrue(constants.TF_SKIP_LOADING_CONFIG_JAR in args)
+
+        args = self.tr._create_test_args([INT_INFO])
+        self.assertFalse(constants.TF_SKIP_LOADING_CONFIG_JAR in args)
+
+        args = self.tr._create_test_args([MOD_INFO_NO_TEST_FINDER])
+        self.assertFalse(constants.TF_SKIP_LOADING_CONFIG_JAR in args)
+
+        args = self.tr._create_test_args([MOD_INFO_NO_TEST_FINDER, INT_INFO])
+        self.assertFalse(constants.TF_SKIP_LOADING_CONFIG_JAR in args)
+
+        args = self.tr._create_test_args([MOD_INFO_NO_TEST_FINDER])
+        self.assertFalse(constants.TF_SKIP_LOADING_CONFIG_JAR in args)
+
+        args = self.tr._create_test_args([MOD_INFO_NO_TEST_FINDER, INT_INFO, MOD_INFO])
+        self.assertFalse(constants.TF_SKIP_LOADING_CONFIG_JAR in args)
 
 
 if __name__ == '__main__':

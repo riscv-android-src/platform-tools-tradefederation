@@ -22,12 +22,14 @@ import static org.junit.Assert.fail;
 
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.IShellOutputReceiver;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.MockFileUtil;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.testtype.coverage.CoverageOptions;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -50,6 +52,10 @@ public class GTestTest {
     private ITestDevice mMockITestDevice = null;
     private GTest mGTest;
     private OptionSetter mSetter;
+
+    private Configuration mConfiguration;
+    private CoverageOptions mCoverageOptions;
+    private OptionSetter mCoverageOptionsSetter;
 
     /** Helper to initialize the various EasyMocks we'll need. */
     @Before
@@ -81,6 +87,14 @@ public class GTestTest {
                 };
         mGTest.setDevice(mMockITestDevice);
         mSetter = new OptionSetter(mGTest);
+
+        // Set up the coverage options
+        mConfiguration = new Configuration("", "");
+        mCoverageOptions = new CoverageOptions();
+        mCoverageOptionsSetter = new OptionSetter(mCoverageOptions);
+
+        mConfiguration.setCoverageOptions(mCoverageOptions);
+        mGTest.setConfiguration(mConfiguration);
     }
 
     /**
@@ -154,42 +168,6 @@ public class GTestTest {
                 EasyMock.anyLong(),
                 (TimeUnit) EasyMock.anyObject(),
                 EasyMock.anyInt());
-
-        replayMocks();
-
-        mGTest.run(mMockInvocationListener);
-        verifyMocks();
-    }
-
-    /** Test the run method without clearing coverage before running the tests. */
-    @Test
-    public void testRunNoCoverageClear() throws Exception {
-        mSetter.setOptionValue("coverage-clear-before-test", "false");
-
-        final String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
-        final String test1 = "test1";
-        final String test2 = "test2";
-        final String testPath1 = String.format("%s/%s", nativeTestPath, test1);
-        final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
-
-        MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
-        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(testPath1)).andReturn(false);
-        // report the file as executable
-        EasyMock.expect(mMockITestDevice.isExecutable(testPath1)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(testPath2)).andReturn(false);
-        // report the file as executable
-        EasyMock.expect(mMockITestDevice.isExecutable(testPath2)).andReturn(true);
-
-        String[] files = new String[] {"test1", "test2"};
-        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
-        mMockITestDevice.executeShellCommand(EasyMock.contains(test1),
-                EasyMock.same(mMockReceiver), EasyMock.anyLong(),
-                (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
-        mMockITestDevice.executeShellCommand(EasyMock.contains(test2),
-                EasyMock.same(mMockReceiver), EasyMock.anyLong(),
-                (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
 
         replayMocks();
 
@@ -473,8 +451,9 @@ public class GTestTest {
     /** Test cross-process coverage dump for all native processes */
     @Test
     public void testNativeCoverageAllProcesses() throws Exception {
-        mSetter.setOptionValue("coverage", "true");
-        mSetter.setOptionValue("coverage-flush", "true");
+        mCoverageOptionsSetter.setOptionValue("coverage", "true");
+        mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "GCOV");
+        mCoverageOptionsSetter.setOptionValue("coverage-flush", "true");
 
         final String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
         final String test1 = "test1";
@@ -483,9 +462,10 @@ public class GTestTest {
         final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
 
         MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage"))
+                .andReturn("");
         EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 -1")).andReturn("");
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.executeShellCommand("rm -rf /data/misc/trace/*"))
                 .andReturn("");
         EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
@@ -521,14 +501,16 @@ public class GTestTest {
     /** Test cross-process coverage dump for specific processes */
     @Test
     public void testNativeCoverageSpecificProcesses() throws Exception {
-        mSetter.setOptionValue("coverage", "true");
-        mSetter.setOptionValue("coverage-flush", "true");
-
         final List<String> processNames = new ArrayList<>();
         processNames.add("init");
         processNames.add("surfaceflinger");
 
-        mGTest.setCoverageProcesses(processNames);
+        mCoverageOptionsSetter.setOptionValue("coverage", "true");
+        mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "GCOV");
+        mCoverageOptionsSetter.setOptionValue("coverage-flush", "true");
+        for (String processName : processNames) {
+            mCoverageOptionsSetter.setOptionValue("coverage-processes", processName);
+        }
 
         final String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
         final String test1 = "test1";
@@ -537,6 +519,8 @@ public class GTestTest {
         final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
 
         MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage"))
+                .andReturn("");
         // Get the pids to flush coverage data.
         EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(0))).andReturn("1");
@@ -544,7 +528,6 @@ public class GTestTest {
         EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 1 1000")).andReturn("");
 
         // Clear the coverage data.
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.executeShellCommand("rm -rf /data/misc/trace/*"))
                 .andReturn("");
         EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
@@ -612,6 +595,48 @@ public class GTestTest {
         EasyMock.expect(mMockITestDevice.executeShellCommand("cat \"" + expectedFilterFile + "\""))
                 .andReturn(fakeContent);
         doTestFilter(String.format("%s=%s", GTEST_FLAG_FILTER, "Foo1.*:Foo2.*"));
+    }
+
+    @Test
+    public void testFileFilter_negative() throws Exception {
+        String fileFilter = "presubmit";
+        mSetter.setOptionValue("test-filter-key", fileFilter);
+        String expectedFilterFile =
+                String.format("%s/test1%s", GTest.DEFAULT_NATIVETEST_PATH, GTest.FILTER_EXTENSION);
+        String fakeContent =
+                "{\n"
+                        + "    \"presubmit\": {\n"
+                        + "        \"filter\": \"Foo1.*-Foo2.*\"\n"
+                        + "    },\n"
+                        + "    \"continuous\": {\n"
+                        + "        \"filter\": \"Foo1.*:Foo2.*:Bar.*\"\n"
+                        + "    }\n"
+                        + "}\n";
+        EasyMock.expect(mMockITestDevice.doesFileExist(expectedFilterFile)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("cat \"" + expectedFilterFile + "\""))
+                .andReturn(fakeContent);
+        doTestFilter(String.format("%s=%s", GTEST_FLAG_FILTER, "Foo1.*-Foo2.*"));
+    }
+
+    @Test
+    public void testFileFilter_negativeOnly() throws Exception {
+        String fileFilter = "presubmit";
+        mSetter.setOptionValue("test-filter-key", fileFilter);
+        String expectedFilterFile =
+                String.format("%s/test1%s", GTest.DEFAULT_NATIVETEST_PATH, GTest.FILTER_EXTENSION);
+        String fakeContent =
+                "{\n"
+                        + "    \"presubmit\": {\n"
+                        + "        \"filter\": \"-Foo1.*:Foo2.*\"\n"
+                        + "    },\n"
+                        + "    \"continuous\": {\n"
+                        + "        \"filter\": \"Foo1.*:Foo2.*:Bar.*\"\n"
+                        + "    }\n"
+                        + "}\n";
+        EasyMock.expect(mMockITestDevice.doesFileExist(expectedFilterFile)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("cat \"" + expectedFilterFile + "\""))
+                .andReturn(fakeContent);
+        doTestFilter(String.format("%s=%s", GTEST_FLAG_FILTER, "-Foo1.*:Foo2.*"));
     }
 
     /**

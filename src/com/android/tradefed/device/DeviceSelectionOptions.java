@@ -529,7 +529,7 @@ public class DeviceSelectionOptions implements IDeviceSelection {
                 }
 
                 // Extract the temperature from the file
-                IBatteryTemperature temp = new BatteryTemperature();
+                BatteryTemperature temp = new BatteryTemperature();
                 Integer deviceBatteryTemp = temp.getBatteryTemperature(device);
 
                 if (deviceBatteryTemp <= 0) {

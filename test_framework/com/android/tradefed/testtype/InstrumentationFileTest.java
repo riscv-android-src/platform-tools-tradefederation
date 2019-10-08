@@ -81,6 +81,7 @@ class InstrumentationFileTest implements IRemoteTest {
         mInstrumentationTest = createInstrumentationTest();
         // copy all options from the original InstrumentationTest
         OptionCopier.copyOptions(instrumentationTest, mInstrumentationTest);
+        mInstrumentationTest.setConfiguration(instrumentationTest.getConfiguration());
         mInstrumentationTest.setDevice(instrumentationTest.getDevice());
         mInstrumentationTest.setForceAbi(instrumentationTest.getForceAbi());
         mInstrumentationTest.setReRunUsingTestFile(true);

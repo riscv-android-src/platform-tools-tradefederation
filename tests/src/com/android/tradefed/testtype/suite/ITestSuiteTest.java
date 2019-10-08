@@ -19,6 +19,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -33,6 +34,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -54,6 +56,8 @@ import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.retry.BaseRetryDecision;
+import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.KeyguardStatusChecker;
 import com.android.tradefed.suite.checker.StatusCheckerResult;
@@ -66,8 +70,6 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.StubTest;
-import com.android.tradefed.testtype.retry.BaseRetryDecision;
-import com.android.tradefed.testtype.retry.IRetryDecision;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.MultiMap;
 
@@ -179,7 +181,10 @@ public class ITestSuiteTest {
         }
     }
 
-    public static class StubCollectingTest implements IRemoteTest, ITestFilterReceiver {
+    public static class StubCollectingTest
+            implements IRemoteTest, IConfigurationReceiver, ITestFilterReceiver {
+        private IConfiguration mConfiguration;
+
         private DeviceNotAvailableException mException;
         private RuntimeException mRunException;
         private String mFailed;
@@ -196,6 +201,10 @@ public class ITestSuiteTest {
 
         public void setFailed(String errMessage) {
             mFailed = errMessage;
+        }
+
+        public IConfiguration getConfiguration() {
+            return mConfiguration;
         }
 
         @Override
@@ -217,6 +226,11 @@ public class ITestSuiteTest {
             } finally {
                 listener.testRunEnded(0, new HashMap<String, Metric>());
             }
+        }
+
+        @Override
+        public void setConfiguration(IConfiguration config) {
+            mConfiguration = config;
         }
 
         @Override
@@ -819,6 +833,7 @@ public class ITestSuiteTest {
     public void testShardModules_notShardable() {
         mTestSuite = new TestSuiteImpl(5);
         mTestSuite.setBuild(mMockBuildInfo);
+        mTestSuite.setConfiguration(mStubMainConfiguration);
         Collection<IRemoteTest> tests = mTestSuite.split(3);
         assertEquals(5, tests.size());
         for (IRemoteTest test : tests) {
@@ -843,6 +858,7 @@ public class ITestSuiteTest {
         assertEquals(0l, mTestSuite.getRuntimeHint());
         mTestSuite = new TestSuiteImpl(5);
         mTestSuite.setBuild(mMockBuildInfo);
+        mTestSuite.setConfiguration(mStubMainConfiguration);
         Collection<IRemoteTest> tests = mTestSuite.split(3);
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof TestSuiteImpl);
@@ -1458,6 +1474,64 @@ public class ITestSuiteTest {
         EasyMock.verify(moduleListener);
     }
 
+    /**
+     * Test that {@link CoverageOptions} are passed from the main configuration to the module
+     * configuration.
+     */
+    @Test
+    public void testRun_coverageOptionsCopied() throws Exception {
+        ITestInvocationListener moduleListener = EasyMock.createMock(ITestInvocationListener.class);
+        StubCollectingTest test = new StubCollectingTest();
+        mTestSuite =
+                new TestSuiteImpl() {
+                    @Override
+                    public LinkedHashMap<String, IConfiguration> loadTests() {
+                        LinkedHashMap<String, IConfiguration> testConfig = new LinkedHashMap<>();
+                        try {
+                            IConfiguration fake =
+                                    ConfigurationFactory.getInstance()
+                                            .createConfigurationFromArgs(
+                                                    new String[] {EMPTY_CONFIG});
+                            fake.setTest(test);
+                            testConfig.put(TEST_CONFIG_NAME, fake);
+                        } catch (ConfigurationException e) {
+                            CLog.e(e);
+                            throw new RuntimeException(e);
+                        }
+                        return testConfig;
+                    }
+                };
+        mTestSuite.setDevice(mMockDevice);
+        mTestSuite.setBuild(mMockBuildInfo);
+        mTestSuite.setConfiguration(mStubMainConfiguration);
+        mTestSuite.setInvocationContext(mContext);
+
+        List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
+        sysChecker.add(mMockSysChecker);
+        mTestSuite.setSystemStatusChecker(sysChecker);
+        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
+                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
+                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        mMockListener.testModuleStarted(EasyMock.anyObject());
+        mMockListener.testRunStarted(
+                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
+        TestDescription testDescription = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
+        mMockListener.testStarted(testDescription, 0);
+        mMockListener.testEnded(testDescription, 5, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testModuleEnded();
+        replayMocks();
+        mTestSuite.run(mMockListener);
+        verifyMocks();
+
+        // Check that CoverageOptions was copied to the module.
+        assertSame(
+                mStubMainConfiguration.getCoverageOptions(),
+                test.getConfiguration().getCoverageOptions());
+    }
+
     /** Test for {@link ITestSuite#run(ITestInvocationListener)} when a module listener is used. */
     @Test
     public void testRun_GranularRerunwithModuleListener() throws Exception {
@@ -1491,11 +1565,10 @@ public class ITestSuiteTest {
                         return testConfig;
                     }
                 };
+        mTestSuite.disableAutoRetryTimeReporting();
         mTestSuite.setDevice(mMockDevice);
         mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setConfiguration(mStubMainConfiguration);
-        OptionSetter cmdSetter = new OptionSetter(mStubMainConfiguration.getCommandOptions());
-        cmdSetter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
         IRetryDecision decision = new BaseRetryDecision();
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
@@ -1514,13 +1587,22 @@ public class ITestSuiteTest {
                 .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
         EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
                 .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
-        // The main listener get the aggregated message failures.
-        expectTestRun(
-                mMockListener,
-                String.format(
-                        "%s\n\n%s\n\n%s",
-                        mTestFailedMessage, mTestFailedMessage, mTestFailedMessage),
-                true);
+        // The main listener get the granular message failures since auto-retry is enabled.
+        mMockListener.testModuleStarted(EasyMock.anyObject());
+        for (int i = 0; i < maxRunLimit; i++) {
+            mMockListener.testRunStarted(
+                    EasyMock.eq(TEST_CONFIG_NAME),
+                    EasyMock.eq(1),
+                    EasyMock.eq(i),
+                    EasyMock.anyLong());
+            TestDescription testId = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
+            mMockListener.testStarted(testId, 0);
+            mMockListener.testFailed(testId, mTestFailedMessage);
+            mMockListener.testEnded(testId, 5, new HashMap<String, Metric>());
+            mMockListener.testRunEnded(
+                    EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        }
+        mMockListener.testModuleEnded();
         // Verify that when the suite is intra-module retried, the moduleListener receives every
         // run attempt's result.
         expectIntraModuleTestRun(moduleListener, maxRunLimit, true);
@@ -1692,8 +1774,6 @@ public class ITestSuiteTest {
     @Test
     public void testStageTestArtifacts() throws Exception {
         String remoteFilePath = "gs://module1/tests.zip";
-        List<String> files =
-                Arrays.asList("dir/test/test.config", "dir/test/file1", "module2/file1");
         DynamicRemoteFileResolver dynamicResolver =
                 new DynamicRemoteFileResolver() {
                     @Override
@@ -1723,5 +1803,58 @@ public class ITestSuiteTest {
         EasyMock.replay(mockBuildInfo);
         mTestSuite.run(mMockListener);
         EasyMock.verify(mockBuildInfo);
+    }
+
+    /** Test for {@link ITestSuite#reportNotExecuted(ITestInvocationListener, String)}. */
+    @Test
+    public void testReportNotExecuted() {
+        mMockListener.testModuleStarted(EasyMock.anyObject());
+        mMockListener.testRunStarted(
+                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
+        mMockListener.testRunFailed("Injected message");
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testModuleEnded();
+
+        EasyMock.replay(mMockListener);
+        mTestSuite.reportNotExecuted(mMockListener, "Injected message");
+        EasyMock.verify(mMockListener);
+    }
+
+    /**
+     * Test for {@link ITestSuite#reportNotExecuted(ITestInvocationListener, String)} with a module
+     * in progress.
+     */
+    @Test
+    public void testReportNotExecuted_moduleInProgress() {
+        ModuleDefinition m =
+                new ModuleDefinition(
+                        "in-progress",
+                        new ArrayList<>(),
+                        new HashMap<>(),
+                        new ArrayList<>(),
+                        new Configuration("", ""));
+        mTestSuite.setModuleInProgress(m);
+        mMockListener.testModuleStarted(EasyMock.anyObject());
+        mMockListener.testRunStarted(
+                EasyMock.eq("in-progress"), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
+        mMockListener.testRunFailed(
+                "Module in-progress was interrupted after starting. Results might not be "
+                        + "accurate or complete.");
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testModuleEnded();
+        // The non-executed module gets reported too.
+        mMockListener.testModuleStarted(EasyMock.anyObject());
+        mMockListener.testRunStarted(
+                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
+        mMockListener.testRunFailed("Injected message");
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testModuleEnded();
+
+        EasyMock.replay(mMockListener);
+        mTestSuite.reportNotExecuted(mMockListener, "Injected message");
+        EasyMock.verify(mMockListener);
     }
 }

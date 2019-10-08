@@ -682,6 +682,12 @@ public class ConfigurationFactory implements IConfigurationFactory {
         return ConfigurationUtil.getConfigNamesFromDirs(subPath, getExternalTestCasesDirs());
     }
 
+    @VisibleForTesting
+    Map<String, String> getConfigSetFromClasspathFromJar(String subPath) {
+        ClassPathScanner cpScanner = new ClassPathScanner();
+        return cpScanner.getClassPathEntriesFromJar(new ConfigClasspathFilter(subPath));
+    }
+
     /**
      * Loads all configurations found in classpath and test cases directories.
      *

@@ -156,7 +156,16 @@ public class ProtoResultParser {
      * @throws IOException
      */
     public void processFileProto(File protoFile) throws IOException {
-        TestRecord record = TestRecordProtoUtil.readFromFile(protoFile);
+        TestRecord record = null;
+        try {
+            record = TestRecordProtoUtil.readFromFile(protoFile);
+        } catch (InvalidProtocolBufferException e) {
+            // Log the proto that failed to parse
+            try (FileInputStreamSource protoFail = new FileInputStreamSource(protoFile, true)) {
+                mListener.testLog("failed-result-protobuf", LogDataType.PB, protoFail);
+            }
+            throw e;
+        }
         if (!mInvocationStarted) {
             handleInvocationStart(record);
             mInvocationStarted = true;
@@ -344,6 +353,7 @@ public class ProtoResultParser {
         // If we find debugging information, the test run failed and we reflect it.
         if (runProto.hasDebugInfo()) {
             mListener.testRunFailed(runProto.getDebugInfo().getErrorMessage());
+            log("Test run failure proto: %s", runProto.getDebugInfo().getErrorMessage());
         }
         handleLogs(runProto);
         log("Test run ended proto: %s", runProto.getTestRecordId());
@@ -393,7 +403,7 @@ public class ProtoResultParser {
                                 "Received unexpected test status %s.", testcaseProto.getStatus()));
         }
         handleLogs(testcaseProto);
-        HashMap<String, Metric> metrics = new HashMap<>(testcaseProto.getMetrics());
+        HashMap<String, Metric> metrics = new HashMap<>(testcaseProto.getMetricsMap());
         log("Test case ended proto: %s", description.toString());
         mListener.testEnded(description, timeStampToMillis(testcaseProto.getEndTime()), metrics);
     }
@@ -407,7 +417,7 @@ public class ProtoResultParser {
             return;
         }
         ILogSaverListener logger = (ILogSaverListener) mListener;
-        for (Entry<String, Any> entry : proto.getArtifacts().entrySet()) {
+        for (Entry<String, Any> entry : proto.getArtifactsMap().entrySet()) {
             try {
                 LogFileInfo info = entry.getValue().unpack(LogFileInfo.class);
                 LogFile file =
@@ -417,7 +427,7 @@ public class ProtoResultParser {
                                 info.getIsCompressed(),
                                 LogDataType.valueOf(info.getLogType()),
                                 info.getSize());
-                if (file.getPath() == null) {
+                if (Strings.isNullOrEmpty(file.getPath())) {
                     CLog.e("Log '%s' was registered but without a path.", entry.getKey());
                     return;
                 }
@@ -433,7 +443,9 @@ public class ProtoResultParser {
                         logger.testLog(mFilePrefix + entry.getKey(), type, source);
                     }
                 } else {
-                    log("Logging %s from subprocess: %s", entry.getKey(), file.getUrl());
+                    log(
+                            "Logging %s from subprocess. url: %s, path: %s",
+                            entry.getKey(), file.getUrl(), file.getPath());
                     logger.logAssociation(mFilePrefix + entry.getKey(), file);
                 }
             } catch (InvalidProtocolBufferException e) {
@@ -493,8 +505,8 @@ public class ProtoResultParser {
                     try {
                         InvocationMetricLogger.addInvocationMetrics(key, Long.parseLong(val));
                     } catch (NumberFormatException e) {
-                        CLog.e("Key %s should have a number value, instead was: %s", key, val);
-                        CLog.e(e);
+                        CLog.d("Key %s doesn't have a number value, was: %s.", key, val);
+                        InvocationMetricLogger.addInvocationMetrics(key, val);
                     }
                 } else {
                     InvocationMetricLogger.addInvocationMetrics(key, val);

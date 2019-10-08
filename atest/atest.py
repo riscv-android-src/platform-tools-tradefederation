@@ -67,12 +67,31 @@ RESULT_HEADER_FMT = '\nResults from %(test_type)s:'
 RUN_HEADER_FMT = '\nRunning %(test_count)d %(test_type)s.'
 TEST_COUNT = 'test_count'
 TEST_TYPE = 'test_type'
-
 # Tasks that must run in the build time but unable to build by soong.
 # (e.g subprocesses that invoke host commands.)
 EXTRA_TASKS = {
     'index-targets': atest_tools.index_targets
 }
+
+
+def _run_extra_tasks(join=False):
+    """Execute EXTRA_TASKS with multiprocessing.
+
+    Args:
+        join: A boolean that indicates the process should terminate when
+        the main process ends or keep itself alive. True indicates the
+        main process will wait for all subprocesses finish while False represents
+        killing all subprocesses when the main process exits.
+    """
+    _running_procs = []
+    for task in EXTRA_TASKS.values():
+        proc = Process(target=task)
+        proc.daemon = not join
+        proc.start()
+        _running_procs.append(proc)
+    if join:
+        for proc in _running_procs:
+            proc.join()
 
 
 def _parse_args(argv):
@@ -153,26 +172,25 @@ def get_extra_args(args):
     steps = args.steps or constants.ALL_STEPS
     if constants.INSTALL_STEP not in steps:
         extra_args[constants.DISABLE_INSTALL] = None
-    if args.disable_teardown:
-        extra_args[constants.DISABLE_TEARDOWN] = args.disable_teardown
-    if args.generate_baseline:
-        extra_args[constants.PRE_PATCH_ITERATIONS] = args.generate_baseline
-    if args.serial:
-        extra_args[constants.SERIAL] = args.serial
-    if args.all_abi:
-        extra_args[constants.ALL_ABI] = args.all_abi
-    if args.generate_new_metrics:
-        extra_args[constants.POST_PATCH_ITERATIONS] = args.generate_new_metrics
-    if args.instant:
-        extra_args[constants.INSTANT] = args.instant
-    if args.secondary_user:
-        extra_args[constants.SECONDARY_USER] = args.secondary_user
-    if args.host:
-        extra_args[constants.HOST] = args.host
-    if args.dry_run:
-        extra_args[constants.DRY_RUN] = args.dry_run
-    if args.custom_args:
-        extra_args[constants.CUSTOM_ARGS] = args.custom_args
+    # The key and its value of the dict can be called via:
+    # if args.aaaa:
+    #     extra_args[constants.AAAA] = args.aaaa
+    arg_maps = {'all_abi': constants.ALL_ABI,
+                'custom_args': constants.CUSTOM_ARGS,
+                'disable_teardown': constants.DISABLE_TEARDOWN,
+                'dry_run': constants.DRY_RUN,
+                'generate_baseline': constants.PRE_PATCH_ITERATIONS,
+                'generate_new_metrics': constants.POST_PATCH_ITERATIONS,
+                'host': constants.HOST,
+                'instant': constants.INSTANT,
+                'serial': constants.SERIAL,
+                'user_type': constants.USER_TYPE}
+    not_match = [k for k in arg_maps if k not in vars(args)]
+    if not_match:
+        raise AttributeError('%s object has no attribute %s'
+                             %(type(args).__name__, not_match))
+    extra_args.update({arg_maps.get(k): v for k, v in vars(args).items()
+                       if arg_maps.get(k) and v})
     return extra_args
 
 
@@ -545,6 +563,8 @@ def main(argv, results_dir):
         cwd=os.getcwd(),
         os=platform.platform())
     mod_info = module_info.ModuleInfo(force_build=args.rebuild_module_info)
+    if args.rebuild_module_info:
+        _run_extra_tasks(join=True)
     translator = cli_translator.CLITranslator(module_info=mod_info)
     if args.list_modules:
         _print_testable_modules(mod_info, args.list_modules)
@@ -590,14 +610,10 @@ def main(argv, results_dir):
     # args.steps will be None if none of -bit set, else list of params set.
     steps = args.steps if args.steps else constants.ALL_STEPS
     if build_targets and constants.BUILD_STEP in steps:
-        if constants.TEST_STEP in steps:
-            # Run extra tasks with building deps concurrently.
-            # When only "-b" is given(without -t), will not index targets.
-            for task in EXTRA_TASKS.values():
-                proc = Process(target=task)
-                # Daemonlise proc so it terminates with the main process.
-                proc.daemon = True
-                proc.start()
+        if constants.TEST_STEP in steps and not args.rebuild_module_info:
+            # Run extra tasks along with build step concurrently. Note that
+            # Atest won't index targets when only "-b" is given(without -t).
+            _run_extra_tasks(join=False)
         # Add module-info.json target to the list of build targets to keep the
         # file up to date.
         build_targets.add(mod_info.module_info_target)
@@ -634,6 +650,14 @@ def main(argv, results_dir):
                 None, regression_args, reporter)
     metrics.RunTestsFinishEvent(
         duration=metrics_utils.convert_duration(time.time() - test_start))
+    preparation_time = atest_execution_info.preparation_time(test_start)
+    if preparation_time:
+        # Send the preparation time only if it's set.
+        metrics.RunnerFinishEvent(
+            duration=metrics_utils.convert_duration(preparation_time),
+            success=True,
+            runner_name=constants.TF_PREPARATION,
+            test=[])
     if tests_exit_code != constants.EXIT_CODE_SUCCESS:
         tests_exit_code = constants.EXIT_CODE_TEST_FAILURE
     return tests_exit_code
@@ -648,7 +672,6 @@ if __name__ == '__main__':
         metrics.LocalDetectEvent(
             detect_type=constants.DETECT_TYPE_BUG_DETECTED,
             result=DETECTOR.caught_result)
-        metrics_utils.send_exit_event(EXIT_CODE)
         if result_file:
             print('Execution detail has saved in %s' % result_file.name)
     sys.exit(EXIT_CODE)

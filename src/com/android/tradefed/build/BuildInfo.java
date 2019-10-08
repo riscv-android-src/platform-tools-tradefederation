@@ -22,6 +22,8 @@ import com.android.tradefed.build.proto.BuildInformation.KeyBuildFilePair;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
@@ -716,6 +718,8 @@ public class BuildInfo implements IBuildInfo {
     /** {@inheritDoc} */
     @Override
     public File stageRemoteFile(String fileName, File workingDir) {
+        InvocationMetricLogger.addInvocationMetrics(
+                InvocationMetricKey.STAGE_TESTS_INDIVIDUAL_DOWNLOADS, fileName);
         List<String> includeFilters = Arrays.asList(String.format("/%s$", fileName));
         for (File file : getRemoteFiles()) {
             try {

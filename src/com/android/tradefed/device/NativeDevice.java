@@ -244,14 +244,12 @@ public class NativeDevice implements IManagedTestDevice {
         String mOutput = null;
         private String[] mCmd;
         private long mTimeout;
+        private boolean mIsShellCommand;
 
-        AdbAction(String[] cmd) {
-            this(getCommandTimeout(), cmd);
-        }
-
-        AdbAction(long timeout, String[] cmd) {
+        AdbAction(long timeout, String[] cmd, boolean isShell) {
             mTimeout = timeout;
             mCmd = cmd;
+            mIsShellCommand = isShell;
         }
 
         private void logExceptionAndOutput(CommandResult result) {
@@ -271,9 +269,15 @@ public class NativeDevice implements IManagedTestDevice {
                 logExceptionAndOutput(result);
                 throw new TimeoutException("CommandStatus was TIMED_OUT, details in host log");
             } else if (result.getStatus() == CommandStatus.FAILED) {
-                // interpret as communication failure
+
                 logExceptionAndOutput(result);
-                throw new IOException("CommandStatus was FAILED, details in host log");
+                if (mIsShellCommand) {
+                    // Interpret as communication failure for shell commands
+                    throw new IOException("CommandStatus was FAILED, details in host log");
+                } else {
+                    mOutput = result.getStdout();
+                    return false;
+                }
             }
             mOutput = result.getStdout();
             return true;
@@ -1793,7 +1797,7 @@ public class NativeDevice implements IManagedTestDevice {
     public String executeAdbCommand(long timeout, String... cmdArgs)
             throws DeviceNotAvailableException {
         final String[] fullCmd = buildAdbCommand(cmdArgs);
-        AdbAction adbAction = new AdbAction(timeout, fullCmd);
+        AdbAction adbAction = new AdbAction(timeout, fullCmd, "shell".equals(cmdArgs[0]));
         performDeviceAction(String.format("adb %s", cmdArgs[0]), adbAction, MAX_RETRY_ATTEMPTS);
         return adbAction.mOutput;
     }
@@ -4300,9 +4304,7 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@inheritDoc} */
     @Override
     public Map<Long, String> getBootHistory() throws DeviceNotAvailableException {
-        // getProperty(DeviceProperties.BOOT_REASON_HISTORY) will not be able to handle boot history
-        // output format properly (tracked by b/139192891).
-        String output = executeShellCommand("getprop " + DeviceProperties.BOOT_REASON_HISTORY);
+        String output = getProperty(DeviceProperties.BOOT_REASON_HISTORY);
         /* Sample output:
         kernel_panic,1556587278
         reboot,,1556238008
@@ -4367,7 +4369,7 @@ public class NativeDevice implements IManagedTestDevice {
     /**
      * Check current system process is restarted after last reboot
      *
-     * @param the system_server {@link ProcessInfo}
+     * @param systemServerProcess the system_server {@link ProcessInfo}
      * @return true if system_server process restarted after last reboot; false if not
      * @throws DeviceNotAvailableException
      */

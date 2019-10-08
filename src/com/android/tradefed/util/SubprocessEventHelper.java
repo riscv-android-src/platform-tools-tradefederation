@@ -546,7 +546,7 @@ public class SubprocessEventHelper {
                         mModuleContext
                                 .getAttributes()
                                 .getUniqueMap()
-                                .get(ModuleDefinition.MODULE_NAME);
+                                .get(ModuleDefinition.MODULE_ID);
                 if (moduleName != null) {
                     tags.put(MODULE_NAME, moduleName);
                 }

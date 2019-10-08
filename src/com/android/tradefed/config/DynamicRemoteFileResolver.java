@@ -84,7 +84,7 @@ public class DynamicRemoteFileResolver {
     public final Set<File> validateRemoteFilePath() throws ConfigurationException {
         Set<File> downloadedFiles = new HashSet<>();
         try {
-            Map<Object, Field> fieldSeen = new HashMap<>();
+            Map<Field, Object> fieldSeen = new HashMap<>();
             for (Map.Entry<String, OptionFieldsForName> optionPair : mOptionMap.entrySet()) {
                 final OptionFieldsForName optionFields = optionPair.getValue();
                 for (Map.Entry<Object, Field> fieldEntry : optionFields) {
@@ -108,11 +108,11 @@ public class DynamicRemoteFileResolver {
                                 String.format("internal error: %s", e.getMessage()));
                     }
 
-                    if (fieldSeen.get(value) != null && fieldSeen.get(value).equals(field)) {
+                    if (fieldSeen.get(field) != null && fieldSeen.get(field).equals(obj)) {
                         continue;
                     }
                     // Keep track of the field set on each object
-                    fieldSeen.put(value, field);
+                    fieldSeen.put(field, obj);
 
                     if (value instanceof File) {
                         File consideredFile = (File) value;
