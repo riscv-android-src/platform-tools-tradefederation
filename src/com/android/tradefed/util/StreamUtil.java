@@ -111,11 +111,28 @@ public class StreamUtil {
      * @throws IOException if failure occurred reading the stream
      */
     public static String getStringFromStream(InputStream stream) throws IOException {
+        return getStringFromStream(stream, 0);
+    }
+
+    /**
+     * Retrieves a {@link String} from a character stream.
+     *
+     * @param stream the {@link InputStream}
+     * @param length the size of the content to read, set to 0 to read all contents
+     * @return a {@link String} containing the stream contents
+     * @throws IOException if failure occurred reading the stream
+     */
+    public static String getStringFromStream(InputStream stream, long length) throws IOException {
         int irChar = -1;
         StringBuilder builder = new StringBuilder();
         try (Reader ir = new BufferedReader(new InputStreamReader(stream))) {
+            long count = 0;
             while ((irChar = ir.read()) != -1) {
                 builder.append((char) irChar);
+                count++;
+                if (length > 0 && count >= length) {
+                    break;
+                }
             }
         }
         return builder.toString();
