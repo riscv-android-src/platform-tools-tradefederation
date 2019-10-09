@@ -550,12 +550,14 @@ public class InstallApexModuleTargetPreparerTest {
             mInstallApexModuleTargetPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
             Mockito.verify(mMockBundletoolUtil, times(1))
                 .generateDeviceSpecFile(Mockito.any(ITestDevice.class));
-            Mockito.verify(mMockBundletoolUtil, times(1))
-                .extractSplitsFromApks(
-                    Mockito.eq(mFakeApkApks),
-                    Mockito.anyString(),
-                    Mockito.any(ITestDevice.class),
-                    Mockito.any(IBuildInfo.class));
+            // Extract splits 1 time to get the package name for the module, and again during
+            // installation.
+            Mockito.verify(mMockBundletoolUtil, times(2))
+                    .extractSplitsFromApks(
+                            Mockito.eq(mFakeApkApks),
+                            Mockito.anyString(),
+                            Mockito.any(ITestDevice.class),
+                            Mockito.any(IBuildInfo.class));
             EasyMock.verify(mMockBuildInfo, mMockDevice);
             assertTrue(!mInstallApexModuleTargetPreparer.getApkInstalled().isEmpty());
         } finally {
@@ -749,13 +751,15 @@ public class InstallApexModuleTargetPreparerTest {
             mInstallApexModuleTargetPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
             Mockito.verify(mMockBundletoolUtil, times(1))
                     .generateDeviceSpecFile(Mockito.any(ITestDevice.class));
-            Mockito.verify(mMockBundletoolUtil, times(1))
+            // Extract splits 1 time to get the package name for the module, and again during
+            // installation.
+            Mockito.verify(mMockBundletoolUtil, times(2))
                     .extractSplitsFromApks(
                             Mockito.eq(mFakeApexApks),
                             Mockito.anyString(),
                             Mockito.any(ITestDevice.class),
                             Mockito.any(IBuildInfo.class));
-            Mockito.verify(mMockBundletoolUtil, times(1))
+            Mockito.verify(mMockBundletoolUtil, times(2))
                     .extractSplitsFromApks(
                             Mockito.eq(mFakeApkApks),
                             Mockito.anyString(),
