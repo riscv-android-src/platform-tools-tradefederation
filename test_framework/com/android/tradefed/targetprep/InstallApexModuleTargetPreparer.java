@@ -61,6 +61,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     private List<String> mApkInstalled = new ArrayList<>();
     private List<String> mSplitsInstallArgs = new ArrayList<>();
     private BundletoolUtil mBundletoolUtil;
+    private String mDeviceSpecFilePath = "";
 
     @Option(name = "bundletool-file-name", description = "The file name of the bundletool jar.")
     private String mBundletoolFilename;
@@ -162,6 +163,69 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     }
 
     /**
+     * Initializes the bundletool util for this class.
+     *
+     * @param buildInfo the {@link IBuildInfo} for the artifacts.
+     * @param device the {@link ITestDevice} to install the train.
+     * @throws TargetSetupError if bundletool cannot be found.
+     */
+    private void initBundletoolUtil(IBuildInfo buildInfo, ITestDevice device)
+            throws TargetSetupError {
+        if (mBundletoolUtil != null) {
+            return;
+        }
+        File bundletoolJar = getLocalPathForFilename(buildInfo, getBundletoolFileName(), device);
+        if (bundletoolJar == null) {
+            throw new TargetSetupError(
+                    String.format("Failed to find bundletool jar %s.", getBundletoolFileName()),
+                    device.getDeviceDescriptor());
+        }
+        mBundletoolUtil = new BundletoolUtil(bundletoolJar);
+    }
+
+    /**
+     * Initializes the path to the device spec file.
+     *
+     * @param device the {@link ITestDevice} to install the train.
+     * @return String path to the device spec.
+     * @throws TargetSetupError if fails to generate the device spec file.
+     */
+    private void initDeviceSpecFilePath(ITestDevice device) throws TargetSetupError {
+        if (!mDeviceSpecFilePath.equals("")) {
+            return;
+        }
+        try {
+            mDeviceSpecFilePath = getBundletoolUtil().generateDeviceSpecFile(device);
+        } catch (IOException e) {
+            throw new TargetSetupError(
+                    String.format(
+                            "Failed to generate device spec file on %s.", device.getSerialNumber()),
+                    e,
+                    device.getDeviceDescriptor());
+        }
+    }
+
+    /**
+     * Extracts and returns splits for the specified apks.
+     *
+     * @param buildInfo the {@link IBuildInfo} for the artifacts.
+     * @param device the {@link ITestDevice} to install the train.
+     * @param apksName The name of the apks file to extract splits from.
+     * @return a File[] containing the splits.
+     * @throws TargetSetupError if bundletool cannot be found or device spec file fails to generate.
+     */
+    private File[] getSplitsForApks(IBuildInfo buildInfo, ITestDevice device, String apksName)
+            throws TargetSetupError {
+        initBundletoolUtil(buildInfo, device);
+        initDeviceSpecFilePath(device);
+        File moduleFile = getLocalPathForFilename(buildInfo, apksName, device);
+        File splitsDir =
+                getBundletoolUtil()
+                        .extractSplitsFromApks(moduleFile, mDeviceSpecFilePath, device, buildInfo);
+        return splitsDir.listFiles();
+    }
+
+    /**
      * Gets the modules that should be installed on the train, based on the modules preloaded on the
      * device. Modules that are not preloaded will not be installed.
      *
@@ -174,7 +238,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      */
     public List<String> getModulesToInstall(IBuildInfo buildInfo, ITestDevice device)
             throws DeviceNotAvailableException, TargetSetupError {
-        // Get all preloaded modules for the device, and check that mandatory modules are included.
+        // Get all preloaded modules for the device.
         Set<String> installedPackages = new HashSet<>(device.getInstalledPackageNames());
         Set<ApexInfo> installedApexes = new HashSet<>(device.getActiveApexes());
         for (ApexInfo installedApex : installedApexes) {
@@ -189,13 +253,15 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                         String.format("%s not found.", moduleFileName),
                         device.getDeviceDescriptor());
             }
-            String modulePackageName = parsePackageName(moduleFile, device.getDeviceDescriptor());
+            String modulePackageName = "";
+            if (moduleFile.getName().endsWith(SPLIT_APKS_SUFFIX)) {
+                File[] splits = getSplitsForApks(buildInfo, device, moduleFileName);
+                modulePackageName = parsePackageName(splits[0], device.getDeviceDescriptor());
+            } else {
+                modulePackageName = parsePackageName(moduleFile, device.getDeviceDescriptor());
+            }
             if (installedPackages.contains(modulePackageName)) {
-                long versionCode =
-                        retrieveApexInfo(moduleFile, device.getDeviceDescriptor()).versionCode;
-                CLog.i(
-                        "Found preloaded module for %s with version code %s.",
-                        modulePackageName, versionCode);
+                CLog.i("Found preloaded module for %s.", modulePackageName);
                 moduleNamesToInstall.add(moduleFileName);
                 installedPackages.remove(modulePackageName);
             } else {
@@ -311,32 +377,15 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      */
     protected void installUsingBundleTool(IBuildInfo buildInfo, ITestDevice device)
             throws TargetSetupError, DeviceNotAvailableException {
-        File bundletoolJar = getLocalPathForFilename(buildInfo, getBundletoolFileName(), device);
-        if (bundletoolJar == null) {
-            throw new TargetSetupError(
-                    String.format(
-                            " Failed to find bundletool jar on %s.", device.getSerialNumber()),
-                    device.getDeviceDescriptor());
-        }
-        mBundletoolUtil = new BundletoolUtil(bundletoolJar);
-        String deviceSpecFilePath = "";
-        try {
-            deviceSpecFilePath = getBundletoolUtil().generateDeviceSpecFile(device);
-        } catch (IOException e) {
-            throw new TargetSetupError(
-                    String.format(
-                            " Failed to generate device spec file on %s.",
-                            device.getSerialNumber()),
-                    e,
-                    device.getDeviceDescriptor());
-        }
+        initBundletoolUtil(buildInfo, device);
+        initDeviceSpecFilePath(device);
 
         if (getTestsFileName().size() == 1) {
             // Installs single .apks module.
             installSingleModuleUsingBundletool(
-                    device, buildInfo, deviceSpecFilePath, getTestsFileName().get(0));
+                    device, buildInfo, mDeviceSpecFilePath, getTestsFileName().get(0));
         } else {
-            installMultipleModuleUsingBundletool(device, buildInfo, deviceSpecFilePath);
+            installMultipleModuleUsingBundletool(device, buildInfo, mDeviceSpecFilePath);
         }
 
         mApkInstalled.addAll(mApkToInstall);
@@ -354,11 +403,8 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             ITestDevice device, IBuildInfo buildInfo, String deviceSpecFilePath, String apksName)
             throws TargetSetupError, DeviceNotAvailableException {
         File apks = getLocalPathForFilename(buildInfo, apksName, device);
-        File splitsDir =
-                getBundletoolUtil()
-                        .extractSplitsFromApks(apks, deviceSpecFilePath, device, buildInfo);
         // Rename the extracted files and add the file to filename list.
-        File[] splits = splitsDir.listFiles();
+        File[] splits = getSplitsForApks(buildInfo, device, apks.getName());
 
         if (splits.length == 0) {
             throw new TargetSetupError(
@@ -391,11 +437,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         for (String moduleFileName : getTestsFileName()) {
             File moduleFile = getLocalPathForFilename(buildInfo, moduleFileName, device);
             if (moduleFileName.endsWith(SPLIT_APKS_SUFFIX)) {
-                File splitsDir =
-                        getBundletoolUtil()
-                                .extractSplitsFromApks(
-                                        moduleFile, deviceSpecFilePath, device, buildInfo);
-                File[] splits = splitsDir.listFiles();
+                File[] splits = getSplitsForApks(buildInfo, device, moduleFileName);
                 String splitsArgs = createInstallArgsForSplit(splits, device);
                 mSplitsInstallArgs.add(splitsArgs);
             } else {
