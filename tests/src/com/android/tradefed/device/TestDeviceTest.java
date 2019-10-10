@@ -3033,14 +3033,26 @@ public class TestDeviceTest extends TestCase {
             // Size of the raw test data
             Assert.assertEquals(3000, testImage.data.length);
             byte[] result = mTestDevice.compressRawImage(testImage, "PNG", true);
-            // Size after compressing
-            Assert.assertEquals(107, result.length);
+            // Size after compressing can vary a bit depending of the JDK
+            if (result.length != 107 && result.length != 117 && result.length != 139) {
+                fail(
+                        String.format(
+                                "Should have compress the length as expected, got %s, "
+                                        + "expected 107 or 117 or 139",
+                                result.length));
+            }
 
             // Do it again with JPEG encoding
             Assert.assertEquals(3000, testImage.data.length);
             result = mTestDevice.compressRawImage(testImage, "JPEG", true);
             // Size after compressing as JPEG
-            Assert.assertEquals(1041, result.length);
+            if (result.length != 1041 && result.length != 851) {
+                fail(
+                        String.format(
+                                "Should have compress the length as expected, got %s, "
+                                        + "expected 851 or 1041",
+                                result.length));
+            }
         } finally {
             if (testImage != null) {
                 testImage.data = null;
