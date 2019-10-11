@@ -39,6 +39,8 @@ import java.util.stream.Collectors;
  */
 public class BaseRetryDecision implements IRetryDecision {
 
+    private static final int ABORT_MAX_FAILURES = 50;
+
     @Option(
         name = "reboot-at-last-retry",
         description = "Reboot the device at the last retry attempt."
@@ -71,6 +73,7 @@ public class BaseRetryDecision implements IRetryDecision {
     private IInvocationContext mContext;
 
     private IRemoteTest mCurrentlyConsideredTest;
+    private Set<TestDescription> mPreviouslyFailing;
     private RetryStatsHelper mStatistics;
 
     /** Constructor for the retry decision */
@@ -104,6 +107,7 @@ public class BaseRetryDecision implements IRetryDecision {
         if (test != mCurrentlyConsideredTest) {
             mCurrentlyConsideredTest = test;
             mStatistics = new RetryStatsHelper();
+            mPreviouslyFailing = new HashSet<>();
         }
 
         switch (mRetryStrategy) {
@@ -191,6 +195,18 @@ public class BaseRetryDecision implements IRetryDecision {
 
         // In case of test case failure, we retry with filters.
         Set<TestDescription> previousFailedTests = getFailedTestCases(previousResults);
+        if (!mPreviouslyFailing.isEmpty()) {
+            previousFailedTests.retainAll(mPreviouslyFailing);
+            mPreviouslyFailing.retainAll(previousFailedTests);
+        }
+        // Abort if number of failures is high for a given one test
+        if (previousFailedTests.size() > ABORT_MAX_FAILURES) {
+            CLog.d(
+                    "Found %s failures, skipping auto-retry to avoid large overhead.",
+                    previousFailedTests.size());
+            return false;
+        }
+
         if (!previousFailedTests.isEmpty()) {
             CLog.d("Retrying the test case failure.");
             addRetriedTestsToIncludeFilters(test, previousFailedTests);
@@ -222,6 +238,7 @@ public class BaseRetryDecision implements IRetryDecision {
                     String.format(
                             "%s#%s", testCase.getClassName(), testCase.getTestNameWithoutParams());
             test.addIncludeFilter(filter);
+            mPreviouslyFailing.add(testCase);
         }
     }
 

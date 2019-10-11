@@ -16,6 +16,8 @@
 
 package com.android.tradefed.testtype;
 
+import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.GCOV;
+
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.config.Option;
@@ -25,6 +27,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.NativeCodeCoverageFlusher;
 
@@ -60,18 +63,24 @@ public class GTest extends GTestBase implements IDeviceTest {
             description = "Stops the Java application runtime before test execution.")
     private boolean mStopRuntime = false;
 
+    /** @deprecated Use the --coverage-flush option in CoverageOptions instead. */
+    @Deprecated
     @Option(
         name = "coverage-flush",
         description = "Forces coverage data to be flushed at the end of the test."
     )
     private boolean mCoverageFlush = false;
 
+    /** @deprecated Use the --coverage-processes option in CoverageOptions instead. */
+    @Deprecated
     @Option(
         name = "coverage-processes",
         description = "Name of processes to collect coverage data from."
     )
     private List<String> mCoverageProcesses = new ArrayList<>();
 
+    /** @deprecated Merged into the --coverage-flush option in CoverageOptions instead. */
+    @Deprecated
     @Option(
         name = "coverage-clear-before-test",
         description = "Clears all coverage counters before test execution."
@@ -86,11 +95,6 @@ public class GTest extends GTestBase implements IDeviceTest {
     @Override
     public void setDevice(ITestDevice device) {
         mDevice = device;
-    }
-
-    @VisibleForTesting
-    void setCoverageProcesses(List<String> coverageProcesses) {
-        mCoverageProcesses = new ArrayList<>(coverageProcesses);
     }
 
     /**
@@ -389,18 +393,19 @@ public class GTest extends GTestBase implements IDeviceTest {
             mDevice.executeShellCommand("stop");
         }
         // Insert the coverage listener if code coverage collection is enabled.
-        listener =
-                addNativeCoverageListenerIfEnabled(
-                        mDevice, mCoverageFlush, mCoverageProcesses, listener);
-        NativeCodeCoverageFlusher flusher = new NativeCodeCoverageFlusher(mDevice);
+        listener = addNativeCoverageListenerIfEnabled(listener);
+        NativeCodeCoverageFlusher flusher =
+                new NativeCodeCoverageFlusher(mDevice, getCoverageOptions().getCoverageProcesses());
 
         Throwable throwable = null;
         try {
-            if (isCoverageEnabled() && mCoverageClearBeforeTest) {
-                if (mCoverageFlush) {
-                    flusher.forceCoverageFlush(mCoverageProcesses);
-                }
-                flusher.clearCoverageMeasurements();
+            if (getCoverageOptions().isCoverageEnabled()) {
+                flusher.resetCoverage();
+
+                // Clang will no longer create directories that are part of the GCOV_PREFIX
+                // environment variable. Force create the /data/misc/trace/testcoverage dir to
+                // prevent "No such file or directory" errors when writing test coverage to disk.
+                mDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage");
             }
             doRunAllTestsInSubdirectory(testPath, mDevice, listener);
         } catch (Throwable t) {
@@ -414,5 +419,22 @@ public class GTest extends GTestBase implements IDeviceTest {
                 }
             }
         }
+    }
+
+    /**
+     * Adds a listener to pull native code coverage measurements from the device after the test is
+     * complete if coverage is enabled, otherwise returns the same listener.
+     *
+     * @param listener the current chain of listeners
+     * @return a native coverage listener if coverage is enabled, otherwise the original listener
+     */
+    private ITestInvocationListener addNativeCoverageListenerIfEnabled(
+            ITestInvocationListener listener) {
+        CoverageOptions options = getCoverageOptions();
+
+        if (options.isCoverageEnabled() && options.getCoverageToolchains().contains(GCOV)) {
+            return new NativeCodeCoverageListener(mDevice, options, listener);
+        }
+        return listener;
     }
 }

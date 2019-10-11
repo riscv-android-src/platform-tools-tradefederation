@@ -41,14 +41,19 @@ import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.UniqueMultiMap;
 
+import com.google.api.client.repackaged.com.google.common.base.Joiner;
+
 import org.junit.Assert;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A {@link IRemoteTest} for running tests against a separate TF installation.
@@ -91,8 +96,56 @@ public abstract class SubprocessTfLauncher
             description = "Pass the invocation-data to the subprocess if enabled.")
     private boolean mInjectInvocationData = true;
 
+    @Option(
+        name = "disable-stderr-test",
+        description = "Whether or not to disable the stderr validation check."
+    )
+    private boolean mDisableStderrTest = false;
+
+    @Option(
+        name = "disable-add-opens",
+        description = "Whether or not to add the java add-opens flags"
+    )
+    private boolean mDisableJavaOpens = false;
+
+    @Option(name = "add-opens", description = "Whether or not to add the java add-opens flags")
+    private Set<String> mAddOpens =
+            new LinkedHashSet<>(
+                    Arrays.asList(
+                            "java.base/java.nio",
+                            "java.base/sun.reflect.annotation",
+                            "java.base/java.io"));
+
     // Temp global configuration filtered from the parent process.
     private String mFilteredGlobalConfig = null;
+
+    private static final List<String> TRADEFED_JARS =
+            new ArrayList<>(
+                    Arrays.asList(
+                            // Loganalysis
+                            "loganalysis.jar",
+                            "loganalysis-tests.jar",
+                            // Aosp Tf jars
+                            "tradefed.jar",
+                            "tradefed-tests.jar",
+                            // libs
+                            "tools-common-prebuilt.jar",
+                            // jar in older branches
+                            "tf-prod-tests.jar",
+                            "tf-prod-metatests.jar",
+                            // Aosp contrib jars
+                            "tradefed-contrib.jar",
+                            "tf-contrib-tests.jar",
+                            // Google Tf jars
+                            "google-tf-prod-tests.jar",
+                            "google-tf-prod-metatests.jar",
+                            "google-tradefed.jar",
+                            "google-tradefed-tests.jar",
+                            // Google contrib jars
+                            "google-tradefed-contrib.jar",
+                            // Older jar required for coverage tests
+                            "jack-jacoco-reporter.jar",
+                            "emmalib.jar"));
 
     /** Timeout to wait for the events received from subprocess to finish being processed.*/
     private static final long EVENT_THREAD_JOIN_TIMEOUT_MS = 30 * 1000;
@@ -149,8 +202,17 @@ public abstract class SubprocessTfLauncher
         Assert.assertNotNull(mBuildInfo);
         Assert.assertNotNull(mConfigName);
         IFolderBuildInfo tfBuild = (IFolderBuildInfo) mBuildInfo;
-        mRootDir = tfBuild.getRootDir().getAbsolutePath();
-        String jarClasspath = FileUtil.getPath(mRootDir, "*");
+        File rootDirFile = tfBuild.getRootDir();
+        mRootDir = rootDirFile.getAbsolutePath();
+        String jarClasspath = "";
+        List<String> paths = new ArrayList<>();
+        for (String jar : TRADEFED_JARS) {
+            File f = FileUtil.findFile(rootDirFile, jar);
+            if (f != null && f.exists()) {
+                paths.add(f.getAbsolutePath());
+            }
+        }
+        jarClasspath = Joiner.on(":").join(paths);
 
         mCmdArgs = new ArrayList<String>();
         mCmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
@@ -168,8 +230,12 @@ public abstract class SubprocessTfLauncher
         if (mRemoteDebug) {
             mCmdArgs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=10088");
         }
-        // FIXME: b/72742216: This prevent the illegal reflective access
-        mCmdArgs.add("--add-opens=java.base/java.nio=ALL-UNNAMED");
+        // This prevent the illegal reflective access warnings by allowing some packages.
+        if (!mDisableJavaOpens) {
+            for (String modulePackage : mAddOpens) {
+                mCmdArgs.add("--add-opens=" + modulePackage + "=ALL-UNNAMED");
+            }
+        }
         mCmdArgs.add("-cp");
 
         mCmdArgs.add(jarClasspath);
@@ -360,6 +426,9 @@ public abstract class SubprocessTfLauncher
      */
     private void testCleanStdErr(File stdErrFile, ITestInvocationListener listener)
             throws IOException {
+        if (mDisableStderrTest) {
+            return;
+        }
         listener.testRunStarted("StdErr", 1);
         TestDescription tid = new TestDescription("stderr-test", "checkIsEmpty");
         listener.testStarted(tid);

@@ -718,7 +718,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          * invocations.
          */
         public void stopInvocation(String message) {
-            getInvocation().notifyInvocationStopped();
+            getInvocation().notifyInvocationStopped(message);
             for (ITestDevice device : mInvocationContext.getDevices()) {
                 if (TestDeviceState.ONLINE.equals(device.getDeviceState())) {
                     // Kill all running processes on device.
@@ -1061,7 +1061,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                         // make sure not to record since it may contains password
                         System.out.println(
                                 String.format(
-                                        "The command %s will be rescheduled.",
+                                        "Command will be rescheduled: %s",
                                         Arrays.toString(cmd.getCommandTracker().getArgs())));
                         mUnscheduledWarning.add(cmd);
                     }
@@ -1766,7 +1766,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         for (InvocationThread thread : mInvocationThreadMap.values()) {
             thread.disableReporters();
             // TODO(b/118891716): Improve tear down
-            thread.stopInvocation("TF is shutting down");
+            thread.stopInvocation("Tradefed is shutting down");
         }
         getDeviceManager().terminateHard();
     }

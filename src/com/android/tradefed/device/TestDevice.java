@@ -181,6 +181,9 @@ public class TestDevice extends NativeDevice {
                         return response[0] == null;
                     }
                 };
+        CLog.v(
+                "Installing package file %s with args %s on %s",
+                packageFile.getAbsolutePath(), extraArgs.toString(), getSerialNumber());
         performDeviceAction(String.format("install %s", packageFile.getAbsolutePath()),
                 installAction, MAX_RETRY_ATTEMPTS);
         return response[0];
@@ -1403,9 +1406,9 @@ public class TestDevice extends NativeDevice {
                 // disable keyguard if option is true
                 prePostBootSetup();
                 return true;
+            } else {
+                RunUtil.getDefault().sleep(getCheckNewUserSleep());
             }
-            RunUtil.getDefault().sleep(getCheckNewUserSleep());
-            executeShellCommand(String.format("am switch-user %d", userId));
         }
         CLog.e("User did not switch in the given %d timeout", timeout);
         return false;

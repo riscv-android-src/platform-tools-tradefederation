@@ -16,6 +16,8 @@
 package com.android.tradefed.testtype;
 
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
@@ -31,7 +33,6 @@ import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
-import com.android.tradefed.retry.BaseRetryDecision;
 import com.android.tradefed.testtype.retry.IAutoRetriableTest;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.ListInstrumentationParser;
@@ -43,7 +44,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /** Runs all instrumentation found on current device. */
 @OptionClass(alias = "installed-instrumentation")
@@ -52,7 +52,8 @@ public class InstalledInstrumentationsTest
                 IShardableTest,
                 IMetricCollectorReceiver,
                 IInvocationContextReceiver,
-                IAutoRetriableTest {
+                IAutoRetriableTest,
+                IConfigurationReceiver {
 
     private static final String PM_LIST_CMD = "pm list instrumentation";
     private static final String LINE_SEPARATOR = "\\r?\\n";
@@ -186,12 +187,28 @@ public class InstalledInstrumentationsTest
     )
     private boolean mIsolatedStorage = true;
 
+    @Option(
+        name = "window-animation",
+        description =
+                "If set to false, the '--no-window-animation' flag will be passed to the am "
+                        + "instrument command. Only works for ICS or later."
+    )
+    private boolean mWindowAnimation = true;
+
+    @Option(
+            name = "create-instrumentation-tests",
+            description =
+                    "Create InstrumentationTest type rather than more recent AndroidJUnitTest.")
+    private boolean mDowngradeInstrumentation = false;
+
     private int mTotalShards = 0;
     private int mShardIndex = 0;
     private List<IMetricCollector> mMetricCollectorList = new ArrayList<>();
     private IInvocationContext mContext;
+    private IConfiguration mConfiguration;
 
     private List<InstrumentationTest> mTests = null;
+    private Map<String, List<TestDescription>> mRunTestsFailureMap = null;
 
     @Option(name = AbiFormatter.FORCE_ABI_STRING,
             description = AbiFormatter.FORCE_ABI_DESCRIPTION,
@@ -201,20 +218,33 @@ public class InstalledInstrumentationsTest
     @Override
     public boolean shouldRetry(int attemptJustExecuted, List<TestRunResult> previousResults)
             throws DeviceNotAvailableException {
-        if (BaseRetryDecision.hasRunFailures(previousResults)) {
-            return true;
+        boolean retry = false;
+        mRunTestsFailureMap = new HashMap<>();
+        for (TestRunResult run : previousResults) {
+            if (run == null) {
+                continue;
+            }
+            if (run.isRunFailure()) {
+                retry = true;
+                // Retry the full run in case of run failure
+                mRunTestsFailureMap.put(run.getName(), null);
+            } else if (run.hasFailedTests()) {
+                retry = true;
+                mRunTestsFailureMap.put(
+                        run.getName(), new ArrayList<TestDescription>(run.getFailedTests()));
+            }
         }
 
-        // In case of test case failure, we retry with filters.
-        Set<TestDescription> previousFailedTests =
-                BaseRetryDecision.getFailedTestCases(previousResults);
-        if (!previousFailedTests.isEmpty()) {
-            CLog.d("Retrying %s", this.getClass());
-            return true;
+        if (!retry) {
+            CLog.d("No test run or test case failures. No need to retry.");
+            mRunTestsFailureMap = null;
         }
+        return retry;
+    }
 
-        CLog.d("No test run or test case failures. No need to retry.");
-        return false;
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mConfiguration = configuration;
     }
 
     /**
@@ -327,7 +357,32 @@ public class InstalledInstrumentationsTest
                     t.setInvocationContext(mContext);
                     // Pass the collectors to each instrumentation, which will take care of init
                     t.setMetricCollectors(collectors);
-                    t.setPackageName(target.packageName);
+                    String targetPackageName = target.packageName;
+                    t.setPackageName(targetPackageName);
+                    if (mRunTestsFailureMap != null) {
+                        // Don't retry if there was no failure in a particular instrumentation.
+                        if (!mRunTestsFailureMap.containsKey(targetPackageName)) {
+                            CLog.d("Skipping %s at retry.", targetPackageName);
+                            continue;
+                        }
+                        // if possible reduce the scope of the retry to be more efficient.
+                        if (t instanceof AndroidJUnitTest) {
+                            AndroidJUnitTest filterable = (AndroidJUnitTest) t;
+                            if (mRunTestsFailureMap.containsKey(targetPackageName)) {
+                                List<TestDescription> tests =
+                                        mRunTestsFailureMap.get(targetPackageName);
+                                if (tests != null) {
+                                    for (TestDescription test : tests) {
+                                        filterable.addIncludeFilter(
+                                                String.format(
+                                                        "%s#%s",
+                                                        test.getClassName(),
+                                                        test.getTestNameWithoutParams()));
+                                    }
+                                }
+                            }
+                        }
+                    }
                     t.setRunnerName(target.runnerName);
                     t.setCoverageTarget(target.targetName);
                     if (mTotalShards > 0 && target.isShardable()) {
@@ -353,6 +408,7 @@ public class InstalledInstrumentationsTest
             CLog.d("Running test %s on %s", test.getPackageName(), getDevice().getSerialNumber());
 
             test.setDevice(getDevice());
+            test.setConfiguration(mConfiguration);
             if (mTestClass != null) {
                 test.setClassName(mTestClass);
                 if (mTestPackageName != null) {
@@ -389,7 +445,12 @@ public class InstalledInstrumentationsTest
     InstrumentationTest createInstrumentationTest() {
         // We do not know what kind of instrumentation we will find, so we don't enforce the ddmlib
         // format for AndroidJUnitRunner.
-        InstrumentationTest test = new InstrumentationTest();
+        InstrumentationTest test = null;
+        if (mDowngradeInstrumentation) {
+            test = new InstrumentationTest();
+        } else {
+            test = new AndroidJUnitTest();
+        }
         test.setEnforceFormat(false);
         return test;
     }

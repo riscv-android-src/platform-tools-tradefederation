@@ -27,9 +27,12 @@ import time
 import xml.etree.ElementTree as ET
 
 # pylint: disable=import-error
+import atest_decorator
 import atest_error
 import atest_enum
 import constants
+
+from metrics import metrics_utils
 
 # Helps find apk files listed in a test config (AndroidTest.xml) file.
 # Matches "filename.apk" in <option name="foo", value="filename.apk" />
@@ -334,17 +337,7 @@ def extract_test_from_tests(tests):
     return list(mtests)
 
 
-def static_var(varname, value):
-    """Decorator to cache static variable."""
-
-    def fun_var_decorate(func):
-        """Set the static variable in a function."""
-        setattr(func, varname, value)
-        return func
-    return fun_var_decorate
-
-
-@static_var("cached_ignore_dirs", [])
+@atest_decorator.static_var("cached_ignore_dirs", [])
 def _get_ignored_dirs():
     """Get ignore dirs in find command.
 
@@ -427,7 +420,13 @@ def run_find_cmd(ref_type, search_dir, target, methods=None):
     if os.path.isfile(FIND_INDEXES[ref_type]):
         _dict, out = {}, None
         with open(FIND_INDEXES[ref_type], 'rb') as index:
-            _dict = pickle.load(index)
+            try:
+                _dict = pickle.load(index)
+            except (IOError, EOFError, pickle.UnpicklingError) as err:
+                logging.debug('Exception raised: %s', err)
+                metrics_utils.handle_exc_and_send_exit_event(
+                    constants.ACCESS_CACHE_FAILURE)
+                os.remove(FIND_INDEXES[ref_type])
         if _dict.get(target):
             logging.debug('Found %s in %s', target, FIND_INDEXES[ref_type])
             out = [path for path in _dict.get(target) if search_dir in path]

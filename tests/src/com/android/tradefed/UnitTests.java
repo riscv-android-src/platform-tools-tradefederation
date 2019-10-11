@@ -91,6 +91,7 @@ import com.android.tradefed.device.metric.DumpHeapCollectorTest;
 import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.FilePullerLogCollectorTest;
 import com.android.tradefed.device.metric.GraphicsStatsMetricCollectorTest;
+import com.android.tradefed.device.metric.IncidentReportCollectorTest;
 import com.android.tradefed.device.metric.IonHeapInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.LogcatOnFailureCollectorTest;
 import com.android.tradefed.device.metric.MemInfoMetricCollectorTest;
@@ -125,6 +126,7 @@ import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecutionTest
 import com.android.tradefed.invoker.shard.ShardHelperTest;
 import com.android.tradefed.invoker.shard.StrictShardHelperTest;
 import com.android.tradefed.invoker.shard.TestsPoolPollerTest;
+import com.android.tradefed.invoker.shard.token.TelephonyTokenProviderTest;
 import com.android.tradefed.invoker.shard.token.TokenProviderHelperTest;
 import com.android.tradefed.log.FileLoggerTest;
 import com.android.tradefed.log.HistoryLoggerTest;
@@ -134,6 +136,8 @@ import com.android.tradefed.log.TerribleFailureEmailHandlerTest;
 import com.android.tradefed.postprocessor.AggregatePostProcessorTest;
 import com.android.tradefed.postprocessor.AveragePostProcessorTest;
 import com.android.tradefed.postprocessor.BasePostProcessorTest;
+import com.android.tradefed.postprocessor.StatsdEventMetricPostProcessorTest;
+import com.android.tradefed.postprocessor.StatsdGenericPostProcessorTest;
 import com.android.tradefed.result.ATestFileSystemLogSaverTest;
 import com.android.tradefed.result.BugreportCollectorTest;
 import com.android.tradefed.result.CollectingTestListenerTest;
@@ -167,6 +171,7 @@ import com.android.tradefed.result.proto.ProtoResultReporterTest;
 import com.android.tradefed.result.proto.StreamProtoResultReporterTest;
 import com.android.tradefed.result.suite.FormattedGeneratorReporterTest;
 import com.android.tradefed.result.suite.XmlSuiteResultFormatterTest;
+import com.android.tradefed.retry.BaseRetryDecisionTest;
 import com.android.tradefed.retry.ResultAggregatorTest;
 import com.android.tradefed.sandbox.SandboxConfigDumpTest;
 import com.android.tradefed.sandbox.SandboxConfigUtilTest;
@@ -273,6 +278,7 @@ import com.android.tradefed.testtype.suite.TfSuiteRunnerTest;
 import com.android.tradefed.testtype.suite.ValidateSuiteConfigHelperTest;
 import com.android.tradefed.testtype.suite.module.BaseModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.CarModuleControllerTest;
+import com.android.tradefed.testtype.suite.module.MinApiLevelModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.NativeBridgeModuleControllerTest;
 import com.android.tradefed.testtype.suite.params.InstantAppHandlerTest;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelperTest;
@@ -301,6 +307,7 @@ import com.android.tradefed.util.FixedByteArrayOutputStreamTest;
 import com.android.tradefed.util.GCSFileDownloaderTest;
 import com.android.tradefed.util.GoogleApiClientUtilTest;
 import com.android.tradefed.util.HprofAllocSiteParserTest;
+import com.android.tradefed.util.JavaCodeCoverageFlusherTest;
 import com.android.tradefed.util.JUnitXmlParserTest;
 import com.android.tradefed.util.KeyguardControllerStateTest;
 import com.android.tradefed.util.ListInstrumentationParserTest;
@@ -340,7 +347,6 @@ import com.android.tradefed.util.keystore.JSONFileKeyStoreClientTest;
 import com.android.tradefed.util.keystore.JSONFileKeyStoreFactoryTest;
 import com.android.tradefed.util.net.HttpHelperTest;
 import com.android.tradefed.util.net.HttpMultipartPostTest;
-import com.android.tradefed.util.net.XmlRpcHelperTest;
 import com.android.tradefed.util.proto.TestRecordProtoUtilTest;
 import com.android.tradefed.util.proto.TfMetricProtoUtilTest;
 import com.android.tradefed.util.sl4a.Sl4aClientTest;
@@ -464,6 +470,7 @@ import org.junit.runners.Suite.SuiteClasses;
     FilePullerDeviceMetricCollectorTest.class,
     FilePullerLogCollectorTest.class,
     GraphicsStatsMetricCollectorTest.class,
+    IncidentReportCollectorTest.class,
     IonHeapInfoMetricCollectorTest.class,
     LogcatOnFailureCollectorTest.class,
     MemInfoMetricCollectorTest.class,
@@ -513,6 +520,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TestsPoolPollerTest.class,
 
     // invoker.shard.token
+    TelephonyTokenProviderTest.class,
     TokenProviderHelperTest.class,
 
     // invoker.sandbox
@@ -529,6 +537,8 @@ import org.junit.runners.Suite.SuiteClasses;
     AggregatePostProcessorTest.class,
     AveragePostProcessorTest.class,
     BasePostProcessorTest.class,
+    StatsdEventMetricPostProcessorTest.class,
+    StatsdGenericPostProcessorTest.class,
 
     // result
     ATestFileSystemLogSaverTest.class,
@@ -572,6 +582,7 @@ import org.junit.runners.Suite.SuiteClasses;
     XmlSuiteResultFormatterTest.class,
 
     // retry
+    BaseRetryDecisionTest.class,
     ResultAggregatorTest.class,
 
     // targetprep
@@ -705,6 +716,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // testtype/suite/module
     BaseModuleControllerTest.class,
     CarModuleControllerTest.class,
+    MinApiLevelModuleControllerTest.class,
     NativeBridgeModuleControllerTest.class,
 
     // testtype/suite/params
@@ -739,6 +751,7 @@ import org.junit.runners.Suite.SuiteClasses;
     GCSFileDownloaderTest.class,
     GoogleApiClientUtilTest.class,
     HprofAllocSiteParserTest.class,
+    JavaCodeCoverageFlusherTest.class,
     JUnitXmlParserTest.class,
     KeyguardControllerStateTest.class,
     LegacySubprocessResultsReporterTest.class,
@@ -780,7 +793,6 @@ import org.junit.runners.Suite.SuiteClasses;
     // util/net
     HttpHelperTest.class,
     HttpMultipartPostTest.class,
-    XmlRpcHelperTest.class,
 
     // util/keystore
     JSONFileKeyStoreClientTest.class,

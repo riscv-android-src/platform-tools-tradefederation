@@ -17,10 +17,13 @@ Classes for bug events history
 """
 
 import datetime
+import logging
 import json
 import os
 
 import constants
+
+from metrics import metrics_utils
 
 _META_FILE = os.path.join(os.path.expanduser('~'),
                           '.config', 'asuite', 'atest_history.json')
@@ -79,10 +82,16 @@ class BugDetector(object):
         Returns:
             An object of loading from a history.
         """
+        history = {}
         if os.path.exists(self.file):
             with open(self.file) as json_file:
-                return json.load(json_file)
-        return {}
+                try:
+                    history = json.load(json_file)
+                except ValueError as e:
+                    logging.debug(e)
+                    metrics_utils.handle_exc_and_send_exit_event(
+                        constants.ACCESS_HISTORY_FAILURE)
+        return history
 
     def detect_bug_caught(self):
         """Detection of catching bugs.
@@ -123,4 +132,9 @@ class BugDetector(object):
             self.history = dict(
                 sorted_history[(num_history - constants.TRIM_TO_SIZE):])
         with open(self.file, 'w') as outfile:
-            json.dump(self.history, outfile, indent=0)
+            try:
+                json.dump(self.history, outfile, indent=0)
+            except ValueError as e:
+                logging.debug(e)
+                metrics_utils.handle_exc_and_send_exit_event(
+                    constants.ACCESS_HISTORY_FAILURE)

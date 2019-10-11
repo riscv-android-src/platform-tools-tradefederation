@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,19 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.android.tradefed.testtype.suite.module;
 
-package com.android.tradefed.device;
-
-import com.android.ddmlib.IDevice;
-
-public interface IBatteryTemperature {
-
-    /**
-     * Get the device's battery temperature, in degrees celsius.
-     *
-     * <p>TODO: Implement as ddmlib {@code IDevice#getBatteryTemperature()}
-     *
-     * @return The device's temperature, in degrees celsius. If unavailable, the return value is 0.
-     */
-    Integer getBatteryTemperature(IDevice device);
+/**
+ * Only run tests if the device under test is SDK version 29 or above.
+ *
+ * <p>Use by adding this line to your AndroidTest.xml: <object type="module_controller"
+ * class="com.android.tradefed.testtype.suite.module.Sdk29ModuleController" />
+ */
+public class Sdk29ModuleController extends MinSdkModuleController {
+    public Sdk29ModuleController() {
+        super(29);
+    }
 }

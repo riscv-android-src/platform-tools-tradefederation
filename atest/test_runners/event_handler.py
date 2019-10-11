@@ -19,7 +19,10 @@ Atest test event handler class.
 from __future__ import print_function
 from collections import deque
 from datetime import timedelta
+import time
 import logging
+
+import atest_execution_info
 
 from test_runners import test_runner_base
 
@@ -78,6 +81,8 @@ class EventHandler(object):
         self.state = CONNECTION_STATE.copy()
 
     def _module_started(self, event_data):
+        if atest_execution_info.PREPARE_END_TIME is None:
+            atest_execution_info.PREPARE_END_TIME = time.time()
         self.state['current_group'] = event_data['moduleName']
         self.state['last_failed'] = None
         self.state['current_test'] = None

@@ -19,12 +19,14 @@ import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.testmapping.TestInfo;
 import com.android.tradefed.util.testmapping.TestMapping;
 import com.android.tradefed.util.testmapping.TestOption;
+import com.google.common.annotations.VisibleForTesting;
 
+import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -89,10 +91,10 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
      */
     @Override
     public LinkedHashMap<String, IConfiguration> loadTests() {
-        // Map between test names and a list of test sources for each test.
-        Map<String, List<String>> testsInTestMapping = new HashMap<>();
-
         Set<String> includeFilter = getIncludeFilter();
+        // Name of the tests
+        Set<String> testNames = new HashSet<>();
+        Set<TestInfo> testInfosToRun = new HashSet<>();
         if (mTestGroup == null && includeFilter.isEmpty()) {
             throw new RuntimeException(
                     "At least one of the options, --test-mapping-test-group or --include-filter, "
@@ -114,96 +116,184 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
         }
 
         if (mTestGroup != null) {
-            Set<TestInfo> testsToRun =
+            testInfosToRun =
                     TestMapping.getTests(
                             getBuildInfo(), mTestGroup, getPrioritizeHostConfig(), mKeywords);
             if (!mTestModulesForced.isEmpty()) {
                 CLog.i("Filtering tests for the given names: %s", mTestModulesForced);
-                testsToRun =
-                        testsToRun
+                testInfosToRun =
+                        testInfosToRun
                                 .stream()
                                 .filter(testInfo -> mTestModulesForced.contains(testInfo.getName()))
                                 .collect(Collectors.toSet());
             }
-            if (testsToRun.isEmpty()) {
+            if (testInfosToRun.isEmpty()) {
                 throw new RuntimeException(
                         String.format("No test found for the given group: %s.", mTestGroup));
             }
-
-            // Name of the tests
-            Set<String> testNames = new HashSet<>();
-
-            Set<String> mappingIncludeFilters = new HashSet<>();
-            Set<String> mappingExcludeFilters = new HashSet<>();
-
-            // module-arg options compiled from test options for each test.
-            Set<String> moduleArgs = new HashSet<>();
-            for (TestInfo test : testsToRun) {
-                boolean hasIncludeFilters = false;
-                for (TestOption option : test.getOptions()) {
-                    switch (option.getName()) {
-                            // Handle include and exclude filter at the suite level to hide each
-                            // test runner specific implementation and option names related to filtering
-                        case TEST_MAPPING_INCLUDE_FILTER:
-                            hasIncludeFilters = true;
-                            mappingIncludeFilters.add(
-                                    String.format("%s %s", test.getName(), option.getValue()));
-                            break;
-                        case TEST_MAPPING_EXCLUDE_FILTER:
-                            mappingExcludeFilters.add(
-                                    String.format("%s %s", test.getName(), option.getValue()));
-                            break;
-                        default:
-                            String moduleArg =
-                                    String.format("%s:%s", test.getName(), option.getName());
-                            if (option.getValue() != null && !option.getValue().isEmpty()) {
-                                moduleArg = String.format("%s:%s", moduleArg, option.getValue());
-                            }
-                            moduleArgs.add(moduleArg);
-                            break;
-                    }
-                }
-                if (!hasIncludeFilters) {
-                    testNames.add(test.getName());
-                }
+            for (TestInfo testInfo : testInfosToRun) {
+                testNames.add(testInfo.getName());
             }
-
-            if (mappingIncludeFilters.isEmpty()) {
-                setIncludeFilter(testNames);
-            } else {
-                mappingIncludeFilters.addAll(testNames);
-                setIncludeFilter(mappingIncludeFilters);
-            }
-            if (!mappingExcludeFilters.isEmpty()) {
-                setExcludeFilter(mappingExcludeFilters);
-            }
-            addModuleArgs(moduleArgs);
-
-            for (TestInfo test : testsToRun) {
-                List<String> testSources = null;
-                // TODO(b/117880789): tests may not be grouped by name once that bug is fixed.
-                // Update the dictionary with better keys.
-                if (testsInTestMapping.containsKey(test.getName())) {
-                    testSources = testsInTestMapping.get(test.toString());
-                } else {
-                    testSources = new ArrayList<String>();
-                    testsInTestMapping.put(test.getName(), testSources);
-                }
-                testSources.addAll(test.getSources());
-            }
+            setIncludeFilter(testNames);
         }
 
+        // load all the configurations with include-filter injected.
         LinkedHashMap<String, IConfiguration> testConfigs = super.loadTests();
+
+        // Create and inject individual tests by calling super.loadTests() with each test info.
         for (Map.Entry<String, IConfiguration> entry : testConfigs.entrySet()) {
+            List<IRemoteTest> allTests = new ArrayList<>();
+            IConfiguration moduleConfig = entry.getValue();
             ConfigurationDescriptor configDescriptor =
-                    entry.getValue().getConfigurationDescription();
-            if (testsInTestMapping.containsKey(configDescriptor.getModuleName())) {
-                configDescriptor.addMetaData(
-                        TestMapping.TEST_SOURCES,
-                        testsInTestMapping.get(configDescriptor.getModuleName()));
+                    moduleConfig.getConfigurationDescription();
+            String moduleName = configDescriptor.getModuleName();
+            String configPath = moduleConfig.getName();
+            Set<TestInfo> testInfos = getTestInfos(testInfosToRun, moduleName);
+            allTests.addAll(
+                    createIndividualTests(
+                            testInfos, configPath));
+            if (!allTests.isEmpty()) {
+                // Set back to IConfiguration only if IRemoteTests are created.
+                moduleConfig.setTests(allTests);
+                // Set test sources to ConfigurationDescriptor.
+                List<String> testSources = getTestSources(testInfos);
+                configDescriptor.addMetaData(TestMapping.TEST_SOURCES, testSources);
+            }
+        }
+        return testConfigs;
+    }
+
+    /**
+     * Create individual tests with test infos for a module.
+     *
+     * @param testInfos A {@code Set<TestInfo>} containing multiple test options.
+     * @param configPath A {@code String} of configuration path.
+     * @return The {@link List<IRemoteTest>} that are injected with the test options.
+     */
+    @VisibleForTesting
+    List<IRemoteTest> createIndividualTests(Set<TestInfo> testInfos, String configPath) {
+        List<IRemoteTest> tests = new ArrayList<>();
+        if (configPath == null) {
+            throw new RuntimeException(String.format("Configuration path is null."));
+        }
+        File configFie = new File(configPath);
+        if (!configFie.exists()) {
+            throw new RuntimeException(
+                    String.format("Configuration path: %s doesn't exits.", configPath));
+        }
+        // De-duplicate test infos so that there won't be duplicate test options.
+        testInfos = dedupTestInfos(testInfos);
+        for (TestInfo testInfo : testInfos) {
+            // Clean up all the test options injected in SuiteModuleLoader.
+            super.cleanUpSuiteSetup();
+            super.clearModuleArgs();
+            clearConfigPaths();
+            // Set config path to BaseTestSuite to limit the search.
+            addConfigPaths(configFie);
+            // Inject the test options from each test info to SuiteModuleLoader.
+            parseOptions(testInfo);
+            LinkedHashMap<String, IConfiguration> config = super.loadTests();
+            for (Map.Entry<String, IConfiguration> entry : config.entrySet()) {
+                tests.addAll(entry.getValue().getTests());
+            }
+        }
+        return tests;
+    }
+
+    /**
+     * Get a list of path of TEST_MAPPING for a module.
+     *
+     * @param testInfos A {@code Set<TestInfo>} containing multiple test options.
+     * @return A {@code List<String>} of TEST_MAPPING path.
+     */
+    @VisibleForTesting
+    List<String> getTestSources(Set<TestInfo> testInfos) {
+        List<String> testSources = new ArrayList<>();
+        for (TestInfo testInfo : testInfos) {
+            testSources.addAll(testInfo.getSources());
+        }
+        return testSources;
+    }
+
+    /**
+     * Parse the test options for the test info.
+     *
+     * @param testInfo A {@code Set<TestInfo>} containing multiple test options.
+     */
+    @VisibleForTesting
+    void parseOptions(TestInfo testInfo) {
+        Set<String> mappingIncludeFilters = new HashSet<>();
+        Set<String> mappingExcludeFilters = new HashSet<>();
+        // module-arg options compiled from test options for each test.
+        Set<String> moduleArgs = new HashSet<>();
+        Set<String> testNames = new HashSet<>();
+        for (TestOption option : testInfo.getOptions()) {
+            switch (option.getName()) {
+                // Handle include and exclude filter at the suite level to hide each
+                // test runner specific implementation and option names related to filtering
+                case TEST_MAPPING_INCLUDE_FILTER:
+                    mappingIncludeFilters.add(
+                            String.format("%s %s", testInfo.getName(), option.getValue()));
+                    break;
+                case TEST_MAPPING_EXCLUDE_FILTER:
+                    mappingExcludeFilters.add(
+                            String.format("%s %s", testInfo.getName(), option.getValue()));
+                    break;
+                default:
+                    String moduleArg =
+                            String.format("%s:%s", testInfo.getName(), option.getName());
+                    if (option.getValue() != null && !option.getValue().isEmpty()) {
+                        moduleArg = String.format("%s:%s", moduleArg, option.getValue());
+                    }
+                    moduleArgs.add(moduleArg);
+                    break;
             }
         }
 
-        return testConfigs;
+        if (mappingIncludeFilters.isEmpty()) {
+            testNames.add(testInfo.getName());
+            setIncludeFilter(testNames);
+        } else {
+            setIncludeFilter(mappingIncludeFilters);
+        }
+        if (!mappingExcludeFilters.isEmpty()) {
+            setExcludeFilter(mappingExcludeFilters);
+        }
+        addModuleArgs(moduleArgs);
+    }
+
+    /**
+     * De-duplicate test infos with the same test options.
+     *
+     * @param testInfos A {@code Set<TestInfo>} containing multiple test options.
+     * @return A {@code Set<TestInfo>} of tests without duplicated test options.
+     */
+    @VisibleForTesting
+    Set<TestInfo> dedupTestInfos(Set<TestInfo> testInfos) {
+        Set<String> nameOptions = new HashSet<>();
+        Set<TestInfo> dedupTestInfos = new HashSet<>();
+        for (TestInfo testInfo : testInfos) {
+            String nameOption = testInfo.getName() + testInfo.getOptions().toString();
+            if (!nameOptions.contains(nameOption)) {
+                dedupTestInfos.add(testInfo);
+                nameOptions.add(nameOption);
+            }
+        }
+        return dedupTestInfos;
+    }
+
+    /**
+     * Get the test infos for the given module name.
+     *
+     * @param testInfos A {@code Set<TestInfo>} containing multiple test options.
+     * @param moduleName A {@code String} name of a test module.
+     * @return A {@code Set<TestInfo>} of tests for a module.
+     */
+    @VisibleForTesting
+    Set<TestInfo> getTestInfos(Set<TestInfo> testInfos, String moduleName) {
+        return testInfos
+                .stream()
+                .filter(testInfo -> moduleName.equals(testInfo.getName()))
+                .collect(Collectors.toSet());
     }
 }

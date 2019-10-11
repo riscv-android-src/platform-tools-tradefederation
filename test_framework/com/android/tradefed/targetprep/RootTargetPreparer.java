@@ -16,12 +16,14 @@
 package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
 
 /**
- * Target preparer that performs "adb root".
+ * Target preparer that performs "adb root" or "adb unroot" based on option "force-root".
  *
  * <p>Will restore back to original root state on tear down.
  */
@@ -30,20 +32,39 @@ public class RootTargetPreparer extends BaseTargetPreparer implements ITargetCle
 
     private boolean mWasRoot = false;
 
+    @Option(
+            name = "force-root",
+            description =
+                    "Force the preparer to enable adb root if set to true. Otherwise, disable adb "
+                            + "root during setup.")
+    private boolean mForceRoot = true;
+
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        // Ignore setUp if it's a stub device, since there is no real device to set up.
+        if (device.getIDevice() instanceof StubDevice) {
+            return;
+        }
         mWasRoot = device.isAdbRoot();
-        if (!mWasRoot && !device.enableAdbRoot()) {
+        if (!mWasRoot && mForceRoot && !device.enableAdbRoot()) {
             throw new TargetSetupError("Failed to adb root device", device.getDeviceDescriptor());
+        } else if (mWasRoot && !mForceRoot && !device.disableAdbRoot()) {
+            throw new TargetSetupError("Failed to adb unroot device", device.getDeviceDescriptor());
         }
     }
 
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
-        if (!mWasRoot) {
+        // Ignore tearDown if it's a stub device, since there is no real device to clean.
+        if (device.getIDevice() instanceof StubDevice) {
+            return;
+        }
+        if (!mWasRoot && mForceRoot) {
             device.disableAdbRoot();
+        } else if (mWasRoot && !mForceRoot) {
+            device.enableAdbRoot();
         }
     }
 }

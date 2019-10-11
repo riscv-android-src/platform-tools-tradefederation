@@ -32,6 +32,7 @@ import com.android.tradefed.util.ZipUtil;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -84,6 +85,17 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
         mandatory = true
     )
     private Set<String> mSystemFileNames = new TreeSet<>();
+
+    @Option(
+        name = "dummy-file-name",
+        description =
+                "the name of the image file to be replaced with a small dummy file. "
+                        + "Can be repeated. This option is used when the generic system "
+                        + "image is too large for the device's dynamic partition. "
+                        + "As GSI doesn't use product partition, the product image can be "
+                        + "replaced with a dummy file so as to free up space for GSI."
+    )
+    private Set<String> mDummyFileNames = new TreeSet<>();
 
     @Option(
         name = "compression-level",
@@ -142,6 +154,20 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
                             systemImageZip, file -> mSystemFileNames.contains(file));
             systemFiles = replaceExistingEntries(systemFiles, files);
             filesNotInDeviceBuild.putAll(systemFiles);
+
+            Map<String, InputStreamFactory> dummyFiles =
+                    createDummyInputStreamFactories(mDummyFileNames);
+            Map<String, InputStreamFactory> dummyFilesNotInDeviceBuild =
+                    replaceExistingEntries(dummyFiles, files);
+            // The purpose of the dummy files is to make fastboot shrink product partition.
+            // Some devices don't have product partition and image. If the dummy file names are not
+            // found in device build, they are ignored so that devices with and without product
+            // partition can share configurations.
+            if (!dummyFilesNotInDeviceBuild.isEmpty()) {
+                CLog.w(
+                        "Skip creating dummy images: %s",
+                        String.join(",", dummyFilesNotInDeviceBuild.keySet()));
+            }
 
             if (resourceBuildInfo != null) {
                 // Get specified files from resource build and replace those in device build.
@@ -228,6 +254,35 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
                         @Override
                         public long getCrc32() {
                             return entry.getCrc();
+                        }
+                    });
+        }
+        return factories;
+    }
+
+    private static Map<String, InputStreamFactory> createDummyInputStreamFactories(
+            Collection<String> dummyFileNames) {
+        // The image size must be larger than zero. Otherwise fastboot cannot flash it.
+        byte[] data = new byte[] {0};
+        Map<String, InputStreamFactory> factories = new HashMap<>();
+        for (String dummyFileName : dummyFileNames) {
+            factories.put(
+                    dummyFileName,
+                    new InputStreamFactory() {
+                        @Override
+                        public InputStream createInputStream() throws IOException {
+                            return new ByteArrayInputStream(data);
+                        }
+
+                        @Override
+                        public long getSize() {
+                            return data.length;
+                        }
+
+                        @Override
+                        public long getCrc32() throws IOException {
+                            // calculateCrc32 closes the stream.
+                            return StreamUtil.calculateCrc32(createInputStream());
                         }
                     });
         }
@@ -364,6 +419,11 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
     @VisibleForTesting
     void addResourceFileName(String fileName) {
         mExtraBuildResourceFiles.add(fileName);
+    }
+
+    @VisibleForTesting
+    void addDummyFileName(String fileName) {
+        mDummyFileNames.add(fileName);
     }
 
     @VisibleForTesting

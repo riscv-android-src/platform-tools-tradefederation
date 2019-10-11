@@ -33,7 +33,6 @@ import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;

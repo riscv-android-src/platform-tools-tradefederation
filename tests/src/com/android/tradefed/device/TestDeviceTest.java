@@ -3188,12 +3188,8 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     public String executeShellCommand(String command)
                             throws DeviceNotAvailableException {
-                        if (!started) {
-                            started = true;
-                            test.setDaemon(true);
-                            test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
-                            test.start();
-                        }
+                        test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
+                        test.start();
                         return "";
                     }
 
@@ -3217,7 +3213,6 @@ public class TestDeviceTest extends TestCase {
                         return 100;
                     }
 
-                    boolean started = false;
                     Thread test =
                             new Thread(
                                     new Runnable() {
