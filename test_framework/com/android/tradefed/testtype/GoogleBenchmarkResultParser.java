@@ -21,6 +21,8 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
+import com.google.common.base.Strings;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -91,6 +93,22 @@ public class GoogleBenchmarkResultParser {
                 if (iterations != null && "0".equals(iterations.trim())) {
                     mTestListener.testIgnored(testId);
                 }
+
+                if (testRes.has("error_occurred")) {
+                    boolean errorOccurred = testRes.getBoolean("error_occurred");
+                    if (errorOccurred) {
+                        String errorMessage = testResults.get("error_message");
+                        if (Strings.isNullOrEmpty(errorMessage)) {
+                            mTestListener.testFailed(
+                                    testId, "Benchmark reported an unspecified error");
+                        } else {
+                            mTestListener.testFailed(
+                                    testId,
+                                    String.format("Benchmark reported an error: %s", errorMessage));
+                        }
+                    }
+                }
+
                 mTestListener.testEnded(testId, TfMetricProtoUtil.upgradeConvert(testResults));
             }
             results.put("Pass", Integer.toString(benchmarks.length()));

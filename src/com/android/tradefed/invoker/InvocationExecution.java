@@ -80,8 +80,12 @@ import com.google.common.base.Strings;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -92,6 +96,11 @@ import java.util.stream.Collectors;
 public class InvocationExecution implements IInvocationExecution {
 
     public static final String ADB_VERSION_KEY = "adb_version";
+    public static final String JAVA_VERSION_KEY = "java_version";
+    public static final String JAVA_CLASSPATH_KEY = "java_classpath";
+    // Track which preparer ran in setup to ensure we don't trigger tearDown if setup was skipped.
+    private Set<IMultiTargetPreparer> mTrackMultiPreparers = null;
+    private Map<String, Set<ITargetPreparer>> mTrackTargetPreparers = null;
 
     @Override
     public boolean fetchBuild(
@@ -102,7 +111,6 @@ public class InvocationExecution implements IInvocationExecution {
             throws DeviceNotAvailableException, BuildRetrievalError {
         String currentDeviceName = null;
         try {
-            updateInvocationContext(context, config);
             // TODO: evaluate fetching build in parallel
             for (String deviceName : context.getDeviceConfigNames()) {
                 currentDeviceName = deviceName;
@@ -145,12 +153,11 @@ public class InvocationExecution implements IInvocationExecution {
                 IBuildInfo errorBuild = e.getBuildInfo();
                 updateBuild(errorBuild, config);
                 context.addDeviceBuildInfo(currentDeviceName, errorBuild);
-                updateInvocationContext(context, config);
             }
             throw e;
         }
         createSharedResources(context);
-        setAdbVersion(context);
+        setBinariesVersion(context);
         return true;
     }
 
@@ -189,9 +196,7 @@ public class InvocationExecution implements IInvocationExecution {
 
     @Override
     public void doSetup(
-            IInvocationContext context,
-            IConfiguration config,
-            final ITestInvocationListener listener)
+            IInvocationContext context, IConfiguration config, final ITestLogger listener)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         long start = System.currentTimeMillis();
         try {
@@ -203,7 +208,9 @@ public class InvocationExecution implements IInvocationExecution {
                     "multi pre target preparer setup");
 
             // TODO: evaluate doing device setup in parallel
+            mTrackTargetPreparers = new HashMap<>();
             for (String deviceName : context.getDeviceConfigNames()) {
+                mTrackTargetPreparers.put(deviceName, new HashSet<>());
                 ITestDevice device = context.getDevice(deviceName);
                 CLog.d("Starting setup for device: '%s'", device.getSerialNumber());
                 if (device instanceof ITestLoggerReceiver) {
@@ -223,6 +230,7 @@ public class InvocationExecution implements IInvocationExecution {
                             "starting preparer '%s' on device: '%s'",
                             preparer, device.getSerialNumber());
                     preparer.setUp(device, context.getBuildInfo(deviceName));
+                    mTrackTargetPreparers.get(deviceName).add(preparer);
                     CLog.d(
                             "done with preparer '%s' on device: '%s'",
                             preparer, device.getSerialNumber());
@@ -288,6 +296,9 @@ public class InvocationExecution implements IInvocationExecution {
             IInvocationContext context,
             String description)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        if (mTrackMultiPreparers == null) {
+            mTrackMultiPreparers = new HashSet<>();
+        }
         for (IMultiTargetPreparer multiPreparer : multiPreparers) {
             // do not call the preparer if it was disabled
             if (multiPreparer.isDisabled()) {
@@ -299,6 +310,7 @@ public class InvocationExecution implements IInvocationExecution {
             }
             CLog.d("Starting %s '%s'", description, multiPreparer);
             multiPreparer.setUp(context);
+            mTrackMultiPreparers.add(multiPreparer);
             CLog.d("done with %s '%s'", description, multiPreparer);
         }
     }
@@ -319,6 +331,10 @@ public class InvocationExecution implements IInvocationExecution {
             IMultiTargetPreparer multipreparer = iterator.previous();
             if (multipreparer.isDisabled() || multipreparer.isTearDownDisabled()) {
                 CLog.d("%s has been disabled. skipping.", multipreparer);
+                continue;
+            }
+            if (mTrackMultiPreparers == null || !mTrackMultiPreparers.contains(multipreparer)) {
+                CLog.d("%s didn't run setUp, skipping tearDown.", multipreparer);
                 continue;
             }
             if (multipreparer instanceof ITestLoggerReceiver) {
@@ -374,6 +390,12 @@ public class InvocationExecution implements IInvocationExecution {
                     // do not call the cleaner if it was disabled
                     if (cleaner.isDisabled() || cleaner.isTearDownDisabled()) {
                         CLog.d("%s has been disabled. skipping.", cleaner);
+                        continue;
+                    }
+                    if (mTrackTargetPreparers == null
+                            || !mTrackTargetPreparers.containsKey(deviceName)
+                            || !mTrackTargetPreparers.get(deviceName).contains(cleaner)) {
+                        CLog.d("%s didn't run setUp, skipping tearDown.", cleaner);
                         continue;
                     }
                     // If setup hit a targetSetupError, the setUp() and setTestLogger might not have
@@ -560,7 +582,7 @@ public class InvocationExecution implements IInvocationExecution {
     }
 
     @Override
-    public void reportLogs(ITestDevice device, ITestInvocationListener listener, Stage stage) {
+    public void reportLogs(ITestDevice device, ITestLogger listener, Stage stage) {
         if (device == null) {
             return;
         }
@@ -584,25 +606,6 @@ public class InvocationExecution implements IInvocationExecution {
                 listener.testLog(name, LogDataType.TEXT, emulatorOutput);
             }
         }
-    }
-
-    /**
-     * Update the {@link IInvocationContext} with additional info from the {@link IConfiguration}.
-     *
-     * @param context the {@link IInvocationContext}
-     * @param config the {@link IConfiguration}
-     */
-    void updateInvocationContext(IInvocationContext context, IConfiguration config) {
-        // TODO: Once reporting on context is done, only set context attributes
-        if (config.getCommandOptions().getShardCount() != null) {
-            context.addInvocationAttribute(
-                    "shard_count", config.getCommandOptions().getShardCount().toString());
-        }
-        if (config.getCommandOptions().getShardIndex() != null) {
-            context.addInvocationAttribute(
-                    "shard_index", config.getCommandOptions().getShardIndex().toString());
-        }
-        context.setTestTag(getTestTag(config));
     }
 
     /** Helper to create the test tag from the configuration. */
@@ -819,10 +822,18 @@ public class InvocationExecution implements IInvocationExecution {
         }
     }
 
-    private void setAdbVersion(IInvocationContext context) {
+    private void setBinariesVersion(IInvocationContext context) {
         String version = getAdbVersion();
         if (version != null) {
             context.addInvocationAttribute(ADB_VERSION_KEY, version);
+        }
+        String javaVersion = System.getProperty("java.version");
+        if (javaVersion != null && !javaVersion.isEmpty()) {
+            context.addInvocationAttribute(JAVA_VERSION_KEY, javaVersion);
+        }
+        String javaClasspath = System.getProperty("java.class.path");
+        if (javaClasspath != null && !javaClasspath.isEmpty()) {
+            context.addInvocationAttribute(JAVA_CLASSPATH_KEY, javaClasspath);
         }
     }
 

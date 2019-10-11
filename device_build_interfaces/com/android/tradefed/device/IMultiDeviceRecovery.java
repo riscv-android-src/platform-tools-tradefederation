@@ -15,16 +15,14 @@
  */
 package com.android.tradefed.device;
 
-import com.android.tradefed.config.GlobalConfiguration;
-
 import java.util.List;
 
 /**
  * Interface for recovering multiple offline devices. There are some device recovery methods which
  * can affect multiple devices (ex) restarting adb, resetting usb, ...). We can implement those
- * recovery methods through this interface. Once the implementation is configured through
- * {@link GlobalConfiguration}, {@link #recoverDevices(List)} will be called
- * periodically from {@link DeviceManager}.
+ * recovery methods through this interface. Once the implementation is configured through global
+ * configuration, {@link #recoverDevices(List)} will be called periodically from {@link
+ * DeviceManager}.
  */
 public interface IMultiDeviceRecovery {
 

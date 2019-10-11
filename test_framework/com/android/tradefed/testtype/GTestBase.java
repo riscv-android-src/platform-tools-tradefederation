@@ -17,12 +17,14 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.IShellOutputReceiver;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
 
@@ -39,6 +41,7 @@ import java.util.Set;
 /** The base class of gTest */
 public abstract class GTestBase
         implements IRemoteTest,
+                IConfigurationReceiver,
                 ITestFilterReceiver,
                 IRuntimeHintProvider,
                 ITestCollector,
@@ -92,6 +95,8 @@ public abstract class GTestBase
             isTimeVal = true)
     private long mMaxTestTimeMs = 1 * 60 * 1000L;
 
+    /** @deprecated use --coverage in CoverageOptions instead. */
+    @Deprecated
     @Option(
         name = "coverage",
         description =
@@ -169,6 +174,14 @@ public abstract class GTestBase
     private int mShardCount = 0;
     private int mShardIndex = 0;
     private boolean mIsSharded = false;
+
+    private IConfiguration mConfiguration = null;
+
+    /** {@inheritDoc} */
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mConfiguration = configuration;
+    }
 
     /**
      * Set the Android native test module to run.
@@ -282,6 +295,8 @@ public abstract class GTestBase
     @Override
     public void clearIncludeFilters() {
         mIncludeFilters.clear();
+        // Clear the filter file key, to not impact the base filters.
+        mTestFilterKey = null;
     }
 
     /** {@inheritDoc} */
@@ -352,11 +367,6 @@ public abstract class GTestBase
         return mIsSharded;
     }
 
-    /** Gets coverage flag. */
-    public boolean isCoverageEnabled() {
-        return mCoverage;
-    }
-
     /**
      * Define get filter method.
      *
@@ -386,26 +396,34 @@ public abstract class GTestBase
             mExcludeFilters.add(mTestNameNegativeFilter);
         }
         if (mTestFilterKey != null) {
-            if (!mIncludeFilters.isEmpty() || !mExcludeFilters.isEmpty()) {
-                CLog.w("Using json file filter, --include/exclude-filter will be ignored.");
-            }
             String fileFilters = loadFilter(path);
             if (fileFilters != null && !fileFilters.isEmpty()) {
-                filter.append(GTEST_FLAG_FILTER);
-                filter.append("=");
-                filter.append(fileFilters);
+                if (fileFilters.startsWith("-")) {
+                    for (String filterString : fileFilters.substring(1).split(":")) {
+                        mExcludeFilters.add(filterString);
+                    }
+                } else {
+                    String[] filterStrings = fileFilters.split("-");
+                    for (String filterString : filterStrings[0].split(":")) {
+                        mIncludeFilters.add(filterString);
+                    }
+                    if (filterStrings.length == 2) {
+                        for (String filterString : filterStrings[1].split(":")) {
+                            mExcludeFilters.add(filterString);
+                        }
+                    }
+                }
             }
-        } else {
-            if (!mIncludeFilters.isEmpty() || !mExcludeFilters.isEmpty()) {
-                filter.append(GTEST_FLAG_FILTER);
-                filter.append("=");
-                if (!mIncludeFilters.isEmpty()) {
-                    filter.append(ArrayUtil.join(":", mIncludeFilters));
-                }
-                if (!mExcludeFilters.isEmpty()) {
-                    filter.append("-");
-                    filter.append(ArrayUtil.join(":", mExcludeFilters));
-                }
+        }
+        if (!mIncludeFilters.isEmpty() || !mExcludeFilters.isEmpty()) {
+            filter.append(GTEST_FLAG_FILTER);
+            filter.append("=");
+            if (!mIncludeFilters.isEmpty()) {
+                filter.append(ArrayUtil.join(":", mIncludeFilters));
+            }
+            if (!mExcludeFilters.isEmpty()) {
+                filter.append("-");
+                filter.append(ArrayUtil.join(":", mExcludeFilters));
             }
         }
         String filterFlag = filter.toString();
@@ -523,7 +541,7 @@ public abstract class GTestBase
             gTestCmdLine.append(String.format("LD_LIBRARY_PATH=%s ", mLdLibraryPath));
         }
 
-        if (isCoverageEnabled()) {
+        if (getCoverageOptions().isCoverageEnabled()) {
             gTestCmdLine.append("GCOV_PREFIX=/data/misc/trace/testcoverage ");
         }
 
@@ -557,27 +575,6 @@ public abstract class GTestBase
             tests.add(getTestShard(shardCountHint, i));
         }
         return tests;
-    }
-
-    /**
-     * Adds a {@link NativeCodeCoverageListener} to the chain if code coverage is enabled.
-     *
-     * @param device the device to pull the coverage results from
-     * @param coverageFlush whether to flush coverage before pulling the measurements
-     * @param coverageProcesses the processes to flush coverage from
-     * @param listener the original listener
-     * @return a chained listener if code coverage is enabled, otherwise the original listener
-     */
-    protected ITestInvocationListener addNativeCoverageListenerIfEnabled(
-            ITestDevice device,
-            boolean coverageFlush,
-            List<String> coverageProcesses,
-            ITestInvocationListener listener) {
-        if (mCoverage) {
-            return new NativeCodeCoverageListener(
-                    device, coverageFlush, coverageProcesses, listener);
-        }
-        return listener;
     }
 
     /**
@@ -638,5 +635,16 @@ public abstract class GTestBase
                             e.getClass().getSimpleName(), getExceptionMessage(e)));
         }
         return shard;
+    }
+
+    /**
+     * Returns the {@link CoverageOptions} for this test, if it exists. Otherwise returns a default
+     * {@link CoverageOptions} object with all coverage disabled.
+     */
+    protected CoverageOptions getCoverageOptions() {
+        if (mConfiguration != null) {
+            return mConfiguration.getCoverageOptions();
+        }
+        return new CoverageOptions();
     }
 }

@@ -16,6 +16,9 @@
 
 package com.android.tradefed.testtype;
 
+import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.GCOV;
+import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.JACOCO;
+
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
@@ -26,6 +29,8 @@ import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner.TestSize;
 import com.android.ddmlib.testrunner.InstrumentationResultParser;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
@@ -43,10 +48,16 @@ import com.android.tradefed.result.LogcatCrashResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.ddmlib.DefaultRemoteAndroidTestRunner;
+import com.android.tradefed.retry.IRetryDecision;
+import com.android.tradefed.retry.RetryStrategy;
+import com.android.tradefed.testtype.coverage.CoverageOptions;
+import com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.JavaCodeCoverageFlusher;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
+import com.android.tradefed.util.NativeCodeCoverageFlusher;
 import com.android.tradefed.util.StringEscapeUtils;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -69,6 +80,7 @@ public class InstrumentationTest
                 IResumableTest,
                 ITestCollector,
                 IAbiReceiver,
+                IConfigurationReceiver,
                 IInvocationContextReceiver,
                 IMetricCollectorReceiver {
 
@@ -243,6 +255,8 @@ public class InstrumentationTest
     )
     protected boolean mDebug = false;
 
+    /** @deprecated Use the --coverage option in CoverageOptions instead. */
+    @Deprecated
     @Option(
         name = "coverage",
         description =
@@ -281,6 +295,14 @@ public class InstrumentationTest
     )
     private boolean mIsolatedStorage = true;
 
+    @Option(
+        name = "window-animation",
+        description =
+                "If set to false, the '--no-window-animation' flag will be passed to the am "
+                        + "instrument command. Only works for ICS or later."
+    )
+    private boolean mWindowAnimation = true;
+
     private IAbi mAbi = null;
 
     private Collection<String> mInstallArgs = new ArrayList<>();
@@ -301,8 +323,20 @@ public class InstrumentationTest
 
     private boolean mIsRerun = false;
 
+    private IConfiguration mConfiguration = null;
     private IInvocationContext mContext;
     private List<IMetricCollector> mCollectors = new ArrayList<>();
+
+    /** {@inheritDoc} */
+    @Override
+    public void setConfiguration(IConfiguration config) {
+        mConfiguration = config;
+    }
+
+    /** Gets the {@link IConfiguration} for this test. */
+    public IConfiguration getConfiguration() {
+        return mConfiguration;
+    }
 
     /**
      * {@inheritDoc}
@@ -606,12 +640,6 @@ public class InstrumentationTest
         return mForceAbi;
     }
 
-    /** Sets the --coverage option for testing. */
-    @VisibleForTesting
-    void setCoverage(boolean coverageEnabled) {
-        mCoverage = coverageEnabled;
-    }
-
     /** Sets the --merge-coverage-measurements option for testing. */
     @VisibleForTesting
     void setMergeCoverageMeasurements(boolean merge) {
@@ -649,13 +677,21 @@ public class InstrumentationTest
         String abiName = resolveAbiName();
         String runOptions = "";
         // hidden-api-checks flag only exists in P and after.
-        if (!mHiddenApiChecks && getDevice().getApiLevel() >= 28) {
+        // Using a temp variable to consolidate the dynamic checks
+        int apiLevel = (!mHiddenApiChecks) || (!mWindowAnimation)
+                ? getDevice().getApiLevel() : 0;
+        if (!mHiddenApiChecks && apiLevel >= 28) {
             runOptions += "--no-hidden-api-checks ";
         }
         // isolated-storage flag only exists in Q and after.
         if (!mIsolatedStorage && getDevice().checkApiLevelAgainstNextRelease(29)) {
             runOptions += "--no-isolated-storage ";
         }
+        // window-animation flag only exists in ICS and after
+        if (!mWindowAnimation && apiLevel >= 14) {
+            runOptions += "--no-window-animation ";
+        }
+
         if (abiName != null) {
             mInstallArgs.add(String.format("--abi %s", abiName));
             runOptions += String.format("--abi %s", abiName);
@@ -853,7 +889,7 @@ public class InstrumentationTest
         if (mDebug) {
             mRunner.setDebug(true);
         }
-        if (mCoverage) {
+        if (mConfiguration != null && mConfiguration.getCoverageOptions().isCoverageEnabled()) {
             mRunner.addInstrumentationArg("coverage", "true");
         }
 
@@ -879,6 +915,24 @@ public class InstrumentationTest
         // Add the extra listeners only to the actual run and not the --collect-test-only one
         if (!mExtraDeviceListener.isEmpty()) {
             mRunner.addInstrumentationArg("listener", ArrayUtil.join(",", mExtraDeviceListener));
+        }
+
+        // Clear coverage measurements on the device before running.
+        if (mConfiguration != null
+                && mConfiguration.getCoverageOptions().isCoverageFlushEnabled()) {
+            CoverageOptions options = mConfiguration.getCoverageOptions();
+
+            if (options.getCoverageToolchains().contains(Toolchain.GCOV)) {
+                NativeCodeCoverageFlusher flusher =
+                        new NativeCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
+                flusher.resetCoverage();
+            }
+
+            if (options.getCoverageToolchains().contains(Toolchain.JACOCO)) {
+                JavaCodeCoverageFlusher flusher =
+                        new JavaCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
+                flusher.resetCoverage();
+            }
         }
 
         if (testsToRun == null) {
@@ -921,8 +975,16 @@ public class InstrumentationTest
      * if this feature is disabled.
      */
     ITestInvocationListener addJavaCoverageListenerIfEnabled(ITestInvocationListener listener) {
-        if (mCoverage) {
-            return new JavaCodeCoverageListener(getDevice(), mMergeCoverageMeasurements, listener);
+        if (mConfiguration == null) {
+            return listener;
+        }
+        if (mConfiguration.getCoverageOptions().isCoverageEnabled()
+                && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(JACOCO)) {
+            return new JavaCodeCoverageListener(
+                    getDevice(),
+                    mConfiguration.getCoverageOptions(),
+                    mMergeCoverageMeasurements,
+                    listener);
         }
         return listener;
     }
@@ -932,8 +994,13 @@ public class InstrumentationTest
      * listener} if this feature is disabled.
      */
     ITestInvocationListener addNativeCoverageListenerIfEnabled(ITestInvocationListener listener) {
-        if (mCoverage) {
-            return new NativeCodeCoverageListener(getDevice(), listener);
+        if (mConfiguration == null) {
+            return listener;
+        }
+        if (mConfiguration.getCoverageOptions().isCoverageEnabled()
+                && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(GCOV)) {
+            return new NativeCodeCoverageListener(
+                    getDevice(), mConfiguration.getCoverageOptions(), listener);
         }
         return listener;
     }
@@ -980,8 +1047,17 @@ public class InstrumentationTest
                 }
             }
             // Don't re-run any completed tests, unless this is a coverage run.
-            if (!mCoverage) {
+            if (mConfiguration != null
+                    && !mConfiguration.getCoverageOptions().isCoverageEnabled()) {
                 expectedTests.removeAll(testTracker.getCurrentRunResults().getCompletedTests());
+                IRetryDecision decision = mConfiguration.getRetryDecision();
+                if (!RetryStrategy.NO_RETRY.equals(decision.getRetryStrategy())
+                        && decision.getMaxRetryCount() > 1) {
+                    // Delegate retry to the module/invocation level.
+                    // This prevents the InstrumentationTest retry from re-running by itself and
+                    // creating overhead.
+                    return;
+                }
             }
             rerunTests(expectedTests, listener);
         }
