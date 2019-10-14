@@ -90,10 +90,16 @@ public interface ITestDevice extends INativeDevice {
     public static class ApexInfo {
         public final String name;
         public final long versionCode;
+        public final String sourceDir;
 
-        public ApexInfo(String name, long versionCode) {
+        public ApexInfo(String name, long versionCode, String sourceDir) {
             this.name = name;
             this.versionCode = versionCode;
+            this.sourceDir = sourceDir;
+        }
+
+        public ApexInfo(String name, long versionCode) {
+            this(name, versionCode, "");
         }
 
         @Override
@@ -113,7 +119,12 @@ public interface ITestDevice extends INativeDevice {
 
         @Override
         public String toString() {
-            return "packageName: " + name + ", versionCode: " + versionCode;
+            return "packageName: "
+                    + name
+                    + ", versionCode: "
+                    + versionCode
+                    + ", sourceDir: "
+                    + sourceDir;
         }
     }
 
