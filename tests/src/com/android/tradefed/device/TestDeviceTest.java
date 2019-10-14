@@ -2195,14 +2195,28 @@ public class TestDeviceTest extends TestCase {
     /** Unit test for {@link TestDevice#getActiveApexes()}. */
     public void testGetActiveApexes() throws Exception {
         final String output =
-                "package:com.android.foo versionCode:100\n"
-                        + "package:com.android.bar versionCode:200";
+                "package:/system/apex/com.android.foo.apex="
+                        + "com.android.foo versionCode:100\n"
+                        + "package:/system/apex/com.android.bar.apex="
+                        + "com.android.bar versionCode:200";
         injectShellResponse(TestDevice.LIST_APEXES_CMD, output);
         EasyMock.replay(mMockIDevice, mMockStateMonitor);
         Set<ApexInfo> actual = mTestDevice.getActiveApexes();
         assertEquals(2, actual.size());
-        assertTrue(actual.contains(new ApexInfo("com.android.foo", 100)));
-        assertTrue(actual.contains(new ApexInfo("com.android.bar", 200)));
+        ApexInfo foo =
+                actual.stream()
+                        .filter(apex -> apex.name.equals("com.android.foo"))
+                        .findFirst()
+                        .get();
+        ApexInfo bar =
+                actual.stream()
+                        .filter(apex -> apex.name.equals("com.android.bar"))
+                        .findFirst()
+                        .get();
+        assertEquals(100, foo.versionCode);
+        assertEquals(200, bar.versionCode);
+        assertEquals("/system/apex/com.android.foo.apex", foo.sourceDir);
+        assertEquals("/system/apex/com.android.bar.apex", bar.sourceDir);
     }
 
     /**
