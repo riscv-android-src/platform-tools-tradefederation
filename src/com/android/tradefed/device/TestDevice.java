@@ -83,8 +83,9 @@ public class TestDevice extends NativeDevice {
     static final String LIST_PACKAGES_CMD = "pm list packages -f";
     private static final Pattern PACKAGE_REGEX = Pattern.compile("package:(.*)=(.*)");
 
-    static final String LIST_APEXES_CMD = "pm list packages --apex-only --show-versioncode";
-    private static final Pattern APEXES_REGEX = Pattern.compile("package:(.*) versionCode:(.*)");
+    static final String LIST_APEXES_CMD = "pm list packages --apex-only --show-versioncode -f";
+    private static final Pattern APEXES_REGEX =
+            Pattern.compile("package:(.*)=(.*) versionCode:(.*)");
 
     private static final int FLAG_PRIMARY = 1; // From the UserInfo class
 
@@ -937,9 +938,10 @@ public class TestDevice extends NativeDevice {
         if (output != null) {
             Matcher m = APEXES_REGEX.matcher(output);
             while (m.find()) {
-                String name = m.group(1);
-                long version = Long.valueOf(m.group(2));
-                ret.add(new ApexInfo(name, version));
+                String sourceDir = m.group(1);
+                String name = m.group(2);
+                long version = Long.valueOf(m.group(3));
+                ret.add(new ApexInfo(name, version, sourceDir));
             }
         }
         return ret;

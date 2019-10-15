@@ -17,6 +17,7 @@
 package com.android.tradefed.testtype;
 
 import static com.google.common.base.Verify.verify;
+import static com.google.common.base.Verify.verifyNotNull;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -28,16 +29,13 @@ import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.NativeCodeCoverageFlusher;
+import com.android.tradefed.util.TarUtil;
 import com.android.tradefed.util.ZipUtil;
 
-import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
 
@@ -48,8 +46,15 @@ import java.util.HashMap;
 public final class NativeCodeCoverageListener extends ResultForwarder {
 
     private static final String NATIVE_COVERAGE_DEVICE_PATH = "/data/misc/trace";
-    private static final String COVERAGE_FILE_LIST_COMMAND =
-            String.format("find %s -name '*.gcda'", NATIVE_COVERAGE_DEVICE_PATH);
+    private static final String COVERAGE_TAR_PATH =
+            String.format("%s/coverage.tar.gz", NATIVE_COVERAGE_DEVICE_PATH);
+
+    // Finds .gcda files in /data/misc/trace and compresses those files only. Stores the full
+    // path of the file on the device.
+    private static final String ZIP_COVERAGE_FILES_COMMAND =
+            String.format(
+                    "find %s -name '*.gcda' | tar -cvzf %s -T -",
+                    NATIVE_COVERAGE_DEVICE_PATH, COVERAGE_TAR_PATH);
 
     private final boolean mFlushCoverage;
     private final ITestDevice mDevice;
@@ -82,13 +87,18 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
 
     @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
-        // Retrieve the list of .gcda files from the device.  Don't use pullDir since it will
-        // not pull from hidden directories.  Keep the path of the files on the device in the
-        // local directory so that the .gcda files can be mapped to the correct .gcno file.
-        File localDir = null;
         try {
-            localDir = FileUtil.createTempDir("native_coverage");
+            logCoverageMeasurements();
+        } finally {
+            super.testRunEnded(elapsedTime, runMetrics);
+        }
+    }
 
+    /** Pulls native coverage measurements from the device and logs them. */
+    private void logCoverageMeasurements() {
+        File coverageTarGz = null;
+        File coverageZip = null;
+        try {
             // Enable abd root on the device, otherwise the following commands will fail.
             verify(mDevice.enableAdbRoot(), "Failed to enable adb root.");
 
@@ -97,29 +107,13 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
                 mFlusher.forceCoverageFlush();
             }
 
-            // List native coverage files on the device and pull them.
-            String findResult = mDevice.executeShellCommand(COVERAGE_FILE_LIST_COMMAND);
+            // Compress coverage measurements on the device before pulling.
+            mDevice.executeShellCommand(ZIP_COVERAGE_FILES_COMMAND);
+            coverageTarGz = mDevice.pullFile(COVERAGE_TAR_PATH);
+            verifyNotNull(coverageTarGz, "Failed to pull the coverage file %s", COVERAGE_TAR_PATH);
+            mDevice.deleteFile(COVERAGE_TAR_PATH);
 
-            Path devicePathRoot = Paths.get(NATIVE_COVERAGE_DEVICE_PATH);
-            for (String deviceFile : Splitter.on("\n").omitEmptyStrings().split(findResult)) {
-                // Compute the relative path for the device file.
-                Path relativePath = devicePathRoot.relativize(Paths.get(deviceFile));
-                Path localFullPath = localDir.toPath().resolve(relativePath);
-
-                // Create parent directories and pull the file.
-                Files.createDirectories(localFullPath.getParent());
-                verify(
-                        mDevice.pullFile(deviceFile, localFullPath.toFile()),
-                        "Failed to pull the coverage file from %s",
-                        deviceFile);
-            }
-
-            // Zip the contents of the localDir (not including localDir in the path) and log
-            // the resulting file.
-            File coverageZip =
-                    ZipUtil.createZip(
-                            Arrays.asList(localDir.listFiles()),
-                            mCurrentRunName + "_native_runtime_coverage");
+            coverageZip = convertTarGzToZip(coverageTarGz);
 
             try (FileInputStreamSource source = new FileInputStreamSource(coverageZip, true)) {
                 testLog(
@@ -130,8 +124,25 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
         } catch (DeviceNotAvailableException | IOException e) {
             throw new RuntimeException(e);
         } finally {
-            FileUtil.recursiveDelete(localDir);
-            super.testRunEnded(elapsedTime, runMetrics);
+            FileUtil.deleteFile(coverageTarGz);
+            FileUtil.deleteFile(coverageZip);
+        }
+    }
+
+    /**
+     * Converts a .tar.gz file to a .zip file.
+     *
+     * @param tarGz the .tar.gz file to convert
+     * @return a .zip file with the same contents
+     * @throws IOException
+     */
+    private File convertTarGzToZip(File tarGz) throws IOException {
+        File untarDir = null;
+        try {
+            untarDir = TarUtil.extractTarGzipToTemp(tarGz, "native_coverage");
+            return ZipUtil.createZip(Arrays.asList(untarDir.listFiles()), "native_coverage");
+        } finally {
+            FileUtil.recursiveDelete(untarDir);
         }
     }
 }
