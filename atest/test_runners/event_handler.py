@@ -73,12 +73,11 @@ class EventHandleError(Exception):
 class EventHandler(object):
     """Test Event handle class."""
 
-    event_stack = deque()
-
     def __init__(self, reporter, name):
         self.reporter = reporter
         self.runner_name = name
         self.state = CONNECTION_STATE.copy()
+        self.event_stack = deque()
 
     def _module_started(self, event_data):
         if atest_execution_info.PREPARE_END_TIME is None:
