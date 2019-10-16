@@ -21,6 +21,7 @@ import json
 import logging
 import os
 import re
+import select
 import socket
 import subprocess
 
@@ -37,6 +38,8 @@ POLL_FREQ_SECS = 10
 SOCKET_HOST = '127.0.0.1'
 SOCKET_QUEUE_MAX = 1
 SOCKET_BUFFER = 4096
+SELECT_TIMEOUT = 5
+
 # Socket Events of form FIRST_EVENT {JSON_DATA}\nSECOND_EVENT {JSON_DATA}
 # EVENT_RE has groups for the name and the data. "." does not match \n.
 EVENT_RE = re.compile(r'^(?P<event_name>[A-Z_]+) (?P<json_data>{.*})(?:\n|$)')
@@ -158,26 +161,88 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             run_cmds = self.generate_run_commands(test_infos, extra_args,
                                                   server.getsockname()[1])
             subproc = self.run(run_cmds[0], output_to_stdout=self.is_verbose)
-            event_handler = EventHandler(reporter, self.NAME)
             self.handle_subprocess(subproc, partial(self._start_monitor,
                                                     server,
                                                     subproc,
-                                                    event_handler))
+                                                    reporter))
             server.close()
             ret_code |= self.wait_for_subprocess(subproc)
         return ret_code
 
-    def _start_monitor(self, server, tf_subproc, event_handler):
+    def _start_monitor(self, server, tf_subproc, reporter):
         """Polling and process event.
 
         Args:
             server: Socket server object.
             tf_subproc: The tradefed subprocess to poll.
-            event_handler: EventHandler object.
+            reporter: Result_Reporter object.
         """
-        conn, addr = self._exec_with_tf_polling(server.accept, tf_subproc)
-        logging.debug('Accepted connection from %s', addr)
-        self._process_connection(conn, event_handler)
+        inputs = [server]
+        event_handlers = {}
+        data_map = {}
+        while inputs:
+            try:
+                readable, _, _ = select.select(inputs, [], [], SELECT_TIMEOUT)
+                for socket_object in readable:
+                    if socket_object is server:
+                        conn, addr = socket_object.accept()
+                        logging.debug('Accepted connection from %s', addr)
+                        conn.setblocking(False)
+                        inputs.append(conn)
+                        data_map[conn] = ''
+                    else:
+                        event_handler = event_handlers.setdefault(
+                            socket_object, EventHandler(reporter, self.NAME))
+                        recv_data = self._process_connection(data_map,
+                                                             socket_object,
+                                                             event_handler)
+                        if not recv_data:
+                            inputs.remove(socket_object)
+                            socket_object.close()
+            finally:
+                if tf_subproc.poll() is not None:
+                    while inputs:
+                        inputs.pop(0).close()
+                    if not data_map:
+                        raise TradeFedExitError(TRADEFED_EXIT_MSG
+                                                % tf_subproc.returncode)
+
+    def _process_connection(self, data_map, conn, event_handler):
+        """Process a socket connection betwen TF and ATest.
+
+        Expect data of form EVENT_NAME {JSON_DATA}.  Multiple events will be
+        \n deliminated.  Need to buffer data in case data exceeds socket
+        buffer.
+        E.q.
+            TEST_RUN_STARTED {runName":"hello_world_test","runAttempt":0}\n
+            TEST_STARTED {"start_time":2172917, "testName":"PrintHelloWorld"}\n
+        Args:
+            data_map: The data map of all connections.
+            conn: Socket connection.
+            event_handler: EventHandler object.
+
+        Returns:
+            True if conn.recv() has data , False otherwise.
+        """
+        # Set connection into blocking mode.
+        conn.settimeout(None)
+        data = conn.recv(SOCKET_BUFFER)
+        logging.debug('received: %s', data)
+        if data:
+            data_map[conn] += data
+            while True:
+                match = EVENT_RE.match(data_map[conn])
+                if not match:
+                    break
+                try:
+                    event_data = json.loads(match.group('json_data'))
+                except ValueError:
+                    logging.debug('Json incomplete, wait for more data')
+                    break
+                event_name = match.group('event_name')
+                event_handler.process_event(event_name, event_data)
+                data_map[conn] = data_map[conn][match.end():]
+        return bool(data)
 
     def _start_socket_server(self):
         """Start a TCP server."""
@@ -190,60 +255,6 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         logging.debug('Socket server started on port %s',
                       server.getsockname()[1])
         return server
-
-    def _exec_with_tf_polling(self, socket_func, tf_subproc):
-        """Check for TF subproc exit during blocking socket func.
-
-        Args:
-            socket_func: A blocking socket function, e.g. recv(), accept().
-            tf_subproc: The tradefed subprocess to poll.
-        """
-        while True:
-            try:
-                return socket_func()
-            except socket.timeout:
-                logging.debug('Polling TF subproc for early exit.')
-                if tf_subproc.poll() is not None:
-                    logging.debug('TF subproc exited early')
-                    raise TradeFedExitError(TRADEFED_EXIT_MSG
-                                            % tf_subproc.returncode)
-
-    def _process_connection(self, conn, event_handler):
-        """Process a socket connection from TradeFed.
-
-        Expect data of form EVENT_NAME {JSON_DATA}.  Multiple events will be
-        \n deliminated.  Need to buffer data in case data exceeds socket
-        buffer.
-
-        Args:
-            conn: A socket connection.
-            event_handler: EventHandler object.
-        """
-        conn.settimeout(None)
-        buf = ''
-        while True:
-            logging.debug('Waiting to receive data')
-            data = conn.recv(SOCKET_BUFFER)
-            logging.debug('received: %s', data)
-            if data:
-                buf += data
-                while True:
-                    match = EVENT_RE.match(buf)
-                    if match:
-                        try:
-                            event_data = json.loads(match.group('json_data'))
-                        except ValueError:
-                            # Json incomplete, wait for more data.
-                            break
-                        event_name = match.group('event_name')
-                        buf = buf[match.end():]
-                        event_handler.process_event(event_name, event_data)
-                        continue
-                    break
-            else:
-                # client sent empty string, so no more data.
-                conn.close()
-                break
 
     def host_env_check(self):
         """Check that host env has everything we need.
