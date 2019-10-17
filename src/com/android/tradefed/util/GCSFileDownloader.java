@@ -291,6 +291,12 @@ public class GCSFileDownloader extends GCSCommon implements IFileDownloader {
                 .objects()
                 .get(bucketName, remoteFilename)
                 .executeMediaAndDownloadTo(new FileOutputStream(localFile));
+
+        if (localFile.exists()) {
+            CLog.v("File downloaded: %s, size: %s", localFile, localFile.length());
+        } else {
+            CLog.v("Failed to download file %s", localFile);
+        }
     }
 
     /**
