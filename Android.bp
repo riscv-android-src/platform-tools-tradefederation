@@ -74,7 +74,7 @@ java_library_host {
 }
 
 // Main Target to build tradefed jar
-java_library_host {
+tradefed_java_library_host {
     name: "tradefed",
     defaults: ["tradefed_defaults"],
     java_resource_dirs: [
@@ -85,6 +85,7 @@ java_library_host {
         "tradefed-test-framework",
     ],
     manifest: "MANIFEST.mf",
+    required: ["loganalysis"],
 }
 
 java_library_host {
