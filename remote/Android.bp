@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-tradefed_java_library_host {
+java_library_host {
   name: "tf-remote-client",
   defaults: ["tradefed_defaults"],
 
