@@ -61,6 +61,7 @@ python_binary_host {
     ],
     data: [
         "tools/updatedb_darwin.sh",
+        ":asuite_version",
     ],
     // Make atest's built name to atest-dev
     stem: "atest-dev",
@@ -202,3 +203,16 @@ python_library_host {
     ],
 }
 
+
+genrule {
+    name: "asuite_version",
+    cmd: "DATETIME=$$(TZ='America/Log_Angelos' date +'%F');" +
+         "if [[ -n $$BUILD_NUMBER ]]; then" +
+         "  echo $${DATETIME}_$${BUILD_NUMBER} > $(out);" +
+         "else" +
+         "  echo $$(date +'%F_%R') > $(out);" +
+         "fi",
+    out: [
+        "VERSION",
+    ],
+}
