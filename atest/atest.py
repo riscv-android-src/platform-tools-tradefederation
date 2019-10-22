@@ -562,6 +562,11 @@ def main(argv, results_dir):
         test_references=args.tests,
         cwd=os.getcwd(),
         os=platform.platform())
+    if args.version:
+        if os.path.isfile(constants.VERSION_FILE):
+            with open(constants.VERSION_FILE) as version_file:
+                print(version_file.read())
+        return constants.EXIT_CODE_SUCCESS
     mod_info = module_info.ModuleInfo(force_build=args.rebuild_module_info)
     if args.rebuild_module_info:
         _run_extra_tasks(join=True)
