@@ -84,8 +84,14 @@ public class TestDevice extends NativeDevice {
     private static final Pattern PACKAGE_REGEX = Pattern.compile("package:(.*)=(.*)");
 
     static final String LIST_APEXES_CMD = "pm list packages --apex-only --show-versioncode -f";
-    private static final Pattern APEXES_REGEX =
+    private static final Pattern APEXES_WITH_PATH_REGEX =
             Pattern.compile("package:(.*)=(.*) versionCode:(.*)");
+    /**
+     * Regexp to match on old versions of platform (before R), where {@code -f} flag for the {@code
+     * pm list packages apex-only} command wasn't supported.
+     */
+    private static final Pattern APEXES_WITHOUT_PATH_REGEX =
+            Pattern.compile("package:(.*) versionCode:(.*)");
 
     private static final int FLAG_PRIMARY = 1; // From the UserInfo class
 
@@ -933,15 +939,32 @@ public class TestDevice extends NativeDevice {
     /** {@inheritDoc} */
     @Override
     public Set<ApexInfo> getActiveApexes() throws DeviceNotAvailableException {
-        Set<ApexInfo> ret = new HashSet<>();
         String output = executeShellCommand(LIST_APEXES_CMD);
-        if (output != null) {
-            Matcher m = APEXES_REGEX.matcher(output);
-            while (m.find()) {
-                String sourceDir = m.group(1);
-                String name = m.group(2);
-                long version = Long.valueOf(m.group(3));
+        // Optimistically parse expecting platform to return paths. If it doesn't, empty set will
+        // be returned.
+        Set<ApexInfo> ret = parseApexesFromOutput(output, true /* withPath */);
+        if (ret.isEmpty()) {
+            ret = parseApexesFromOutput(output, false /* withPath */);
+        }
+        return ret;
+    }
+
+    private Set<ApexInfo> parseApexesFromOutput(final String output, boolean withPath) {
+        Set<ApexInfo> ret = new HashSet<>();
+        Matcher matcher =
+                withPath
+                        ? APEXES_WITH_PATH_REGEX.matcher(output)
+                        : APEXES_WITHOUT_PATH_REGEX.matcher(output);
+        while (matcher.find()) {
+            if (withPath) {
+                String sourceDir = matcher.group(1);
+                String name = matcher.group(2);
+                long version = Long.valueOf(matcher.group(3));
                 ret.add(new ApexInfo(name, version, sourceDir));
+            } else {
+                String name = matcher.group(1);
+                long version = Long.valueOf(matcher.group(2));
+                ret.add(new ApexInfo(name, version));
             }
         }
         return ret;
