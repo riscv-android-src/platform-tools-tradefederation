@@ -3703,6 +3703,11 @@ public class NativeDevice implements IManagedTestDevice {
             String prop = getProperty(DeviceProperties.SDK_VERSION);
             apiLevel = Integer.parseInt(prop);
         } catch (NumberFormatException nfe) {
+            CLog.w(
+                    "Unable to get API level from "
+                            + DeviceProperties.SDK_VERSION
+                            + ", falling back to UNKNOWN.",
+                    nfe);
             // ignore, return unknown instead
         }
         return apiLevel;
