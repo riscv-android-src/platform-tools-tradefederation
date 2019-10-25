@@ -115,8 +115,8 @@ public class TestDeviceTest extends TestCase {
         }
 
         @Override
-        void doReboot() throws DeviceNotAvailableException, UnsupportedOperationException {
-        }
+        void doReboot(final String into)
+                throws DeviceNotAvailableException, UnsupportedOperationException {}
 
         @Override
         IHostOptions getHostOptions() {
@@ -587,7 +587,7 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    void doReboot()
+                    void doReboot(final String into)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
                 };
         mTestDevice.setRecovery(mMockRecovery);
@@ -654,7 +654,7 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    void doReboot()
+                    void doReboot(final String into)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
                 };
         mTestDevice.setRecovery(mMockRecovery);
@@ -704,7 +704,7 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    void doReboot()
+                    void doReboot(final String into)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
                 };
         mTestDevice.setRecovery(mMockRecovery);
