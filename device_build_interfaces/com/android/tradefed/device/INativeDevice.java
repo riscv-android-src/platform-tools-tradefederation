@@ -888,6 +888,18 @@ public interface INativeDevice {
     public void reboot() throws DeviceNotAvailableException;
 
     /**
+     * Reboots only userspace part of device.
+     *
+     * <p>Blocks until device becomes available.
+     *
+     * <p>WARNING. Userspace reboot is currently under active development, use it on your own risk.
+     *
+     * @throws DeviceNotAvailableException if device is not available after reboot
+     */
+    // TODO(ioffe): link to docs around userspace reboot when they are available.
+    public void rebootUserspace() throws DeviceNotAvailableException;
+
+    /**
      * Reboots the device into adb recovery mode.
      * <p/>
      * Blocks until device enters recovery
@@ -911,6 +923,14 @@ public interface INativeDevice {
      * @throws DeviceNotAvailableException if device is not available after reboot
      */
     public void rebootUntilOnline() throws DeviceNotAvailableException;
+
+    /**
+     * An alternate to {@link #rebootUserspace()} ()} that only blocks until device is online ie
+     * visible to adb.
+     *
+     * @throws DeviceNotAvailableException if device is not available after reboot
+     */
+    public void rebootUserspaceUntilOnline() throws DeviceNotAvailableException;
 
     /**
      * Issues a command to reboot device and returns on command complete and when device is no
