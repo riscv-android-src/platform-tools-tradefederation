@@ -1599,7 +1599,7 @@ public class NativeDeviceTest {
         EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong()))
                 .andReturn(true);
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
-        testDevice.doReboot();
+        testDevice.doReboot(null);
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
@@ -1620,7 +1620,7 @@ public class NativeDeviceTest {
             }
         };
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
-        testDevice.doReboot();
+        testDevice.doReboot(null);
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
@@ -1640,7 +1640,7 @@ public class NativeDeviceTest {
             }
         };
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
-        mTestDevice.doReboot();
+        mTestDevice.doReboot(null);
         assertTrue(mTestDevice.wasCalled);
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
