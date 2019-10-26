@@ -166,10 +166,8 @@ java_library_host {
     srcs: [
         "proto/*.proto",
     ],
-    libs: [
-        "libprotobuf-java-full",
-    ],
     proto: {
+        type: "full",
         canonical_path_from_root: false,
         include_dirs: ["external/protobuf/src"],
     },
