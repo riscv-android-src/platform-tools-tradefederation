@@ -66,6 +66,9 @@ python_binary_host {
     // Make atest's built name to atest-dev
     stem: "atest-dev",
     defaults: ["atest_py2_default"],
+    dist: {
+        targets: ["droidcore"],
+    },
 }
 
 python_library_host {
