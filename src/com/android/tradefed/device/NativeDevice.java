@@ -2902,12 +2902,46 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
+    @Override
+    public void rebootUserspace() throws DeviceNotAvailableException {
+        rebootUserspaceUntilOnline();
+
+        RecoveryMode cachedRecoveryMode = getRecoveryMode();
+        setRecoveryMode(RecoveryMode.ONLINE);
+
+        if (isEncryptionSupported()) {
+            if (isDeviceEncrypted()) {
+                CLog.e("Device is encrypted after userspace reboot!");
+                unlockDevice();
+            }
+        }
+
+        setRecoveryMode(cachedRecoveryMode);
+
+        if (mStateMonitor.waitForDeviceAvailable(mOptions.getRebootTimeout()) != null) {
+            postBootSetup();
+            postBootWifiSetup();
+        } else {
+            recoverDevice();
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
     @Override
     public void rebootUntilOnline() throws DeviceNotAvailableException {
-        doReboot();
+        doReboot(null);
+        RecoveryMode cachedRecoveryMode = getRecoveryMode();
+        setRecoveryMode(RecoveryMode.ONLINE);
+        waitForDeviceOnline();
+        enableAdbRoot();
+        setRecoveryMode(cachedRecoveryMode);
+    }
+
+    @Override
+    public void rebootUserspaceUntilOnline() throws DeviceNotAvailableException {
+        doReboot("userspace");
         RecoveryMode cachedRecoveryMode = getRecoveryMode();
         setRecoveryMode(RecoveryMode.ONLINE);
         waitForDeviceOnline();
@@ -2954,17 +2988,19 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public void nonBlockingReboot() throws DeviceNotAvailableException {
-        doReboot();
+        doReboot(null);
     }
 
     /**
      * Trigger a reboot of the device, offers no guarantee of the device state after the call.
      *
+     * @param into mode to reboot into, e.g. "recovery,userspace"
      * @throws DeviceNotAvailableException
      * @throws UnsupportedOperationException
      */
     @VisibleForTesting
-    void doReboot() throws DeviceNotAvailableException, UnsupportedOperationException {
+    void doReboot(final String into)
+            throws DeviceNotAvailableException, UnsupportedOperationException {
         // Track Tradefed reboot time
         mLastTradefedRebootTime = System.currentTimeMillis();
 
@@ -2976,8 +3012,12 @@ public class NativeDevice implements IManagedTestDevice {
                 CLog.i("Device reboot disabled by options, skipped.");
                 return;
             }
-            CLog.i("Rebooting device %s", getSerialNumber());
-            doAdbReboot(null);
+            if (into == null) {
+                CLog.i("Rebooting device %s", getSerialNumber());
+            } else {
+                CLog.i("Rebooting device %s into %s", getSerialNumber(), into);
+            }
+            doAdbReboot(into);
             // Check if device shows as unavailable (as expected after reboot).
             boolean notAvailable = waitForDeviceNotAvailable(DEFAULT_UNAVAILABLE_TIMEOUT);
             if (notAvailable) {
