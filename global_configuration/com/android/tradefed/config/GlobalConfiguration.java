@@ -33,6 +33,8 @@ import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.sandbox.ISandboxFactory;
+import com.android.tradefed.sandbox.TradefedSandboxFactory;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
@@ -75,6 +77,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     public static final String KEY_STORE_TYPE_NAME = "key_store";
     public static final String SHARDING_STRATEGY_TYPE_NAME = "sharding_strategy";
     public static final String GLOBAL_CONFIG_SERVER = "global_config_server";
+    public static final String SANDBOX_FACTORY_TYPE_NAME = "sandbox_factory";
 
     public static final String GLOBAL_CONFIG_VARIABLE = "TF_GLOBAL_CONFIG";
     public static final String GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE =
@@ -301,6 +304,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
                     SHARDING_STRATEGY_TYPE_NAME, new ObjTypeInfo(IShardHelper.class, false));
             sObjTypeMap.put(
                     GLOBAL_CONFIG_SERVER, new ObjTypeInfo(IConfigurationServer.class, false));
+            sObjTypeMap.put(
+                    SANDBOX_FACTORY_TYPE_NAME, new ObjTypeInfo(ISandboxFactory.class, false));
         }
         return sObjTypeMap;
     }
@@ -321,6 +326,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         setCommandScheduler(new CommandScheduler());
         setKeyStoreFactory(new StubKeyStoreFactory());
         setShardingStrategy(new StrictShardHelper());
+        setSandboxFactory(new TradefedSandboxFactory());
     }
 
     /** {@inheritDoc} */
@@ -381,9 +387,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         return (IConfigurationServer) getConfigurationObject(GLOBAL_CONFIG_SERVER);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     @SuppressWarnings("unchecked")
     public List<IHostMonitor> getHostMonitors() {
@@ -415,15 +419,19 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     /** {@inheritDoc} */
     @Override
     public IDeviceManager getDeviceManager() {
-        return (IDeviceManager)getConfigurationObject(DEVICE_MANAGER_TYPE_NAME);
+        return (IDeviceManager) getConfigurationObject(DEVICE_MANAGER_TYPE_NAME);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public ISandboxFactory getSandboxFactory() {
+        return (ISandboxFactory) getConfigurationObject(SANDBOX_FACTORY_TYPE_NAME);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public IDeviceSelection getDeviceRequirements() {
-        return (IDeviceSelection)getConfigurationObject(DEVICE_REQUIREMENTS_TYPE_NAME);
+        return (IDeviceSelection) getConfigurationObject(DEVICE_REQUIREMENTS_TYPE_NAME);
     }
 
     /**
@@ -592,9 +600,12 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         setConfigurationObjectNoThrow(SCHEDULER_TYPE_NAME, scheduler);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
+    public void setSandboxFactory(ISandboxFactory factory) {
+        setConfigurationObjectNoThrow(SANDBOX_FACTORY_TYPE_NAME, factory);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void setConfigurationObject(String typeName, Object configObject)
             throws ConfigurationException {
