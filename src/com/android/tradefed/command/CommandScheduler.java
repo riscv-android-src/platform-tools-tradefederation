@@ -1175,7 +1175,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /** Create a {@link ISandbox} that the invocation will use to run. */
     public ISandbox createSandbox() {
-        return  GlobalConfiguration.getInstance().getSandboxFactory().createSandbox();
+        return GlobalConfiguration.getInstance().getSandboxFactory().createSandbox();
     }
 
     private IConfiguration createConfiguration(String[] args) throws ConfigurationException {
