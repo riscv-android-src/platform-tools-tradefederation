@@ -105,6 +105,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     private String[] mOriginalArgs;
     private final String mName;
     private final String mDescription;
+    private IConfigurationFactory mConfigFactory = null;
 
     /**
      * Returns a reference to the singleton {@link GlobalConfiguration} instance for this TF
@@ -159,26 +160,24 @@ public class GlobalConfiguration implements IGlobalConfiguration {
                     createGlobalConfigServer(args, nonConfigServerArgs);
             if (globalConfigServer == null) {
                 String path = getGlobalConfigPath();
-                IConfigurationFactory configFactory = ConfigurationFactory.getInstance();
                 String[] arrayArgs = ArrayUtil.buildArray(new String[] {path}, args);
+                IConfigurationFactory configFactory = ConfigurationFactory.getInstance();
                 sInstance =
                         configFactory.createGlobalConfigurationFromArgs(arrayArgs, nonGlobalArgs);
                 ((GlobalConfiguration) sInstance).mOriginalArgs = arrayArgs;
             } else {
                 String currentHostConfig = globalConfigServer.getCurrentHostConfig();
-                GCSConfigurationFactory configFactory =
-                        (GCSConfigurationFactory)
-                                GCSConfigurationFactory.getInstance(globalConfigServer);
+                IConfigurationFactory configFactory =
+                        GCSConfigurationFactory.getInstance(globalConfigServer);
                 String[] arrayArgs =
                         ArrayUtil.buildArray(
                                 new String[] {currentHostConfig},
                                 nonConfigServerArgs.toArray(new String[0]));
                 sInstance =
                         configFactory.createGlobalConfigurationFromArgs(arrayArgs, nonGlobalArgs);
-                // Get the local configuration file and track it as the current local global config
-                File config = configFactory.getLatestDownloadedFile();
-                ((GlobalConfiguration) sInstance).mOriginalArgs =
-                        new String[] {config.getAbsolutePath()};
+                // Keep the original args, later if we want to clone the global config,
+                // we will reuse GCSConfigurationFactory to download the config again.
+                ((GlobalConfiguration) sInstance).mOriginalArgs = arrayArgs;
             }
             // Validate that madatory options have been set
             sInstance.validateOptions();
@@ -810,9 +809,15 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         return filteredGlobalConfig;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void setConfigurationFactory(IConfigurationFactory configFactory) {
+        mConfigFactory = configFactory;
+    }
+
     @VisibleForTesting
     protected IConfigurationFactory getConfigurationFactory() {
-        return ConfigurationFactory.getInstance();
+        return mConfigFactory;
     }
 
     private boolean shouldDump(String name, Set<String> patterns) {
