@@ -92,7 +92,7 @@ public class SandboxConfigUtil {
         }
 
         if (result.getStderr() != null && !result.getStderr().isEmpty()) {
-            CLog.d("stderr: %s", result.getStderr());
+            CLog.d("stderr: %s\nstdout: %s", result.getStderr(), result.getStdout());
         }
 
         FileUtil.deleteFile(destination);
