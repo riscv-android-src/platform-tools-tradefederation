@@ -502,6 +502,43 @@ public class HostTestTest extends TestCase {
         }
     }
 
+    public static class OptionEscapeColonTestCase extends TestCase {
+        @Option(name = "gcs-bucket-file")
+        private File mGcsBucketFile = null;
+
+        @Option(name = "hello")
+        private String mHelloWorld = null;
+
+        @Option(name = "foobar")
+        private String mFoobar = null;
+
+        @Rule public TestMetrics metrics = new TestMetrics();
+
+        public OptionEscapeColonTestCase() {}
+
+        public OptionEscapeColonTestCase(String name) {
+            super(name);
+        }
+
+        public void testGcsBucket() {
+            assertTrue(
+                    "Expect a GCS bucket file: "
+                            + (mGcsBucketFile != null ? mGcsBucketFile.toString() : "null"),
+                    FAKE_REMOTE_FILE_PATH.equals(mGcsBucketFile));
+            metrics.addTestMetric("gcs-bucket-file", mGcsBucketFile.toURI().toString());
+        }
+
+        public void testEscapeStrings() {
+            assertTrue(mHelloWorld != null && mFoobar != null);
+            assertTrue(
+                    "Expects 'hello' value to be 'hello:world'", mHelloWorld.equals("hello:world"));
+            assertTrue("Expects 'foobar' value to be 'baz:qux'", mFoobar.equals("baz:qux"));
+
+            metrics.addTestMetric("hello", mHelloWorld);
+            metrics.addTestMetric("foobar", mFoobar);
+        }
+    }
+
     public static class TestableHostTest extends HostTest {
 
         private IRemoteFileResolver mRemoteFileResolver;
@@ -2208,6 +2245,40 @@ public class HostTestTest extends TestCase {
         } catch (IllegalArgumentException expected) {
             // expected
         }
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test success case for {@link HostTest#run(OptionEscapeColonTestCase)}, where test to run is a
+     * {@link TestSuite} and has set-options with the char ':' escaped.
+     */
+    public void testRun_junit3TestSuite_optionEscapeColon() throws Exception {
+        mHostTest.setClassName(OptionEscapeColonTestCase.class.getName());
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue(
+                "set-option",
+                OptionEscapeColonTestCase.class.getName()
+                        + ":gcs-bucket-file:gs\\://bucket/path/file");
+        setter.setOptionValue("set-option", "hello:hello\\:world");
+        setter.setOptionValue(
+                "set-option", OptionEscapeColonTestCase.class.getName() + ":foobar:baz\\:qux");
+        TestDescription testGcsBucket =
+                new TestDescription(OptionEscapeColonTestCase.class.getName(), "testGcsBucket");
+        TestDescription testEscapeStrings =
+                new TestDescription(OptionEscapeColonTestCase.class.getName(), "testEscapeStrings");
+
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
+        mListener.testStarted(EasyMock.eq(testGcsBucket));
+        mListener.testEnded(
+                EasyMock.eq(testGcsBucket), (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(testEscapeStrings));
+        mListener.testEnded(
+                EasyMock.eq(testEscapeStrings), (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        EasyMock.replay(mListener);
+        assertEquals(2, mHostTest.countTestCases());
+        mHostTest.run(mListener);
         EasyMock.verify(mListener);
     }
 }
