@@ -163,6 +163,17 @@ public class TestMappingSuiteRunnerTest {
         mRunner.loadTests();
     }
 
+    /**
+     * Test for {@link TestMappingSuiteRunner#loadTests()} to fail when both options include-filter
+     * and test-mapping-path are set.
+     */
+    @Test(expected = RuntimeException.class)
+    public void testLoadTests_conflictOptions() throws Exception {
+        mOptionSetter.setOptionValue("include-filter", "test1");
+        mOptionSetter.setOptionValue("test-mapping-path", "path1");
+        mRunner.loadTests();
+    }
+
     /** Test for {@link TestMappingSuiteRunner#loadTests()} to fail when no test option is set. */
     @Test(expected = RuntimeException.class)
     public void testLoadTests_noOption() throws Exception {
