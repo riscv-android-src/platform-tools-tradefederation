@@ -34,6 +34,7 @@ import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -69,6 +70,20 @@ public class TestMapping {
     private static final Pattern COMMENTS_REGEX = Pattern.compile(
             "(?m)[\\s\\t]*(//|#).*|(\".*?\")");
     private static final Set<String> COMMENTS = new HashSet<>(Arrays.asList("#", "//"));
+
+    private static List<String> mTestMappingRelativePaths = new ArrayList<>();
+
+    /**
+     * Set the TEST_MAPPING paths inside of TEST_MAPPINGS_ZIP to limit loading the TEST_MAPPING.
+     *
+     * @param relativePaths A {@code List<String>} of TEST_MAPPING paths relative to
+     *     TEST_MAPPINGS_ZIP.
+     */
+    public static void setTestMappingPaths(List<String> relativePaths) {
+        mTestMappingRelativePaths.clear();
+        mTestMappingRelativePaths.addAll(relativePaths);
+    }
+
 
     /**
      * Constructor to create a {@link TestMapping} object from a path to TEST_MAPPING file.
@@ -240,6 +255,39 @@ public class TestMapping {
     }
 
     /**
+     * Helper to get all TEST_MAPPING paths relative to TEST_MAPPINGS_ZIP.
+     *
+     * @param testMappingsRootPath The {@link Path} to a test mappings zip path.
+     * @return A {@code Set<Path>} of all the TEST_MAPPING paths relative to TEST_MAPPINGS_ZIP.
+     */
+    @VisibleForTesting
+    static Set<Path> getAllTestMappingPaths(Path testMappingsRootPath) {
+        Set<Path> allTestMappingPaths = new HashSet<>();
+        for (String path : mTestMappingRelativePaths) {
+            boolean hasAdded = false;
+            Path testMappingPath = testMappingsRootPath.resolve(path);
+            // Recursively find the TEST_MAPPING file until reaching to testMappingsRootPath.
+            while (!testMappingPath.equals(testMappingsRootPath)) {
+                if (testMappingPath.resolve(TEST_MAPPING).toFile().exists()) {
+                    hasAdded = true;
+                    CLog.d("Adding TEST_MAPPING path: %s", testMappingPath);
+                    allTestMappingPaths.add(testMappingPath.resolve(TEST_MAPPING));
+                }
+                testMappingPath = testMappingPath.getParent();
+            }
+            if (!hasAdded) {
+                CLog.w("Couldn't find TEST_MAPPING files from %s", path);
+            }
+        }
+        if (allTestMappingPaths.isEmpty()) {
+            throw new RuntimeException(
+                    String.format(
+                            "Couldn't find TEST_MAPPING files from %s", mTestMappingRelativePaths));
+        }
+        return allTestMappingPaths;
+    }
+
+    /**
      * Helper to find all tests in all TEST_MAPPING files. This is needed when a suite run requires
      * to run all tests in TEST_MAPPING files for a given group, e.g., presubmit.
      *
@@ -257,7 +305,12 @@ public class TestMapping {
         try {
             Path testMappingsRootPath = Paths.get(testMappingsDir.getAbsolutePath());
             Set<String> disabledTests = getDisabledTests(testMappingsRootPath, testGroup);
-            stream = Files.walk(testMappingsRootPath, FileVisitOption.FOLLOW_LINKS);
+            if (mTestMappingRelativePaths.isEmpty()) {
+                stream = Files.walk(testMappingsRootPath, FileVisitOption.FOLLOW_LINKS);
+            }
+            else {
+                stream = getAllTestMappingPaths(testMappingsRootPath).stream();
+            }
             stream.filter(path -> path.getFileName().toString().equals(TEST_MAPPING))
                     .forEach(
                             path ->

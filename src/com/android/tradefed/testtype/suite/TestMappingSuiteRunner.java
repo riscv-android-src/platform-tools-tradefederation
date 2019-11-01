@@ -120,8 +120,16 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
                     "If options --test-mapping-test-group is set, option --include-filter should "
                             + "not be set.");
         }
+        if (!includeFilter.isEmpty() && !mTestMappingPaths.isEmpty()) {
+            throw new RuntimeException(
+                    "If option --include-filter is set, option --test-mapping-path should "
+                            + "not be set.");
+        }
 
         if (mTestGroup != null) {
+            if (!mTestMappingPaths.isEmpty()) {
+                TestMapping.setTestMappingPaths(mTestMappingPaths);
+            }
             testInfosToRun =
                     TestMapping.getTests(
                             getBuildInfo(), mTestGroup, getPrioritizeHostConfig(), mKeywords);
