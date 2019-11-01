@@ -79,6 +79,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.regex.Pattern;
 
 /**
  * A test runner for JUnit host based tests. If the test to be run implements {@link IDeviceTest}
@@ -121,7 +122,7 @@ public class HostTest
                     + "separated by colon \":\"; for example, if class under test supports "
                     + "\"--iteration 1\" from a command line, it should be passed in as"
                     + " \"--set-option iteration:1\" or \"--set-option iteration:key=value\" for "
-                    + "passing options to map; escaping of \":\" \"=\" is currently not supported."
+                    + "passing options to map; escaping of \"=\" is currently not supported."
                     + "A particular class can be targetted by specifying it. "
                     + "\" --set-option <fully qualified class>:<option name>:<option value>\"";
 
@@ -981,31 +982,56 @@ public class HostTest
      */
     public static void setOptionToLoadedObject(Object testObj, List<String> keyValueOptions) {
         if (!keyValueOptions.isEmpty()) {
+            OptionSetter setter;
             try {
-                OptionSetter setter = new OptionSetter(testObj);
-                for (String item : keyValueOptions) {
-                    String[] fields = item.split(":");
-                    if (fields.length == 3) {
-                        String target = fields[0];
-                        if (testObj.getClass().getName().equals(target)) {
-                            injectOption(setter, item, fields[1], fields[2]);
-                        } else {
-                            // TODO: We should track that all targeted option end up assigned
-                            // eventually.
-                            CLog.d(
-                                    "Targeted option %s is not applicable to %s",
-                                    item, testObj.getClass().getName());
-                        }
-                    } else if (fields.length == 2) {
-                        injectOption(setter, item, fields[0], fields[1]);
-                    } else {
-                        throw new RuntimeException(
-                                String.format("invalid option spec \"%s\"", item));
-                    }
-                }
+                setter = new OptionSetter(testObj);
             } catch (ConfigurationException ce) {
                 CLog.e(ce);
-                throw new RuntimeException("error passing options down to test class", ce);
+                throw new RuntimeException("error creating option setter", ce);
+            }
+            for (String item : keyValueOptions) {
+                // Support escaping ':' using lookbehind in the regex. The regex engine will
+                // step backwards to check for the escape char when it matches the delim char.
+                // If it doesn't find the escape char, then a match is registered.
+                String delim = ":";
+                String esc = "\\";
+                String regex = "(?<!" + Pattern.quote(esc) + ")" + Pattern.quote(delim);
+                String[] fields = item.split(regex);
+                String key, value;
+                if (fields.length == 3) {
+                    String target = fields[0];
+                    if (testObj.getClass().getName().equals(target)) {
+                        key = fields[1];
+                        value =
+                                fields[2].replaceAll(
+                                        Pattern.quote(esc) + Pattern.quote(delim), delim);
+                    } else {
+                        // TODO: We should track that all targeted option end up assigned
+                        // eventually.
+                        CLog.d(
+                                "Targeted option %s is not applicable to %s",
+                                item, testObj.getClass().getName());
+                        continue;
+                    }
+                } else if (fields.length == 2) {
+                    key = fields[0];
+                    value = fields[1].replaceAll(Pattern.quote(esc) + Pattern.quote(delim), delim);
+                } else {
+                    throw new RuntimeException(String.format("invalid option spec \"%s\"", item));
+                }
+                try {
+                    injectOption(setter, item, key, value);
+                } catch (ConfigurationException ce) {
+                    CLog.e(ce);
+                    throw new RuntimeException(
+                            "error passing option '"
+                                    + item
+                                    + "' down to test class as key="
+                                    + key
+                                    + " value="
+                                    + value,
+                            ce);
+                }
             }
         }
     }
