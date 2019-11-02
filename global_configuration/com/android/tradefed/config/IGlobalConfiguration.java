@@ -350,4 +350,7 @@ public interface IGlobalConfiguration {
 
     /** Sets the original config used to create the global configuration. */
     public void setOriginalConfig(String config);
+
+    /** Set the {@link IConfigurationFactory} for this configuration. */
+    public void setConfigurationFactory(IConfigurationFactory configFactory);
 }
