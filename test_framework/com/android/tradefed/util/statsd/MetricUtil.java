@@ -37,11 +37,17 @@ import java.util.List;
 /** Utility class for pulling metrics from pushed statsd configurations. */
 public class MetricUtil {
     @VisibleForTesting
-    static final String DUMP_REPORT_CMD_TEMPLATE =
-            "cmd stats dump-report %s --include_current_bucket --proto";
+    static final String DUMP_REPORT_CMD_TEMPLATE = "cmd stats dump-report %s %s --proto";
+
+    // Android P version does not support this argument. Make it separate and add only when needed
+    @VisibleForTesting
+    static final String DUMP_REPORT_INCLUDE_CURRENT_BUCKET = "--include_current_bucket";
+
     // The command is documented in frameworks/base/cmds/statsd/src/StatsService.cpp.
     @VisibleForTesting
     static final String DUMP_STATSD_METADATA_CMD = "dumpsys stats --metadata --proto";
+
+    @VisibleForTesting static final int SDK_VERSION_Q = 29;
 
     /** Get statsd event metrics data from the device using the statsd config id. */
     public static List<EventMetricData> getEventMetricData(ITestDevice device, long configId)
@@ -96,11 +102,15 @@ public class MetricUtil {
     private static byte[] getReportByteArray(ITestDevice device, long configId)
             throws DeviceNotAvailableException {
         final CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
-        CLog.d(
-                "Dumping stats report with command: "
-                        + String.format(DUMP_REPORT_CMD_TEMPLATE, String.valueOf(configId)));
-        device.executeShellCommand(
-                String.format(DUMP_REPORT_CMD_TEMPLATE, String.valueOf(configId)), receiver);
+        String dumpCommand =
+                String.format(
+                        DUMP_REPORT_CMD_TEMPLATE,
+                        String.valueOf(configId),
+                        device.checkApiLevelAgainstNextRelease(SDK_VERSION_Q)
+                                ? DUMP_REPORT_INCLUDE_CURRENT_BUCKET
+                                : "");
+        CLog.d("Dumping stats report with command: " + dumpCommand);
+        device.executeShellCommand(dumpCommand, receiver);
         return receiver.getOutput();
     }
 }
