@@ -2527,7 +2527,7 @@ public class NativeDevice implements IManagedTestDevice {
 
     /** {@inheritDoc} */
     @Override
-    public InputStreamSource getScreenshot(int displayId) throws DeviceNotAvailableException {
+    public InputStreamSource getScreenshot(long displayId) throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("No support for Screenshot");
     }
 
@@ -4662,7 +4662,7 @@ public class NativeDevice implements IManagedTestDevice {
 
     /** {@inheritDoc} */
     @Override
-    public Set<Integer> listDisplayIds() throws DeviceNotAvailableException {
+    public Set<Long> listDisplayIds() throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("dumpsys SurfaceFlinger is not supported.");
     }
 

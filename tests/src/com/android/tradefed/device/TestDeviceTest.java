@@ -4410,10 +4410,10 @@ public class TestDeviceTest extends TestCase {
                                 "modes:'"))
                 .andReturn(res);
         replayMocks();
-        Set<Integer> displays = mTestDevice.listDisplayIds();
+        Set<Long> displays = mTestDevice.listDisplayIds();
         assertEquals(2, displays.size());
-        assertTrue(displays.contains(0));
-        assertTrue(displays.contains(5));
+        assertTrue(displays.contains(0L));
+        assertTrue(displays.contains(5L));
         verifyMocks();
     }
 
