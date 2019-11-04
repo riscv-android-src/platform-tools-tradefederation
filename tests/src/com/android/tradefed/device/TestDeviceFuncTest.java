@@ -881,7 +881,7 @@ public class TestDeviceFuncTest implements IDeviceTest {
     /** Test for {@link TestDevice#listDisplayIds()}. */
     @Test
     public void testListDisplays() throws Exception {
-        Set<Integer> displays = mTestDevice.listDisplayIds();
+        Set<Long> displays = mTestDevice.listDisplayIds();
         assertEquals(1, displays.size());
     }
 
