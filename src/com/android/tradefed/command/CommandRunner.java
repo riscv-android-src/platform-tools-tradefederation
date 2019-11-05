@@ -98,7 +98,8 @@ public class CommandRunner {
             mScheduler.join(getCheckDeviceTimeout());
             // FIXME: if possible make the no_device allocated check deterministic.
             // After 1 min we check if the command was executed.
-            if (mScheduler.getReadyCommandCount() > 0) {
+            if (mScheduler.getReadyCommandCount() > 0
+                    && mScheduler.getExecutingCommandCount() == 0) {
                 printStackTrace(new NoDeviceException("No device was allocated for the command."));
                 mErrorCode = ExitCode.NO_DEVICE_ALLOCATED;
                 mScheduler.removeAllCommands();
