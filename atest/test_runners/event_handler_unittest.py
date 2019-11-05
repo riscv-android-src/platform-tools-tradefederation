@@ -53,9 +53,17 @@ EVENTS_RUN_FAILURE = [
     ('TEST_RUN_FAILED', {'reason': 'someRunFailureReason'})
 ]
 
+
 EVENTS_INVOCATION_FAILURE = [
     ('TEST_RUN_STARTED', {'testCount': None, 'runName': 'com.android.UnitTests'}),
     ('INVOCATION_FAILED', {'cause': 'someInvocationFailureReason'})
+]
+
+EVENTS_MISSING_TEST_RUN_STARTED_EVENT = [
+    ('TEST_STARTED', {'start_time':52, 'className':'someClassName',
+                      'testName':'someTestName'}),
+    ('TEST_ENDED', {'end_time':1048, 'className':'someClassName',
+                    'testName':'someTestName'}),
 ]
 
 EVENTS_NOT_BALANCED_BEFORE_RAISE = [
@@ -196,6 +204,25 @@ class EventHandlerUnittests(unittest.TestCase):
             group_total=None,
             additional_info={},
             test_run_name='com.android.UnitTests'
+        ))
+        self.mock_reporter.process_test_result.assert_has_calls([call])
+
+    def test_process_event_missing_test_run_started_event(self):
+        """Test process_event method for normal test results."""
+        for name, data in EVENTS_MISSING_TEST_RUN_STARTED_EVENT:
+            self.fake_eh.process_event(name, data)
+        call = mock.call(test_runner_base.TestResult(
+            runner_name=atf_tr.AtestTradefedTestRunner.NAME,
+            group_name=None,
+            test_name='someClassName#someTestName',
+            status=test_runner_base.PASSED_STATUS,
+            details=None,
+            test_count=1,
+            test_time='(996ms)',
+            runner_total=None,
+            group_total=None,
+            additional_info={},
+            test_run_name=None
         ))
         self.mock_reporter.process_test_result.assert_has_calls([call])
 
