@@ -59,6 +59,7 @@ ONE_HOUR = 3600000
 
 CONNECTION_STATE = {
     'current_test': None,
+    'test_run_name': None,
     'last_failed': None,
     'last_ignored': None,
     'last_assumption_failed': None,

@@ -574,7 +574,7 @@ public class TestDevice extends NativeDevice {
 
     /** {@inheritDoc} */
     @Override
-    public InputStreamSource getScreenshot(int displayId) throws DeviceNotAvailableException {
+    public InputStreamSource getScreenshot(long displayId) throws DeviceNotAvailableException {
         final String tmpDevicePath = String.format("/data/local/tmp/display_%s.png", displayId);
         CommandResult result =
                 executeShellV2Command(
@@ -1431,9 +1431,9 @@ public class TestDevice extends NativeDevice {
                 // disable keyguard if option is true
                 prePostBootSetup();
                 return true;
-            } else {
-                RunUtil.getDefault().sleep(getCheckNewUserSleep());
             }
+            RunUtil.getDefault().sleep(getCheckNewUserSleep());
+            executeShellCommand(String.format("am switch-user %d", userId));
         }
         CLog.e("User did not switch in the given %d timeout", timeout);
         return false;
@@ -1780,10 +1780,10 @@ public class TestDevice extends NativeDevice {
 
     /** {@inheritDoc} */
     @Override
-    public Set<Integer> listDisplayIds() throws DeviceNotAvailableException {
-        Set<Integer> displays = new HashSet<>();
+    public Set<Long> listDisplayIds() throws DeviceNotAvailableException {
+        Set<Long> displays = new HashSet<>();
         // Zero is the default display
-        displays.add(0);
+        displays.add(0L);
         CommandResult res = executeShellV2Command("dumpsys SurfaceFlinger | grep 'color modes:'");
         if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
             CLog.e("Something went wrong while listing displays: %s", res.getStderr());
@@ -1794,7 +1794,7 @@ public class TestDevice extends NativeDevice {
         for (String line : output.split("\n")) {
             Matcher m = p.matcher(line);
             if (m.matches()) {
-                displays.add(Integer.parseInt(m.group("id")));
+                displays.add(Long.parseLong(m.group("id")));
             }
         }
         return displays;

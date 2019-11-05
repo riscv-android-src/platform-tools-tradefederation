@@ -57,8 +57,10 @@ CMD_RESULT_PATH = os.path.join(os.environ.get(constants.ANDROID_BUILD_TOP,
                                               os.getcwd()),
                                'tools/tradefederation/core/atest/test_data',
                                'test_commands.json')
+BUILD_TOP_HASH = hashlib.md5(os.environ.get(constants.ANDROID_BUILD_TOP, '').
+                             encode()).hexdigest()
 TEST_INFO_CACHE_ROOT = os.path.join(os.path.expanduser('~'), '.atest',
-                                    'info_cache')
+                                    'info_cache', BUILD_TOP_HASH[:8])
 _DEFAULT_TERMINAL_WIDTH = 80
 _BUILD_CMD = 'build/soong/soong_ui.bash'
 

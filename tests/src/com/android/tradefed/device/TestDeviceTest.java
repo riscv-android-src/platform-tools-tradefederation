@@ -115,8 +115,8 @@ public class TestDeviceTest extends TestCase {
         }
 
         @Override
-        void doReboot() throws DeviceNotAvailableException, UnsupportedOperationException {
-        }
+        void doReboot(final String into)
+                throws DeviceNotAvailableException, UnsupportedOperationException {}
 
         @Override
         IHostOptions getHostOptions() {
@@ -587,7 +587,7 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    void doReboot()
+                    void doReboot(final String into)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
                 };
         mTestDevice.setRecovery(mMockRecovery);
@@ -654,7 +654,7 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    void doReboot()
+                    void doReboot(final String into)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
                 };
         mTestDevice.setRecovery(mMockRecovery);
@@ -704,7 +704,7 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    void doReboot()
+                    void doReboot(final String into)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
                 };
         mTestDevice.setRecovery(mMockRecovery);
@@ -3227,8 +3227,12 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     public String executeShellCommand(String command)
                             throws DeviceNotAvailableException {
-                        test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
-                        test.start();
+                        if (!started) {
+                            started = true;
+                            test.setDaemon(true);
+                            test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
+                            test.start();
+                        }
                         return "";
                     }
 
@@ -3252,6 +3256,7 @@ public class TestDeviceTest extends TestCase {
                         return 100;
                     }
 
+                    boolean started = false;
                     Thread test =
                             new Thread(
                                     new Runnable() {
@@ -4416,10 +4421,10 @@ public class TestDeviceTest extends TestCase {
                                 "modes:'"))
                 .andReturn(res);
         replayMocks();
-        Set<Integer> displays = mTestDevice.listDisplayIds();
+        Set<Long> displays = mTestDevice.listDisplayIds();
         assertEquals(2, displays.size());
-        assertTrue(displays.contains(0));
-        assertTrue(displays.contains(5));
+        assertTrue(displays.contains(0L));
+        assertTrue(displays.contains(5L));
         verifyMocks();
     }
 
