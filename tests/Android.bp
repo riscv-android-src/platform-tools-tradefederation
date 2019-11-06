@@ -30,11 +30,11 @@ tradefed_java_library_host {
         "easymock",
         "objenesis",
         "mockito",
-        "truth-prebuilt",
     ],
     libs: [
         "tradefed",
         "libprotobuf-java-full",
+        "truth-prebuilt",
     ],
 
     manifest: "MANIFEST.mf",
