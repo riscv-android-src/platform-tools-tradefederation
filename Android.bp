@@ -170,3 +170,28 @@ droiddoc_host {
           "-devsite ",
     create_stubs: false,
 }
+
+sh_binary_host {
+    name: "tradefed.sh",
+    src: "tradefed.sh",
+}
+
+sh_binary_host {
+    name: "tradefed_win",
+    src: "tradefed_win.bat",
+}
+
+sh_binary_host {
+    name: "script_help.sh",
+    src: "script_help.sh",
+}
+
+sh_binary_host {
+    name: "run_tf_cmd.sh",
+    src: "run_tf_cmd.sh",
+}
+
+sh_binary_host {
+    name: "atest_tradefed.sh",
+    src: "atest_tradefed.sh",
+}

@@ -183,7 +183,13 @@ ATEST_TF_MODULE = 'atest-tradefed'
 # be generated when make.
 ATEST_BUILD_ENV = {'SOONG_COLLECT_JAVA_DEPS':'true'}
 
-# Atest cache root and relative dirs/caches.
+# For generating dependencies in module-info.json, appending deps-license in the
+# make command is a must. Also the environment variables PROJ_PATH and DEP_PATH
+# are necessary.
+DEPS_LICENSE = 'deps-license'
+DEPS_LICENSE_ENV = {'PROJ_PATH': '.', 'DEP_PATH': '.'}
+
+# Atest index path and relative dirs/caches.
 INDEX_DIR = os.path.join(os.getenv(ANDROID_HOST_OUT, ''), 'indexes')
 LOCATE_CACHE = os.path.join(INDEX_DIR, 'mlocate.db')
 INT_INDEX = os.path.join(INDEX_DIR, 'integration.idx')
@@ -192,6 +198,7 @@ CC_CLASS_INDEX = os.path.join(INDEX_DIR, 'cc_classes.idx')
 PACKAGE_INDEX = os.path.join(INDEX_DIR, 'packages.idx')
 QCLASS_INDEX = os.path.join(INDEX_DIR, 'fqcn.idx')
 MODULE_INDEX = os.path.join(INDEX_DIR, 'modules.idx')
+VERSION_FILE = os.path.join(os.path.dirname(__file__), 'VERSION')
 
 # Regeular Expressions
 CC_EXT_RE = re.compile(r'.*\.(cc|cpp)$')

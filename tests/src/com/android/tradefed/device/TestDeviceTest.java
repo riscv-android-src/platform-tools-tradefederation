@@ -115,8 +115,8 @@ public class TestDeviceTest extends TestCase {
         }
 
         @Override
-        void doReboot() throws DeviceNotAvailableException, UnsupportedOperationException {
-        }
+        void doReboot(final String into)
+                throws DeviceNotAvailableException, UnsupportedOperationException {}
 
         @Override
         IHostOptions getHostOptions() {
@@ -587,7 +587,7 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    void doReboot()
+                    void doReboot(final String into)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
                 };
         mTestDevice.setRecovery(mMockRecovery);
@@ -654,7 +654,7 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    void doReboot()
+                    void doReboot(final String into)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
                 };
         mTestDevice.setRecovery(mMockRecovery);
@@ -704,7 +704,7 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    void doReboot()
+                    void doReboot(final String into)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
                 };
         mTestDevice.setRecovery(mMockRecovery);
@@ -2193,7 +2193,7 @@ public class TestDeviceTest extends TestCase {
     }
 
     /** Unit test for {@link TestDevice#getActiveApexes()}. */
-    public void testGetActiveApexes() throws Exception {
+    public void testGetActiveApexesPlatformSupportsPath() throws Exception {
         final String output =
                 "package:/system/apex/com.android.foo.apex="
                         + "com.android.foo versionCode:100\n"
@@ -2217,6 +2217,31 @@ public class TestDeviceTest extends TestCase {
         assertEquals(200, bar.versionCode);
         assertEquals("/system/apex/com.android.foo.apex", foo.sourceDir);
         assertEquals("/system/apex/com.android.bar.apex", bar.sourceDir);
+    }
+
+    /** Unit test for {@link TestDevice#getActiveApexes()}. */
+    public void testGetActiveApexesPlatformDoesNotSupportPath() throws Exception {
+        final String output =
+                "package:com.android.foo versionCode:100\n"
+                        + "package:com.android.bar versionCode:200";
+        injectShellResponse(TestDevice.LIST_APEXES_CMD, output);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor);
+        Set<ApexInfo> actual = mTestDevice.getActiveApexes();
+        assertEquals(2, actual.size());
+        ApexInfo foo =
+                actual.stream()
+                        .filter(apex -> apex.name.equals("com.android.foo"))
+                        .findFirst()
+                        .get();
+        ApexInfo bar =
+                actual.stream()
+                        .filter(apex -> apex.name.equals("com.android.bar"))
+                        .findFirst()
+                        .get();
+        assertEquals(100, foo.versionCode);
+        assertEquals(200, bar.versionCode);
+        assertEquals("", foo.sourceDir);
+        assertEquals("", bar.sourceDir);
     }
 
     /**
@@ -3202,8 +3227,12 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     public String executeShellCommand(String command)
                             throws DeviceNotAvailableException {
-                        test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
-                        test.start();
+                        if (!started) {
+                            started = true;
+                            test.setDaemon(true);
+                            test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
+                            test.start();
+                        }
                         return "";
                     }
 
@@ -3227,6 +3256,7 @@ public class TestDeviceTest extends TestCase {
                         return 100;
                     }
 
+                    boolean started = false;
                     Thread test =
                             new Thread(
                                     new Runnable() {
@@ -3926,11 +3956,11 @@ public class TestDeviceTest extends TestCase {
             Assert.assertEquals(3000, testImage.data.length);
             byte[] result = mTestDevice.compressRawImage(testImage, "PNG", true);
             // Size after compressing can vary a bit depending of the JDK
-            if (result.length != 107 && result.length != 117) {
+            if (result.length != 107 && result.length != 117 && result.length != 139) {
                 fail(
                         String.format(
                                 "Should have compress the length as expected, got %s, "
-                                        + "expected 107 or 117",
+                                        + "expected 107 or 117 or 139",
                                 result.length));
             }
 
@@ -4385,10 +4415,10 @@ public class TestDeviceTest extends TestCase {
                                 "modes:'"))
                 .andReturn(res);
         replayMocks();
-        Set<Integer> displays = mTestDevice.listDisplayIds();
+        Set<Long> displays = mTestDevice.listDisplayIds();
         assertEquals(2, displays.size());
-        assertTrue(displays.contains(0));
-        assertTrue(displays.contains(5));
+        assertTrue(displays.contains(0L));
+        assertTrue(displays.contains(5L));
         verifyMocks();
     }
 
