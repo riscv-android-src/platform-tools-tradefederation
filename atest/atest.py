@@ -622,9 +622,16 @@ def main(argv, results_dir):
         # Add module-info.json target to the list of build targets to keep the
         # file up to date.
         build_targets.add(mod_info.module_info_target)
+        # Build the deps-license to generate dependencies data in
+        # module-info.json.
+        build_targets.add(constants.DEPS_LICENSE)
+        build_env = dict(constants.ATEST_BUILD_ENV)
+        # The environment variables PROJ_PATH and DEP_PATH are necessary for the
+        # deps-license.
+        build_env.update(constants.DEPS_LICENSE_ENV)
         build_start = time.time()
         success = atest_utils.build(build_targets, verbose=args.verbose,
-                                    env_vars=constants.ATEST_BUILD_ENV)
+                                    env_vars=build_env)
         metrics.BuildFinishEvent(
             duration=metrics_utils.convert_duration(time.time() - build_start),
             success=success,
