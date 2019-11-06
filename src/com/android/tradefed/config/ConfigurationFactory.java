@@ -609,6 +609,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         ConfigurationDef configDef = getConfigurationDef(configName, true, null);
         IGlobalConfiguration config = configDef.createGlobalConfiguration();
         config.setOriginalConfig(configName);
+        config.setConfigurationFactory(this);
         return config;
     }
 

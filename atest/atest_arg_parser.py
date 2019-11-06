@@ -66,6 +66,8 @@ class AtestArgParser(argparse.ArgumentParser):
                                'debugger prior to execution.')
         self.add_argument('-v', '--verbose', action='store_true',
                           help='Display DEBUG level logging.')
+        self.add_argument('-V', '--version', action='store_true',
+                          help='Display version string.')
         self.add_argument('-a', '--all-abi', action='store_true',
                           help='Set to run tests for all abi.')
         self.add_argument('--generate-baseline', nargs='?', type=int, const=5, default=0,
