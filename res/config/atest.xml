@@ -14,9 +14,5 @@
      limitations under the License.
 -->
 <configuration description="Points to the TF entry point runner for atest.">
-  <target_preparer class="com.android.tradefed.targetprep.RootTargetPreparer">
-    <option name="force-root" value="false" />
-  </target_preparer>
-
   <test class="com.android.tradefed.testtype.suite.AtestRunner" />
 </configuration>
