@@ -47,6 +47,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import javax.annotation.Nullable;
+
 /**
  * Extends {@link RemoteAndroidDevice} behavior for a full stack android device running in the
  * Google Compute Engine (Gce). Assume the device serial will be in the format
@@ -375,6 +377,22 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
         }
         // If it's not Cuttlefish, use the standard call.
         return super.getTombstones();
+    }
+
+    /**
+     * Returns the {@link GceAvdInfo} from the created remote VM. Returns null if the bring up was
+     * not successful.
+     */
+    public @Nullable GceAvdInfo getAvdInfo() {
+        if (mGceAvd == null) {
+            CLog.w("Requested getAvdInfo() but GceAvdInfo is null.");
+            return null;
+        }
+        if (!GceStatus.SUCCESS.equals(mGceAvd.getStatus())) {
+            CLog.w("Requested getAvdInfo() but the bring up was not successful, returning null.");
+            return null;
+        }
+        return mGceAvd;
     }
 
     @VisibleForTesting
