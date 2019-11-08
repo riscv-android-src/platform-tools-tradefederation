@@ -3512,7 +3512,7 @@ public class TestDeviceTest extends TestCase {
                         "feature:com.google.android.feature.GOOGLE_EXPERIENCE";
             }
         };
-        assertTrue(mTestDevice.hasFeature("com.google.android.feature.EXCHANGE_6_2"));
+        assertTrue(mTestDevice.hasFeature("feature:com.google.android.feature.EXCHANGE_6_2"));
     }
 
     /**
@@ -3528,6 +3528,22 @@ public class TestDeviceTest extends TestCase {
             }
         };
         assertFalse(mTestDevice.hasFeature("feature:test"));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#hasFeature(String)} on partly matching case.
+     */
+    public void testHasFeature_partly_matching() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "feature:com.google.android.feature.EXCHANGE_6_2\n" +
+                        "feature:com.google.android.feature.GOOGLE_BUILD\n" +
+                        "feature:com.google.android.feature.GOOGLE_EXPERIENCE";
+            }
+        };
+        assertFalse(mTestDevice.hasFeature("feature:com.google.android.feature"));
+        assertTrue(mTestDevice.hasFeature("feature:com.google.android.feature.EXCHANGE_6_2"));
     }
 
     /**
