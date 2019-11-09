@@ -3512,7 +3512,7 @@ public class TestDeviceTest extends TestCase {
                         "feature:com.google.android.feature.GOOGLE_EXPERIENCE";
             }
         };
-        assertTrue(mTestDevice.hasFeature("com.google.android.feature.EXCHANGE_6_2"));
+        assertTrue(mTestDevice.hasFeature("feature:com.google.android.feature.EXCHANGE_6_2"));
     }
 
     /**
