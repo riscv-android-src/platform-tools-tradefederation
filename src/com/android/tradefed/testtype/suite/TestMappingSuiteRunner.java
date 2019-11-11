@@ -75,6 +75,12 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
     )
     private List<String> mTestMappingPaths = new ArrayList<>();
 
+    @Option(
+        name = "use-test-mapping-path",
+        description = "Whether or not to run tests based on the given test mapping path."
+    )
+    private boolean mUseTestMappingPath = false;
+
     /** Special definition in the test mapping structure. */
     private static final String TEST_MAPPING_INCLUDE_FILTER = "include-filter";
 
