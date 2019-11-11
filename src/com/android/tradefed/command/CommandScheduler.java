@@ -63,7 +63,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.sandbox.ISandbox;
-import com.android.tradefed.sandbox.TradefedSandbox;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.retry.RetryRescheduler;
 import com.android.tradefed.util.ArrayUtil;
@@ -1176,7 +1175,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /** Create a {@link ISandbox} that the invocation will use to run. */
     public ISandbox createSandbox() {
-        return new TradefedSandbox();
+        return GlobalConfiguration.getInstance().getSandboxFactory().createSandbox();
     }
 
     private IConfiguration createConfiguration(String[] args) throws ConfigurationException {
@@ -2253,6 +2252,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     @Override
     public synchronized int getReadyCommandCount() {
         return mReadyCommands.size();
+    }
+
+    @Override
+    public synchronized int getExecutingCommandCount() {
+        return mExecutingCommands.size();
     }
 
     @Override

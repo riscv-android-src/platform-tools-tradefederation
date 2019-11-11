@@ -66,6 +66,9 @@ python_binary_host {
     // Make atest's built name to atest-dev
     stem: "atest-dev",
     defaults: ["atest_py2_default"],
+    dist: {
+        targets: ["droidcore"],
+    },
 }
 
 python_library_host {
@@ -166,10 +169,8 @@ java_library_host {
     srcs: [
         "proto/*.proto",
     ],
-    libs: [
-        "libprotobuf-java-full",
-    ],
     proto: {
+        type: "full",
         canonical_path_from_root: false,
         include_dirs: ["external/protobuf/src"],
     },
