@@ -33,8 +33,6 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
-import com.google.common.xml.XmlEscapers;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -171,7 +169,7 @@ public class XmlSuiteResultFormatterTest {
         assertXmlContainsValue(
                 content,
                 "Result/Module/TestCase/Test/Failure/StackTrace",
-                XmlEscapers.xmlContentEscaper().escape("module1 failed.\nstack\nstack\0"));
+                XmlSuiteResultFormatter.sanitizeXmlContent("module1 failed.\nstack\nstack\0"));
         // Test that we can read back the informations
         SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
@@ -332,10 +330,6 @@ public class XmlSuiteResultFormatterTest {
         assertXmlContainsAttribute(content, "Result/Module/TestCase/Test", "result", "fail");
         assertXmlContainsAttribute(
                 content, "Result/Module/TestCase/Test/Failure", "message", "module1 failed.");
-        assertXmlContainsValue(
-                content,
-                "Result/Module/TestCase/Test/Failure/StackTrace",
-                XmlEscapers.xmlContentEscaper().escape("module1 failed.\nstack\nstack\0"));
         // Test that we can read back the informations
         SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
@@ -426,7 +420,7 @@ public class XmlSuiteResultFormatterTest {
         assertXmlContainsValue(
                 content,
                 "Result/Module/TestCase/Test/Failure/StackTrace",
-                XmlEscapers.xmlContentEscaper().escape("module1 failed.\nstack\nstack\0"));
+                XmlSuiteResultFormatter.sanitizeXmlContent("module1 failed.\nstack\nstack\0"));
         // Test that we can read back the informations
         SuiteResultHolder holder = mFormatter.parseResults(mResultDir, true);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
@@ -474,10 +468,6 @@ public class XmlSuiteResultFormatterTest {
         assertXmlContainsAttribute(content, "Result/Module/TestCase/Test", "result", "fail");
         assertXmlContainsAttribute(
                 content, "Result/Module/TestCase/Test/Failure", "message", "module1 failed.");
-        assertXmlContainsValue(
-                content,
-                "Result/Module/TestCase/Test/Failure/StackTrace",
-                XmlEscapers.xmlContentEscaper().escape("module1 failed.\nstack\nstack\0"));
         // Test that we can read back the informations
         SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
