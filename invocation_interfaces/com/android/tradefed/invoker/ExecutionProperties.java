@@ -21,7 +21,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-/** Properties generated during the execution of a test or invocation. */
+/**
+ * Properties generated during the execution of a test or invocation.
+ *
+ * <p>Keys are recommended to be made unique by using namespace as appropriate to avoid cross-test
+ * overlap.
+ */
 public class ExecutionProperties {
     private final ConcurrentMap<String, String> mProperties = new ConcurrentHashMap<>();
 
