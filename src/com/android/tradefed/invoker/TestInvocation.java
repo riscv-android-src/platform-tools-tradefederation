@@ -135,6 +135,7 @@ public class TestInvocation implements ITestInvocation {
 
     private String mStatus = "(not invoked)";
     private String mStopCause = null;
+    private Long mStopRequestTime = null;
     private boolean mTestStarted = false;
 
     /**
@@ -356,6 +357,12 @@ public class TestInvocation implements ITestInvocation {
                                     mStopCause);
                     listener.invocationFailed(new RuntimeException(message));
                     PrettyPrintDelimiter.printStageDelimiter(message);
+                    if (mStopRequestTime != null) {
+                        // This is not 100% perfect since result reporting can still run a bit
+                        // longer, but this is our last opportunity to report it.
+                        InvocationMetricLogger.addInvocationMetrics(
+                                InvocationMetricKey.SHUTDOWN_HARD_LATENCY, mStopRequestTime);
+                    }
                 }
                 reportHostLog(listener, config);
                 // If host_log is reported, remove the hook
@@ -883,6 +890,9 @@ public class TestInvocation implements ITestInvocation {
     @Override
     public void notifyInvocationStopped(String message) {
         mStopCause = message;
+        if (mStopRequestTime != null) {
+            mStopRequestTime = System.currentTimeMillis();
+        }
     }
 
     /**
