@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-<<<<<<< HEAD   (617b32 Merge "resolve merge conflicts of cd6fa02756252d903cc91f1b95)
-	<classpathentry kind="src" path="src"/>
-=======
 	<classpathentry excluding="com/android/tradefed/testtype/junit4/LongevityHostRunner.java|com/android/tradefed/testtype/junit4/builder/DeviceJUnit4ClassRunnerBuilder.java" kind="src" path="src"/>
 	<classpathentry kind="src" path="clearcut_client"/>
->>>>>>> CHANGE (699381 Merge "Initial commit to get clearcut client reporting" am: )
 	<classpathentry kind="src" path="res"/>
 	<classpathentry kind="src" path="hamcrest"/>
 	<classpathentry kind="src" path="jline"/>
