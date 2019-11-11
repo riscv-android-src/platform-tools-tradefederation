@@ -183,6 +183,12 @@ ATEST_TF_MODULE = 'atest-tradefed'
 # be generated when make.
 ATEST_BUILD_ENV = {'SOONG_COLLECT_JAVA_DEPS':'true'}
 
+# For generating dependencies in module-info.json, appending deps-license in the
+# make command is a must. Also the environment variables PROJ_PATH and DEP_PATH
+# are necessary.
+DEPS_LICENSE = 'deps-license'
+DEPS_LICENSE_ENV = {'PROJ_PATH': '.', 'DEP_PATH': '.'}
+
 # Atest index path and relative dirs/caches.
 INDEX_DIR = os.path.join(os.getenv(ANDROID_HOST_OUT, ''), 'indexes')
 LOCATE_CACHE = os.path.join(INDEX_DIR, 'mlocate.db')

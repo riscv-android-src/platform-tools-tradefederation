@@ -108,7 +108,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.mod_finder.module_info.has_test_config.return_value = True
         mod_info = {'installed': ['/path/to/install'],
                     'path': [uc.MODULE_DIR],
-                    constants.MODULE_CLASS: []}
+                    constants.MODULE_CLASS: [],
+                    constants.MODULE_COMPATIBILITY_SUITES: []}
         self.mod_finder.module_info.get_module_info.return_value = mod_info
         t_infos = self.mod_finder.find_test_by_module_name(uc.MODULE_NAME)
         unittest_utils.assert_equal_testinfos(
@@ -142,7 +143,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.mod_finder.module_info.get_module_info.return_value = {
             constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
             constants.MODULE_NAME: uc.MODULE_NAME,
-            constants.MODULE_CLASS: []}
+            constants.MODULE_CLASS: [],
+            constants.MODULE_COMPATIBILITY_SUITES: []}
         t_infos = self.mod_finder.find_test_by_class_name(uc.CLASS_NAME)
         unittest_utils.assert_equal_testinfos(
             self, t_infos[0], uc.CLASS_INFO)
@@ -199,7 +201,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         mock_build.return_value = uc.CLASS_BUILD_TARGETS
         mod_info = {constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
                     constants.MODULE_PATH: [uc.MODULE_DIR],
-                    constants.MODULE_CLASS: []}
+                    constants.MODULE_CLASS: [],
+                    constants.MODULE_COMPATIBILITY_SUITES: []}
         self.mod_finder.module_info.get_module_info.return_value = mod_info
         t_infos = self.mod_finder.find_test_by_module_and_class(MODULE_CLASS)
         unittest_utils.assert_equal_testinfos(self, t_infos[0], uc.CLASS_INFO)
@@ -238,7 +241,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         mock_build.return_value = uc.CLASS_BUILD_TARGETS
         mod_info = {constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
                     constants.MODULE_PATH: [uc.CC_MODULE_DIR],
-                    constants.MODULE_CLASS: []}
+                    constants.MODULE_CLASS: [],
+                    constants.MODULE_COMPATIBILITY_SUITES: []}
         self.mod_finder.module_info.get_module_info.return_value = mod_info
         t_infos = self.mod_finder.find_test_by_module_and_class(CC_MODULE_CLASS)
         unittest_utils.assert_equal_testinfos(self, t_infos[0], uc.CC_MODULE_CLASS_INFO)
@@ -271,7 +275,9 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.mod_finder.module_info.get_module_info.return_value = {
             constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
             constants.MODULE_NAME: uc.MODULE_NAME,
-            constants.MODULE_CLASS: []}
+            constants.MODULE_CLASS: [],
+            constants.MODULE_COMPATIBILITY_SUITES: []
+            }
         t_infos = self.mod_finder.find_test_by_package_name(uc.PACKAGE)
         unittest_utils.assert_equal_testinfos(
             self, t_infos[0],
@@ -306,7 +312,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         mock_build.return_value = uc.CLASS_BUILD_TARGETS
         mod_info = {constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
                     constants.MODULE_PATH: [uc.MODULE_DIR],
-                    constants.MODULE_CLASS: []}
+                    constants.MODULE_CLASS: [],
+                    constants.MODULE_COMPATIBILITY_SUITES: []}
         self.mod_finder.module_info.get_module_info.return_value = mod_info
         t_infos = self.mod_finder.find_test_by_module_and_package(MODULE_PACKAGE)
         self.assertEqual(t_infos, None)
@@ -365,7 +372,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.mod_finder.module_info.get_module_info.return_value = {
             constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
             constants.MODULE_NAME: uc.MODULE_NAME,
-            constants.MODULE_CLASS: []}
+            constants.MODULE_CLASS: [],
+            constants.MODULE_COMPATIBILITY_SUITES: []}
 
         # Happy path testing.
         mock_dir.return_value = uc.MODULE_DIR
@@ -400,7 +408,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.mod_finder.module_info.get_module_info.return_value = {
             constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
             constants.MODULE_NAME: uc.CC_MODULE_NAME,
-            constants.MODULE_CLASS: []}
+            constants.MODULE_CLASS: [],
+            constants.MODULE_COMPATIBILITY_SUITES: []}
         mock_dir.return_value = uc.CC_MODULE_DIR
         class_path = '%s' % uc.CC_PATH
         mock_build.return_value = uc.CLASS_BUILD_TARGETS
@@ -426,7 +435,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.mod_finder.module_info.get_module_info.return_value = {
             constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
             constants.MODULE_NAME: uc.MODULE_NAME,
-            constants.MODULE_CLASS: []}
+            constants.MODULE_CLASS: [],
+            constants.MODULE_COMPATIBILITY_SUITES: []}
         t_infos = self.mod_finder.find_test_by_path(class_dir)
         unittest_utils.assert_equal_testinfos(
             self, uc.PATH_INFO, t_infos[0])
@@ -442,7 +452,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.mod_finder.module_info.get_module_info.return_value = {
             constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
             constants.MODULE_NAME: uc.CC_MODULE_NAME,
-            constants.MODULE_CLASS: []}
+            constants.MODULE_CLASS: [],
+            constants.MODULE_COMPATIBILITY_SUITES: []}
         t_infos = self.mod_finder.find_test_by_path(class_dir)
         unittest_utils.assert_equal_testinfos(
             self, uc.CC_PATH_INFO, t_infos[0])
@@ -468,7 +479,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.mod_finder.module_info.get_module_info.return_value = {
             constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
             constants.MODULE_NAME: uc.CC_MODULE_NAME,
-            constants.MODULE_CLASS: []}
+            constants.MODULE_CLASS: [],
+            constants.MODULE_COMPATIBILITY_SUITES: []}
         t_infos = self.mod_finder.find_test_by_cc_class_name(uc.CC_CLASS_NAME)
         unittest_utils.assert_equal_testinfos(
             self, t_infos[0], uc.CC_CLASS_INFO)
