@@ -50,6 +50,7 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     // and report a "null" as a test method. This creates a lot of issues in the reporting pipeline
     // so catch it, and avoid it at the root.
     private TestIdentifier mNullMethod = null;
+    private String mNullStack = null;
 
     public TestRunToTestInvocationForwarder(Collection<ITestLifeCycleReceiver> listeners) {
         mListeners = listeners;
@@ -119,6 +120,7 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     @Override
     public void testFailed(TestIdentifier testId, String trace) {
         if (mNullMethod != null && mNullMethod.equals(testId)) {
+            mNullStack = trace;
             return;
         }
         for (ITestLifeCycleReceiver listener : mListeners) {
@@ -154,9 +156,13 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     public void testEnded(TestIdentifier testId, Map<String, String> testMetrics) {
         for (ITestLifeCycleReceiver listener : mListeners) {
             if (mNullMethod != null && mNullMethod.equals(testId)) {
-                listener.testRunFailed(
-                        String.format(
-                                ERROR_MESSAGE_FORMAT, mNullMethod.getTestName(), mNullMethod));
+                String message =
+                        String.format(ERROR_MESSAGE_FORMAT, mNullMethod.getTestName(), mNullMethod);
+                if (mNullStack != null) {
+                    message = String.format("%s Stack:%s", message, mNullStack);
+                }
+                listener.testRunFailed(message);
+                mNullStack = null;
                 continue;
             }
             try {
