@@ -24,6 +24,9 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -60,6 +63,8 @@ public class FileDownloadCache {
 
     /** A map of remote file paths to locks. */
     private final Map<String, ReentrantLock> mFileLocks = new CollapsedKeyMap<>();
+
+    private final Map<String, FileLock> mJvmLocks = new CollapsedKeyMap<>();
 
     private long mCurrentCacheSize = 0;
 
@@ -176,8 +181,23 @@ public class FileDownloadCache {
 
     /** Acquires the lock for a file. */
     protected void lockFile(String remoteFilePath) {
+        // Get a JVM level lock first
+        synchronized (mJvmLocks) {
+            FileLock fLock = mJvmLocks.get(remoteFilePath);
+            if (fLock == null) {
+                File f = new File(mCacheRoot, convertPath(remoteFilePath));
+                try {
+                    f.getParentFile().mkdirs();
+                    f.createNewFile();
+                    fLock = FileChannel.open(f.toPath(), StandardOpenOption.WRITE).lock();
+                    mJvmLocks.put(remoteFilePath, fLock);
+                } catch (IOException e) {
+                    CLog.e(e);
+                }
+            }
+        }
+        // Get concurrent lock for inside the JVM
         ReentrantLock fileLock;
-
         synchronized (mFileLocks) {
             fileLock = mFileLocks.get(remoteFilePath);
             if (fileLock == null) {
@@ -194,6 +214,23 @@ public class FileDownloadCache {
      * @return true if the lock was acquired, and false otherwise.
      */
     protected boolean tryLockFile(String remoteFilePath) {
+        synchronized (mJvmLocks) {
+            FileLock fLock = mJvmLocks.get(remoteFilePath);
+            if (fLock == null) {
+                File f = new File(mCacheRoot, convertPath(remoteFilePath));
+                try {
+                    if (f.exists()) {
+                        fLock = FileChannel.open(f.toPath(), StandardOpenOption.WRITE).tryLock();
+                        mJvmLocks.put(remoteFilePath, fLock);
+                    }
+                } catch (IOException e) {
+                    CLog.e(e);
+                }
+            }
+            if (fLock == null) {
+                return false;
+            }
+        }
         synchronized (mFileLocks) {
             ReentrantLock fileLock = mFileLocks.get(remoteFilePath);
             if (fileLock == null) {
@@ -217,6 +254,18 @@ public class FileDownloadCache {
                     mFileLocks.remove(remoteFilePath);
                 }
                 fileLock.unlock();
+            }
+        }
+        // Release the JVM level lock
+        synchronized (mJvmLocks) {
+            FileLock fLock = mJvmLocks.get(remoteFilePath);
+            if (fLock != null) {
+                mJvmLocks.remove(remoteFilePath);
+                try {
+                    fLock.release();
+                } catch (IOException e) {
+                    CLog.e(e);
+                }
             }
         }
     }
@@ -269,7 +318,8 @@ public class FileDownloadCache {
             try {
                 if (!download
                         && cachedFile.exists()
-                        && !downloader.isFresh(cachedFile, remotePath)) {
+                        && (cachedFile.length() == 0L
+                                || !downloader.isFresh(cachedFile, remotePath))) {
                     Log.d(
                             LOG_TAG,
                             String.format(
@@ -280,6 +330,10 @@ public class FileDownloadCache {
                 }
                 if (download || !cachedFile.exists()) {
                     cachedFile.getParentFile().mkdirs();
+                    // TODO: handle folder better
+                    if (cachedFile.exists()) {
+                        cachedFile.delete();
+                    }
                     downloadFile(downloader, remotePath, cachedFile);
                 } else {
                     Log.d(
