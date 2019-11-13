@@ -813,7 +813,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
                 isGenericObject = true;
             }
             ConfigurationUtil.dumpClassToXml(
-                    serializer, config, configObj, isGenericObject, new ArrayList<>(), true, true);
+                    serializer, config, configObj, isGenericObject, new ArrayList<>(), true, false);
         }
         serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
         serializer.endDocument();
