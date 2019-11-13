@@ -84,6 +84,13 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
                             new DeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
                             mAllocationMonitor);
             testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+        } else if (idevice instanceof StubLocalAndroidVirtualDevice) {
+            // Virtual device to be launched by TradeFed locally.
+            testDevice =
+                    new LocalAndroidVirtualDevice(
+                            idevice,
+                            new DeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
+                            mAllocationMonitor);
         } else if (idevice instanceof TcpDevice) {
             // Special device for Tcp device for custom handling.
             testDevice = new RemoteAndroidDevice(idevice,

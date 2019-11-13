@@ -91,7 +91,7 @@ public class TestRunToTestInvocationForwarderTest {
         // Second bad method is not propagated, instead we fail the run
         mMockListener.testRunFailed(
                 String.format(
-                        TestRunToTestInvocationForwarder.ERROR_MESSAGE_FORMAT,
+                        TestRunToTestInvocationForwarder.ERROR_MESSAGE_FORMAT + " Stack:I failed",
                         tid2.getTestName(),
                         tid2));
 
@@ -126,7 +126,7 @@ public class TestRunToTestInvocationForwarderTest {
         // Second bad method is not propagated, instead we fail the run
         mMockListener.testRunFailed(
                 String.format(
-                        TestRunToTestInvocationForwarder.ERROR_MESSAGE_FORMAT,
+                        TestRunToTestInvocationForwarder.ERROR_MESSAGE_FORMAT + " Stack:I failed",
                         tid2.getTestName(),
                         tid2));
 
