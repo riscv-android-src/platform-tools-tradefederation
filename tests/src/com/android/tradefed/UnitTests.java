@@ -61,7 +61,6 @@ import com.android.tradefed.device.DeviceSelectionOptionsTest;
 import com.android.tradefed.device.DeviceStateMonitorTest;
 import com.android.tradefed.device.DumpsysPackageReceiverTest;
 import com.android.tradefed.device.FastbootHelperTest;
-import com.android.tradefed.device.LocalAndroidVirtualDeviceTest;
 import com.android.tradefed.device.ManagedDeviceListTest;
 import com.android.tradefed.device.ManagedTestDeviceFactoryTest;
 import com.android.tradefed.device.NativeDeviceTest;
@@ -434,7 +433,6 @@ import org.junit.runners.Suite.SuiteClasses;
     DeviceStateMonitorTest.class,
     DumpsysPackageReceiverTest.class,
     FastbootHelperTest.class,
-    LocalAndroidVirtualDeviceTest.class,
     ManagedDeviceListTest.class,
     ManagedTestDeviceFactoryTest.class,
     NativeDeviceTest.class,
