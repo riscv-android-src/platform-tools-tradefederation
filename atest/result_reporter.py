@@ -141,13 +141,19 @@ class ResultReporter(object):
               'VtsTradefedTestRunner': {'Module1': RunStat(passed:4, failed:0)}}
     """
 
-    def __init__(self):
+    def __init__(self, silent=False):
+        """Init ResultReporter.
+
+        Args:
+            silent: A boolean of silence or not.
+        """
         self.run_stats = RunStat()
         self.runners = OrderedDict()
         self.failed_tests = []
         self.all_test_results = []
         self.pre_test = None
         self.log_path = None
+        self.silent = silent
 
     def process_test_result(self, test):
         """Given the results of a single test, update stats and print results.
@@ -164,7 +170,8 @@ class ResultReporter(object):
             self._print_group_title(test)
         self._update_stats(test,
                            self.runners[test.runner_name][test.group_name])
-        self._print_result(test)
+        if not self.silent:
+            self._print_result(test)
 
     def runner_failure(self, runner_name, failure_msg):
         """Report a runner failure.
