@@ -219,6 +219,19 @@ public class InstrumentationTestTest {
         assertThat(runner.getRunOptions()).contains("--no-hidden-api-checks");
     }
 
+    /** Test normal run scenario with --no-hidden-api-check specified */
+    @Test
+    public void testRun_testApiCheck() throws Exception {
+        doReturn(true).when(mMockTestDevice).checkApiLevelAgainstNextRelease(30);
+        OptionSetter setter = new OptionSetter(mInstrumentationTest);
+        setter.setOptionValue("hidden-api-checks", "true");
+        setter.setOptionValue("test-api-checks", "false");
+        RemoteAndroidTestRunner runner =
+                (RemoteAndroidTestRunner)
+                        mInstrumentationTest.createRemoteAndroidTestRunner("", "", mMockIDevice);
+        assertThat(runner.getRunOptions()).contains("--no-test-api-checks");
+    }
+
     /** Test normal run scenario with --no-isolated-storage specified */
     @Test
     public void testRun_isolatedStorage() throws Exception {
