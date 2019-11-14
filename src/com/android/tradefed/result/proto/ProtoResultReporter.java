@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.result.proto;
 
+import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -28,6 +29,7 @@ import com.android.tradefed.result.proto.TestRecordProto.ChildReference;
 import com.android.tradefed.result.proto.TestRecordProto.DebugInfo;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.result.proto.TestRecordProto.TestStatus;
+import com.android.tradefed.result.retry.ISupportGranularResults;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.StreamUtil;
 
@@ -44,7 +46,15 @@ import java.util.UUID;
  * extended to handle what to do with the final proto in {@link #processFinalProto(TestRecord)}.
  */
 @OptionClass(alias = "proto-reporter")
-public abstract class ProtoResultReporter implements ITestInvocationListener, ILogSaverListener {
+public abstract class ProtoResultReporter
+        implements ITestInvocationListener, ILogSaverListener, ISupportGranularResults {
+
+    @Option(
+        name = "enable-granular-attempts",
+        description =
+                "Whether or not to allow this reporter receiving granular attempts. Feature flag."
+    )
+    private boolean mReportGranularResults = true;
 
     private Stack<TestRecord.Builder> mLatestChild;
     private TestRecord.Builder mInvocationRecordBuilder;
@@ -54,6 +64,11 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
     private Throwable mInvocationFailure = null;
     /** Whether or not a testModuleStart had currently been called. */
     private boolean mModuleInProgress = false;
+
+    @Override
+    public boolean supportGranularResults() {
+        return mReportGranularResults;
+    }
 
     /**
      * Handling of the partial invocation test record proto after {@link
@@ -100,8 +115,9 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
      * occurred.
      *
      * @param runRecord The finalized proto representing the run.
+     * @param moduleInProgress whether or not a module is in progress.
      */
-    public void processTestRunEnded(TestRecord runRecord) {}
+    public void processTestRunEnded(TestRecord runRecord, boolean moduleInProgress) {}
 
     /**
      * Handling of the partial test case record proto after {@link #testStarted(TestDescription,
@@ -169,7 +185,9 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
 
         if (mInvocationFailure != null) {
             DebugInfo.Builder debugBuilder = DebugInfo.newBuilder();
-            debugBuilder.setErrorMessage(mInvocationFailure.getMessage());
+            if (mInvocationFailure.getMessage() != null) {
+                debugBuilder.setErrorMessage(mInvocationFailure.getMessage());
+            }
             debugBuilder.setTrace(StreamUtil.getStackTrace(mInvocationFailure));
             mInvocationRecordBuilder.setDebugInfo(debugBuilder);
         }
@@ -286,7 +304,7 @@ public abstract class ProtoResultReporter implements ITestInvocationListener, IL
         TestRecord runRecord = runBuilder.build();
         parentBuilder.addChildren(createChildReference(runRecord));
         try {
-            processTestRunEnded(runRecord);
+            processTestRunEnded(runRecord, mModuleInProgress);
         } catch (RuntimeException e) {
             CLog.e("Failed to process test run end:");
             CLog.e(e);

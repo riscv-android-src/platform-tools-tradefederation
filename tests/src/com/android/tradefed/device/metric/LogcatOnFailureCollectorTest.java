@@ -18,9 +18,11 @@ package com.android.tradefed.device.metric;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.device.ILogcatReceiver;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.NullDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -44,6 +46,7 @@ public class LogcatOnFailureCollectorTest {
     private TestableLogcatOnFailureCollector mCollector;
     private ITestInvocationListener mMockListener;
     private ITestDevice mMockDevice;
+    private ITestDevice mNullMockDevice;
 
     private ITestInvocationListener mTestListener;
     private IInvocationContext mContext;
@@ -79,20 +82,26 @@ public class LogcatOnFailureCollectorTest {
     }
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         mMockDevice = EasyMock.createMock(ITestDevice.class);
+        mNullMockDevice = EasyMock.createMock(ITestDevice.class);
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockReceiver = EasyMock.createMock(ILogcatReceiver.class);
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
         mCollector = new TestableLogcatOnFailureCollector();
         mContext = new InvocationContext();
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
+        mContext.addAllocatedDevice("second_null_device", mNullMockDevice);
 
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("serial");
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
+
+        EasyMock.expect(mNullMockDevice.getIDevice()).andStubReturn(new NullDevice("null-dev"));
     }
 
     @Test
     public void testCollect() throws Exception {
+        EasyMock.expect(mMockDevice.getApiLevel()).andReturn(20);
         mMockReceiver.start();
         mMockReceiver.clear();
         mMockReceiver.stop();
@@ -116,14 +125,49 @@ public class LogcatOnFailureCollectorTest {
                 EasyMock.eq(LogDataType.LOGCAT),
                 EasyMock.anyObject());
 
-        EasyMock.replay(mMockListener, mMockDevice, mMockReceiver);
+        EasyMock.replay(mMockListener, mMockDevice, mMockReceiver, mNullMockDevice);
         mTestListener = mCollector.init(mContext, mMockListener);
         mTestListener.testRunStarted("runName", 1);
         mTestListener.testStarted(test);
         mTestListener.testFailed(test, "I failed");
         mTestListener.testEnded(test, new HashMap<String, Metric>());
         mTestListener.testRunEnded(0L, new HashMap<String, Metric>());
-        EasyMock.verify(mMockListener, mMockDevice, mMockReceiver);
+        EasyMock.verify(mMockListener, mMockDevice, mMockReceiver, mNullMockDevice);
+        // Ensure the callback went through
+        assertTrue(mCollector.mOnTestStartCalled);
+        assertTrue(mCollector.mOnTestFailCalled);
+    }
+
+    /**
+     * If the API level support of the device is lower than a threshold we fall back to a different
+     * collection for the logcat.
+     */
+    @Test
+    public void testCollect_legacy() throws Exception {
+        EasyMock.expect(mMockDevice.getApiLevel()).andReturn(18);
+        mMockListener.testRunStarted("runName", 1);
+        TestDescription test = new TestDescription("class", "test");
+        mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
+        mMockListener.testFailed(EasyMock.eq(test), EasyMock.anyObject());
+        mMockListener.testEnded(
+                EasyMock.eq(test),
+                EasyMock.anyLong(),
+                EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
+        mMockDevice.executeShellCommand(EasyMock.eq("logcat -t 5000"), EasyMock.anyObject());
+        mMockListener.testLog(
+                EasyMock.eq("class#test-serial-logcat-on-failure"),
+                EasyMock.eq(LogDataType.LOGCAT),
+                EasyMock.anyObject());
+
+        EasyMock.replay(mMockListener, mMockDevice, mMockReceiver, mNullMockDevice);
+        mTestListener = mCollector.init(mContext, mMockListener);
+        mTestListener.testRunStarted("runName", 1);
+        mTestListener.testStarted(test);
+        mTestListener.testFailed(test, "I failed");
+        mTestListener.testEnded(test, new HashMap<String, Metric>());
+        mTestListener.testRunEnded(0L, new HashMap<String, Metric>());
+        EasyMock.verify(mMockListener, mMockDevice, mMockReceiver, mNullMockDevice);
         // Ensure the callback went through
         assertTrue(mCollector.mOnTestStartCalled);
         assertTrue(mCollector.mOnTestFailCalled);
@@ -132,15 +176,16 @@ public class LogcatOnFailureCollectorTest {
     @Test
     public void testCollect_noRuns() throws Exception {
         // If there was no runs, nothing should be done.
-        EasyMock.replay(mMockListener, mMockDevice, mMockReceiver);
+        EasyMock.replay(mMockListener, mMockDevice, mMockReceiver, mNullMockDevice);
         mTestListener = mCollector.init(mContext, mMockListener);
-        EasyMock.verify(mMockListener, mMockDevice, mMockReceiver);
+        EasyMock.verify(mMockListener, mMockDevice, mMockReceiver, mNullMockDevice);
         assertFalse(mCollector.mOnTestStartCalled);
         assertFalse(mCollector.mOnTestFailCalled);
     }
 
     @Test
     public void testCollect_multiRun() throws Exception {
+        EasyMock.expect(mMockDevice.getApiLevel()).andStubReturn(20);
         mMockReceiver.start();
         EasyMock.expectLastCall().times(2);
         mMockReceiver.clear();
@@ -187,7 +232,7 @@ public class LogcatOnFailureCollectorTest {
                 EasyMock.eq(LogDataType.LOGCAT),
                 EasyMock.anyObject());
 
-        EasyMock.replay(mMockListener, mMockDevice, mMockReceiver);
+        EasyMock.replay(mMockListener, mMockDevice, mMockReceiver, mNullMockDevice);
         mTestListener = mCollector.init(mContext, mMockListener);
         mTestListener.testRunStarted("runName", 1);
         mTestListener.testStarted(test);
@@ -200,7 +245,7 @@ public class LogcatOnFailureCollectorTest {
         mTestListener.testFailed(test2, "I failed");
         mTestListener.testEnded(test2, new HashMap<String, Metric>());
         mTestListener.testRunEnded(0L, new HashMap<String, Metric>());
-        EasyMock.verify(mMockListener, mMockDevice, mMockReceiver);
+        EasyMock.verify(mMockListener, mMockDevice, mMockReceiver, mNullMockDevice);
         // Ensure the callback went through
         assertTrue(mCollector.mOnTestStartCalled);
         assertTrue(mCollector.mOnTestFailCalled);

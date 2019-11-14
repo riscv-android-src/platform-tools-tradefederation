@@ -36,19 +36,21 @@ import com.android.tradefed.suite.checker.StatusCheckerResult.CheckStatus;
 public class UserChecker implements ISystemStatusChecker {
 
     @Option(
-            name = "user-type",
-            description = "The type of user to switch to before each module run.")
+        name = "user-type",
+        description = "The type of user to switch to before each module run."
+    )
     private UserInfo.UserType mUserToSwitchTo = UserInfo.UserType.CURRENT;
 
     @Option(
-            name = "user-cleanup",
-            description =
-                    "If true, attempt to cleanup any changes made to users:"
-                            + "\n - switch to previous current-user"
-                            + "\n - remove any created users"
-                            + "\n\nThis does NOT:"
-                            + "\n - attempt to re-create a user that was deleted"
-                            + "\n - start/stop existing users if their running status changed")
+        name = "user-cleanup",
+        description =
+                "If true, attempt to cleanup any changes made to users:"
+                        + "\n - switch to previous current-user"
+                        + "\n - remove any created users"
+                        + "\n\nThis does NOT:"
+                        + "\n - attempt to re-create a user that was deleted"
+                        + "\n - start/stop existing users if their running status changed"
+    )
     private boolean mCleanup = false;
 
     private UserInfo mPreCurrentUserInfo = null;
@@ -158,7 +160,7 @@ public class UserChecker implements ISystemStatusChecker {
 
     /** Return the userId of a matching user, or -1 if none match. */
     private int findMatchingUser(Collection<UserInfo> usersInfo) {
-        for (UserInfo userInfo : mPreUsersInfo.values()) {
+        for (UserInfo userInfo : usersInfo) {
             if (userInfo.isUserType(mUserToSwitchTo, mPreCurrentUserInfo.userId())) {
                 return userInfo.userId();
             }

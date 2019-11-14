@@ -63,7 +63,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.sandbox.ISandbox;
-import com.android.tradefed.sandbox.TradefedSandbox;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.retry.RetryRescheduler;
 import com.android.tradefed.util.ArrayUtil;
@@ -718,7 +717,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          * invocations.
          */
         public void stopInvocation(String message) {
-            getInvocation().notifyInvocationStopped();
+            getInvocation().notifyInvocationStopped(message);
             for (ITestDevice device : mInvocationContext.getDevices()) {
                 if (TestDeviceState.ONLINE.equals(device.getDeviceState())) {
                     // Kill all running processes on device.
@@ -735,7 +734,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 // state during the interruption we at least do minimal tear down of devices with
                 // their built-in clean up.
                 CLog.d("Attempting postInvocationTearDown in stopInvocation");
-                device.postInvocationTearDown();
+                device.postInvocationTearDown(null);
             }
             // If invocation is not currently in an interruptible state we provide a timer
             // after which it will become interruptible.
@@ -1061,7 +1060,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                         // make sure not to record since it may contains password
                         System.out.println(
                                 String.format(
-                                        "The command %s will be rescheduled.",
+                                        "Command will be rescheduled: %s",
                                         Arrays.toString(cmd.getCommandTracker().getArgs())));
                         mUnscheduledWarning.add(cmd);
                     }
@@ -1176,7 +1175,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /** Create a {@link ISandbox} that the invocation will use to run. */
     public ISandbox createSandbox() {
-        return new TradefedSandbox();
+        return GlobalConfiguration.getInstance().getSandboxFactory().createSandbox();
     }
 
     private IConfiguration createConfiguration(String[] args) throws ConfigurationException {
@@ -1211,7 +1210,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 CLog.logAndDisplay(LogLevel.ERROR, "Failed to get json command usage: %s", e);
             }
         } else if (config.getCommandOptions().isDryRunMode()) {
-            config.validateOptions(false);
+            config.validateOptions();
             String cmdLine = QuotationAwareTokenizer.combineTokens(args);
             CLog.d("Dry run mode; skipping adding command: %s", cmdLine);
             if (config.getCommandOptions().isNoisyDryRunMode()) {
@@ -1766,7 +1765,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         for (InvocationThread thread : mInvocationThreadMap.values()) {
             thread.disableReporters();
             // TODO(b/118891716): Improve tear down
-            thread.stopInvocation("TF is shutting down");
+            thread.stopInvocation("Tradefed is shutting down");
         }
         getDeviceManager().terminateHard();
     }
@@ -2253,6 +2252,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     @Override
     public synchronized int getReadyCommandCount() {
         return mReadyCommands.size();
+    }
+
+    @Override
+    public synchronized int getExecutingCommandCount() {
+        return mExecutingCommands.size();
     }
 
     @Override

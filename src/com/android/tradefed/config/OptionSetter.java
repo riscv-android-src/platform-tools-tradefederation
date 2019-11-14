@@ -30,6 +30,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -66,7 +67,6 @@ import java.util.regex.PatternSyntaxException;
  */
 @SuppressWarnings("rawtypes")
 public class OptionSetter {
-
     static final String BOOL_FALSE_PREFIX = "no-";
     private static final HashMap<Class<?>, Handler> handlers = new HashMap<Class<?>, Handler>();
     static final char NAMESPACE_SEPARATOR = ':';
@@ -95,6 +95,7 @@ public class OptionSetter {
         handlers.put(File.class, new FileHandler());
         handlers.put(TimeVal.class, new TimeValHandler());
         handlers.put(Pattern.class, new PatternHandler());
+        handlers.put(Duration.class, new DurationHandler());
     }
 
 
@@ -533,10 +534,8 @@ public class OptionSetter {
                     "internal error when setting option '%s'", optionName), e);
 
         }
-
         return fieldWasSet;
     }
-
 
     /**
      * Sets the given {@link Option} fields value.
@@ -986,7 +985,7 @@ public class OptionSetter {
         }
     }
 
-    private abstract static class Handler {
+    private abstract static class Handler<T> {
         // Only BooleanHandler should ever override this.
         boolean isBoolean() {
             return false;
@@ -1001,16 +1000,16 @@ public class OptionSetter {
          * Returns an object of appropriate type for the given Handle, corresponding to 'valueText'.
          * Returns null on failure.
          */
-        abstract Object translate(String valueText);
+        abstract T translate(String valueText);
     }
 
-    private static class BooleanHandler extends Handler {
+    private static class BooleanHandler extends Handler<Boolean> {
         @Override boolean isBoolean() {
             return true;
         }
 
         @Override
-        Object translate(String valueText) {
+        Boolean translate(String valueText) {
             if (valueText.equalsIgnoreCase("true") || valueText.equalsIgnoreCase("yes")) {
                 return Boolean.TRUE;
             } else if (valueText.equalsIgnoreCase("false") || valueText.equalsIgnoreCase("no")) {
@@ -1020,9 +1019,9 @@ public class OptionSetter {
         }
     }
 
-    private static class ByteHandler extends Handler {
+    private static class ByteHandler extends Handler<Byte> {
         @Override
-        Object translate(String valueText) {
+        Byte translate(String valueText) {
             try {
                 return Byte.parseByte(valueText);
             } catch (NumberFormatException ex) {
@@ -1031,9 +1030,9 @@ public class OptionSetter {
         }
     }
 
-    private static class ShortHandler extends Handler {
+    private static class ShortHandler extends Handler<Short> {
         @Override
-        Object translate(String valueText) {
+        Short translate(String valueText) {
             try {
                 return Short.parseShort(valueText);
             } catch (NumberFormatException ex) {
@@ -1042,9 +1041,9 @@ public class OptionSetter {
         }
     }
 
-    private static class IntegerHandler extends Handler {
+    private static class IntegerHandler extends Handler<Integer> {
         @Override
-        Object translate(String valueText) {
+        Integer translate(String valueText) {
             try {
                 return Integer.parseInt(valueText);
             } catch (NumberFormatException ex) {
@@ -1053,9 +1052,9 @@ public class OptionSetter {
         }
     }
 
-    private static class LongHandler extends Handler {
+    private static class LongHandler extends Handler<Long> {
         @Override
-        Object translate(String valueText) {
+        Long translate(String valueText) {
             try {
                 return Long.parseLong(valueText);
             } catch (NumberFormatException ex) {
@@ -1064,12 +1063,10 @@ public class OptionSetter {
         }
     }
 
-    private static class TimeValLongHandler extends Handler {
-        /**
-         * We parse the string as a time value, and return a {@code long}
-         */
+    private static class TimeValLongHandler extends Handler<Long> {
+        /** We parse the string as a time value, and return a {@code long} */
         @Override
-        Object translate(String valueText) {
+        Long translate(String valueText) {
             try {
                 return TimeVal.fromString(valueText);
 
@@ -1079,12 +1076,10 @@ public class OptionSetter {
         }
     }
 
-    private static class TimeValHandler extends Handler {
-        /**
-         * We parse the string as a time value, and return a {@code TimeVal}
-         */
+    private static class TimeValHandler extends Handler<TimeVal> {
+        /** We parse the string as a time value, and return a {@code TimeVal} */
         @Override
-        Object translate(String valueText) {
+        TimeVal translate(String valueText) {
             try {
                 return new TimeVal(valueText);
 
@@ -1094,12 +1089,28 @@ public class OptionSetter {
         }
     }
 
-    private static class PatternHandler extends Handler {
+    private static class DurationHandler extends Handler<Duration> {
         /**
-         * We parse the string as a regex pattern, and return a {@code Pattern}
+         * We parse the string as a time value, and return a {@code Duration}.
+         *
+         * <p>Both the {@link TimeVal} and {@link Duration#parse(CharSequence)} formats are
+         * supported.
          */
         @Override
-        Object translate(String valueText) {
+        Duration translate(String valueText) {
+            try {
+                return Duration.ofMillis(TimeVal.fromString(valueText));
+            } catch (NumberFormatException e) {
+
+            }
+            return Duration.parse(valueText);
+        }
+    }
+
+    private static class PatternHandler extends Handler<Pattern> {
+        /** We parse the string as a regex pattern, and return a {@code Pattern} */
+        @Override
+        Pattern translate(String valueText) {
             try {
                 return Pattern.compile(valueText);
             } catch (PatternSyntaxException ex) {
@@ -1108,9 +1119,9 @@ public class OptionSetter {
         }
     }
 
-    private static class FloatHandler extends Handler {
+    private static class FloatHandler extends Handler<Float> {
         @Override
-        Object translate(String valueText) {
+        Float translate(String valueText) {
             try {
                 return Float.parseFloat(valueText);
             } catch (NumberFormatException ex) {
@@ -1119,9 +1130,9 @@ public class OptionSetter {
         }
     }
 
-    private static class DoubleHandler extends Handler {
+    private static class DoubleHandler extends Handler<Double> {
         @Override
-        Object translate(String valueText) {
+        Double translate(String valueText) {
             try {
                 return Double.parseDouble(valueText);
             } catch (NumberFormatException ex) {
@@ -1130,16 +1141,16 @@ public class OptionSetter {
         }
     }
 
-    private static class StringHandler extends Handler {
+    private static class StringHandler extends Handler<String> {
         @Override
-        Object translate(String valueText) {
+        String translate(String valueText) {
             return valueText;
         }
     }
 
-    private static class FileHandler extends Handler {
+    private static class FileHandler extends Handler<File> {
         @Override
-        Object translate(String valueText) {
+        File translate(String valueText) {
             return new File(valueText);
         }
     }

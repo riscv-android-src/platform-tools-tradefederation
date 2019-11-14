@@ -168,7 +168,7 @@ public class ShardMasterResultForwarderTest {
         invocationLogger.invocationEnded(500L);
 
         // Log saver only saved the file once.
-        Mockito.verify(mMockLogSaver, times(1))
+        Mockito.verify(mMockLogSaver, times(2))
                 .saveLogData(Mockito.any(), Mockito.any(), Mockito.any());
         Mockito.verify(mMockLogListener, times(1)).invocationStarted(Mockito.eq(main));
         Mockito.verify(mMockLogListener, times(1))

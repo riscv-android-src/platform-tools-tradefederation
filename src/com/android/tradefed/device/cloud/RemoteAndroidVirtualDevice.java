@@ -43,7 +43,11 @@ import com.google.common.net.HostAndPort;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import javax.annotation.Nullable;
 
 /**
  * Extends {@link RemoteAndroidDevice} behavior for a full stack android device running in the
@@ -51,11 +55,6 @@ import java.util.List;
  * <hostname>:<portnumber> in adb.
  */
 public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements ITestLoggerReceiver {
-
-    /** The directory where to find debug logs for a nested remote instance. */
-    public static final String NESTED_REMOTE_LOG_DIR = "${HOME}/../vsoc-01/cuttlefish_runtime/";
-    /** The directory where to find debug logs for an emulator instance. */
-    public static final String EMULATOR_REMOTE_LOG_DIR = "/home/vsoc-01/log/";
 
     private String mInitialSerial;
     private GceAvdInfo mGceAvd;
@@ -68,6 +67,8 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
     private static final long WAIT_AFTER_REBOOT = 60 * 1000;
     private static final long WAIT_FOR_TUNNEL_OFFLINE = 5 * 1000;
     private static final int WAIT_TIME_DIVISION = 4;
+
+    private static final long FETCH_TOMBSTONES_TIMEOUT_MS = 5 * 60 * 1000;
 
     /**
      * Creates a {@link RemoteAndroidVirtualDevice}.
@@ -83,15 +84,9 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
 
     /** {@inheritDoc} */
     @Override
-    public void preInvocationSetup(IBuildInfo info)
-            throws TargetSetupError, DeviceNotAvailableException {
-        preInvocationSetup(info, null);
-    }
-
-    /** {@inheritDoc} */
-    @Override
     public void preInvocationSetup(IBuildInfo info, List<IBuildInfo> testResourceBuildInfos)
             throws TargetSetupError, DeviceNotAvailableException {
+        super.preInvocationSetup(info, testResourceBuildInfos);
         try {
             mGceAvd = null;
             mGceSshMonitor = null;
@@ -156,7 +151,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
 
     /** {@inheritDoc} */
     @Override
-    public void postInvocationTearDown() {
+    public void postInvocationTearDown(Throwable exception) {
         try {
             CLog.i("Invocation tear down for device %s", getSerialNumber());
             // Log the last part of the logcat from the tear down.
@@ -197,6 +192,10 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                 CommonLogRemoteFileUtil.fetchCommonFiles(
                         mTestLogger, mGceAvd, getOptions(), getRunUtil());
 
+                // Fetch all tombstones if any.
+                CommonLogRemoteFileUtil.fetchTombstones(
+                        mTestLogger, mGceAvd, getOptions(), getRunUtil());
+
                 // Cleanup GCE first to make sure ssh tunnel has nowhere to go.
                 if (!getOptions().shouldSkipTearDown()) {
                     getGceHandler().shutdownGce();
@@ -215,7 +214,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
             }
         } finally {
             // Ensure parent postInvocationTearDown is always called.
-            super.postInvocationTearDown();
+            super.postInvocationTearDown(exception);
         }
     }
 
@@ -344,6 +343,67 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
         getRunUtil().sleep(WAIT_FOR_TUNNEL_OFFLINE);
         waitForTunnelOnline(WAIT_FOR_TUNNEL_ONLINE);
         waitForAdbConnect(WAIT_FOR_ADB_CONNECT);
+    }
+
+    /**
+     * Cuttlefish has a special feature that brings the tombstones to the remote host where we can
+     * get them directly.
+     */
+    @Override
+    public List<File> getTombstones() throws DeviceNotAvailableException {
+        InstanceType type = getOptions().getInstanceType();
+        if (InstanceType.CUTTLEFISH.equals(type) || InstanceType.REMOTE_NESTED_AVD.equals(type)) {
+            List<File> tombs = new ArrayList<>();
+            String remoteRuntimePath =
+                    String.format(
+                                    CommonLogRemoteFileUtil.NESTED_REMOTE_LOG_DIR,
+                                    getOptions().getInstanceUser())
+                            + "tombstones/*";
+            File localDir = null;
+            try {
+                localDir = FileUtil.createTempDir("tombstones");
+            } catch (IOException e) {
+                CLog.e(e);
+                return tombs;
+            }
+            if (!fetchRemoteDir(localDir, remoteRuntimePath)) {
+                CLog.e("Failed to pull %s", remoteRuntimePath);
+                FileUtil.recursiveDelete(localDir);
+            } else {
+                tombs.addAll(Arrays.asList(localDir.listFiles()));
+                localDir.deleteOnExit();
+            }
+            return tombs;
+        }
+        // If it's not Cuttlefish, use the standard call.
+        return super.getTombstones();
+    }
+
+    /**
+     * Returns the {@link GceAvdInfo} from the created remote VM. Returns null if the bring up was
+     * not successful.
+     */
+    public @Nullable GceAvdInfo getAvdInfo() {
+        if (mGceAvd == null) {
+            CLog.w("Requested getAvdInfo() but GceAvdInfo is null.");
+            return null;
+        }
+        if (!GceStatus.SUCCESS.equals(mGceAvd.getStatus())) {
+            CLog.w("Requested getAvdInfo() but the bring up was not successful, returning null.");
+            return null;
+        }
+        return mGceAvd;
+    }
+
+    @VisibleForTesting
+    boolean fetchRemoteDir(File localDir, String remotePath) {
+        return RemoteFileUtil.fetchRemoteDir(
+                mGceAvd,
+                getOptions(),
+                getRunUtil(),
+                FETCH_TOMBSTONES_TIMEOUT_MS,
+                remotePath,
+                localDir);
     }
 
     /**

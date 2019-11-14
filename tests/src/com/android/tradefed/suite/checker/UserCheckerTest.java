@@ -40,6 +40,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyInt;
 
+
 /** Unit tests for {@link UserChecker} */
 @RunWith(JUnit4.class)
 public class UserCheckerTest {

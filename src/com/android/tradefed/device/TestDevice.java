@@ -83,15 +83,22 @@ public class TestDevice extends NativeDevice {
     static final String LIST_PACKAGES_CMD = "pm list packages -f";
     private static final Pattern PACKAGE_REGEX = Pattern.compile("package:(.*)=(.*)");
 
-    static final String LIST_APEXES_CMD = "pm list packages --apex-only --show-versioncode";
-    private static final Pattern APEXES_REGEX = Pattern.compile("package:(.*) versionCode:(.*)");
+    static final String LIST_APEXES_CMD = "pm list packages --apex-only --show-versioncode -f";
+    private static final Pattern APEXES_WITH_PATH_REGEX =
+            Pattern.compile("package:(.*)=(.*) versionCode:(.*)");
+    /**
+     * Regexp to match on old versions of platform (before R), where {@code -f} flag for the {@code
+     * pm list packages apex-only} command wasn't supported.
+     */
+    private static final Pattern APEXES_WITHOUT_PATH_REGEX =
+            Pattern.compile("package:(.*) versionCode:(.*)");
 
     private static final int FLAG_PRIMARY = 1; // From the UserInfo class
 
     private static final String[] SETTINGS_NAMESPACE = {"system", "secure", "global"};
 
     /** user pattern in the output of "pm list users" = TEXT{<id>:<name>:<flags>} TEXT * */
-    private static final String USER_PATTERN = "(.*?\\{)(\\d+)(:)(.*)(:)(\\d+)(\\}.*)";
+    private static final String USER_PATTERN = "(.*?\\{)(\\d+)(:)(.*)(:)(\\w+)(\\}.*)";
     /** Pattern to find the display ids of "dumpsys SurfaceFlinger" */
     private static final String DISPLAY_ID_PATTERN = "(Display )(?<id>\\d+)( color modes:)";
 
@@ -181,6 +188,9 @@ public class TestDevice extends NativeDevice {
                         return response[0] == null;
                     }
                 };
+        CLog.v(
+                "Installing package file %s with args %s on %s",
+                packageFile.getAbsolutePath(), extraArgs.toString(), getSerialNumber());
         performDeviceAction(String.format("install %s", packageFile.getAbsolutePath()),
                 installAction, MAX_RETRY_ATTEMPTS);
         return response[0];
@@ -564,7 +574,7 @@ public class TestDevice extends NativeDevice {
 
     /** {@inheritDoc} */
     @Override
-    public InputStreamSource getScreenshot(int displayId) throws DeviceNotAvailableException {
+    public InputStreamSource getScreenshot(long displayId) throws DeviceNotAvailableException {
         final String tmpDevicePath = String.format("/data/local/tmp/display_%s.png", displayId);
         CommandResult result =
                 executeShellV2Command(
@@ -900,7 +910,7 @@ public class TestDevice extends NativeDevice {
      */
     @Override
     protected void doAdbReboot(final String into) throws DeviceNotAvailableException {
-        if (!doAdbFrameworkReboot(into)) {
+        if (!TestDeviceState.ONLINE.equals(getDeviceState()) || !doAdbFrameworkReboot(into)) {
             super.doAdbReboot(into);
         }
     }
@@ -929,13 +939,31 @@ public class TestDevice extends NativeDevice {
     /** {@inheritDoc} */
     @Override
     public Set<ApexInfo> getActiveApexes() throws DeviceNotAvailableException {
-        Set<ApexInfo> ret = new HashSet<>();
         String output = executeShellCommand(LIST_APEXES_CMD);
-        if (output != null) {
-            Matcher m = APEXES_REGEX.matcher(output);
-            while (m.find()) {
-                String name = m.group(1);
-                long version = Long.valueOf(m.group(2));
+        // Optimistically parse expecting platform to return paths. If it doesn't, empty set will
+        // be returned.
+        Set<ApexInfo> ret = parseApexesFromOutput(output, true /* withPath */);
+        if (ret.isEmpty()) {
+            ret = parseApexesFromOutput(output, false /* withPath */);
+        }
+        return ret;
+    }
+
+    private Set<ApexInfo> parseApexesFromOutput(final String output, boolean withPath) {
+        Set<ApexInfo> ret = new HashSet<>();
+        Matcher matcher =
+                withPath
+                        ? APEXES_WITH_PATH_REGEX.matcher(output)
+                        : APEXES_WITHOUT_PATH_REGEX.matcher(output);
+        while (matcher.find()) {
+            if (withPath) {
+                String sourceDir = matcher.group(1);
+                String name = matcher.group(2);
+                long version = Long.valueOf(matcher.group(3));
+                ret.add(new ApexInfo(name, version, sourceDir));
+            } else {
+                String name = matcher.group(1);
+                long version = Long.valueOf(matcher.group(2));
                 ret.add(new ApexInfo(name, version));
             }
         }
@@ -1022,6 +1050,17 @@ public class TestDevice extends NativeDevice {
             }
         }
         return packages;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean doesFileExist(String deviceFilePath) throws DeviceNotAvailableException {
+        if (deviceFilePath.startsWith(SD_CARD)) {
+            deviceFilePath =
+                    deviceFilePath.replaceFirst(
+                            SD_CARD, String.format("/storage/emulated/%s/", getCurrentUser()));
+        }
+        return super.doesFileExist(deviceFilePath);
     }
 
     /**
@@ -1392,9 +1431,9 @@ public class TestDevice extends NativeDevice {
                 // disable keyguard if option is true
                 prePostBootSetup();
                 return true;
-            } else {
-                RunUtil.getDefault().sleep(getCheckNewUserSleep());
             }
+            RunUtil.getDefault().sleep(getCheckNewUserSleep());
+            executeShellCommand(String.format("am switch-user %d", userId));
         }
         CLog.e("User did not switch in the given %d timeout", timeout);
         return false;
@@ -1590,8 +1629,8 @@ public class TestDevice extends NativeDevice {
 
     /** {@inheritDoc} */
     @Override
-    public void postInvocationTearDown() {
-        super.postInvocationTearDown();
+    public void postInvocationTearDown(Throwable exception) {
+        super.postInvocationTearDown(exception);
         // If wifi was installed and it's a real device, attempt to clean it.
         if (mWasWifiHelperInstalled) {
             mWasWifiHelperInstalled = false;
@@ -1599,6 +1638,10 @@ public class TestDevice extends NativeDevice {
                 return;
             }
             if (!TestDeviceState.ONLINE.equals(getDeviceState())) {
+                return;
+            }
+            if (exception instanceof DeviceNotAvailableException) {
+                CLog.e("Skip WifiHelper teardown due to DeviceNotAvailableException.");
                 return;
             }
             try {
@@ -1740,10 +1783,10 @@ public class TestDevice extends NativeDevice {
 
     /** {@inheritDoc} */
     @Override
-    public Set<Integer> listDisplayIds() throws DeviceNotAvailableException {
-        Set<Integer> displays = new HashSet<>();
+    public Set<Long> listDisplayIds() throws DeviceNotAvailableException {
+        Set<Long> displays = new HashSet<>();
         // Zero is the default display
-        displays.add(0);
+        displays.add(0L);
         CommandResult res = executeShellV2Command("dumpsys SurfaceFlinger | grep 'color modes:'");
         if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
             CLog.e("Something went wrong while listing displays: %s", res.getStderr());
@@ -1754,7 +1797,7 @@ public class TestDevice extends NativeDevice {
         for (String line : output.split("\n")) {
             Matcher m = p.matcher(line);
             if (m.matches()) {
-                displays.add(Integer.parseInt(m.group("id")));
+                displays.add(Long.parseLong(m.group("id")));
             }
         }
         return displays;

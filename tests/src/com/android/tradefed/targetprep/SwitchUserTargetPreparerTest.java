@@ -68,6 +68,7 @@ public class SwitchUserTargetPreparerTest {
                 /* userIds= */ new Integer[] {0, 11},
                 /* flags= */ new Integer[] {0, UserInfo.FLAG_PRIMARY});
 
+
         // act
         mSwitchUserTargetPreparer.setUp(mMockDevice, /* buildInfo= */ null);
 
