@@ -61,7 +61,6 @@ import com.android.tradefed.device.DeviceSelectionOptionsTest;
 import com.android.tradefed.device.DeviceStateMonitorTest;
 import com.android.tradefed.device.DumpsysPackageReceiverTest;
 import com.android.tradefed.device.FastbootHelperTest;
-import com.android.tradefed.device.LocalAndroidVirtualDeviceTest;
 import com.android.tradefed.device.ManagedDeviceListTest;
 import com.android.tradefed.device.ManagedTestDeviceFactoryTest;
 import com.android.tradefed.device.NativeDeviceTest;
@@ -341,7 +340,6 @@ import com.android.tradefed.util.TarUtilTest;
 import com.android.tradefed.util.TestLoaderTest;
 import com.android.tradefed.util.TimeUtilTest;
 import com.android.tradefed.util.TimeValTest;
-import com.android.tradefed.util.UserProfileUtilTest;
 import com.android.tradefed.util.VersionParserTest;
 import com.android.tradefed.util.ZipUtil2Test;
 import com.android.tradefed.util.ZipUtilTest;
@@ -434,7 +432,6 @@ import org.junit.runners.Suite.SuiteClasses;
     DeviceStateMonitorTest.class,
     DumpsysPackageReceiverTest.class,
     FastbootHelperTest.class,
-    LocalAndroidVirtualDeviceTest.class,
     ManagedDeviceListTest.class,
     ManagedTestDeviceFactoryTest.class,
     NativeDeviceTest.class,
@@ -789,7 +786,6 @@ import org.junit.runners.Suite.SuiteClasses;
     TestLoaderTest.class,
     TimeUtilTest.class,
     TimeValTest.class,
-    UserProfileUtilTest.class,
     VersionParserTest.class,
     ZipUtilTest.class,
     ZipUtil2Test.class,
