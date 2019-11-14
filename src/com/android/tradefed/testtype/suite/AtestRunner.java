@@ -25,13 +25,16 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.SubprocessResultsReporter;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -76,6 +79,36 @@ public class AtestRunner extends BaseTestSuite {
         importance = Importance.ALWAYS
     )
     private List<String> mIncludeFilters = new ArrayList<>();
+
+    @Option(
+        name = "tf-config-path",
+        description =
+                "Allows to run a specific TF configuration path."
+    )
+    private List<String> mTfConfigPaths = new ArrayList<>();
+
+    @Option(
+        name = "module-config-path",
+        description =
+                "Allows to run a specific module configuration path."
+    )
+    private List<File> mModuleConfigPaths = new ArrayList<>();
+
+    @Override
+    public LinkedHashMap<String, IConfiguration> loadingStrategy(Set<IAbi> abis,
+        List<File> testsDirs,
+        String suitePrefix, String suiteTag) {
+        if (mTfConfigPaths.isEmpty() && mModuleConfigPaths.isEmpty()) {
+            return super.loadingStrategy(abis, testsDirs, suitePrefix, suiteTag);
+        }
+        LinkedHashMap<String, IConfiguration> loadedConfigs = new LinkedHashMap<>();
+        loadedConfigs.putAll(
+                getModuleLoader().loadTfConfigsFromSpecifiedPaths(mTfConfigPaths, abis, suiteTag));
+        loadedConfigs.putAll(
+                getModuleLoader().loadConfigsFromSpecifiedPaths(
+                        mModuleConfigPaths, abis, suiteTag));
+        return loadedConfigs;
+    }
 
     @Override
     public LinkedHashMap<String, IConfiguration> loadTests() {
