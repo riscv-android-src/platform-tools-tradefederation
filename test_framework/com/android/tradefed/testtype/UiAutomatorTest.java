@@ -143,6 +143,14 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
     private boolean mHiddenApiChecks = true;
 
     @Option(
+            name = "test-api-checks",
+            description =
+                    "If set to false and hidden API checks are enabled, the '--no-test-api-checks'"
+                            + " flag will be passed to the am instrument command."
+                            + " Only works for R or later.")
+    private boolean mTestApiChecks = false;
+
+    @Option(
         name = "isolated-storage",
         description =
                 "If set to false, the '--no-isolated-storage' flag will be passed to the am "
@@ -251,6 +259,14 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
                     ? getDevice().getApiLevel() : 0;
             if (!mHiddenApiChecks && apiLevel >= 28) {
                 runOptions += "--no-hidden-api-checks ";
+            }
+            // test-api-checks flag only exists in R and after.
+            // Test API checks are subset of hidden API checks, so only make sense if hidden API
+            // checks are enabled.
+            if (mHiddenApiChecks
+                    && !mTestApiChecks
+                    && getDevice().checkApiLevelAgainstNextRelease(30)) {
+                runOptions += "--no-test-api-checks ";
             }
             // isolated-storage flag only exists in Q and after.
             if (!mIsolatedStorage && getDevice().checkApiLevelAgainstNextRelease(29)) {
