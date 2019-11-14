@@ -76,6 +76,8 @@ public class InstrumentationFileTestTest {
 
         EasyMock.expect(mMockTestDevice.getIDevice()).andStubReturn(mockIDevice);
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn("serial");
+        EasyMock.expect(mMockTestDevice.checkApiLevelAgainstNextRelease(EasyMock.anyInt()))
+                .andStubReturn(false);
 
         // mock out InstrumentationTest that will be used to create InstrumentationFileTest
         mMockITest = new InstrumentationTest() {
