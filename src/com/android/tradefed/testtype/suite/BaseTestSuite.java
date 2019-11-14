@@ -377,6 +377,20 @@ public class BaseTestSuite extends ITestSuite {
         mConfigPatterns.addAll(patterns);
     }
 
+    /** Set whether or not parameterized modules are enabled or not. */
+    public void setEnableParameterizedModules(boolean enableParameter) {
+        mEnableParameter = enableParameter;
+    }
+
+    /** Set whether or not optional parameterized modules are enabled or not. */
+    public void setEnableOptionalParameterizedModules(boolean enableOptionalParameter) {
+        mEnableOptionalParameter = enableOptionalParameter;
+    }
+
+    public void setModuleParameter(ModuleParameters forceParameter) {
+        mForceParameter = forceParameter;
+    }
+
     /**
      * Create the {@link SuiteModuleLoader} responsible to load the {@link IConfiguration} and
      * assign them some of the options.
