@@ -30,6 +30,7 @@ from functools import partial
 # pylint: disable=import-error
 import atest_utils
 import constants
+import result_reporter
 from event_handler import EventHandler
 from test_finders import test_info
 from test_runners import test_runner_base
@@ -61,7 +62,10 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
     NAME = 'AtestTradefedTestRunner'
     EXECUTABLE = 'atest_tradefed.sh'
     _TF_TEMPLATE = 'template/atest_local_min'
-    _LOG_ARGS = '--logcat-on-failure --atest-log-file-path={log_path}'
+    # Use --no-enable-granular-attempts to control reporter replay behavior.
+    # TODO(b/142630648): Enable option enable-granular-attempts in sharding mode.
+    _LOG_ARGS = ('--logcat-on-failure --atest-log-file-path={log_path} '
+                 '--no-enable-granular-attempts')
     _RUN_CMD = ('{exe} {template} --template:map '
                 'test=atest {log_args} {args}')
     _BUILD_REQ = {'tradefed-core'}
@@ -169,6 +173,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             ret_code |= self.wait_for_subprocess(subproc)
         return ret_code
 
+    # pylint: disable=too-many-branches
     def _start_monitor(self, server, tf_subproc, reporter):
         """Polling and process event.
 
@@ -180,6 +185,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         inputs = [server]
         event_handlers = {}
         data_map = {}
+        inv_socket = None
         while inputs:
             try:
                 readable, _, _ = select.select(inputs, [], [], SELECT_TIMEOUT)
@@ -190,9 +196,20 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                         conn.setblocking(False)
                         inputs.append(conn)
                         data_map[conn] = ''
+                        # The First connection should be invocation level reporter.
+                        if not inv_socket:
+                            inv_socket = conn
                     else:
-                        event_handler = event_handlers.setdefault(
-                            socket_object, EventHandler(reporter, self.NAME))
+                        # Count invocation level reporter events
+                        # without showing real-time information.
+                        if inv_socket == socket_object:
+                            reporter.silent = True
+                            event_handler = event_handlers.setdefault(
+                                socket_object, EventHandler(reporter, self.NAME))
+                        else:
+                            event_handler = event_handlers.setdefault(
+                                socket_object, EventHandler(
+                                    result_reporter.ResultReporter(), self.NAME))
                         recv_data = self._process_connection(data_map,
                                                              socket_object,
                                                              event_handler)
