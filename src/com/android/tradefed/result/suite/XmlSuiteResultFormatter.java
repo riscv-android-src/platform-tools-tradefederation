@@ -690,7 +690,8 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
         return metrics;
     }
 
-    private static String sanitizeXmlContent(String s) {
+    @VisibleForTesting
+    static String sanitizeXmlContent(String s) {
         return XmlEscapers.xmlContentEscaper().escape(s);
     }
 }
