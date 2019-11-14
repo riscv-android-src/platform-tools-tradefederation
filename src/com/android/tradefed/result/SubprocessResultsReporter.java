@@ -59,6 +59,11 @@ public class SubprocessResultsReporter
                 AutoCloseable,
                 ISupportGranularResults {
 
+    @Option(
+            name = "enable-granular-attempts",
+            description = "Whether to allow SubprocessResultsReporter receiving granular attempts.")
+    private boolean mGranularAttempts = true;
+
     @Option(name = "subprocess-report-file", description = "the file where to log the events.")
     private File mReportFile = null;
 
@@ -79,7 +84,7 @@ public class SubprocessResultsReporter
 
     @Override
     public boolean supportGranularResults() {
-        return true;
+        return mGranularAttempts;
     }
 
     /** {@inheritDoc} */
