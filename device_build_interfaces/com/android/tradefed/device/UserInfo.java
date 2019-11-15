@@ -51,7 +51,9 @@ public final class UserInfo {
         /** system user = user 0 */
         SYSTEM,
         /** secondary user, i.e. non-primary and non-system. */
-        SECONDARY;
+        SECONDARY,
+        /** managed profile user, e.g. work profile. */
+        MANAGED_PROFILE;
 
         public boolean isCurrent() {
             return this == CURRENT;
@@ -71,6 +73,10 @@ public final class UserInfo {
 
         public boolean isSecondary() {
             return this == SECONDARY;
+        }
+
+        public boolean isManagedProfile() {
+            return this == MANAGED_PROFILE;
         }
     }
 
@@ -113,6 +119,10 @@ public final class UserInfo {
         return mUserId == USER_SYSTEM;
     }
 
+    public boolean isManagedProfile() {
+        return (mFlag & FLAG_MANAGED_PROFILE) == FLAG_MANAGED_PROFILE;
+    }
+
     /** Return whether this instance is of the specified type. */
     public boolean isUserType(UserType userType, int currentUserId) {
         switch (userType) {
@@ -126,6 +136,8 @@ public final class UserInfo {
                 return isSystem();
             case SECONDARY:
                 return isSecondary();
+            case MANAGED_PROFILE:
+                return isManagedProfile();
             default:
                 throw new RuntimeException("Variant not covered: " + userType);
         }
