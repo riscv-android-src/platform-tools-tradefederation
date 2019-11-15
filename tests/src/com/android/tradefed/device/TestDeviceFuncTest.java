@@ -51,6 +51,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLConnection;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -885,18 +886,15 @@ public class TestDeviceFuncTest implements IDeviceTest {
         assertEquals(1, displays.size());
     }
 
-    /** Test for {@link TestDevice#getScreenshot(int)}. */
+    /** Test for {@link TestDevice#getScreenshot(long)}. */
     @Test
     public void testScreenshot() throws Exception {
-        InputStreamSource screenshot = mTestDevice.getScreenshot(0);
+        InputStreamSource screenshot = mTestDevice.getScreenshot(0L);
         assertNotNull(screenshot);
-        File testFile = FileUtil.createTempFile("test-screenshot", ".testpng");
-        try {
-            assertEquals(
-                    "image/png",
-                    URLConnection.guessContentTypeFromStream(screenshot.createInputStream()));
+        try (InputStream stream = screenshot.createInputStream();
+                BufferedInputStream bs = new BufferedInputStream(stream)) {
+            assertEquals("image/png", URLConnection.guessContentTypeFromStream(bs));
         } finally {
-            FileUtil.deleteFile(testFile);
             StreamUtil.close(screenshot);
         }
     }
