@@ -318,6 +318,7 @@ public class InstrumentationTest
     private String mTestFilePathOnDevice = null;
 
     private ListInstrumentationParser mListInstrumentationParser = null;
+    private NativeCodeCoverageListener mNativeCoverageListener = null;
 
     private List<String> mExtraDeviceListener = new ArrayList<>();
 
@@ -893,11 +894,29 @@ public class InstrumentationTest
             mRunner.addInstrumentationArg("coverage", "true");
         }
 
-        // Reruns do not create new listeners.
+        // Reruns do not create new listeners or clear coverage measurements.
         if (!mIsRerun) {
             listener = addBugreportListenerIfEnabled(listener);
             listener = addJavaCoverageListenerIfEnabled(listener);
             listener = addNativeCoverageListenerIfEnabled(listener);
+
+            // Clear coverage measurements on the device before running.
+            if (mConfiguration != null
+                    && mConfiguration.getCoverageOptions().isCoverageFlushEnabled()) {
+                CoverageOptions options = mConfiguration.getCoverageOptions();
+
+                if (options.getCoverageToolchains().contains(Toolchain.GCOV)) {
+                    NativeCodeCoverageFlusher flusher =
+                            new NativeCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
+                    flusher.resetCoverage();
+                }
+
+                if (options.getCoverageToolchains().contains(Toolchain.JACOCO)) {
+                    JavaCodeCoverageFlusher flusher =
+                            new JavaCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
+                    flusher.resetCoverage();
+                }
+            }
 
             // TODO: Convert to device-side collectors when possible.
             for (IMetricCollector collector : mCollectors) {
@@ -915,24 +934,6 @@ public class InstrumentationTest
         // Add the extra listeners only to the actual run and not the --collect-test-only one
         if (!mExtraDeviceListener.isEmpty()) {
             mRunner.addInstrumentationArg("listener", ArrayUtil.join(",", mExtraDeviceListener));
-        }
-
-        // Clear coverage measurements on the device before running.
-        if (mConfiguration != null
-                && mConfiguration.getCoverageOptions().isCoverageFlushEnabled()) {
-            CoverageOptions options = mConfiguration.getCoverageOptions();
-
-            if (options.getCoverageToolchains().contains(Toolchain.GCOV)) {
-                NativeCodeCoverageFlusher flusher =
-                        new NativeCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
-                flusher.resetCoverage();
-            }
-
-            if (options.getCoverageToolchains().contains(Toolchain.JACOCO)) {
-                JavaCodeCoverageFlusher flusher =
-                        new JavaCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
-                flusher.resetCoverage();
-            }
         }
 
         if (testsToRun == null) {
@@ -999,8 +1000,10 @@ public class InstrumentationTest
         }
         if (mConfiguration.getCoverageOptions().isCoverageEnabled()
                 && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(GCOV)) {
-            return new NativeCodeCoverageListener(
-                    getDevice(), mConfiguration.getCoverageOptions(), listener);
+            mNativeCoverageListener =
+                    new NativeCodeCoverageListener(
+                            getDevice(), mConfiguration.getCoverageOptions(), listener);
+            return mNativeCoverageListener;
         }
         return listener;
     }
@@ -1091,7 +1094,16 @@ public class InstrumentationTest
             return;
         }
 
+        if (mNativeCoverageListener != null) {
+            mNativeCoverageListener.setCollectOnTestEnd(false);
+        }
+
         testReRunner.run(listener);
+
+        if (mNativeCoverageListener != null) {
+            mNativeCoverageListener.setCollectOnTestEnd(true);
+            mNativeCoverageListener.logCoverageMeasurements("rerun_merged");
+        }
     }
 
     @VisibleForTesting
