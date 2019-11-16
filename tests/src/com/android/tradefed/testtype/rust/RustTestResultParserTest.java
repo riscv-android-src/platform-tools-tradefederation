@@ -89,11 +89,12 @@ public class RustTestResultParserTest {
     public void testRegexRunSummary() {
         String[] goodPatterns = {
             "test result: some_test 0 passed; 0 failed; 15 ignored; ...",
-            "test result: some_test 10 passed; 21 failed;",
-            "test result: any string here 2 passed; 0 failed; 0 ignored...",
+            "test result: some_test 10 passed; 21 failed; 0 ignored;",
+            "test result: any string here 2 passed; 0 failed; 0 ignored;...",
         };
         String[] wrongPatterns = {
             "test result: some_test 0 passed 0 failed 15 ignored; ...",
+            "test result: some_test 10 passed; 21 failed;",
             "test some_test 0 passed; 0 failed; 15 ignored; ...",
             "  test result: some_test 10 passed; 21 failed;",
             "test result here 2 passed; 0 failed; 0 ignored...",
@@ -145,7 +146,7 @@ public class RustTestResultParserTest {
     @Test
     public void testParseRealOutput3() {
         String[] contents = readInFile(RUST_OUTPUT_FILE_3);
-        mMockListener.testRunStarted("test", 0);
+        mMockListener.testRunStarted("test", 1);
         for (int i = 0; i < 1; i++) {
             mMockListener.testStarted(EasyMock.anyObject());
             mMockListener.testEnded(
