@@ -77,7 +77,7 @@ public class RustBinaryHostTestTest {
                     .andReturn(res);
             mMockListener.testRunStarted(
                     EasyMock.eq(binary.getName()),
-                    EasyMock.eq(7), // count only passed + failed
+                    EasyMock.eq(9),
                     EasyMock.eq(0),
                     EasyMock.anyLong());
             mMockListener.testRunEnded(0, new HashMap<String, Metric>());
@@ -118,7 +118,7 @@ public class RustBinaryHostTestTest {
                     .andReturn(res);
             mMockListener.testRunStarted(
                     EasyMock.eq(binary.getName()),
-                    EasyMock.eq(7),
+                    EasyMock.eq(9),
                     EasyMock.eq(0),
                     EasyMock.anyLong());
             mMockListener.testRunEnded(0, new HashMap<String, Metric>());
@@ -194,7 +194,7 @@ public class RustBinaryHostTestTest {
                     .andReturn(res);
             mMockListener.testRunStarted(
                     EasyMock.eq(binary.getName()),
-                    EasyMock.eq(7),
+                    EasyMock.eq(9),
                     EasyMock.eq(0),
                     EasyMock.anyLong());
             mMockListener.testRunEnded(0, new HashMap<String, Metric>());
