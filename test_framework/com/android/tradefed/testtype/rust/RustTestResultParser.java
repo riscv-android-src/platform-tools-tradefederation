@@ -62,7 +62,7 @@ public class RustTestResultParser extends MultiLineReceiver {
     static final String FAILED_ENTRY = "FailedNoStack";
 
     static final Pattern COMPLETE_PATTERN =
-            Pattern.compile("test result: (.*) (\\d+) passed; (\\d+) failed;.*");
+            Pattern.compile("test result: (.*) (\\d+) passed; (\\d+) failed; (\\d+) ignored;.*");
 
     static final Pattern RUST_ONE_LINE_RESULT = Pattern.compile("test (\\S*) \\.\\.\\. (\\S*)");
 
@@ -118,9 +118,10 @@ public class RustTestResultParser extends MultiLineReceiver {
             if (!lineMatchesPattern(line, COMPLETE_PATTERN)) {
                 throw new RuntimeException("Failed to parse summary line: " + line);
             }
-            int passCount = Integer.parseInt(mCurrentMatcher.group(2));
-            int failCount = Integer.parseInt(mCurrentMatcher.group(3));
-            return passCount + failCount;
+            int passed = Integer.parseInt(mCurrentMatcher.group(2));
+            int failed = Integer.parseInt(mCurrentMatcher.group(3));
+            int ignored = Integer.parseInt(mCurrentMatcher.group(4));
+            return passed + failed + ignored;
         } catch (NumberFormatException e) {
             // this should never happen, since regular expression matches on digits
             throw new RuntimeException("Failed to parse number in " + line);
