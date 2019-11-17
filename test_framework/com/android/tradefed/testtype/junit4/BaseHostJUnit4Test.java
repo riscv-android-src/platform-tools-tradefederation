@@ -475,6 +475,7 @@ public abstract class BaseHostJUnit4Test
                 options.getMaxInstrumentationTimeoutMs(),
                 options.shouldCheckResults(),
                 options.isHiddenApiCheckDisabled(),
+                options.isTestApiCheckDisabled(),
                 options.isIsolatedStorageDisabled(),
                 options.getInstrumentationArgs(),
                 options.getExtraListeners());
@@ -524,6 +525,7 @@ public abstract class BaseHostJUnit4Test
                 checkResults,
                 isHiddenApiCheckDisabled,
                 false,
+                false,
                 instrumentationArgs,
                 new ArrayList<>());
     }
@@ -542,6 +544,7 @@ public abstract class BaseHostJUnit4Test
      * @param maxInstrumentationTimeoutMs the max timeout the full instrumentation has to complete.
      * @param checkResults whether or not the results are checked for crashes.
      * @param isHiddenApiCheckDisabled whether or not we should disable the hidden api check.
+     * @param isTestApiCheckDisabled whether or not we should disable the test api check.
      * @param isIsolatedStorageDisabled whether or not we should disable isolated storage.
      * @param instrumentationArgs arguments to pass to the instrumentation.
      * @return True if it succeeded without failure. False otherwise.
@@ -558,6 +561,7 @@ public abstract class BaseHostJUnit4Test
             Long maxInstrumentationTimeoutMs,
             boolean checkResults,
             boolean isHiddenApiCheckDisabled,
+            boolean isTestApiCheckDisabled,
             boolean isIsolatedStorageDisabled,
             Map<String, String> instrumentationArgs,
             List<ITestLifeCycleReceiver> extraListeners)
@@ -574,6 +578,7 @@ public abstract class BaseHostJUnit4Test
                 maxInstrumentationTimeoutMs,
                 checkResults,
                 isHiddenApiCheckDisabled,
+                isTestApiCheckDisabled,
                 isIsolatedStorageDisabled,
                 false, // leave window animations enabled for existing invocations
                 instrumentationArgs,
@@ -594,6 +599,7 @@ public abstract class BaseHostJUnit4Test
      * @param maxInstrumentationTimeoutMs the max timeout the full instrumentation has to complete.
      * @param checkResults whether or not the results are checked for crashes.
      * @param isHiddenApiCheckDisabled whether or not we should disable the hidden api check.
+     * @param isTestApiCheckDisabled whether or not we should disable the test api check.
      * @param isIsolatedStorageDisabled whether or not we should disable isolated storage.
      * @param isWindowAnimationDisabled whether or not we should disable window animation.
      * @param instrumentationArgs arguments to pass to the instrumentation.
@@ -611,6 +617,7 @@ public abstract class BaseHostJUnit4Test
             Long maxInstrumentationTimeoutMs,
             boolean checkResults,
             boolean isHiddenApiCheckDisabled,
+            boolean isTestApiCheckDisabled,
             boolean isIsolatedStorageDisabled,
             boolean isWindowAnimationDisabled,
             Map<String, String> instrumentationArgs,
@@ -628,6 +635,7 @@ public abstract class BaseHostJUnit4Test
                         maxTimeToOutputMs,
                         maxInstrumentationTimeoutMs,
                         isHiddenApiCheckDisabled,
+                        isTestApiCheckDisabled,
                         isIsolatedStorageDisabled,
                         isWindowAnimationDisabled,
                         instrumentationArgs,
@@ -692,6 +700,7 @@ public abstract class BaseHostJUnit4Test
             Long maxTimeToOutputMs,
             Long maxInstrumentationTimeoutMs,
             boolean isHiddenApiCheckDisabled,
+            boolean isTestApiCheckDisabled,
             boolean isIsolatedStorageDisabled,
             boolean isWindowAnimationDisabled,
             Map<String, String> instrumentationArgs,
@@ -705,6 +714,11 @@ public abstract class BaseHostJUnit4Test
                 ? device.getApiLevel() : 0;
         if (isHiddenApiCheckDisabled && (apiLevel >= 28)) {
             runOptions += "--no-hidden-api-checks ";
+        }
+        if (!isHiddenApiCheckDisabled
+                && isTestApiCheckDisabled
+                && device.checkApiLevelAgainstNextRelease(30)) {
+            runOptions += "--no-test-api-checks";
         }
         // isolated-storage flag only exists in Q and after.
         if (isIsolatedStorageDisabled && device.checkApiLevelAgainstNextRelease(29)) {
