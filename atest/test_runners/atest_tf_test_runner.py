@@ -319,6 +319,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         return build_req
 
     # pylint: disable=too-many-branches
+    # pylint: disable=too-many-statements
     @staticmethod
     def _parse_extra_args(extra_args):
         """Convert the extra args into something tf can understand.
@@ -370,6 +371,23 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 args_to_append.append('--enable-optional-parameterization')
                 args_to_append.append('--module-parameter')
                 args_to_append.append(extra_args[arg])
+            if constants.ITERATIONS == arg:
+                args_to_append.append('--retry-strategy')
+                args_to_append.append(constants.ITERATIONS)
+                args_to_append.append('--max-testcase-run-count')
+                args_to_append.append(str(extra_args[arg]))
+                continue
+            if constants.RERUN_UNTIL_FAILURE == arg:
+                args_to_append.append('--retry-strategy')
+                args_to_append.append(constants.RERUN_UNTIL_FAILURE)
+                args_to_append.append('--max-testcase-run-count')
+                args_to_append.append(str(extra_args[arg]))
+                continue
+            if constants.RETRY_ANY_FAILURE == arg:
+                args_to_append.append('--retry-strategy')
+                args_to_append.append(constants.RETRY_ANY_FAILURE)
+                args_to_append.append('--max-testcase-run-count')
+                args_to_append.append(str(extra_args[arg]))
                 continue
             args_not_supported.append(arg)
         return args_to_append, args_not_supported
