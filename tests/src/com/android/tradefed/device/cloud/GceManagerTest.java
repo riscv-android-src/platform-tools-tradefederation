@@ -50,6 +50,7 @@ import org.mockito.Mockito;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.ProcessBuilder.Redirect;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -599,7 +600,10 @@ public class GceManagerTest {
         cmd.setStatus(CommandStatus.SUCCESS);
         cmd.setStdout("output");
         Capture<List<String>> capture = new Capture<>();
-        EasyMock.expect(mMockRunUtil.runCmdInBackground(EasyMock.<List<String>>capture(capture)))
+        EasyMock.expect(
+                        mMockRunUtil.runCmdInBackground(
+                                EasyMock.eq(Redirect.DISCARD),
+                                EasyMock.<List<String>>capture(capture)))
                 .andReturn(Mockito.mock(Process.class));
 
         EasyMock.replay(mMockRunUtil);
