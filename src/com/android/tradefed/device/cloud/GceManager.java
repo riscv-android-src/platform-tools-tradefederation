@@ -49,6 +49,7 @@ import com.google.common.net.HostAndPort;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.ProcessBuilder.Redirect;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.List;
@@ -341,7 +342,9 @@ public class GceManager {
                 }
                 FileUtil.deleteFile(config);
             } else {
-                Process p = getRunUtil().runCmdInBackground(gceArgs);
+                // Discard the output so the process is not linked to the parent and doesn't die
+                // if the JVM exit.
+                Process p = getRunUtil().runCmdInBackground(Redirect.DISCARD, gceArgs);
                 AcloudDeleteCleaner cleaner = new AcloudDeleteCleaner(p, config);
                 cleaner.start();
             }
