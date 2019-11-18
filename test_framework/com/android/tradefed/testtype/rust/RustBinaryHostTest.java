@@ -18,7 +18,6 @@ package com.android.tradefed.testtype.rust;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
-import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -31,7 +30,6 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -48,27 +46,16 @@ import java.util.Set;
 
 /** Host test meant to run a rust binary file from the Android Build system (Soong) */
 @OptionClass(alias = "rust-host")
-public class RustBinaryHostTest implements IRemoteTest, IBuildReceiver, IInvocationContextReceiver {
+public class RustBinaryHostTest extends RustTestBase
+        implements IBuildReceiver, IInvocationContextReceiver {
 
-    private static final String RUST_LOG_STDERR_FORMAT = "%s-stderr";
+    static final String RUST_LOG_STDERR_FORMAT = "%s-stderr";
 
     @Option(name = "test-file", description = "The test file name or file path.")
     private Set<String> mBinaryNames = new HashSet<>();
 
-    @Option(
-            name = "test-timeout",
-            description = "Timeout for a single test file to terminate.",
-            isTimeVal = true)
-    private long mTestTimeout = 20 * 1000L;
-
-    @Option(
-            name = "test-options",
-            description = "Option string to be passed to the binary when running")
-    private List<String> mTestOptions = new ArrayList<>();
-
     private IBuildInfo mBuildInfo;
     private IInvocationContext mContext;
-
     private IRunUtil mRunUtil;
 
     @Override
@@ -171,8 +158,8 @@ public class RustBinaryHostTest implements IRemoteTest, IBuildReceiver, IInvocat
                 listener.testLog(
                         String.format(RUST_LOG_STDERR_FORMAT, runName), LogDataType.TEXT, data);
             }
-            RustTestResultParser parser = new RustTestResultParser(forwarder, runName);
-            parser.processNewLines(result.getStdout().split("\n"));
+            String[] lines = result.getStdout().split("\n");
+            new RustTestResultParser(forwarder, runName).processNewLines(lines);
         } catch (RuntimeException e) {
             reportFailure(
                     listener,
@@ -192,11 +179,6 @@ public class RustBinaryHostTest implements IRemoteTest, IBuildReceiver, IInvocat
             mRunUtil = new RunUtil();
         }
         return mRunUtil;
-    }
-
-    @VisibleForTesting
-    String getAdbPath() {
-        return GlobalConfiguration.getDeviceManagerInstance().getAdbPath();
     }
 
     private void reportFailure(
