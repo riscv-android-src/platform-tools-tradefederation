@@ -112,8 +112,16 @@ public class ContentProviderHandler {
             return false;
         }
         // Enable appops legacy storage
-        mDevice.executeShellV2Command(
-                String.format("cmd appops set %s android:legacy_storage allow", PACKAGE_NAME));
+        CommandResult setResult =
+                mDevice.executeShellV2Command(
+                        String.format(
+                                "cmd appops set %s android:legacy_storage allow", PACKAGE_NAME));
+        if (!CommandStatus.SUCCESS.equals(setResult.getStatus())) {
+            CLog.e(
+                    "Failed to set legacy_storage. Stdout: %s\nstderr: %s",
+                    setResult.getStdout(), setResult.getStderr());
+            return false;
+        }
         // Check that it worked and set on the system
         CommandResult appOpsResult =
                 mDevice.executeShellV2Command(String.format("cmd appops get %s", PACKAGE_NAME));
@@ -121,7 +129,9 @@ public class ContentProviderHandler {
                 && appOpsResult.getStdout().contains(PROPERTY_RESULT)) {
             return true;
         }
-        CLog.e("Failed to set legacy_storage: %s", appOpsResult.getStderr());
+        CLog.e(
+                "Failed to get legacy_storage. Stdout: %s\nstderr: %s",
+                appOpsResult.getStdout(), appOpsResult.getStderr());
         FileUtil.deleteFile(mContentProviderApk);
         return false;
     }

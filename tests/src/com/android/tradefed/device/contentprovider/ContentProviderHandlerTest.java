@@ -65,7 +65,8 @@ public class ContentProviderHandlerTest {
     public void testSetUp_install() throws Exception {
         doReturn(1).when(mMockDevice).getCurrentUser();
         doReturn(null).when(mMockDevice).installPackage(any(), eq(true), eq(true));
-        doReturn(null)
+        CommandResult resSet = new CommandResult(CommandStatus.SUCCESS);
+        doReturn(resSet)
                 .when(mMockDevice)
                 .executeShellV2Command(
                         String.format(
