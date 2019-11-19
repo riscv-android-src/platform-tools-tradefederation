@@ -16,6 +16,17 @@
 
 package com.android.tradefed;
 
+import com.android.tradefed.cluster.ClusterCommandEventTest;
+import com.android.tradefed.cluster.ClusterCommandLauncherTest;
+import com.android.tradefed.cluster.ClusterCommandSchedulerTest;
+import com.android.tradefed.cluster.ClusterCommandTest;
+import com.android.tradefed.cluster.ClusterDeviceMonitorTest;
+import com.android.tradefed.cluster.ClusterEventUploaderTest;
+import com.android.tradefed.cluster.ClusterHostUtilTest;
+import com.android.tradefed.cluster.ClusterLogSaverTest;
+import com.android.tradefed.cluster.SubprocessConfigBuilderTest;
+import com.android.tradefed.cluster.SubprocessReportingHelperTest;
+import com.android.tradefed.cluster.TestOutputUploaderTest;
 import com.android.tradefed.build.AppDeviceBuildInfoTest;
 import com.android.tradefed.build.BootstrapBuildProviderTest;
 import com.android.tradefed.build.BuildInfoTest;
@@ -361,6 +372,7 @@ import com.android.tradefed.util.statsd.MetricUtilTest;
 import com.android.tradefed.util.testmapping.TestInfoTest;
 import com.android.tradefed.util.testmapping.TestMappingTest;
 import com.android.tradefed.util.zip.MergedZipEntryCollectionTest;
+import com.android.tradefed.util.RestApiHelperTest;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -389,6 +401,19 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // clearcut
     ClearcutClientTest.class,
+
+    // cluster
+    ClusterCommandEventTest.class,
+    ClusterCommandLauncherTest.class,
+    ClusterCommandSchedulerTest.class,
+    ClusterCommandTest.class,
+    ClusterDeviceMonitorTest.class,
+    ClusterEventUploaderTest.class,
+    ClusterHostUtilTest.class,
+    ClusterLogSaverTest.class,
+    SubprocessConfigBuilderTest.class,
+    SubprocessReportingHelperTest.class,
+    TestOutputUploaderTest.class,
 
     // command
     CommandFileParserTest.class,
@@ -776,6 +801,7 @@ import org.junit.runners.Suite.SuiteClasses;
     QuotationAwareTokenizerTest.class,
     RegexTrieTest.class,
     RemoteZipTest.class,
+    RestApiHelperTest.class,
     RunUtilTest.class,
     SerializationUtilTest.class,
     ShellOutputReceiverStreamTest.class,

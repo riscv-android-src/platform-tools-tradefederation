@@ -16,6 +16,8 @@
 package com.android.tradefed;
 
 import com.android.tradefed.build.FileDownloadCacheFuncTest;
+import com.android.tradefed.cluster.ClusterCommandLauncherFuncTest;
+import com.android.tradefed.cluster.ClusterEventUploaderFuncTest;
 import com.android.tradefed.command.CommandSchedulerFuncTest;
 import com.android.tradefed.command.remote.RemoteManagerFuncTest;
 import com.android.tradefed.device.metric.DeviceMetricDataFuncTest;
@@ -34,6 +36,9 @@ import org.junit.runners.Suite.SuiteClasses;
 @SuiteClasses({
     // build
     FileDownloadCacheFuncTest.class,
+    // cluster
+    ClusterCommandLauncherFuncTest.class,
+    ClusterEventUploaderFuncTest.class,
     // command
     CommandSchedulerFuncTest.class,
     // command.remote
