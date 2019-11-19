@@ -200,8 +200,8 @@ public class ContentProviderHandler {
                     String.format("File '%s' to push is a directory.", fileToPush));
         }
         if (!fileToPush.exists()) {
-            throw new IllegalArgumentException(
-                    String.format("File '%s' to push does not exist.", fileToPush));
+            CLog.w("File '%s' to push does not exist.", fileToPush);
+            return false;
         }
         String contentUri = createEscapedContentUri(deviceFilePath);
         String pushCommand =
