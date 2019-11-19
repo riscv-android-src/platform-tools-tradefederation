@@ -170,8 +170,7 @@ class ResultReporter(object):
             self._print_group_title(test)
         self._update_stats(test,
                            self.runners[test.runner_name][test.group_name])
-        if not self.silent:
-            self._print_result(test)
+        self._print_result(test)
 
     def runner_failure(self, runner_name, failure_msg):
         """Report a runner failure.
@@ -341,6 +340,8 @@ class ResultReporter(object):
         Args:
             test: A TestResult namedtuple.
         """
+        if self.silent:
+            return
         title = test.group_name or test.runner_name
         underline = '-' * (len(title))
         print('\n%s\n%s' % (title, underline))
@@ -354,6 +355,8 @@ class ResultReporter(object):
         Args:
             test: a TestResult namedtuple.
         """
+        if self.silent:
+            return
         if not self.pre_test or (test.test_run_name !=
                                  self.pre_test.test_run_name):
             print('%s (%s %s)' % (au.colorize(test.test_run_name,
