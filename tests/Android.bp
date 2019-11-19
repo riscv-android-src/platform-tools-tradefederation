@@ -35,6 +35,7 @@ tradefed_java_library_host {
         "tradefed",
         "libprotobuf-java-full",
         "truth-prebuilt",
+        "loganalysis",
     ],
 
     manifest: "MANIFEST.mf",
