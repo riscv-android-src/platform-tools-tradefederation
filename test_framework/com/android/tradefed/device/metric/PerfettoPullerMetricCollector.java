@@ -82,6 +82,12 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
     private long mCompressedTimeoutMs = TimeUnit.MINUTES.toMillis(20);
 
     @Option(
+            name = "compress-response-timeout",
+            description = "Timeout to receive the shell response when running the gzip command.",
+            isTimeVal = true)
+    private long mCompressResponseTimeoutMs = TimeUnit.SECONDS.toMillis(30);
+
+    @Option(
             name = "decompress-perfetto-timeout",
             description = "Timeout to decompress perfetto compressed file.",
             isTimeVal = true)
@@ -240,7 +246,7 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
             device.executeShellCommand(
                     String.format("gzip -c %s", filePathInDevice),
                     compressedOutputReceiver,
-                    mCompressedTimeoutMs, 10000, TimeUnit.MILLISECONDS, 1);
+                    mCompressedTimeoutMs, mCompressResponseTimeoutMs, TimeUnit.MILLISECONDS, 1);
             compressedOutputReceiver.flush();
             compressedOutputReceiver.cancel();
 
