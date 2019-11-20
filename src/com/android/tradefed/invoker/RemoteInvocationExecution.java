@@ -244,6 +244,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
             String[] whitelistConfigs =
                     new String[] {
                         GlobalConfiguration.SCHEDULER_TYPE_NAME,
+                        GlobalConfiguration.SANDBOX_FACTORY_TYPE_NAME,
                         GlobalConfiguration.HOST_OPTIONS_TYPE_NAME,
                         DynamicRemoteFileResolver.DYNAMIC_RESOLVER,
                         "android-build"

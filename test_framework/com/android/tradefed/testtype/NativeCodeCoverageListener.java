@@ -59,6 +59,7 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
     private final boolean mFlushCoverage;
     private final ITestDevice mDevice;
     private final NativeCodeCoverageFlusher mFlusher;
+    private boolean mCollectCoverageOnTestEnd = true;
 
     private String mCurrentRunName;
 
@@ -79,6 +80,16 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
         mFlusher = new NativeCodeCoverageFlusher(mDevice, coverageOptions.getCoverageProcesses());
     }
 
+    /**
+     * Sets whether to collect coverage on testRunEnded.
+     *
+     * <p>Set this to false during re-runs, otherwise each individual test re-run will collect
+     * coverage rather than having a single merged coverage result.
+     */
+    public void setCollectOnTestEnd(boolean collect) {
+        mCollectCoverageOnTestEnd = collect;
+    }
+
     @Override
     public void testRunStarted(String runName, int testCount) {
         super.testRunStarted(runName, testCount);
@@ -88,14 +99,16 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
     @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         try {
-            logCoverageMeasurements();
+            if (mCollectCoverageOnTestEnd) {
+                logCoverageMeasurements(mCurrentRunName);
+            }
         } finally {
             super.testRunEnded(elapsedTime, runMetrics);
         }
     }
 
     /** Pulls native coverage measurements from the device and logs them. */
-    private void logCoverageMeasurements() {
+    public void logCoverageMeasurements(String runName) {
         File coverageTarGz = null;
         File coverageZip = null;
         try {
@@ -116,10 +129,7 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
             coverageZip = convertTarGzToZip(coverageTarGz);
 
             try (FileInputStreamSource source = new FileInputStreamSource(coverageZip, true)) {
-                testLog(
-                        mCurrentRunName + "_native_runtime_coverage",
-                        LogDataType.NATIVE_COVERAGE,
-                        source);
+                testLog(runName + "_native_runtime_coverage", LogDataType.NATIVE_COVERAGE, source);
             }
         } catch (DeviceNotAvailableException | IOException e) {
             throw new RuntimeException(e);

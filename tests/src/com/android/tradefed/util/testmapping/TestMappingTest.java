@@ -36,6 +36,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -223,6 +224,93 @@ public class TestMappingTest {
             assertEquals(1, tests.size());
             assertEquals("suite/stub2", tests.iterator().next().getName());
         } finally {
+            FileUtil.recursiveDelete(tempDir);
+        }
+    }
+
+    /**
+     * Test for {@link TestMapping#getAllTestMappingPaths(Path)} to get TEST_MAPPING files from
+     * child directory.
+     */
+    @Test
+    public void testGetAllTestMappingPaths_FromChildDirectory() throws Exception {
+        File tempDir = null;
+        try {
+            tempDir = FileUtil.createTempDir("test_mapping");
+            Path testMappingsRootPath = Paths.get(tempDir.getAbsolutePath());
+            File srcDir = FileUtil.createTempDir("src", tempDir);
+            String srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_1";
+            InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, srcDir, TEST_MAPPING);
+            File subDir = FileUtil.createTempDir("sub_dir", srcDir);
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_2";
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, subDir, TEST_MAPPING);
+
+            List<String> testMappingRelativePaths = new ArrayList<>();
+            Path relPath = testMappingsRootPath.relativize(Paths.get(subDir.getAbsolutePath()));
+            testMappingRelativePaths.add(relPath.toString());
+            TestMapping.setTestMappingPaths(testMappingRelativePaths);
+            Set<Path> paths = TestMapping.getAllTestMappingPaths(testMappingsRootPath);
+            assertEquals(2, paths.size());
+        } finally {
+            TestMapping.setTestMappingPaths(new ArrayList<>());
+            FileUtil.recursiveDelete(tempDir);
+        }
+    }
+
+    /**
+     * Test for {@link TestMapping#getAllTestMappingPaths(Path)} to get TEST_MAPPING files from
+     * parent directory.
+     */
+    @Test
+    public void testGetAllTestMappingPaths_FromParentDirectory() throws Exception {
+        File tempDir = null;
+        try {
+            tempDir = FileUtil.createTempDir("test_mapping");
+            Path testMappingsRootPath = Paths.get(tempDir.getAbsolutePath());
+            File srcDir = FileUtil.createTempDir("src", tempDir);
+            String srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_1";
+            InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, srcDir, TEST_MAPPING);
+            File subDir = FileUtil.createTempDir("sub_dir", srcDir);
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_2";
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, subDir, TEST_MAPPING);
+
+            List<String> testMappingRelativePaths = new ArrayList<>();
+            Path relPath = testMappingsRootPath.relativize(Paths.get(srcDir.getAbsolutePath()));
+            testMappingRelativePaths.add(relPath.toString());
+            TestMapping.setTestMappingPaths(testMappingRelativePaths);
+            Set<Path> paths = TestMapping.getAllTestMappingPaths(testMappingsRootPath);
+            assertEquals(1, paths.size());
+        } finally {
+            TestMapping.setTestMappingPaths(new ArrayList<>());
+            FileUtil.recursiveDelete(tempDir);
+        }
+    }
+
+    /**
+     * Test for {@link TestMapping#getAllTestMappingPaths(Path)} to fail when no TEST_MAPPING files
+     * found.
+     */
+    @Test(expected = RuntimeException.class)
+    public void testGetAllTestMappingPaths_NoFilesFound() throws Exception {
+        File tempDir = null;
+        try {
+            tempDir = FileUtil.createTempDir("test_mapping");
+            Path testMappingsRootPath = Paths.get(tempDir.getAbsolutePath());
+            File srcDir = FileUtil.createTempDir("src", tempDir);
+
+            List<String> testMappingRelativePaths = new ArrayList<>();
+            Path relPath = testMappingsRootPath.relativize(Paths.get(srcDir.getAbsolutePath()));
+            testMappingRelativePaths.add(relPath.toString());
+            TestMapping.setTestMappingPaths(testMappingRelativePaths);
+            // No TEST_MAPPING files should be found according to the srcDir, getAllTestMappingPaths
+            // method shall raise RuntimeException.
+            TestMapping.getAllTestMappingPaths(testMappingsRootPath);
+        } finally {
+            TestMapping.setTestMappingPaths(new ArrayList<>());
             FileUtil.recursiveDelete(tempDir);
         }
     }

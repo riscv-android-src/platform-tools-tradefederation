@@ -32,8 +32,8 @@ import com.android.tradefed.util.BuildTestsZipUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -97,10 +97,12 @@ public class TestAppInstallSetup extends BaseTargetPreparer
                     + "including leading dash, e.g. \"-d\"")
     private Collection<String> mInstallArgs = new ArrayList<>();
 
-    @Option(name = "cleanup-apks",
-            description = "Whether apks installed should be uninstalled after test. Note that the "
-                    + "preparer does not verify if the apks are successfully removed.")
-    private boolean mCleanup = false;
+    @Option(
+            name = "cleanup-apks",
+            description =
+                    "Whether apks installed should be uninstalled after test. Note that the "
+                            + "preparer does not verify if the apks are successfully removed.")
+    private boolean mCleanup = true;
 
     @Option(name = "alt-dir",
             description = "Alternate directory to look for the apk if the apk is not in the tests "
@@ -297,6 +299,11 @@ public class TestAppInstallSetup extends BaseTargetPreparer
      */
     public void setAltDirBehavior(AltDirBehavior altDirBehavior) {
         mAltDirBehavior = altDirBehavior;
+    }
+
+    /** Returns True if Apks will be cleaned up during tear down. */
+    public boolean isCleanUpEnabled() {
+        return mCleanup;
     }
 
     /**

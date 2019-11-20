@@ -34,7 +34,8 @@ public class InvocationMetricLogger {
         AUTO_RETRY_TIME("auto_retry_time_ms", true),
         STAGE_TESTS_TIME("stage_tests_time_ms", true),
         STAGE_TESTS_BYTES("stage_tests_bytes", true),
-        STAGE_TESTS_INDIVIDUAL_DOWNLOADS("stage_tests_individual_downloads", true);
+        STAGE_TESTS_INDIVIDUAL_DOWNLOADS("stage_tests_individual_downloads", true),
+        SHUTDOWN_HARD_LATENCY("shutdown_hard_latency_ms", false);
 
         private final String mKeyName;
         // Whether or not to add the value when the key is added again.

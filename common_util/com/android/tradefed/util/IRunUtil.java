@@ -21,6 +21,7 @@ import com.android.annotations.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.ProcessBuilder.Redirect;
 import java.util.List;
 
 /**
@@ -199,6 +200,19 @@ public interface IRunUtil {
     public Process runCmdInBackground(String... command) throws IOException;
 
     /**
+     * Helper method to execute a system command asynchronously.
+     *
+     * <p>Will return immediately after launching command.
+     *
+     * @param redirect The {@link Redirect} to apply to the {@link ProcessBuilder}.
+     * @param command the specified system command and optionally arguments to exec
+     * @return the {@link Process} of the executed command
+     * @throws IOException if command failed to run
+     */
+    public Process runCmdInBackground(Redirect redirect, final String... command)
+            throws IOException;
+
+    /**
      * An alternate {@link #runCmdInBackground(String...)} method that accepts the command arguments
      * in {@link List} form.
      *
@@ -208,6 +222,18 @@ public interface IRunUtil {
      * @throws IOException if command failed to run
      */
     public Process runCmdInBackground(List<String> command) throws IOException;
+
+    /**
+     * An alternate {@link #runCmdInBackground(String...)} method that accepts the command arguments
+     * in {@link List} form.
+     *
+     * @param redirect The {@link Redirect} to apply to the {@link ProcessBuilder}.
+     * @param command the {@link List} containing specified system command and optionally arguments
+     *     to exec
+     * @return the {@link Process} of the executed command
+     * @throws IOException if command failed to run
+     */
+    public Process runCmdInBackground(Redirect redirect, List<String> command) throws IOException;
 
     /**
      * Running command with a {@link OutputStream} log the output of the command.
