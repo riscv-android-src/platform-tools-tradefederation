@@ -26,6 +26,7 @@ import com.android.tradefed.device.DeviceAllocationState;
 public class DeviceDescriptor {
 
     private final String mSerial;
+    private final String mDisplaySerial;
     private final boolean mIsStubDevice;
     private final DeviceState mDeviceState;
     private final DeviceAllocationState mState;
@@ -58,6 +59,7 @@ public class DeviceDescriptor {
             String simOperator) {
         this(
                 serial,
+                null,
                 isStubDevice,
                 null,
                 state,
@@ -90,6 +92,7 @@ public class DeviceDescriptor {
             IDevice idevice) {
         this(
                 serial,
+                null,
                 isStubDevice,
                 null,
                 state,
@@ -123,6 +126,7 @@ public class DeviceDescriptor {
             IDevice idevice) {
         this(
                 serial,
+                null,
                 isStubDevice,
                 deviceState,
                 state,
@@ -141,6 +145,7 @@ public class DeviceDescriptor {
 
     public DeviceDescriptor(
             String serial,
+            String displaySerial,
             boolean isStubDevice,
             DeviceState deviceState,
             DeviceAllocationState state,
@@ -156,6 +161,7 @@ public class DeviceDescriptor {
             boolean isTemporary,
             IDevice idevice) {
         mSerial = serial;
+        mDisplaySerial = displaySerial;
         mIsStubDevice = isStubDevice;
         mDeviceState = deviceState;
         mState = state;
@@ -176,6 +182,7 @@ public class DeviceDescriptor {
     public DeviceDescriptor(DeviceDescriptor d, DeviceAllocationState state) {
         this(
                 d.getSerial(),
+                d.getDisplaySerial(),
                 d.isStubDevice(),
                 d.getDeviceState(),
                 state,
@@ -192,8 +199,33 @@ public class DeviceDescriptor {
                 d.getIDevice());
     }
 
+    /** Used for easy state updating of serial for placeholder devices. */
+    public DeviceDescriptor(DeviceDescriptor d, String serial, String displaySerial) {
+        this(
+                serial,
+                displaySerial,
+                d.isStubDevice(),
+                d.getDeviceState(),
+                d.getState(),
+                d.getProduct(),
+                d.getProductVariant(),
+                d.getSdkVersion(),
+                d.getBuildId(),
+                d.getBatteryLevel(),
+                d.getDeviceClass(),
+                d.getMacAddress(),
+                d.getSimState(),
+                d.getSimOperator(),
+                d.isTemporary(),
+                d.getIDevice());
+    }
+
     public String getSerial() {
         return mSerial;
+    }
+
+    public String getDisplaySerial() {
+        return mDisplaySerial;
     }
 
     public boolean isStubDevice() {

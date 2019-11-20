@@ -1071,15 +1071,19 @@ public class DeviceManager implements IDeviceManager {
                     continue;
                 }
             }
-            displayRows.add(Arrays.asList(
-                    desc.getSerial(),
-                    desc.getDeviceState().toString(),
-                    desc.getState().toString(),
-                    desc.getProduct(),
-                    desc.getProductVariant(),
-                    desc.getBuildId(),
-                    desc.getBatteryLevel())
-                    );
+            String serial = desc.getSerial();
+            if (desc.getDisplaySerial() != null) {
+                serial = desc.getDisplaySerial();
+            }
+            displayRows.add(
+                    Arrays.asList(
+                            serial,
+                            desc.getDeviceState().toString(),
+                            desc.getState().toString(),
+                            desc.getProduct(),
+                            desc.getProductVariant(),
+                            desc.getBuildId(),
+                            desc.getBatteryLevel()));
         }
     }
 
