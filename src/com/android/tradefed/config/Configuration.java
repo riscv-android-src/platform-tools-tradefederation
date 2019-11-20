@@ -45,26 +45,18 @@ import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IDisableable;
-import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Joiner;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.kxml2.io.KXmlSerializer;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
-import java.lang.reflect.Field;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -121,8 +113,6 @@ public class Configuration implements IConfiguration {
     // original command line used to create this given configuration.
     private String[] mCommandLine;
 
-    // Used to track config names that were used to set field values
-    private MultiMap<FieldDef, String> mFieldSources = new MultiMap<>();
     // used to track the files that where dynamically downloaded
     private Set<File> mRemoteFiles = new HashSet<>();
 
@@ -612,14 +602,7 @@ public class Configuration implements IConfiguration {
         // Update the source for each affected field
         for (FieldDef field : affectedFields) {
             requiredForRerun |= field.field.getAnnotation(Option.class).requiredForRerun();
-            if (source != null) {
-                // Unless the field is a Collection or MultiMap entry, it can only have one source
-                if (!Collection.class.isAssignableFrom(field.field.getType()) &&
-                        !MultiMap.class.isAssignableFrom(field.field.getType())) {
-                    mFieldSources.remove(field);
-                }
-                mFieldSources.put(field, source);
-            } else if (requiredForRerun) {
+            if (requiredForRerun) {
                 // Only need to check if the option is required for rerun once if it's set to true.
                 break;
             }
@@ -1155,149 +1138,6 @@ public class Configuration implements IConfiguration {
             out.print(optionHelp);
             out.println();
         }
-    }
-
-    /**
-     * Get the JSON representation of a single {@link Option} field.
-     */
-    @SuppressWarnings({
-            "unchecked", "rawtypes"
-    })
-    private JSONObject getOptionJson(Object optionObject, Field field) throws JSONException {
-        // Build a JSON representation of the option
-        JSONObject jsonOption = new JSONObject();
-
-        // Store values from the @Option annotation
-        Option option = field.getAnnotation(Option.class);
-        jsonOption.put("name", option.name());
-        if (option.shortName() != Option.NO_SHORT_NAME) {
-            jsonOption.put("shortName", option.shortName());
-        }
-        jsonOption.put("description", option.description());
-        jsonOption.put("importance", option.importance());
-        jsonOption.put("mandatory", option.mandatory());
-        jsonOption.put("isTimeVal", option.isTimeVal());
-        jsonOption.put("updateRule", option.updateRule().name());
-
-        // Store the field's class
-        Type fieldType = field.getGenericType();
-        if (fieldType instanceof ParameterizedType) {
-            // Resolve paramaterized type arguments
-            Type[] paramTypes = ((ParameterizedType) fieldType).getActualTypeArguments();
-            String[] paramStrings = new String[paramTypes.length];
-            for (int i = 0; i < paramTypes.length; i++) {
-                paramStrings[i] = ((Class<?>) paramTypes[i]).getName();
-            }
-
-            jsonOption.put("javaClass", String.format("%s<%s>",
-                    field.getType().getName(), Joiner.on(", ").join(paramStrings)));
-        } else {
-            jsonOption.put("javaClass", field.getType().getName());
-        }
-
-        // Store the field's value
-        Object value = null;
-        try {
-            field.setAccessible(true);
-            value = field.get(optionObject);
-
-            // Convert nulls to JSONObject.NULL
-            if (value == null) {
-                jsonOption.put("value", JSONObject.NULL);
-                // Convert MuliMap values to a JSON representation
-            } else if (value instanceof MultiMap) {
-                MultiMap multimap = (MultiMap) value;
-                JSONObject jsonValue = new JSONObject();
-                for (Object keyObj : multimap.keySet()) {
-                    jsonValue.put(keyObj.toString(), multimap.get(keyObj));
-                }
-                jsonOption.put("value", jsonValue);
-                // Convert Map values to JSON
-            } else if (value instanceof Map) {
-                jsonOption.put("value", new JSONObject((Map) value));
-                // For everything else, just use the default representation
-            } else {
-                jsonOption.put("value", value);
-            }
-        } catch (IllegalAccessException e) {
-            // Shouldn't happen
-            throw new RuntimeException(e);
-        }
-
-        // Store the field's source
-        // Maps and MultiMaps track sources per key, so use a JSONObject to
-        // represent their sources
-        if (Map.class.isAssignableFrom(field.getType())) {
-            JSONObject jsonSourcesMap = new JSONObject();
-            if (value != null) {
-                // For each entry in the map, store the source as a JSONArray
-                for (Object key : ((Map) value).keySet()) {
-                    List<String> source = mFieldSources.get(new FieldDef(optionObject, field, key));
-                    jsonSourcesMap.put(key.toString(), source == null ? new JSONArray() : source);
-                }
-            }
-            jsonOption.put("source", jsonSourcesMap);
-
-        } else if (MultiMap.class.isAssignableFrom(field.getType())) {
-            JSONObject jsonSourcesMap = new JSONObject();
-            if (value != null) {
-                // For each entry in the map, store the sources as a JSONArray
-                for (Object key : ((MultiMap) value).keySet()) {
-                    List<String> source = mFieldSources.get(new FieldDef(optionObject, field, key));
-                    jsonSourcesMap.put(key.toString(), source == null ? new JSONArray() : source);
-                }
-            }
-            jsonOption.put("source", jsonSourcesMap);
-
-            // Collections and regular objects only have one set of sources for
-            // the whole field, so use
-            // a JSONArray
-        } else {
-            List<String> source = mFieldSources.get(new FieldDef(optionObject, field, null));
-            jsonOption.put("source", source == null ? new JSONArray() : source);
-        }
-
-        return jsonOption;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public JSONArray getJsonCommandUsage() throws JSONException {
-        JSONArray ret = new JSONArray();
-        for (Map.Entry<String, List<Object>> configObjectsEntry : mConfigMap.entrySet()) {
-            for (Object optionObject : configObjectsEntry.getValue()) {
-
-                // Build a JSON representation of the current class
-                JSONObject jsonClass = new JSONObject();
-                jsonClass.put("name", configObjectsEntry.getKey());
-                String alias = null;
-                if (optionObject.getClass().isAnnotationPresent(OptionClass.class)) {
-                    OptionClass optionClass = optionObject.getClass()
-                            .getAnnotation(OptionClass.class);
-                    alias = optionClass.alias();
-                }
-                jsonClass.put("alias", alias == null ? JSONObject.NULL : alias);
-                jsonClass.put("class", optionObject.getClass().getName());
-
-                // For each of the @Option annotated fields
-                Collection<Field> optionFields = OptionSetter
-                        .getOptionFieldsForClass(optionObject.getClass());
-                JSONArray jsonOptions = new JSONArray();
-                for (Field field : optionFields) {
-                    // Add the JSON field representation to the JSON class
-                    // representation
-                    jsonOptions.put(getOptionJson(optionObject, field));
-                }
-                jsonClass.put("options", jsonOptions);
-
-                // Add the JSON class representation to the list
-                ret.put(jsonClass);
-            }
-        }
-
-        return ret;
     }
 
     /**
