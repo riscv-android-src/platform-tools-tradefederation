@@ -141,13 +141,20 @@ class ResultReporter(object):
               'VtsTradefedTestRunner': {'Module1': RunStat(passed:4, failed:0)}}
     """
 
-    def __init__(self):
+    def __init__(self, silent=False):
+        """Init ResultReporter.
+
+        Args:
+            silent: A boolean of silence or not.
+        """
         self.run_stats = RunStat()
         self.runners = OrderedDict()
         self.failed_tests = []
         self.all_test_results = []
         self.pre_test = None
         self.log_path = None
+        self.silent = silent
+        self.rerun_options = ''
 
     def process_test_result(self, test):
         """Given the results of a single test, update stats and print results.
@@ -219,6 +226,8 @@ class ResultReporter(object):
             return tests_ret
         print('\n%s' % au.colorize('Summary', constants.CYAN))
         print('-------')
+        if self.rerun_options:
+            print(self.rerun_options)
         failed_sum = len(self.failed_tests)
         for runner_name, groups in self.runners.items():
             if groups == UNSUPPORTED_FLAG:
@@ -334,6 +343,8 @@ class ResultReporter(object):
         Args:
             test: A TestResult namedtuple.
         """
+        if self.silent:
+            return
         title = test.group_name or test.runner_name
         underline = '-' * (len(title))
         print('\n%s\n%s' % (title, underline))
@@ -347,6 +358,8 @@ class ResultReporter(object):
         Args:
             test: a TestResult namedtuple.
         """
+        if self.silent:
+            return
         if not self.pre_test or (test.test_run_name !=
                                  self.pre_test.test_run_name):
             print('%s (%s %s)' % (au.colorize(test.test_run_name,

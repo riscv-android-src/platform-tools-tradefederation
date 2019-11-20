@@ -30,6 +30,7 @@ from functools import partial
 # pylint: disable=import-error
 import atest_utils
 import constants
+import result_reporter
 from event_handler import EventHandler
 from test_finders import test_info
 from test_runners import test_runner_base
@@ -61,10 +62,16 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
     NAME = 'AtestTradefedTestRunner'
     EXECUTABLE = 'atest_tradefed.sh'
     _TF_TEMPLATE = 'template/atest_local_min'
-    _LOG_ARGS = '--logcat-on-failure --atest-log-file-path={log_path}'
+    # Use --no-enable-granular-attempts to control reporter replay behavior.
+    # TODO(b/142630648): Enable option enable-granular-attempts in sharding mode.
+    _LOG_ARGS = ('--logcat-on-failure --atest-log-file-path={log_path} '
+                 '--no-enable-granular-attempts')
     _RUN_CMD = ('{exe} {template} --template:map '
                 'test=atest {log_args} {args}')
     _BUILD_REQ = {'tradefed-core'}
+    _RERUN_OPTION_GROUP = [constants.ITERATIONS,
+                           constants.RERUN_UNTIL_FAILURE,
+                           constants.RETRY_ANY_FAILURE]
 
     def __init__(self, results_dir, module_info=None, **kwargs):
         """Init stuff for base class."""
@@ -116,6 +123,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             0 if tests succeed, non-zero otherwise.
         """
         reporter.log_path = self.log_path
+        reporter.rerun_options = self._extract_rerun_options(extra_args)
         # Set google service key if it's available or found before running tests.
         self._try_set_gts_authentication_key()
         if os.getenv(test_runner_base.OLD_OUTPUT_ENV_VAR):
@@ -169,6 +177,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             ret_code |= self.wait_for_subprocess(subproc)
         return ret_code
 
+    # pylint: disable=too-many-branches
     def _start_monitor(self, server, tf_subproc, reporter):
         """Polling and process event.
 
@@ -180,6 +189,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         inputs = [server]
         event_handlers = {}
         data_map = {}
+        inv_socket = None
         while inputs:
             try:
                 readable, _, _ = select.select(inputs, [], [], SELECT_TIMEOUT)
@@ -190,9 +200,20 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                         conn.setblocking(False)
                         inputs.append(conn)
                         data_map[conn] = ''
+                        # The First connection should be invocation level reporter.
+                        if not inv_socket:
+                            inv_socket = conn
                     else:
-                        event_handler = event_handlers.setdefault(
-                            socket_object, EventHandler(reporter, self.NAME))
+                        # Count invocation level reporter events
+                        # without showing real-time information.
+                        if inv_socket == socket_object:
+                            reporter.silent = True
+                            event_handler = event_handlers.setdefault(
+                                socket_object, EventHandler(reporter, self.NAME))
+                        else:
+                            event_handler = event_handlers.setdefault(
+                                socket_object, EventHandler(
+                                    result_reporter.ResultReporter(), self.NAME))
                         recv_data = self._process_connection(data_map,
                                                              socket_object,
                                                              event_handler)
@@ -302,6 +323,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         return build_req
 
     # pylint: disable=too-many-branches
+    # pylint: disable=too-many-statements
     @staticmethod
     def _parse_extra_args(extra_args):
         """Convert the extra args into something tf can understand.
@@ -353,6 +375,23 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 args_to_append.append('--enable-optional-parameterization')
                 args_to_append.append('--module-parameter')
                 args_to_append.append(extra_args[arg])
+            if constants.ITERATIONS == arg:
+                args_to_append.append('--retry-strategy')
+                args_to_append.append(constants.ITERATIONS)
+                args_to_append.append('--max-testcase-run-count')
+                args_to_append.append(str(extra_args[arg]))
+                continue
+            if constants.RERUN_UNTIL_FAILURE == arg:
+                args_to_append.append('--retry-strategy')
+                args_to_append.append(constants.RERUN_UNTIL_FAILURE)
+                args_to_append.append('--max-testcase-run-count')
+                args_to_append.append(str(extra_args[arg]))
+                continue
+            if constants.RETRY_ANY_FAILURE == arg:
+                args_to_append.append('--retry-strategy')
+                args_to_append.append(constants.RETRY_ANY_FAILURE)
+                args_to_append.append('--max-testcase-run-count')
+                args_to_append.append(str(extra_args[arg]))
                 continue
             args_not_supported.append(arg)
         return args_to_append, args_not_supported
@@ -571,3 +610,16 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         if not has_integration_test:
             args.append(constants.TF_SKIP_LOADING_CONFIG_JAR)
         return args
+
+    def _extract_rerun_options(self, extra_args):
+        """Extract rerun options to a string for output.
+
+        Args:
+            extra_args: Dict of extra args for test runners to use.
+
+        Returns: A string of rerun options.
+        """
+        extracted_options = ['{} {}'.format(arg, extra_args[arg])
+                             for arg in extra_args
+                             if arg in self._RERUN_OPTION_GROUP]
+        return ' '.join(extracted_options)

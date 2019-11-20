@@ -91,6 +91,7 @@ import com.android.tradefed.device.metric.DumpHeapCollectorTest;
 import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.FilePullerLogCollectorTest;
 import com.android.tradefed.device.metric.GraphicsStatsMetricCollectorTest;
+import com.android.tradefed.device.metric.HostStatsdMetricCollectorTest;
 import com.android.tradefed.device.metric.IncidentReportCollectorTest;
 import com.android.tradefed.device.metric.IonHeapInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.LogcatOnFailureCollectorTest;
@@ -103,7 +104,6 @@ import com.android.tradefed.device.metric.RebootReasonCollectorTest;
 import com.android.tradefed.device.metric.RuntimeRestartCollectorTest;
 import com.android.tradefed.device.metric.ScheduleMultipleDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.ScheduledDeviceMetricCollectorTest;
-import com.android.tradefed.device.metric.HostStatsdMetricCollectorTest;
 import com.android.tradefed.device.metric.ScreenshotOnFailureCollectorTest;
 import com.android.tradefed.device.metric.TemperatureCollectorTest;
 import com.android.tradefed.device.metric.TraceMetricCollectorTest;
@@ -260,6 +260,8 @@ import com.android.tradefed.testtype.junit4.BaseHostJUnit4TestTest;
 import com.android.tradefed.testtype.junit4.DeviceParameterizedRunnerTest;
 import com.android.tradefed.testtype.junit4.LongevityHostRunnerTest;
 import com.android.tradefed.testtype.python.PythonBinaryHostTestTest;
+import com.android.tradefed.testtype.rust.RustBinaryHostTestTest;
+import com.android.tradefed.testtype.rust.RustTestResultParserTest;
 import com.android.tradefed.testtype.suite.AtestRunnerTest;
 import com.android.tradefed.testtype.suite.BaseTestSuiteTest;
 import com.android.tradefed.testtype.suite.GranularRetriableTestWrapperTest;
@@ -308,8 +310,8 @@ import com.android.tradefed.util.FixedByteArrayOutputStreamTest;
 import com.android.tradefed.util.GCSFileDownloaderTest;
 import com.android.tradefed.util.GoogleApiClientUtilTest;
 import com.android.tradefed.util.HprofAllocSiteParserTest;
-import com.android.tradefed.util.JavaCodeCoverageFlusherTest;
 import com.android.tradefed.util.JUnitXmlParserTest;
+import com.android.tradefed.util.JavaCodeCoverageFlusherTest;
 import com.android.tradefed.util.KeyguardControllerStateTest;
 import com.android.tradefed.util.ListInstrumentationParserTest;
 import com.android.tradefed.util.LocalRunInstructionBuilderTest;
@@ -340,7 +342,6 @@ import com.android.tradefed.util.TarUtilTest;
 import com.android.tradefed.util.TestLoaderTest;
 import com.android.tradefed.util.TimeUtilTest;
 import com.android.tradefed.util.TimeValTest;
-import com.android.tradefed.util.UserProfileUtilTest;
 import com.android.tradefed.util.VersionParserTest;
 import com.android.tradefed.util.ZipUtil2Test;
 import com.android.tradefed.util.ZipUtilTest;
@@ -698,6 +699,10 @@ import org.junit.runners.Suite.SuiteClasses;
     // testtype/python
     PythonBinaryHostTestTest.class,
 
+    // testtype/rust
+    RustBinaryHostTestTest.class,
+    RustTestResultParserTest.class,
+
     // testtype/suite
     AtestRunnerTest.class,
     BaseTestSuiteTest.class,
@@ -787,7 +792,6 @@ import org.junit.runners.Suite.SuiteClasses;
     TestLoaderTest.class,
     TimeUtilTest.class,
     TimeValTest.class,
-    UserProfileUtilTest.class,
     VersionParserTest.class,
     ZipUtilTest.class,
     ZipUtil2Test.class,

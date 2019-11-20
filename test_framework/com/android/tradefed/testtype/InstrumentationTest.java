@@ -288,11 +288,18 @@ public class InstrumentationTest
     private boolean mHiddenApiChecks = true;
 
     @Option(
-        name = "isolated-storage",
-        description =
-                "If set to false, the '--no-isolated-storage' flag will be passed to the am "
-                        + "instrument command. Only works for Q or later."
-    )
+            name = "test-api-checks",
+            description =
+                    "If set to false and hidden API checks are enabled, the '--no-test-api-checks'"
+                            + " flag will be passed to the am instrument command."
+                            + " Only works for R or later.")
+    private boolean mTestApiChecks = false;
+
+    @Option(
+            name = "isolated-storage",
+            description =
+                    "If set to false, the '--no-isolated-storage' flag will be passed to the am "
+                            + "instrument command. Only works for Q or later.")
     private boolean mIsolatedStorage = true;
 
     @Option(
@@ -318,6 +325,7 @@ public class InstrumentationTest
     private String mTestFilePathOnDevice = null;
 
     private ListInstrumentationParser mListInstrumentationParser = null;
+    private NativeCodeCoverageListener mNativeCoverageListener = null;
 
     private List<String> mExtraDeviceListener = new ArrayList<>();
 
@@ -683,6 +691,14 @@ public class InstrumentationTest
         if (!mHiddenApiChecks && apiLevel >= 28) {
             runOptions += "--no-hidden-api-checks ";
         }
+        // test-api-checks flag only exists in R and after.
+        // Test API checks are subset of hidden API checks, so only make sense if hidden API
+        // checks are enabled.
+        if (mHiddenApiChecks
+                && !mTestApiChecks
+                && getDevice().checkApiLevelAgainstNextRelease(30)) {
+            runOptions += "--no-test-api-checks ";
+        }
         // isolated-storage flag only exists in Q and after.
         if (!mIsolatedStorage && getDevice().checkApiLevelAgainstNextRelease(29)) {
             runOptions += "--no-isolated-storage ";
@@ -893,11 +909,29 @@ public class InstrumentationTest
             mRunner.addInstrumentationArg("coverage", "true");
         }
 
-        // Reruns do not create new listeners.
+        // Reruns do not create new listeners or clear coverage measurements.
         if (!mIsRerun) {
             listener = addBugreportListenerIfEnabled(listener);
             listener = addJavaCoverageListenerIfEnabled(listener);
             listener = addNativeCoverageListenerIfEnabled(listener);
+
+            // Clear coverage measurements on the device before running.
+            if (mConfiguration != null
+                    && mConfiguration.getCoverageOptions().isCoverageFlushEnabled()) {
+                CoverageOptions options = mConfiguration.getCoverageOptions();
+
+                if (options.getCoverageToolchains().contains(Toolchain.GCOV)) {
+                    NativeCodeCoverageFlusher flusher =
+                            new NativeCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
+                    flusher.resetCoverage();
+                }
+
+                if (options.getCoverageToolchains().contains(Toolchain.JACOCO)) {
+                    JavaCodeCoverageFlusher flusher =
+                            new JavaCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
+                    flusher.resetCoverage();
+                }
+            }
 
             // TODO: Convert to device-side collectors when possible.
             for (IMetricCollector collector : mCollectors) {
@@ -915,24 +949,6 @@ public class InstrumentationTest
         // Add the extra listeners only to the actual run and not the --collect-test-only one
         if (!mExtraDeviceListener.isEmpty()) {
             mRunner.addInstrumentationArg("listener", ArrayUtil.join(",", mExtraDeviceListener));
-        }
-
-        // Clear coverage measurements on the device before running.
-        if (mConfiguration != null
-                && mConfiguration.getCoverageOptions().isCoverageFlushEnabled()) {
-            CoverageOptions options = mConfiguration.getCoverageOptions();
-
-            if (options.getCoverageToolchains().contains(Toolchain.GCOV)) {
-                NativeCodeCoverageFlusher flusher =
-                        new NativeCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
-                flusher.resetCoverage();
-            }
-
-            if (options.getCoverageToolchains().contains(Toolchain.JACOCO)) {
-                JavaCodeCoverageFlusher flusher =
-                        new JavaCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
-                flusher.resetCoverage();
-            }
         }
 
         if (testsToRun == null) {
@@ -999,8 +1015,10 @@ public class InstrumentationTest
         }
         if (mConfiguration.getCoverageOptions().isCoverageEnabled()
                 && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(GCOV)) {
-            return new NativeCodeCoverageListener(
-                    getDevice(), mConfiguration.getCoverageOptions(), listener);
+            mNativeCoverageListener =
+                    new NativeCodeCoverageListener(
+                            getDevice(), mConfiguration.getCoverageOptions(), listener);
+            return mNativeCoverageListener;
         }
         return listener;
     }
@@ -1091,7 +1109,16 @@ public class InstrumentationTest
             return;
         }
 
+        if (mNativeCoverageListener != null) {
+            mNativeCoverageListener.setCollectOnTestEnd(false);
+        }
+
         testReRunner.run(listener);
+
+        if (mNativeCoverageListener != null) {
+            mNativeCoverageListener.setCollectOnTestEnd(true);
+            mNativeCoverageListener.logCoverageMeasurements("rerun_merged");
+        }
     }
 
     @VisibleForTesting

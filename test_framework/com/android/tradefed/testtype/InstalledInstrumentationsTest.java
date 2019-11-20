@@ -180,6 +180,14 @@ public class InstalledInstrumentationsTest
     private boolean mHiddenApiChecks = true;
 
     @Option(
+            name = "test-api-checks",
+            description =
+                    "If set to false and hidden API checks are enabled, the '--no-test-api-checks'"
+                            + " flag will be passed to the am instrument command."
+                            + " Only works for R or later.")
+    private boolean mTestApiChecks = false;
+
+    @Option(
         name = "isolated-storage",
         description =
                 "If set to false, the '--no-isolated-storage' flag will be passed to the am "

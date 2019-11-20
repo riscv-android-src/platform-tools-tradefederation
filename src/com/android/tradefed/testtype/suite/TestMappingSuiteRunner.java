@@ -75,6 +75,12 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
     )
     private List<String> mTestMappingPaths = new ArrayList<>();
 
+    @Option(
+        name = "use-test-mapping-path",
+        description = "Whether or not to run tests based on the given test mapping path."
+    )
+    private boolean mUseTestMappingPath = false;
+
     /** Special definition in the test mapping structure. */
     private static final String TEST_MAPPING_INCLUDE_FILTER = "include-filter";
 
@@ -120,8 +126,16 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
                     "If options --test-mapping-test-group is set, option --include-filter should "
                             + "not be set.");
         }
+        if (!includeFilter.isEmpty() && !mTestMappingPaths.isEmpty()) {
+            throw new RuntimeException(
+                    "If option --include-filter is set, option --test-mapping-path should "
+                            + "not be set.");
+        }
 
         if (mTestGroup != null) {
+            if (!mTestMappingPaths.isEmpty()) {
+                TestMapping.setTestMappingPaths(mTestMappingPaths);
+            }
             testInfosToRun =
                     TestMapping.getTests(
                             getBuildInfo(), mTestGroup, getPrioritizeHostConfig(), mKeywords);

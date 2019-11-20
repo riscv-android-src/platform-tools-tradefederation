@@ -4006,6 +4006,20 @@ public class NativeDevice implements IManagedTestDevice {
         waitForDeviceAvailable();
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void remountVendorWritable() throws DeviceNotAvailableException {
+        String verity = getProperty("partition.vendor.verified");
+        // have the property set (regardless state) implies verity is enabled, so we send adb
+        // command to disable verity
+        if (verity != null && !verity.isEmpty()) {
+            executeAdbCommand("disable-verity");
+            reboot();
+        }
+        executeAdbCommand("remount");
+        waitForDeviceAvailable();
+    }
+
     /**
      * {@inheritDoc}
      */

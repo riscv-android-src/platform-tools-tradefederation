@@ -2834,6 +2834,20 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Test that remount vendor works as expected on a device not supporting dm verity
+     *
+     * @throws Exception
+     */
+    public void testRemountVendor_verityUnsupported() throws Exception {
+        injectSystemProperty("partition.vendor.verified", "");
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountVendorWritable();
+        verifyMocks();
+    }
+
+    /**
      * Test that remount works as expected on a device supporting dm verity v1
      * @throws Exception
      */
@@ -2846,6 +2860,22 @@ public class TestDeviceTest extends TestCase {
         EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
         replayMocks();
         mTestDevice.remountSystemWritable();
+        verifyMocks();
+    }
+    /**
+     * Test that remount vendor works as expected on a device supporting dm verity v1
+     *
+     * @throws Exception
+     */
+    public void testRemountVendor_veritySupportedV1() throws Exception {
+        injectSystemProperty("partition.vendor.verified", "1");
+        setExecuteAdbCommandExpectations(
+                new CommandResult(CommandStatus.SUCCESS), "disable-verity");
+        setRebootExpectations();
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountVendorWritable();
         verifyMocks();
     }
 
@@ -2866,6 +2896,23 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Test that remount vendor works as expected on a device supporting dm verity v2
+     *
+     * @throws Exception
+     */
+    public void testRemountVendor_veritySupportedV2() throws Exception {
+        injectSystemProperty("partition.vendor.verified", "2");
+        setExecuteAdbCommandExpectations(
+                new CommandResult(CommandStatus.SUCCESS), "disable-verity");
+        setRebootExpectations();
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountVendorWritable();
+        verifyMocks();
+    }
+
+    /**
      * Test that remount works as expected on a device supporting dm verity but with unknown version
      * @throws Exception
      */
@@ -2878,6 +2925,24 @@ public class TestDeviceTest extends TestCase {
         EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
         replayMocks();
         mTestDevice.remountSystemWritable();
+        verifyMocks();
+    }
+
+    /**
+     * Test that remount vendor works as expected on a device supporting dm verity but with unknown
+     * version
+     *
+     * @throws Exception
+     */
+    public void testRemountVendor_veritySupportedNonNumerical() throws Exception {
+        injectSystemProperty("partition.vendor.verified", "foo");
+        setExecuteAdbCommandExpectations(
+                new CommandResult(CommandStatus.SUCCESS), "disable-verity");
+        setRebootExpectations();
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountVendorWritable();
         verifyMocks();
     }
 
@@ -3556,7 +3621,7 @@ public class TestDeviceTest extends TestCase {
                         "feature:com.google.android.feature.GOOGLE_EXPERIENCE";
             }
         };
-        assertTrue(mTestDevice.hasFeature("com.google.android.feature.EXCHANGE_6_2"));
+        assertTrue(mTestDevice.hasFeature("feature:com.google.android.feature.EXCHANGE_6_2"));
     }
 
     /**
@@ -3572,6 +3637,22 @@ public class TestDeviceTest extends TestCase {
             }
         };
         assertFalse(mTestDevice.hasFeature("feature:test"));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#hasFeature(String)} on partly matching case.
+     */
+    public void testHasFeature_partly_matching() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "feature:com.google.android.feature.EXCHANGE_6_2\n" +
+                        "feature:com.google.android.feature.GOOGLE_BUILD\n" +
+                        "feature:com.google.android.feature.GOOGLE_EXPERIENCE";
+            }
+        };
+        assertFalse(mTestDevice.hasFeature("feature:com.google.android.feature"));
+        assertTrue(mTestDevice.hasFeature("feature:com.google.android.feature.EXCHANGE_6_2"));
     }
 
     /**
