@@ -40,6 +40,7 @@ public enum LogDataType {
     /* Specific text file types */
     BUGREPORT("txt", "text/plain", false, true),
     BUGREPORTZ("zip", "application/zip", true, false),
+    HOST_LOG("txt", "text/plain", false, true),
     LOGCAT("txt", "text/plain", false, true),
     KERNEL_LOG("txt", "text/plain", false, true),
     MONKEY_LOG("txt", "text/plain", false, true),
