@@ -154,6 +154,7 @@ class ResultReporter(object):
         self.pre_test = None
         self.log_path = None
         self.silent = silent
+        self.rerun_options = ''
 
     def process_test_result(self, test):
         """Given the results of a single test, update stats and print results.
@@ -170,8 +171,7 @@ class ResultReporter(object):
             self._print_group_title(test)
         self._update_stats(test,
                            self.runners[test.runner_name][test.group_name])
-        if not self.silent:
-            self._print_result(test)
+        self._print_result(test)
 
     def runner_failure(self, runner_name, failure_msg):
         """Report a runner failure.
@@ -226,6 +226,8 @@ class ResultReporter(object):
             return tests_ret
         print('\n%s' % au.colorize('Summary', constants.CYAN))
         print('-------')
+        if self.rerun_options:
+            print(self.rerun_options)
         failed_sum = len(self.failed_tests)
         for runner_name, groups in self.runners.items():
             if groups == UNSUPPORTED_FLAG:
@@ -341,6 +343,8 @@ class ResultReporter(object):
         Args:
             test: A TestResult namedtuple.
         """
+        if self.silent:
+            return
         title = test.group_name or test.runner_name
         underline = '-' * (len(title))
         print('\n%s\n%s' % (title, underline))
@@ -354,6 +358,8 @@ class ResultReporter(object):
         Args:
             test: a TestResult namedtuple.
         """
+        if self.silent:
+            return
         if not self.pre_test or (test.test_run_name !=
                                  self.pre_test.test_run_name):
             print('%s (%s %s)' % (au.colorize(test.test_run_name,
