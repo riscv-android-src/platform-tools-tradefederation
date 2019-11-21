@@ -35,9 +35,6 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -500,50 +497,6 @@ public interface IConfiguration {
      */
     public void printCommandUsage(boolean importantOnly, PrintStream out)
             throws ConfigurationException;
-
-    /**
-     * Returns a JSON representation of this configuration.
-     * <p/>
-     * The return value is a JSONArray containing JSONObjects to represent each configuration
-     * object. Each configuration object entry has the following structure:
-     * <pre>
-     * {@code
-     *   &#123;
-     *     "alias": "device-unavail-email",
-     *     "name": "result_reporter",
-     *     "class": "com.android.tradefed.result.DeviceUnavailEmailResultReporter",
-     *     "options": [ ... ]
-     *   &#125;
-     * }
-     * </pre>
-     * The "options" entry is a JSONArray containing JSONObjects to represent each @Option annotated
-     * field. Each option entry has the following structure:
-     * <pre>
-     * {@code
-     *   &#123;
-     *     "updateRule": "LAST",
-     *     "isTimeVal": false,
-     *     "source": "google\/template\/reporters\/asit",
-     *     "importance": "IF_UNSET",
-     *     "description": "The envelope-sender address to use for the messages.",
-     *     "mandatory": false,
-     *     "name": "sender",
-     *     "javaClass": "java.lang.String",
-     *     "value": "tffail@google.com"
-     *   &#125;
-     * }
-     * </pre>
-     * Most of the values come from the @Option annotation. 'javaClass' is the name of the
-     * underlying java class for this option. 'value' is a JSON representation of the field's
-     * current value. 'source' is the set of config names which set the field's value. For regular
-     * objects or Collections, 'source' is a JSONArray containing each contributing config's name.
-     * For map fields, sources for each key are tracked individually and stored in a JSONObject.
-     * Each key / value pair in the JSONObject corresponds to a key in the map and an array of its
-     * source configurations.
-     *
-     * @throws JSONException
-     */
-    public JSONArray getJsonCommandUsage() throws JSONException;
 
     /**
      * Validate option values.

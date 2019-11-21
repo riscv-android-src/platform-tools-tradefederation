@@ -81,8 +81,6 @@ import com.android.tradefed.util.keystore.KeyStoreException;
 
 import com.google.common.annotations.VisibleForTesting;
 
-import org.json.JSONException;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -1202,13 +1200,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             getConfigFactory().printHelpForConfig(args, true, System.out);
         } else if (config.getCommandOptions().isFullHelpMode()) {
             getConfigFactory().printHelpForConfig(args, false, System.out);
-        } else if (config.getCommandOptions().isJsonHelpMode()) {
-            try {
-                // Convert the JSON usage to a string (with 4 space indentation) and print to stdout
-                System.out.println(config.getJsonCommandUsage().toString(4));
-            } catch (JSONException e) {
-                CLog.logAndDisplay(LogLevel.ERROR, "Failed to get json command usage: %s", e);
-            }
         } else if (config.getCommandOptions().isDryRunMode()) {
             config.validateOptions();
             String cmdLine = QuotationAwareTokenizer.combineTokens(args);
