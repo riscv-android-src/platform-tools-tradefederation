@@ -814,7 +814,7 @@ public interface ITestDevice extends INativeDevice {
     /**
      * Check if a feature is available on a device.
      *
-     * @param feature which format should be "feature:<name>".
+     * @param feature which format should be "feature:<name>" or "<name>" directly.
      * @return True if feature is found, false otherwise.
      * @throws DeviceNotAvailableException
      */
