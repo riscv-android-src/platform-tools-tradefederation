@@ -160,6 +160,16 @@ public class SuiteModuleLoader {
         List<String> configs = configFactory.getConfigList(suitePrefix, false);
         // Sort configs to ensure they are always evaluated and added in the same order.
         Collections.sort(configs);
+        toRun.putAll(loadTfConfigsFromSpecifiedPaths(configs, abis, suiteTag));
+        return toRun;
+    }
+
+    /** Main loading of configurations, looking into the specified resources on the classpath. */
+    public LinkedHashMap<String, IConfiguration> loadTfConfigsFromSpecifiedPaths(
+        List<String> configs,
+        Set<IAbi> abis,
+        String suiteTag) {
+        LinkedHashMap<String, IConfiguration> toRun = new LinkedHashMap<>();
         for (String configName : configs) {
             toRun.putAll(loadOneConfig(configName, configName, abis, suiteTag));
         }
