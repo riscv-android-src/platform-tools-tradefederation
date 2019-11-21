@@ -37,7 +37,7 @@ public class DeviceTestRunOptions {
     private Long mMaxInstrumentationTimeoutMs; // optional
     private boolean mCheckResults = true; // optional
     private boolean mDisableHiddenApiCheck = false; // optional
-    private boolean mDisableTestApiCheck = false; // optional
+    private boolean mDisableTestApiCheck = true; // optional
     private boolean mDisableIsolatedStorage = false; // optional
     private boolean mDisableWindowAnimation = false; // optional
     private Map<String, String> mInstrumentationArgs = new LinkedHashMap<>(); // optional
