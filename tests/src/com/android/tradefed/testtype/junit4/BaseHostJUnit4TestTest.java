@@ -137,6 +137,9 @@ public class BaseHostJUnit4TestTest {
         mMockContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
         mMockContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockBuild);
 
+        EasyMock.expect(mMockDevice.checkApiLevelAgainstNextRelease(EasyMock.anyInt()))
+                .andStubReturn(false);
+
         mHostTest = new HostTest();
         mHostTest.setBuild(mMockBuild);
         mHostTest.setDevice(mMockDevice);

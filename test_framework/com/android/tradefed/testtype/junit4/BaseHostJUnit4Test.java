@@ -524,7 +524,7 @@ public abstract class BaseHostJUnit4Test
                 maxInstrumentationTimeoutMs,
                 checkResults,
                 isHiddenApiCheckDisabled,
-                false,
+                true,
                 false,
                 instrumentationArgs,
                 new ArrayList<>());
@@ -718,7 +718,7 @@ public abstract class BaseHostJUnit4Test
         if (!isHiddenApiCheckDisabled
                 && isTestApiCheckDisabled
                 && device.checkApiLevelAgainstNextRelease(30)) {
-            runOptions += "--no-test-api-checks";
+            runOptions += "--no-test-api-checks ";
         }
         // isolated-storage flag only exists in Q and after.
         if (isIsolatedStorageDisabled && device.checkApiLevelAgainstNextRelease(29)) {
