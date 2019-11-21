@@ -4471,6 +4471,10 @@ public class NativeDevice implements IManagedTestDevice {
         if (mContentProvider == null) {
             mContentProvider = new ContentProviderHandler(this);
         }
+        // Force the install if we saw an error with content provider installation.
+        if (mContentProvider.contentProviderNotFound()) {
+            mShouldSkipContentProviderSetup = false;
+        }
         if (!mShouldSkipContentProviderSetup) {
             boolean res = mContentProvider.setUp();
             if (!res) {

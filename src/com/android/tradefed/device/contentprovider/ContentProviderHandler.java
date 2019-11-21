@@ -72,13 +72,25 @@ public class ContentProviderHandler {
     private static final String CONTENT_PROVIDER_APK_RES = "/apks/contentprovider/" + APK_NAME;
     private static final String PROPERTY_RESULT = "LEGACY_STORAGE: allow";
     private static final String ERROR_MESSAGE_TAG = "[ERROR]";
+    // Error thrown by device if the content provider is not installed for any reason.
+    private static final String ERROR_PROVIDER_NOT_INSTALLED =
+            "Could not find provider: android.tradefed.contentprovider";
 
     private ITestDevice mDevice;
     private File mContentProviderApk = null;
+    private boolean mReportNotFound = false;
 
     /** Constructor. */
     public ContentProviderHandler(ITestDevice device) {
         mDevice = device;
+    }
+
+    /**
+     * Returns True if one of the operation failed with Content provider not found. Can be cleared
+     * by running {@link #setUp()} successfully again.
+     */
+    public boolean contentProviderNotFound() {
+        return mReportNotFound;
     }
 
     /**
@@ -88,9 +100,10 @@ public class ContentProviderHandler {
      */
     public boolean setUp() throws DeviceNotAvailableException {
         if (mDevice.isPackageInstalled(PACKAGE_NAME, Integer.toString(mDevice.getCurrentUser()))) {
+            mReportNotFound = false;
             return true;
         }
-        if (mContentProviderApk == null) {
+        if (mContentProviderApk == null || !mContentProviderApk.exists()) {
             try {
                 mContentProviderApk = extractResourceApk();
             } catch (IOException e) {
@@ -120,6 +133,7 @@ public class ContentProviderHandler {
             CLog.e(
                     "Failed to set legacy_storage. Stdout: %s\nstderr: %s",
                     setResult.getStdout(), setResult.getStderr());
+            FileUtil.deleteFile(mContentProviderApk);
             return false;
         }
         // Check that it worked and set on the system
@@ -127,6 +141,7 @@ public class ContentProviderHandler {
                 mDevice.executeShellV2Command(String.format("cmd appops get %s", PACKAGE_NAME));
         if (CommandStatus.SUCCESS.equals(appOpsResult.getStatus())
                 && appOpsResult.getStdout().contains(PROPERTY_RESULT)) {
+            mReportNotFound = false;
             return true;
         }
         CLog.e(
@@ -262,6 +277,9 @@ public class ContentProviderHandler {
             return false;
         }
         String stderr = result.getStderr();
+        if (stderr != null && stderr.contains(ERROR_PROVIDER_NOT_INSTALLED)) {
+            mReportNotFound = true;
+        }
         return Strings.isNullOrEmpty(stderr);
     }
 
@@ -405,10 +423,13 @@ public class ContentProviderHandler {
             if (isSuccessful(pullResult)) {
                 return true;
             }
-
+            String stderr = pullResult.getStderr();
             CLog.e(
                     "Failed to pull a file at '%s' to %s using content provider. Error: '%s'",
-                    deviceFilePath, localFile, pullResult.getStderr());
+                    deviceFilePath, localFile, stderr);
+            if (stderr.contains(ERROR_PROVIDER_NOT_INSTALLED)) {
+                mReportNotFound = true;
+            }
             return false;
         } finally {
             StreamUtil.close(localFileStream);
