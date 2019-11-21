@@ -67,6 +67,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -1037,6 +1038,9 @@ public class InstrumentationTest
                 mRunner,
                 // Use a crash forwarder to get stacks from logcat when crashing.
                 new LogcatCrashResultForwarder(getDevice(), listener, testTracker) {
+                    private Set<TestDescription> mTests = new HashSet<>();
+                    private Set<TestDescription> mDuplicateTests = new HashSet<>();
+
                     @Override
                     public void testRunStarted(String runName, int testCount) {
                         // In case of crash, run will attempt to report with 0
@@ -1048,6 +1052,30 @@ public class InstrumentationTest
                         } else {
                             super.testRunStarted(runName, testCount);
                         }
+                    }
+
+                    @Override
+                    public void testStarted(TestDescription test, long startTime) {
+                        super.testStarted(test, startTime);
+                        if (!mTests.add(test)) {
+                            mDuplicateTests.add(test);
+                        }
+                    }
+
+                    @Override
+                    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
+                        if (!mDuplicateTests.isEmpty()) {
+                            String errorMessage =
+                                    String.format(
+                                            "The following tests ran more than once: %s. Check "
+                                                    + "your run configuration, you might be "
+                                                    + "including the same test class several "
+                                                    + "times.",
+                                            mDuplicateTests);
+                            CLog.e(errorMessage);
+                            super.testRunFailed(errorMessage);
+                        }
+                        super.testRunEnded(elapsedTime, runMetrics);
                     }
                 });
         TestRunResult testRun = testTracker.getCurrentRunResults();
