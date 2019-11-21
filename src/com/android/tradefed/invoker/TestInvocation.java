@@ -44,6 +44,7 @@ import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.log.StdoutLogger;
 import com.android.tradefed.postprocessor.IPostProcessor;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -495,7 +496,10 @@ public class TestInvocation implements ITestInvocation {
                 }
                 listener.testLog(name, LogDataType.TEXT, globalLogSource);
             } else {
-                CLog.i("Skip logging %s to a file with logger '%s'", name, logger);
+                // Only print the non-logging if we are not a stdout logger
+                if (!(logger instanceof StdoutLogger)) {
+                    CLog.i("Skip logging %s to a file with logger '%s'", name, logger);
+                }
             }
         }
         // once tradefed log is reported, all further log calls for this invocation can get lost
