@@ -44,7 +44,6 @@ public class VersionParser {
             }
         }
         File dir = getTradefedJarDir();
-        CLog.e("Tradefed dir: '%s'", dir);
         if (dir != null) {
             File versionFile = new File(dir, VERSION_FILE);
             if (versionFile.exists()) {
