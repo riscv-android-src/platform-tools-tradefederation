@@ -59,8 +59,6 @@ import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
-import org.json.JSONArray;
-import org.json.JSONException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -231,20 +229,6 @@ public class CommandSchedulerTest {
         // expect
         mMockConfigFactory.printHelpForConfig(EasyMock.aryEq(args), EasyMock.eq(true),
                 EasyMock.eq(System.out));
-        replayMocks();
-        mScheduler.start();
-        mScheduler.addCommand(args);
-        verifyMocks();
-    }
-
-    /** Test {@link CommandScheduler#addCommand(String[])} when json help mode is specified */
-    @Test
-    public void testAddConfig_configJsonHelp() throws ConfigurationException, JSONException {
-        String[] args = new String[] {"test"};
-        mCommandOptions.setJsonHelpMode(true);
-        setCreateConfigExpectations(args, 1);
-        // expect
-        EasyMock.expect(mMockConfiguration.getJsonCommandUsage()).andReturn(new JSONArray());
         replayMocks();
         mScheduler.start();
         mScheduler.addCommand(args);
@@ -1134,22 +1118,5 @@ public class CommandSchedulerTest {
         // only attribute is invocation ID
         assertEquals(1, mContext.getAttributes().size());
         assertNotNull(mContext.getInvocationId());
-    }
-
-    /**
-     * If no-use-sandbox is present on the command line after use-sandbox it cancels it like any
-     * regular options.
-     */
-    @Test
-    public void testExecCommand_noSandboxed() throws Throwable {
-        String[] args = new String[] {"test", "--use-sandbox", "--no-use-sandbox"};
-        mCommandOptions.setJsonHelpMode(true);
-        setCreateConfigExpectations(args, 1);
-        // expect
-        EasyMock.expect(mMockConfiguration.getJsonCommandUsage()).andReturn(new JSONArray());
-        replayMocks();
-        mScheduler.start();
-        mScheduler.addCommand(args);
-        verifyMocks();
     }
 }
