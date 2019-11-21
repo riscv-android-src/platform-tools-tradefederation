@@ -82,6 +82,7 @@ public final class StreamProtoResultReporter extends ProtoResultReporter {
     private void writeRecordToSocket(TestRecord record) {
         if (mReportPort == null) {
             CLog.d("No port set. Skipping the reporter.");
+            return;
         }
         try {
             if (mReportSocket == null) {
