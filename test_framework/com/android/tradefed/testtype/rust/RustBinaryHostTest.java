@@ -112,10 +112,7 @@ public class RustBinaryHostTest implements IRemoteTest, IBuildReceiver, IInvocat
             } else {
                 paths = testsDir + "\n";
                 String baseName = filePath.getName();
-                if (baseName.equals(fileName)) {
-                    // Simple fileName, findFile returns the first match under testsDir.
-                    res = FileUtil.findFile(testsDir, fileName);
-                } else {
+                if (!baseName.equals(fileName)) {
                     // fileName has base directory, findFilesObject returns baseName under testsDir.
                     try {
                         Set<File> candidates = FileUtil.findFilesObject(testsDir, baseName);
@@ -126,9 +123,17 @@ public class RustBinaryHostTest implements IRemoteTest, IBuildReceiver, IInvocat
                                 break;
                             }
                         }
+                        if (res == null) {
+                            CLog.e("Cannot find %s; try to find %s", fileName, baseName);
+                        }
                     } catch (IOException e) {
                         res = null; // report error later
                     }
+                }
+                if (res == null) {
+                    // When fileName is a simple file name, or its path cannot be found
+                    // look up the first matching baseName under testsDir.
+                    res = FileUtil.findFile(testsDir, baseName);
                 }
             }
             if (res == null) {
@@ -149,7 +154,7 @@ public class RustBinaryHostTest implements IRemoteTest, IBuildReceiver, IInvocat
 
         CommandResult result =
                 getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
-        String runName = file.getName(); // TODO(chh): use original relative path in mBinaryNames
+        String runName = file.getName();
         RustForwarder forwarder = new RustForwarder(listener, runName);
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
             CLog.e(
