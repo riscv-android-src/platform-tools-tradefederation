@@ -103,9 +103,19 @@ public class PushFilePreparer extends BaseTargetPreparer
             + "been deleted.")
     private boolean mCleanup = false;
 
-    @Option(name="remount-system", description="Remounts system partition to be writable "
-            + "so that files could be pushed there too")
-    private boolean mRemount = false;
+    @Option(
+            name = "remount-system",
+            description =
+                    "Remounts system partition to be writable "
+                            + "so that files could be pushed there too")
+    private boolean mRemountSystem = false;
+
+    @Option(
+            name = "remount-vendor",
+            description =
+                    "Remounts vendor partition to be writable "
+                            + "so that files could be pushed there too")
+    private boolean mRemountVendor = false;
 
     private Set<String> mFilesPushed = null;
     /** If the preparer is part of a module, we can use the test module name as a search criteria */
@@ -253,8 +263,11 @@ public class PushFilePreparer extends BaseTargetPreparer
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError, BuildError,
             DeviceNotAvailableException {
         mFilesPushed = new HashSet<>();
-        if (mRemount) {
+        if (mRemountSystem) {
             device.remountSystemWritable();
+        }
+        if (mRemountVendor) {
+            device.remountVendorWritable();
         }
 
         Map<String, File> remoteToLocalMapping = new HashMap<>();
@@ -298,8 +311,11 @@ public class PushFilePreparer extends BaseTargetPreparer
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
         if (!(e instanceof DeviceNotAvailableException) && mCleanup && mFilesPushed != null) {
-            if (mRemount) {
+            if (mRemountSystem) {
                 device.remountSystemWritable();
+            }
+            if (mRemountVendor) {
+                device.remountVendorWritable();
             }
             for (String devicePath : mFilesPushed) {
                 device.deleteFile(devicePath);
