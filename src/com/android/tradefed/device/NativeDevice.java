@@ -4288,6 +4288,7 @@ public class NativeDevice implements IManagedTestDevice {
             }
             return new DeviceDescriptor(
                     idevice.getSerialNumber(),
+                    null,
                     idevice instanceof StubDevice,
                     idevice.getState(),
                     getAllocationState(),

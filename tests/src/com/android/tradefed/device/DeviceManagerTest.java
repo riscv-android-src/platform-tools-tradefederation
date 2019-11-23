@@ -1177,6 +1177,7 @@ public class DeviceManagerTest {
         DeviceDescriptor descriptor =
                 new DeviceDescriptor(
                         "serial",
+                        null,
                         false,
                         DeviceState.ONLINE,
                         DeviceAllocationState.Available,

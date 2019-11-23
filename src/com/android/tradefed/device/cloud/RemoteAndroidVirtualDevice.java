@@ -18,6 +18,7 @@ package com.android.tradefed.device.cloud;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceStateMonitor;
@@ -423,5 +424,19 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
     @VisibleForTesting
     GceManager getGceHandler() {
         return mGceHandler;
+    }
+
+    @Override
+    public DeviceDescriptor getDeviceDescriptor() {
+        DeviceDescriptor descriptor = super.getDeviceDescriptor();
+        if (mInitialSerial != null && mInitialSerial.equals(descriptor.getSerial())) {
+            // Alter the display for the console.
+            descriptor =
+                    new DeviceDescriptor(
+                            descriptor,
+                            mInitialSerial,
+                            mInitialSerial + "[" + descriptor.getSerial() + "]");
+        }
+        return descriptor;
     }
 }
