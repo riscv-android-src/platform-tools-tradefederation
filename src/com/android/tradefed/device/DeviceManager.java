@@ -97,6 +97,7 @@ public class DeviceManager implements IDeviceManager {
     private static final String TCP_DEVICE_SERIAL_PREFIX = "tcp-device";
     private static final String GCE_DEVICE_SERIAL_PREFIX = "gce-device";
     private static final String REMOTE_DEVICE_SERIAL_PREFIX = "remote-device";
+    private static final String LOCAL_VIRTUAL_DEVICE_SERIAL_PREFIX = "local-virtual-device";
 
     /**
      * Pattern for a device listed by 'adb devices':
@@ -155,6 +156,12 @@ public class DeviceManager implements IDeviceManager {
         description = "the maximum number of remote devices that can be allocated at one time"
     )
     private int mNumRemoteDevicesSupported = 1;
+
+    @Option(
+            name = "max-local-virtual-devices",
+            description =
+                    "the maximum number of local virtual devices that can be allocated at one time")
+    private int mNumLocalVirtualDevicesSupported = 0;
 
     private boolean mSynchronousMode = false;
 
@@ -310,6 +317,7 @@ public class DeviceManager implements IDeviceManager {
         addTcpDevices();
         addGceDevices();
         addRemoteDevices();
+        addLocalVirtualDevices();
 
         List<IMultiDeviceRecovery> recoverers = getGlobalConfig().getMultiDeviceRecoveryHandlers();
         if (recoverers != null && !recoverers.isEmpty()) {
@@ -511,6 +519,14 @@ public class DeviceManager implements IDeviceManager {
         }
     }
 
+    private void addLocalVirtualDevices() {
+        for (int i = 0; i < mNumLocalVirtualDevicesSupported; i++) {
+            addAvailableDevice(
+                    new StubLocalAndroidVirtualDevice(
+                            String.format("%s-%s", LOCAL_VIRTUAL_DEVICE_SERIAL_PREFIX, i)));
+        }
+    }
+
     public void addAvailableDevice(IDevice stubDevice) {
         IManagedTestDevice d = mManagedDeviceList.findOrCreate(stubDevice);
         if (d != null) {
@@ -640,7 +656,9 @@ public class DeviceManager implements IDeviceManager {
                 deviceState = FreeDeviceState.UNAVAILABLE;
             }
         }
-        if (ideviceToReturn instanceof TcpDevice || ideviceToReturn instanceof VmRemoteDevice) {
+        if (ideviceToReturn instanceof TcpDevice
+                || ideviceToReturn instanceof VmRemoteDevice
+                || ideviceToReturn instanceof StubLocalAndroidVirtualDevice) {
             // Make sure the device goes back to the original state.
             managedDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
         }
@@ -1071,15 +1089,19 @@ public class DeviceManager implements IDeviceManager {
                     continue;
                 }
             }
-            displayRows.add(Arrays.asList(
-                    desc.getSerial(),
-                    desc.getDeviceState().toString(),
-                    desc.getState().toString(),
-                    desc.getProduct(),
-                    desc.getProductVariant(),
-                    desc.getBuildId(),
-                    desc.getBatteryLevel())
-                    );
+            String serial = desc.getSerial();
+            if (desc.getDisplaySerial() != null) {
+                serial = desc.getDisplaySerial();
+            }
+            displayRows.add(
+                    Arrays.asList(
+                            serial,
+                            desc.getDeviceState().toString(),
+                            desc.getState().toString(),
+                            desc.getProduct(),
+                            desc.getProductVariant(),
+                            desc.getBuildId(),
+                            desc.getBatteryLevel()));
         }
     }
 
