@@ -498,9 +498,9 @@ def update_test_info_cache(test_reference, test_infos,
     try:
         with open(cache_path, 'wb') as test_info_cache_file:
             logging.debug('Saving cache %s.', cache_path)
-            pickle.dump(test_infos, test_info_cache_file)
+            pickle.dump(test_infos, test_info_cache_file, protocol=2)
     except (pickle.PicklingError, TypeError, IOError) as err:
-        # Don't break anything, just log this error, and collect the exception
+        # Won't break anything, just log this error, and collect the exception
         # by metrics.
         logging.debug('Exception raised: %s', err)
         metrics_utils.handle_exc_and_send_exit_event(
@@ -523,10 +523,11 @@ def load_test_info_cache(test_reference, cache_root=TEST_INFO_CACHE_ROOT):
         try:
             with open(cache_file, 'rb') as config_dictionary_file:
                 return pickle.load(config_dictionary_file)
-        except (pickle.UnpicklingError, EOFError, IOError) as err:
-            # Don't break anything, just log this error, and collect the
-            # exception by metrics.
+        except (pickle.UnpicklingError, ValueError, EOFError, IOError) as err:
+            # Won't break anything, just remove the old cache, log this error, and
+            # collect the exception by metrics.
             logging.debug('Exception raised: %s', err)
+            os.remove(cache_file)
             metrics_utils.handle_exc_and_send_exit_event(
                 constants.ACCESS_CACHE_FAILURE)
     return None
