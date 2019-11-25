@@ -494,7 +494,7 @@ public class TestInvocation implements ITestInvocation {
                 if (config.getCommandOptions().getHostLogSuffix() != null) {
                     name += config.getCommandOptions().getHostLogSuffix();
                 }
-                listener.testLog(name, LogDataType.TEXT, globalLogSource);
+                listener.testLog(name, LogDataType.HOST_LOG, globalLogSource);
             } else {
                 // Only print the non-logging if we are not a stdout logger
                 if (!(logger instanceof StdoutLogger)) {
