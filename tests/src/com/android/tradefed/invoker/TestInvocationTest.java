@@ -651,15 +651,15 @@ public class TestInvocationTest {
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.HOST_LOG),
                                 (InputStream) EasyMock.anyObject()))
-                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
+                .andReturn(new LogFile(PATH, URL, LogDataType.HOST_LOG));
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.HOST_LOG),
                                 (InputStream) EasyMock.anyObject()))
-                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
+                .andReturn(new LogFile(PATH, URL, LogDataType.HOST_LOG));
         resumeListener.testLog(
                 EasyMock.startsWith(LOGCAT_NAME_SETUP),
                 EasyMock.eq(LogDataType.LOGCAT),
@@ -672,8 +672,10 @@ public class TestInvocationTest {
                 EasyMock.startsWith(LOGCAT_NAME_TEARDOWN),
                 EasyMock.eq(LogDataType.LOGCAT),
                 (InputStreamSource) EasyMock.anyObject());
-        resumeListener.testLog(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
-                EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
+        resumeListener.testLog(
+                EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
+                EasyMock.eq(LogDataType.HOST_LOG),
+                (InputStreamSource) EasyMock.anyObject());
 
         // just return same build and logger for simplicity
         EasyMock.expect(mMockBuildInfo.clone()).andReturn(mMockBuildInfo);
@@ -727,9 +729,9 @@ public class TestInvocationTest {
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.HOST_LOG),
                                 (InputStream) EasyMock.anyObject()))
-                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
+                .andReturn(new LogFile(PATH, URL, LogDataType.HOST_LOG));
         resumeListener.testLog(
                 EasyMock.startsWith(LOGCAT_NAME_SETUP),
                 EasyMock.eq(LogDataType.LOGCAT),
@@ -744,7 +746,7 @@ public class TestInvocationTest {
                 (InputStreamSource) EasyMock.anyObject());
         resumeListener.testLog(
                 EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
-                EasyMock.eq(LogDataType.TEXT),
+                EasyMock.eq(LogDataType.HOST_LOG),
                 (InputStreamSource) EasyMock.anyObject());
         resumeListener.invocationEnded(EasyMock.anyLong());
         mMockLogSaver.invocationEnded(EasyMock.anyLong());
@@ -908,11 +910,11 @@ public class TestInvocationTest {
                 EasyMock.startsWith(LOGCAT_NAME_TEARDOWN), EasyMock.anyObject());
         logSaverListener.testLog(
                 EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
-                EasyMock.eq(LogDataType.TEXT),
+                EasyMock.eq(LogDataType.HOST_LOG),
                 (InputStreamSource) EasyMock.anyObject());
         logSaverListener.testLogSaved(
                 EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
-                EasyMock.eq(LogDataType.TEXT),
+                EasyMock.eq(LogDataType.HOST_LOG),
                 (InputStreamSource) EasyMock.anyObject(),
                 (LogFile) EasyMock.anyObject());
         logSaverListener.logAssociation(
@@ -1247,23 +1249,23 @@ public class TestInvocationTest {
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.HOST_LOG),
                                 (InputStream) EasyMock.anyObject()))
-                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
+                .andReturn(new LogFile(PATH, URL, LogDataType.HOST_LOG));
         if (reportHostLog) {
             EasyMock.expect(
                             mMockLogSaver.saveLogData(
                                     EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
-                                    EasyMock.eq(LogDataType.TEXT),
+                                    EasyMock.eq(LogDataType.HOST_LOG),
                                     (InputStream) EasyMock.anyObject()))
-                    .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
+                    .andReturn(new LogFile(PATH, URL, LogDataType.HOST_LOG));
             mMockTestListener.testLog(
                     EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
-                    EasyMock.eq(LogDataType.TEXT),
+                    EasyMock.eq(LogDataType.HOST_LOG),
                     (InputStreamSource) EasyMock.anyObject());
             mMockSummaryListener.testLog(
                     EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
-                    EasyMock.eq(LogDataType.TEXT),
+                    EasyMock.eq(LogDataType.HOST_LOG),
                     (InputStreamSource) EasyMock.anyObject());
         }
 
@@ -1313,15 +1315,15 @@ public class TestInvocationTest {
         EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
         String logName = "host_log_before_sharding";
         mMockTestListener.testLog(
-                EasyMock.eq(logName), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+                EasyMock.eq(logName), EasyMock.eq(LogDataType.HOST_LOG), EasyMock.anyObject());
         mMockSummaryListener.testLog(
-                EasyMock.eq(logName), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+                EasyMock.eq(logName), EasyMock.eq(LogDataType.HOST_LOG), EasyMock.anyObject());
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.eq(logName),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.HOST_LOG),
                                 EasyMock.anyObject()))
-                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
+                .andReturn(new LogFile(PATH, URL, LogDataType.HOST_LOG));
         mMockLogRegistry.unregisterLogger();
         EasyMock.expectLastCall();
         mMockLogger.closeLog();
@@ -1381,15 +1383,15 @@ public class TestInvocationTest {
         // Ensure that the host_log gets logged after sharding.
         EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
         String logName = "host_log_before_sharding";
-        LogFile loggedFile = new LogFile(PATH, URL, LogDataType.TEXT);
+        LogFile loggedFile = new LogFile(PATH, URL, LogDataType.HOST_LOG);
         for (ITestInvocationListener listener : listenerList) {
             listener.testLog(
-                    EasyMock.eq(logName), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+                    EasyMock.eq(logName), EasyMock.eq(LogDataType.HOST_LOG), EasyMock.anyObject());
         }
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.eq(logName),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.HOST_LOG),
                                 EasyMock.anyObject()))
                 .andReturn(loggedFile);
         logSaverListener.logAssociation(logName, loggedFile);
