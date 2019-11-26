@@ -245,7 +245,7 @@ def is_test_mapping(args):
 
 @atest_decorator.static_var("cached_has_colors", {})
 def _has_colors(stream):
-    """Check the the output stream is colorful.
+    """Check the output stream is colorful.
 
     Args:
         stream: The standard file stream.
