@@ -18,13 +18,11 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.metric.target.DeviceSideCollectorSpecification;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -32,7 +30,6 @@ import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.ListInstrumentationParser;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.inject.Inject;
 
 import org.junit.runner.notification.RunListener;
 
@@ -43,9 +40,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
-import java.util.Set;
 
 /**
  * A Test that runs an instrumentation test package on given device using the
@@ -168,20 +165,9 @@ public class AndroidJUnitTest extends InstrumentationTest
     // Flag to avoid re-sharding a test that already was.
     private boolean mIsSharded = false;
 
-    // Special object that can tune some device side aspects.
-    private DeviceSideCollectorSpecification mDeviceSideSpec = null;
-
     public AndroidJUnitTest() {
         super();
         setEnforceFormat(true);
-    }
-
-    /** Guice-injected object, that can influence the instrumentation args. */
-    @Inject
-    public void setDeviceSpec(IConfiguration spec) {
-        if (spec.getDeviceSideCollectorsSpec() != null) {
-            mDeviceSideSpec = spec.getDeviceSideCollectorsSpec();
-        }
     }
 
     /**
@@ -436,26 +422,6 @@ public class AndroidJUnitTest extends InstrumentationTest
         if (mNewRunListenerOrderMode) {
             runner.addInstrumentationArg(
                     NEW_RUN_LISTENER_ORDER_KEY, Boolean.toString(mNewRunListenerOrderMode));
-        }
-
-        // Load the device side configuration from Guice
-        if (mDeviceSideSpec != null) {
-            CLog.d("Got a DeviceSideCollectorSpecification from Guice Tradefed.");
-            mExtraDeviceListeners.addAll(mDeviceSideSpec.getCollectorNames());
-            for (String key : mDeviceSideSpec.getCollectorOptions().keySet()) {
-                runner.addInstrumentationArg(
-                        key, ArrayUtil.join(",", mDeviceSideSpec.getCollectorOptions().get(key)));
-            }
-            if (!mDeviceSideSpec.getExcludeGroupFilters().isEmpty()) {
-                runner.addInstrumentationArg(
-                        EXCLUDE_COLLECTOR_FILTER_KEY,
-                        ArrayUtil.join(",", mDeviceSideSpec.getExcludeGroupFilters()));
-            }
-            if (!mDeviceSideSpec.getIncludeGroupFilters().isEmpty()) {
-                runner.addInstrumentationArg(
-                        INCLUDE_COLLECTOR_FILTER_KEY,
-                        ArrayUtil.join(",", mDeviceSideSpec.getIncludeGroupFilters()));
-            }
         }
         // Add the listeners received from Options
         addDeviceListeners(mExtraDeviceListeners);
