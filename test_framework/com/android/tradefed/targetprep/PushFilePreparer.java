@@ -204,7 +204,7 @@ public class PushFilePreparer extends BaseTargetPreparer
                                 return src;
                             }
                         } else {
-                            CLog.e("Did not find any module directory for '%s'", mModuleName);
+                            CLog.d("Did not find any module directory for '%s'", mModuleName);
                         }
 
                     } catch (IOException e) {

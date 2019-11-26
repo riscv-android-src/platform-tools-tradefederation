@@ -340,7 +340,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             skipTestCases = true;
         }
 
-        CLog.d("Running module %s", getId());
+        CLog.logAndDisplay(LogLevel.DEBUG, "Running module %s", getId());
         // Exception generated during setUp or run of the tests
         Throwable preparationException = null;
         DeviceNotAvailableException runException = null;
