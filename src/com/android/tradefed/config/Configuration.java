@@ -24,7 +24,6 @@ import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.metric.IMetricCollector;
-import com.android.tradefed.device.metric.target.DeviceSideCollectorSpecification;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.log.StdoutLogger;
@@ -175,9 +174,6 @@ public class Configuration implements IConfiguration {
             sObjTypeMap.put(
                     DEVICE_METRICS_COLLECTOR_TYPE_NAME,
                     new ObjTypeInfo(IMetricCollector.class, true));
-            sObjTypeMap.put(
-                    DEVICE_SIDE_SPEC_TYPE_NAME,
-                    new ObjTypeInfo(DeviceSideCollectorSpecification.class, false));
             sObjTypeMap.put(
                     METRIC_POST_PROCESSOR_TYPE_NAME,
                     new ObjTypeInfo(BasePostProcessor.class, true));
@@ -406,13 +402,6 @@ public class Configuration implements IConfiguration {
     @Override
     public List<IPostProcessor> getPostProcessors() {
         return (List<IPostProcessor>) getConfigurationObjectList(METRIC_POST_PROCESSOR_TYPE_NAME);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public DeviceSideCollectorSpecification getDeviceSideCollectorsSpec() {
-        return (DeviceSideCollectorSpecification)
-                getConfigurationObject(DEVICE_SIDE_SPEC_TYPE_NAME);
     }
 
     /** {@inheritDoc} */
@@ -744,12 +733,6 @@ public class Configuration implements IConfiguration {
     @Override
     public void setDeviceMetricCollectors(List<IMetricCollector> collectors) {
         setConfigurationObjectListNoThrow(DEVICE_METRICS_COLLECTOR_TYPE_NAME, collectors);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void setDeviceSideCollectorSpec(DeviceSideCollectorSpecification deviceCollectorSpec) {
-        setConfigurationObjectNoThrow(DEVICE_SIDE_SPEC_TYPE_NAME, deviceCollectorSpec);
     }
 
     /** {@inheritDoc} */

@@ -26,20 +26,14 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Configuration;
-import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.metric.target.DeviceSideCollectorSpecification;
 import com.android.tradefed.guice.InvocationScope;
-import com.android.tradefed.guice.InvocationScopeModule;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.util.FileUtil;
-
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 
 import org.easymock.EasyMock;
 import org.junit.After;
@@ -501,40 +495,5 @@ public class AndroidJUnitTestTest {
         // Make sure shards cannot be re-sharded
         assertNull(((AndroidJUnitTest) res.get(0)).split(2));
         assertNull(((AndroidJUnitTest) res.get(0)).split());
-    }
-
-    /**
-     * Test that the runner can get {@link DeviceSideCollectorSpecification} from the Guice scope in
-     * order to complete the instrumentation options.
-     */
-    @Test
-    public void testSetRunnerArgs_guice() throws Exception {
-        mAndroidJUnitTest =
-                new AndroidJUnitTest() {
-                    @Override
-                    IRemoteAndroidTestRunner createRemoteAndroidTestRunner(
-                            String packageName, String runnerName, IDevice device) {
-                        return mMockRemoteRunner;
-                    }
-                };
-        // default to no timeout for simplicity
-        mAndroidJUnitTest.setTestTimeout(TEST_TIMEOUT);
-        mAndroidJUnitTest.setShellTimeout(SHELL_TIMEOUT);
-
-        // Seed the Guice Scope
-        DeviceSideCollectorSpecification spec = new DeviceSideCollectorSpecification();
-        OptionSetter setter = new OptionSetter(spec);
-        setter.setOptionValue("collectors-qualified-name", "com.test.collector");
-        setter.setOptionValue("collector-options", "key", "value");
-        IConfiguration config = new Configuration("test", "test");
-        config.setDeviceSideCollectorSpec(spec);
-        mScope.seed(IConfiguration.class, config);
-
-        Injector injector = Guice.createInjector(new InvocationScopeModule(mScope));
-        injector.injectMembers(mAndroidJUnitTest);
-        mMockRemoteRunner.addInstrumentationArg("key", "value");
-        EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
-        mAndroidJUnitTest.setRunnerArgs(mMockRemoteRunner);
-        EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 }
