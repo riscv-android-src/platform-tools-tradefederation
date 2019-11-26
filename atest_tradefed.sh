@@ -34,6 +34,7 @@ if [[ ! -z "$ANDROID_HOST_OUT" ]]; then
           hosttestlib.jar
           cts-tradefed.jar
           sts-tradefed.jar
+          vts-core-tradefed.jar
           vts-tradefed.jar
           csuite-harness.jar
           host-libprotobuf-java-full.jar
