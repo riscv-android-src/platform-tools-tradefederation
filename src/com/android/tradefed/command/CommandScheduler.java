@@ -1132,15 +1132,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      */
     @Override
     public boolean addCommand(String[] args) throws ConfigurationException {
-        return addCommand(args, 0);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean addCommand(String[] args, long totalExecTime) throws ConfigurationException {
-        return internalAddCommand(args, totalExecTime, null);
+        return internalAddCommand(args, 0, null);
     }
 
     /** Returns true if {@link CommandOptions#USE_SANDBOX} is part of the command line. */
@@ -1427,9 +1419,37 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /** {@inheritDoc} */
     @Override
+    public void execCommand(
+            IScheduledInvocationListener listener, ITestDevice device, String[] args)
+            throws ConfigurationException {
+        // TODO: add support for execCommand multi-device allocation
+        assertStarted();
+        CommandTracker cmdTracker = createCommandTracker(args, null);
+        IConfiguration config =
+                getConfigFactory()
+                        .createConfigurationFromArgs(
+                                cmdTracker.getArgs(), null, getKeyStoreClient());
+        config.validateOptions();
+        CLog.i("Executing '%s' on '%s'", cmdTracker.getArgs()[0], device.getSerialNumber());
+        ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
+        if (config.getDeviceConfig().size() > 1) {
+            throw new RuntimeException("execCommand assume single device invocation.");
+        }
+
+        synchronized (this) {
+            mExecutingCommands.add(execCmd);
+        }
+        IInvocationContext context = createInvocationContext();
+        context.setConfigurationDescriptor(config.getConfigurationDescription());
+        context.addAllocatedDevice(config.getDeviceConfig().get(0).getDeviceName(), device);
+        startInvocation(context, execCmd, listener);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public void execCommand(IScheduledInvocationListener listener, String[] args)
             throws ConfigurationException, NoDeviceException {
-        execCommand(new InvocationContext(), listener, args);
+        execCommand(createInvocationContext(), listener, args);
     }
 
     /**
@@ -1471,33 +1491,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             }
             return devices;
         }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void execCommand(IScheduledInvocationListener listener, ITestDevice device,
-            String[] args) throws ConfigurationException {
-        // TODO: add support for execCommand multi-device allocation
-        assertStarted();
-        CommandTracker cmdTracker = createCommandTracker(args, null);
-        IConfiguration config = getConfigFactory().createConfigurationFromArgs(
-                cmdTracker.getArgs(), null, getKeyStoreClient());
-        config.validateOptions();
-        CLog.i("Executing '%s' on '%s'", cmdTracker.getArgs()[0], device.getSerialNumber());
-        ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
-        if (config.getDeviceConfig().size() > 1) {
-            throw new RuntimeException("execCommand assume single device invocation.");
-        }
-
-        synchronized(this) {
-            mExecutingCommands.add(execCmd);
-        }
-        IInvocationContext context = createInvocationContext();
-        context.setConfigurationDescriptor(config.getConfigurationDescription());
-        context.addAllocatedDevice(config.getDeviceConfig().get(0).getDeviceName(), device);
-        startInvocation(context, execCmd, listener);
     }
 
     @VisibleForTesting
