@@ -25,10 +25,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -42,6 +43,7 @@ import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.base.VerifyException;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
 
 import org.jacoco.core.tools.ExecFileLoader;
@@ -56,6 +58,7 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
@@ -99,30 +102,31 @@ public class JavaCodeCoverageListenerTest {
     OptionSetter mCoverageOptionsSetter = null;
 
     @Before
-    public void setUp() throws ConfigurationException {
+    public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
 
         mCoverageOptions = new CoverageOptions();
         mCoverageOptionsSetter = new OptionSetter(mCoverageOptions);
+
+        // Mock an unrooted device that has no issues enabling or disabling root.
+        when(mMockDevice.isAdbRoot()).thenReturn(false);
+        when(mMockDevice.enableAdbRoot()).thenReturn(true);
+        when(mMockDevice.disableAdbRoot()).thenReturn(true);
 
         mCodeCoverageListener =
                 new JavaCodeCoverageListener(mMockDevice, mCoverageOptions, false, mFakeListener);
     }
 
     @Test
-    public void test() throws DeviceNotAvailableException, IOException {
+    public void testRunEnded_rootEnabled_logsCoverageMeasurement() throws Exception {
         // Setup mocks.
-        File coverageFile = folder.newFile("coverage.ec");
-        try (OutputStream out = new FileOutputStream(coverageFile)) {
-            COVERAGE_MEASUREMENT.writeTo(out);
-        }
-        doReturn(coverageFile).when(mMockDevice).pullFile(DEVICE_PATH);
+        HashMap<String, Metric> runMetrics = createMetricsWithCoverageMeasurement(DEVICE_PATH);
+        mockCoverageFileOnDevice(DEVICE_PATH);
+        when(mMockDevice.isAdbRoot()).thenReturn(true);
 
         // Simulate a test run.
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
-        Map<String, String> metric = new HashMap<>();
-        metric.put("coverageFilePath", DEVICE_PATH);
-        mCodeCoverageListener.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
+        mCodeCoverageListener.testRunEnded(ELAPSED_TIME, runMetrics);
 
         // Verify testLog(..) was called with the coverage file.
         verify(mFakeListener)
@@ -145,17 +149,13 @@ public class JavaCodeCoverageListenerTest {
 
     @Test
     public void testFailure_unableToPullFile() throws DeviceNotAvailableException {
-        // Setup mocks.
+        HashMap<String, Metric> runMetrics = createMetricsWithCoverageMeasurement(DEVICE_PATH);
         doReturn(null).when(mMockDevice).pullFile(DEVICE_PATH);
 
         // Simulate a test run.
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
-
         try {
-            Map<String, String> metric = new HashMap<>();
-            metric.put("coverageFilePath", DEVICE_PATH);
-            mCodeCoverageListener.testRunEnded(
-                    ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
+            mCodeCoverageListener.testRunEnded(ELAPSED_TIME, runMetrics);
             fail("Exception not thrown");
         } catch (VerifyException expected) {
         }
@@ -163,6 +163,64 @@ public class JavaCodeCoverageListenerTest {
         // Verify testLog(..) was not called.
         verify(mFakeListener, never())
                 .testLog(anyString(), eq(LogDataType.COVERAGE), any(InputStreamSource.class));
+    }
+
+    @Test
+    public void testRunEnded_rootDisabled_enablesRootBeforePullingFiles() throws Exception {
+        HashMap<String, Metric> runMetrics = createMetricsWithCoverageMeasurement(DEVICE_PATH);
+        mockCoverageFileOnDevice(DEVICE_PATH);
+        when(mMockDevice.isAdbRoot()).thenReturn(false);
+
+        mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
+        mCodeCoverageListener.testRunEnded(ELAPSED_TIME, runMetrics);
+
+        InOrder inOrder = inOrder(mMockDevice);
+        inOrder.verify(mMockDevice).enableAdbRoot();
+        inOrder.verify(mMockDevice).pullFile(anyString());
+    }
+
+    @Test
+    public void testRunEnded_rootDisabled_throwsIfCannotEnableRoot() throws Exception {
+        HashMap<String, Metric> runMetrics = createMetricsWithCoverageMeasurement(DEVICE_PATH);
+        mockCoverageFileOnDevice(DEVICE_PATH);
+        when(mMockDevice.isAdbRoot()).thenReturn(false);
+        when(mMockDevice.enableAdbRoot()).thenReturn(false);
+
+        mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
+        try {
+            mCodeCoverageListener.testRunEnded(ELAPSED_TIME, runMetrics);
+            fail("Exception not thrown");
+        } catch (RuntimeException expected) {
+        }
+    }
+
+    @Test
+    public void testRunEnded_rootDisabled_disablesRootAfterPullingFiles() throws Exception {
+        HashMap<String, Metric> runMetrics = createMetricsWithCoverageMeasurement(DEVICE_PATH);
+        mockCoverageFileOnDevice(DEVICE_PATH);
+        when(mMockDevice.isAdbRoot()).thenReturn(false);
+
+        mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
+        mCodeCoverageListener.testRunEnded(ELAPSED_TIME, runMetrics);
+
+        InOrder inOrder = inOrder(mMockDevice);
+        inOrder.verify(mMockDevice).pullFile(anyString());
+        inOrder.verify(mMockDevice).disableAdbRoot();
+    }
+
+    @Test
+    public void testRunEnded_rootDisabled_throwsIfCannotDisableRoot() throws Exception {
+        HashMap<String, Metric> runMetrics = createMetricsWithCoverageMeasurement(DEVICE_PATH);
+        mockCoverageFileOnDevice(DEVICE_PATH);
+        when(mMockDevice.isAdbRoot()).thenReturn(false);
+        when(mMockDevice.disableAdbRoot()).thenReturn(false);
+
+        mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
+        try {
+            mCodeCoverageListener.testRunEnded(ELAPSED_TIME, runMetrics);
+            fail("Exception not thrown");
+        } catch (RuntimeException expected) {
+        }
     }
 
     @Test
@@ -233,11 +291,7 @@ public class JavaCodeCoverageListenerTest {
         mCoverageOptionsSetter.setOptionValue("coverage-flush", "true");
 
         // Setup mocks.
-        File coverageFile = folder.newFile("coverage.ec");
-        try (OutputStream out = new FileOutputStream(coverageFile)) {
-            COVERAGE_MEASUREMENT.writeTo(out);
-        }
-        doReturn(coverageFile).when(mMockDevice).pullFile(DEVICE_PATH);
+        mockCoverageFileOnDevice(DEVICE_PATH);
 
         for (String additionalFile : coverageFileList) {
             File coverage = folder.newFile();
@@ -256,6 +310,17 @@ public class JavaCodeCoverageListenerTest {
         Map<String, String> metric = new HashMap<>();
         metric.put("coverageFilePath", DEVICE_PATH);
         mCodeCoverageListener.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
+    }
+
+    private void mockCoverageFileOnDevice(String devicePath)
+            throws IOException, DeviceNotAvailableException {
+        File coverageFile = folder.newFile("coverage.ec");
+
+        try (OutputStream out = new FileOutputStream(coverageFile)) {
+            COVERAGE_MEASUREMENT.writeTo(out);
+        }
+
+        doReturn(coverageFile).when(mMockDevice).pullFile(devicePath);
     }
 
     private static <T> String vmName(Class<T> clazz) {
@@ -296,6 +361,10 @@ public class JavaCodeCoverageListenerTest {
     private static <T> boolean[] getProbes(Class<T> clazz, ExecutionDataStore execData)
             throws IOException {
         return execData.get(classId(clazz), vmName(clazz), PROBE_COUNT).getProbes();
+    }
+
+    private static HashMap<String, Metric> createMetricsWithCoverageMeasurement(String devicePath) {
+        return TfMetricProtoUtil.upgradeConvert(ImmutableMap.of("coverageFilePath", devicePath));
     }
 
     /** An {@link ITestInvocationListener} which reads test log data streams for verification. */
