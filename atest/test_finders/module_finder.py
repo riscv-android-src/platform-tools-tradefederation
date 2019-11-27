@@ -88,7 +88,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         """Fill in the fields with vts specific info.
 
         We need to update the runner to use the vts runner and also find the
-        test specific depedencies
+        test specific dependencies.
 
         Args:
             test: TestInfo to update with vts specific details.

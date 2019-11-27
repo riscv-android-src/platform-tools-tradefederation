@@ -48,7 +48,7 @@ class ATestIntegrationTest(unittest.TestCase):
     EXECUTABLE = 'atest'
     OPTIONS = ''
     _RUN_CMD = '{exe} {options} {test}'
-    _PASSED_CRITERIAS = ['will be rescheduled', 'All tests passed']
+    _PASSED_CRITERIA = ['will be rescheduled', 'All tests passed']
 
     def setUp(self):
         """Set up stuff for testing."""
