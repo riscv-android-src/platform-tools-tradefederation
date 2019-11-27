@@ -120,7 +120,7 @@ _atest() {
         --generate-baseline|--generate-new-metrics)
             COMPREPLY=(5) ;;
         --list-modules|-L)
-            # TODO: genetate the list automately when the API is availble.
+            # TODO: genetate the list automately when the API is available.
             COMPREPLY=($(compgen -W "cts vts" -- $cur)) ;;
         --serial|-s)
             local adb_devices="$(_fetch_adb_devices)"

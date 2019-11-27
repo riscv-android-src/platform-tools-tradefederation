@@ -249,7 +249,7 @@ def _validate_exec_mode(args, test_infos, host_tests=None):
         metrics_utils.send_exit_event(constants.EXIT_CODE_ERROR, logs=err_msg)
         sys.exit(constants.EXIT_CODE_ERROR)
     # In the case of '$atest <host-only>', we add --host to run on host-side.
-    # The option should only be overriden if `host_tests` is not set.
+    # The option should only be overridden if `host_tests` is not set.
     if not args.host and host_tests is None:
         args.host = bool(constants.DEVICELESS_TEST in all_device_modes)
 
@@ -428,7 +428,7 @@ def is_from_test_mapping(test_infos):
     Args:
         test_infos: A set of TestInfos.
 
-    Retruns:
+    Returns:
         True if the test infos are from TEST_MAPPING files.
     """
     return list(test_infos)[0].from_test_mapping
@@ -440,7 +440,7 @@ def _split_test_mapping_tests(test_infos):
     Args:
         test_infos: A set of TestInfos.
 
-    Retruns:
+    Returns:
         A tuple of (device_test_infos, host_test_infos), where
         device_test_infos: A set of TestInfos for tests that require device.
         host_test_infos: A set of TestInfos for tests that do NOT require
