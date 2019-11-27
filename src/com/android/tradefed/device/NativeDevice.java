@@ -1551,6 +1551,9 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.e("Local path %s is not a directory", localDir.getAbsolutePath());
             return false;
         }
+        if (!doesFileExist(deviceFilePath)) {
+            CLog.e("Device path %s does not exists to be pulled.", deviceFilePath);
+        }
         if (!isDirectory(deviceFilePath)) {
             CLog.e("Device path %s is not a directory", deviceFilePath);
             return false;
@@ -4738,6 +4741,10 @@ public class NativeDevice implements IManagedTestDevice {
         }
         if (mContentProvider == null) {
             mContentProvider = new ContentProviderHandler(this);
+        }
+        // Force the install if we saw an error with content provider installation.
+        if (mContentProvider.contentProviderNotFound()) {
+            mShouldSkipContentProviderSetup = false;
         }
         if (!mShouldSkipContentProviderSetup) {
             boolean res = mContentProvider.setUp();
