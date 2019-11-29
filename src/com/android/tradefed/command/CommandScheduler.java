@@ -975,7 +975,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 checkInvocations();
                 try {
                     processReadyCommands(manager);
-                    postProcessReadyCommands();
                 } catch (RuntimeException e) {
                     CLog.e(e);
                     Map<String, String> information = new HashMap<>();
@@ -1007,13 +1006,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             System.out.flush();
         }
     }
-
-    /**
-     * Placeholder method within the scheduler main loop, called after {@link
-     * #processReadyCommands(IDeviceManager)}. Default implementation is empty and does not provide
-     * any extra actions.
-     */
-    protected void postProcessReadyCommands() {}
 
     void checkInvocations() {
         CLog.d("Checking invocations...");
@@ -1505,9 +1497,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return new InvocationContext();
     }
 
-    /** Optional initialization step before test invocation starts */
-    protected void initInvocation() {}
-
     /**
      * Spawns off thread to run invocation for given device.
      *
@@ -1521,8 +1510,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             IInvocationContext context,
             ExecutableCommand cmd,
             IScheduledInvocationListener... listeners) {
-        initInvocation();
-
         // Check if device is not used in another invocation.
         throwIfDeviceInInvocationThread(context.getDevices());
 
