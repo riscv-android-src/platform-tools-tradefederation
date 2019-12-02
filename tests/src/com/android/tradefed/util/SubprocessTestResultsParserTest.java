@@ -534,4 +534,41 @@ public class SubprocessTestResultsParserTest {
         assertEquals(logFile.getUrl(), received.getUrl());
         assertEquals(logFile.getType(), received.getType());
     }
+
+    @Test
+    public void testParse_avoidDoubleLog() throws Exception {
+        ILogSaverListener mockRunListener = EasyMock.createMock(ILogSaverListener.class);
+        mockRunListener.testLog(
+                EasyMock.eq("subprocess-dataname"),
+                EasyMock.eq(LogDataType.TEXT),
+                EasyMock.anyObject());
+        EasyMock.replay(mockRunListener);
+        File testLogFile = FileUtil.createTempFile("dataname", ".txt");
+        File testLogFile2 = FileUtil.createTempFile("dataname", ".txt");
+        LogFile logFile = new LogFile(testLogFile.getAbsolutePath(), "", LogDataType.TEXT);
+        File serializedLogFile = null;
+        File tmp = FileUtil.createTempFile("sub", "unit");
+        SubprocessTestResultsParser resultParser = null;
+        try {
+            serializedLogFile = SerializationUtil.serialize(logFile);
+            resultParser =
+                    new SubprocessTestResultsParser(mockRunListener, new InvocationContext());
+            String logAssocation =
+                    String.format(
+                            "TEST_LOG {\"dataType\":\"TEXT\",\"dataName\":\"dataname\","
+                                    + "\"dataFile\":\"%s\"}'\n"
+                                    + "LOG_ASSOCIATION {\"loggedFile\":\"%s\","
+                                    + "\"dataName\":\"dataname\"}\n",
+                            testLogFile2.getAbsolutePath(), serializedLogFile.getAbsolutePath());
+            FileUtil.writeToFile(logAssocation, tmp, true);
+            resultParser.parseFile(tmp);
+            EasyMock.verify(mockRunListener);
+        } finally {
+            StreamUtil.close(resultParser);
+            FileUtil.deleteFile(serializedLogFile);
+            FileUtil.deleteFile(tmp);
+            FileUtil.deleteFile(testLogFile);
+            FileUtil.deleteFile(testLogFile2);
+        }
+    }
 }
