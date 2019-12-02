@@ -155,13 +155,13 @@ public interface IInvocationExecution {
     /**
      * Runs the test.
      *
-     * @param context the {@link IInvocationContext} to run tests on
+     * @param info the {@link TestInformation} to run tests with.
      * @param config the {@link IConfiguration} to run
      * @param listener the {@link ITestInvocationListener} of test results
      * @throws Throwable
      */
     public default void runTests(
-            IInvocationContext context, IConfiguration config, ITestInvocationListener listener)
+            TestInformation info, IConfiguration config, ITestInvocationListener listener)
             throws Throwable {}
 
     /**

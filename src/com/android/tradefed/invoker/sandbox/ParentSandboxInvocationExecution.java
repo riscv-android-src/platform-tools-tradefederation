@@ -27,6 +27,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.InvocationExecution;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -103,10 +104,10 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
 
     @Override
     public void runTests(
-            IInvocationContext context, IConfiguration config, ITestInvocationListener listener)
+            TestInformation info, IConfiguration config, ITestInvocationListener listener)
             throws Throwable {
         // If the invocation is sandboxed run as a sandbox instead.
-        SandboxInvocationRunner.prepareAndRun(config, context, listener);
+        SandboxInvocationRunner.prepareAndRun(info, config, listener);
     }
 
     @Override
