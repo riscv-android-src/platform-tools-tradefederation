@@ -89,19 +89,6 @@ public interface ICommandScheduler {
             throws ConfigurationException;
 
     /**
-     * An alternate {@link #addCommand(String[])} that accepts an initial total
-     * execution time for the command.
-     * <p/>
-     * Useful when transitioning pre-existing commands from another tradefed process
-     *
-     * @param args the config arguments.
-     * @param totalExecTime the accumulated elapsed execution time of the command
-     * @return <code>true</code> if command was added successfully
-     * @throws ConfigurationException if command was invalid
-     */
-    public boolean addCommand(String[] args, long totalExecTime) throws ConfigurationException;
-
-    /**
      * Directly allocates a device and executes a command without adding it to the command queue.
      *
      * @param listener the {@link ICommandScheduler.IScheduledInvocationListener} to be informed
