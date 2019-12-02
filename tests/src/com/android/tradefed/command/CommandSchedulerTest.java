@@ -74,6 +74,7 @@ import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -325,7 +326,7 @@ public class CommandSchedulerTest {
 
     /**
      * Test simple case for {@link CommandScheduler#execCommand(IScheduledInvocationListener,
-     * ITestDevice, String[])}
+     * String[])}
      */
     @Test
     @SuppressWarnings("unchecked")
@@ -334,7 +335,13 @@ public class CommandSchedulerTest {
             "foo"
         };
         setCreateConfigExpectations(args, 1);
-        setExpectedInvokeCalls(1);
+        mMockInvocation.invoke(
+                (IInvocationContext) EasyMock.anyObject(),
+                (IConfiguration) EasyMock.anyObject(),
+                (IRescheduler) EasyMock.anyObject(),
+                (ITestInvocationListener) EasyMock.anyObject(),
+                EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
         mMockConfiguration.validateOptions();
         IDevice mockIDevice = EasyMock.createMock(IDevice.class);
         ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
@@ -348,9 +355,20 @@ public class CommandSchedulerTest {
         mockListener.invocationComplete((IInvocationContext)EasyMock.anyObject(),
                 (Map<ITestDevice, FreeDeviceState>)EasyMock.anyObject());
         EasyMock.expect(mockDevice.waitForDeviceShell(EasyMock.anyLong())).andReturn(true);
+        mScheduler =
+                new TestableCommandScheduler() {
+                    @Override
+                    Map<String, ITestDevice> allocateDevices(
+                            IConfiguration config, IDeviceManager manager) {
+                        Map<String, ITestDevice> allocated = new HashMap<>();
+                        ((MockDeviceManager) manager).addDevice(mockDevice);
+                        allocated.put("device", ((MockDeviceManager) manager).allocateDevice());
+                        return allocated;
+                    }
+                };
         replayMocks(mockDevice, mockListener);
         mScheduler.start();
-        mScheduler.execCommand(mockListener, mockDevice, args);
+        mScheduler.execCommand(mockListener, args);
         mScheduler.shutdownOnEmpty();
         mScheduler.join(2*1000);
         verifyMocks(mockListener);
@@ -1094,7 +1112,15 @@ public class CommandSchedulerTest {
         // be added again.
         setter.setOptionValue("invocation-data", "key", "value");
         mMockConfigDescriptor.setSandboxed(true);
-        setExpectedInvokeCalls(1);
+
+        mMockInvocation.invoke(
+                (IInvocationContext) EasyMock.anyObject(),
+                (IConfiguration) EasyMock.anyObject(),
+                (IRescheduler) EasyMock.anyObject(),
+                (ITestInvocationListener) EasyMock.anyObject(),
+                EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
+
         mMockConfiguration.validateOptions();
         IDevice mockIDevice = EasyMock.createMock(IDevice.class);
         ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
@@ -1108,9 +1134,22 @@ public class CommandSchedulerTest {
         mockListener.invocationComplete(
                 (IInvocationContext) EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(mockDevice.waitForDeviceShell(EasyMock.anyLong())).andReturn(true);
+
+        mScheduler =
+                new TestableCommandScheduler() {
+                    @Override
+                    Map<String, ITestDevice> allocateDevices(
+                            IConfiguration config, IDeviceManager manager) {
+                        Map<String, ITestDevice> allocated = new HashMap<>();
+                        ((MockDeviceManager) manager).addDevice(mockDevice);
+                        allocated.put("device", ((MockDeviceManager) manager).allocateDevice());
+                        return allocated;
+                    }
+                };
+
         replayMocks(mockDevice, mockListener);
         mScheduler.start();
-        mScheduler.execCommand(mockListener, mockDevice, args);
+        mScheduler.execCommand(mockListener, args);
         mScheduler.shutdownOnEmpty();
         mScheduler.join(2 * 1000);
         verifyMocks(mockListener);
