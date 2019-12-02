@@ -402,7 +402,9 @@ public class GceManager {
         // Retry a couple of time because adb might not be started for that user.
         // FIXME: See if we can use vsoc-01 directly to avoid this
         for (int i = 0; i < 3; i++) {
-            output = remoteSshCommandExec(gceAvd, options, runUtil, "adb", "shell", "bugreportz");
+            output =
+                    remoteSshCommandExec(
+                            gceAvd, options, runUtil, "./bin/adb", "shell", "bugreportz");
             Matcher match = BUGREPORTZ_RESPONSE_PATTERN.matcher(output);
             if (match.find()) {
                 break;
@@ -415,7 +417,7 @@ public class GceManager {
         }
         String deviceFilePath = match.group(2);
         String pullOutput =
-                remoteSshCommandExec(gceAvd, options, runUtil, "adb", "pull", deviceFilePath);
+                remoteSshCommandExec(gceAvd, options, runUtil, "./bin/adb", "pull", deviceFilePath);
         CLog.d(pullOutput);
         String remoteFilePath = "./" + new File(deviceFilePath).getName();
         File localTmpFile = FileUtil.createTempFile("bugreport-ssh", ".zip");
