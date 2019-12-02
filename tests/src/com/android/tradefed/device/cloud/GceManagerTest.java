@@ -732,7 +732,7 @@ public class GceManagerTest {
                                 EasyMock.eq("-i"),
                                 EasyMock.anyObject(),
                                 EasyMock.eq("root@127.0.0.1"),
-                                EasyMock.eq("adb"),
+                                EasyMock.eq("./bin/adb"),
                                 EasyMock.eq("shell"),
                                 EasyMock.eq("bugreportz")))
                 .andReturn(res);
@@ -751,7 +751,7 @@ public class GceManagerTest {
                                 EasyMock.eq("-i"),
                                 EasyMock.anyObject(),
                                 EasyMock.eq("root@127.0.0.1"),
-                                EasyMock.eq("adb"),
+                                EasyMock.eq("./bin/adb"),
                                 EasyMock.eq("pull"),
                                 EasyMock.eq("/bugreports/bugreport.zip")))
                 .andReturn(res);
