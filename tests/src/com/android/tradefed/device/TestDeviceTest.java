@@ -2756,6 +2756,20 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Test that remount vendor works as expected on a device not supporting dm verity
+     *
+     * @throws Exception
+     */
+    public void testRemountVendor_verityUnsupported() throws Exception {
+        injectSystemProperty("partition.vendor.verified", "");
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountVendorWritable();
+        verifyMocks();
+    }
+
+    /**
      * Test that remount works as expected on a device supporting dm verity v1
      * @throws Exception
      */
@@ -2768,6 +2782,22 @@ public class TestDeviceTest extends TestCase {
         EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
         replayMocks();
         mTestDevice.remountSystemWritable();
+        verifyMocks();
+    }
+    /**
+     * Test that remount vendor works as expected on a device supporting dm verity v1
+     *
+     * @throws Exception
+     */
+    public void testRemountVendor_veritySupportedV1() throws Exception {
+        injectSystemProperty("partition.vendor.verified", "1");
+        setExecuteAdbCommandExpectations(
+                new CommandResult(CommandStatus.SUCCESS), "disable-verity");
+        setRebootExpectations();
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountVendorWritable();
         verifyMocks();
     }
 
@@ -2788,6 +2818,23 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Test that remount vendor works as expected on a device supporting dm verity v2
+     *
+     * @throws Exception
+     */
+    public void testRemountVendor_veritySupportedV2() throws Exception {
+        injectSystemProperty("partition.vendor.verified", "2");
+        setExecuteAdbCommandExpectations(
+                new CommandResult(CommandStatus.SUCCESS), "disable-verity");
+        setRebootExpectations();
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountVendorWritable();
+        verifyMocks();
+    }
+
+    /**
      * Test that remount works as expected on a device supporting dm verity but with unknown version
      * @throws Exception
      */
@@ -2800,6 +2847,24 @@ public class TestDeviceTest extends TestCase {
         EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
         replayMocks();
         mTestDevice.remountSystemWritable();
+        verifyMocks();
+    }
+
+    /**
+     * Test that remount vendor works as expected on a device supporting dm verity but with unknown
+     * version
+     *
+     * @throws Exception
+     */
+    public void testRemountVendor_veritySupportedNonNumerical() throws Exception {
+        injectSystemProperty("partition.vendor.verified", "foo");
+        setExecuteAdbCommandExpectations(
+                new CommandResult(CommandStatus.SUCCESS), "disable-verity");
+        setRebootExpectations();
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountVendorWritable();
         verifyMocks();
     }
 
