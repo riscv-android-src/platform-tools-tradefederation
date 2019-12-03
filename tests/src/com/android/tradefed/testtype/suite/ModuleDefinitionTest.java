@@ -365,6 +365,7 @@ public class ModuleDefinitionTest {
         mMockTest.setBuild(EasyMock.eq(mMockBuildInfo));
         mMockTest.setDevice(EasyMock.eq(mMockDevice));
         mMockTest.setConfiguration(EasyMock.anyObject());
+        EasyMock.expectLastCall().times(2);
         mMockTest.run((ITestInvocationListener) EasyMock.anyObject());
         EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
         mMockCleaner.tearDown(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo),
@@ -393,6 +394,7 @@ public class ModuleDefinitionTest {
         mMockTest.setBuild(EasyMock.eq(mMockBuildInfo));
         mMockTest.setDevice(EasyMock.eq(mMockDevice));
         mMockTest.setConfiguration(EasyMock.anyObject());
+        EasyMock.expectLastCall().times(2);
         mMockTest.run((ITestInvocationListener) EasyMock.anyObject());
         EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
         mMockCleaner.tearDown(
@@ -525,6 +527,7 @@ public class ModuleDefinitionTest {
         mMockTest.setBuild(EasyMock.eq(mMockBuildInfo));
         mMockTest.setDevice(EasyMock.eq(mMockDevice));
         mMockTest.setConfiguration(EasyMock.anyObject());
+        EasyMock.expectLastCall().times(2);
         mMockTest.run((ITestInvocationListener) EasyMock.anyObject());
         mMockListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
@@ -551,6 +554,7 @@ public class ModuleDefinitionTest {
         mMockTest.setBuild(EasyMock.eq(mMockBuildInfo));
         mMockTest.setDevice(EasyMock.eq(mMockDevice));
         mMockTest.setConfiguration(EasyMock.anyObject());
+        EasyMock.expectLastCall().times(2);
         mMockTest.run((ITestInvocationListener) EasyMock.anyObject());
         EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(true);
         // But no teardown expected from Cleaner.
