@@ -585,6 +585,9 @@ def main(argv, results_dir):
             "\nAtest must always work under ${}!".format(
                 constants.ANDROID_BUILD_TOP), constants.RED)
         return constants.EXIT_CODE_OUTSIDE_ROOT
+    if args.help:
+        atest_arg_parser.print_epilog_text()
+        return constants.EXIT_CODE_SUCCESS
     mod_info = module_info.ModuleInfo(force_build=args.rebuild_module_info)
     if args.rebuild_module_info:
         _run_extra_tasks(join=True)
