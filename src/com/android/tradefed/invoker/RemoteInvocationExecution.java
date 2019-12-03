@@ -131,7 +131,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
     public void runTests(
             TestInformation info, IConfiguration config, ITestInvocationListener listener)
             throws Throwable {
-        ManagedRemoteDevice device = (ManagedRemoteDevice) info.getContext().getDevices().get(0);
+        ManagedRemoteDevice device = (ManagedRemoteDevice) info.getDevice();
         GceAvdInfo gceInfo = device.getRemoteAvdInfo();
 
         // Run remote TF (new tests?)
@@ -144,7 +144,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 && config.getCommandOptions().getShardIndex() == null) {
             if (config.getCommandOptions().getShardCount() > 1) {
                 int instanceCount = config.getCommandOptions().getShardCount();
-                if (!info.getContext().getBuildInfos().get(0).getBuildId().startsWith("P")) {
+                if (!info.getBuildInfo().getBuildId().startsWith("P")) {
                     instanceCount += config.getCommandOptions().getExtraRemotePostsubmitInstance();
                     config.getCommandOptions().setShardCount(instanceCount);
                 }
