@@ -405,12 +405,14 @@ public class TestInvocation implements ITestInvocation {
             IInvocationExecution invocationPath,
             ITestInvocationListener listener)
             throws Throwable {
+        TestInformation info = TestInformation.newBuilder().setInvocationContext(context).build();
         getRunUtil().allowInterrupt(true);
         logDeviceBatteryLevel(context, "initial -> setup");
+        // TODO: Use TestInformation in setup
         invocationPath.doSetup(context, config, listener);
         logDeviceBatteryLevel(context, "setup -> test");
         mTestStarted = true;
-        invocationPath.runTests(context, config, listener);
+        invocationPath.runTests(info, config, listener);
         logDeviceBatteryLevel(context, "after test");
     }
 
