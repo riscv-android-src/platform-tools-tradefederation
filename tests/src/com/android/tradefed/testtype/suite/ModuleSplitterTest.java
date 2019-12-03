@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.suite;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDef;
@@ -70,7 +71,9 @@ public class ModuleSplitterTest {
                 config.getTargetPreparers().get(0),
                 res.get(0).getTargetPreparerForDevice(DEFAULT_DEVICE).get(0));
         // The original IRemoteTest is still there because we use a pool.
-        assertSame(config.getTests().get(0), res.get(0).getTests().get(0));
+        assertSame(test, res.get(0).getTests().get(0));
+        // Original config is stripped from the IRemoteTest reference
+        assertTrue(config.getTests().isEmpty());
     }
 
     /**
@@ -101,7 +104,8 @@ public class ModuleSplitterTest {
                 config.getTargetPreparers().get(0),
                 res.get(0).getTargetPreparerForDevice(DEFAULT_DEVICE).get(0));
         // The original IRemoteTest is changed since it was sharded
-        assertNotSame(config.getTests().get(0), res.get(0).getTests().get(0));
+        assertNotSame(test, res.get(0).getTests().get(0));
+        assertTrue(config.getTests().isEmpty());
     }
 
     /**
@@ -132,7 +136,8 @@ public class ModuleSplitterTest {
                 config.getTargetPreparers().get(0),
                 res.get(0).getTargetPreparerForDevice(DEFAULT_DEVICE).get(0));
         // The original IRemoteTest is still there because we use a pool.
-        assertSame(config.getTests().get(0), res.get(0).getTests().get(0));
+        assertSame(test, res.get(0).getTests().get(0));
+        assertTrue(config.getTests().isEmpty());
     }
 
     /** Test when no-intra-module-sharding is set, in which case the module is not splitted. */
@@ -157,7 +162,8 @@ public class ModuleSplitterTest {
                 config.getTargetPreparers().get(0),
                 res.get(0).getTargetPreparerForDevice(DEFAULT_DEVICE).get(0));
         // The original IRemoteTest is still there because we use a pool.
-        assertSame(config.getTests().get(0), res.get(0).getTests().get(0));
+        assertSame(test, res.get(0).getTests().get(0));
+        assertTrue(config.getTests().isEmpty());
     }
 
     /**
@@ -170,14 +176,15 @@ public class ModuleSplitterTest {
         LinkedHashMap<String, IConfiguration> runConfig = new LinkedHashMap<>();
 
         IConfiguration config = new Configuration("fakeConfig", "desc");
-        config.setTest(
+        IRemoteTest test =
                 new IRemoteTest() {
                     @Override
                     public void run(ITestInvocationListener listener)
                             throws DeviceNotAvailableException {
                         // do nothing.
                     }
-                });
+                };
+        config.setTest(test);
         config.setTargetPreparer(new StubTargetPreparer());
 
         runConfig.put("module1", config);
@@ -192,7 +199,8 @@ public class ModuleSplitterTest {
                 config.getTargetPreparers().get(0).getClass(),
                 res.get(0).getTargetPreparerForDevice(DEFAULT_DEVICE).get(0).getClass());
         // The original IRemoteTest is still there
-        assertSame(config.getTests().get(0), res.get(0).getTests().get(0));
+        assertSame(test, res.get(0).getTests().get(0));
+        assertTrue(config.getTests().isEmpty());
     }
 
     /**
@@ -205,7 +213,8 @@ public class ModuleSplitterTest {
         LinkedHashMap<String, IConfiguration> runConfig = new LinkedHashMap<>();
 
         IConfiguration config = new Configuration("fakeConfig", "desc");
-        config.setTest(new StubTest());
+        IRemoteTest test = new StubTest();
+        config.setTest(test);
         config.setTargetPreparer(new StubTargetPreparer());
 
         runConfig.put("module1", config);
@@ -220,7 +229,8 @@ public class ModuleSplitterTest {
                 config.getTargetPreparers().get(0).getClass(),
                 res.get(0).getTargetPreparerForDevice(DEFAULT_DEVICE).get(0).getClass());
         // The original IRemoteTest is still there
-        assertSame(config.getTests().get(0), res.get(0).getTests().get(0));
+        assertSame(test, res.get(0).getTests().get(0));
+        assertTrue(config.getTests().isEmpty());
     }
 
     /**
@@ -244,8 +254,9 @@ public class ModuleSplitterTest {
         assertEquals(10, res.size());
         // The original IRemoteTest does not exists anymore, new IRemoteTests have been created.
         for (ModuleDefinition m : res) {
-            assertNotSame(config.getTests().get(0), m.getTests().get(0));
+            assertNotSame(test, m.getTests().get(0));
         }
+        assertTrue(config.getTests().isEmpty());
     }
 
     /**
@@ -270,7 +281,8 @@ public class ModuleSplitterTest {
         assertEquals(6, res.size());
         // The original IRemoteTest does not exists anymore, new IRemoteTests have been created.
         for (ModuleDefinition m : res) {
-            assertNotSame(config.getTests().get(0), m.getTests().get(0));
+            assertNotSame(test, m.getTests().get(0));
         }
+        assertTrue(config.getTests().isEmpty());
     }
 }
