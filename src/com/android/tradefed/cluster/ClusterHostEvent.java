@@ -35,6 +35,7 @@ public class ClusterHostEvent implements IClusterEvent {
     private List<String> mNextClusterIds;
     private List<ClusterDeviceInfo> mDeviceInfos = new ArrayList<>();
     private Map<String, String> mData = new HashMap<>();
+    private String mLabName;
     public static final String EVENT_QUEUE = "host-event-queue";
 
     /** Enums of the different types of host events. */
@@ -106,6 +107,10 @@ public class ClusterHostEvent implements IClusterEvent {
         return mNextClusterIds;
     }
 
+    public String getLabName() {
+        return mLabName;
+    }
+
     public static class Builder {
         private HostEventType mType;
         private long mTimestamp = System.currentTimeMillis();
@@ -116,6 +121,7 @@ public class ClusterHostEvent implements IClusterEvent {
         private List<ClusterDeviceInfo> mDeviceInfos = new ArrayList<ClusterDeviceInfo>();
         private Map<String, String> mData = new HashMap<>();
         private CommandScheduler.HostState mHostState = CommandScheduler.HostState.UNKNOWN;
+        private String mLabName;
 
         public Builder() {}
 
@@ -174,6 +180,11 @@ public class ClusterHostEvent implements IClusterEvent {
             return this;
         }
 
+        public Builder setLabName(String labName) {
+            mLabName = labName;
+            return this;
+        }
+
         public ClusterHostEvent build() {
             final ClusterHostEvent event = new ClusterHostEvent();
             event.mType = mType;
@@ -185,6 +196,7 @@ public class ClusterHostEvent implements IClusterEvent {
             event.mData = new HashMap<>(mData);
             event.mNextClusterIds = mNextClusterIds;
             event.mHostState = mHostState;
+            event.mLabName = mLabName;
             return event;
         }
     }
@@ -208,6 +220,7 @@ public class ClusterHostEvent implements IClusterEvent {
         if (this.getNextClusterIds() != null) {
             json.put("next_cluster_ids", new JSONArray(this.getNextClusterIds()));
         }
+        if (this.getLabName() != null) json.put("lab_name", this.getLabName());
         json.put("state", this.getHostState().toString());
         json.put("tf_start_time_seconds", this.getTfStartTime() / 1000);
         return json;
