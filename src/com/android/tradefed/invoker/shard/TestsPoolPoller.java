@@ -28,7 +28,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.shard.token.ITokenProvider;
 import com.android.tradefed.invoker.shard.token.ITokenRequest;
 import com.android.tradefed.invoker.shard.token.TokenProperty;
@@ -73,7 +73,6 @@ public final class TestsPoolPoller
                 IDeviceTest,
                 IBuildReceiver,
                 IMultiDeviceTest,
-                IInvocationContextReceiver,
                 ISystemStatusCheckerReceiver,
                 IMetricCollectorReceiver {
 
@@ -86,7 +85,6 @@ public final class TestsPoolPoller
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
-    private IInvocationContext mContext;
     private Map<ITestDevice, IBuildInfo> mDeviceInfos;
     private IConfiguration mConfig;
     private List<ISystemStatusChecker> mSystemStatusCheckers;
@@ -179,11 +177,12 @@ public final class TestsPoolPoller
 
     /** {@inheritDoc} */
     @Override
-    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(TestInformation info, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         try {
             ITestInvocationListener listenerWithCollectors = listener;
             for (IMetricCollector collector : mCollectors) {
-                listenerWithCollectors = collector.init(mContext, listenerWithCollectors);
+                listenerWithCollectors = collector.init(info.getContext(), listenerWithCollectors);
             }
             while (true) {
                 IRemoteTest test = poll();
@@ -197,7 +196,7 @@ public final class TestsPoolPoller
                     ((IDeviceTest) test).setDevice(mDevice);
                 }
                 if (test instanceof IInvocationContextReceiver) {
-                    ((IInvocationContextReceiver) test).setInvocationContext(mContext);
+                    ((IInvocationContextReceiver) test).setInvocationContext(info.getContext());
                 }
                 if (test instanceof IMultiDeviceTest) {
                     ((IMultiDeviceTest) test).setDeviceInfos(mDeviceInfos);
@@ -222,9 +221,9 @@ public final class TestsPoolPoller
                     if (test instanceof IMetricCollectorReceiver) {
                         ((IMetricCollectorReceiver) test).setMetricCollectors(mCollectors);
                         // If test can receive collectors then let it handle the how to set them up
-                        test.run(listener);
+                        test.run(info, listener);
                     } else {
-                        test.run(listenerWithCollectors);
+                        test.run(info, listenerWithCollectors);
                     }
                 } catch (RuntimeException e) {
                     CLog.e(
@@ -382,11 +381,6 @@ public final class TestsPoolPoller
     @Override
     public ITestDevice getDevice() {
         return mDevice;
-    }
-
-    @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
     }
 
     @Override
