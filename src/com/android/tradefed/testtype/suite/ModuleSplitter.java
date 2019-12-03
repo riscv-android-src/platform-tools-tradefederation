@@ -97,32 +97,35 @@ public class ModuleSplitter {
             int shardCount,
             boolean dynamicModule,
             boolean intraModuleSharding) {
+        List<IRemoteTest> tests = config.getTests();
+        // Get rid of the IRemoteTest reference on the shared configuration. It will not be used
+        // to run.
+        config.setTests(new ArrayList<>());
         // If this particular configuration module is declared as 'not shardable' we take it whole
         // but still split the individual IRemoteTest in a pool.
         if (!intraModuleSharding
                 || config.getConfigurationDescription().isNotShardable()
                 || (!dynamicModule
                         && config.getConfigurationDescription().isNotStrictShardable())) {
-            for (int i = 0; i < config.getTests().size(); i++) {
+            for (int i = 0; i < tests.size(); i++) {
                 if (dynamicModule) {
                     ModuleDefinition module =
                             new ModuleDefinition(
                                     moduleName,
-                                    config.getTests(),
+                                    tests,
                                     clonePreparersMap(config),
                                     clonePreparers(config.getMultiTargetPreparers()),
                                     config);
                     currentList.add(module);
                 } else {
-                    addModuleToListFromSingleTest(
-                            currentList, config.getTests().get(i), moduleName, config);
+                    addModuleToListFromSingleTest(currentList, tests.get(i), moduleName, config);
                 }
             }
             return;
         }
 
         // If configuration is possibly shardable we attempt to shard it.
-        for (IRemoteTest test : config.getTests()) {
+        for (IRemoteTest test : tests) {
             if (test instanceof IShardableTest) {
                 Collection<IRemoteTest> shardedTests = ((IShardableTest) test).split(shardCount);
                 if (shardedTests != null) {

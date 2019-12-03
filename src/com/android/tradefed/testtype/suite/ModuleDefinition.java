@@ -17,6 +17,7 @@ package com.android.tradefed.testtype.suite;
 
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
@@ -113,6 +114,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     private final IInvocationContext mModuleInvocationContext;
     private final IConfiguration mModuleConfiguration;
+    private IConfiguration mInternalTestConfiguration;
     private ILogSaver mLogSaver;
 
     private final String mId;
@@ -344,7 +346,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // Exception generated during setUp or run of the tests
         Throwable preparationException = null;
         DeviceNotAvailableException runException = null;
-        // Resolve dynamic files
+        // Resolve dynamic files except for the IRemotTest ones
         preparationException = invokeRemoteDynamic(mModuleConfiguration);
         // Setup
         long prepStartTime = getCurrentTime();
@@ -366,28 +368,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // Run the tests
         try {
             if (preparationException != null) {
-                List<ITestInvocationListener> allListeners = new ArrayList<>();
-                allListeners.add(listener);
-                if (moduleLevelListeners != null) {
-                    allListeners.addAll(moduleLevelListeners);
-                }
-                // Report the early module failures to the moduleListeners too in order for them
-                // to know about it.
-                ITestInvocationListener forwarder = new ResultForwarder(allListeners);
-                // For reporting purpose we create a failure placeholder with the error stack
-                // similar to InitializationError of JUnit.
-                forwarder.testRunStarted(getId(), 1, 0, System.currentTimeMillis());
-                StringWriter sw = new StringWriter();
-                preparationException.printStackTrace(new PrintWriter(sw));
-                forwarder.testRunFailed(sw.toString());
-                HashMap<String, Metric> metricsProto = new HashMap<>();
-                metricsProto.put(
-                        TEST_TIME, TfMetricProtoUtil.createSingleValue(0L, "milliseconds"));
-                forwarder.testRunEnded(0, metricsProto);
-                // If it was a not available exception rethrow it to signal the new device state.
-                if (preparationException instanceof DeviceNotAvailableException) {
-                    throw (DeviceNotAvailableException) preparationException;
-                }
+                reportSetupFailure(preparationException, listener, moduleLevelListeners);
                 return;
             }
             mStartTestTime = getCurrentTime();
@@ -396,7 +377,6 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 if (test == null) {
                     return;
                 }
-
                 if (test instanceof IBuildReceiver) {
                     ((IBuildReceiver) test).setBuild(mBuild);
                 }
@@ -410,6 +390,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     ((IInvocationContextReceiver) test)
                             .setInvocationContext(mModuleInvocationContext);
                 }
+                mInternalTestConfiguration = new Configuration("tmp-download", "tmp-download");
+                // We do it before the official set, otherwise the IConfiguration will not be the
+                // right one.
+                mInternalTestConfiguration.setTest(test);
                 if (test instanceof IConfigurationReceiver) {
                     ((IConfigurationReceiver) test).setConfiguration(mModuleConfiguration);
                 }
@@ -424,7 +408,6 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     }
                     ((ITestCollector) test).setCollectTestsOnly(mCollectTestsOnly);
                 }
-
                 GranularRetriableTestWrapper retriableTest =
                         prepareGranularRetriableWrapper(
                                 test,
@@ -434,6 +417,12 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                                 skipTestCases,
                                 maxRunLimit);
                 retriableTest.setCollectTestsOnly(mCollectTestsOnly);
+                // Resolve the dynamic options for that one test.
+                preparationException = invokeRemoteDynamic(mInternalTestConfiguration);
+                if (preparationException != null) {
+                    reportSetupFailure(preparationException, listener, moduleLevelListeners);
+                    return;
+                }
                 try {
                     retriableTest.run(listener);
                 } catch (DeviceNotAvailableException dnae) {
@@ -453,6 +442,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                             getId());
                     throw dnae;
                 } finally {
+                    mInternalTestConfiguration.cleanConfigurationData();
+                    mInternalTestConfiguration = null;
                     if (mMergeAttempts) {
                         // A single module can generate several test runs
                         mTestsResults.addAll(retriableTest.getFinalTestRunResults());
@@ -1030,6 +1021,35 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         } catch (RuntimeException | ConfigurationException e) {
             mIsFailedModule = true;
             return e;
+        }
+    }
+
+    /** Report a setup exception as a run failure and notify all the listeners. */
+    private void reportSetupFailure(
+            Throwable setupException,
+            ITestInvocationListener invocListener,
+            List<ITestInvocationListener> moduleListeners)
+            throws DeviceNotAvailableException {
+        List<ITestInvocationListener> allListeners = new ArrayList<>();
+        allListeners.add(invocListener);
+        if (moduleListeners != null) {
+            allListeners.addAll(moduleListeners);
+        }
+        // Report the early module failures to the moduleListeners too in order for them
+        // to know about it.
+        ITestInvocationListener forwarder = new ResultForwarder(allListeners);
+        // For reporting purpose we create a failure placeholder with the error stack
+        // similar to InitializationError of JUnit.
+        forwarder.testRunStarted(getId(), 1, 0, System.currentTimeMillis());
+        StringWriter sw = new StringWriter();
+        setupException.printStackTrace(new PrintWriter(sw));
+        forwarder.testRunFailed(sw.toString());
+        HashMap<String, Metric> metricsProto = new HashMap<>();
+        metricsProto.put(TEST_TIME, TfMetricProtoUtil.createSingleValue(0L, "milliseconds"));
+        forwarder.testRunEnded(0, metricsProto);
+        // If it was a not available exception rethrow it to signal the new device state.
+        if (setupException instanceof DeviceNotAvailableException) {
+            throw (DeviceNotAvailableException) setupException;
         }
     }
 }
