@@ -149,7 +149,7 @@ public class RustBinaryHostTestTest {
             CommandResult res = new CommandResult();
             res.setStatus(CommandStatus.EXCEPTION);
             res.setStderr("Could not execute.");
-            res.setStdout("");
+            res.setStdout("Could not execute.");
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
                                     EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
@@ -159,7 +159,7 @@ public class RustBinaryHostTestTest {
                     EasyMock.eq(binary.getName() + "-stderr"),
                     EasyMock.eq(LogDataType.TEXT),
                     EasyMock.anyObject());
-            // Report a failure if we cannot parse the logs
+            // Report a failure if we cannot parse the logs and the logs is not empty.
             mMockListener.testRunStarted(binary.getName(), 0);
             mMockListener.testRunFailed(EasyMock.anyObject());
             mMockListener.testRunEnded(

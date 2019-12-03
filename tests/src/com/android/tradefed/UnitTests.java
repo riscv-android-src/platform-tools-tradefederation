@@ -273,6 +273,7 @@ import com.android.tradefed.testtype.junit4.DeviceParameterizedRunnerTest;
 import com.android.tradefed.testtype.junit4.LongevityHostRunnerTest;
 import com.android.tradefed.testtype.python.PythonBinaryHostTestTest;
 import com.android.tradefed.testtype.rust.RustBinaryHostTestTest;
+import com.android.tradefed.testtype.rust.RustBinaryTestTest;
 import com.android.tradefed.testtype.rust.RustTestResultParserTest;
 import com.android.tradefed.testtype.suite.AtestRunnerTest;
 import com.android.tradefed.testtype.suite.BaseTestSuiteTest;
@@ -728,6 +729,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // testtype/rust
     RustBinaryHostTestTest.class,
+    RustBinaryTestTest.class,
     RustTestResultParserTest.class,
 
     // testtype/suite
