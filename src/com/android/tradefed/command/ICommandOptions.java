@@ -53,14 +53,6 @@ public interface ICommandOptions {
     public boolean isLoopMode();
 
     /**
-     * Get the min loop time for the config.
-     *
-     * @deprecated use {@link #getLoopTime()} instead
-     */
-    @Deprecated
-    public long getMinLoopTime();
-
-    /**
      * Get the time to wait before re-scheduling this command.
      * @return time in ms
      */
