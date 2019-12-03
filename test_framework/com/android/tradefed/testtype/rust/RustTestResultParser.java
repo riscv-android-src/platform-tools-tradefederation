@@ -69,6 +69,9 @@ public class RustTestResultParser extends MultiLineReceiver {
     /**
      * Create a new {@link RustTestResultParser} that reports to the given {@link
      * ITestInvocationListener}.
+     *
+     * @param listener the test invocation listener
+     * @param runName the test name
      */
     public RustTestResultParser(ITestInvocationListener listener, String runName) {
         this(Arrays.asList(listener), runName);
@@ -77,6 +80,9 @@ public class RustTestResultParser extends MultiLineReceiver {
     /**
      * Create a new {@link RustTestResultParser} that reports to the given {@link
      * ITestInvocationListener}s.
+     *
+     * @param listeners the test invocation listeners
+     * @param runName the test name
      */
     public RustTestResultParser(Collection<ITestInvocationListener> listeners, String runName) {
         mListeners.addAll(listeners);
@@ -93,7 +99,9 @@ public class RustTestResultParser extends MultiLineReceiver {
     @Override
     public void processNewLines(String[] lines) {
         try {
+            boolean hasContent = false;
             for (String line : lines) {
+                hasContent |= line.length() > 0;
                 if (lineMatchesPattern(line, COMPLETE_PATTERN)) {
                     reportToListeners(line);
                     return;
@@ -104,9 +112,10 @@ public class RustTestResultParser extends MultiLineReceiver {
                     reportTestResult();
                 }
             }
-            // did not find the summary line
-            throw new Exception(
-                    String.format("Missing summary line:\n%s\n", String.join("\n", lines)));
+            if (hasContent) {
+                throw new Exception(
+                        String.format("Missing summary line:\n%s\n", String.join("\n", lines)));
+            }
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse Rust test result\n" + e);
         }
