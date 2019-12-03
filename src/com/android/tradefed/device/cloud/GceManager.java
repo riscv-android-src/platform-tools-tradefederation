@@ -337,8 +337,9 @@ public class GceManager {
                                         gceArgs.toArray(new String[gceArgs.size()]));
                 if (!CommandStatus.SUCCESS.equals(cmd.getStatus())) {
                     CLog.w(
-                            "Failed to tear down GCE %s with the following arg, %s",
-                            mGceAvdInfo.instanceName(), gceArgs);
+                            "Failed to tear down GCE %s with the following arg: %s."
+                                    + "\nstdout:%s\nstderr:%s",
+                            mGceAvdInfo.instanceName(), gceArgs, cmd.getStdout(), cmd.getStderr());
                 }
                 FileUtil.deleteFile(config);
             } else {
