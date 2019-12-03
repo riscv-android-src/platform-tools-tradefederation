@@ -36,6 +36,7 @@ import com.android.tradefed.util.FileUtil;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -80,6 +81,7 @@ public class ClusterCommandLauncherFuncTest {
         FileUtil.recursiveDelete(mRootDir);
     }
 
+    @Ignore
     @Test
     public void testRun_withLegacyTradefed()
             throws IOException, ConfigurationException, DeviceNotAvailableException {
