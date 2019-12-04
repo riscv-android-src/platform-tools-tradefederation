@@ -545,6 +545,15 @@ def _print_testable_modules(mod_info, suite):
     for module in sorted(testable_modules):
         print('\t%s' % module)
 
+def _is_inside_android_root():
+    """Identify whether the cwd is inside of Android source tree.
+
+    Returns:
+        False if the cwd is outside of the source tree, True otherwise.
+    """
+    build_top = os.getenv(constants.ANDROID_BUILD_TOP, ' ')
+    return build_top in os.getcwd()
+
 # pylint: disable=too-many-statements
 # pylint: disable=too-many-branches
 def main(argv, results_dir):
@@ -571,6 +580,11 @@ def main(argv, results_dir):
             with open(constants.VERSION_FILE) as version_file:
                 print(version_file.read())
         return constants.EXIT_CODE_SUCCESS
+    if not _is_inside_android_root():
+        atest_utils.colorful_print(
+            "\nAtest must always work under ${}!".format(
+                constants.ANDROID_BUILD_TOP), constants.RED)
+        return constants.EXIT_CODE_OUTSIDE_ROOT
     mod_info = module_info.ModuleInfo(force_build=args.rebuild_module_info)
     if args.rebuild_module_info:
         _run_extra_tasks(join=True)
