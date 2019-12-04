@@ -20,6 +20,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.cluster.ClusterEventUploaderTest.Event;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -35,6 +36,7 @@ public class ClusterEventUploaderFuncTest {
 
     private ClusterEventUploader<Event> mUploader;
 
+    @Ignore
     @Test
     public void testPostCommandEvent_multipleThread() throws Exception {
         final Event event1 = new Event("event1");

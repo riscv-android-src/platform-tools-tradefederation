@@ -205,6 +205,7 @@ public class InvocationExecutionTest {
     /** Test that the run is retried the number of expected time. */
     @Test
     public void testRun_autoRetry() throws Throwable {
+        TestInformation info = TestInformation.newBuilder().setInvocationContext(mContext).build();
         OptionSetter setter = new OptionSetter(mConfig.getRetryDecision());
         setter.setOptionValue("retry-strategy", "ITERATIONS");
         setter.setOptionValue("max-testcase-run-count", "3");
@@ -218,7 +219,7 @@ public class InvocationExecutionTest {
         testStubSetter.setOptionValue("log-fake-files", "true");
         tests.add(stubTest);
         mConfig.setTests(tests);
-        mExec.runTests(mContext, mConfig, mMockLogListener);
+        mExec.runTests(info, mConfig, mMockLogListener);
 
         verify(mMockLogListener).testRunStarted("runName", 3, 0);
         verify(mMockLogListener).testRunStarted("runName", 3, 1);
@@ -234,6 +235,7 @@ public class InvocationExecutionTest {
      */
     @Test
     public void testRun_autoRetry_throughForwarder() throws Throwable {
+        TestInformation info = TestInformation.newBuilder().setInvocationContext(mContext).build();
         OptionSetter setter = new OptionSetter(mConfig.getRetryDecision());
         setter.setOptionValue("retry-strategy", "ITERATIONS");
         setter.setOptionValue("max-testcase-run-count", "3");
@@ -249,7 +251,7 @@ public class InvocationExecutionTest {
         mConfig.setTests(tests);
         LogSaverResultForwarder forwarder =
                 new LogSaverResultForwarder(mConfig.getLogSaver(), Arrays.asList(mMockLogListener));
-        mExec.runTests(mContext, mConfig, forwarder);
+        mExec.runTests(info, mConfig, forwarder);
 
         verify(mMockLogListener).testRunStarted("runName", 3, 0);
         verify(mMockLogListener).testRunStarted("runName", 3, 1);
@@ -267,6 +269,7 @@ public class InvocationExecutionTest {
      */
     @Test
     public void testRun_metricCollectors() throws Throwable {
+        TestInformation info = TestInformation.newBuilder().setInvocationContext(mContext).build();
         List<IRemoteTest> tests = new ArrayList<>();
         // First add an IMetricCollectorReceiver
         tests.add(new RemoteTestCollector());
@@ -274,14 +277,14 @@ public class InvocationExecutionTest {
         tests.add(
                 new IRemoteTest() {
                     @Override
-                    public void run(ITestInvocationListener listener)
+                    public void run(TestInformation info, ITestInvocationListener listener)
                             throws DeviceNotAvailableException {}
                 });
         mConfig.setTests(tests);
         List<IMetricCollector> collectors = new ArrayList<>();
         collectors.add(new TestBaseMetricCollector());
         mConfig.setDeviceMetricCollectors(collectors);
-        mExec.runTests(mContext, mConfig, mMockListener);
+        mExec.runTests(info, mConfig, mMockListener);
         // Init was called twice in total on the class, but only once per instance.
         assertEquals(2, TestBaseMetricCollector.sTotalInit);
     }
@@ -289,6 +292,7 @@ public class InvocationExecutionTest {
     /** Test that auto collectors are properly added. */
     @Test
     public void testRun_metricCollectors_auto() throws Throwable {
+        TestInformation info = TestInformation.newBuilder().setInvocationContext(mContext).build();
         List<IRemoteTest> tests = new ArrayList<>();
         // First add an IMetricCollectorReceiver
         RemoteTestCollector remoteTest = new RemoteTestCollector();
@@ -301,7 +305,7 @@ public class InvocationExecutionTest {
         specialCollectors.add(AutoLogCollector.SCREENSHOT_ON_FAILURE);
         mConfig.getCommandOptions().setAutoLogCollectors(specialCollectors);
 
-        mExec.runTests(mContext, mConfig, mMockListener);
+        mExec.runTests(info, mConfig, mMockListener);
         // Init was called twice in total on the class, but only once per instance.
         assertEquals(1, RemoteTestCollector.sTotalInit);
     }
