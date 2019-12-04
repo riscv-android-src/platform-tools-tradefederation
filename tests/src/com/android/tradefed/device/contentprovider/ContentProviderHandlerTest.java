@@ -170,6 +170,33 @@ public class ContentProviderHandlerTest {
         }
     }
 
+    /** Test {@link ContentProviderHandler#pushFile(File, String)} when the file doesn't exists */
+    @Test
+    public void testPushFile_notExists() throws Exception {
+        File toPush = new File("content-provider-test.txt");
+        try {
+            String devicePath = "path/somewhere/file.txt";
+            assertFalse(mProvider.pushFile(toPush, devicePath));
+        } finally {
+            FileUtil.deleteFile(toPush);
+        }
+    }
+
+    /**
+     * Test {@link ContentProviderHandler#pushFile(File, String)} when the file exists but is a
+     * directory
+     */
+    @Test
+    public void testPushFile_directory() throws Exception {
+        File toPush = FileUtil.createTempDir("content-provider-test");
+        try {
+            String devicePath = "path/somewhere/file.txt";
+            assertFalse(mProvider.pushFile(toPush, devicePath));
+        } finally {
+            FileUtil.recursiveDelete(toPush);
+        }
+    }
+
     /** Test {@link ContentProviderHandler#pullFile(String, File)}. */
     @Test
     public void testPullFile_verifyShellCommand() throws Exception {
