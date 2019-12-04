@@ -59,6 +59,7 @@ EXIT_CODE_ERROR = 3
 EXIT_CODE_TEST_NOT_FOUND = 4
 EXIT_CODE_TEST_FAILURE = 5
 EXIT_CODE_VERIFY_FAILURE = 6
+EXIT_CODE_OUTSIDE_ROOT = 7
 
 # Codes of specific events. These are exceptions that don't stop anything
 # but sending metrics.
