@@ -61,12 +61,18 @@ public class VersionParser {
     }
 
     private static File getTradefedJarDir() {
-        String classpath = System.getProperty("java.class.path");
-        String[] segments = classpath.split(":");
-        for (String segment : segments) {
-            if (segment.endsWith(TF_MAIN_JAR)) {
-                return new File(segment).getParentFile();
-            }
+        try {
+            File f =
+                    new File(
+                            VersionParser.class
+                                    .getProtectionDomain()
+                                    .getCodeSource()
+                                    .getLocation()
+                                    .getPath());
+            return f.getParentFile();
+        } catch (Exception e) {
+            CLog.e("Failed to find TF JAR dir:");
+            CLog.e(e);
         }
         return null;
     }
