@@ -25,6 +25,7 @@ import static org.junit.Assert.fail;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Configuration;
@@ -70,6 +71,7 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.StubTest;
+import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.MultiMap;
 
@@ -1782,7 +1784,7 @@ public class ITestSuiteTest {
                             String remoteFilePath,
                             List<String> includeFilters,
                             List<String> excludeFilters)
-                            throws ConfigurationException {
+                            throws BuildRetrievalError {
                         assertEquals(new File("tests_dir"), destDir);
                         assertEquals(remoteFilePath, remoteFilePath);
                         assertArrayEquals(new String[] {"/test/"}, includeFilters.toArray());
