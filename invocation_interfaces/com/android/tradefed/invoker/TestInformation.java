@@ -15,16 +15,22 @@
  */
 package com.android.tradefed.invoker;
 
+import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.device.ITestDevice;
+
 /**
  * Holder object that contains all the information and dependencies a test runner or test might need
  * to execute properly.
  */
 public class TestInformation {
-
+    /** The context of the invocation or module in progress */
     private final IInvocationContext mContext;
+    /** Properties generated during execution. */
+    private final ExecutionProperties mProperties;
 
     private TestInformation(Builder builder) {
         mContext = builder.mContext;
+        mProperties = builder.mProperties;
     }
 
     /** Create a builder for creating {@link TestInformation} instances. */
@@ -37,11 +43,33 @@ public class TestInformation {
         return mContext;
     }
 
+    /** Returns the primary device under tests. */
+    public ITestDevice getDevice() {
+        return mContext.getDevices().get(0);
+    }
+
+    /** Returns the primary device build information. */
+    public IBuildInfo getBuildInfo() {
+        return mContext.getBuildInfos().get(0);
+    }
+
+    /**
+     * Returns the properties generated during the invocation execution. Passing values and
+     * information through the {@link ExecutionProperties} is the recommended way to exchange
+     * information between target_preparers and tests.
+     */
+    public ExecutionProperties properties() {
+        return mProperties;
+    }
+
     /** Builder to create a {@link TestInformation} instance. */
     public static class Builder {
         private IInvocationContext mContext;
+        private ExecutionProperties mProperties;
 
-        private Builder() {}
+        private Builder() {
+            mProperties = new ExecutionProperties();
+        }
 
         public TestInformation build() {
             return new TestInformation(this);
