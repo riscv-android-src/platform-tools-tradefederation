@@ -17,6 +17,7 @@
 package com.android.tradefed.config;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.MultiMap;
@@ -756,9 +757,9 @@ public class OptionSetter {
      * Runs through all the {@link File} option type and check if their path should be resolved.
      *
      * @return The list of {@link File} that was resolved that way.
-     * @throws ConfigurationException
+     * @throws BuildRetrievalError
      */
-    public final Set<File> validateRemoteFilePath() throws ConfigurationException {
+    public final Set<File> validateRemoteFilePath() throws BuildRetrievalError {
         DynamicRemoteFileResolver resolver = createResolver();
         resolver.setOptionMap(mOptionMap);
         return resolver.validateRemoteFilePath();

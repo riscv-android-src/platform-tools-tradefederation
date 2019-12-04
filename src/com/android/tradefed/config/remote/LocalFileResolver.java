@@ -15,7 +15,7 @@
  */
 package com.android.tradefed.config.remote;
 
-import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
 
@@ -29,8 +29,7 @@ public class LocalFileResolver implements IRemoteFileResolver {
     public static final String PROTOCOL = "file";
 
     @Override
-    public File resolveRemoteFiles(File consideredFile, Option option)
-            throws ConfigurationException {
+    public File resolveRemoteFiles(File consideredFile, Option option) throws BuildRetrievalError {
         // Don't use absolute path as it would not start with gs:
         String path = consideredFile.getPath();
         CLog.d("Considering option '%s' with path: '%s' for download.", option.name(), path);
@@ -39,7 +38,7 @@ public class LocalFileResolver implements IRemoteFileResolver {
         if (localFile.exists()) {
             return localFile;
         }
-        throw new ConfigurationException(String.format("Failed to find local file %s.", localFile));
+        throw new BuildRetrievalError(String.format("Failed to find local file %s.", localFile));
     }
 
     @Override

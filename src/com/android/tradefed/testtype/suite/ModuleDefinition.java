@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype.suite;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
@@ -1018,7 +1019,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             CLog.d("Attempting to resolve dynamic files from %s", getId());
             moduleConfiguration.resolveDynamicOptions();
             return null;
-        } catch (RuntimeException | ConfigurationException e) {
+        } catch (RuntimeException | ConfigurationException | BuildRetrievalError e) {
             mIsFailedModule = true;
             return e;
         }
