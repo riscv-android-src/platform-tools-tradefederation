@@ -225,11 +225,11 @@ public class InstrumentationTestTest {
         doReturn(true).when(mMockTestDevice).checkApiLevelAgainstNextRelease(30);
         OptionSetter setter = new OptionSetter(mInstrumentationTest);
         setter.setOptionValue("hidden-api-checks", "true");
-        setter.setOptionValue("test-api-checks", "false");
+        setter.setOptionValue("test-api-access", "false");
         RemoteAndroidTestRunner runner =
                 (RemoteAndroidTestRunner)
                         mInstrumentationTest.createRemoteAndroidTestRunner("", "", mMockIDevice);
-        assertThat(runner.getRunOptions()).contains("--no-test-api-checks");
+        assertThat(runner.getRunOptions()).contains("--no-test-api-access");
     }
 
     /** Test normal run scenario with --no-isolated-storage specified */
