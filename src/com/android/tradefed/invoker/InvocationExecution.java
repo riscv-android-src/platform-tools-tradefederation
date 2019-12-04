@@ -481,13 +481,10 @@ public class InvocationExecution implements IInvocationExecution {
             for (IRemoteTest test : config.getTests()) {
                 // For compatibility of those receivers, they are assumed to be single device alloc.
                 if (test instanceof IDeviceTest) {
-                    ((IDeviceTest) test).setDevice(info.getContext().getDevices().get(0));
+                    ((IDeviceTest) test).setDevice(info.getDevice());
                 }
                 if (test instanceof IBuildReceiver) {
-                    ((IBuildReceiver) test)
-                            .setBuild(
-                                    info.getContext()
-                                            .getBuildInfo(info.getContext().getDevices().get(0)));
+                    ((IBuildReceiver) test).setBuild(info.getBuildInfo());
                 }
                 if (test instanceof ISystemStatusCheckerReceiver) {
                     ((ISystemStatusCheckerReceiver) test)

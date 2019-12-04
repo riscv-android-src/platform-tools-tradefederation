@@ -29,6 +29,8 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.shard.token.ITokenRequest;
 import com.android.tradefed.log.ILogRegistry;
@@ -73,7 +75,9 @@ public class TestsPoolPollerTest {
         Mockito.doReturn("serial").when(mDevice).getSerialNumber();
         mConfiguration = new Configuration("test", "test");
         mMetricCollectors = new ArrayList<>();
-        mTestInfo = TestInformation.newBuilder().build();
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mDevice);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     /**
@@ -223,7 +227,6 @@ public class TestsPoolPollerTest {
         CountDownLatch tracker = new CountDownLatch(1);
         TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
         poller.setMetricCollectors(mMetricCollectors);
-        poller.setDevice(mDevice);
         poller.setLogRegistry(mMockRegistry);
         try {
             poller.run(mTestInfo, mListener);
@@ -263,7 +266,6 @@ public class TestsPoolPollerTest {
         CountDownLatch tracker = new CountDownLatch(1);
         TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
         poller.setMetricCollectors(mMetricCollectors);
-        poller.setDevice(mDevice);
         poller.setLogRegistry(mMockRegistry);
         try {
             poller.run(mTestInfo, mListener);
@@ -323,7 +325,6 @@ public class TestsPoolPollerTest {
         CountDownLatch tracker = new CountDownLatch(3);
         TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
         poller.setMetricCollectors(mMetricCollectors);
-        poller.setDevice(mDevice);
 
         poller.run(mTestInfo, mListener);
         // The callbacks from all the other tests because the device was recovered
@@ -363,7 +364,6 @@ public class TestsPoolPollerTest {
         CountDownLatch tracker = new CountDownLatch(3);
         TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
         poller.setMetricCollectors(mMetricCollectors);
-        poller.setDevice(mDevice);
         poller.setLogRegistry(mMockRegistry);
 
         Mockito.doThrow(new DeviceNotAvailableException())
@@ -415,7 +415,6 @@ public class TestsPoolPollerTest {
         CountDownLatch tracker = new CountDownLatch(1);
         TestsPoolPoller poller = new TestsPoolPoller(testsList, tokenList, tracker);
         poller.setMetricCollectors(mMetricCollectors);
-        poller.setDevice(mDevice);
         poller.run(mTestInfo, mListener);
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
