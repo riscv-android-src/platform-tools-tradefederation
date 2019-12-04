@@ -175,7 +175,7 @@ public class DeviceTestRunOptions {
     }
 
     /**
-     * sets whether or not to add the --no-test-api-checks to the 'am instrument' used from the host
+     * sets whether or not to add the --no-test-api-access to the 'am instrument' used from the host
      * side.
      */
     public DeviceTestRunOptions setDisableTestApiCheck(boolean disableTestApiCheck) {

@@ -716,9 +716,9 @@ public abstract class BaseHostJUnit4Test
             runOptions += "--no-hidden-api-checks ";
         }
         if (!isHiddenApiCheckDisabled
-                && isTestApiCheckDisabled
+                && !isTestApiCheckDisabled
                 && device.checkApiLevelAgainstNextRelease(30)) {
-            runOptions += "--no-test-api-checks ";
+            runOptions += "--no-test-api-access ";
         }
         // isolated-storage flag only exists in Q and after.
         if (isIsolatedStorageDisabled && device.checkApiLevelAgainstNextRelease(29)) {
