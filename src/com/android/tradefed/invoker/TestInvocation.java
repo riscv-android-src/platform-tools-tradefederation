@@ -362,8 +362,9 @@ public class TestInvocation implements ITestInvocation {
                     if (mStopRequestTime != null) {
                         // This is not 100% perfect since result reporting can still run a bit
                         // longer, but this is our last opportunity to report it.
+                        long latency = System.currentTimeMillis() - mStopRequestTime;
                         InvocationMetricLogger.addInvocationMetrics(
-                                InvocationMetricKey.SHUTDOWN_HARD_LATENCY, mStopRequestTime);
+                                InvocationMetricKey.SHUTDOWN_HARD_LATENCY, latency);
                     }
                 }
                 reportHostLog(listener, config);
