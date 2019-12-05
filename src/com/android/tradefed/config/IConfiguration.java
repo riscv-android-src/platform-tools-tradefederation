@@ -16,6 +16,7 @@
 
 package com.android.tradefed.config;
 
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.ICommandOptions;
 import com.android.tradefed.device.IDeviceRecovery;
@@ -501,9 +502,10 @@ public interface IConfiguration {
      * Resolve options of {@link File} pointing to a remote location. This requires {@link
      * #cleanConfigurationData()} to be called to clean up the files.
      *
+     * @throws BuildRetrievalError
      * @throws ConfigurationException
      */
-    public void resolveDynamicOptions() throws ConfigurationException;
+    public void resolveDynamicOptions() throws ConfigurationException, BuildRetrievalError;
 
     /** Delete any files that was downloaded to resolved Option fields of remote files. */
     public void cleanConfigurationData();

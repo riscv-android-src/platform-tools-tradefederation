@@ -16,6 +16,7 @@
 package com.android.tradefed.invoker;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.CommandRunner.ExitCode;
@@ -361,8 +362,9 @@ public class TestInvocation implements ITestInvocation {
                     if (mStopRequestTime != null) {
                         // This is not 100% perfect since result reporting can still run a bit
                         // longer, but this is our last opportunity to report it.
+                        long latency = System.currentTimeMillis() - mStopRequestTime;
                         InvocationMetricLogger.addInvocationMetrics(
-                                InvocationMetricKey.SHUTDOWN_HARD_LATENCY, mStopRequestTime);
+                                InvocationMetricKey.SHUTDOWN_HARD_LATENCY, latency);
                     }
                 }
                 reportHostLog(listener, config);
@@ -659,7 +661,11 @@ public class TestInvocation implements ITestInvocation {
                 config.resolveDynamicOptions();
             }
             return true;
-        } catch (RuntimeException | ConfigurationException e) {
+        } catch (RuntimeException | BuildRetrievalError | ConfigurationException e) {
+            // We don't have a reporting buildInfo at this point
+            IBuildInfo info = new BuildInfo();
+            context.addDeviceBuildInfo(context.getDeviceConfigNames().get(0), info);
+
             // Report an empty invocation, so this error is sent to listeners
             startInvocation(config, context, listener);
             // Don't want to use #reportFailure, since that will call buildNotTested

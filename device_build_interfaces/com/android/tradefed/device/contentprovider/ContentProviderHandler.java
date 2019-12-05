@@ -220,12 +220,12 @@ public class ContentProviderHandler {
      */
     public boolean pushFile(File fileToPush, String deviceFilePath)
             throws DeviceNotAvailableException, IllegalArgumentException {
-        if (fileToPush.isDirectory()) {
-            throw new IllegalArgumentException(
-                    String.format("File '%s' to push is a directory.", fileToPush));
-        }
         if (!fileToPush.exists()) {
             CLog.w("File '%s' to push does not exist.", fileToPush);
+            return false;
+        }
+        if (fileToPush.isDirectory()) {
+            CLog.w("'%s' is not a file but a directory, can't use #pushFile on it.", fileToPush);
             return false;
         }
         String contentUri = createEscapedContentUri(deviceFilePath);
