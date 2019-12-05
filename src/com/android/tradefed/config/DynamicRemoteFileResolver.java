@@ -16,7 +16,6 @@
 package com.android.tradefed.config;
 
 import com.android.annotations.VisibleForTesting;
-import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.OptionSetter.OptionFieldsForName;
 import com.android.tradefed.config.remote.GcsRemoteFileResolver;
 import com.android.tradefed.config.remote.HttpRemoteFileResolver;
@@ -80,9 +79,9 @@ public class DynamicRemoteFileResolver {
      * Runs through all the {@link File} option type and check if their path should be resolved.
      *
      * @return The list of {@link File} that was resolved that way.
-     * @throws BuildRetrievalError
+     * @throws ConfigurationException
      */
-    public final Set<File> validateRemoteFilePath() throws BuildRetrievalError {
+    public final Set<File> validateRemoteFilePath() throws ConfigurationException {
         Set<File> downloadedFiles = new HashSet<>();
         try {
             Map<Field, Object> fieldSeen = new HashMap<>();
@@ -105,7 +104,7 @@ public class DynamicRemoteFileResolver {
                             continue;
                         }
                     } catch (IllegalAccessException e) {
-                        throw new BuildRetrievalError(
+                        throw new ConfigurationException(
                                 String.format("internal error: %s", e.getMessage()));
                     }
 
@@ -125,7 +124,7 @@ public class DynamicRemoteFileResolver {
                                 field.set(obj, downloadedFile);
                             } catch (IllegalAccessException e) {
                                 CLog.e(e);
-                                throw new BuildRetrievalError(
+                                throw new ConfigurationException(
                                         String.format(
                                                 "Failed to download %s due to '%s'",
                                                 consideredFile.getPath(), e.getMessage()),
@@ -203,7 +202,7 @@ public class DynamicRemoteFileResolver {
                     }
                 }
             }
-        } catch (BuildRetrievalError e) {
+        } catch (ConfigurationException e) {
             // Clean up the files before throwing
             for (File f : downloadedFiles) {
                 FileUtil.recursiveDelete(f);
@@ -226,14 +225,14 @@ public class DynamicRemoteFileResolver {
      *     matching any filter will be downloaded.
      * @param excludeFilters a list of regex strings to skip downloading matching files. A file's
      *     path matching any filter will not be downloaded.
-     * @throws BuildRetrievalError if files could not be downloaded.
+     * @throws ConfigurationException if files could not be downloaded.
      */
     public void resolvePartialDownloadZip(
             File destDir,
             String remoteZipFilePath,
             List<String> includeFilters,
             List<String> excludeFilters)
-            throws BuildRetrievalError {
+            throws ConfigurationException {
         Map<String, String> queryArgs;
         String protocol;
         try {
@@ -241,7 +240,7 @@ public class DynamicRemoteFileResolver {
             protocol = uri.getScheme();
             queryArgs = parseQuery(uri.getQuery());
         } catch (URISyntaxException e) {
-            throw new BuildRetrievalError(
+            throw new ConfigurationException(
                     String.format(
                             "Failed to parse the remote zip file path: %s", remoteZipFilePath),
                     e);
@@ -258,7 +257,7 @@ public class DynamicRemoteFileResolver {
         // Downloaded individual files should be saved to destDir, return value is not needed.
         try {
             resolver.resolveRemoteFiles(new File(remoteZipFilePath), null, queryArgs);
-        } catch (BuildRetrievalError e) {
+        } catch (ConfigurationException e) {
             if (isOptional(queryArgs)) {
                 CLog.d(
                         "Failed to partially download '%s' but marked optional so skipping: %s",
@@ -319,7 +318,8 @@ public class DynamicRemoteFileResolver {
         return downloadedFile;
     }
 
-    private File resolveRemoteFiles(File consideredFile, Option option) throws BuildRetrievalError {
+    private File resolveRemoteFiles(File consideredFile, Option option)
+            throws ConfigurationException {
         File fileToResolve;
         String path = consideredFile.getPath();
         String protocol;
@@ -337,7 +337,7 @@ public class DynamicRemoteFileResolver {
         if (resolver != null) {
             try {
                 return resolver.resolveRemoteFiles(fileToResolve, option, query);
-            } catch (BuildRetrievalError e) {
+            } catch (ConfigurationException e) {
                 if (isOptional(query)) {
                     CLog.d(
                             "Failed to resolve '%s' but marked optional so skipping: %s",

@@ -559,7 +559,7 @@ public class ConfigurationTest extends TestCase {
      * sharding. If that was the case, the downloaded files would be cleaned up right after the
      * shards are kicked-off in new invocations.
      */
-    public void testValidateOptions_localSharding_skipDownload() throws Exception {
+    public void testValidateOptions_localSharding_skipDownload() throws ConfigurationException {
         mConfig =
                 new Configuration(CONFIG_NAME, CONFIG_DESCRIPTION) {
                     @Override
