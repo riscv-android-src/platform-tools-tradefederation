@@ -20,6 +20,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.doReturn;
 
 import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
@@ -79,7 +80,7 @@ public class DeviceJUnit4ClassRunnerTest {
                                                             Mockito.any(),
                                                             Mockito.any());
                                             return mockResolver;
-                                        } catch (ConfigurationException e) {
+                                        } catch (BuildRetrievalError e) {
                                             CLog.e(e);
                                         }
                                     }
