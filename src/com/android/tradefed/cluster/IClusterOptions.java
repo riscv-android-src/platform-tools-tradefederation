@@ -70,4 +70,10 @@ public interface IClusterOptions {
 
     /** Whether the command state (on the TF cluster) should be checked during heartbeat. */
     public boolean checkCommandState();
+
+    /** Get the name of the lab the host belong to. */
+    public String getLabName();
+
+    /** Get labels for the host. */
+    public List<String> getLabels();
 }

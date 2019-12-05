@@ -85,6 +85,7 @@ public class ClusterDeviceMonitorTest {
         mClusterOptionSetter.setOptionValue("cluster:cluster", "cluster1");
         mClusterOptionSetter.setOptionValue("cluster:next-cluster", "cluster2");
         mClusterOptionSetter.setOptionValue("cluster:next-cluster", "cluster3");
+        mClusterOptionSetter.setOptionValue("cluster:lab-name", "lab1");
     }
 
     @Test
@@ -98,6 +99,7 @@ public class ClusterDeviceMonitorTest {
         ClusterHostEvent hostEvent = capture.getValue();
         Assert.assertEquals("cluster1", hostEvent.getClusterId());
         Assert.assertEquals(Arrays.asList("cluster2", "cluster3"), hostEvent.getNextClusterIds());
+        Assert.assertEquals("lab1", hostEvent.getLabName());
     }
 
     void setOptions() throws Exception {
