@@ -109,7 +109,8 @@ public class ClusterDeviceMonitor implements IDeviceMonitor {
                             .setTfVersion(ClusterHostUtil.getTfVersion())
                             .setData(getAdditionalHostInfo())
                             .setClusterId(getClusterOptions().getClusterId())
-                            .setNextClusterIds(getClusterOptions().getNextClusterIds());
+                            .setNextClusterIds(getClusterOptions().getNextClusterIds())
+                            .setLabName(getClusterOptions().getLabName());
             for (DeviceDescriptor device : devices) {
                 if (device.isTemporary()) {
                     // Do not report temporary devices, they will go away when the invocation
