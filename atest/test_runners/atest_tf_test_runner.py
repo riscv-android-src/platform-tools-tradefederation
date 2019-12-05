@@ -43,11 +43,11 @@ SELECT_TIMEOUT = 5
 
 # Socket Events of form FIRST_EVENT {JSON_DATA}\nSECOND_EVENT {JSON_DATA}
 # EVENT_RE has groups for the name and the data. "." does not match \n.
-EVENT_RE = re.compile(r'^(?P<event_name>[A-Z_]+) (?P<json_data>{.*})(?:\n|$)')
+EVENT_RE = re.compile(r'\n*(?P<event_name>[A-Z_]+) (?P<json_data>{.*})(?=\n|.)*')
 
 EXEC_DEPENDENCIES = ('adb', 'aapt')
 
-TRADEFED_EXIT_MSG = ('TradeFed subprocess exited early with exit code=%s.')
+TRADEFED_EXIT_MSG = 'TradeFed subprocess exited early with exit code=%s.'
 
 LOG_FOLDER_NAME = 'log'
 
@@ -221,9 +221,9 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                             inputs.remove(socket_object)
                             socket_object.close()
             finally:
-                if tf_subproc.poll() is not None:
-                    while inputs:
-                        inputs.pop(0).close()
+                # Subprocess ended and all socket client closed.
+                if tf_subproc.poll() is not None and len(inputs) == 1:
+                    inputs.pop().close()
                     if not data_map:
                         raise TradeFedExitError(TRADEFED_EXIT_MSG
                                                 % tf_subproc.returncode)
