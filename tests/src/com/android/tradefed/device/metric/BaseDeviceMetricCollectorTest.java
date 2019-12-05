@@ -23,6 +23,7 @@ import static org.mockito.Mockito.times;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
@@ -53,11 +54,13 @@ public class BaseDeviceMetricCollectorTest {
     private BaseDeviceMetricCollector mBase;
     private IInvocationContext mContext;
     private ITestInvocationListener mMockListener;
+    private TestInformation mTestInfo;
     @Captor private ArgumentCaptor<HashMap<String, Metric>> mCapturedMetrics;
 
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
+        mTestInfo = TestInformation.newBuilder().build();
         mBase = new BaseDeviceMetricCollector();
         mContext = new InvocationContext();
         mMockListener = Mockito.mock(ITestInvocationListener.class);
@@ -417,7 +420,7 @@ public class BaseDeviceMetricCollectorTest {
         setterHost.setOptionValue("class", TestRunAnnotated.class.getName());
         setterHost.setOptionValue("enable-pretty-logs", "false");
 
-        host.run(mBase);
+        host.run(mTestInfo, mBase);
 
         Mockito.verify(mMockListener, times(1)).testRunStarted(TestRunAnnotated.class.getName(), 3);
         TestDescription test1 = new TestDescription(TestRunAnnotated.class.getName(), "testOne");
@@ -465,7 +468,7 @@ public class BaseDeviceMetricCollectorTest {
         setterHost.setOptionValue("class", TestRunAnnotated.class.getName());
         setterHost.setOptionValue("enable-pretty-logs", "false");
 
-        host.run(mBase);
+        host.run(mTestInfo, mBase);
 
         Mockito.verify(mMockListener, times(1)).testRunStarted(TestRunAnnotated.class.getName(), 3);
         TestDescription test1 = new TestDescription(TestRunAnnotated.class.getName(), "testOne");
@@ -536,7 +539,7 @@ public class BaseDeviceMetricCollectorTest {
                 .testEnded(Mockito.eq(test), Mockito.anyLong(), mCapturedMetrics.capture());
 
         Mockito.verify(mMockListener, times(1))
-                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
 
         List<HashMap<String, Metric>> allValues = mCapturedMetrics.getAllValues();
         assertTrue(allValues.get(0).containsKey("onteststart"));

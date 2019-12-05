@@ -25,7 +25,6 @@ import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.ISetOptionReceiver;
 
 import org.junit.runners.Parameterized;
@@ -35,7 +34,6 @@ import org.junit.runners.model.Statement;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import junitparams.JUnitParamsRunner;
 
@@ -52,7 +50,6 @@ public class DeviceParameterizedRunner extends JUnitParamsRunner
                 IBuildReceiver,
                 IAbiReceiver,
                 ISetOptionReceiver,
-                IMultiDeviceTest,
                 IInvocationContextReceiver {
 
     @Option(name = HostTest.SET_OPTION_NAME, description = HostTest.SET_OPTION_DESC)
@@ -62,7 +59,6 @@ public class DeviceParameterizedRunner extends JUnitParamsRunner
     private IBuildInfo mBuildInfo;
     private IAbi mAbi;
     private IInvocationContext mContext;
-    private Map<ITestDevice, IBuildInfo> mDeviceInfos;
 
     /**
      * @param klass
@@ -89,9 +85,6 @@ public class DeviceParameterizedRunner extends JUnitParamsRunner
         // We are more flexible about abi information since not always available.
         if (testObj instanceof IAbiReceiver) {
             ((IAbiReceiver) testObj).setAbi(mAbi);
-        }
-        if (testObj instanceof IMultiDeviceTest) {
-            ((IMultiDeviceTest) testObj).setDeviceInfos(mDeviceInfos);
         }
         if (testObj instanceof IInvocationContextReceiver) {
             ((IInvocationContextReceiver) testObj).setInvocationContext(mContext);
@@ -129,10 +122,5 @@ public class DeviceParameterizedRunner extends JUnitParamsRunner
     @Override
     public void setInvocationContext(IInvocationContext invocationContext) {
         mContext = invocationContext;
-    }
-
-    @Override
-    public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
-        mDeviceInfos = deviceInfos;
     }
 }
