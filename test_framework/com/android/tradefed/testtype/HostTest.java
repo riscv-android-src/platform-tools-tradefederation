@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
@@ -1271,7 +1270,7 @@ public class HostTest
         try {
             OptionSetter setter = createOptionSetter(obj);
             return setter.validateRemoteFilePath();
-        } catch (BuildRetrievalError | ConfigurationException e) {
+        } catch (ConfigurationException e) {
             throw new RuntimeException(e);
         }
     }

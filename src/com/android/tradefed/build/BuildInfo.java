@@ -19,6 +19,7 @@ import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.proto.BuildInformation;
 import com.android.tradefed.build.proto.BuildInformation.BuildFile;
 import com.android.tradefed.build.proto.BuildInformation.KeyBuildFilePair;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
@@ -725,7 +726,7 @@ public class BuildInfo implements IBuildInfo {
                 new DynamicRemoteFileResolver()
                         .resolvePartialDownloadZip(
                                 workingDir, file.toString(), includeFilters, null);
-            } catch (BuildRetrievalError e) {
+            } catch (ConfigurationException e) {
                 throw new RuntimeException(e);
             }
 

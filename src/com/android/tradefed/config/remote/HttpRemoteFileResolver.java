@@ -16,7 +16,7 @@
 package com.android.tradefed.config.remote;
 
 import com.android.annotations.VisibleForTesting;
-import com.android.tradefed.build.BuildRetrievalError;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
@@ -38,7 +38,7 @@ public class HttpRemoteFileResolver implements IRemoteFileResolver {
     @Override
     public File resolveRemoteFiles(
             File consideredFile, Option option, Map<String, String> queryArgs)
-            throws BuildRetrievalError {
+            throws ConfigurationException {
         // Don't use absolute path as it would not start with gs:
         String path = consideredFile.getPath();
         CLog.d("Considering option '%s' with path: '%s' for download.", option.name(), path);
@@ -55,7 +55,7 @@ public class HttpRemoteFileResolver implements IRemoteFileResolver {
             downloader.doGet(path, new FileOutputStream(downloadedFile));
         } catch (IOException | RuntimeException e) {
             FileUtil.deleteFile(downloadedFile);
-            throw new BuildRetrievalError(
+            throw new ConfigurationException(
                     String.format("Failed to download %s due to: %s", path, e.getMessage()), e);
         }
         return downloadedFile;

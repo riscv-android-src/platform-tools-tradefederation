@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
@@ -180,7 +179,7 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
         try {
             OptionSetter setter = createOptionSetter(obj);
             return setter.validateRemoteFilePath();
-        } catch (BuildRetrievalError | ConfigurationException e) {
+        } catch (ConfigurationException e) {
             throw new RuntimeException(e);
         }
     }

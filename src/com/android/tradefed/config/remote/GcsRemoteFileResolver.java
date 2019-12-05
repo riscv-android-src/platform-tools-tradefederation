@@ -18,6 +18,7 @@ package com.android.tradefed.config.remote;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.gcs.GCSDownloaderHelper;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -37,7 +38,7 @@ public class GcsRemoteFileResolver implements IRemoteFileResolver {
 
     @Override
     public File resolveRemoteFiles(File consideredFile, Option option, Map<String, String> query)
-            throws BuildRetrievalError {
+            throws ConfigurationException {
         // Don't use absolute path as it would not start with gs:
         String path = consideredFile.getPath();
         CLog.d("Considering option '%s' with path: '%s' for download.", option.name(), path);
@@ -48,7 +49,7 @@ public class GcsRemoteFileResolver implements IRemoteFileResolver {
             return DynamicRemoteFileResolver.unzipIfRequired(downloadedFile, query);
         } catch (BuildRetrievalError | IOException e) {
             CLog.e(e);
-            throw new BuildRetrievalError(
+            throw new ConfigurationException(
                     String.format("Failed to download %s due to: %s", path, e.getMessage()), e);
         }
     }

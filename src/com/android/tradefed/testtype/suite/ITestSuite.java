@@ -17,7 +17,6 @@ package com.android.tradefed.testtype.suite;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.Log.LogLevel;
-import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
@@ -467,7 +466,7 @@ public abstract class ITestSuite
             try {
                 mDynamicResolver.resolvePartialDownloadZip(
                         getTestsDir(), remoteFile.toString(), includeFilters, excludeFilters);
-            } catch (BuildRetrievalError | FileNotFoundException e) {
+            } catch (ConfigurationException | FileNotFoundException e) {
                 CLog.e(
                         String.format(
                                 "Failed to download partial zip from %s for modules: %s",

@@ -16,7 +16,6 @@
 package com.android.tradefed.device.cloud;
 
 import com.android.ddmlib.IDevice;
-import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
@@ -221,7 +220,7 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
             mValidationConfig.setDeviceOptions(mCopiedOptions);
             try {
                 mValidationConfig.resolveDynamicOptions();
-            } catch (BuildRetrievalError | ConfigurationException e) {
+            } catch (ConfigurationException e) {
                 throw new RuntimeException(e);
             }
         }
