@@ -26,7 +26,7 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -76,7 +76,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -96,9 +95,7 @@ public class HostTest
                 IBuildReceiver,
                 IAbiReceiver,
                 IShardableTest,
-                IRuntimeHintProvider,
-                IMultiDeviceTest,
-                IInvocationContextReceiver {
+                IRuntimeHintProvider {
 
     @Option(name = "class", description = "The JUnit test classes to run, in the format "
             + "<package>.<class>. eg. \"com.android.foo.Bar\". This field can be repeated.",
@@ -171,8 +168,7 @@ public class HostTest
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private IAbi mAbi;
-    private Map<ITestDevice, IBuildInfo> mDeviceInfos;
-    private IInvocationContext mContext;
+    private TestInformation mTestInfo;
     private TestFilterHelper mFilterHelper;
     private boolean mSkipTestClassCheck = false;
 
@@ -243,16 +239,6 @@ public class HostTest
      */
     protected IBuildInfo getBuild() {
         return mBuildInfo;
-    }
-
-    @Override
-    public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
-        mDeviceInfos = deviceInfos;
-    }
-
-    @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
     }
 
     /**
@@ -475,11 +461,8 @@ public class HostTest
         if (testObj instanceof IAbiReceiver) {
             ((IAbiReceiver)testObj).setAbi(mAbi);
         }
-        if (testObj instanceof IMultiDeviceTest) {
-            ((IMultiDeviceTest) testObj).setDeviceInfos(mDeviceInfos);
-        }
         if (testObj instanceof IInvocationContextReceiver) {
-            ((IInvocationContextReceiver) testObj).setInvocationContext(mContext);
+            ((IInvocationContextReceiver) testObj).setInvocationContext(mTestInfo.getContext());
         }
         // managed runner should have the same set-option to pass option too.
         if (testObj instanceof ISetOptionReceiver) {
@@ -494,11 +477,11 @@ public class HostTest
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        mTestInfo = testInfo;
         // Ensure filters are set in the helper
         mFilterHelper.addAllIncludeAnnotation(mIncludeAnnotations);
         mFilterHelper.addAllExcludeAnnotation(mExcludeAnnotations);
@@ -523,7 +506,7 @@ public class HostTest
 
         // Add a pretty logger to the events to mark clearly start/end of test cases.
         if (mEnableHostDeviceLogs) {
-            PrettyTestEventLogger logger = new PrettyTestEventLogger(mContext.getDevices());
+            PrettyTestEventLogger logger = new PrettyTestEventLogger(mTestInfo.getDevices());
             listener = new ResultForwarder(logger, listener);
         }
         if (mTestMethods != null) {
@@ -612,7 +595,7 @@ public class HostTest
                                 "%s does not implement ITestCollector", test.getClass()));
             }
         }
-        test.run(listener);
+        test.run(mTestInfo, listener);
     }
 
     /** Returns True if some tests were executed, false otherwise. */

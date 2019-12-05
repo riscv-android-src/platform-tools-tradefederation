@@ -18,6 +18,8 @@ package com.android.tradefed.invoker;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.ITestDevice;
 
+import java.util.List;
+
 /**
  * Holder object that contains all the information and dependencies a test runner or test might need
  * to execute properly.
@@ -46,6 +48,11 @@ public class TestInformation {
     /** Returns the primary device under tests. */
     public ITestDevice getDevice() {
         return mContext.getDevices().get(0);
+    }
+
+    /** Returns the list of devices part of the invocation. */
+    public List<ITestDevice> getDevices() {
+        return mContext.getDevices();
     }
 
     /** Returns the primary device build information. */

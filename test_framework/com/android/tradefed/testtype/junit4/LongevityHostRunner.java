@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.junit4;
 
 import android.host.test.longevity.LongevitySuite;
 import android.host.test.longevity.listener.TimeoutTerminator;
+
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
@@ -32,20 +33,21 @@ import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.ISetOptionReceiver;
 import com.android.tradefed.testtype.junit4.builder.DeviceJUnit4ClassRunnerBuilder;
 import com.android.tradefed.util.TimeVal;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+
 import org.junit.runner.Description;
 import org.junit.runner.Runner;
 import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * A JUnit4-based {@link Runner} that composes tests run with {@link DeviceJUnit4ClassRunner} into a
@@ -61,7 +63,6 @@ public class LongevityHostRunner extends Runner
         implements IDeviceTest,
                 IBuildReceiver,
                 IAbiReceiver,
-                IMultiDeviceTest,
                 IInvocationContextReceiver,
                 ISetOptionReceiver {
     static final String ITERATIONS_OPTION = "iterations";
@@ -71,7 +72,6 @@ public class LongevityHostRunner extends Runner
     private IBuildInfo mBuildInfo;
     private IAbi mAbi;
     private IInvocationContext mContext;
-    private Map<ITestDevice, IBuildInfo> mDeviceInfos;
 
     @Option(name = HostTest.SET_OPTION_NAME, description = HostTest.SET_OPTION_DESC)
     private Set<String> mKeyValueOptions = new HashSet<>();
@@ -123,11 +123,6 @@ public class LongevityHostRunner extends Runner
     @Override
     public void setInvocationContext(IInvocationContext invocationContext) {
         mContext = invocationContext;
-    }
-
-    @Override
-    public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
-        mDeviceInfos = deviceInfos;
     }
 
     private Map<String, String> getOptions() {
@@ -202,9 +197,6 @@ public class LongevityHostRunner extends Runner
             }
             if (child instanceof IInvocationContextReceiver) {
                 ((IInvocationContextReceiver) child).setInvocationContext(mContext);
-            }
-            if (child instanceof IMultiDeviceTest) {
-                ((IMultiDeviceTest) child).setDeviceInfos(mDeviceInfos);
             }
             try {
                 OptionSetter setter = new OptionSetter(child);
