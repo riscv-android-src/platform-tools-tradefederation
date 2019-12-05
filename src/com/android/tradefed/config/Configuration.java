@@ -16,7 +16,6 @@
 
 package com.android.tradefed.config;
 
-import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.ICommandOptions;
@@ -1159,7 +1158,7 @@ public class Configuration implements IConfiguration {
 
     /** {@inheritDoc} */
     @Override
-    public void resolveDynamicOptions() throws ConfigurationException, BuildRetrievalError {
+    public void resolveDynamicOptions() throws ConfigurationException {
         // Resolve regardless of sharding if we are in remote environment because we know that's
         // where the execution will occur.
         if (!isRemoteEnvironment()) {
