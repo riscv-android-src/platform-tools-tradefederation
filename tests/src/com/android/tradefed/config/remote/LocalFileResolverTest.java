@@ -18,7 +18,7 @@ package com.android.tradefed.config.remote;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.util.FileUtil;
 
@@ -59,7 +59,7 @@ public class LocalFileResolverTest {
         try {
             mResolver.resolveRemoteFiles(markedFile, Mockito.mock(Option.class));
             fail("Should have thrown an exception.");
-        } catch (ConfigurationException expected) {
+        } catch (BuildRetrievalError expected) {
             // Expected
         }
     }
