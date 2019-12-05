@@ -274,6 +274,11 @@ public class TestInvocationMultiTest {
         mMockConfig.resolveDynamicOptions();
         EasyMock.expectLastCall().andThrow(configException);
 
+        DeviceConfigurationHolder holder1 = new DeviceConfigurationHolder();
+        mProvider1 = EasyMock.createMock(IBuildProvider.class);
+        holder1.addSpecificConfig(mProvider1);
+        EasyMock.expect(mMockConfig.getDeviceConfigByName("device1")).andStubReturn(holder1);
+        EasyMock.expect(mDevice1.getSerialNumber()).andReturn("serial1");
         mMockConfig.cleanConfigurationData();
 
         mMockTestListener.invocationStarted(mContext);

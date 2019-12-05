@@ -17,6 +17,7 @@ package com.android.tradefed.invoker.shard;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
@@ -240,7 +241,7 @@ public final class TestsPoolPoller
                     CLog.w("Proceeding to the next test.");
                 } catch (DeviceNotAvailableException dnae) {
                     HandleDeviceNotAvailable(listener, dnae, test);
-                } catch (ConfigurationException e) {
+                } catch (ConfigurationException | BuildRetrievalError e) {
                     CLog.w(
                             "Failed to validate the @options of test: %s. Proceeding to next test.",
                             test.getClass());
