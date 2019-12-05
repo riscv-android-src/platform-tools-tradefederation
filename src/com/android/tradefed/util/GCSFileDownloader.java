@@ -32,6 +32,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -287,10 +288,12 @@ public class GCSFileDownloader extends GCSCommon implements IFileDownloader {
 
     private void fetchRemoteFile(String bucketName, String remoteFilename, File localFile)
             throws IOException {
-        getStorage()
-                .objects()
-                .get(bucketName, remoteFilename)
-                .executeMediaAndDownloadTo(new FileOutputStream(localFile));
+        try (OutputStream writeStream = new FileOutputStream(localFile)) {
+            getStorage()
+                    .objects()
+                    .get(bucketName, remoteFilename)
+                    .executeMediaAndDownloadTo(writeStream);
+        }
     }
 
     /**
