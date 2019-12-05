@@ -20,6 +20,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.remote.GcsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.util.FileUtil;
@@ -192,7 +193,7 @@ public class DynamicRemoteFileResolverTest {
                                 EasyMock.eq(new File("gs:/fake/path")),
                                 EasyMock.anyObject(),
                                 EasyMock.eq(testMap)))
-                .andThrow(new ConfigurationException("Failed to download"));
+                .andThrow(new BuildRetrievalError("Failed to download"));
         EasyMock.replay(mMockResolver);
 
         Set<File> downloadedFile = setter.validateRemoteFilePath();
@@ -284,12 +285,12 @@ public class DynamicRemoteFileResolverTest {
                                 EasyMock.eq(new File("gs://failure/test")),
                                 EasyMock.anyObject(),
                                 EasyMock.anyObject()))
-                .andThrow(new ConfigurationException("retrieval error"));
+                .andThrow(new BuildRetrievalError("retrieval error"));
         EasyMock.replay(mMockResolver);
         try {
             setter.validateRemoteFilePath();
             fail("Should have thrown an exception");
-        } catch (ConfigurationException expected) {
+        } catch (BuildRetrievalError expected) {
             // Only when we reach failure/test it fails
             assertTrue(expected.getMessage().contains("retrieval error"));
         }
@@ -470,7 +471,7 @@ public class DynamicRemoteFileResolverTest {
                                         @Override
                                         public @Nonnull File resolveRemoteFiles(
                                                 File consideredFile, Option option)
-                                                throws ConfigurationException {
+                                                throws BuildRetrievalError {
                                             return mMockResolver.resolveRemoteFiles(
                                                     consideredFile, option);
                                         }
@@ -560,7 +561,7 @@ public class DynamicRemoteFileResolverTest {
                                 EasyMock.eq(new File("gs:/fake/path?optional=true")),
                                 EasyMock.eq(null),
                                 EasyMock.eq(queryArgs)))
-                .andThrow(new ConfigurationException("should not throw this exception."));
+                .andThrow(new BuildRetrievalError("should not throw this exception."));
         EasyMock.replay(mMockResolver);
 
         mResolver.resolvePartialDownloadZip(

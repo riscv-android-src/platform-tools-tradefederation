@@ -16,6 +16,7 @@
 
 package com.android.tradefed.config;
 
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.command.CommandScheduler;
 import com.android.tradefed.command.ICommandScheduler;
 import com.android.tradefed.config.gcs.GCSConfigurationFactory;
@@ -767,7 +768,11 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         CLog.d("Resolve and remote files from @Option");
         // Setup and validate the GCS File paths, they will be deleted when TF ends
         List<File> remoteFiles = new ArrayList<>();
-        remoteFiles.addAll(argsParser.validateRemoteFilePath());
+        try {
+            remoteFiles.addAll(argsParser.validateRemoteFilePath());
+        } catch (BuildRetrievalError e) {
+            throw new ConfigurationException(e.getMessage(), e);
+        }
         remoteFiles.forEach(File::deleteOnExit);
     }
 
