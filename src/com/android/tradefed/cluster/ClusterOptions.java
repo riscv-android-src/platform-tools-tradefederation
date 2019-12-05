@@ -120,6 +120,12 @@ public class ClusterOptions implements IClusterOptions {
     @Option(name = "read-timeout", description = "HTTP read timeout.", isTimeVal = true)
     private int mReadTimeout = 60000;
 
+    @Option(name = "label", description = "Labels to describe the host.")
+    private List<String> mLabels = new ArrayList<>();
+
+    @Option(name = "lab-name", description = "The name of the lab the host belong to.")
+    private String mLabName;
+
     /** {@inheritDoc} */
     @Override
     public String getServiceUrl() {
@@ -278,5 +284,17 @@ public class ClusterOptions implements IClusterOptions {
     @VisibleForTesting
     void setCheckCommandState(boolean checkCommandState) {
         mCheckCommandState = checkCommandState;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<String> getLabels() {
+        return new ArrayList<>(mLabels);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String getLabName() {
+        return mLabName;
     }
 }
