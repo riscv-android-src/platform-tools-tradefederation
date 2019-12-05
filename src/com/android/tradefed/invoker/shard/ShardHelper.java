@@ -16,7 +16,6 @@
 package com.android.tradefed.invoker.shard;
 
 import com.android.annotations.VisibleForTesting;
-import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
@@ -204,8 +203,7 @@ public class ShardHelper implements IShardHelper {
 
     /** Runs the {@link IConfiguration#validateOptions()} on the config. */
     @VisibleForTesting
-    protected void validateOptions(IConfiguration config)
-            throws ConfigurationException, BuildRetrievalError {
+    protected void validateOptions(IConfiguration config) throws ConfigurationException {
         config.validateOptions();
         config.resolveDynamicOptions();
     }
@@ -242,7 +240,8 @@ public class ShardHelper implements IShardHelper {
                     .addMetadata(ConfigurationDescriptor.LOCAL_SHARDED_KEY, "true");
             // Validate and download the dynamic options
             validateOptions(clonedConfig);
-        } catch (ConfigurationException | BuildRetrievalError e) {
+        } catch (ConfigurationException e) {
+            // should not happen
             throw new RuntimeException(
                     String.format("failed to deep copy a configuration: %s", e.getMessage()), e);
         }

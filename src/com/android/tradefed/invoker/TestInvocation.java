@@ -16,7 +16,6 @@
 package com.android.tradefed.invoker;
 
 import com.android.ddmlib.Log.LogLevel;
-import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.CommandRunner.ExitCode;
@@ -661,11 +660,7 @@ public class TestInvocation implements ITestInvocation {
                 config.resolveDynamicOptions();
             }
             return true;
-        } catch (RuntimeException | BuildRetrievalError | ConfigurationException e) {
-            // We don't have a reporting buildInfo at this point
-            IBuildInfo info = new BuildInfo();
-            context.addDeviceBuildInfo(context.getDeviceConfigNames().get(0), info);
-
+        } catch (RuntimeException | ConfigurationException e) {
             // Report an empty invocation, so this error is sent to listeners
             startInvocation(config, context, listener);
             // Don't want to use #reportFailure, since that will call buildNotTested
