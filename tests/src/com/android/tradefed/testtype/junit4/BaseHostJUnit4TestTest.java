@@ -32,6 +32,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -126,6 +127,7 @@ public class BaseHostJUnit4TestTest {
     private IBuildInfo mMockBuild;
     private ITestDevice mMockDevice;
     private IInvocationContext mMockContext;
+    private TestInformation mTestInfo;
     private HostTest mHostTest;
 
     @Before
@@ -143,7 +145,7 @@ public class BaseHostJUnit4TestTest {
         mHostTest = new HostTest();
         mHostTest.setBuild(mMockBuild);
         mHostTest.setDevice(mMockDevice);
-        mHostTest.setInvocationContext(mMockContext);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(mMockContext).build();
         OptionSetter setter = new OptionSetter(mHostTest);
         // Disable pretty logging for testing
         setter.setOptionValue("enable-pretty-logs", "false");
@@ -161,7 +163,7 @@ public class BaseHostJUnit4TestTest {
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.replay(mMockListener, mMockBuild, mMockDevice);
-        mHostTest.run(mMockListener);
+        mHostTest.run(mTestInfo, mMockListener);
         EasyMock.verify(mMockListener, mMockBuild, mMockDevice);
     }
 
@@ -411,7 +413,6 @@ public class BaseHostJUnit4TestTest {
             HostTest test = new HostTest();
             test.setBuild(mMockBuild);
             test.setDevice(mMockDevice);
-            test.setInvocationContext(mMockContext);
             OptionSetter setter = new OptionSetter(test);
             // Disable pretty logging for testing
             setter.setOptionValue("enable-pretty-logs", "false");
@@ -436,7 +437,7 @@ public class BaseHostJUnit4TestTest {
                     EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
             EasyMock.replay(mMockBuild, mMockDevice, mMockListener);
-            test.run(mMockListener);
+            test.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockBuild, mMockDevice, mMockListener);
         } finally {
             FileUtil.recursiveDelete(fakeTestsDir);

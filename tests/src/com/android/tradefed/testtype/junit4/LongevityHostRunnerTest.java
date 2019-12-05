@@ -25,6 +25,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
@@ -34,7 +35,6 @@ import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.ISetOptionReceiver;
 
 import org.junit.Assert;
@@ -47,7 +47,6 @@ import org.junit.runners.JUnit4;
 import org.junit.runners.Suite.SuiteClasses;
 
 import java.util.HashMap;
-import java.util.Map;
 
 /** Unit tests for {@link LongevityHostRunner}. */
 @RunWith(JUnit4.class)
@@ -90,13 +89,11 @@ public class LongevityHostRunnerTest {
                     IBuildReceiver,
                     IAbiReceiver,
                     ISetOptionReceiver,
-                    IMultiDeviceTest,
                     IInvocationContextReceiver {
         private IAbi mAbi;
         private IBuildInfo mBuildInfo;
         private IInvocationContext mContext;
         private ITestDevice mDevice;
-        private Map<ITestDevice, IBuildInfo> mDeviceInfos;
 
         @Test
         public void testHasFeatures() {
@@ -104,7 +101,6 @@ public class LongevityHostRunnerTest {
             Assert.assertNotNull(mBuildInfo);
             Assert.assertNotNull(mContext);
             Assert.assertNotNull(mDevice);
-            Assert.assertNotNull(mDeviceInfos);
         }
 
         @Override
@@ -135,11 +131,6 @@ public class LongevityHostRunnerTest {
         @Override
         public void setInvocationContext(IInvocationContext invocationContext) {
             mContext = invocationContext;
-        }
-
-        @Override
-        public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
-            mDeviceInfos = deviceInfos;
         }
     }
 
@@ -185,7 +176,6 @@ public class LongevityHostRunnerTest {
         mHostRunner.setAbi(mMockAbi);
         mHostRunner.setBuild(mMockBuildInfo);
         mHostRunner.setDevice(mMockDevice);
-        mHostRunner.setDeviceInfos(new HashMap<>());
         mHostRunner.setInvocationContext(mMockContext);
     }
 
@@ -230,7 +220,8 @@ public class LongevityHostRunnerTest {
         mHostTest.setDevice(mMockDevice);
         mHostTest.setBuild(mMockBuildInfo);
         mHostTest.publicSetClassName(PassingLongevitySuite.class.getName());
-        mHostTest.run(mMockListener);
+        TestInformation testInfo = TestInformation.newBuilder().build();
+        mHostTest.run(testInfo, mMockListener);
         // Verify nothing failed, but something passed.
         verify(mMockListener, never()).testFailed(any(), any());
         verify(mMockListener).testEnded(any(), (HashMap<String, Metric>) any());

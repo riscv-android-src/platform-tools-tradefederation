@@ -58,13 +58,11 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
                 IBuildReceiver,
                 IAbiReceiver,
                 ISetOptionReceiver,
-                IMultiDeviceTest,
                 IInvocationContextReceiver {
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private IAbi mAbi;
     private IInvocationContext mContext;
-    private Map<ITestDevice, IBuildInfo> mDeviceInfos;
 
     /** Keep track of the list of downloaded files. */
     private List<File> mDownloadedFiles = new ArrayList<>();
@@ -97,9 +95,6 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
         // We are more flexible about abi information since not always available.
         if (testObj instanceof IAbiReceiver) {
             ((IAbiReceiver) testObj).setAbi(mAbi);
-        }
-        if (testObj instanceof IMultiDeviceTest) {
-            ((IMultiDeviceTest) testObj).setDeviceInfos(mDeviceInfos);
         }
         if (testObj instanceof IInvocationContextReceiver) {
             ((IInvocationContextReceiver) testObj).setInvocationContext(mContext);
@@ -163,11 +158,6 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
     @Override
     public void setInvocationContext(IInvocationContext invocationContext) {
         mContext = invocationContext;
-    }
-
-    @Override
-    public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
-        mDeviceInfos = deviceInfos;
     }
 
     @VisibleForTesting
