@@ -60,7 +60,6 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IReportNotExecuted;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
@@ -99,7 +98,6 @@ import java.util.stream.Collectors;
 public abstract class ITestSuite
         implements IRemoteTest,
                 IDeviceTest,
-                IMultiDeviceTest,
                 IBuildReceiver,
                 ISystemStatusCheckerReceiver,
                 IShardableTest,
@@ -322,7 +320,6 @@ public abstract class ITestSuite
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
-    private Map<ITestDevice, IBuildInfo> mDeviceInfos;
     private List<ISystemStatusChecker> mSystemStatusCheckers;
     private IInvocationContext mContext;
     private List<IMetricCollector> mMetricCollectors;
@@ -492,7 +489,6 @@ public abstract class ITestSuite
             // If we are sharded and already know what to run then we just do it.
             runModules.add(mDirectModule);
             mDirectModule.setDevice(mDevice);
-            mDirectModule.setDeviceInfos(mDeviceInfos);
             mDirectModule.setBuild(mBuildInfo);
             return runModules;
         }
@@ -519,7 +515,6 @@ public abstract class ITestSuite
                 module.disableAutoRetryReportingTime();
             }
             module.setDevice(mDevice);
-            module.setDeviceInfos(mDeviceInfos);
             module.setBuild(mBuildInfo);
             runModules.add(module);
         }
@@ -970,9 +965,6 @@ public abstract class ITestSuite
                 if (test instanceof IDeviceTest) {
                     ((IDeviceTest) test).setDevice(mDevice);
                 }
-                if (test instanceof IMultiDeviceTest) {
-                    ((IMultiDeviceTest) test).setDeviceInfos(mDeviceInfos);
-                }
                 if (test instanceof IInvocationContextReceiver) {
                     ((IInvocationContextReceiver) test).setInvocationContext(mContext);
                 }
@@ -1015,12 +1007,6 @@ public abstract class ITestSuite
      */
     public IBuildInfo getBuildInfo() {
         return mBuildInfo;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
-        mDeviceInfos = deviceInfos;
     }
 
     /** Set the value of mPrimaryAbiRun */
