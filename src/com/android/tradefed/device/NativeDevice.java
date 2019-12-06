@@ -3760,7 +3760,14 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean checkApiLevelAgainstNextRelease(int strictMinLevel)
             throws DeviceNotAvailableException {
-        String codeName = getProperty(DeviceProperties.BUILD_CODENAME).trim();
+        String codeName = getProperty(DeviceProperties.BUILD_CODENAME);
+        if (codeName == null) {
+            throw new DeviceRuntimeException(
+                    String.format(
+                            "Failed to query property '%s'. device returned null.",
+                            DeviceProperties.BUILD_CODENAME));
+        }
+        codeName = codeName.trim();
         int apiLevel = getApiLevel() + ("REL".equals(codeName) ? 0 : 1);
         if (strictMinLevel > apiLevel) {
             return false;
