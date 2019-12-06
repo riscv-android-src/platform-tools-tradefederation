@@ -20,15 +20,18 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestFilterReceiver;
 
 import com.google.common.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /** Base class of RustBinaryHostTest and RustBinaryTest */
 @OptionClass(alias = "rust-test")
-public abstract class RustTestBase implements IRemoteTest {
+public abstract class RustTestBase implements IRemoteTest, ITestFilterReceiver {
 
     @Option(
             name = "test-options",
@@ -41,9 +44,64 @@ public abstract class RustTestBase implements IRemoteTest {
             isTimeVal = true)
     protected long mTestTimeout = 20 * 1000L; // milliseconds
 
+    private Set<String> mIncludeFilters = new LinkedHashSet<>();
+    private Set<String> mExcludeFilters = new LinkedHashSet<>();
+
     // A wrapper that can be redefined in unit tests to create a (mocked) result parser.
     @VisibleForTesting
     IShellOutputReceiver createParser(ITestInvocationListener listener, String runName) {
         return new RustTestResultParser(listener, runName);
+    }
+
+    // TODO(b/145607401): make rust test runners accept filters
+    // Now the following are just dummy methods,
+    // to shut off run-time warning about not implementing ITestFilterReceiver.
+
+    /** {@inheritDoc} */
+    @Override
+    public void addIncludeFilter(String filter) {
+        mIncludeFilters.add(filter);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addExcludeFilter(String filter) {
+        mExcludeFilters.add(filter);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addAllIncludeFilters(Set<String> filters) {
+        mIncludeFilters.addAll(filters);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addAllExcludeFilters(Set<String> filters) {
+        mExcludeFilters.addAll(filters);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearIncludeFilters() {
+        mIncludeFilters.clear();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearExcludeFilters() {
+        mExcludeFilters.clear();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getIncludeFilters() {
+        return mIncludeFilters;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getExcludeFilters() {
+        return mExcludeFilters;
     }
 }
