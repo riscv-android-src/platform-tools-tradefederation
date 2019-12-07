@@ -35,8 +35,6 @@ import com.android.tradefed.util.Pair;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
-import com.google.common.base.Joiner;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -154,7 +152,7 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
 
                 if (!mProcessNames.isEmpty()) {
                     commandArgsList.add("-process_names");
-                    commandArgsList.add(Joiner.on(",").join(mProcessNames));
+                    commandArgsList.add(String.join(",", mProcessNames));
                 }
 
                 String traceExtractorStatus = EXTRACTOR_SUCCESS;

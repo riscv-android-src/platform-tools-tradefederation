@@ -27,8 +27,6 @@ import com.android.tradefed.targetprep.multi.StubMultiTargetPreparer;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
-import com.google.common.base.Joiner;
-
 import junit.framework.TestCase;
 
 import org.mockito.Mockito;
@@ -130,7 +128,7 @@ public class ConfigurationFactoryTest extends TestCase {
             fail(
                     String.format(
                             "Found some dependencies of core on contrib:\n%s",
-                            Joiner.on("\n").join(exceptionConfigJar)));
+                            String.join("\n", exceptionConfigJar)));
         }
     }
 
