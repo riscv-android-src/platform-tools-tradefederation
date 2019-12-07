@@ -21,8 +21,6 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.retry.MergeStrategy;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
-import com.google.common.base.Joiner;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -527,7 +525,7 @@ public class TestRunResult {
         // Evaluate the run error status based on strategy
         boolean isRunFailure = isRunFailed(atLeastOneFailure, allFailure, strategy);
         if (isRunFailure) {
-            finalRunResult.mRunFailureError = Joiner.on("\n\n").join(runErrors);
+            finalRunResult.mRunFailureError = String.join("\n\n", runErrors);
         }
         // Evaluate run completion from all the attempts based on strategy
         finalRunResult.mIsRunComplete =

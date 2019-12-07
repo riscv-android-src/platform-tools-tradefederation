@@ -33,7 +33,6 @@ import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.xml.XmlEscapers;
 import com.google.gson.Gson;
@@ -218,13 +217,13 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
         Map<Integer, List<String>> serialsShards = holder.context.getShardsSerials();
         String deviceList = "";
         if (serialsShards.isEmpty()) {
-            deviceList = Joiner.on(",").join(holder.context.getSerials());
+            deviceList = String.join(",", holder.context.getSerials());
         } else {
             List<String> subList = new ArrayList<>();
             for (List<String> list : serialsShards.values()) {
-                subList.add(Joiner.on(",").join(list));
+                subList.add(String.join(",", list));
             }
-            deviceList = Joiner.on(",").join(subList);
+            deviceList = String.join(",", subList);
         }
         serializer.attribute(NS, DEVICES_ATTR, deviceList);
 
@@ -245,7 +244,7 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
         serializer.startTag(NS, BUILD_TAG);
         for (String key : holder.context.getAttributes().keySet()) {
             serializer.attribute(
-                    NS, key, Joiner.on(",").join(holder.context.getAttributes().get(key)));
+                    NS, key, String.join(",", holder.context.getAttributes().get(key)));
         }
         addBuildInfoAttributes(serializer, holder);
         serializer.endTag(NS, BUILD_TAG);
