@@ -28,6 +28,7 @@ import com.google.common.collect.ImmutableSet;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -109,13 +110,18 @@ public class BatteryController {
                         String deviceName = (String) key;
                         String batteryClass = (String) properties.get(key);
                         try {
-                            Object battery = Class.forName(batteryClass).newInstance();
+                            Object battery =
+                                    Class.forName(batteryClass)
+                                            .getDeclaredConstructor()
+                                            .newInstance();
                             if (battery instanceof IBatteryInfo) {
                                 sSupportProduct.put(deviceName, (IBatteryInfo) battery);
                             }
                         } catch (InstantiationException
                                 | IllegalAccessException
-                                | ClassNotFoundException e) {
+                                | ClassNotFoundException
+                                | InvocationTargetException
+                                | NoSuchMethodException e) {
                             CLog.e(e);
                         }
                     }
