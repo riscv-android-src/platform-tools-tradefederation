@@ -34,6 +34,7 @@ import com.google.common.annotations.VisibleForTesting;
 import org.junit.runner.notification.RunListener;
 
 import java.io.File;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -544,8 +545,11 @@ public class AndroidJUnitTest extends InstrumentationTest
         AndroidJUnitTest shard;
         // ensure we handle runners that extend AndroidJUnitRunner
         try {
-            shard = this.getClass().newInstance();
-        } catch (InstantiationException | IllegalAccessException e) {
+            shard = this.getClass().getDeclaredConstructor().newInstance();
+        } catch (InstantiationException
+                | IllegalAccessException
+                | InvocationTargetException
+                | NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
         try {
