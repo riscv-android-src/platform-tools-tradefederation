@@ -32,6 +32,7 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -620,14 +621,17 @@ public abstract class GTestBase
     private IRemoteTest getTestShard(int shardCount, int shardIndex) {
         GTestBase shard = null;
         try {
-            shard = this.getClass().newInstance();
+            shard = this.getClass().getDeclaredConstructor().newInstance();
             OptionCopier.copyOptionsNoThrow(this, shard);
             shard.mShardIndex = shardIndex;
             shard.mShardCount = shardCount;
             shard.mIsSharded = true;
             // We approximate the runtime of each shard to be equal since we can't know.
             shard.mRuntimeHint = mRuntimeHint / shardCount;
-        } catch (InstantiationException | IllegalAccessException e) {
+        } catch (InstantiationException
+                | IllegalAccessException
+                | InvocationTargetException
+                | NoSuchMethodException e) {
             // This cannot happen because the class was already created once at that point.
             throw new RuntimeException(
                     String.format(
