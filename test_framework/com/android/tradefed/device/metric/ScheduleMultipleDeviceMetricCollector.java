@@ -24,6 +24,7 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 
 import java.io.File;
+import java.lang.reflect.InvocationTargetException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -90,12 +91,18 @@ public class ScheduleMultipleDeviceMetricCollector extends BaseDeviceMetricColle
                 Class<?> klass = Class.forName(metricCollectorClass);
 
                 ScheduledDeviceMetricCollector singleMetricCollector =
-                        klass.asSubclass(ScheduledDeviceMetricCollector.class).newInstance();
+                        klass.asSubclass(ScheduledDeviceMetricCollector.class)
+                                .getDeclaredConstructor()
+                                .newInstance();
 
                 singleMetricCollector.init(context, listener);
 
                 mMetricCollectors.add(singleMetricCollector);
-            } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+            } catch (ClassNotFoundException
+                    | InstantiationException
+                    | IllegalAccessException
+                    | InvocationTargetException
+                    | NoSuchMethodException e) {
                 CLog.e("Class %s not found, skipping.", metricCollectorClass);
                 CLog.e(e);
             }
