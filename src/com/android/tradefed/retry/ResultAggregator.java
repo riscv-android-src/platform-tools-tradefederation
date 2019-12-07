@@ -32,7 +32,6 @@ import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.retry.ISupportGranularResults;
 
-import com.google.api.client.repackaged.com.google.common.base.Joiner;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
@@ -398,7 +397,7 @@ public class ResultAggregator extends CollectingTestListener {
     private void forwardDetailedFailure() {
         if (mDetailedRunResults != null) {
             if (mDetailedRunResults.isRunFailure() && mShouldReportFailure) {
-                mDetailedForwarder.testRunFailed(Joiner.on("\n\n").join(mAllDetailedFailures));
+                mDetailedForwarder.testRunFailed(String.join("\n\n", mAllDetailedFailures));
             } else {
                 // Log the run failure that was cleared
                 String value = getInvocationMetricRunError();
@@ -407,7 +406,7 @@ public class ResultAggregator extends CollectingTestListener {
                 }
                 // If there are failure, track them
                 if (!mAllDetailedFailures.isEmpty()) {
-                    addInvocationMetricRunError(Joiner.on("\n\n").join(mAllDetailedFailures));
+                    addInvocationMetricRunError(String.join("\n\n", mAllDetailedFailures));
                 }
             }
             mAllDetailedFailures.clear();
