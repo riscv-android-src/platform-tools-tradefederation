@@ -20,8 +20,6 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.retry.MergeStrategy;
 
-import com.google.common.base.Joiner;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -268,7 +266,7 @@ public class TestResult {
         if (errorMsg.isEmpty()) {
             mergedResult.mStackTrace = null;
         } else {
-            mergedResult.mStackTrace = Joiner.on("\n\n").join(errorMsg);
+            mergedResult.mStackTrace = String.join("\n\n", errorMsg);
         }
         mergedResult.setStartTime(earliestStartTime);
         mergedResult.setEndTime(latestEndTime);

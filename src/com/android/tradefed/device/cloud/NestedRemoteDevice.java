@@ -33,8 +33,6 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 
-import com.google.common.base.Joiner;
-
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -118,7 +116,7 @@ public class NestedRemoteDevice extends TestDevice {
                                     RemoteInvocationExecution.LAUNCH_EXTRA_DEVICE,
                                     "sh",
                                     "-c",
-                                    Joiner.on(" ").join(createCommand));
+                                    String.join(" ", createCommand));
             if (!CommandStatus.SUCCESS.equals(createRes.getStatus())) {
                 CLog.e("%s", createRes.getStderr());
                 captureLauncherLog(username, logger);

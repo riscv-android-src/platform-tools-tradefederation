@@ -68,7 +68,6 @@ import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
-import com.google.api.client.repackaged.com.google.common.base.Joiner;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.PrintWriter;
@@ -649,7 +648,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
         // If there is any errors report them all at once
         if (!runFailureMessages.isEmpty()) {
-            listener.testRunFailed(Joiner.on(TestRunResult.ERROR_DIVIDER).join(runFailureMessages));
+            listener.testRunFailed(String.join(TestRunResult.ERROR_DIVIDER, runFailureMessages));
         }
 
         // Provide a strong association of the run to its logs.

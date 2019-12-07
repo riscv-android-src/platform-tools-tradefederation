@@ -43,8 +43,6 @@ import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.UniqueMultiMap;
 
-import com.google.api.client.repackaged.com.google.common.base.Joiner;
-
 import org.junit.Assert;
 
 import java.io.File;
@@ -219,7 +217,7 @@ public abstract class SubprocessTfLauncher
                 paths.add(f.getAbsolutePath());
             }
         }
-        jarClasspath = Joiner.on(":").join(paths);
+        jarClasspath = String.join(":", paths);
 
         mCmdArgs = new ArrayList<String>();
         mCmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
