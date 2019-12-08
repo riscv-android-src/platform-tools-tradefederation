@@ -59,7 +59,6 @@ import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.proto.TestRecordProtoUtil;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -777,7 +776,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                             options,
                             runUtil,
                             LAUNCH_EXTRA_DEVICE,
-                            Joiner.on(" ").join(startCommand));
+                            String.join(" ", startCommand));
         } finally {
             if (token != null) {
                 token.release();
