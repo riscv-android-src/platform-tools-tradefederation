@@ -76,6 +76,7 @@ import com.google.inject.Injector;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -387,8 +388,11 @@ public abstract class ITestSuite
      */
     private ITestSuite createInstance() {
         try {
-            return this.getClass().newInstance();
-        } catch (InstantiationException | IllegalAccessException e) {
+            return this.getClass().getDeclaredConstructor().newInstance();
+        } catch (InstantiationException
+                | IllegalAccessException
+                | InvocationTargetException
+                | NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
     }
