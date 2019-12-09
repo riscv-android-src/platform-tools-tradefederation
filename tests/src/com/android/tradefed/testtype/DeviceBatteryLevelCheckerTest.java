@@ -22,6 +22,9 @@ import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceStateMonitor;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.IRunUtil;
 
@@ -36,6 +39,7 @@ import org.junit.runners.JUnit4;
 public class DeviceBatteryLevelCheckerTest {
     private DeviceBatteryLevelChecker mChecker = null;
     private ITestDevice mDevice = null;
+    private TestInformation mTestInfo = null;
     private ITestDevice mFakeTestDevice = null;
     public Integer mBatteryLevel = 10;
 
@@ -84,7 +88,9 @@ public class DeviceBatteryLevelCheckerTest {
                 return EasyMock.createNiceMock(IRunUtil.class);
             }
         };
-        mChecker.setDevice(mDevice);
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mDevice);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
         EasyMock.expect(mFakeTestDevice.getSerialNumber()).andStubReturn("SERIAL");
     }
 
@@ -93,7 +99,7 @@ public class DeviceBatteryLevelCheckerTest {
         expectBattLevel(null);
         replayDevices();
 
-        mChecker.run(null);
+        mChecker.run(mTestInfo, null);
         // expect this to return immediately without throwing an exception.  Should log a warning.
         verifyDevices();
     }
@@ -103,7 +109,7 @@ public class DeviceBatteryLevelCheckerTest {
         expectBattLevel(45);
         replayDevices();
 
-        mChecker.run(null);
+        mChecker.run(mTestInfo, null);
         verifyDevices();
     }
 
@@ -119,7 +125,7 @@ public class DeviceBatteryLevelCheckerTest {
                 "settings put system screen_off_timeout 1000")).andStubReturn("");
         replayDevices();
         mChecker.setResumeLevel(5);
-        mChecker.run(null);
+        mChecker.run(mTestInfo, null);
         verifyDevices();
     }
 
@@ -146,7 +152,7 @@ public class DeviceBatteryLevelCheckerTest {
             }
         });
         raise.start();
-        mChecker.run(null);
+        mChecker.run(mTestInfo, null);
         verifyDevices();
     }
 
@@ -173,7 +179,7 @@ public class DeviceBatteryLevelCheckerTest {
             }
         });
         raise.start();
-        mChecker.run(null);
+        mChecker.run(mTestInfo, null);
         verifyDevices();
     }
 
