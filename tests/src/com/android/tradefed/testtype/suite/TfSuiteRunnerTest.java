@@ -32,6 +32,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -202,7 +203,10 @@ public class TfSuiteRunnerTest {
         }
     }
 
-    /** Test for {@link TfSuiteRunner#run(ITestInvocationListener)} when loading another suite. */
+    /**
+     * Test for {@link TfSuiteRunner#run(TestInformation, ITestInvocationListener)} when loading
+     * another suite.
+     */
     @Test
     public void testLoadTests_suite() throws Exception {
         OptionSetter setter = new OptionSetter(mRunner);
@@ -215,6 +219,8 @@ public class TfSuiteRunnerTest {
         IInvocationContext context = new InvocationContext();
         context.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mock(ITestDevice.class));
         mRunner.setInvocationContext(context);
+        TestInformation testInfo =
+                TestInformation.newBuilder().setInvocationContext(context).build();
         // runs the expanded suite
         listener.testModuleStarted(EasyMock.anyObject());
         listener.testRunStarted(
@@ -222,13 +228,13 @@ public class TfSuiteRunnerTest {
         listener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         listener.testModuleEnded();
         EasyMock.replay(listener);
-        mRunner.run(listener);
+        mRunner.run(testInfo, listener);
         EasyMock.verify(listener);
     }
 
     /**
-     * Test for {@link TfSuiteRunner#run(ITestInvocationListener)} when loading test configs from
-     * additional-tests-zip.
+     * Test for {@link TfSuiteRunner#run(TestInformation, ITestInvocationListener)} when loading
+     * test configs from additional-tests-zip.
      */
     @Test
     public void testLoadTests_additionalTestsZip() throws Exception {

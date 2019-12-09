@@ -38,6 +38,7 @@ import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.shard.token.ITokenRequest;
@@ -589,7 +590,8 @@ public abstract class ITestSuite
 
     /** Generic run method for all test loaded from {@link #loadTests()}. */
     @Override
-    public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public final void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         mCurrentLogger = listener;
         // Load and check the module checkers, runners and preparers in black and whitelist
         checkClassLoad(mSystemStatusCheckBlacklist, SKIP_SYSTEM_STATUS_CHECKER);
@@ -661,8 +663,11 @@ public abstract class ITestSuite
                 // Trigger module start on module level listener too
                 new ResultForwarder(moduleListeners)
                         .testModuleStarted(module.getModuleInvocationContext());
+                TestInformation moduleInfo =
+                        TestInformation.createModuleTestInfo(
+                                testInfo, module.getModuleInvocationContext());
                 try {
-                    runSingleModule(module, listener, moduleListeners, failureListener);
+                    runSingleModule(module, moduleInfo, listener, moduleListeners, failureListener);
                 } finally {
                     // Trigger module end on module level listener too
                     new ResultForwarder(moduleListeners).testModuleEnded();
@@ -724,6 +729,7 @@ public abstract class ITestSuite
      * Helper method that handle running a single module logic.
      *
      * @param module The {@link ModuleDefinition} to be ran.
+     * @param moduleInfo The {@link TestInformation} for the module.
      * @param listener The {@link ITestInvocationListener} where to report results
      * @param moduleListeners The {@link ITestInvocationListener}s that runs at the module level.
      * @param failureListener special listener that we add to collect information on failures.
@@ -731,6 +737,7 @@ public abstract class ITestSuite
      */
     private void runSingleModule(
             ModuleDefinition module,
+            TestInformation moduleInfo,
             ITestInvocationListener listener,
             List<ITestInvocationListener> moduleListeners,
             TestFailureListener failureListener)
@@ -772,6 +779,7 @@ public abstract class ITestSuite
         module.setEnableDynamicDownload(mEnableDynamicDownload);
         // Actually run the module
         module.run(
+                moduleInfo,
                 listener,
                 moduleListeners,
                 failureListener,

@@ -22,6 +22,7 @@ import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.targetprep.ITargetPreparer;
@@ -123,6 +124,10 @@ public class ModuleDefinitionMultiTest {
         mModule.getModuleInvocationContext().addAllocatedDevice(DEVICE_NAME_2, mDevice2);
         mModule.getModuleInvocationContext().addDeviceBuildInfo(DEVICE_NAME_2, mBuildInfo2);
 
+        TestInformation moduleInfo =
+                TestInformation.newBuilder()
+                        .setInvocationContext(mModule.getModuleInvocationContext())
+                        .build();
         mListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
         mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
@@ -132,7 +137,7 @@ public class ModuleDefinitionMultiTest {
         mMockTargetPrep.setUp(mDevice2, mBuildInfo2);
 
         replayMocks();
-        mModule.run(mListener);
+        mModule.run(moduleInfo, mListener, null, null, 1);
         verifyMocks();
     }
 
@@ -158,6 +163,10 @@ public class ModuleDefinitionMultiTest {
         mModule.getModuleInvocationContext().addAllocatedDevice(DEVICE_NAME_2, mDevice2);
         mModule.getModuleInvocationContext().addDeviceBuildInfo(DEVICE_NAME_2, mBuildInfo2);
 
+        TestInformation moduleInfo =
+                TestInformation.newBuilder()
+                        .setInvocationContext(mModule.getModuleInvocationContext())
+                        .build();
         mListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
         mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
@@ -168,7 +177,7 @@ public class ModuleDefinitionMultiTest {
         mMockTargetPrep.setUp(mDevice1, mBuildInfo1);
 
         replayMocks();
-        mModule.run(mListener);
+        mModule.run(moduleInfo, mListener, null, null, 1);
         verifyMocks();
     }
 }
