@@ -204,6 +204,13 @@ public class InstalledInstrumentationsTest
     private boolean mWindowAnimation = true;
 
     @Option(
+            name = "disable-duplicate-test-check",
+            description =
+                    "If set to true, it will not check that a method is only run once by a "
+                            + "given instrumentation.")
+    private boolean mDisableDuplicateCheck = false;
+
+    @Option(
             name = "create-instrumentation-tests",
             description =
                     "Create InstrumentationTest type rather than more recent AndroidJUnitTest.")
