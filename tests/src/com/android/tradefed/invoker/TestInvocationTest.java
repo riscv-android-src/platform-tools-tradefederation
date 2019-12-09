@@ -80,6 +80,7 @@ import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -564,6 +565,34 @@ public class TestInvocationTest {
         } catch (DeviceNotAvailableException e) {
             // expected
         }
+        verifyMocks(test, mockRescheduler);
+        verifySummaryListener();
+    }
+
+    @Test
+    public void testInvoke_setupError() throws Throwable {
+        // Use the deprecated constructor on purpose to simulate missing DeviceDescriptor.
+        TargetSetupError tse = new TargetSetupError("reason");
+        IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
+        mMockDevice.setRecoveryMode(RecoveryMode.NONE);
+        EasyMock.expectLastCall();
+        EasyMock.expect(
+                        mMockDevice.logBugreport(
+                                EasyMock.startsWith("target_setup_error_bugreport"),
+                                EasyMock.anyObject()))
+                .andReturn(true);
+        mMockDevice.postInvocationTearDown(tse);
+        setupMockFailureListeners(tse);
+        mMockBuildProvider.buildNotTested(mMockBuildInfo);
+        setupInvokeWithBuild();
+        mStubConfiguration.setTest(test);
+        mStubMultiConfiguration.setTest(test);
+        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
+        mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
+        EasyMock.expectLastCall().andThrow(tse);
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("stub"));
+        replayMocks(test, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(test, mockRescheduler);
         verifySummaryListener();
     }
@@ -1212,7 +1241,7 @@ public class TestInvocationTest {
                                                         + SERIAL),
                                         EasyMock.anyObject()))
                         .andReturn(true);
-            } else {
+            } else if (!(throwable instanceof TargetSetupError)) {
                 // Handle test logcat listeners
                 EasyMock.expect(
                                 mMockLogSaver.saveLogData(
