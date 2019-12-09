@@ -15,36 +15,25 @@
  */
 package com.android.tradefed.testtype.suite;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 
 import java.util.HashMap;
-import java.util.Map;
 
 /** Stub Test class that uses multiple devices. */
-public class MultiDeviceStubTest
-        implements IRemoteTest, IMultiDeviceTest, IInvocationContextReceiver {
+public class MultiDeviceStubTest implements IRemoteTest, IInvocationContextReceiver {
 
     private IInvocationContext mContext;
-    private Map<ITestDevice, IBuildInfo> mDeviceBuildInfos;
     private int mExpectedDevice = -1;
 
     @Override
     public void setInvocationContext(IInvocationContext invocationContext) {
         mContext = invocationContext;
-    }
-
-    @Override
-    public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
-        mDeviceBuildInfos = deviceInfos;
     }
 
     @Override
@@ -58,11 +47,6 @@ public class MultiDeviceStubTest
                     String.format(
                             "mContext has %s devices instead of %s",
                             mContext.getDeviceConfigNames().size(), mExpectedDevice));
-        } else if (mDeviceBuildInfos.size() != mExpectedDevice) {
-            listener.testRunFailed(
-                    String.format(
-                            "mDeviceInfos has %s devices instead of %s",
-                            mDeviceBuildInfos.size(), mExpectedDevice));
         }
         for (int i = 0; i < 2; i++) {
             TestDescription tid = new TestDescription(getClass().getSimpleName(), "test" + i);
