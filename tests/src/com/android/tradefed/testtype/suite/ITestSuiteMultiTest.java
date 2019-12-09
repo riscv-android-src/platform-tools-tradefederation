@@ -142,7 +142,6 @@ public class ITestSuiteMultiTest {
         mContext.addAllocatedDevice(DEVICE_NAME_2, mMockDevice2);
         mContext.addDeviceBuildInfo(DEVICE_NAME_2, mMockBuildInfo2);
         mTestSuite.setInvocationContext(mContext);
-        mTestSuite.setDeviceInfos(mContext.getDeviceBuildMap());
 
         mTestSuite.setSystemStatusChecker(new ArrayList<>());
         mMockListener.testModuleStarted(EasyMock.anyObject());
