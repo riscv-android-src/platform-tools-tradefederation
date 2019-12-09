@@ -25,6 +25,7 @@ import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IShardableTest;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -189,14 +190,18 @@ public class ModuleSplitter {
         for (T prep : preparerList) {
             try {
                 @SuppressWarnings("unchecked")
-                T clone = (T) prep.getClass().newInstance();
+                T clone = (T) prep.getClass().getDeclaredConstructor().newInstance();
                 OptionCopier.copyOptions(prep, clone);
                 // Ensure we copy the Abi too.
                 if (clone instanceof IAbiReceiver) {
                     ((IAbiReceiver) clone).setAbi(((IAbiReceiver) prep).getAbi());
                 }
                 clones.add(clone);
-            } catch (InstantiationException | IllegalAccessException | ConfigurationException e) {
+            } catch (InstantiationException
+                    | IllegalAccessException
+                    | ConfigurationException
+                    | InvocationTargetException
+                    | NoSuchMethodException e) {
                 throw new RuntimeException(e);
             }
         }
