@@ -396,7 +396,7 @@ public abstract class ProtoResultReporter
     public final void logAssociation(String dataName, LogFile logFile) {
         TestRecord.Builder current = mLatestChild.peek();
         Map<String, Any> fullmap = new HashMap<>();
-        fullmap.putAll(current.getArtifacts());
+        fullmap.putAll(current.getArtifactsMap());
         Any any = Any.pack(createFileProto(logFile));
         fullmap.put(dataName, any);
         current.putAllArtifacts(fullmap);
