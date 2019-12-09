@@ -29,6 +29,7 @@ import com.android.tradefed.util.StringUtil;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -120,8 +121,15 @@ public class ClusterCommandConfigBuilder {
             throws ConfigurationException {
         Object configObj = null;
         try {
-            configObj = Class.forName(configObjDef.getClassName()).newInstance();
-        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+            configObj =
+                    Class.forName(configObjDef.getClassName())
+                            .getDeclaredConstructor()
+                            .newInstance();
+        } catch (InstantiationException
+                | IllegalAccessException
+                | ClassNotFoundException
+                | InvocationTargetException
+                | NoSuchMethodException e) {
             throw new ConfigurationException(
                     String.format(
                             "Failed to add a config object '%s'", configObjDef.getClassName()),
