@@ -360,7 +360,7 @@ public class ProtoResultParser {
         long elapsedTime =
                 timeStampToMillis(runProto.getEndTime())
                         - timeStampToMillis(runProto.getStartTime());
-        HashMap<String, Metric> metrics = new HashMap<>(runProto.getMetrics());
+        HashMap<String, Metric> metrics = new HashMap<>(runProto.getMetricsMap());
         mListener.testRunEnded(elapsedTime, metrics);
     }
 
