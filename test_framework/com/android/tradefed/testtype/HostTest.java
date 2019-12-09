@@ -63,6 +63,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
@@ -962,7 +963,7 @@ public class HostTest
     private Object loadObject(Class<?> classObj, boolean setInfo) throws IllegalArgumentException {
         final String className = classObj.getName();
         try {
-            Object testObj = classObj.newInstance();
+            Object testObj = classObj.getDeclaredConstructor().newInstance();
             // set options
             setOptionToLoadedObject(testObj, mKeyValueOptions);
             // Set the test information if needed.
@@ -976,6 +977,9 @@ public class HostTest
         } catch (IllegalAccessException e) {
             throw new IllegalArgumentException(String.format("Could not load Test class %s",
                     className), e);
+        } catch (InvocationTargetException | NoSuchMethodException e) {
+            throw new IllegalArgumentException(
+                    String.format("Could not load Test class %s", className), e);
         }
     }
 
@@ -1208,8 +1212,11 @@ public class HostTest
     protected HostTest createHostTest(Class<?> classObj) {
         HostTest test;
         try {
-            test = this.getClass().newInstance();
-        } catch (InstantiationException | IllegalAccessException e) {
+            test = this.getClass().getDeclaredConstructor().newInstance();
+        } catch (InstantiationException
+                | IllegalAccessException
+                | InvocationTargetException
+                | NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
         OptionCopier.copyOptionsNoThrow(this, test);
