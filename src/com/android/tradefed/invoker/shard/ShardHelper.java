@@ -39,7 +39,6 @@ import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.util.QuotationAwareTokenizer;
@@ -271,9 +270,6 @@ public class ShardHelper implements IShardHelper {
             }
             if (test instanceof IDeviceTest) {
                 ((IDeviceTest) test).setDevice(context.getDevices().get(0));
-            }
-            if (test instanceof IMultiDeviceTest) {
-                ((IMultiDeviceTest) test).setDeviceInfos(context.getDeviceBuildMap());
             }
             if (test instanceof IInvocationContextReceiver) {
                 ((IInvocationContextReceiver) test).setInvocationContext(context);
