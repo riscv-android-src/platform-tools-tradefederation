@@ -61,7 +61,6 @@ import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.testtype.suite.ModuleListener;
@@ -489,11 +488,6 @@ public class InvocationExecution implements IInvocationExecution {
                 if (test instanceof ISystemStatusCheckerReceiver) {
                     ((ISystemStatusCheckerReceiver) test)
                             .setSystemStatusChecker(config.getSystemStatusCheckers());
-                }
-
-                // TODO: consider adding receivers for only the list of ITestDevice and IBuildInfo.
-                if (test instanceof IMultiDeviceTest) {
-                    ((IMultiDeviceTest) test).setDeviceInfos(info.getContext().getDeviceBuildMap());
                 }
                 if (test instanceof IInvocationContextReceiver) {
                     ((IInvocationContextReceiver) test).setInvocationContext(info.getContext());
