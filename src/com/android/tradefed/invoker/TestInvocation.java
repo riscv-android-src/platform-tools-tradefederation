@@ -244,7 +244,9 @@ public class TestInvocation implements ITestInvocation {
             CLog.w("Build failed on device '%s'. Reason: %s", e.getDeviceDescriptor(),
                     e.toString());
             bugreportName = BUILD_ERROR_BUGREPORT_NAME;
-            badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
+            if (e.getDeviceDescriptor() != null) {
+                badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
+            }
             if (e instanceof DeviceFailedToBootError) {
                 if (badDevice == null) {
                     context.setRecoveryModeForAllDevices(RecoveryMode.NONE);
@@ -258,7 +260,9 @@ public class TestInvocation implements ITestInvocation {
             CLog.e("Caught exception while running invocation");
             CLog.e(e);
             bugreportName = TARGET_SETUP_ERROR_BUGREPORT_NAME;
-            badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
+            if (e.getDeviceDescriptor() != null) {
+                badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
+            }
             reportFailure(e, listener, config, context, invocationPath);
         } catch (DeviceNotAvailableException e) {
             exception = e;
