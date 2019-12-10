@@ -129,7 +129,7 @@ public class RestApiHelper implements IRestApiHelper {
      * Construct a URI for a API call with given URI parts and options. uriParts should be
      * URL-encoded already, while options should be unencoded Strings.
      */
-    GenericUrl buildQueryUri(String[] uriParts, Map<String, Object> options) {
+    public GenericUrl buildQueryUri(String[] uriParts, Map<String, Object> options) {
         final GenericUrl uri = new GenericUrl(mBaseUri);
         for (int i = 0; i < uriParts.length; ++i) {
             uri.appendRawPath(uriParts[i]);
