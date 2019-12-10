@@ -60,7 +60,6 @@ import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.ITestCollector;
@@ -124,7 +123,6 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private List<IMultiTargetPreparer> mMultiPreparers = new ArrayList<>();
     private IBuildInfo mBuild;
     private ITestDevice mDevice;
-    private Map<ITestDevice, IBuildInfo> mDeviceInfos;
     private List<IMetricCollector> mRunMetricCollectors = new ArrayList<>();
     private boolean mCollectTestsOnly = false;
 
@@ -265,13 +263,6 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         mDevice = device;
     }
 
-    /**
-     * Inject the {@link Map} of {@link ITestDevice} and {@link IBuildInfo} for the configuration.
-     */
-    public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
-        mDeviceInfos = deviceInfos;
-    }
-
     /** Inject the List of {@link IMetricCollector} to be used by the module. */
     public void setMetricCollectors(List<IMetricCollector> collectors) {
         if (collectors == null) {
@@ -382,9 +373,6 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 }
                 if (test instanceof IDeviceTest) {
                     ((IDeviceTest) test).setDevice(mDevice);
-                }
-                if (test instanceof IMultiDeviceTest) {
-                    ((IMultiDeviceTest) test).setDeviceInfos(mDeviceInfos);
                 }
                 if (test instanceof IInvocationContextReceiver) {
                     ((IInvocationContextReceiver) test)

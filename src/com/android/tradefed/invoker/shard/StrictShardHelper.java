@@ -25,7 +25,6 @@ import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
@@ -96,9 +95,6 @@ public class StrictShardHelper extends ShardHelper {
                 }
                 if (test instanceof IDeviceTest) {
                     ((IDeviceTest) test).setDevice(context.getDevices().get(0));
-                }
-                if (test instanceof IMultiDeviceTest) {
-                    ((IMultiDeviceTest) test).setDeviceInfos(context.getDeviceBuildMap());
                 }
                 if (test instanceof IInvocationContextReceiver) {
                     ((IInvocationContextReceiver) test).setInvocationContext(context);

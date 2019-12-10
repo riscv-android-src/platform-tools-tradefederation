@@ -18,7 +18,6 @@ package com.android.tradefed.invoker.shard;
 import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildRetrievalError;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
@@ -45,7 +44,6 @@ import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IReportNotExecuted;
 import com.android.tradefed.util.StreamUtil;
@@ -71,7 +69,6 @@ import java.util.concurrent.CountDownLatch;
 public final class TestsPoolPoller
         implements IRemoteTest,
                 IConfigurationReceiver,
-                IMultiDeviceTest,
                 ISystemStatusCheckerReceiver,
                 IMetricCollectorReceiver {
 
@@ -83,7 +80,6 @@ public final class TestsPoolPoller
     private Set<ITokenRequest> mRejectedToken;
 
     private TestInformation mTestInfo;
-    private Map<ITestDevice, IBuildInfo> mDeviceInfos;
     private IConfiguration mConfig;
     private List<ISystemStatusChecker> mSystemStatusCheckers;
     private List<IMetricCollector> mCollectors;
@@ -196,9 +192,6 @@ public final class TestsPoolPoller
                 }
                 if (test instanceof IInvocationContextReceiver) {
                     ((IInvocationContextReceiver) test).setInvocationContext(info.getContext());
-                }
-                if (test instanceof IMultiDeviceTest) {
-                    ((IMultiDeviceTest) test).setDeviceInfos(mDeviceInfos);
                 }
                 if (test instanceof ISystemStatusCheckerReceiver) {
                     ((ISystemStatusCheckerReceiver) test)
@@ -367,11 +360,6 @@ public final class TestsPoolPoller
     @VisibleForTesting
     public void setLogRegistry(ILogRegistry registry) {
         mRegistry = registry;
-    }
-
-    @Override
-    public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
-        mDeviceInfos = deviceInfos;
     }
 
     @Override
