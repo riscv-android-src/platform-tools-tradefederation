@@ -311,6 +311,13 @@ public class InstrumentationTest
     )
     private boolean mWindowAnimation = true;
 
+    @Option(
+            name = "disable-duplicate-test-check",
+            description =
+                    "If set to true, it will not check that a method is only run once by a "
+                            + "given instrumentation.")
+    private boolean mDisableDuplicateCheck = false;
+
     private IAbi mAbi = null;
 
     private Collection<String> mInstallArgs = new ArrayList<>();
@@ -1064,7 +1071,7 @@ public class InstrumentationTest
 
                     @Override
                     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
-                        if (!mDuplicateTests.isEmpty()) {
+                        if (!mDuplicateTests.isEmpty() && !mDisableDuplicateCheck) {
                             String errorMessage =
                                     String.format(
                                             "The following tests ran more than once: %s. Check "
