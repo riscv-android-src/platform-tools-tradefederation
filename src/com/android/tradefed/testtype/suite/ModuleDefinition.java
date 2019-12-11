@@ -32,6 +32,7 @@ import com.android.tradefed.device.metric.LogcatOnFailureCollector;
 import com.android.tradefed.device.metric.ScreenshotOnFailureCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.shard.token.TokenProperty;
@@ -283,8 +284,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      * @param listener the {@link ITestInvocationListener} where to report results.
      * @throws DeviceNotAvailableException in case of device going offline.
      */
-    public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        run(listener, null, null);
+    public final void run(TestInformation moduleInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        run(moduleInfo, listener, null, null);
     }
 
     /**
@@ -297,17 +299,19 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      * @throws DeviceNotAvailableException in case of device going offline.
      */
     public final void run(
+            TestInformation moduleInfo,
             ITestInvocationListener listener,
             List<ITestInvocationListener> moduleLevelListeners,
             TestFailureListener failureListener)
             throws DeviceNotAvailableException {
-        run(listener, moduleLevelListeners, failureListener, 1);
+        run(moduleInfo, listener, moduleLevelListeners, failureListener, 1);
     }
 
     /**
      * Run all the {@link IRemoteTest} contained in the module and use all the preparers before and
      * after to setup and clean the device.
      *
+     * @param moduleInfo the {@link TestInformation} for the module.
      * @param listener the {@link ITestInvocationListener} where to report results.
      * @param moduleLevelListeners The list of listeners at the module level.
      * @param failureListener a particular listener to collect logs on testFail. Can be null.
@@ -315,6 +319,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      * @throws DeviceNotAvailableException in case of device going offline.
      */
     public final void run(
+            TestInformation moduleInfo,
             ITestInvocationListener listener,
             List<ITestInvocationListener> moduleLevelListeners,
             TestFailureListener failureListener,
@@ -412,7 +417,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     return;
                 }
                 try {
-                    retriableTest.run(listener);
+                    retriableTest.run(moduleInfo, listener);
                 } catch (DeviceNotAvailableException dnae) {
                     runException = dnae;
                     // We do special logging of some information in Context of the module for easier
