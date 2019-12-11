@@ -23,7 +23,19 @@ import com.android.ddmlib.IDevice;
  */
 public class TcpDevice extends StubDevice {
 
+    private String mKnownDeviceIp;
+
     public TcpDevice(String serial) {
         super(serial, false);
+    }
+
+    public TcpDevice(String serial, String knownDeviceIp) {
+        super(serial, false);
+        mKnownDeviceIp = knownDeviceIp;
+    }
+
+    /** Returns the known associated IP if available, returns null if no known ip. */
+    public String getKnownDeviceIp() {
+        return mKnownDeviceIp;
     }
 }
