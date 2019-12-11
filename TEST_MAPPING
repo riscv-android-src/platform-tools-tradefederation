@@ -16,10 +16,11 @@
       "name": "hello_world_test",
       "host": true
     },
-    {
-      // Gtest with FilePusher/ApkInstaller.
-      "name": "CtsPerfettoTestCases"
-    },
+    // Un-comment once b/146021976 is resolved. Or find another test module instead.
+    // {
+    //   // Gtest with FilePusher/ApkInstaller.
+    //   "name": "CtsPerfettoTestCases"
+    // },
     {
       // Instrumentation Test with FilePusher/ApkInstaller/RumCommandTargetPreparer.
       "name": "CtsApacheHttpLegacy27ApiSignatureTestCases"
