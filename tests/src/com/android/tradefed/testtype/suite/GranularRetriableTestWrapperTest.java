@@ -33,6 +33,7 @@ import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
 import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
@@ -70,6 +71,7 @@ public class GranularRetriableTestWrapperTest {
     private static final String RUN_NAME = "test run";
     private static final String RUN_NAME_2 = "test run 2";
     private InvocationContext mModuleInvocationContext;
+    private TestInformation mModuleInfo;
     private IRetryDecision mDecision;
 
     private class BasicFakeTest implements IRemoteTest {
@@ -116,7 +118,8 @@ public class GranularRetriableTestWrapperTest {
         }
 
         @Override
-        public void run(ITestInvocationListener listener) throws DeviceUnresponsiveException {
+        public void run(TestInformation testInfo, ITestInvocationListener listener)
+                throws DeviceUnresponsiveException {
             listener.testRunStarted(RUN_NAME, mTestCases.size());
             for (TestDescription td : mTestCases) {
                 if (!mShouldRun.isEmpty() && !mShouldRun.contains(td.toString())) {
@@ -222,7 +225,8 @@ public class GranularRetriableTestWrapperTest {
         }
 
         @Override
-        public void run(ITestInvocationListener listener) throws DeviceUnresponsiveException {
+        public void run(TestInformation testInfo, ITestInvocationListener listener)
+                throws DeviceUnresponsiveException {
             Set<String> testRuns = mRunTestsMap.keySet();
             for (int idx = 0; idx < mMaxTestCount; idx++) {
                 // Tests in different runs are called alternatively. This example describes the risk
@@ -287,6 +291,8 @@ public class GranularRetriableTestWrapperTest {
     @Before
     public void setUp() {
         mModuleInvocationContext = new InvocationContext();
+        mModuleInfo =
+                TestInformation.newBuilder().setInvocationContext(mModuleInvocationContext).build();
     }
 
     /**
@@ -298,11 +304,11 @@ public class GranularRetriableTestWrapperTest {
         IRemoteTest mockTest = Mockito.mock(IRemoteTest.class);
         Mockito.doThrow(new DeviceNotAvailableException("fake message", "serial"))
                 .when(mockTest)
-                .run(Mockito.any(ITestInvocationListener.class));
+                .run(Mockito.any(), Mockito.any(ITestInvocationListener.class));
 
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(mockTest, 1);
         try {
-            granularTestWrapper.run(new CollectingTestListener());
+            granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
             fail("Should have thrown an exception.");
         } catch (DeviceNotAvailableException expected) {
             // Expected
@@ -319,14 +325,14 @@ public class GranularRetriableTestWrapperTest {
         FakeTest test =
                 new FakeTest() {
                     @Override
-                    public void run(ITestInvocationListener listener)
+                    public void run(TestInformation testInfo, ITestInvocationListener listener)
                             throws DeviceUnresponsiveException {
                         listener.testRunStarted("test run", 1);
                         throw new DeviceUnresponsiveException("fake message", "serial");
                     }
                 };
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 1);
-        granularTestWrapper.run(new CollectingTestListener());
+        granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
         TestRunResult attempResults =
                 granularTestWrapper.getTestRunResultCollected().get(RUN_NAME).get(0);
         assertTrue(attempResults.isRunFailure());
@@ -352,7 +358,7 @@ public class GranularRetriableTestWrapperTest {
         int maxRunCount = 5;
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
-        granularTestWrapper.run(new CollectingTestListener());
+        granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
         // Verify the test runs several times but under the same run name
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
         assertEquals(
@@ -411,7 +417,7 @@ public class GranularRetriableTestWrapperTest {
         int maxRunCount = 5;
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
-        granularTestWrapper.run(new CollectingTestListener());
+        granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
         // Verify the test runs several times but under the same run name
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
         assertEquals(
@@ -471,7 +477,7 @@ public class GranularRetriableTestWrapperTest {
         int maxRunCount = 5;
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
-        granularTestWrapper.run(new CollectingTestListener());
+        granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
         // Verify the test runs several times but under the same run name
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
         assertEquals(4, granularTestWrapper.getTestRunResultCollected().get(RUN_NAME).size());
@@ -557,7 +563,7 @@ public class GranularRetriableTestWrapperTest {
         int maxRunCount = 3;
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
-        granularTestWrapper.run(new CollectingTestListener());
+        granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
 
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
         // Expect only 1 run since it does not support ITestFilterReceiver
@@ -596,7 +602,7 @@ public class GranularRetriableTestWrapperTest {
 
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, maxRunCount);
-        granularTestWrapper.run(new CollectingTestListener());
+        granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
         // Two runs.
         assertEquals(2, granularTestWrapper.getTestRunResultCollected().size());
         List<TestRunResult> resultCollector1 =
@@ -636,7 +642,7 @@ public class GranularRetriableTestWrapperTest {
         FakeTest test = new FakeTest(testCases);
         test.setRunFailure("I failed!");
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
-        granularTestWrapper.run(new CollectingTestListener());
+        granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
 
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
         List<TestRunResult> allResults =
@@ -671,7 +677,7 @@ public class GranularRetriableTestWrapperTest {
         test.setRunFailure("I failed!");
         test.setClearRunFailure(3);
         GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 7);
-        granularTestWrapper.run(new CollectingTestListener());
+        granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
 
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
         List<TestRunResult> allResults =
@@ -711,7 +717,7 @@ public class GranularRetriableTestWrapperTest {
         setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
         decision.setInvocationContext(mModuleInvocationContext);
         granularTestWrapper.setRetryDecision(decision);
-        granularTestWrapper.run(new CollectingTestListener());
+        granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
 
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
         List<TestRunResult> allResults =
@@ -749,7 +755,7 @@ public class GranularRetriableTestWrapperTest {
         decision.setInvocationContext(mModuleInvocationContext);
         granularTestWrapper.setRetryDecision(decision);
 
-        granularTestWrapper.run(new CollectingTestListener());
+        granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
 
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
         List<TestRunResult> allResults =
@@ -799,7 +805,7 @@ public class GranularRetriableTestWrapperTest {
         test.addTestBecomePass(fakeTestCase1, 5);
         GranularRetriableTestWrapper granularTestWrapper =
                 createGranularTestWrapper(test, 7, collectors);
-        granularTestWrapper.run(new CollectingTestListener());
+        granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
 
         assertEquals(1, granularTestWrapper.getTestRunResultCollected().size());
         List<TestRunResult> allResults =
@@ -865,7 +871,7 @@ public class GranularRetriableTestWrapperTest {
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
         mMockDevice.reboot();
         EasyMock.replay(mMockDevice);
-        granularTestWrapper.run(new CollectingTestListener());
+        granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
         EasyMock.verify(mMockDevice);
     }
 
@@ -894,7 +900,7 @@ public class GranularRetriableTestWrapperTest {
         mMockDevice.reboot();
         mMockDevice2.reboot();
         EasyMock.replay(mMockDevice, mMockDevice2);
-        granularTestWrapper.run(new CollectingTestListener());
+        granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
         EasyMock.verify(mMockDevice, mMockDevice2);
     }
 
