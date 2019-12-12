@@ -23,6 +23,7 @@ import com.android.tradefed.targetprep.DeviceFlashPreparer;
 import java.io.File;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Host options holder interface.
@@ -60,4 +61,10 @@ public interface IHostOptions {
 
     /** Get labels for the host. */
     public List<String> getLabels();
+
+    /** Known tcp-device associated with a specific IP. */
+    Set<String> getKnownTcpDeviceIpPool();
+
+    /** Known gce-device associated with a specific IP. */
+    Set<String> getKnownGceDeviceIpPool();
 }

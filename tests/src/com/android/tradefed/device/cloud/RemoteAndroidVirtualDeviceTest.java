@@ -113,6 +113,11 @@ public class RemoteAndroidVirtualDeviceTest {
                             "", false, DeviceAllocationState.Allocated, "", "", "", "", "");
             return desc;
         }
+
+        @Override
+        public String getSerialNumber() {
+            return MOCK_DEVICE_SERIAL;
+        }
     }
 
     @Before
@@ -174,7 +179,8 @@ public class RemoteAndroidVirtualDeviceTest {
                                 mMockBuildInfo,
                                 null) {
                             @Override
-                            protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
+                            protected List<String> buildGceCmd(
+                                    File reportFile, IBuildInfo b, String ipDevice) {
                                 FileUtil.deleteFile(reportFile);
                                 List<String> tmp = new ArrayList<String>();
                                 tmp.add("");
@@ -323,6 +329,7 @@ public class RemoteAndroidVirtualDeviceTest {
         mTestDevice.setTestLogger(mTestLogger);
         EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong()))
                 .andReturn(true);
+        mMockStateMonitor.setIDevice(EasyMock.anyObject());
 
         mMockIDevice.executeShellCommand(
                 EasyMock.eq("logcat -v threadtime -d"), EasyMock.anyObject(),
@@ -376,7 +383,7 @@ public class RemoteAndroidVirtualDeviceTest {
                                 "acloud error",
                                 GceStatus.BOOT_FAIL))
                 .when(mGceHandler)
-                .startGce();
+                .startGce(null);
         EasyMock.replay(mMockRunUtil, mMockIDevice);
         try {
             mTestDevice.launchGce(new BuildInfo());
@@ -481,7 +488,7 @@ public class RemoteAndroidVirtualDeviceTest {
                                     null,
                                     GceStatus.SUCCESS))
                     .when(mGceHandler)
-                    .startGce();
+                    .startGce(null);
 
             // Each invocation bellow will dump a logcat before the shutdown.
             mMockIDevice.executeShellCommand(
@@ -582,7 +589,7 @@ public class RemoteAndroidVirtualDeviceTest {
                                     null,
                                     GceStatus.SUCCESS))
                     .when(mGceHandler)
-                    .startGce();
+                    .startGce(null);
             mMockIDevice.executeShellCommand(
                     EasyMock.eq("logcat -v threadtime -d"), EasyMock.anyObject(),
                     EasyMock.anyLong(), EasyMock.eq(TimeUnit.MILLISECONDS));
@@ -668,7 +675,7 @@ public class RemoteAndroidVirtualDeviceTest {
                                     null,
                                     GceStatus.SUCCESS))
                     .when(mGceHandler)
-                    .startGce();
+                    .startGce(null);
 
             CommandResult bugreportzResult = new CommandResult(CommandStatus.SUCCESS);
             bugreportzResult.setStdout("OK: bugreportz-file");
