@@ -30,6 +30,7 @@ import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.IManagedTestDevice.DeviceEventResponse;
+import com.android.tradefed.host.HostOptions;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.util.ArrayUtil;
@@ -196,6 +197,7 @@ public class DeviceManagerTest {
             }
         };
         mMockGlobalConfig = EasyMock.createNiceMock(IGlobalConfiguration.class);
+        EasyMock.expect(mMockGlobalConfig.getHostOptions()).andStubReturn(new HostOptions());
 
         EasyMock.expect(mMockIDevice.getSerialNumber()).andStubReturn(DEVICE_SERIAL);
         EasyMock.expect(mMockStateMonitor.getSerialNumber()).andStubReturn(DEVICE_SERIAL);
