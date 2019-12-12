@@ -318,6 +318,7 @@ public class DeviceManager implements IDeviceManager {
         addGceDevices();
         addRemoteDevices();
         addLocalVirtualDevices();
+        addNetworkDevices();
 
         List<IMultiDeviceRecovery> recoverers = getGlobalConfig().getMultiDeviceRecoveryHandlers();
         if (recoverers != null && !recoverers.isEmpty()) {
@@ -516,6 +517,23 @@ public class DeviceManager implements IDeviceManager {
         for (int i = 0; i < mNumRemoteDevicesSupported; i++) {
             addAvailableDevice(
                     new VmRemoteDevice(String.format("%s-%s", REMOTE_DEVICE_SERIAL_PREFIX, i)));
+        }
+    }
+
+    private void addNetworkDevices() {
+        int index = mNumTcpDevicesSupported;
+        for (String ip : getGlobalConfig().getHostOptions().getKnownTcpDeviceIpPool()) {
+            addAvailableDevice(
+                    new TcpDevice(String.format("%s-%d", TCP_DEVICE_SERIAL_PREFIX, index), ip));
+            index++;
+        }
+
+        index = mNumGceDevicesSupported;
+        for (String ip : getGlobalConfig().getHostOptions().getKnownGceDeviceIpPool()) {
+            addAvailableDevice(
+                    new RemoteAvdIDevice(
+                            String.format("%s-%d", GCE_DEVICE_SERIAL_PREFIX, index), ip));
+            index++;
         }
     }
 

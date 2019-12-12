@@ -543,7 +543,7 @@ public class TestDeviceOptions {
     }
 
     /** @return the service account json key file. */
-    public File getSerivceAccountJsonKeyFile() {
+    public File getServiceAccountJsonKeyFile() {
         return mJsonKeyFile;
     }
 

@@ -57,7 +57,6 @@ import javax.annotation.Nullable;
  */
 public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements ITestLoggerReceiver {
 
-    private String mInitialSerial;
     private GceAvdInfo mGceAvd;
     private ITestLogger mTestLogger;
 
@@ -96,7 +95,6 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                     new GceManager(
                             getDeviceDescriptor(), getOptions(), info, testResourceBuildInfos);
             getGceHandler().logStableHostImageInfos(info);
-            mInitialSerial = getSerialNumber();
             setFastbootEnabled(false);
 
             // Launch GCE helper script.
@@ -205,8 +203,8 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                 mGceAvd = null;
             }
 
-            if (mInitialSerial != null) {
-                setIDevice(new RemoteAvdIDevice(mInitialSerial));
+            if (getInitialSerial() != null) {
+                setIDevice(new RemoteAvdIDevice(getInitialSerial(), getInitialIp()));
             }
             setFastbootEnabled(false);
 
@@ -249,7 +247,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
         TargetSetupError exception = null;
         for (int attempt = 0; attempt < getOptions().getGceMaxAttempt(); attempt++) {
             try {
-                mGceAvd = getGceHandler().startGce();
+                mGceAvd = getGceHandler().startGce(getInitialIp());
                 if (mGceAvd != null) break;
             } catch (TargetSetupError tse) {
                 CLog.w(
@@ -429,13 +427,13 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
     @Override
     public DeviceDescriptor getDeviceDescriptor() {
         DeviceDescriptor descriptor = super.getDeviceDescriptor();
-        if (mInitialSerial != null && mInitialSerial.equals(descriptor.getSerial())) {
+        if (!getInitialSerial().equals(descriptor.getSerial())) {
             // Alter the display for the console.
             descriptor =
                     new DeviceDescriptor(
                             descriptor,
-                            mInitialSerial,
-                            mInitialSerial + "[" + descriptor.getSerial() + "]");
+                            getInitialSerial(),
+                            getInitialSerial() + "[" + descriptor.getSerial() + "]");
         }
         return descriptor;
     }
