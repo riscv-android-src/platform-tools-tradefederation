@@ -35,9 +35,20 @@ public class TestInformation {
         mProperties = builder.mProperties;
     }
 
+    private TestInformation(TestInformation invocationInfo, IInvocationContext moduleContext) {
+        mContext = moduleContext;
+        mProperties = invocationInfo.mProperties;
+    }
+
     /** Create a builder for creating {@link TestInformation} instances. */
     public static Builder newBuilder() {
         return new Builder();
+    }
+
+    /** Create an {@link TestInformation} representing a module rather than an invocation. */
+    public static TestInformation createModuleTestInfo(
+            TestInformation invocationInfo, IInvocationContext moduleContext) {
+        return new TestInformation(invocationInfo, moduleContext);
     }
 
     /** Returns the current invocation context, or the module context if this is a module. */

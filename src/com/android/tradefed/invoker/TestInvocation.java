@@ -62,7 +62,6 @@ import com.android.tradefed.targetprep.DeviceFailedToBootError;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
-import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.PrettyPrintDelimiter;
 import com.android.tradefed.util.RunInterruptedException;
@@ -946,14 +945,9 @@ public class TestInvocation implements ITestInvocation {
             if (log == null || !log.exists()) {
                 return;
             }
-            try {
-                if (FileUtil.readStringFromFile(log).isEmpty()) {
-                    CLog.d("executeShellCommandLog file was empty, skip logging.");
-                    return;
-                }
-            } catch (IOException e) {
-                // Ignored
-                CLog.e(e);
+            if (log.length() == 0) {
+                CLog.d("executeShellCommandLog file was empty, skip logging.");
+                return;
             }
             try (InputStreamSource source = new FileInputStreamSource(log)) {
                 logger.testLog(
