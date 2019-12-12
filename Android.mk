@@ -69,6 +69,9 @@ $(tradefed_dist_zip) : $(SOONG_ZIP) $(foreach f,$(tradefed_dist_copy_pairs),$(ca
 	$(SOONG_ZIP) -o $@ -C $(dir $@)/tmp -f $(dir $@)/tmp/version.txt \
 	  $(foreach f,$(PRIVATE_COPY_PAIRS),-f $(dir $@)/tmp/$(call word-colon,2,$(f)))
 
+# TODO(b/145972516): Remove the disabled test after the rootcause is fixed.
+ALL_DISABLED_PRESUBMIT_TESTS += CtsAppTestCases
+
 $(call dist-for-goals, tradefed, $(tradefed_dist_zip))
 
 tradefed_dist_copy_pairs :=
