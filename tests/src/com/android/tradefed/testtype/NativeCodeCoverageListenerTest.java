@@ -155,8 +155,9 @@ public class NativeCodeCoverageListenerTest {
             logs.get(0).writeTo(out);
         }
 
-        ZipFile loggedZip = new ZipFile(outputZip);
-        assertThat(loggedZip.size()).isEqualTo(0);
+        try (ZipFile loggedZip = new ZipFile(outputZip)) {
+            assertThat(loggedZip.size()).isEqualTo(0);
+        }
     }
 
     @Test
