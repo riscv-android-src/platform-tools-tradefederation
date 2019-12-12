@@ -23,8 +23,10 @@ import com.android.tradefed.config.OptionClass;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Host options holder class.
@@ -69,6 +71,20 @@ public class HostOptions implements IHostOptions {
 
     @Option(name = "label", description = "Labels to describe the host.")
     private List<String> mLabels = new ArrayList<>();
+
+    @Option(
+            name = "known-tcp-device-ip-pool",
+            description =
+                    "known remote device available via ip associated with the "
+                            + "tcp-device placeholder.")
+    private Set<String> mKnownTcpDeviceIpPool = new HashSet<>();
+
+    @Option(
+            name = "known-gce-device-ip-pool",
+            description =
+                    "known remote device available via ip associated with the "
+                            + "gce-device placeholder.")
+    private Set<String> mKnownGceDeviceIpPool = new HashSet<>();
 
     /** {@inheritDoc} */
     @Override
@@ -116,5 +132,17 @@ public class HostOptions implements IHostOptions {
     @Override
     public List<String> getLabels() {
         return new ArrayList<>(mLabels);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getKnownTcpDeviceIpPool() {
+        return new HashSet<>(mKnownTcpDeviceIpPool);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getKnownGceDeviceIpPool() {
+        return new HashSet<>(mKnownGceDeviceIpPool);
     }
 }
