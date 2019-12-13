@@ -26,7 +26,6 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -97,8 +96,7 @@ public class HostTest
                 IBuildReceiver,
                 IAbiReceiver,
                 IShardableTest,
-                IRuntimeHintProvider,
-                IInvocationContextReceiver {
+                IRuntimeHintProvider {
 
     @Option(name = "class", description = "The JUnit test classes to run, in the format "
             + "<package>.<class>. eg. \"com.android.foo.Bar\". This field can be repeated.",
@@ -171,7 +169,6 @@ public class HostTest
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private IAbi mAbi;
-    private IInvocationContext mContext;
     private TestInformation mTestInfo;
     private TestFilterHelper mFilterHelper;
     private boolean mSkipTestClassCheck = false;
@@ -192,15 +189,6 @@ public class HostTest
     public HostTest() {
         mFilterHelper = new TestFilterHelper(new ArrayList<String>(), new ArrayList<String>(),
                 mIncludeAnnotations, mExcludeAnnotations);
-    }
-
-    @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
-    }
-
-    protected IInvocationContext getContext() {
-        return mContext;
     }
 
     /**
@@ -488,15 +476,6 @@ public class HostTest
                 throw new RuntimeException(e);
             }
         }
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        // For temporary suites compatibility
-        TestInformation testInfo =
-                TestInformation.newBuilder().setInvocationContext(mContext).build();
-        run(testInfo, listener);
     }
 
     /** {@inheritDoc} */
