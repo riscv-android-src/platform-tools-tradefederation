@@ -135,7 +135,7 @@ final class JavaCodeCoverageListener extends ResultForwarder {
         }
     }
 
-    private void logCoverageMeasurement(String name, File coverageFile) throws IOException {
+    private void logCoverageMeasurement(String name, File coverageFile) {
         try (FileInputStreamSource source = new FileInputStreamSource(coverageFile, true)) {
             testLog(name, LogDataType.COVERAGE, source);
         }
