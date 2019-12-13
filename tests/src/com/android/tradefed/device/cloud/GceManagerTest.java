@@ -169,7 +169,7 @@ public class GceManagerTest {
         File reportFile = null;
         try {
             reportFile = FileUtil.createTempFile("test-gce-cmd", "report");
-            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo);
+            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo, null);
             List<String> expected =
                     ArrayUtil.list(
                             mOptions.getAvdDriverBinary().getAbsolutePath(),
@@ -207,7 +207,7 @@ public class GceManagerTest {
         setter.setOptionValue("gce-driver-service-account-json-key-path", "/path/to/key.json");
         try {
             reportFile = FileUtil.createTempFile("test-gce-cmd", "report");
-            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo);
+            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo, null);
             List<String> expected =
                     ArrayUtil.list(
                             mOptions.getAvdDriverBinary().getAbsolutePath(),
@@ -256,7 +256,7 @@ public class GceManagerTest {
                         }
                     };
             reportFile = FileUtil.createTempFile("test-gce-cmd", "report");
-            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo);
+            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo, null);
             List<String> expected =
                     ArrayUtil.list(
                             mOptions.getAvdDriverBinary().getAbsolutePath(),
@@ -297,7 +297,7 @@ public class GceManagerTest {
         setter.setOptionValue("gce-driver-param", "--no-autoconnect");
         try {
             reportFile = FileUtil.createTempFile("test-gce-cmd", "report");
-            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo);
+            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo, null);
             List<String> expected =
                     ArrayUtil.list(
                             mOptions.getAvdDriverBinary().getAbsolutePath(),
@@ -333,7 +333,8 @@ public class GceManagerTest {
                     }
 
                     @Override
-                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
+                    protected List<String> buildGceCmd(
+                            File reportFile, IBuildInfo b, String ipDevice) {
                         List<String> tmp = new ArrayList<String>();
                         tmp.add("");
                         return tmp;
@@ -375,7 +376,7 @@ public class GceManagerTest {
             setter.setOptionValue("gce-driver-param", "--kernel_build_id");
             setter.setOptionValue("gce-driver-param", "KERNELBUILDID");
             reportFile = FileUtil.createTempFile("test-gce-cmd", "report");
-            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo);
+            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo, null);
             List<String> expected =
                     ArrayUtil.list(
                             mOptions.getAvdDriverBinary().getAbsolutePath(),
@@ -414,7 +415,8 @@ public class GceManagerTest {
                     }
 
                     @Override
-                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
+                    protected List<String> buildGceCmd(
+                            File reportFile, IBuildInfo b, String ipDevice) {
                         String valid =
                                 " {\n"
                                         + "\"data\": {\n"
@@ -468,7 +470,8 @@ public class GceManagerTest {
                     }
 
                     @Override
-                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
+                    protected List<String> buildGceCmd(
+                            File reportFile, IBuildInfo b, String ipDevice) {
                         // We delete the potential report file to create an issue.
                         FileUtil.deleteFile(reportFile);
                         List<String> tmp = new ArrayList<String>();
@@ -507,7 +510,8 @@ public class GceManagerTest {
                     }
 
                     @Override
-                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
+                    protected List<String> buildGceCmd(
+                            File reportFile, IBuildInfo b, String ipDevice) {
                         String validFail =
                                 " {\n"
                                         + "\"data\": {\n"
@@ -835,7 +839,8 @@ public class GceManagerTest {
                     }
 
                     @Override
-                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
+                    protected List<String> buildGceCmd(
+                            File reportFile, IBuildInfo b, String ipDevice) {
                         // We delete the potential report file to create an issue.
                         FileUtil.deleteFile(reportFile);
                         List<String> tmp = new ArrayList<String>();
