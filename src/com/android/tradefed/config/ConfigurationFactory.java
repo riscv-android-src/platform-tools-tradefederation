@@ -29,6 +29,8 @@ import com.android.tradefed.util.keystore.DryRunKeyStore;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableSortedSet;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -55,9 +57,12 @@ import java.util.regex.Pattern;
  */
 public class ConfigurationFactory implements IConfigurationFactory {
 
+    /** Currently supported extensions for Tradefed configurations */
+    private static final Set<String> SUPPORTED_EXTENSIONS =
+            ImmutableSortedSet.of(".xml", ".config");
+
     private static final String LOG_TAG = "ConfigurationFactory";
     private static IConfigurationFactory sInstance = null;
-    private static final String CONFIG_SUFFIX = ".xml";
     private static final String CONFIG_PREFIX = "config/";
     private static final String DRY_RUN_TEMPLATE_CONFIG = "empty";
     private static final String CONFIG_ERROR_PATTERN = "(Could not find option with name )(.*)";
@@ -152,8 +157,10 @@ public class ConfigurationFactory implements IConfigurationFactory {
         public boolean accept(String pathName) {
             // only accept entries that match the pattern, and that we don't already know about
             final ConfigId pathId = new ConfigId(pathName);
-            return pathName.startsWith(mPrefix) && pathName.endsWith(CONFIG_SUFFIX) &&
-                    !mConfigDefMap.containsKey(pathId);
+            String extension = FileUtil.getExtension(pathName);
+            return pathName.startsWith(mPrefix)
+                    && SUPPORTED_EXTENSIONS.contains(extension)
+                    && !mConfigDefMap.containsKey(pathId);
         }
 
         /**
@@ -161,9 +168,10 @@ public class ConfigurationFactory implements IConfigurationFactory {
          */
         @Override
         public String transform(String pathName) {
-            // strip off CONFIG_PREFIX and CONFIG_SUFFIX
+            // strip off CONFIG_PREFIX and config extension
             int pathStartIndex = getConfigPrefix().length();
-            int pathEndIndex = pathName.length() - CONFIG_SUFFIX.length();
+            String extension = FileUtil.getExtension(pathName);
+            int pathEndIndex = pathName.length() - extension.length();
             return pathName.substring(pathStartIndex, pathEndIndex);
         }
     }
@@ -215,7 +223,16 @@ public class ConfigurationFactory implements IConfigurationFactory {
      */
     @VisibleForTesting
     File getTestCaseConfigPath(String name) {
-        String[] possibleConfigFileNames = {name + ".xml", name + ".config"};
+        String[] possibleConfigFileNames = {name};
+        if (Strings.isNullOrEmpty(FileUtil.getExtension(name))) {
+            possibleConfigFileNames = new String[SUPPORTED_EXTENSIONS.size()];
+            int i = 0;
+            for (String supportedExtension : SUPPORTED_EXTENSIONS) {
+                possibleConfigFileNames[i] = (name + supportedExtension);
+                i++;
+            }
+        }
+
         for (File testCasesDir : getExternalTestCasesDirs()) {
             for (String configFileName : possibleConfigFileNames) {
                 File config = FileUtil.findFile(testCasesDir, configFileName);
@@ -268,11 +285,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
 
         /** Returns true if it is a config file found inside the classpath. */
         protected boolean isBundledConfig(String name) {
-            InputStream configStream =
-                    getClass()
-                            .getResourceAsStream(
-                                    String.format(
-                                            "/%s%s%s", getConfigPrefix(), name, CONFIG_SUFFIX));
+            InputStream configStream = getBundledConfigStream(name);
             return configStream != null;
         }
 
@@ -488,6 +501,9 @@ public class ConfigurationFactory implements IConfigurationFactory {
     public IConfiguration createConfigurationFromArgs(String[] arrayArgs,
             List<String> unconsumedArgs, IKeyStoreClient keyStoreClient)
             throws ConfigurationException {
+        if (arrayArgs.length == 0) {
+            throw new ConfigurationException("Configuration to run was not specified");
+        }
         List<String> listArgs = new ArrayList<String>(arrayArgs.length);
         // FIXME: Update parsing to not care about arg order.
         String[] reorderedArrayArgs = reorderArgs(arrayArgs);
@@ -535,9 +551,6 @@ public class ConfigurationFactory implements IConfigurationFactory {
     private IConfiguration internalCreateConfigurationFromArgs(String[] arrayArgs,
             List<String> optionArgsRef, IKeyStoreClient keyStoreClient)
             throws ConfigurationException {
-        if (arrayArgs.length == 0) {
-            throw new ConfigurationException("Configuration to run was not specified");
-        }
         final List<String> listArgs = new ArrayList<>(Arrays.asList(arrayArgs));
         // first arg is config name
         final String configName = listArgs.remove(0);
@@ -638,15 +651,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
      */
     @Override
     public List<String> getConfigList() {
-        return getConfigList(null);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<String> getConfigList(String subPath) {
-        return getConfigList(subPath, true);
+        return getConfigList(null, true);
     }
 
     /** {@inheritDoc} */
@@ -810,9 +815,24 @@ public class ConfigurationFactory implements IConfigurationFactory {
     }
 
     protected InputStream getBundledConfigStream(String name) {
-        return getClass()
-                .getResourceAsStream(
-                        String.format("/%s%s%s", getConfigPrefix(), name, CONFIG_SUFFIX));
+        String extension = FileUtil.getExtension(name);
+        if (Strings.isNullOrEmpty(extension)) {
+            // If the default name doesn't have an extension, search all possible extensions.
+            for (String supportExtension : SUPPORTED_EXTENSIONS) {
+                InputStream res =
+                        getClass()
+                                .getResourceAsStream(
+                                        String.format(
+                                                "/%s%s%s",
+                                                getConfigPrefix(), name, supportExtension));
+                if (res != null) {
+                    return res;
+                }
+            }
+            return null;
+        }
+        // Check directly with extension if it has one.
+        return getClass().getResourceAsStream(String.format("/%s%s", getConfigPrefix(), name));
     }
 
     /**
