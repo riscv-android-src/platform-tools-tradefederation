@@ -115,6 +115,7 @@ public class ClusterCommandLauncherTest {
                 String.format(
                         "${TF_WORK_DIR}/%s:${TF_WORK_DIR}/%s",
                         mTfPath.getName(), mTfLibDir.getName());
+        mOptionSetter.setOptionValue("cluster:jvm-option", "-Xmx1g");
         mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", tfPathValue);
         mOptionSetter.setOptionValue("cluster:java-property", "FOO", "${TF_WORK_DIR}/foo");
         mOptionSetter.setOptionValue("cluster:original-command-line", "original-command-line");
@@ -146,6 +147,7 @@ public class ClusterCommandLauncherTest {
                                     SystemUtil.getRunningJavaBinaryPath().getAbsolutePath(),
                                     "-cp",
                                     classPath,
+                                    "-Xmx1g",
                                     "-DFOO=" + mRootDir.getAbsolutePath() + "/foo",
                                     "com.android.tradefed.command.CommandRunner",
                                     "command-line",

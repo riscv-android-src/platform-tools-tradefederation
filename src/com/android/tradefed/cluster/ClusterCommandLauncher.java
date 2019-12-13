@@ -82,6 +82,9 @@ public class ClusterCommandLauncher
     @Option(name = "script-timeout", description = "Script execution timeout", isTimeVal = true)
     private long mScriptTimeout = 30 * 60 * 1000;
 
+    @Option(name = "jvm-option", description = "JVM options")
+    private List<String> mJvmOptions = new ArrayList<>();
+
     @Option(name = "java-property", description = "Java properties")
     private Map<String, String> mJavaProperties = new LinkedHashMap<>();
 
@@ -263,6 +266,7 @@ public class ClusterCommandLauncher
         cmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
         cmdArgs.add("-cp");
         cmdArgs.add(classpath);
+        cmdArgs.addAll(mJvmOptions);
 
         // Pass Java properties as -D options.
         for (final Entry<String, String> entry : mJavaProperties.entrySet()) {
@@ -344,6 +348,11 @@ public class ClusterCommandLauncher
     @VisibleForTesting
     List<String> getSetupScripts() {
         return mSetupScripts;
+    }
+
+    @VisibleForTesting
+    List<String> getJvmOptions() {
+        return mJvmOptions;
     }
 
     @VisibleForTesting

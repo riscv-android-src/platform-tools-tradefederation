@@ -1015,6 +1015,7 @@ public class ClusterCommandSchedulerTest {
         testEnvironment.addEnvVar("ENV2", "env2");
         testEnvironment.addSetupScripts("script1");
         testEnvironment.addSetupScripts("script2");
+        testEnvironment.addJvmOption("option1");
         testEnvironment.addJavaProperty("JAVA1", "java1");
         testEnvironment.addJavaProperty("JAVA2", "java2");
         testEnvironment.setOutputFileUploadUrl("output_file_upload_url");
@@ -1058,6 +1059,7 @@ public class ClusterCommandSchedulerTest {
         envVars.put("TF_WORK_DIR", workDir.getAbsolutePath());
         envVars.putAll(testEnvironment.getEnvVars());
         assertEquals(envVars, test.getEnvVars());
+        assertEquals(testEnvironment.getJvmOptions(), test.getJvmOptions());
         assertEquals(testEnvironment.getSetupScripts(), test.getSetupScripts());
         assertEquals(testEnvironment.getJavaProperties(), test.getJavaProperties());
         assertEquals(testEnvironment.useSubprocessReporting(), test.useSubprocessReporting());
