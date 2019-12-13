@@ -70,6 +70,7 @@ public class BaseDeviceMetricCollectorTest {
     public void testInitAndForwarding() {
         mBase.init(mContext, mMockListener);
         mBase.invocationStarted(mContext);
+        mBase.testModuleStarted(mContext);
         mBase.testRunStarted("testRun", 1);
         TestDescription test = new TestDescription("class", "method");
         mBase.testStarted(test);
@@ -81,11 +82,15 @@ public class BaseDeviceMetricCollectorTest {
         mBase.testRunFailed("test run failed");
         mBase.testRunStopped(0L);
         mBase.testRunEnded(0L, new HashMap<String, Metric>());
+        mBase.testModuleEnded();
         mBase.invocationFailed(new Throwable());
         mBase.invocationEnded(0L);
 
         Mockito.verify(mMockListener, times(1)).invocationStarted(Mockito.any());
-        Mockito.verify(mMockListener, times(1)).testRunStarted("testRun", 1);
+        Mockito.verify(mMockListener, times(1)).testModuleStarted(Mockito.any());
+        Mockito.verify(mMockListener, times(1))
+                .testRunStarted(
+                        Mockito.eq("testRun"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
         Mockito.verify(mMockListener, times(1)).testStarted(Mockito.eq(test), Mockito.anyLong());
         Mockito.verify(mMockListener, times(1))
                 .testLog(Mockito.eq("dataname"), Mockito.eq(LogDataType.TEXT), Mockito.any());
@@ -100,6 +105,7 @@ public class BaseDeviceMetricCollectorTest {
         Mockito.verify(mMockListener, times(1)).testRunFailed("test run failed");
         Mockito.verify(mMockListener, times(1)).testRunStopped(0L);
         Mockito.verify(mMockListener, times(1)).testRunEnded(0L, new HashMap<String, Metric>());
+        Mockito.verify(mMockListener, times(1)).testModuleEnded();
         Mockito.verify(mMockListener, times(1)).invocationFailed(Mockito.any());
         Mockito.verify(mMockListener, times(1)).invocationEnded(0L);
 
@@ -169,7 +175,9 @@ public class BaseDeviceMetricCollectorTest {
         mBase.invocationEnded(0L);
 
         Mockito.verify(mMockListener, times(1)).invocationStarted(Mockito.any());
-        Mockito.verify(mMockListener, times(1)).testRunStarted("testRun", 1);
+        Mockito.verify(mMockListener, times(1))
+                .testRunStarted(
+                        Mockito.eq("testRun"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
         Mockito.verify(mMockListener, times(1)).testStarted(Mockito.eq(test), Mockito.anyLong());
         Mockito.verify(mMockListener, times(1))
                 .testLog(Mockito.eq("dataname"), Mockito.eq(LogDataType.TEXT), Mockito.any());
@@ -326,7 +334,9 @@ public class BaseDeviceMetricCollectorTest {
         base.invocationEnded(0L);
 
         Mockito.verify(mMockListener, times(1)).invocationStarted(Mockito.any());
-        Mockito.verify(mMockListener, times(1)).testRunStarted("testRun", 1);
+        Mockito.verify(mMockListener, times(1))
+                .testRunStarted(
+                        Mockito.eq("testRun"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
         Mockito.verify(mMockListener, times(1)).testStarted(Mockito.eq(test), Mockito.anyLong());
         // Metrics should have been skipped, so the map should be empty.
         Mockito.verify(mMockListener, times(1))
@@ -422,7 +432,12 @@ public class BaseDeviceMetricCollectorTest {
 
         host.run(mTestInfo, mBase);
 
-        Mockito.verify(mMockListener, times(1)).testRunStarted(TestRunAnnotated.class.getName(), 3);
+        Mockito.verify(mMockListener, times(1))
+                .testRunStarted(
+                        Mockito.eq(TestRunAnnotated.class.getName()),
+                        Mockito.eq(3),
+                        Mockito.eq(0),
+                        Mockito.anyLong());
         TestDescription test1 = new TestDescription(TestRunAnnotated.class.getName(), "testOne");
         TestDescription test2 = new TestDescription(TestRunAnnotated.class.getName(), "testTwo");
         TestDescription test3 = new TestDescription(TestRunAnnotated.class.getName(), "testThree");
@@ -470,7 +485,12 @@ public class BaseDeviceMetricCollectorTest {
 
         host.run(mTestInfo, mBase);
 
-        Mockito.verify(mMockListener, times(1)).testRunStarted(TestRunAnnotated.class.getName(), 3);
+        Mockito.verify(mMockListener, times(1))
+                .testRunStarted(
+                        Mockito.eq(TestRunAnnotated.class.getName()),
+                        Mockito.eq(3),
+                        Mockito.eq(0),
+                        Mockito.anyLong());
         TestDescription test1 = new TestDescription(TestRunAnnotated.class.getName(), "testOne");
         TestDescription test2 = new TestDescription(TestRunAnnotated.class.getName(), "testTwo");
         TestDescription test3 = new TestDescription(TestRunAnnotated.class.getName(), "testThree");
@@ -533,7 +553,9 @@ public class BaseDeviceMetricCollectorTest {
         mBase.invocationEnded(0L);
 
         Mockito.verify(mMockListener, times(1)).invocationStarted(Mockito.any());
-        Mockito.verify(mMockListener, times(1)).testRunStarted("testRun", 1);
+        Mockito.verify(mMockListener, times(1))
+                .testRunStarted(
+                        Mockito.eq("testRun"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
         Mockito.verify(mMockListener, times(1)).testStarted(Mockito.eq(test), Mockito.anyLong());
         Mockito.verify(mMockListener, times(1))
                 .testEnded(Mockito.eq(test), Mockito.anyLong(), mCapturedMetrics.capture());
