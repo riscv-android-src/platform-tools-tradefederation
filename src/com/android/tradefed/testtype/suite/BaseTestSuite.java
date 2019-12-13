@@ -17,13 +17,14 @@ package com.android.tradefed.testtype.suite;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.params.IModuleParameter;
@@ -31,11 +32,13 @@ import com.android.tradefed.testtype.suite.params.ModuleParameters;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelper;
 import com.android.tradefed.testtype.suite.params.NegativeHandler;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.FileUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -57,6 +60,7 @@ public class BaseTestSuite extends ITestSuite {
     public static final char TEST_OPTION_SHORT_NAME = 't';
     public static final String CONFIG_PATTERNS_OPTION = "config-patterns";
     private static final String MODULE_ARG_OPTION = "module-arg";
+    private static final int MAX_FILTER_DISPLAY = 20;
 
     @Option(
         name = INCLUDE_FILTER_OPTION,
@@ -152,6 +156,14 @@ public class BaseTestSuite extends ITestSuite {
     private boolean mEnableParameter = false;
 
     @Option(
+        name = "enable-optional-parameterization",
+        description =
+                "Whether or not to enable optional parameters. Optional parameters are "
+                        + "parameters not usually used by default."
+    )
+    private boolean mEnableOptionalParameter = false;
+
+    @Option(
         name = "module-parameter",
         description =
                 "Allows to run only one module parameter type instead of all the combinations. "
@@ -172,6 +184,7 @@ public class BaseTestSuite extends ITestSuite {
     private SuiteModuleLoader mModuleRepo;
     private Map<String, List<SuiteTestFilter>> mIncludeFiltersParsed = new HashMap<>();
     private Map<String, List<SuiteTestFilter>> mExcludeFiltersParsed = new HashMap<>();
+    private List<File> mConfigPaths = new ArrayList<>();
 
     /** {@inheritDoc} */
     @Override
@@ -185,14 +198,72 @@ public class BaseTestSuite extends ITestSuite {
             SuiteModuleLoader.addFilters(mIncludeFilters, mIncludeFiltersParsed, abis);
             SuiteModuleLoader.addFilters(mExcludeFilters, mExcludeFiltersParsed, abis);
 
+            String includeFilter = mIncludeFiltersParsed.toString();
+            if (mIncludeFiltersParsed.size() > MAX_FILTER_DISPLAY) {
+                if (isSplitting()) {
+                    includeFilter = includeFilter.substring(0, 100) + "...";
+                } else {
+                    File suiteIncludeFilters = null;
+                    try {
+                        suiteIncludeFilters =
+                                FileUtil.createTempFile("suite-include-filters", ".txt");
+                        FileUtil.writeToFile(mIncludeFiltersParsed.toString(), suiteIncludeFilters);
+                        logFilterFile(
+                                suiteIncludeFilters,
+                                suiteIncludeFilters.getName(),
+                                LogDataType.TEXT);
+                        includeFilter = String.format("See %s", suiteIncludeFilters.getName());
+                    } catch (IOException e) {
+                        CLog.e(e);
+                    } finally {
+                        FileUtil.deleteFile(suiteIncludeFilters);
+                    }
+                }
+            }
+
+            String excludeFilter = mExcludeFiltersParsed.toString();
+            if (mExcludeFiltersParsed.size() > MAX_FILTER_DISPLAY) {
+                if (isSplitting()) {
+                    excludeFilter = excludeFilter.substring(0, 100) + "...";
+                } else {
+                    File suiteExcludeFilters = null;
+                    try {
+                        suiteExcludeFilters =
+                                FileUtil.createTempFile("suite-exclude-filters", ".txt");
+                        FileUtil.writeToFile(mExcludeFiltersParsed.toString(), suiteExcludeFilters);
+                        logFilterFile(
+                                suiteExcludeFilters,
+                                suiteExcludeFilters.getName(),
+                                LogDataType.TEXT);
+                        excludeFilter = String.format("See %s", suiteExcludeFilters.getName());
+                    } catch (IOException e) {
+                        CLog.e(e);
+                    } finally {
+                        FileUtil.deleteFile(suiteExcludeFilters);
+                    }
+                }
+            }
+
             CLog.d(
                     "Initializing ModuleRepo\nABIs:%s\n"
                             + "Test Args:%s\nModule Args:%s\nIncludes:%s\nExcludes:%s",
-                    abis, mTestArgs, mModuleArgs, mIncludeFiltersParsed, mExcludeFiltersParsed);
+                    abis, mTestArgs, mModuleArgs, includeFilter, excludeFilter);
+
             mModuleRepo =
                     createModuleLoader(
                             mIncludeFiltersParsed, mExcludeFiltersParsed, mTestArgs, mModuleArgs);
+            if (mForceParameter != null && !mEnableParameter) {
+                throw new IllegalArgumentException(
+                        "'module-parameter' option was specified without "
+                                + "'enable-optional-parameterization'");
+            }
+            if (mEnableOptionalParameter && !mEnableParameter) {
+                throw new IllegalArgumentException(
+                        "'enable-optional-parameterization' option was specified without "
+                                + "'enable-parameterized-modules'");
+            }
             mModuleRepo.setParameterizedModules(mEnableParameter);
+            mModuleRepo.setOptionalParameterizedModules(mEnableOptionalParameter);
             mModuleRepo.setModuleParameter(mForceParameter);
             mModuleRepo.setExcludedModuleParameters(mExcludedModuleParameters);
 
@@ -234,6 +305,12 @@ public class BaseTestSuite extends ITestSuite {
     public LinkedHashMap<String, IConfiguration> loadingStrategy(
             Set<IAbi> abis, List<File> testsDirs, String suitePrefix, String suiteTag) {
         LinkedHashMap<String, IConfiguration> loadedConfigs = new LinkedHashMap<>();
+        // Load and return directly the specific config files.
+        if (!mConfigPaths.isEmpty()) {
+            CLog.d("Loading the specified configs and skip loading from the resources.");
+            return getModuleLoader().loadConfigsFromSpecifiedPaths(mConfigPaths, abis, suiteTag);
+        }
+
         // Load configs that are part of the resources
         if (!mSkipJarLoading) {
             loadedConfigs.putAll(
@@ -252,15 +329,6 @@ public class BaseTestSuite extends ITestSuite {
                         .loadConfigsFromDirectory(
                                 testsDirs, abis, suitePrefix, suiteTag, mConfigPatterns));
         return loadedConfigs;
-    }
-
-    public File getTestsDir() throws FileNotFoundException {
-        IBuildInfo build = getBuildInfo();
-        if (build instanceof IDeviceBuildInfo) {
-            return ((IDeviceBuildInfo) build).getTestsDir();
-        }
-        // TODO: handle multi build?
-        throw new FileNotFoundException("Could not found a tests dir folder.");
     }
 
     /** {@inheritDoc} */
@@ -299,9 +367,28 @@ public class BaseTestSuite extends ITestSuite {
         mModuleArgs.addAll(moduleArgs);
     }
 
+    /** Clear the stored module args out */
+    void clearModuleArgs() {
+        mModuleArgs.clear();
+    }
+
     /** Add config patterns */
     public void addConfigPatterns(List<String> patterns) {
         mConfigPatterns.addAll(patterns);
+    }
+
+    /** Set whether or not parameterized modules are enabled or not. */
+    public void setEnableParameterizedModules(boolean enableParameter) {
+        mEnableParameter = enableParameter;
+    }
+
+    /** Set whether or not optional parameterized modules are enabled or not. */
+    public void setEnableOptionalParameterizedModules(boolean enableOptionalParameter) {
+        mEnableOptionalParameter = enableOptionalParameter;
+    }
+
+    public void setModuleParameter(ModuleParameters forceParameter) {
+        mForceParameter = forceParameter;
     }
 
     /**
@@ -372,7 +459,8 @@ public class BaseTestSuite extends ITestSuite {
             if (mEnableParameter) {
                 for (ModuleParameters param : ModuleParameters.values()) {
                     IModuleParameter moduleParam =
-                            ModuleParametersHelper.getParameterHandler(param, false);
+                            ModuleParametersHelper.getParameterHandler(
+                                    param, mEnableOptionalParameter);
                     if (moduleParam == null) {
                         continue;
                     }
@@ -399,6 +487,21 @@ public class BaseTestSuite extends ITestSuite {
         mExcludeFilters.clear();
         mIncludeFiltersParsed.clear();
         mExcludeFiltersParsed.clear();
+    }
+
+    /**
+     * Add the config path for {@link SuiteModuleLoader} to limit the search loading
+     * configurations.
+     *
+     * @param configPath A {@code File} with the absolute path of the configuration.
+     */
+    void addConfigPaths(File configPath) {
+        mConfigPaths.add(configPath);
+    }
+
+    /** Clear the stored config paths out. */
+    void clearConfigPaths() {
+        mConfigPaths.clear();
     }
 
     /* Helper method designed to remove filters in a list not applicable to the given module */
@@ -429,5 +532,15 @@ public class BaseTestSuite extends ITestSuite {
     @VisibleForTesting
     protected void setPrioritizeHostConfig(boolean prioritizeHostConfig) {
         mPrioritizeHostConfig = prioritizeHostConfig;
+    }
+
+    /** Log a file directly to the result reporter. */
+    private void logFilterFile(File filterFile, String dataName, LogDataType type) {
+        if (getCurrentTestLogger() == null) {
+            return;
+        }
+        try (FileInputStreamSource source = new FileInputStreamSource(filterFile)) {
+            getCurrentTestLogger().testLog(dataName, type, source);
+        }
     }
 }

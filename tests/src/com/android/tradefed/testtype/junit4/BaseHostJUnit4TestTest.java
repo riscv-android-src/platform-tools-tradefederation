@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.testtype.junit4;
 
+import static org.easymock.EasyMock.getCurrentArguments;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -44,6 +46,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ListInstrumentationParser;
 
 import org.easymock.EasyMock;
+import org.easymock.IAnswer;
 import org.junit.Assert;
 import org.junit.AssumptionViolatedException;
 import org.junit.Before;
@@ -183,6 +186,57 @@ public class BaseHostJUnit4TestTest {
         } catch (AssumptionViolatedException e) {
             // Ensure that the Assume logic in the test does not make a false pass for the unit test
             fail("Should not have thrown an Assume exception.");
+        }
+        EasyMock.verify(mMockBuild, mMockDevice);
+    }
+
+    /** Test that we carry the assumption failure messages. */
+    @Test
+    public void testRunDeviceTests_assumptionFailure() throws Exception {
+        TestableHostJUnit4Test test = new TestableHostJUnit4Test();
+        test.setDevice(mMockDevice);
+        test.setBuild(mMockBuild);
+        test.setInvocationContext(mMockContext);
+        mMockDevice.executeShellCommand(
+                EasyMock.eq("pm list instrumentation"), EasyMock.anyObject());
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
+        EasyMock.expect(
+                        mMockDevice.runInstrumentationTests(
+                                (IRemoteAndroidTestRunner) EasyMock.anyObject(),
+                                EasyMock.<Collection<ITestLifeCycleReceiver>>anyObject()))
+                .andAnswer(
+                        new IAnswer<Boolean>() {
+                            @SuppressWarnings("unchecked")
+                            @Override
+                            public Boolean answer() throws Throwable {
+                                Collection<ITestLifeCycleReceiver> receivers =
+                                        (Collection<ITestLifeCycleReceiver>)
+                                                getCurrentArguments()[1];
+                                for (ITestLifeCycleReceiver i : receivers) {
+                                    i.testRunStarted("runName", 2);
+                                    i.testStarted(new TestDescription("class", "test1"));
+                                    i.testAssumptionFailure(
+                                            new TestDescription("class", "test1"), "assumpFail");
+                                    i.testEnded(
+                                            new TestDescription("class", "test1"),
+                                            new HashMap<String, Metric>());
+
+                                    i.testStarted(new TestDescription("class", "test2"));
+                                    i.testAssumptionFailure(
+                                            new TestDescription("class", "test2"), "assumpFail2");
+                                    i.testEnded(
+                                            new TestDescription("class", "test2"),
+                                            new HashMap<String, Metric>());
+                                }
+                                return true;
+                            }
+                        });
+        EasyMock.replay(mMockBuild, mMockDevice);
+        try {
+            test.runDeviceTests("com.package", "testClass");
+            fail("Should have thrown an Assume exception.");
+        } catch (AssumptionViolatedException e) {
+            assertEquals("assumpFail\n\nassumpFail2", e.getMessage());
         }
         EasyMock.verify(mMockBuild, mMockDevice);
     }

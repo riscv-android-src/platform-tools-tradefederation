@@ -33,8 +33,6 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
-import com.google.common.xml.XmlEscapers;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -171,7 +169,7 @@ public class XmlSuiteResultFormatterTest {
         assertXmlContainsValue(
                 content,
                 "Result/Module/TestCase/Test/Failure/StackTrace",
-                XmlEscapers.xmlContentEscaper().escape("module1 failed.\nstack\nstack\0"));
+                XmlSuiteResultFormatter.sanitizeXmlContent("module1 failed.\nstack\nstack\0"));
         // Test that we can read back the informations
         SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
@@ -332,10 +330,6 @@ public class XmlSuiteResultFormatterTest {
         assertXmlContainsAttribute(content, "Result/Module/TestCase/Test", "result", "fail");
         assertXmlContainsAttribute(
                 content, "Result/Module/TestCase/Test/Failure", "message", "module1 failed.");
-        assertXmlContainsValue(
-                content,
-                "Result/Module/TestCase/Test/Failure/StackTrace",
-                XmlEscapers.xmlContentEscaper().escape("module1 failed.\nstack\nstack\0"));
         // Test that we can read back the informations
         SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
@@ -426,7 +420,7 @@ public class XmlSuiteResultFormatterTest {
         assertXmlContainsValue(
                 content,
                 "Result/Module/TestCase/Test/Failure/StackTrace",
-                XmlEscapers.xmlContentEscaper().escape("module1 failed.\nstack\nstack\0"));
+                XmlSuiteResultFormatter.sanitizeXmlContent("module1 failed.\nstack\nstack\0"));
         // Test that we can read back the informations
         SuiteResultHolder holder = mFormatter.parseResults(mResultDir, true);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
@@ -474,10 +468,6 @@ public class XmlSuiteResultFormatterTest {
         assertXmlContainsAttribute(content, "Result/Module/TestCase/Test", "result", "fail");
         assertXmlContainsAttribute(
                 content, "Result/Module/TestCase/Test/Failure", "message", "module1 failed.");
-        assertXmlContainsValue(
-                content,
-                "Result/Module/TestCase/Test/Failure/StackTrace",
-                XmlEscapers.xmlContentEscaper().escape("module1 failed.\nstack\nstack\0"));
         // Test that we can read back the informations
         SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
@@ -506,8 +496,13 @@ public class XmlSuiteResultFormatterTest {
     @Test
     public void testRunHistoryReporting() throws Exception {
         final String RUN_HISTORY =
-                "[{\"startTime\":10000000000000,\"endTime\":10000000100000},"
-                        + "{\"startTime\":10000000200000,\"endTime\":10000000300000}]";
+                "[{\"startTime\":10000000000000,\"endTime\":10000000100000,\"passedTests\":10,"
+                        + "\"failedTests\":5,\"commandLineArgs\":\"cts\","
+                        + "\"hostName\":\"user.android.com\"},"
+                        + "{\"startTime\":10000000200000,\"endTime\":10000000300000,"
+                        + "\"passedTests\":3,\"failedTests\":2,"
+                        + "\"commandLineArgs\":\"cts\","
+                        + "\"hostName\":\"user.android.com\"}]";
         mResultHolder.context = mContext;
         mResultHolder.context.addInvocationAttribute("run_history", RUN_HISTORY);
 
@@ -532,8 +527,18 @@ public class XmlSuiteResultFormatterTest {
         assertXmlContainsNode(content, "Result/RunHistory");
         assertXmlContainsAttribute(content, "Result/RunHistory/Run", "start", "10000000000000");
         assertXmlContainsAttribute(content, "Result/RunHistory/Run", "end", "10000000100000");
+        assertXmlContainsAttribute(content, "Result/RunHistory/Run", "pass", "10");
+        assertXmlContainsAttribute(content, "Result/RunHistory/Run", "failed", "5");
+        assertXmlContainsAttribute(content, "Result/RunHistory/Run", "command_line_args", "cts");
+        assertXmlContainsAttribute(
+                content, "Result/RunHistory/Run", "host_name", "user.android.com");
         assertXmlContainsAttribute(content, "Result/RunHistory/Run", "start", "10000000200000");
         assertXmlContainsAttribute(content, "Result/RunHistory/Run", "end", "10000000300000");
+        assertXmlContainsAttribute(content, "Result/RunHistory/Run", "pass", "3");
+        assertXmlContainsAttribute(content, "Result/RunHistory/Run", "failed", "2");
+        assertXmlContainsAttribute(content, "Result/RunHistory/Run", "command_line_args", "cts");
+        assertXmlContainsAttribute(
+                content, "Result/RunHistory/Run", "host_name", "user.android.com");
         // Test that we can read back the information.
         SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
         assertEquals(RUN_HISTORY, holder.context.getAttributes().getUniqueMap().get("run_history"));

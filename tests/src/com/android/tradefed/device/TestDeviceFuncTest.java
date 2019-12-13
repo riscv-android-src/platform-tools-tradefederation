@@ -36,6 +36,7 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.KeyguardControllerState;
+import com.android.tradefed.util.ProcessInfo;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
@@ -50,8 +51,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.net.URLConnection;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import javax.imageio.ImageIO;
 
@@ -607,6 +609,60 @@ public class TestDeviceFuncTest implements IDeviceTest {
         }
     }
 
+    private ProcessInfo waitForSystemServerProcess() throws DeviceNotAvailableException {
+        ProcessInfo systemServer = null;
+        for (int i = 0; i < 5; i++) {
+            systemServer = mTestDevice.getProcessByName("system_server");
+            if (systemServer != null) {
+                return systemServer;
+            }
+            RunUtil.getDefault().sleep(1000);
+        }
+        Log.i(LOG_TAG, "The system_server process fails to come up");
+        return null;
+    }
+
+    /** Test device soft-restart detection API. */
+    @Test
+    public void testDeviceSoftRestart() throws DeviceNotAvailableException {
+        Log.i(LOG_TAG, "testDeviceSoftRestartSince");
+
+        // Get system_server process info
+        ProcessInfo prev = mTestDevice.getProcessByName("system_server");
+        long deviceTimeMs = mTestDevice.getDeviceDate();
+        if (prev == null) {
+            Log.i(LOG_TAG, "System_server process does not exist. Abort testDeviceSoftRestart.");
+            return;
+        }
+        assertFalse(mTestDevice.deviceSoftRestartedSince(prev.getStartTime(), TimeUnit.SECONDS));
+        assertFalse(mTestDevice.deviceSoftRestarted(prev));
+        if (!mTestDevice.isAdbRoot()) {
+            mTestDevice.enableAdbRoot();
+        }
+        mTestDevice.executeShellCommand(String.format("kill %s", prev.getPid()));
+        RunUtil.getDefault().sleep(1000);
+        assertTrue(mTestDevice.deviceSoftRestartedSince(deviceTimeMs, TimeUnit.MILLISECONDS));
+        assertTrue(mTestDevice.deviceSoftRestarted(prev));
+        prev = waitForSystemServerProcess();
+        deviceTimeMs = mTestDevice.getDeviceDate();
+        mTestDevice.reboot();
+        if (!mTestDevice.isAdbRoot()) {
+            mTestDevice.enableAdbRoot();
+        }
+        assertFalse(mTestDevice.deviceSoftRestartedSince(deviceTimeMs, TimeUnit.MILLISECONDS));
+        assertFalse(mTestDevice.deviceSoftRestarted(prev));
+        // Restart system_server 10 seconds after reboot
+        RunUtil.getDefault().sleep(10000);
+        mTestDevice.executeShellCommand(
+                String.format("kill %s", mTestDevice.getProcessByName("system_server").getPid()));
+        RunUtil.getDefault().sleep(1000);
+        assertTrue(mTestDevice.deviceSoftRestartedSince(deviceTimeMs, TimeUnit.MILLISECONDS));
+        assertTrue(mTestDevice.deviceSoftRestarted(prev));
+        waitForSystemServerProcess();
+        assertTrue(mTestDevice.deviceSoftRestartedSince(deviceTimeMs, TimeUnit.MILLISECONDS));
+        assertTrue(mTestDevice.deviceSoftRestarted(prev));
+    }
+
     /**
      * Verify that {@link TestDevice#clearErrorDialogs()} can successfully clear an error dialog
      * from screen.
@@ -825,7 +881,7 @@ public class TestDeviceFuncTest implements IDeviceTest {
     /** Test for {@link TestDevice#listDisplayIds()}. */
     @Test
     public void testListDisplays() throws Exception {
-        Set<Integer> displays = mTestDevice.listDisplayIds();
+        Set<Long> displays = mTestDevice.listDisplayIds();
         assertEquals(1, displays.size());
     }
 
@@ -836,8 +892,9 @@ public class TestDeviceFuncTest implements IDeviceTest {
         assertNotNull(screenshot);
         File testFile = FileUtil.createTempFile("test-screenshot", ".testpng");
         try {
-            FileUtil.writeToFile(screenshot.createInputStream(), testFile);
-            assertEquals("image/png", Files.probeContentType(testFile.toPath()));
+            assertEquals(
+                    "image/png",
+                    URLConnection.guessContentTypeFromStream(screenshot.createInputStream()));
         } finally {
             FileUtil.deleteFile(testFile);
             StreamUtil.close(screenshot);

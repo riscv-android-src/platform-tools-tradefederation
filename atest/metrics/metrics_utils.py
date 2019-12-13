@@ -18,7 +18,9 @@ Utility functions for metrics.
 
 import os
 import platform
+import sys
 import time
+import traceback
 
 from . import metrics
 from . import metrics_base
@@ -62,6 +64,25 @@ def convert_duration(diff_time_sec):
     seconds = int(diff_time_sec)
     nanos = int((diff_time_sec - seconds)*10**9)
     return {'seconds': seconds, 'nanos': nanos}
+
+
+# pylint: disable=broad-except
+def handle_exc_and_send_exit_event(exit_code):
+    """handle exceptions and send exit event.
+
+    Args:
+        exit_code: An integer of exit code.
+    """
+    stacktrace = logs = ''
+    try:
+        exc_type, exc_msg, _ = sys.exc_info()
+        stacktrace = traceback.format_exc()
+        if exc_type:
+            logs = '{etype}: {value}'.format(etype=exc_type.__name__,
+                                             value=exc_msg)
+    except Exception:
+        pass
+    send_exit_event(exit_code, stacktrace=stacktrace, logs=logs)
 
 
 def send_exit_event(exit_code, stacktrace='', logs=''):

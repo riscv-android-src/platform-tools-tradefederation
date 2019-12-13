@@ -18,6 +18,8 @@ package com.android.tradefed.result.proto;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -32,6 +34,8 @@ import com.android.tradefed.result.proto.LogFileProto.LogFileInfo;
 import com.android.tradefed.result.proto.TestRecordProto.ChildReference;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
+import com.android.tradefed.util.MultiMap;
+import com.android.tradefed.util.proto.TestRecordProtoUtil;
 
 import com.google.common.base.Strings;
 import com.google.protobuf.Any;
@@ -39,6 +43,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Timestamp;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -61,6 +66,9 @@ public class ProtoResultParser {
     private IInvocationContext mMainContext;
 
     private boolean mQuietParsing = true;
+
+    private boolean mInvocationStarted = false;
+    private boolean mInvocationEnded = false;
 
     /** Ctor. */
     public ProtoResultParser(
@@ -108,7 +116,7 @@ public class ProtoResultParser {
         // Invocation Start
         handleInvocationStart(finalProto);
 
-        evalProto(finalProto.getChildrenList(), false);
+        evalChildrenProto(finalProto.getChildrenList(), false);
         // Invocation End
         handleInvocationEnded(finalProto);
     }
@@ -140,33 +148,70 @@ public class ProtoResultParser {
         }
     }
 
-    private void evalProto(List<ChildReference> children, boolean isInRun) {
+    /**
+     * In case of parsing proto files directly, handle direct parsing of them as a sequence.
+     * Associated with {@link FileProtoResultReporter} when reporting a sequence of files.
+     *
+     * @param protoFile The proto file to be parsed.
+     * @throws IOException
+     */
+    public void processFileProto(File protoFile) throws IOException {
+        TestRecord record = null;
+        try {
+            record = TestRecordProtoUtil.readFromFile(protoFile);
+        } catch (InvalidProtocolBufferException e) {
+            // Log the proto that failed to parse
+            try (FileInputStreamSource protoFail = new FileInputStreamSource(protoFile, true)) {
+                mListener.testLog("failed-result-protobuf", LogDataType.PB, protoFail);
+            }
+            throw e;
+        }
+        if (!mInvocationStarted) {
+            handleInvocationStart(record);
+            mInvocationStarted = true;
+        } else if (record.getParentTestRecordId().isEmpty()) {
+            handleInvocationEnded(record);
+        } else {
+            evalProto(record, false);
+        }
+    }
+
+    /** Returns whether or not the parsing reached an invocation ended. */
+    public boolean invocationEndedReached() {
+        return mInvocationEnded;
+    }
+
+    private void evalChildrenProto(List<ChildReference> children, boolean isInRun) {
         for (ChildReference child : children) {
             TestRecord childProto = child.getInlineTestRecord();
-            if (isInRun) {
-                // test case
-                String[] info = childProto.getTestRecordId().split("#");
-                TestDescription description = new TestDescription(info[0], info[1]);
-                mListener.testStarted(description, timeStampToMillis(childProto.getStartTime()));
-                handleTestCaseEnd(description, childProto);
+            evalProto(childProto, isInRun);
+        }
+    }
+
+    private void evalProto(TestRecord childProto, boolean isInRun) {
+        if (isInRun) {
+            // test case
+            String[] info = childProto.getTestRecordId().split("#");
+            TestDescription description = new TestDescription(info[0], info[1]);
+            mListener.testStarted(description, timeStampToMillis(childProto.getStartTime()));
+            handleTestCaseEnd(description, childProto);
+        } else {
+            boolean inRun = false;
+            if (childProto.hasDescription()) {
+                // Module start
+                handleModuleStart(childProto);
             } else {
-                boolean inRun = false;
-                if (childProto.hasDescription()) {
-                    // Module start
-                    handleModuleStart(childProto);
-                } else {
-                    // run start
-                    handleTestRunStart(childProto);
-                    inRun = true;
-                }
-                evalProto(childProto.getChildrenList(), inRun);
-                if (childProto.hasDescription()) {
-                    // Module end
-                    handleModuleProto(childProto);
-                } else {
-                    // run end
-                    handleTestRunEnd(childProto);
-                }
+                // run start
+                handleTestRunStart(childProto);
+                inRun = true;
+            }
+            evalChildrenProto(childProto.getChildrenList(), inRun);
+            if (childProto.hasDescription()) {
+                // Module end
+                handleModuleProto(childProto);
+            } else {
+                // run end
+                handleTestRunEnd(childProto);
             }
         }
     }
@@ -209,7 +254,9 @@ public class ProtoResultParser {
         // Get final context in case it changed.
         Any anyDescription = endInvocationProto.getDescription();
         if (!anyDescription.is(Context.class)) {
-            throw new RuntimeException("Expected Any description of type Context");
+            throw new RuntimeException(
+                    String.format(
+                            "Expected Any description of type Context, was %s", anyDescription));
         }
         try {
             IInvocationContext context =
@@ -226,6 +273,7 @@ public class ProtoResultParser {
         }
 
         log("Invocation ended proto");
+        mInvocationEnded = true;
         if (!mReportInvocation) {
             CLog.d("Skipping invocation ended reporting.");
             return;
@@ -305,6 +353,7 @@ public class ProtoResultParser {
         // If we find debugging information, the test run failed and we reflect it.
         if (runProto.hasDebugInfo()) {
             mListener.testRunFailed(runProto.getDebugInfo().getErrorMessage());
+            log("Test run failure proto: %s", runProto.getDebugInfo().getErrorMessage());
         }
         handleLogs(runProto);
         log("Test run ended proto: %s", runProto.getTestRecordId());
@@ -378,7 +427,7 @@ public class ProtoResultParser {
                                 info.getIsCompressed(),
                                 LogDataType.valueOf(info.getLogType()),
                                 info.getSize());
-                if (file.getPath() == null) {
+                if (Strings.isNullOrEmpty(file.getPath())) {
                     CLog.e("Log '%s' was registered but without a path.", entry.getKey());
                     return;
                 }
@@ -394,7 +443,9 @@ public class ProtoResultParser {
                         logger.testLog(mFilePrefix + entry.getKey(), type, source);
                     }
                 } else {
-                    log("Logging %s from subprocess: %s", entry.getKey(), file.getUrl());
+                    log(
+                            "Logging %s from subprocess. url: %s, path: %s",
+                            entry.getKey(), file.getUrl(), file.getPath());
                     logger.logAssociation(mFilePrefix + entry.getKey(), file);
                 }
             } catch (InvalidProtocolBufferException e) {
@@ -441,7 +492,28 @@ public class ProtoResultParser {
             return;
         }
         // Copy invocation attributes
-        receiverContext.addInvocationAttributes(endInvocationContext.getAttributes());
+        MultiMap<String, String> attributes = endInvocationContext.getAttributes();
+        for (InvocationMetricKey key : InvocationMetricKey.values()) {
+            if (!attributes.containsKey(key.toString())) {
+                continue;
+            }
+            List<String> values = attributes.get(key.toString());
+            attributes.remove(key.toString());
+
+            for (String val : values) {
+                if (key.shouldAdd()) {
+                    try {
+                        InvocationMetricLogger.addInvocationMetrics(key, Long.parseLong(val));
+                    } catch (NumberFormatException e) {
+                        CLog.d("Key %s doesn't have a number value, was: %s.", key, val);
+                        InvocationMetricLogger.addInvocationMetrics(key, val);
+                    }
+                } else {
+                    InvocationMetricLogger.addInvocationMetrics(key, val);
+                }
+            }
+        }
+        receiverContext.addInvocationAttributes(attributes);
     }
 
     private void log(String format, Object... obj) {

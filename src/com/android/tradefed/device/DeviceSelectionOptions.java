@@ -51,7 +51,9 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         /** Use a placeholder for a remote device nested in a virtualized environment. */
         GCE_DEVICE(RemoteAvdIDevice.class),
         /** Use a placeholder for a remote device in virtualized environment. */
-        REMOTE_DEVICE(VmRemoteDevice.class);
+        REMOTE_DEVICE(VmRemoteDevice.class),
+        /** Allocate a virtual device running on localhost. */
+        LOCAL_VIRTUAL_DEVICE(StubLocalAndroidVirtualDevice.class);
 
         private Class<?> mRequiredIDeviceClass;
 
@@ -305,6 +307,10 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         return DeviceRequestedType.REMOTE_DEVICE.equals(mRequestedType);
     }
 
+    public boolean localVirtualDeviceRequested() {
+        return DeviceRequestedType.LOCAL_VIRTUAL_DEVICE.equals(mRequestedType);
+    }
+
     /**
      * Sets the emulator requested flag
      */
@@ -529,7 +535,7 @@ public class DeviceSelectionOptions implements IDeviceSelection {
                 }
 
                 // Extract the temperature from the file
-                IBatteryTemperature temp = new BatteryTemperature();
+                BatteryTemperature temp = new BatteryTemperature();
                 Integer deviceBatteryTemp = temp.getBatteryTemperature(device);
 
                 if (deviceBatteryTemp <= 0) {
@@ -581,6 +587,10 @@ public class DeviceSelectionOptions implements IDeviceSelection {
                 return false;
             }
             if (remoteDeviceRequested() != (VmRemoteDevice.class.equals(device.getClass()))) {
+                return false;
+            }
+            if (localVirtualDeviceRequested()
+                    != (StubLocalAndroidVirtualDevice.class.equals(device.getClass()))) {
                 return false;
             }
         }

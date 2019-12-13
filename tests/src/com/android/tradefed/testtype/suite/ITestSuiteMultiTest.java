@@ -116,6 +116,7 @@ public class ITestSuiteMultiTest {
         mMockDevice1 = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice1.getSerialNumber()).andStubReturn("SERIAL1");
         mMockBuildInfo1 = EasyMock.createMock(IBuildInfo.class);
+        EasyMock.expect(mMockBuildInfo1.getRemoteFiles()).andReturn(null).once();
         mMockDevice2 = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice2.getSerialNumber()).andStubReturn("SERIAL2");
         mMockBuildInfo2 = EasyMock.createMock(IBuildInfo.class);
