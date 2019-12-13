@@ -1124,7 +1124,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      */
     @Override
     public boolean addCommand(String[] args) throws ConfigurationException {
-        return internalAddCommand(args, 0, null);
+        return internalAddCommand(args, null);
     }
 
     /** Returns true if {@link CommandOptions#USE_SANDBOX} is part of the command line. */
@@ -1176,7 +1176,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return config;
     }
 
-    private boolean internalAddCommand(String[] args, long totalExecTime, String cmdFilePath)
+    private boolean internalAddCommand(String[] args, String cmdFilePath)
             throws ConfigurationException {
         assertStarted();
         IConfiguration config = createConfiguration(args);
@@ -1196,10 +1196,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             config.validateOptions();
 
             if (config.getCommandOptions().runOnAllDevices()) {
-                addCommandForAllDevices(totalExecTime, args, cmdFilePath);
+                addCommandForAllDevices(args, cmdFilePath);
             } else {
                 CommandTracker cmdTracker = createCommandTracker(args, cmdFilePath);
-                cmdTracker.incrementExecTime(totalExecTime);
                 ExecutableCommand cmdInstance = createExecutableCommand(cmdTracker, config, false);
                 addExecCommandToQueue(cmdInstance, 0);
             }
@@ -1246,7 +1245,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 CLog.d("Adding command %s", prettyCmdLine);
 
                 try {
-                    internalAddCommand(arrayCommand, 0, cmdFile.getAbsolutePath());
+                    internalAddCommand(arrayCommand, cmdFile.getAbsolutePath());
                 } catch (ConfigurationException e) {
                     throw new ConfigurationException(String.format(
                             "Failed to add command '%s': %s", prettyCmdLine, e.getMessage()), e);
@@ -1268,11 +1267,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /**
      * Creates a new command for each connected device, and adds each to the queue.
-     * <p/>
-     * Note this won't have the desired effect if user has specified other
-     * conflicting {@link IConfiguration#getDeviceRequirements()}in the command.
+     *
+     * <p>Note this won't have the desired effect if user has specified other conflicting {@link
+     * IConfiguration#getDeviceRequirements()}in the command.
      */
-    private void addCommandForAllDevices(long totalExecTime, String[] args, String cmdFilePath)
+    private void addCommandForAllDevices(String[] args, String cmdFilePath)
             throws ConfigurationException {
         List<DeviceDescriptor> deviceDescs = getDeviceManager().listAllDevices();
 
@@ -1283,7 +1282,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 argsWithDevice[argsWithDevice.length - 2] = "-s";
                 argsWithDevice[argsWithDevice.length - 1] = device;
                 CommandTracker cmdTracker = createCommandTracker(argsWithDevice, cmdFilePath);
-                cmdTracker.incrementExecTime(totalExecTime);
                 IConfiguration config = getConfigFactory().createConfigurationFromArgs(
                         cmdTracker.getArgs(), null, getKeyStoreClient());
                 CLog.logAndDisplay(LogLevel.INFO, "Scheduling '%s' on '%s'",
