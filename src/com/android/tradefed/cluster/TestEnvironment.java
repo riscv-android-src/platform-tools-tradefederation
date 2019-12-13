@@ -35,6 +35,7 @@ public class TestEnvironment {
     String mOutputFileUploadUrl = null;
     boolean mUseSubprocessReporting = false;
     long mOutputIdleTimeout = 0L;
+    final List<String> mJvmOptions = new ArrayList<>();
     final Map<String, String> mJavaProperties = new HashMap<>();
     String mContextFilePattern = null;
     private final List<String> mExtraContextFiles = new ArrayList<>();
@@ -138,6 +139,24 @@ public class TestEnvironment {
     }
 
     /**
+     * Adds a JVM option.
+     *
+     * @param s a JVM option.
+     */
+    public void addJvmOption(final String s) {
+        mJvmOptions.add(s);
+    }
+
+    /**
+     * Returns a list of JVM options.
+     *
+     * @return unmodifiable list of options
+     */
+    public List<String> getJvmOptions() {
+        return Collections.unmodifiableList(mJvmOptions);
+    }
+
+    /**
      * Adds a java property.
      *
      * @param name a property name.
@@ -202,6 +221,14 @@ public class TestEnvironment {
             }
         } else {
             CLog.w("env_vars is null");
+        }
+        JSONArray jvmOptions = json.optJSONArray("jvm_options");
+        if (jvmOptions != null) {
+            for (int i = 0; i < jvmOptions.length(); i++) {
+                obj.addJvmOption(jvmOptions.getString(i));
+            }
+        } else {
+            CLog.w("jvm_options is null");
         }
         final JSONArray javaProperties = json.optJSONArray("java_properties");
         if (javaProperties != null) {

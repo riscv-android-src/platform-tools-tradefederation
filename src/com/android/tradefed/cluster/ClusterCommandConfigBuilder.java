@@ -237,6 +237,9 @@ public class ClusterCommandConfigBuilder {
         config.injectOptionValue(
                 "cluster:output-idle-timeout",
                 String.valueOf(mTestEnvironment.getOutputIdleTimeout()));
+        for (String option : mTestEnvironment.getJvmOptions()) {
+            config.injectOptionValue("cluster:jvm-option", option);
+        }
         for (final Map.Entry<String, String> entry :
                 mTestEnvironment.getJavaProperties().entrySet()) {
             config.injectOptionValue("cluster:java-property", entry.getKey(), entry.getValue());
