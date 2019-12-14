@@ -18,6 +18,7 @@ package com.android.tradefed.testtype;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -110,11 +111,10 @@ public class DeviceTestCase extends MetricTestCase
         mDevice = device;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         if (getName() == null && mMethodName != null) {
             setName(mMethodName);
         }
