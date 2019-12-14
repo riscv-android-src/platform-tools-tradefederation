@@ -1122,7 +1122,8 @@ public class InstrumentationTestTest {
         inOrder.verify(mInstrumentationTest).setRunnerArgs(runner.capture());
         inOrder.verify(mMockTestDevice, times(2))
                 .runInstrumentationTests(eq(runner.getValue()), any(ITestLifeCycleReceiver.class));
-        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
+        inOrder.verify(mMockListener)
+                .testRunStarted(eq(TEST_PACKAGE_VALUE), eq(2), eq(0), anyLong());
         inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
         ArgumentCaptor<HashMap<String, Metric>> testCapture1 =
                 ArgumentCaptor.forClass(HashMap.class);
