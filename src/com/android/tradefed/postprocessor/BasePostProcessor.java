@@ -115,6 +115,16 @@ public abstract class BasePostProcessor implements IPostProcessor {
         mForwarder.testLog(dataName, dataType, dataStream);
     }
 
+    @Override
+    public final void testModuleStarted(IInvocationContext moduleContext) {
+        mForwarder.testModuleStarted(moduleContext);
+    }
+
+    @Override
+    public final void testModuleEnded() {
+        mForwarder.testModuleEnded();
+    }
+
     /** Test run callbacks */
     @Override
     public final void testRunStarted(String runName, int testCount) {
