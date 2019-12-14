@@ -49,7 +49,7 @@ import java.util.stream.Collectors;
  * one or multiple repeated tests by using given regex patterns to parse start and end signals of an
  * event from logcat lines.
  */
-@OptionClass(alias = "timing-metric-collector")
+@OptionClass(alias = "logcat-timing-metric-collector")
 public class LogcatTimingMetricCollector extends BaseDeviceMetricCollector {
 
     private static final String LOGCAT_NAME_FORMAT = "device_%s_test_logcat";
@@ -79,8 +79,16 @@ public class LogcatTimingMetricCollector extends BaseDeviceMetricCollector {
                             + " used if not specified.")
     private final List<String> mLogcatBuffers = new ArrayList<>();
 
+    @Option(
+            name = "per-run",
+            description =
+                    "Collect timing metrics at test run level if true, otherwise collect at "
+                            + "test level.")
+    private boolean mPerRun = true;
+
     private final Map<ITestDevice, LogcatReceiver> mLogcatReceivers = new HashMap<>();
     private final TimingsLogParser mParser = new TimingsLogParser();
+    private String mLogcatCmd = "logcat *:D -T 150";
 
     @Override
     public void onTestRunStart(DeviceMetricData testData) {
@@ -97,16 +105,57 @@ public class LogcatTimingMetricCollector extends BaseDeviceMetricCollector {
             CLog.d("Adding metric: %s", name);
             mParser.addDurationPatternPair(name, start, end);
         }
-        // Start receiving logcat
-        String logcatCmd = LOGCAT_CMD;
         if (!mLogcatBuffers.isEmpty()) {
-            logcatCmd += " -b " + String.join(",", mLogcatBuffers);
+            mLogcatCmd += " -b " + String.join(",", mLogcatBuffers);
         }
+        if (mPerRun) {
+            startCollection();
+        }
+    }
+
+    @Override
+    public void onTestRunEnd(
+            DeviceMetricData testData, final Map<String, Metric> currentTestCaseMetrics) {
+        if (mPerRun) {
+            collectMetrics(testData);
+            stopCollection();
+        }
+    }
+
+    @Override
+    public void onTestStart(DeviceMetricData testData) {
+        if (!mPerRun) {
+            startCollection();
+        }
+    }
+
+    @Override
+    public void onTestEnd(DeviceMetricData testData, Map<String, Metric> currentTestCaseMetrics) {
+        if (!mPerRun) {
+            collectMetrics(testData);
+            stopCollection();
+        }
+    }
+
+    @Override
+    public void onTestFail(DeviceMetricData testData, TestDescription test) {
+        for (ITestDevice device : getDevices()) {
+            try (InputStreamSource logcatData = mLogcatReceivers.get(device).getLogcatData()) {
+                testLog(
+                        String.format(LOGCAT_NAME_FORMAT, device.getSerialNumber()),
+                        LogDataType.TEXT,
+                        logcatData);
+            }
+        }
+        stopCollection();
+    }
+
+    private void startCollection() {
         for (ITestDevice device : getDevices()) {
             CLog.d(
                     "Creating logcat receiver on device %s with command %s",
-                    device.getSerialNumber(), logcatCmd);
-            mLogcatReceivers.put(device, createLogcatReceiver(device, logcatCmd));
+                    device.getSerialNumber(), mLogcatCmd);
+            mLogcatReceivers.put(device, createLogcatReceiver(device, mLogcatCmd));
             try {
                 device.executeShellCommand("logcat -c");
             } catch (DeviceNotAvailableException e) {
@@ -119,9 +168,7 @@ public class LogcatTimingMetricCollector extends BaseDeviceMetricCollector {
         }
     }
 
-    @Override
-    public void onTestRunEnd(
-            DeviceMetricData testData, final Map<String, Metric> currentTestCaseMetrics) {
+    private void collectMetrics(DeviceMetricData testData) {
         boolean isMultiDevice = getDevices().size() > 1;
         for (ITestDevice device : getDevices()) {
             try (InputStreamSource logcatData = mLogcatReceivers.get(device).getLogcatData()) {
@@ -143,20 +190,11 @@ public class LogcatTimingMetricCollector extends BaseDeviceMetricCollector {
                         LogDataType.TEXT,
                         logcatData);
             }
-            mLogcatReceivers.get(device).stop();
-            mLogcatReceivers.get(device).clear();
         }
     }
 
-    @Override
-    public void onTestFail(DeviceMetricData testData, TestDescription test) {
+    private void stopCollection() {
         for (ITestDevice device : getDevices()) {
-            try (InputStreamSource logcatData = mLogcatReceivers.get(device).getLogcatData()) {
-                testLog(
-                        String.format(LOGCAT_NAME_FORMAT, device.getSerialNumber()),
-                        LogDataType.TEXT,
-                        logcatData);
-            }
             mLogcatReceivers.get(device).stop();
             mLogcatReceivers.get(device).clear();
         }
