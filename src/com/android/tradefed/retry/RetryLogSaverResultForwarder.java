@@ -48,6 +48,17 @@ public class RetryLogSaverResultForwarder extends LogSaverResultForwarder {
         super.testRunStarted(runName, testCount, mAttemptNumber);
     }
 
+    @Override
+    public void testRunStarted(String runName, int testCount, int attemptNumber, long startTime) {
+        if (attemptNumber != mAttemptNumber) {
+            CLog.w(
+                    "Test reported an attempt %s, while the suite is at attempt %s",
+                    attemptNumber, mAttemptNumber);
+        }
+        // We enforce our attempt number
+        super.testRunStarted(runName, testCount, mAttemptNumber, startTime);
+    }
+
     /** Increment the attempt number. */
     public void incrementAttempt() {
         mAttemptNumber++;
