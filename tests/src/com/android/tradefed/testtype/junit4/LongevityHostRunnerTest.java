@@ -45,6 +45,7 @@ import org.junit.runner.Result;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.junit.runners.Suite.SuiteClasses;
+import org.mockito.Mockito;
 
 import java.util.HashMap;
 
@@ -224,7 +225,7 @@ public class LongevityHostRunnerTest {
         mHostTest.run(testInfo, mMockListener);
         // Verify nothing failed, but something passed.
         verify(mMockListener, never()).testFailed(any(), any());
-        verify(mMockListener).testEnded(any(), (HashMap<String, Metric>) any());
+        verify(mMockListener).testEnded(any(), Mockito.<HashMap<String, Metric>>any());
     }
 
     public class SetClassHostTest extends HostTest {
