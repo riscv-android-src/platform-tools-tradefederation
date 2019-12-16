@@ -30,7 +30,7 @@ import com.android.tradefed.log.LogUtil.CLog;
  * <p>Unlike {@link DeviceSetup}, this preparer works when adb is not root aka user builds.
  */
 @OptionClass(alias = "wifi")
-public class WifiPreparer extends BaseTargetPreparer implements ITargetCleaner {
+public class WifiPreparer extends BaseTargetPreparer {
 
     @Option(name="wifi-network", description="the name of wifi network to connect to.")
     private String mWifiNetwork = null;

@@ -34,7 +34,7 @@ import java.util.Collection;
  * tearDown will be called.
  */
 public class TearDownPassThroughPreparer extends BaseTargetPreparer
-        implements IConfigurationReceiver, ITargetCleaner {
+        implements IConfigurationReceiver {
     private IConfiguration mConfiguration;
 
     @Option(name = "preparer", description = "names of preparers to tearDown")
@@ -64,8 +64,8 @@ public class TearDownPassThroughPreparer extends BaseTargetPreparer
             throws DeviceNotAvailableException {
         for (String preparer : mPreparers) {
             Object configObject = mConfiguration.getConfigurationObject(preparer);
-            if (configObject instanceof ITargetCleaner) {
-                ITargetCleaner cleaner = (ITargetCleaner)configObject;
+            if (configObject instanceof ITargetPreparer) {
+                ITargetPreparer cleaner = (ITargetPreparer) configObject;
                 cleaner.tearDown(device, buildInfo, e);
             }
             if (configObject instanceof IHostCleaner) {

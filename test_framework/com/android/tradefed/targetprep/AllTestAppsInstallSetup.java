@@ -40,8 +40,7 @@ import java.util.List;
  * folder onto device. For individual test app install please look at {@link TestAppInstallSetup}
  */
 @OptionClass(alias = "all-tests-installer")
-public class AllTestAppsInstallSetup extends BaseTargetPreparer
-        implements ITargetCleaner, IAbiReceiver {
+public class AllTestAppsInstallSetup extends BaseTargetPreparer implements IAbiReceiver {
     @Option(name = AbiFormatter.FORCE_ABI_STRING,
             description = AbiFormatter.FORCE_ABI_DESCRIPTION,
             importance = Importance.IF_UNSET)

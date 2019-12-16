@@ -28,7 +28,7 @@ import com.android.tradefed.device.StubDevice;
  * <p>Will restore back to original root state on tear down.
  */
 @OptionClass(alias = "root-preparer")
-public class RootTargetPreparer extends BaseTargetPreparer implements ITargetCleaner {
+public class RootTargetPreparer extends BaseTargetPreparer {
 
     private boolean mWasRoot = false;
 

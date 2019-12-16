@@ -33,7 +33,7 @@ import java.util.Map;
  * <p>Tries to restore device user state by switching back to the pre-execution current user.
  */
 @OptionClass(alias = "switch-user-target-preparer")
-public class SwitchUserTargetPreparer extends BaseTargetPreparer implements ITargetCleaner {
+public class SwitchUserTargetPreparer extends BaseTargetPreparer {
     @Option(
         name = "user-type",
         description = "The type of user to switch to before the module run."

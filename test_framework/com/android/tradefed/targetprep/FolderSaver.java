@@ -36,10 +36,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A {@link ITargetCleaner} that pulls directories off device, compresses and saves it into logging
+ * A {@link ITargetPreparer} that pulls directories off device, compresses and saves it into logging
  * backend.
  */
-public class FolderSaver extends BaseTargetPreparer implements ITargetCleaner, ITestLoggerReceiver {
+public class FolderSaver extends BaseTargetPreparer implements ITestLoggerReceiver {
 
     @Option(name = "device-path", description = "Location of directory on device to be pulled and "
             + "logged, may be repeated.")

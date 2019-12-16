@@ -33,12 +33,11 @@ import com.android.tradefed.util.StreamUtil;
 /**
  * A {@link ITargetPreparer} that runs crash collector on device which suppresses and logs crashes
  * during test execution.
- * <p>
- * Note: this preparer requires N platform or newer.
+ *
+ * <p>Note: this preparer requires N platform or newer.
  */
 @OptionClass(alias = "crash-collector")
-public class CrashCollector extends TestFilePushSetup
-        implements ITestLoggerReceiver, ITargetCleaner {
+public class CrashCollector extends TestFilePushSetup implements ITestLoggerReceiver {
 
     private static final String LOG_NAME = "crash-collector-log";
     private ITestLogger mTestLogger;

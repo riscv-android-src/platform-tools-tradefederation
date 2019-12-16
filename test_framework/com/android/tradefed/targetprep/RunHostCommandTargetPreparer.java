@@ -45,7 +45,7 @@ import java.util.List;
 /** Target preparer to run arbitrary host commands before and after running the test. */
 @OptionClass(alias = "run-host-command")
 public class RunHostCommandTargetPreparer extends BaseTargetPreparer
-        implements ITargetCleaner, ITestLoggerReceiver {
+        implements ITestLoggerReceiver {
 
     /** Placeholder to be replaced with real device serial number in commands */
     private static final String DEVICE_SERIAL_PLACEHOLDER = "$SERIAL";
