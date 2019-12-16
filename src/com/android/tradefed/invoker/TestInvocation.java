@@ -62,6 +62,7 @@ import com.android.tradefed.targetprep.DeviceFailedToBootError;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.PrettyPrintDelimiter;
 import com.android.tradefed.util.RunInterruptedException;
@@ -206,11 +207,11 @@ public class TestInvocation implements ITestInvocation {
      * Performs the invocation
      *
      * @param config the {@link IConfiguration}
-     * @param context the {@link IInvocationContext} to use.
+     * @param testInfo the {@link TestInformation} to use for the invocation.
      */
     private void performInvocation(
             IConfiguration config,
-            IInvocationContext context,
+            TestInformation testInfo,
             IInvocationExecution invocationPath,
             IRescheduler rescheduler,
             ITestInvocationListener listener,
@@ -225,6 +226,7 @@ public class TestInvocation implements ITestInvocation {
         Throwable exception = null;
         Throwable tearDownException = null;
         ITestDevice badDevice = null;
+        IInvocationContext context = testInfo.getContext();
 
         // Ensure that no unexpected attributes are added afterward
         ((InvocationContext) context).lockAttributes();
@@ -237,7 +239,7 @@ public class TestInvocation implements ITestInvocation {
                 }
             }
             // Then run the regular setup and run
-            prepareAndRun(config, context, invocationPath, listener);
+            prepareAndRun(config, testInfo, invocationPath, listener);
         } catch (BuildError e) {
             exception = e;
             CLog.w("Build failed on device '%s'. Reason: %s", e.getDeviceDescriptor(),
@@ -406,19 +408,18 @@ public class TestInvocation implements ITestInvocation {
     /** Do setup and run the tests */
     private void prepareAndRun(
             IConfiguration config,
-            IInvocationContext context,
+            TestInformation testInfo,
             IInvocationExecution invocationPath,
             ITestInvocationListener listener)
             throws Throwable {
-        TestInformation info = TestInformation.newBuilder().setInvocationContext(context).build();
         getRunUtil().allowInterrupt(true);
-        logDeviceBatteryLevel(context, "initial -> setup");
+        logDeviceBatteryLevel(testInfo.getContext(), "initial -> setup");
         // TODO: Use TestInformation in setup
-        invocationPath.doSetup(context, config, listener);
-        logDeviceBatteryLevel(context, "setup -> test");
+        invocationPath.doSetup(testInfo.getContext(), config, listener);
+        logDeviceBatteryLevel(testInfo.getContext(), "setup -> test");
         mTestStarted = true;
-        invocationPath.runTests(info, config, listener);
-        logDeviceBatteryLevel(context, "after test");
+        invocationPath.runTests(testInfo, config, listener);
+        logDeviceBatteryLevel(testInfo.getContext(), "after test");
     }
 
     /**
@@ -690,6 +691,15 @@ public class TestInvocation implements ITestInvocation {
             IRescheduler rescheduler,
             ITestInvocationListener... extraListeners)
             throws DeviceNotAvailableException, Throwable {
+        // Create the TestInformation for the invocation
+        // TODO: Use invocation-id in the workfolder name
+        File mWorkFolder = FileUtil.createTempDir("tradefed-invocation-workfolder");
+        TestInformation info =
+                TestInformation.newBuilder()
+                        .setInvocationContext(context)
+                        .setDependenciesFolder(mWorkFolder)
+                        .build();
+
         List<ITestInvocationListener> allListeners =
                 new ArrayList<>(config.getTestInvocationListeners().size() + extraListeners.length);
         allListeners.addAll(config.getTestInvocationListeners());
@@ -856,7 +866,7 @@ public class TestInvocation implements ITestInvocation {
                 return;
             }
 
-            performInvocation(config, context, invocationPath, rescheduler, listener, deviceInit);
+            performInvocation(config, info, invocationPath, rescheduler, listener, deviceInit);
             setExitCode(ExitCode.NO_ERROR, null);
         } catch (IOException e) {
             CLog.e(e);
@@ -877,6 +887,8 @@ public class TestInvocation implements ITestInvocation {
             getLogRegistry().unregisterLogger();
             config.getLogOutput().closeLog();
             config.cleanConfigurationData();
+            // Delete the invocation work directory at the end
+            FileUtil.recursiveDelete(info.dependenciesFolder());
         }
     }
 
