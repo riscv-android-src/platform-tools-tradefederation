@@ -25,6 +25,7 @@ import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.targetprep.StubTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -179,7 +180,7 @@ public class ModuleSplitterTest {
         IRemoteTest test =
                 new IRemoteTest() {
                     @Override
-                    public void run(ITestInvocationListener listener)
+                    public void run(TestInformation testInfo, ITestInvocationListener listener)
                             throws DeviceNotAvailableException {
                         // do nothing.
                     }
