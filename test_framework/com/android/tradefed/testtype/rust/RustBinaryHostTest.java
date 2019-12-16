@@ -21,7 +21,7 @@ import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -29,7 +29,6 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.testtype.IBuildReceiver;
-import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -46,8 +45,7 @@ import java.util.Set;
 
 /** Host test meant to run a rust binary file from the Android Build system (Soong) */
 @OptionClass(alias = "rust-host")
-public class RustBinaryHostTest extends RustTestBase
-        implements IBuildReceiver, IInvocationContextReceiver {
+public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
 
     static final String RUST_LOG_STDERR_FORMAT = "%s-stderr";
 
@@ -55,7 +53,6 @@ public class RustBinaryHostTest extends RustTestBase
     private Set<String> mBinaryNames = new HashSet<>();
 
     private IBuildInfo mBuildInfo;
-    private IInvocationContext mContext;
     private IRunUtil mRunUtil;
 
     @Override
@@ -64,12 +61,8 @@ public class RustBinaryHostTest extends RustTestBase
     }
 
     @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
-    }
-
-    @Override
-    public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public final void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         List<File> rustFilesList = findFiles();
         for (File file : rustFilesList) {
             if (!file.exists()) {

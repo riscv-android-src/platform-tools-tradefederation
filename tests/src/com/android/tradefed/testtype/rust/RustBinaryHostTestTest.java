@@ -17,6 +17,8 @@ package com.android.tradefed.testtype.rust;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
@@ -37,10 +39,10 @@ import java.util.HashMap;
 /** Unit tests for {@link RustBinaryHostTest}. */
 @RunWith(JUnit4.class)
 public class RustBinaryHostTestTest {
-    private static final long TIMEOUT_MS = 60000L;
     private RustBinaryHostTest mTest;
     private IRunUtil mMockRunUtil;
     private IBuildInfo mMockBuildInfo;
+    private TestInformation mTestInfo;
     private ITestInvocationListener mMockListener;
     // TODO(chh): maybe we will need mFakeAdb later like PythonBinaryHostTestTest.
 
@@ -57,6 +59,9 @@ public class RustBinaryHostTestTest {
                     }
                 };
         mTest.setBuild(mMockBuildInfo);
+        InvocationContext context = new InvocationContext();
+        context.addDeviceBuildInfo("device", mMockBuildInfo);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     /** Test that when running a rust binary the output is parsed to obtain results. */
@@ -87,7 +92,7 @@ public class RustBinaryHostTestTest {
                     EasyMock.anyObject());
 
             EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener);
-            mTest.run(mMockListener);
+            mTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener);
         } finally {
             FileUtil.deleteFile(binary);
@@ -128,7 +133,7 @@ public class RustBinaryHostTestTest {
                     EasyMock.anyObject());
 
             EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener);
-            mTest.run(mMockListener);
+            mTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener);
         } finally {
             FileUtil.deleteFile(binary);
@@ -166,7 +171,7 @@ public class RustBinaryHostTestTest {
                     EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
             EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener);
-            mTest.run(mMockListener);
+            mTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener);
         } finally {
             FileUtil.deleteFile(binary);
@@ -203,7 +208,7 @@ public class RustBinaryHostTestTest {
                     EasyMock.eq(LogDataType.TEXT),
                     EasyMock.anyObject());
             EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener);
-            mTest.run(mMockListener);
+            mTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener);
         } finally {
             FileUtil.deleteFile(binary);
