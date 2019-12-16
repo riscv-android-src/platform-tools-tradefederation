@@ -212,7 +212,8 @@ public class ITestSuiteTest {
         }
 
         @Override
-        public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        public void run(TestInformation testInfo, ITestInvocationListener listener)
+                throws DeviceNotAvailableException {
             listener.testRunStarted(TEST_CONFIG_NAME, 1);
             try {
                 if (mException != null) {
@@ -1779,10 +1780,7 @@ public class ITestSuiteTest {
         assertTrue(randomSeed.equals(String.valueOf(123L)));
     }
 
-    /**
-     * Test for {@link ITestSuite#stageTestArtifacts(Set)} is called when test zip build artifact
-     * staging is delayed.
-     */
+    /** Test for stageTestArtifact is called when test zip build artifact staging is delayed. */
     @Test
     public void testStageTestArtifacts() throws Exception {
         String remoteFilePath = "gs://module1/tests.zip";
