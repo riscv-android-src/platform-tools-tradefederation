@@ -19,9 +19,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.ITestDevice;
 
 import java.io.File;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Holder object that contains all the information and dependencies a test runner or test might need
@@ -32,24 +30,27 @@ public class TestInformation {
     private final IInvocationContext mContext;
     /** Properties generated during execution. */
     private final ExecutionProperties mProperties;
+    /**
+     * Files generated during execution that needs to be carried, they will be deleted at the end of
+     * the invocation.
+     */
+    private final ExecutionFiles mExecutionFiles;
 
     /** Main folder for all dependencies of tests */
     private final File mDependenciesFolder;
-    /** The complete dependencies resolved for the invocation, keyed by file name requested */
-    private final Map<String, File> mDependencies;
 
     private TestInformation(Builder builder) {
         mContext = builder.mContext;
         mProperties = builder.mProperties;
         mDependenciesFolder = builder.mDependenciesFolder;
-        mDependencies = builder.mDependencies;
+        mExecutionFiles = builder.mExecutionFiles;
     }
 
     private TestInformation(TestInformation invocationInfo, IInvocationContext moduleContext) {
         mContext = moduleContext;
         mProperties = invocationInfo.mProperties;
         mDependenciesFolder = invocationInfo.mDependenciesFolder;
-        mDependencies = invocationInfo.mDependencies;
+        mExecutionFiles = invocationInfo.mExecutionFiles;
     }
 
     /** Create a builder for creating {@link TestInformation} instances. */
@@ -92,6 +93,15 @@ public class TestInformation {
         return mProperties;
     }
 
+    /**
+     * Returns the files generated during the invocation execution. Passing files through the {@link
+     * ExecutionFiles} is the recommended way to make a file available between target_preparers and
+     * tests.
+     */
+    public ExecutionFiles executionFiles() {
+        return mExecutionFiles;
+    }
+
     /** Returns the folder where all the dependencies are stored for an invocation. */
     public File dependenciesFolder() {
         return mDependenciesFolder;
@@ -102,11 +112,11 @@ public class TestInformation {
         private IInvocationContext mContext;
         private ExecutionProperties mProperties;
         private File mDependenciesFolder;
-        private final Map<String, File> mDependencies;
+        private ExecutionFiles mExecutionFiles;
 
         private Builder() {
             mProperties = new ExecutionProperties();
-            mDependencies = new HashMap<>();
+            mExecutionFiles = new ExecutionFiles();
         }
 
         public TestInformation build() {
