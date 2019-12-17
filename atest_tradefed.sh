@@ -37,6 +37,7 @@ if [[ ! -z "$ANDROID_HOST_OUT" ]]; then
           vts-core-tradefed.jar
           vts-tradefed.jar
           csuite-harness.jar
+          tradefed-isolation.jar
           host-libprotobuf-java-full.jar
           cts-dalvik-host-test-runner.jar"
     for dep in $deps; do
