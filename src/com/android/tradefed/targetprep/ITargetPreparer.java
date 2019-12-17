@@ -42,4 +42,18 @@ public interface ITargetPreparer extends IDisableable {
      */
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             BuildError, DeviceNotAvailableException;
+
+    /**
+     * Perform the target cleanup/teardown after testing.
+     *
+     * @param device the {@link ITestDevice} to prepare.
+     * @param buildInfo data about the build under test.
+     * @param e if the invocation ended with an exception, this will be the exception that was
+     *     caught at the Invocation level. Otherwise, will be <code>null</code>.
+     * @throws DeviceNotAvailableException if device became unresponsive
+     */
+    public default void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
+            throws DeviceNotAvailableException {
+        // Nothing by default.
+    }
 }

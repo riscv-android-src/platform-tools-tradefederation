@@ -22,7 +22,6 @@ import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.targetprep.BaseTargetPreparer;
 import com.android.tradefed.targetprep.BuildError;
-import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.TargetSetupError;
 
 /**
@@ -31,7 +30,7 @@ import com.android.tradefed.targetprep.TargetSetupError;
  * <p>{@link #getCompanionDeviceSelectionOptions()} should be implemented to describe the criteria
  * needed to allocate the companion device
  */
-public abstract class CompanionAllocator extends BaseTargetPreparer implements ITargetCleaner {
+public abstract class CompanionAllocator extends BaseTargetPreparer {
 
     /**
      * Sets up the device.

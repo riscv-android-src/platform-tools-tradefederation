@@ -24,9 +24,9 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 
-/** A {@link ITargetCleaner} that removes secondary users on teardown. */
+/** A {@link ITargetPreparer} that removes secondary users on teardown. */
 @OptionClass(alias = "user-cleaner")
-public class UserCleaner extends BaseTargetPreparer implements ITargetCleaner {
+public class UserCleaner extends BaseTargetPreparer {
 
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo)

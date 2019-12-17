@@ -316,6 +316,7 @@ public class TestInvocationTest {
         setupMockSuccessListeners();
 
         test.run(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
         setupNormalInvoke(test);
         EasyMock.replay(mockRescheduler);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
@@ -334,6 +335,7 @@ public class TestInvocationTest {
         setupMockSuccessListeners();
 
         test.run(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
         setupNormalInvoke(test);
         EasyMock.replay(mockRescheduler);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubMultiConfiguration, mockRescheduler);
@@ -354,6 +356,7 @@ public class TestInvocationTest {
         setupMockSuccessListeners();
 
         test.run(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
         setupNormalInvoke(test);
         EasyMock.replay(mockRescheduler);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
@@ -480,16 +483,17 @@ public class TestInvocationTest {
      */
     @Test
     public void testInvoke_deviceTest() throws Throwable {
-         DeviceConfigTest mockDeviceTest = EasyMock.createMock(DeviceConfigTest.class);
-         mStubConfiguration.setTest(mockDeviceTest);
-         mockDeviceTest.setDevice(mMockDevice);
+        DeviceConfigTest mockDeviceTest = EasyMock.createMock(DeviceConfigTest.class);
+        mStubConfiguration.setTest(mockDeviceTest);
+        mockDeviceTest.setDevice(mMockDevice);
         mockDeviceTest.run(EasyMock.anyObject(), EasyMock.anyObject());
-         setupMockSuccessListeners();
-         setupNormalInvoke(mockDeviceTest);
-         EasyMock.replay(mockRescheduler);
-         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
-         verifyMocks(mockDeviceTest, mockRescheduler);
-         verifySummaryListener();
+        setupMockSuccessListeners();
+        mMockPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
+        setupNormalInvoke(mockDeviceTest);
+        EasyMock.replay(mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
+        verifyMocks(mockDeviceTest, mockRescheduler);
+        verifySummaryListener();
     }
 
     /**
@@ -730,6 +734,7 @@ public class TestInvocationTest {
         EasyMock.expectLastCall().times(2);
         mMockDevice.startLogcat();
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
+        mMockPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
         mMockLogSaver.invocationStarted(invocationContext2);
         mMockDevice.setRecovery(mMockRecovery);
         resumableTest.run(EasyMock.anyObject(), EasyMock.anyObject());
@@ -803,29 +808,30 @@ public class TestInvocationTest {
 
     /**
      * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
-     * ITestInvocationListener[])} scenario when a {@link ITargetCleaner} is part of the config.
+     * ITestInvocationListener[])} scenario when a {@link ITargetPreparer} is part of the config.
      */
     @Test
     public void testInvoke_tearDown() throws Throwable {
-         IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
-         ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
+        IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
+        ITargetPreparer mockCleaner = EasyMock.createMock(ITargetPreparer.class);
         EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
         EasyMock.expect(mockCleaner.isTearDownDisabled()).andReturn(false);
-         mockCleaner.setUp(mMockDevice, mMockBuildInfo);
-         mockCleaner.tearDown(mMockDevice, mMockBuildInfo, null);
-         mStubConfiguration.getTargetPreparers().add(mockCleaner);
-         setupMockSuccessListeners();
-         setupNormalInvoke(test);
-         EasyMock.replay(mockCleaner, mockRescheduler);
-         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
-         verifyMocks(mockCleaner, mockRescheduler);
-         verifySummaryListener();
+        mockCleaner.setUp(mMockDevice, mMockBuildInfo);
+        mockCleaner.tearDown(mMockDevice, mMockBuildInfo, null);
+        mMockPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
+        mStubConfiguration.getTargetPreparers().add(mockCleaner);
+        setupMockSuccessListeners();
+        setupNormalInvoke(test);
+        EasyMock.replay(mockCleaner, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
+        verifyMocks(mockCleaner, mockRescheduler);
+        verifySummaryListener();
     }
 
     /**
      * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
-     * ITestInvocationListener[])} scenario when a {@link ITargetCleaner} is part of the config, and
-     * the test throws a {@link DeviceNotAvailableException}.
+     * ITestInvocationListener[])} scenario when a {@link ITargetPreparer} is part of the config,
+     * and the test throws a {@link DeviceNotAvailableException}.
      */
     @Test
     public void testInvoke_tearDown_deviceNotAvail() throws Throwable {
@@ -833,7 +839,7 @@ public class TestInvocationTest {
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         test.run(EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
-        ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
+        ITargetPreparer mockCleaner = EasyMock.createMock(ITargetPreparer.class);
         EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
         EasyMock.expect(mockCleaner.isTearDownDisabled()).andReturn(false);
         mockCleaner.setUp(mMockDevice, mMockBuildInfo);
@@ -954,6 +960,7 @@ public class TestInvocationTest {
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         setupMockSuccessListeners();
         test.run(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
         setupNormalInvoke(test);
         EasyMock.replay(logSaverListener, mockRescheduler);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
@@ -980,6 +987,7 @@ public class TestInvocationTest {
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
         mMockBuildInfo.addBuildAttribute("command_line_args", "run empty");
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
+        mMockPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
         // Default build is "stub" so we set the test-tag
         mMockBuildInfo.setTestTag(EasyMock.eq("not-default"));
         EasyMock.expectLastCall();
@@ -1012,6 +1020,7 @@ public class TestInvocationTest {
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
         mMockBuildInfo.addBuildAttribute("command_line_args", "run empty");
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
+        mMockPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
         EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("buildprovidertesttag");
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         mMockLogRegistry.unregisterLogger();
@@ -1041,6 +1050,7 @@ public class TestInvocationTest {
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
         mMockBuildInfo.addBuildAttribute("command_line_args", "run empty");
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
+        mMockPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
         EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn(null);
         mMockBuildInfo.setTestTag(EasyMock.eq("stub"));
         EasyMock.expectLastCall();
@@ -1081,6 +1091,7 @@ public class TestInvocationTest {
         setupMockSuccessListeners();
         mMockBuildInfo.addBuildAttribute("command_line_args", "run empty");
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
+        mMockPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
         EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn(null);
         // Validate proper tag is set on the build.
         mMockBuildInfo.setTestTag(EasyMock.eq(testTag));
@@ -1698,12 +1709,7 @@ public class TestInvocationTest {
         EasyMock.expectLastCall().anyTimes();
 
         IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
-        ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
-        EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
-        EasyMock.expect(mockCleaner.isTearDownDisabled()).andReturn(false);
-        mockCleaner.setUp(mMockDevice, mMockBuildInfo);
-        mockCleaner.tearDown(mMockDevice, mMockBuildInfo, null);
-        mStubConfiguration.getTargetPreparers().add(mockCleaner);
+        mMockPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
 
         File tmpTestsDir = FileUtil.createTempDir("invocation-tests-dir");
         try {
@@ -1711,9 +1717,9 @@ public class TestInvocationTest {
                     .andReturn(tmpTestsDir);
             setupMockSuccessListeners();
             setupNormalInvoke(test);
-            EasyMock.replay(mockCleaner, mockRescheduler);
+            EasyMock.replay(mockRescheduler);
             mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
-            verifyMocks(mockCleaner, mockRescheduler);
+            verifyMocks(mockRescheduler);
             verifySummaryListener();
         } finally {
             FileUtil.recursiveDelete(tmpTestsDir);
@@ -1778,11 +1784,12 @@ public class TestInvocationTest {
                     };
             mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
             IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
-            ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
+            ITargetPreparer mockCleaner = EasyMock.createMock(ITargetPreparer.class);
             EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
             EasyMock.expect(mockCleaner.isTearDownDisabled()).andReturn(false);
             mockCleaner.setUp(mMockDevice, mMockBuildInfo);
             mockCleaner.tearDown(mMockDevice, mMockBuildInfo, null);
+            mMockPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
             mStubConfiguration.getTargetPreparers().add(mockCleaner);
 
             mMockBuildInfo.setFile(
@@ -1875,12 +1882,7 @@ public class TestInvocationTest {
                     };
             mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
             IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
-            ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
-            EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
-            EasyMock.expect(mockCleaner.isTearDownDisabled()).andReturn(false);
-            mockCleaner.setUp(mMockDevice, mMockBuildInfo);
-            mockCleaner.tearDown(mMockDevice, mMockBuildInfo, null);
-            mStubConfiguration.getTargetPreparers().add(mockCleaner);
+            mMockPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
 
             Set<BuildInfoProperties> prop = new HashSet<>();
             prop.add(BuildInfoProperties.DO_NOT_LINK_TESTS_DIR);
@@ -1891,9 +1893,9 @@ public class TestInvocationTest {
 
             setupMockSuccessListeners();
             setupNormalInvoke(test);
-            EasyMock.replay(mockCleaner, mockRescheduler);
+            EasyMock.replay(mockRescheduler);
             mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
-            verifyMocks(mockCleaner, mockRescheduler);
+            verifyMocks(mockRescheduler);
             verifySummaryListener();
             // Check that the external directory was NOT copied in the testsDir.
             assertTrue(tmpTestsDir.listFiles().length == 0);
@@ -2067,6 +2069,7 @@ public class TestInvocationTest {
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
 
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
+        mMockPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
 
         EasyMock.reset(mMockSummaryListener);
         replayMocks();
@@ -2119,6 +2122,7 @@ public class TestInvocationTest {
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
 
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
+        mMockPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
 
         EasyMock.reset(mMockSummaryListener);
         replayMocks();
