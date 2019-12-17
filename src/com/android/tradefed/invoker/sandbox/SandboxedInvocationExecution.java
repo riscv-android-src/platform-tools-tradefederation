@@ -24,6 +24,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.InvocationExecution;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
@@ -37,7 +38,7 @@ public class SandboxedInvocationExecution extends InvocationExecution {
     /** {@inheritDoc} */
     @Override
     public boolean fetchBuild(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             IRescheduler rescheduler,
             ITestInvocationListener listener)
@@ -50,17 +51,17 @@ public class SandboxedInvocationExecution extends InvocationExecution {
         }
         // Even if we don't call them directly here, ensure they receive their dependencies for the
         // buildNotTested callback.
-        for (String deviceName : context.getDeviceConfigNames()) {
+        for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
             IDeviceConfiguration deviceConfig = config.getDeviceConfigByName(deviceName);
             IBuildProvider provider = deviceConfig.getBuildProvider();
             // Inject the context to the provider if it can receive it
             if (provider instanceof IInvocationContextReceiver) {
-                ((IInvocationContextReceiver) provider).setInvocationContext(context);
+                ((IInvocationContextReceiver) provider).setInvocationContext(testInfo.getContext());
             }
         }
 
         // Still set the test-tag on build infos for proper reporting
-        for (IBuildInfo info : context.getBuildInfos()) {
+        for (IBuildInfo info : testInfo.getContext().getBuildInfos()) {
             setTestTag(info, config);
         }
         return true;

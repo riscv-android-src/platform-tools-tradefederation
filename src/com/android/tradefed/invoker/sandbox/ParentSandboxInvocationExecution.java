@@ -47,19 +47,19 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
 
     @Override
     public boolean fetchBuild(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             IRescheduler rescheduler,
             ITestInvocationListener listener)
             throws DeviceNotAvailableException, BuildRetrievalError {
-        if (!context.getBuildInfos().isEmpty()) {
+        if (!testInfo.getContext().getBuildInfos().isEmpty()) {
             CLog.d(
                     "Context already contains builds: %s. Skipping download as we are in "
                             + "sandbox-test-mode.",
-                    context.getBuildInfos());
+                    testInfo.getContext().getBuildInfos());
             return true;
         }
-        return super.fetchBuild(context, config, rescheduler, listener);
+        return super.fetchBuild(testInfo, config, rescheduler, listener);
     }
 
     @Override

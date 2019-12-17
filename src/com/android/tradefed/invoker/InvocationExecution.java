@@ -103,7 +103,7 @@ public class InvocationExecution implements IInvocationExecution {
 
     @Override
     public boolean fetchBuild(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             IRescheduler rescheduler,
             ITestInvocationListener listener)
@@ -111,16 +111,18 @@ public class InvocationExecution implements IInvocationExecution {
         String currentDeviceName = null;
         try {
             // TODO: evaluate fetching build in parallel
-            for (String deviceName : context.getDeviceConfigNames()) {
+            for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
                 currentDeviceName = deviceName;
                 IBuildInfo info = null;
-                ITestDevice device = context.getDevice(deviceName);
+                ITestDevice device = testInfo.getContext().getDevice(deviceName);
                 IDeviceConfiguration deviceConfig = config.getDeviceConfigByName(deviceName);
                 IBuildProvider provider = deviceConfig.getBuildProvider();
                 // Inject the context to the provider if it can receive it
                 if (provider instanceof IInvocationContextReceiver) {
-                    ((IInvocationContextReceiver) provider).setInvocationContext(context);
+                    ((IInvocationContextReceiver) provider)
+                            .setInvocationContext(testInfo.getContext());
                 }
+                provider.setWorkingDirectory(testInfo.dependenciesFolder());
                 // Get the build
                 if (provider instanceof IDeviceBuildProvider) {
                     // Download a device build if the provider can handle it.
@@ -130,7 +132,7 @@ public class InvocationExecution implements IInvocationExecution {
                 }
                 if (info != null) {
                     info.setDeviceSerial(device.getSerialNumber());
-                    context.addDeviceBuildInfo(deviceName, info);
+                    testInfo.getContext().addDeviceBuildInfo(deviceName, info);
                     device.setRecovery(deviceConfig.getDeviceRecovery());
                 } else {
                     CLog.logAndDisplay(
@@ -139,7 +141,7 @@ public class InvocationExecution implements IInvocationExecution {
                             device.getSerialNumber());
                     IBuildInfo notFoundStub = new BuildInfo();
                     updateBuild(notFoundStub, config);
-                    context.addDeviceBuildInfo(currentDeviceName, notFoundStub);
+                    testInfo.getContext().addDeviceBuildInfo(currentDeviceName, notFoundStub);
                     return false;
                 }
                 // TODO: remove build update when reporting is done on context
@@ -151,12 +153,12 @@ public class InvocationExecution implements IInvocationExecution {
             if (currentDeviceName != null) {
                 IBuildInfo errorBuild = e.getBuildInfo();
                 updateBuild(errorBuild, config);
-                context.addDeviceBuildInfo(currentDeviceName, errorBuild);
+                testInfo.getContext().addDeviceBuildInfo(currentDeviceName, errorBuild);
             }
             throw e;
         }
-        createSharedResources(context);
-        setBinariesVersion(context);
+        createSharedResources(testInfo);
+        setBinariesVersion(testInfo.getContext());
         return true;
     }
 
@@ -769,8 +771,8 @@ public class InvocationExecution implements IInvocationExecution {
     }
 
     /** Populate the shared resources directory for all non-resource build */
-    private void createSharedResources(IInvocationContext context) {
-        List<IBuildInfo> infos = context.getBuildInfos();
+    private void createSharedResources(TestInformation testInfo) {
+        List<IBuildInfo> infos = testInfo.getContext().getBuildInfos();
         if (infos.size() <= 1) {
             return;
         }
@@ -779,7 +781,9 @@ public class InvocationExecution implements IInvocationExecution {
             for (IBuildInfo info : infos) {
                 if (info.isTestResourceBuild()) {
                     if (resourcesDir == null) {
-                        resourcesDir = FileUtil.createTempDir("invocation-resources-dir");
+                        resourcesDir =
+                                FileUtil.createTempDir(
+                                        "invocation-resources-dir", testInfo.dependenciesFolder());
                     }
                     // Create a reception sub-folder for each build info resource to avoid mixing
                     String name =

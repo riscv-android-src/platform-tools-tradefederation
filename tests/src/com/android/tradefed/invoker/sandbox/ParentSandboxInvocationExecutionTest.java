@@ -37,6 +37,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.sandbox.SandboxOptions;
@@ -178,8 +179,9 @@ public class ParentSandboxInvocationExecutionTest {
         OptionSetter setter = new OptionSetter(stubProvider);
         setter.setOptionValue("throw-build-error", "true");
         mConfig.getDeviceConfig().get(0).addSpecificConfig(stubProvider);
-
-        assertTrue(mParentSandbox.fetchBuild(mContext, mConfig, null, null));
+        TestInformation testInfo =
+                TestInformation.newBuilder().setInvocationContext(mContext).build();
+        assertTrue(mParentSandbox.fetchBuild(testInfo, mConfig, null, null));
     }
 
     /**
@@ -194,8 +196,10 @@ public class ParentSandboxInvocationExecutionTest {
 
         mContext = new InvocationContext();
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
+        TestInformation testInfo =
+                TestInformation.newBuilder().setInvocationContext(mContext).build();
         try {
-            mParentSandbox.fetchBuild(mContext, mConfig, null, null);
+            mParentSandbox.fetchBuild(testInfo, mConfig, null, null);
             fail("Should have thrown an exception.");
         } catch (BuildRetrievalError expected) {
             assertEquals("stub failed to get build.", expected.getMessage());

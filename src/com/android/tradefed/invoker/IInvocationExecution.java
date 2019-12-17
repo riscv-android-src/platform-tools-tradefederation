@@ -36,7 +36,7 @@ public interface IInvocationExecution {
     /**
      * Execute the build_provider step of the invocation.
      *
-     * @param context the {@link IInvocationContext} of the invocation.
+     * @param testInfo the {@link TestInformation} of the invocation.
      * @param config the {@link IConfiguration} of this test run.
      * @param rescheduler the {@link IRescheduler}, for rescheduling portions of the invocation for
      *     execution on another resource(s)
@@ -46,7 +46,7 @@ public interface IInvocationExecution {
      * @throws DeviceNotAvailableException
      */
     public default boolean fetchBuild(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             IRescheduler rescheduler,
             ITestInvocationListener listener)
