@@ -17,12 +17,10 @@ package com.android.tradefed.testtype.binary;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -30,7 +28,6 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
-import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -50,7 +47,7 @@ import java.util.List;
  * the serial will be passed to the binary to be used.
  */
 @OptionClass(alias = "executable-host-test")
-public class ExecutableHostTest extends ExecutableBaseTest implements IDeviceTest, IBuildReceiver {
+public class ExecutableHostTest extends ExecutableBaseTest {
 
     private static final String ANDROID_SERIAL = "ANDROID_SERIAL";
     private static final String LOG_STDOUT_TAG = "-binary-stdout-";
@@ -71,9 +68,6 @@ public class ExecutableHostTest extends ExecutableBaseTest implements IDeviceTes
     )
     private boolean mExecuteRelativeToScript = false;
 
-    private ITestDevice mDevice;
-    private IBuildInfo mBuild;
-
     @Override
     public String findBinary(String binary) {
         File bin = new File(binary);
@@ -81,8 +75,8 @@ public class ExecutableHostTest extends ExecutableBaseTest implements IDeviceTes
         if (bin.exists()) {
             return bin.getAbsolutePath();
         }
-        if (mBuild instanceof IDeviceBuildInfo) {
-            IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo) mBuild;
+        if (getTestInfo().getBuildInfo() instanceof IDeviceBuildInfo) {
+            IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo) getTestInfo().getBuildInfo();
             File testsDir = deviceBuild.getTestsDir();
 
             List<File> scanDirs = new ArrayList<>();
@@ -116,8 +110,8 @@ public class ExecutableHostTest extends ExecutableBaseTest implements IDeviceTes
         // Output everything in stdout
         runUtil.setRedirectStderrToStdout(true);
         // If we are running against a real device, set ANDROID_SERIAL to the proper serial.
-        if (!(mDevice.getIDevice() instanceof StubDevice)) {
-            runUtil.setEnvVariable(ANDROID_SERIAL, mDevice.getSerialNumber());
+        if (!(getTestInfo().getDevice().getIDevice() instanceof StubDevice)) {
+            runUtil.setEnvVariable(ANDROID_SERIAL, getTestInfo().getDevice().getSerialNumber());
         }
         // Ensure its executable
         FileUtil.chmodRWXRecursively(new File(binaryPath));
@@ -159,32 +153,17 @@ public class ExecutableHostTest extends ExecutableBaseTest implements IDeviceTes
             logFile(stderr, listener);
         }
 
-        if (!(mDevice.getIDevice() instanceof StubDevice)) {
+        if (!(getTestInfo().getDevice().getIDevice() instanceof StubDevice)) {
             // Ensure that the binary did not leave the device offline.
             CLog.d("Checking whether device is still online after %s", binaryPath);
             try {
-                mDevice.waitForDeviceAvailable();
+                getTestInfo().getDevice().waitForDeviceAvailable();
             } catch (DeviceNotAvailableException e) {
                 listener.testRunFailed(
                         String.format("Device became unavailable after %s.", binaryPath));
                 throw e;
             }
         }
-    }
-
-    @Override
-    public final void setDevice(ITestDevice device) {
-        mDevice = device;
-    }
-
-    @Override
-    public final ITestDevice getDevice() {
-        return mDevice;
-    }
-
-    @Override
-    public final void setBuild(IBuildInfo buildInfo) {
-        mBuild = buildInfo;
     }
 
     @VisibleForTesting

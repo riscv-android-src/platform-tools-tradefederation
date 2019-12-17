@@ -18,15 +18,14 @@ package com.android.tradefed.testtype.host;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.io.Files.getNameWithoutExtension;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
 
@@ -38,7 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 
 /** A dummy test that fowards coverage measurements from the build provider to the logger. */
-public final class CoverageMeasurementForwarder implements IRemoteTest, IBuildReceiver {
+public final class CoverageMeasurementForwarder implements IRemoteTest {
 
     @Option(
         name = "coverage-measurement",
@@ -56,8 +55,6 @@ public final class CoverageMeasurementForwarder implements IRemoteTest, IBuildRe
     )
     private LogDataType mLogDataType = LogDataType.COVERAGE;
 
-    private IBuildInfo mBuild;
-
     /** Sets the --coverage-measurement option for testing. */
     @VisibleForTesting
     void setCoverageMeasurements(List<String> coverageMeasurements) {
@@ -71,17 +68,7 @@ public final class CoverageMeasurementForwarder implements IRemoteTest, IBuildRe
     }
 
     @Override
-    public void setBuild(IBuildInfo buildInfo) {
-        mBuild = buildInfo;
-    }
-
-    /** Returns the {@link IBuildInfo} for this invocation. */
-    private IBuildInfo getBuild() {
-        return mBuild;
-    }
-
-    @Override
-    public void run(ITestInvocationListener listener) {
+    public void run(TestInformation testInfo, ITestInvocationListener listener) {
         if (mCoverageMeasurements.isEmpty()) {
             return;
         }
@@ -90,7 +77,7 @@ public final class CoverageMeasurementForwarder implements IRemoteTest, IBuildRe
         for (String artifactName : mCoverageMeasurements) {
             File coverageMeasurement =
                     checkNotNull(
-                            getBuild().getFile(artifactName),
+                            testInfo.getBuildInfo().getFile(artifactName),
                             "Failed to get artifact '%s' from the build.",
                             artifactName);
             try (InputStreamSource stream = new FileInputStreamSource(coverageMeasurement)) {

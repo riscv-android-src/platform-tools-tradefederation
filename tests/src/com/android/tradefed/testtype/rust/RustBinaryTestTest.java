@@ -19,11 +19,11 @@ import static org.junit.Assert.fail;
 
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.IShellOutputReceiver;
-import com.android.tradefed.config.Configuration;
-import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.MockFileUtil;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.result.ITestInvocationListener;
 
 import org.easymock.EasyMock;
@@ -41,9 +41,7 @@ public class RustBinaryTestTest {
     private IShellOutputReceiver mMockReceiver = null;
     private ITestDevice mMockITestDevice = null;
     private RustBinaryTest mRustBinaryTest;
-    private OptionSetter mSetter;
-
-    private Configuration mConfiguration;
+    private TestInformation mTestInfo;
 
     /** Helper to initialize the various EasyMocks we'll need. */
     @Before
@@ -63,7 +61,9 @@ public class RustBinaryTestTest {
                     }
                 };
         mRustBinaryTest.setDevice(mMockITestDevice);
-        mSetter = new OptionSetter(mRustBinaryTest);
+        InvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mMockITestDevice);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     /** Helper that replays all mocks. */
@@ -82,7 +82,7 @@ public class RustBinaryTestTest {
         EasyMock.expect(mMockITestDevice.doesFileExist(RustBinaryTest.DEFAULT_TEST_PATH))
                 .andReturn(false);
         replayMocks();
-        mRustBinaryTest.run(mMockInvocationListener);
+        mRustBinaryTest.run(mTestInfo, mMockInvocationListener);
         verifyMocks();
     }
 
@@ -92,7 +92,7 @@ public class RustBinaryTestTest {
         mRustBinaryTest.setDevice(null);
         replayMocks();
         try {
-            mRustBinaryTest.run(mMockInvocationListener);
+            mRustBinaryTest.run(mTestInfo, mMockInvocationListener);
             fail("an exception should have been thrown");
         } catch (IllegalArgumentException e) {
             // expected
@@ -136,7 +136,7 @@ public class RustBinaryTestTest {
 
         replayMocks();
 
-        mRustBinaryTest.run(mMockInvocationListener);
+        mRustBinaryTest.run(mTestInfo, mMockInvocationListener);
         verifyMocks();
     }
 
@@ -167,7 +167,7 @@ public class RustBinaryTestTest {
 
         replayMocks();
 
-        mRustBinaryTest.run(mMockInvocationListener);
+        mRustBinaryTest.run(mTestInfo, mMockInvocationListener);
         verifyMocks();
     }
 
@@ -207,7 +207,7 @@ public class RustBinaryTestTest {
 
         replayMocks();
 
-        mRustBinaryTest.run(mMockInvocationListener);
+        mRustBinaryTest.run(mTestInfo, mMockInvocationListener);
         verifyMocks();
     }
 }
