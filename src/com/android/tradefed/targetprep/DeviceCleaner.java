@@ -28,7 +28,7 @@ import com.android.tradefed.util.RunUtil;
 
 /** Performs reboot or format as cleanup action after test, and optionally turns screen off */
 @OptionClass(alias = "device-cleaner")
-public class DeviceCleaner extends BaseTargetPreparer implements ITargetCleaner {
+public class DeviceCleaner extends BaseTargetPreparer {
 
     public static enum CleanupAction {
         /** no cleanup action */
