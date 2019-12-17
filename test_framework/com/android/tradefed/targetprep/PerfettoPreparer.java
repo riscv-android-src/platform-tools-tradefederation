@@ -29,7 +29,7 @@ import java.io.File;
  * perfetto have access to.
  */
 @OptionClass(alias = "perfetto-preparer")
-public class PerfettoPreparer extends BaseTargetPreparer implements ITargetCleaner {
+public class PerfettoPreparer extends BaseTargetPreparer {
     // Perfetto have access only to the config files under /data/misc/perfetto-traces/
     // in the device.
     private static final String DEVICE_CONFIG_PATH = "/data/misc/perfetto-traces/trace_config.pb";

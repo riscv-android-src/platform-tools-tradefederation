@@ -54,7 +54,6 @@ import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.IHostCleaner;
-import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
@@ -384,40 +383,37 @@ public class InvocationExecution implements IInvocationExecution {
             ListIterator<ITargetPreparer> itr = preparers.listIterator(preparers.size());
             while (itr.hasPrevious()) {
                 ITargetPreparer preparer = itr.previous();
-                if (preparer instanceof ITargetCleaner) {
-                    ITargetCleaner cleaner = (ITargetCleaner) preparer;
-                    // do not call the cleaner if it was disabled
-                    if (cleaner.isDisabled() || cleaner.isTearDownDisabled()) {
-                        CLog.d("%s has been disabled. skipping.", cleaner);
-                        continue;
-                    }
-                    if (mTrackTargetPreparers == null
-                            || !mTrackTargetPreparers.containsKey(deviceName)
-                            || !mTrackTargetPreparers.get(deviceName).contains(cleaner)) {
-                        CLog.d("%s didn't run setUp, skipping tearDown.", cleaner);
-                        continue;
-                    }
-                    // If setup hit a targetSetupError, the setUp() and setTestLogger might not have
-                    // run, ensure we still have the logger.
-                    if (preparer instanceof ITestLoggerReceiver) {
-                        ((ITestLoggerReceiver) preparer).setTestLogger(logger);
-                    }
-                    try {
-                        CLog.d(
-                                "starting tearDown '%s' on device: '%s'",
-                                preparer, device.getSerialNumber());
-                        cleaner.tearDown(device, context.getBuildInfo(deviceName), exception);
-                        CLog.d(
-                                "done with tearDown '%s' on device: '%s'",
-                                preparer, device.getSerialNumber());
-                    } catch (Throwable e) {
-                        // We catch it and rethrow later to allow each targetprep to be attempted.
-                        // Only the first one will be thrown but all should be logged.
-                        CLog.e("Deferring throw for:");
-                        CLog.e(e);
-                        if (deferredThrowable == null) {
-                            deferredThrowable = e;
-                        }
+                // do not call the cleaner if it was disabled
+                if (preparer.isDisabled() || preparer.isTearDownDisabled()) {
+                    CLog.d("%s has been disabled. skipping.", preparer);
+                    continue;
+                }
+                if (mTrackTargetPreparers == null
+                        || !mTrackTargetPreparers.containsKey(deviceName)
+                        || !mTrackTargetPreparers.get(deviceName).contains(preparer)) {
+                    CLog.d("%s didn't run setUp, skipping tearDown.", preparer);
+                    continue;
+                }
+                // If setup hit a targetSetupError, the setUp() and setTestLogger might not have
+                // run, ensure we still have the logger.
+                if (preparer instanceof ITestLoggerReceiver) {
+                    ((ITestLoggerReceiver) preparer).setTestLogger(logger);
+                }
+                try {
+                    CLog.d(
+                            "starting tearDown '%s' on device: '%s'",
+                            preparer, device.getSerialNumber());
+                    preparer.tearDown(device, context.getBuildInfo(deviceName), exception);
+                    CLog.d(
+                            "done with tearDown '%s' on device: '%s'",
+                            preparer, device.getSerialNumber());
+                } catch (Throwable e) {
+                    // We catch it and rethrow later to allow each targetprep to be attempted.
+                    // Only the first one will be thrown but all should be logged.
+                    CLog.e("Deferring throw for:");
+                    CLog.e(e);
+                    if (deferredThrowable == null) {
+                        deferredThrowable = e;
                     }
                 }
             }
