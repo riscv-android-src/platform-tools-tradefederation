@@ -666,6 +666,11 @@ public class TestInvocation implements ITestInvocation {
             }
             return true;
         } catch (RuntimeException | BuildRetrievalError | ConfigurationException e) {
+            // In case of build not found issues.
+            mStatus = "(failed dynamic download)";
+            // Set the exit code to error
+            setExitCode(ExitCode.NO_BUILD, e);
+
             // We don't have a reporting buildInfo at this point
             IBuildInfo info = new BuildInfo();
             context.addDeviceBuildInfo(context.getDeviceConfigNames().get(0), info);
