@@ -23,8 +23,11 @@ include $(CLEAR_VARS)
 deps := $(call copy-many-files,\
   $(call intermediates-dir-for,JAVA_LIBRARIES,tradefed,HOST)/javalib.jar:$(HOST_OUT)/tradefed/tradefed.jar)
 
+isodeps := $(call copy-many-files,\
+  $(call intermediates-dir-for,JAVA_LIBRARIES,tradefed-isolation,HOST)/javalib.jar:$(HOST_OUT)/tradefed/tradefed-isolation.jar)
+
 # this dependency ensures the above rule will be executed if jar is installed
-$(HOST_OUT_JAVA_LIBRARIES)/tradefed.jar : $(deps)
+$(HOST_OUT_JAVA_LIBRARIES)/tradefed.jar : $(deps) $(isodeps)
 # The copy rule for loganalysis is in tools/loganalysis/Android.mk
 $(HOST_OUT_JAVA_LIBRARIES)/tradefed.jar : $(HOST_OUT)/tradefed/loganalysis.jar
 
@@ -34,7 +37,7 @@ $(HOST_OUT_JAVA_LIBRARIES)/tradefed.jar : $(HOST_OUT)/tradefed/loganalysis.jar
 # Note that this is incompatible with `make dist`.  If you want to make
 # the distribution, you must run `tapas` with the individual target names.
 .PHONY: tradefed-core
-tradefed-core: tradefed atest_tradefed.sh tradefed-contrib tf-contrib-tests script_help.sh tradefed.sh
+tradefed-core: tradefed tradefed-isolation atest_tradefed.sh tradefed-contrib tf-contrib-tests script_help.sh tradefed.sh
 
 .PHONY: tradefed-all
 tradefed-all: tradefed-core tradefed-tests tradefed_win loganalysis-tests
@@ -42,7 +45,7 @@ tradefed-all: tradefed-core tradefed-tests tradefed_win loganalysis-tests
 ########################################################
 # Zip up the built files and dist it as tradefed.zip
 
-tradefed_dist_host_jars := tradefed tradefed-tests loganalysis loganalysis-tests tf-remote-client tradefed-contrib tf-contrib-tests
+tradefed_dist_host_jars := tradefed tradefed-tests loganalysis loganalysis-tests tf-remote-client tradefed-contrib tf-contrib-tests tradefed-isolation
 tradefed_dist_host_exes := tradefed.sh tradefed_win.bat script_help.sh run_tf_cmd.sh atest_tradefed.sh
 tradefed_dist_test_apks := TradeFedUiTestApp TradeFedTestApp DeviceSetupUtil
 
