@@ -39,7 +39,7 @@ import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
 /** A {@link ITargetPreparer} that flashes an image on physical Android hardware. */
-public abstract class DeviceFlashPreparer extends BaseTargetPreparer implements ITargetCleaner {
+public abstract class DeviceFlashPreparer extends BaseTargetPreparer {
 
     /**
      * Enum of options for handling the encryption of userdata image

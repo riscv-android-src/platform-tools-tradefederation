@@ -81,8 +81,6 @@ import com.android.tradefed.util.keystore.KeyStoreException;
 
 import com.google.common.annotations.VisibleForTesting;
 
-import org.json.JSONException;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -977,7 +975,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 checkInvocations();
                 try {
                     processReadyCommands(manager);
-                    postProcessReadyCommands();
                 } catch (RuntimeException e) {
                     CLog.e(e);
                     Map<String, String> information = new HashMap<>();
@@ -1009,13 +1006,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             System.out.flush();
         }
     }
-
-    /**
-     * Placeholder method within the scheduler main loop, called after {@link
-     * #processReadyCommands(IDeviceManager)}. Default implementation is empty and does not provide
-     * any extra actions.
-     */
-    protected void postProcessReadyCommands() {}
 
     void checkInvocations() {
         CLog.d("Checking invocations...");
@@ -1134,15 +1124,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      */
     @Override
     public boolean addCommand(String[] args) throws ConfigurationException {
-        return addCommand(args, 0);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean addCommand(String[] args, long totalExecTime) throws ConfigurationException {
-        return internalAddCommand(args, totalExecTime, null);
+        return internalAddCommand(args, null);
     }
 
     /** Returns true if {@link CommandOptions#USE_SANDBOX} is part of the command line. */
@@ -1194,7 +1176,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return config;
     }
 
-    private boolean internalAddCommand(String[] args, long totalExecTime, String cmdFilePath)
+    private boolean internalAddCommand(String[] args, String cmdFilePath)
             throws ConfigurationException {
         assertStarted();
         IConfiguration config = createConfiguration(args);
@@ -1202,13 +1184,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             getConfigFactory().printHelpForConfig(args, true, System.out);
         } else if (config.getCommandOptions().isFullHelpMode()) {
             getConfigFactory().printHelpForConfig(args, false, System.out);
-        } else if (config.getCommandOptions().isJsonHelpMode()) {
-            try {
-                // Convert the JSON usage to a string (with 4 space indentation) and print to stdout
-                System.out.println(config.getJsonCommandUsage().toString(4));
-            } catch (JSONException e) {
-                CLog.logAndDisplay(LogLevel.ERROR, "Failed to get json command usage: %s", e);
-            }
         } else if (config.getCommandOptions().isDryRunMode()) {
             config.validateOptions();
             String cmdLine = QuotationAwareTokenizer.combineTokens(args);
@@ -1221,10 +1196,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             config.validateOptions();
 
             if (config.getCommandOptions().runOnAllDevices()) {
-                addCommandForAllDevices(totalExecTime, args, cmdFilePath);
+                addCommandForAllDevices(args, cmdFilePath);
             } else {
                 CommandTracker cmdTracker = createCommandTracker(args, cmdFilePath);
-                cmdTracker.incrementExecTime(totalExecTime);
                 ExecutableCommand cmdInstance = createExecutableCommand(cmdTracker, config, false);
                 addExecCommandToQueue(cmdInstance, 0);
             }
@@ -1271,7 +1245,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 CLog.d("Adding command %s", prettyCmdLine);
 
                 try {
-                    internalAddCommand(arrayCommand, 0, cmdFile.getAbsolutePath());
+                    internalAddCommand(arrayCommand, cmdFile.getAbsolutePath());
                 } catch (ConfigurationException e) {
                     throw new ConfigurationException(String.format(
                             "Failed to add command '%s': %s", prettyCmdLine, e.getMessage()), e);
@@ -1293,11 +1267,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /**
      * Creates a new command for each connected device, and adds each to the queue.
-     * <p/>
-     * Note this won't have the desired effect if user has specified other
-     * conflicting {@link IConfiguration#getDeviceRequirements()}in the command.
+     *
+     * <p>Note this won't have the desired effect if user has specified other conflicting {@link
+     * IConfiguration#getDeviceRequirements()}in the command.
      */
-    private void addCommandForAllDevices(long totalExecTime, String[] args, String cmdFilePath)
+    private void addCommandForAllDevices(String[] args, String cmdFilePath)
             throws ConfigurationException {
         List<DeviceDescriptor> deviceDescs = getDeviceManager().listAllDevices();
 
@@ -1308,7 +1282,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 argsWithDevice[argsWithDevice.length - 2] = "-s";
                 argsWithDevice[argsWithDevice.length - 1] = device;
                 CommandTracker cmdTracker = createCommandTracker(argsWithDevice, cmdFilePath);
-                cmdTracker.incrementExecTime(totalExecTime);
                 IConfiguration config = getConfigFactory().createConfigurationFromArgs(
                         cmdTracker.getArgs(), null, getKeyStoreClient());
                 CLog.logAndDisplay(LogLevel.INFO, "Scheduling '%s' on '%s'",
@@ -1436,9 +1409,37 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /** {@inheritDoc} */
     @Override
+    public void execCommand(
+            IScheduledInvocationListener listener, ITestDevice device, String[] args)
+            throws ConfigurationException {
+        // TODO: add support for execCommand multi-device allocation
+        assertStarted();
+        CommandTracker cmdTracker = createCommandTracker(args, null);
+        IConfiguration config =
+                getConfigFactory()
+                        .createConfigurationFromArgs(
+                                cmdTracker.getArgs(), null, getKeyStoreClient());
+        config.validateOptions();
+        CLog.i("Executing '%s' on '%s'", cmdTracker.getArgs()[0], device.getSerialNumber());
+        ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
+        if (config.getDeviceConfig().size() > 1) {
+            throw new RuntimeException("execCommand assume single device invocation.");
+        }
+
+        synchronized (this) {
+            mExecutingCommands.add(execCmd);
+        }
+        IInvocationContext context = createInvocationContext();
+        context.setConfigurationDescriptor(config.getConfigurationDescription());
+        context.addAllocatedDevice(config.getDeviceConfig().get(0).getDeviceName(), device);
+        startInvocation(context, execCmd, listener);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public void execCommand(IScheduledInvocationListener listener, String[] args)
             throws ConfigurationException, NoDeviceException {
-        execCommand(new InvocationContext(), listener, args);
+        execCommand(createInvocationContext(), listener, args);
     }
 
     /**
@@ -1482,40 +1483,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void execCommand(IScheduledInvocationListener listener, ITestDevice device,
-            String[] args) throws ConfigurationException {
-        // TODO: add support for execCommand multi-device allocation
-        assertStarted();
-        CommandTracker cmdTracker = createCommandTracker(args, null);
-        IConfiguration config = getConfigFactory().createConfigurationFromArgs(
-                cmdTracker.getArgs(), null, getKeyStoreClient());
-        config.validateOptions();
-        CLog.i("Executing '%s' on '%s'", cmdTracker.getArgs()[0], device.getSerialNumber());
-        ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
-        if (config.getDeviceConfig().size() > 1) {
-            throw new RuntimeException("execCommand assume single device invocation.");
-        }
-
-        synchronized(this) {
-            mExecutingCommands.add(execCmd);
-        }
-        IInvocationContext context = createInvocationContext();
-        context.setConfigurationDescriptor(config.getConfigurationDescription());
-        context.addAllocatedDevice(config.getDeviceConfig().get(0).getDeviceName(), device);
-        startInvocation(context, execCmd, listener);
-    }
-
     @VisibleForTesting
     protected IInvocationContext createInvocationContext() {
         return new InvocationContext();
     }
-
-    /** Optional initialization step before test invocation starts */
-    protected void initInvocation() {}
 
     /**
      * Spawns off thread to run invocation for given device.
@@ -1530,8 +1501,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             IInvocationContext context,
             ExecutableCommand cmd,
             IScheduledInvocationListener... listeners) {
-        initInvocation();
-
         // Check if device is not used in another invocation.
         throwIfDeviceInInvocationThread(context.getDevices());
 

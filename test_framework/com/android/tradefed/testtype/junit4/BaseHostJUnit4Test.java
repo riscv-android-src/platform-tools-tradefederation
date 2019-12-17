@@ -43,8 +43,6 @@ import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
 
-import com.google.common.base.Joiner;
-
 import org.junit.After;
 import org.junit.Assume;
 
@@ -524,7 +522,7 @@ public abstract class BaseHostJUnit4Test
                 maxInstrumentationTimeoutMs,
                 checkResults,
                 isHiddenApiCheckDisabled,
-                false,
+                true,
                 false,
                 instrumentationArgs,
                 new ArrayList<>());
@@ -671,7 +669,7 @@ public abstract class BaseHostJUnit4Test
                     runResult.getTestsResultsInState(TestStatus.ASSUMPTION_FAILURE);
             List<String> messages =
                     assumpFail.stream().map(r -> r.getStackTrace()).collect(Collectors.toList());
-            String errors = Joiner.on("\n\n").join(messages);
+            String errors = String.join("\n\n", messages);
             Assume.assumeTrue(
                     errors,
                     runResult.getNumTests()
@@ -716,9 +714,9 @@ public abstract class BaseHostJUnit4Test
             runOptions += "--no-hidden-api-checks ";
         }
         if (!isHiddenApiCheckDisabled
-                && isTestApiCheckDisabled
+                && !isTestApiCheckDisabled
                 && device.checkApiLevelAgainstNextRelease(30)) {
-            runOptions += "--no-test-api-checks";
+            runOptions += "--no-test-api-access ";
         }
         // isolated-storage flag only exists in Q and after.
         if (isIsolatedStorageDisabled && device.checkApiLevelAgainstNextRelease(29)) {

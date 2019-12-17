@@ -1458,6 +1458,10 @@ public class TestDevice extends NativeDevice {
      */
     @Override
     public boolean hasFeature(String feature) throws DeviceNotAvailableException {
+        // Add support for directly checking a feature and match the pm output.
+        if (!feature.startsWith("feature:")) {
+            feature = "feature:" + feature;
+        }
         String commandOutput = executeShellCommand("pm list features");
         for (String line: commandOutput.split("\\s+")) {
             // Each line in the output of the command has the format "feature:{FEATURE_VALUE}".

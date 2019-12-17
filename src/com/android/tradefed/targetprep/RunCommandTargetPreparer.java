@@ -35,7 +35,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @OptionClass(alias = "run-command")
-public class RunCommandTargetPreparer extends BaseTargetPreparer implements ITargetCleaner {
+public class RunCommandTargetPreparer extends BaseTargetPreparer {
 
     @Option(name = "run-command", description = "adb shell command to run")
     private List<String> mCommands = new ArrayList<String>();

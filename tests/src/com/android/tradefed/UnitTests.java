@@ -16,6 +16,17 @@
 
 package com.android.tradefed;
 
+import com.android.tradefed.cluster.ClusterCommandEventTest;
+import com.android.tradefed.cluster.ClusterCommandLauncherTest;
+import com.android.tradefed.cluster.ClusterCommandSchedulerTest;
+import com.android.tradefed.cluster.ClusterCommandTest;
+import com.android.tradefed.cluster.ClusterDeviceMonitorTest;
+import com.android.tradefed.cluster.ClusterEventUploaderTest;
+import com.android.tradefed.cluster.ClusterHostUtilTest;
+import com.android.tradefed.cluster.ClusterLogSaverTest;
+import com.android.tradefed.cluster.SubprocessConfigBuilderTest;
+import com.android.tradefed.cluster.SubprocessReportingHelperTest;
+import com.android.tradefed.cluster.TestOutputUploaderTest;
 import com.android.tradefed.build.AppDeviceBuildInfoTest;
 import com.android.tradefed.build.BootstrapBuildProviderTest;
 import com.android.tradefed.build.BuildInfoTest;
@@ -61,6 +72,7 @@ import com.android.tradefed.device.DeviceSelectionOptionsTest;
 import com.android.tradefed.device.DeviceStateMonitorTest;
 import com.android.tradefed.device.DumpsysPackageReceiverTest;
 import com.android.tradefed.device.FastbootHelperTest;
+import com.android.tradefed.device.LocalAndroidVirtualDeviceTest;
 import com.android.tradefed.device.ManagedDeviceListTest;
 import com.android.tradefed.device.ManagedTestDeviceFactoryTest;
 import com.android.tradefed.device.NativeDeviceTest;
@@ -261,6 +273,8 @@ import com.android.tradefed.testtype.junit4.DeviceParameterizedRunnerTest;
 import com.android.tradefed.testtype.junit4.LongevityHostRunnerTest;
 import com.android.tradefed.testtype.python.PythonBinaryHostTestTest;
 import com.android.tradefed.testtype.rust.RustBinaryHostTestTest;
+import com.android.tradefed.testtype.rust.RustBinaryTestTest;
+import com.android.tradefed.testtype.rust.RustTestBaseTest;
 import com.android.tradefed.testtype.rust.RustTestResultParserTest;
 import com.android.tradefed.testtype.suite.AtestRunnerTest;
 import com.android.tradefed.testtype.suite.BaseTestSuiteTest;
@@ -360,6 +374,7 @@ import com.android.tradefed.util.statsd.MetricUtilTest;
 import com.android.tradefed.util.testmapping.TestInfoTest;
 import com.android.tradefed.util.testmapping.TestMappingTest;
 import com.android.tradefed.util.zip.MergedZipEntryCollectionTest;
+import com.android.tradefed.util.RestApiHelperTest;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -388,6 +403,19 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // clearcut
     ClearcutClientTest.class,
+
+    // cluster
+    ClusterCommandEventTest.class,
+    ClusterCommandLauncherTest.class,
+    ClusterCommandSchedulerTest.class,
+    ClusterCommandTest.class,
+    ClusterDeviceMonitorTest.class,
+    ClusterEventUploaderTest.class,
+    ClusterHostUtilTest.class,
+    ClusterLogSaverTest.class,
+    SubprocessConfigBuilderTest.class,
+    SubprocessReportingHelperTest.class,
+    TestOutputUploaderTest.class,
 
     // command
     CommandFileParserTest.class,
@@ -434,6 +462,7 @@ import org.junit.runners.Suite.SuiteClasses;
     DeviceStateMonitorTest.class,
     DumpsysPackageReceiverTest.class,
     FastbootHelperTest.class,
+    LocalAndroidVirtualDeviceTest.class,
     ManagedDeviceListTest.class,
     ManagedTestDeviceFactoryTest.class,
     NativeDeviceTest.class,
@@ -701,6 +730,8 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // testtype/rust
     RustBinaryHostTestTest.class,
+    RustBinaryTestTest.class,
+    RustTestBaseTest.class,
     RustTestResultParserTest.class,
 
     // testtype/suite
@@ -774,6 +805,7 @@ import org.junit.runners.Suite.SuiteClasses;
     QuotationAwareTokenizerTest.class,
     RegexTrieTest.class,
     RemoteZipTest.class,
+    RestApiHelperTest.class,
     RunUtilTest.class,
     SerializationUtilTest.class,
     ShellOutputReceiverStreamTest.class,

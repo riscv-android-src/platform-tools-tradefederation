@@ -54,14 +54,12 @@ import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.IHostCleaner;
-import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.testtype.suite.ModuleListener;
@@ -385,40 +383,37 @@ public class InvocationExecution implements IInvocationExecution {
             ListIterator<ITargetPreparer> itr = preparers.listIterator(preparers.size());
             while (itr.hasPrevious()) {
                 ITargetPreparer preparer = itr.previous();
-                if (preparer instanceof ITargetCleaner) {
-                    ITargetCleaner cleaner = (ITargetCleaner) preparer;
-                    // do not call the cleaner if it was disabled
-                    if (cleaner.isDisabled() || cleaner.isTearDownDisabled()) {
-                        CLog.d("%s has been disabled. skipping.", cleaner);
-                        continue;
-                    }
-                    if (mTrackTargetPreparers == null
-                            || !mTrackTargetPreparers.containsKey(deviceName)
-                            || !mTrackTargetPreparers.get(deviceName).contains(cleaner)) {
-                        CLog.d("%s didn't run setUp, skipping tearDown.", cleaner);
-                        continue;
-                    }
-                    // If setup hit a targetSetupError, the setUp() and setTestLogger might not have
-                    // run, ensure we still have the logger.
-                    if (preparer instanceof ITestLoggerReceiver) {
-                        ((ITestLoggerReceiver) preparer).setTestLogger(logger);
-                    }
-                    try {
-                        CLog.d(
-                                "starting tearDown '%s' on device: '%s'",
-                                preparer, device.getSerialNumber());
-                        cleaner.tearDown(device, context.getBuildInfo(deviceName), exception);
-                        CLog.d(
-                                "done with tearDown '%s' on device: '%s'",
-                                preparer, device.getSerialNumber());
-                    } catch (Throwable e) {
-                        // We catch it and rethrow later to allow each targetprep to be attempted.
-                        // Only the first one will be thrown but all should be logged.
-                        CLog.e("Deferring throw for:");
-                        CLog.e(e);
-                        if (deferredThrowable == null) {
-                            deferredThrowable = e;
-                        }
+                // do not call the cleaner if it was disabled
+                if (preparer.isDisabled() || preparer.isTearDownDisabled()) {
+                    CLog.d("%s has been disabled. skipping.", preparer);
+                    continue;
+                }
+                if (mTrackTargetPreparers == null
+                        || !mTrackTargetPreparers.containsKey(deviceName)
+                        || !mTrackTargetPreparers.get(deviceName).contains(preparer)) {
+                    CLog.d("%s didn't run setUp, skipping tearDown.", preparer);
+                    continue;
+                }
+                // If setup hit a targetSetupError, the setUp() and setTestLogger might not have
+                // run, ensure we still have the logger.
+                if (preparer instanceof ITestLoggerReceiver) {
+                    ((ITestLoggerReceiver) preparer).setTestLogger(logger);
+                }
+                try {
+                    CLog.d(
+                            "starting tearDown '%s' on device: '%s'",
+                            preparer, device.getSerialNumber());
+                    preparer.tearDown(device, context.getBuildInfo(deviceName), exception);
+                    CLog.d(
+                            "done with tearDown '%s' on device: '%s'",
+                            preparer, device.getSerialNumber());
+                } catch (Throwable e) {
+                    // We catch it and rethrow later to allow each targetprep to be attempted.
+                    // Only the first one will be thrown but all should be logged.
+                    CLog.e("Deferring throw for:");
+                    CLog.e(e);
+                    if (deferredThrowable == null) {
+                        deferredThrowable = e;
                     }
                 }
             }
@@ -470,7 +465,7 @@ public class InvocationExecution implements IInvocationExecution {
 
     @Override
     public void runTests(
-            IInvocationContext context, IConfiguration config, ITestInvocationListener listener)
+            TestInformation info, IConfiguration config, ITestInvocationListener listener)
             throws Throwable {
         List<IRemoteTest> remainingTests = new ArrayList<>(config.getTests());
         UnexecutedTestReporterThread reporterThread =
@@ -481,23 +476,17 @@ public class InvocationExecution implements IInvocationExecution {
             for (IRemoteTest test : config.getTests()) {
                 // For compatibility of those receivers, they are assumed to be single device alloc.
                 if (test instanceof IDeviceTest) {
-                    ((IDeviceTest) test).setDevice(context.getDevices().get(0));
+                    ((IDeviceTest) test).setDevice(info.getDevice());
                 }
                 if (test instanceof IBuildReceiver) {
-                    ((IBuildReceiver) test)
-                            .setBuild(context.getBuildInfo(context.getDevices().get(0)));
+                    ((IBuildReceiver) test).setBuild(info.getBuildInfo());
                 }
                 if (test instanceof ISystemStatusCheckerReceiver) {
                     ((ISystemStatusCheckerReceiver) test)
                             .setSystemStatusChecker(config.getSystemStatusCheckers());
                 }
-
-                // TODO: consider adding receivers for only the list of ITestDevice and IBuildInfo.
-                if (test instanceof IMultiDeviceTest) {
-                    ((IMultiDeviceTest) test).setDeviceInfos(context.getDeviceBuildMap());
-                }
                 if (test instanceof IInvocationContextReceiver) {
-                    ((IInvocationContextReceiver) test).setInvocationContext(context);
+                    ((IInvocationContextReceiver) test).setInvocationContext(info.getContext());
                 }
 
                 updateAutoCollectors(config);
@@ -507,7 +496,7 @@ public class InvocationExecution implements IInvocationExecution {
                 if (!decision.isAutoRetryEnabled()
                         || RetryStrategy.NO_RETRY.equals(decision.getRetryStrategy())
                         || test instanceof ITestSuite) {
-                    runTest(config, context, listener, test);
+                    runTest(config, info, listener, test);
                     remainingTests.remove(test);
                     continue;
                 }
@@ -515,7 +504,7 @@ public class InvocationExecution implements IInvocationExecution {
                 ModuleListener mainGranularRunListener = new ModuleListener(null);
                 RetryLogSaverResultForwarder runListener =
                         initializeListeners(config, listener, mainGranularRunListener);
-                runTest(config, context, runListener, test);
+                runTest(config, info, runListener, test);
                 remainingTests.remove(test);
                 runListener.incrementAttempt();
 
@@ -542,7 +531,7 @@ public class InvocationExecution implements IInvocationExecution {
                         }
                         CLog.d("auto-retry attempt number '%s'", attemptNumber);
                         // Run the tests again
-                        runTest(config, context, runListener, test);
+                        runTest(config, info, runListener, test);
                         runListener.incrementAttempt();
                     }
                     // Feed the last attempt if we reached here.
@@ -678,7 +667,7 @@ public class InvocationExecution implements IInvocationExecution {
 
     private void runTest(
             IConfiguration config,
-            IInvocationContext context,
+            TestInformation info,
             ITestInvocationListener listener,
             IRemoteTest test)
             throws DeviceNotAvailableException {
@@ -688,13 +677,12 @@ public class InvocationExecution implements IInvocationExecution {
         for (AutoLogCollector auto : config.getCommandOptions().getAutoLogCollectors()) {
             clonedCollectors.add(auto.getInstanceForValue());
         }
-
         // Add the collector from the configuration
         clonedCollectors.addAll(CollectorHelper.cloneCollectors(config.getMetricCollectors()));
         if (test instanceof IMetricCollectorReceiver) {
             ((IMetricCollectorReceiver) test).setMetricCollectors(clonedCollectors);
             // If test can receive collectors then let it handle the how to set them up
-            test.run(listener);
+            test.run(info, listener);
         } else {
             // Wrap collectors in each other and collection will be sequential, do this in the
             // loop to ensure they are always initialized against the right context.
@@ -703,10 +691,11 @@ public class InvocationExecution implements IInvocationExecution {
                 if (collector.isDisabled()) {
                     CLog.d("%s has been disabled. Skipping.", collector);
                 } else {
-                    listenerWithCollectors = collector.init(context, listenerWithCollectors);
+                    listenerWithCollectors =
+                            collector.init(info.getContext(), listenerWithCollectors);
                 }
             }
-            test.run(listenerWithCollectors);
+            test.run(info, listenerWithCollectors);
         }
     }
 

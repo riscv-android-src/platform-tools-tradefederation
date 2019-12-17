@@ -26,7 +26,6 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.BaseTargetPreparer;
 import com.android.tradefed.targetprep.BuildError;
-import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.SemaphoreTokenTargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
@@ -46,7 +45,7 @@ import java.io.IOException;
  * the same time.
  */
 @OptionClass(alias = "adb-stop-server-preparer")
-public class AdbStopServerPreparer extends BaseTargetPreparer implements ITargetCleaner {
+public class AdbStopServerPreparer extends BaseTargetPreparer {
 
     public static final String ADB_BINARY_KEY = "adb_path";
 

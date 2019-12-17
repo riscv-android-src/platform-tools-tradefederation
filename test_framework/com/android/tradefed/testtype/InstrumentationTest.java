@@ -67,6 +67,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -288,12 +289,12 @@ public class InstrumentationTest
     private boolean mHiddenApiChecks = true;
 
     @Option(
-            name = "test-api-checks",
+            name = "test-api-access",
             description =
-                    "If set to false and hidden API checks are enabled, the '--no-test-api-checks'"
+                    "If set to false and hidden API checks are enabled, the '--no-test-api-access'"
                             + " flag will be passed to the am instrument command."
                             + " Only works for R or later.")
-    private boolean mTestApiChecks = false;
+    private boolean mTestApiAccess = true;
 
     @Option(
             name = "isolated-storage",
@@ -309,6 +310,13 @@ public class InstrumentationTest
                         + "instrument command. Only works for ICS or later."
     )
     private boolean mWindowAnimation = true;
+
+    @Option(
+            name = "disable-duplicate-test-check",
+            description =
+                    "If set to true, it will not check that a method is only run once by a "
+                            + "given instrumentation.")
+    private boolean mDisableDuplicateCheck = false;
 
     private IAbi mAbi = null;
 
@@ -691,13 +699,13 @@ public class InstrumentationTest
         if (!mHiddenApiChecks && apiLevel >= 28) {
             runOptions += "--no-hidden-api-checks ";
         }
-        // test-api-checks flag only exists in R and after.
+        // test-api-access flag only exists in R and after.
         // Test API checks are subset of hidden API checks, so only make sense if hidden API
         // checks are enabled.
         if (mHiddenApiChecks
-                && !mTestApiChecks
+                && !mTestApiAccess
                 && getDevice().checkApiLevelAgainstNextRelease(30)) {
-            runOptions += "--no-test-api-checks ";
+            runOptions += "--no-test-api-access ";
         }
         // isolated-storage flag only exists in Q and after.
         if (!mIsolatedStorage && getDevice().checkApiLevelAgainstNextRelease(29)) {
@@ -1037,6 +1045,9 @@ public class InstrumentationTest
                 mRunner,
                 // Use a crash forwarder to get stacks from logcat when crashing.
                 new LogcatCrashResultForwarder(getDevice(), listener, testTracker) {
+                    private Set<TestDescription> mTests = new HashSet<>();
+                    private Set<TestDescription> mDuplicateTests = new HashSet<>();
+
                     @Override
                     public void testRunStarted(String runName, int testCount) {
                         // In case of crash, run will attempt to report with 0
@@ -1048,6 +1059,30 @@ public class InstrumentationTest
                         } else {
                             super.testRunStarted(runName, testCount);
                         }
+                    }
+
+                    @Override
+                    public void testStarted(TestDescription test, long startTime) {
+                        super.testStarted(test, startTime);
+                        if (!mTests.add(test)) {
+                            mDuplicateTests.add(test);
+                        }
+                    }
+
+                    @Override
+                    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
+                        if (!mDuplicateTests.isEmpty() && !mDisableDuplicateCheck) {
+                            String errorMessage =
+                                    String.format(
+                                            "The following tests ran more than once: %s. Check "
+                                                    + "your run configuration, you might be "
+                                                    + "including the same test class several "
+                                                    + "times.",
+                                            mDuplicateTests);
+                            CLog.e(errorMessage);
+                            super.testRunFailed(errorMessage);
+                        }
+                        super.testRunEnded(elapsedTime, runMetrics);
                     }
                 });
         TestRunResult testRun = testTracker.getCurrentRunResults();

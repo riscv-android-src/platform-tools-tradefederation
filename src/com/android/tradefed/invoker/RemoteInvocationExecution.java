@@ -59,7 +59,6 @@ import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.proto.TestRecordProtoUtil;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -129,10 +128,10 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
     @Override
     public void runTests(
-            IInvocationContext context, IConfiguration config, ITestInvocationListener listener)
+            TestInformation info, IConfiguration config, ITestInvocationListener listener)
             throws Throwable {
-        ManagedRemoteDevice device = (ManagedRemoteDevice) context.getDevices().get(0);
-        GceAvdInfo info = device.getRemoteAvdInfo();
+        ManagedRemoteDevice device = (ManagedRemoteDevice) info.getDevice();
+        GceAvdInfo gceInfo = device.getRemoteAvdInfo();
 
         // Run remote TF (new tests?)
         IRunUtil runUtil = new RunUtil();
@@ -144,7 +143,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 && config.getCommandOptions().getShardIndex() == null) {
             if (config.getCommandOptions().getShardCount() > 1) {
                 int instanceCount = config.getCommandOptions().getShardCount();
-                if (!context.getBuildInfos().get(0).getBuildId().startsWith("P")) {
+                if (!info.getBuildInfo().getBuildId().startsWith("P")) {
                     instanceCount += config.getCommandOptions().getExtraRemotePostsubmitInstance();
                     config.getCommandOptions().setShardCount(instanceCount);
                 }
@@ -153,7 +152,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 if (!parallel) {
                     long startTime = System.currentTimeMillis();
                     for (int i = 2; i < instanceCount + 1; i++) {
-                        boolean res = startDevice(listener, i, info, options, runUtil, null);
+                        boolean res = startDevice(listener, i, gceInfo, options, runUtil, null);
                         if (!res) {
                             return;
                         }
@@ -168,7 +167,8 @@ public class RemoteInvocationExecution extends InvocationExecution {
                     mParallelSetupThreads = new ArrayList<>();
                     for (int i = 2; i < instanceCount + 1; i++) {
                         StartDeviceThread sdt =
-                                new StartDeviceThread(listener, i, info, options, runUtil, token);
+                                new StartDeviceThread(
+                                        listener, i, gceInfo, options, runUtil, token);
                         mParallelSetupThreads.add(sdt);
                         sdt.start();
                     }
@@ -187,7 +187,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
         mRemoteTradefedDir = mainRemoteDir + "tradefed/";
         CommandResult createRemoteDir =
                 GceManager.remoteSshCommandExecution(
-                        info, options, runUtil, 120000L, "mkdir", "-p", mRemoteTradefedDir);
+                        gceInfo, options, runUtil, 120000L, "mkdir", "-p", mRemoteTradefedDir);
         if (!CommandStatus.SUCCESS.equals(createRemoteDir.getStatus())) {
             listener.invocationFailed(new RuntimeException("Failed to create remote dir."));
             return;
@@ -199,7 +199,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
         while (!result && attempt < MAX_PUSH_TF_ATTEMPTS) {
             result =
                     RemoteFileUtil.pushFileToRemote(
-                            info,
+                            gceInfo,
                             options,
                             Arrays.asList("-r"),
                             runUtil,
@@ -217,7 +217,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
         mRemoteTradefedDir = mRemoteTradefedDir + tfToPush.getName() + "/";
         CommandResult listRemoteDir =
                 GceManager.remoteSshCommandExecution(
-                        info, options, runUtil, 120000L, "ls", "-l", mRemoteTradefedDir);
+                        gceInfo, options, runUtil, 120000L, "ls", "-l", mRemoteTradefedDir);
         CLog.d("stdout: %s", listRemoteDir.getStdout());
         CLog.d("stderr: %s", listRemoteDir.getStderr());
 
@@ -227,7 +227,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
             CLog.d("Pushing Tradefed XML configuration to remote.");
             boolean resultPush =
                     RemoteFileUtil.pushFileToRemote(
-                            info,
+                            gceInfo,
                             options,
                             null,
                             runUtil,
@@ -243,7 +243,6 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
             String[] whitelistConfigs =
                     new String[] {
-                        GlobalConfiguration.SCHEDULER_TYPE_NAME,
                         GlobalConfiguration.SANDBOX_FACTORY_TYPE_NAME,
                         GlobalConfiguration.HOST_OPTIONS_TYPE_NAME,
                         DynamicRemoteFileResolver.DYNAMIC_RESOLVER,
@@ -263,7 +262,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
             // Push the global configuration
             boolean resultPushGlobal =
                     RemoteFileUtil.pushFileToRemote(
-                            info,
+                            gceInfo,
                             options,
                             null,
                             runUtil,
@@ -277,9 +276,17 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 return;
             }
 
-            resetAdb(info, options, runUtil);
-            runRemote(listener, context, configFile, info, options, runUtil, config, globalConfig);
-            collectAdbLogs(info, options, runUtil, listener);
+            resetAdb(gceInfo, options, runUtil);
+            runRemote(
+                    listener,
+                    info.getContext(),
+                    configFile,
+                    gceInfo,
+                    options,
+                    runUtil,
+                    config,
+                    globalConfig);
+            collectAdbLogs(gceInfo, options, runUtil, listener);
         } finally {
             FileUtil.recursiveDelete(configFile);
             FileUtil.recursiveDelete(globalConfig);
@@ -769,7 +776,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                             options,
                             runUtil,
                             LAUNCH_EXTRA_DEVICE,
-                            Joiner.on(" ").join(startCommand));
+                            String.join(" ", startCommand));
         } finally {
             if (token != null) {
                 token.release();

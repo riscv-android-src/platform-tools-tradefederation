@@ -93,9 +93,8 @@ public class RemoteManagerFuncTest extends TestCase {
      * An integration test for client-manager interaction, that will add a command
      */
     public void testAddCommand() throws Exception {
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(new String[] {
-                "arg1", "arg2"
-        }), EasyMock.anyInt())).andReturn(true);
+        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(new String[] {"arg1", "arg2"})))
+                .andReturn(true);
 
         EasyMock.replay(mMockScheduler);
         mRemoteMgr.connectAnyPort();

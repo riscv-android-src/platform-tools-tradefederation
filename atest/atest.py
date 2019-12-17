@@ -56,7 +56,7 @@ EXPECTED_VARS = frozenset([
     constants.ANDROID_BUILD_TOP,
     'ANDROID_TARGET_OUT_TESTCASES',
     constants.ANDROID_OUT])
-TEST_RUN_DIR_PREFIX = 'atest_run_%s_'
+TEST_RUN_DIR_PREFIX = "%Y%m%d_%H%M"
 CUSTOM_ARG_FLAG = '--'
 OPTION_NOT_FOR_TEST_MAPPING = (
     'Option `%s` does not work for running tests in TEST_MAPPING files')
@@ -147,14 +147,15 @@ def _missing_environment_variables():
 
 
 def make_test_run_dir():
-    """Make the test run dir in tmp.
+    """Make the test run dir in ATEST_RESULT_ROOT.
 
     Returns:
         A string of the dir path.
     """
-    utc_epoch_time = int(time.time())
-    prefix = TEST_RUN_DIR_PREFIX % utc_epoch_time
-    return tempfile.mkdtemp(prefix=prefix)
+    if not os.path.exists(constants.ATEST_RESULT_ROOT):
+        os.makedirs(constants.ATEST_RESULT_ROOT)
+    ctime = time.strftime(TEST_RUN_DIR_PREFIX, time.localtime())
+    return tempfile.mkdtemp(prefix='%s_' % ctime, dir=constants.ATEST_RESULT_ROOT)
 
 
 def get_extra_args(args):
@@ -248,7 +249,7 @@ def _validate_exec_mode(args, test_infos, host_tests=None):
         metrics_utils.send_exit_event(constants.EXIT_CODE_ERROR, logs=err_msg)
         sys.exit(constants.EXIT_CODE_ERROR)
     # In the case of '$atest <host-only>', we add --host to run on host-side.
-    # The option should only be overriden if `host_tests` is not set.
+    # The option should only be overridden if `host_tests` is not set.
     if not args.host and host_tests is None:
         args.host = bool(constants.DEVICELESS_TEST in all_device_modes)
 
@@ -427,7 +428,7 @@ def is_from_test_mapping(test_infos):
     Args:
         test_infos: A set of TestInfos.
 
-    Retruns:
+    Returns:
         True if the test infos are from TEST_MAPPING files.
     """
     return list(test_infos)[0].from_test_mapping
@@ -439,7 +440,7 @@ def _split_test_mapping_tests(test_infos):
     Args:
         test_infos: A set of TestInfos.
 
-    Retruns:
+    Returns:
         A tuple of (device_test_infos, host_test_infos), where
         device_test_infos: A set of TestInfos for tests that require device.
         host_test_infos: A set of TestInfos for tests that do NOT require
@@ -544,6 +545,15 @@ def _print_testable_modules(mod_info, suite):
     for module in sorted(testable_modules):
         print('\t%s' % module)
 
+def _is_inside_android_root():
+    """Identify whether the cwd is inside of Android source tree.
+
+    Returns:
+        False if the cwd is outside of the source tree, True otherwise.
+    """
+    build_top = os.getenv(constants.ANDROID_BUILD_TOP, ' ')
+    return build_top in os.getcwd()
+
 # pylint: disable=too-many-statements
 # pylint: disable=too-many-branches
 def main(argv, results_dir):
@@ -570,6 +580,11 @@ def main(argv, results_dir):
             with open(constants.VERSION_FILE) as version_file:
                 print(version_file.read())
         return constants.EXIT_CODE_SUCCESS
+    if not _is_inside_android_root():
+        atest_utils.colorful_print(
+            "\nAtest must always work under ${}!".format(
+                constants.ANDROID_BUILD_TOP), constants.RED)
+        return constants.EXIT_CODE_OUTSIDE_ROOT
     mod_info = module_info.ModuleInfo(force_build=args.rebuild_module_info)
     if args.rebuild_module_info:
         _run_extra_tasks(join=True)

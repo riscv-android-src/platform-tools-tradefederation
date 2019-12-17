@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
@@ -89,7 +90,7 @@ public class LogcatTimingMetricCollectorTest {
     }
 
     @Test
-    public void testCollect_oneDevice() {
+    public void testCollect_oneDevice_perRun() {
         HashMap<String, Metric> metrics = new HashMap<>();
         mCollector.testRunStarted(RUN_NAME, 1);
         mCollector.testStarted(mTest);
@@ -116,7 +117,7 @@ public class LogcatTimingMetricCollectorTest {
     }
 
     @Test
-    public void testCollect_multipleDevice() {
+    public void testCollect_multipleDevice_perRun() {
         ITestDevice mockDevice = mock(ITestDevice.class);
         LogcatReceiver mockReceiver = mock(LogcatReceiver.class);
         when(mockDevice.getSerialNumber()).thenReturn("serial2");
@@ -143,6 +144,47 @@ public class LogcatTimingMetricCollectorTest {
                 .containsKey(String.format(DEVICE_NAME_FORMAT_KEY, "device1", "metric1"));
         assertThat(metrics)
                 .containsKey(String.format(DEVICE_NAME_FORMAT_KEY, "device2", "metric2"));
+    }
+
+    @Test
+    public void testCollect_onDevice_twoTests() throws ConfigurationException {
+        OptionSetter setter = new OptionSetter(mCollector);
+        setter.setOptionValue("per-run", "false");
+        HashMap<String, Metric> metrics = new HashMap<>();
+        mCollector.testRunStarted(RUN_NAME, 1);
+        mCollector.testStarted(mTest);
+        mCollector.testEnded(mTest, metrics);
+
+        verify(mMockReceiver).start();
+        verify(mMockReceiver).stop();
+        verify(mMockReceiver).clear();
+
+        assertThat(metrics).hasSize(2);
+        assertThat(metrics).containsKey("metric1");
+        assertThat(metrics).containsKey("metric2");
+
+        mCollector.testStarted(mTest);
+        mCollector.testEnded(mTest, metrics);
+
+        verify(mMockReceiver, times(2)).start();
+        verify(mMockReceiver, times(2)).stop();
+        verify(mMockReceiver, times(2)).clear();
+
+        assertThat(metrics).hasSize(2);
+        assertThat(metrics).containsKey("metric1");
+        assertThat(metrics).containsKey("metric2");
+
+        Metric metric1 = metrics.get("metric1");
+
+        String stringValue = metric1.getMeasurements().getSingleString();
+        assertThat(stringValue).isEqualTo("1.0");
+
+        Metric metric2 = metrics.get("metric2");
+
+        stringValue = metric2.getMeasurements().getSingleString();
+        assertThat(stringValue).isEqualTo("1.0,2.0");
+
+        mCollector.testRunEnded(0, metrics);
     }
 
     @Test

@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.binary;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
@@ -31,6 +32,7 @@ import com.android.tradefed.util.StreamUtil;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -59,9 +61,12 @@ public abstract class ExecutableBaseTest
     private long mRuntimeHintMs = 60000L; // 1 minute
 
     private IAbi mAbi;
+    private TestInformation mTestInfo;
 
     @Override
-    public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public final void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        mTestInfo = testInfo;
         for (String binary : mBinaryPaths) {
             String path = findBinary(binary);
             if (path == null) {
@@ -134,6 +139,10 @@ public abstract class ExecutableBaseTest
         return mAbi;
     }
 
+    TestInformation getTestInfo() {
+        return mTestInfo;
+    }
+
     /** {@inheritDoc} */
     @Override
     public final Collection<IRemoteTest> split() {
@@ -150,14 +159,17 @@ public abstract class ExecutableBaseTest
     private IRemoteTest getTestShard(String path) {
         ExecutableBaseTest shard = null;
         try {
-            shard = this.getClass().newInstance();
+            shard = this.getClass().getDeclaredConstructor().newInstance();
             OptionCopier.copyOptionsNoThrow(this, shard);
             // We approximate the runtime of each shard to be equal since we can't know.
             shard.mRuntimeHintMs = mRuntimeHintMs / shard.mBinaryPaths.size();
             // Set one binary per shard
             shard.mBinaryPaths.clear();
             shard.mBinaryPaths.add(path);
-        } catch (InstantiationException | IllegalAccessException e) {
+        } catch (InstantiationException
+                | IllegalAccessException
+                | InvocationTargetException
+                | NoSuchMethodException e) {
             // This cannot happen because the class was already created once at that point.
             throw new RuntimeException(
                     String.format(

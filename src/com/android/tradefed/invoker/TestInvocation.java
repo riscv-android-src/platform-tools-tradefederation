@@ -16,6 +16,7 @@
 package com.android.tradefed.invoker;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.CommandRunner.ExitCode;
@@ -206,11 +207,11 @@ public class TestInvocation implements ITestInvocation {
      * Performs the invocation
      *
      * @param config the {@link IConfiguration}
-     * @param context the {@link IInvocationContext} to use.
+     * @param testInfo the {@link TestInformation} to use for the invocation.
      */
     private void performInvocation(
             IConfiguration config,
-            IInvocationContext context,
+            TestInformation testInfo,
             IInvocationExecution invocationPath,
             IRescheduler rescheduler,
             ITestInvocationListener listener,
@@ -225,6 +226,7 @@ public class TestInvocation implements ITestInvocation {
         Throwable exception = null;
         Throwable tearDownException = null;
         ITestDevice badDevice = null;
+        IInvocationContext context = testInfo.getContext();
 
         // Ensure that no unexpected attributes are added afterward
         ((InvocationContext) context).lockAttributes();
@@ -237,13 +239,15 @@ public class TestInvocation implements ITestInvocation {
                 }
             }
             // Then run the regular setup and run
-            prepareAndRun(config, context, invocationPath, listener);
+            prepareAndRun(config, testInfo, invocationPath, listener);
         } catch (BuildError e) {
             exception = e;
             CLog.w("Build failed on device '%s'. Reason: %s", e.getDeviceDescriptor(),
                     e.toString());
             bugreportName = BUILD_ERROR_BUGREPORT_NAME;
-            badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
+            if (e.getDeviceDescriptor() != null) {
+                badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
+            }
             if (e instanceof DeviceFailedToBootError) {
                 if (badDevice == null) {
                     context.setRecoveryModeForAllDevices(RecoveryMode.NONE);
@@ -257,7 +261,9 @@ public class TestInvocation implements ITestInvocation {
             CLog.e("Caught exception while running invocation");
             CLog.e(e);
             bugreportName = TARGET_SETUP_ERROR_BUGREPORT_NAME;
-            badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
+            if (e.getDeviceDescriptor() != null) {
+                badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
+            }
             reportFailure(e, listener, config, context, invocationPath);
         } catch (DeviceNotAvailableException e) {
             exception = e;
@@ -361,8 +367,9 @@ public class TestInvocation implements ITestInvocation {
                     if (mStopRequestTime != null) {
                         // This is not 100% perfect since result reporting can still run a bit
                         // longer, but this is our last opportunity to report it.
+                        long latency = System.currentTimeMillis() - mStopRequestTime;
                         InvocationMetricLogger.addInvocationMetrics(
-                                InvocationMetricKey.SHUTDOWN_HARD_LATENCY, mStopRequestTime);
+                                InvocationMetricKey.SHUTDOWN_HARD_LATENCY, latency);
                     }
                 }
                 reportHostLog(listener, config);
@@ -401,17 +408,18 @@ public class TestInvocation implements ITestInvocation {
     /** Do setup and run the tests */
     private void prepareAndRun(
             IConfiguration config,
-            IInvocationContext context,
+            TestInformation testInfo,
             IInvocationExecution invocationPath,
             ITestInvocationListener listener)
             throws Throwable {
         getRunUtil().allowInterrupt(true);
-        logDeviceBatteryLevel(context, "initial -> setup");
-        invocationPath.doSetup(context, config, listener);
-        logDeviceBatteryLevel(context, "setup -> test");
+        logDeviceBatteryLevel(testInfo.getContext(), "initial -> setup");
+        // TODO: Use TestInformation in setup
+        invocationPath.doSetup(testInfo.getContext(), config, listener);
+        logDeviceBatteryLevel(testInfo.getContext(), "setup -> test");
         mTestStarted = true;
-        invocationPath.runTests(context, config, listener);
-        logDeviceBatteryLevel(context, "after test");
+        invocationPath.runTests(testInfo, config, listener);
+        logDeviceBatteryLevel(testInfo.getContext(), "after test");
     }
 
     /**
@@ -494,7 +502,7 @@ public class TestInvocation implements ITestInvocation {
                 if (config.getCommandOptions().getHostLogSuffix() != null) {
                     name += config.getCommandOptions().getHostLogSuffix();
                 }
-                listener.testLog(name, LogDataType.TEXT, globalLogSource);
+                listener.testLog(name, LogDataType.HOST_LOG, globalLogSource);
             } else {
                 // Only print the non-logging if we are not a stdout logger
                 if (!(logger instanceof StdoutLogger)) {
@@ -657,7 +665,11 @@ public class TestInvocation implements ITestInvocation {
                 config.resolveDynamicOptions();
             }
             return true;
-        } catch (RuntimeException | ConfigurationException e) {
+        } catch (RuntimeException | BuildRetrievalError | ConfigurationException e) {
+            // We don't have a reporting buildInfo at this point
+            IBuildInfo info = new BuildInfo();
+            context.addDeviceBuildInfo(context.getDeviceConfigNames().get(0), info);
+
             // Report an empty invocation, so this error is sent to listeners
             startInvocation(config, context, listener);
             // Don't want to use #reportFailure, since that will call buildNotTested
@@ -679,6 +691,15 @@ public class TestInvocation implements ITestInvocation {
             IRescheduler rescheduler,
             ITestInvocationListener... extraListeners)
             throws DeviceNotAvailableException, Throwable {
+        // Create the TestInformation for the invocation
+        // TODO: Use invocation-id in the workfolder name
+        File mWorkFolder = FileUtil.createTempDir("tradefed-invocation-workfolder");
+        TestInformation info =
+                TestInformation.newBuilder()
+                        .setInvocationContext(context)
+                        .setDependenciesFolder(mWorkFolder)
+                        .build();
+
         List<ITestInvocationListener> allListeners =
                 new ArrayList<>(config.getTestInvocationListeners().size() + extraListeners.length);
         allListeners.addAll(config.getTestInvocationListeners());
@@ -845,7 +866,7 @@ public class TestInvocation implements ITestInvocation {
                 return;
             }
 
-            performInvocation(config, context, invocationPath, rescheduler, listener, deviceInit);
+            performInvocation(config, info, invocationPath, rescheduler, listener, deviceInit);
             setExitCode(ExitCode.NO_ERROR, null);
         } catch (IOException e) {
             CLog.e(e);
@@ -866,6 +887,8 @@ public class TestInvocation implements ITestInvocation {
             getLogRegistry().unregisterLogger();
             config.getLogOutput().closeLog();
             config.cleanConfigurationData();
+            // Delete the invocation work directory at the end
+            FileUtil.recursiveDelete(info.dependenciesFolder());
         }
     }
 
@@ -934,14 +957,9 @@ public class TestInvocation implements ITestInvocation {
             if (log == null || !log.exists()) {
                 return;
             }
-            try {
-                if (FileUtil.readStringFromFile(log).isEmpty()) {
-                    CLog.d("executeShellCommandLog file was empty, skip logging.");
-                    return;
-                }
-            } catch (IOException e) {
-                // Ignored
-                CLog.e(e);
+            if (log.length() == 0) {
+                CLog.d("executeShellCommandLog file was empty, skip logging.");
+                return;
             }
             try (InputStreamSource source = new FileInputStreamSource(log)) {
                 logger.testLog(

@@ -40,7 +40,7 @@ import java.util.concurrent.TimeUnit;
  * <p>Requires 'aapt' on PATH when --uninstall is set
  */
 @OptionClass(alias = "app-setup")
-public class AppSetup extends BaseTargetPreparer implements ITargetCleaner {
+public class AppSetup extends BaseTargetPreparer {
 
     @Option(name="reboot", description="reboot device after running tests.")
     private boolean mReboot = true;

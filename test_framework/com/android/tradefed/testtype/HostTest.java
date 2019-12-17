@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype;
 
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
@@ -25,7 +26,7 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -61,6 +62,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
@@ -75,7 +77,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -95,9 +96,7 @@ public class HostTest
                 IBuildReceiver,
                 IAbiReceiver,
                 IShardableTest,
-                IRuntimeHintProvider,
-                IMultiDeviceTest,
-                IInvocationContextReceiver {
+                IRuntimeHintProvider {
 
     @Option(name = "class", description = "The JUnit test classes to run, in the format "
             + "<package>.<class>. eg. \"com.android.foo.Bar\". This field can be repeated.",
@@ -170,8 +169,7 @@ public class HostTest
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private IAbi mAbi;
-    private Map<ITestDevice, IBuildInfo> mDeviceInfos;
-    private IInvocationContext mContext;
+    private TestInformation mTestInfo;
     private TestFilterHelper mFilterHelper;
     private boolean mSkipTestClassCheck = false;
 
@@ -242,16 +240,6 @@ public class HostTest
      */
     protected IBuildInfo getBuild() {
         return mBuildInfo;
-    }
-
-    @Override
-    public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
-        mDeviceInfos = deviceInfos;
-    }
-
-    @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
     }
 
     /**
@@ -474,11 +462,8 @@ public class HostTest
         if (testObj instanceof IAbiReceiver) {
             ((IAbiReceiver)testObj).setAbi(mAbi);
         }
-        if (testObj instanceof IMultiDeviceTest) {
-            ((IMultiDeviceTest) testObj).setDeviceInfos(mDeviceInfos);
-        }
         if (testObj instanceof IInvocationContextReceiver) {
-            ((IInvocationContextReceiver) testObj).setInvocationContext(mContext);
+            ((IInvocationContextReceiver) testObj).setInvocationContext(mTestInfo.getContext());
         }
         // managed runner should have the same set-option to pass option too.
         if (testObj instanceof ISetOptionReceiver) {
@@ -493,11 +478,11 @@ public class HostTest
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        mTestInfo = testInfo;
         // Ensure filters are set in the helper
         mFilterHelper.addAllIncludeAnnotation(mIncludeAnnotations);
         mFilterHelper.addAllExcludeAnnotation(mExcludeAnnotations);
@@ -522,7 +507,7 @@ public class HostTest
 
         // Add a pretty logger to the events to mark clearly start/end of test cases.
         if (mEnableHostDeviceLogs) {
-            PrettyTestEventLogger logger = new PrettyTestEventLogger(mContext.getDevices());
+            PrettyTestEventLogger logger = new PrettyTestEventLogger(mTestInfo.getDevices());
             listener = new ResultForwarder(logger, listener);
         }
         if (mTestMethods != null) {
@@ -611,7 +596,7 @@ public class HostTest
                                 "%s does not implement ITestCollector", test.getClass()));
             }
         }
-        test.run(listener);
+        test.run(mTestInfo, listener);
     }
 
     /** Returns True if some tests were executed, false otherwise. */
@@ -957,7 +942,7 @@ public class HostTest
     private Object loadObject(Class<?> classObj, boolean setInfo) throws IllegalArgumentException {
         final String className = classObj.getName();
         try {
-            Object testObj = classObj.newInstance();
+            Object testObj = classObj.getDeclaredConstructor().newInstance();
             // set options
             setOptionToLoadedObject(testObj, mKeyValueOptions);
             // Set the test information if needed.
@@ -971,6 +956,9 @@ public class HostTest
         } catch (IllegalAccessException e) {
             throw new IllegalArgumentException(String.format("Could not load Test class %s",
                     className), e);
+        } catch (InvocationTargetException | NoSuchMethodException e) {
+            throw new IllegalArgumentException(
+                    String.format("Could not load Test class %s", className), e);
         }
     }
 
@@ -1203,8 +1191,11 @@ public class HostTest
     protected HostTest createHostTest(Class<?> classObj) {
         HostTest test;
         try {
-            test = this.getClass().newInstance();
-        } catch (InstantiationException | IllegalAccessException e) {
+            test = this.getClass().getDeclaredConstructor().newInstance();
+        } catch (InstantiationException
+                | IllegalAccessException
+                | InvocationTargetException
+                | NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
         OptionCopier.copyOptionsNoThrow(this, test);
@@ -1270,7 +1261,7 @@ public class HostTest
         try {
             OptionSetter setter = createOptionSetter(obj);
             return setter.validateRemoteFilePath();
-        } catch (ConfigurationException e) {
+        } catch (BuildRetrievalError | ConfigurationException e) {
             throw new RuntimeException(e);
         }
     }

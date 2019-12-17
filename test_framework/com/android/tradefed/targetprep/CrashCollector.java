@@ -21,7 +21,6 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.BackgroundDeviceAction;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.DeviceProperties;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.LargeOutputReceiver;
 import com.android.tradefed.log.ITestLogger;
@@ -34,12 +33,11 @@ import com.android.tradefed.util.StreamUtil;
 /**
  * A {@link ITargetPreparer} that runs crash collector on device which suppresses and logs crashes
  * during test execution.
- * <p>
- * Note: this preparer requires N platform or newer.
+ *
+ * <p>Note: this preparer requires N platform or newer.
  */
 @OptionClass(alias = "crash-collector")
-public class CrashCollector extends TestFilePushSetup
-        implements ITestLoggerReceiver, ITargetCleaner {
+public class CrashCollector extends TestFilePushSetup implements ITestLoggerReceiver {
 
     private static final String LOG_NAME = "crash-collector-log";
     private ITestLogger mTestLogger;
@@ -62,14 +60,8 @@ public class CrashCollector extends TestFilePushSetup
         if (isDisabled()) {
             return true;
         }
-        // first get pseudo API level to check for platform support
-        String codeName = device.getProperty(DeviceProperties.BUILD_CODENAME).trim();
-        int apiLevel = device.getApiLevel();
-        if (!"REL".equals(codeName)) {
-            apiLevel++;
-        }
-        if (apiLevel < 24) {
-            CLog.i("API Level too low: %s.", apiLevel);
+        if (!device.checkApiLevelAgainstNextRelease(24)) {
+            CLog.i("API Level too low: %s.", device.getApiLevel());
             return true;
         }
         if (!(buildInfo instanceof IDeviceBuildInfo)) {

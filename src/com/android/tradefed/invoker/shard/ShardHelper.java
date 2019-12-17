@@ -16,6 +16,7 @@
 package com.android.tradefed.invoker.shard;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
@@ -38,7 +39,6 @@ import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.util.QuotationAwareTokenizer;
@@ -203,7 +203,8 @@ public class ShardHelper implements IShardHelper {
 
     /** Runs the {@link IConfiguration#validateOptions()} on the config. */
     @VisibleForTesting
-    protected void validateOptions(IConfiguration config) throws ConfigurationException {
+    protected void validateOptions(IConfiguration config)
+            throws ConfigurationException, BuildRetrievalError {
         config.validateOptions();
         config.resolveDynamicOptions();
     }
@@ -240,8 +241,7 @@ public class ShardHelper implements IShardHelper {
                     .addMetadata(ConfigurationDescriptor.LOCAL_SHARDED_KEY, "true");
             // Validate and download the dynamic options
             validateOptions(clonedConfig);
-        } catch (ConfigurationException e) {
-            // should not happen
+        } catch (ConfigurationException | BuildRetrievalError e) {
             throw new RuntimeException(
                     String.format("failed to deep copy a configuration: %s", e.getMessage()), e);
         }
@@ -270,9 +270,6 @@ public class ShardHelper implements IShardHelper {
             }
             if (test instanceof IDeviceTest) {
                 ((IDeviceTest) test).setDevice(context.getDevices().get(0));
-            }
-            if (test instanceof IMultiDeviceTest) {
-                ((IMultiDeviceTest) test).setDeviceInfos(context.getDeviceBuildMap());
             }
             if (test instanceof IInvocationContextReceiver) {
                 ((IInvocationContextReceiver) test).setInvocationContext(context);

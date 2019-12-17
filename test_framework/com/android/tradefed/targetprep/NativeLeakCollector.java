@@ -33,14 +33,13 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A {@link ITargetCleaner} that runs 'dumpsys meminfo --unreachable -a' to identify the unreachable
- * native memory currently held by each process.
+ * A {@link ITargetPreparer} that runs 'dumpsys meminfo --unreachable -a' to identify the
+ * unreachable native memory currently held by each process.
  *
  * <p>Note: this preparer requires N platform or newer.
  */
 @OptionClass(alias = "native-leak-collector")
-public class NativeLeakCollector extends BaseTargetPreparer
-        implements ITestLoggerReceiver, ITargetCleaner {
+public class NativeLeakCollector extends BaseTargetPreparer implements ITestLoggerReceiver {
     private static final String UNREACHABLE_MEMINFO_CMD = "dumpsys -t %d meminfo --unreachable -a";
     private static final String DIRECT_UNREACHABLE_CMD = "dumpsys -t %d %s --unreachable";
     private static final String OUTPUT_HEADER = "\nExecuted command: %s\n";
