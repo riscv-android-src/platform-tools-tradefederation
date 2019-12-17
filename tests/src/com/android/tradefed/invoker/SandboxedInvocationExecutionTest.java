@@ -246,8 +246,8 @@ public class SandboxedInvocationExecutionTest {
         mInvocation.invoke(mContext, mConfig, mMockRescheduler, mMockListener);
 
         // Ensure no preparer and cleaner are called in parent process
-        Mockito.verify(mMockPreparer, times(0)).setUp(any(), any());
-        Mockito.verify(mMockCleaner, times(0)).tearDown(any(), any(), any());
+        Mockito.verify(mMockPreparer, times(0)).setUp(any());
+        Mockito.verify(mMockCleaner, times(0)).tearDown(any(), any());
     }
 
     /**

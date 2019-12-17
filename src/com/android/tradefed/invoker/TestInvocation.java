@@ -334,7 +334,7 @@ public class TestInvocation implements ITestInvocation {
 
             mStatus = "tearing down";
             try {
-                invocationPath.doTeardown(context, config, listener, exception);
+                invocationPath.doTeardown(testInfo, config, listener, exception);
             } catch (Throwable e) {
                 tearDownException = e;
                 CLog.e("Exception when tearing down invocation: %s", tearDownException.toString());
@@ -415,7 +415,7 @@ public class TestInvocation implements ITestInvocation {
         getRunUtil().allowInterrupt(true);
         logDeviceBatteryLevel(testInfo.getContext(), "initial -> setup");
         // TODO: Use TestInformation in setup
-        invocationPath.doSetup(testInfo.getContext(), config, listener);
+        invocationPath.doSetup(testInfo, config, listener);
         logDeviceBatteryLevel(testInfo.getContext(), "setup -> test");
         mTestStarted = true;
         invocationPath.runTests(testInfo, config, listener);
