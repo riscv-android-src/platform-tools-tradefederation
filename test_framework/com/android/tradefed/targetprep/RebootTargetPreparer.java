@@ -24,7 +24,7 @@ import com.android.tradefed.device.ITestDevice;
 
 /** Target preparer that reboots the device. */
 @OptionClass(alias = "reboot-preparer")
-public class RebootTargetPreparer extends BaseTargetPreparer implements ITargetCleaner {
+public class RebootTargetPreparer extends BaseTargetPreparer {
 
     @Option(name = "pre-reboot", description = "Reboot the device during setUp.")
     private boolean mPreReboot = true;

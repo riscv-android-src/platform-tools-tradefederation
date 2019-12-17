@@ -39,7 +39,7 @@ import java.util.List;
  * please look at {@link TestAppInstallSetup}.
  */
 @OptionClass(alias = "all-tests-zip-installer")
-public class InstallAllTestZipAppsSetup extends BaseTargetPreparer implements ITargetCleaner {
+public class InstallAllTestZipAppsSetup extends BaseTargetPreparer {
     @Option(
         name = "install-arg",
         description =

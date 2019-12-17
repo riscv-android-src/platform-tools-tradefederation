@@ -22,7 +22,7 @@ import com.android.tradefed.device.TestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 
 /** Target preparer for creating user and cleaning it up at the end. */
-public class CreateUserPreparer extends BaseTargetPreparer implements ITargetCleaner {
+public class CreateUserPreparer extends BaseTargetPreparer {
 
     private static final String TF_CREATED_USER = "tf_created_user";
 

@@ -33,6 +33,7 @@ import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -54,7 +55,7 @@ import java.util.Set;
  */
 @OptionClass(alias = "push-file")
 public class PushFilePreparer extends BaseTargetPreparer
-        implements ITargetCleaner, IAbiReceiver, IInvocationContextReceiver {
+        implements IAbiReceiver, IInvocationContextReceiver {
     private static final String LOG_TAG = "PushFilePreparer";
     private static final String MEDIA_SCAN_INTENT =
             "am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://%s "

@@ -54,7 +54,6 @@ import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStatistics;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.targetprep.BuildError;
-import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
@@ -797,30 +796,25 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             ListIterator<ITargetPreparer> itr = preparers.listIterator(preparers.size());
             while (itr.hasPrevious()) {
                 ITargetPreparer preparer = itr.previous();
-                if (preparer instanceof ITargetCleaner) {
-                    ITargetCleaner cleaner = (ITargetCleaner) preparer;
-                    // do not call the cleaner if it was disabled
-                    if (cleaner.isDisabled() || cleaner.isTearDownDisabled()) {
-                        CLog.d("%s has been disabled. skipping.", cleaner);
-                        continue;
-                    }
+                // do not call the cleaner if it was disabled
+                if (preparer.isDisabled() || preparer.isTearDownDisabled()) {
+                    CLog.d("%s has been disabled. skipping.", preparer);
+                    continue;
+                }
 
-                    RecoveryMode origMode = null;
-                    try {
-                        // If an exception was generated in setup with a DNAE do not attempt any
-                        // recovery again in case we hit the device not available again.
-                        if (exception != null && exception instanceof DeviceNotAvailableException) {
-                            origMode = device.getRecoveryMode();
-                            device.setRecoveryMode(RecoveryMode.NONE);
-                        }
-                        cleaner.tearDown(
-                                device,
-                                mModuleInvocationContext.getBuildInfo(deviceName),
-                                exception);
-                    } finally {
-                        if (origMode != null) {
-                            device.setRecoveryMode(origMode);
-                        }
+                RecoveryMode origMode = null;
+                try {
+                    // If an exception was generated in setup with a DNAE do not attempt any
+                    // recovery again in case we hit the device not available again.
+                    if (exception != null && exception instanceof DeviceNotAvailableException) {
+                        origMode = device.getRecoveryMode();
+                        device.setRecoveryMode(RecoveryMode.NONE);
+                    }
+                    preparer.tearDown(
+                            device, mModuleInvocationContext.getBuildInfo(deviceName), exception);
+                } finally {
+                    if (origMode != null) {
+                        device.setRecoveryMode(origMode);
                     }
                 }
             }

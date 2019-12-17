@@ -29,7 +29,7 @@ import com.android.tradefed.util.CommandStatus;
  * <p>Will restore back to original state on tear down.
  */
 @OptionClass(alias = "disable-selinux-preparer")
-public class DisableSELinuxTargetPreparer extends BaseTargetPreparer implements ITargetCleaner {
+public class DisableSELinuxTargetPreparer extends BaseTargetPreparer {
 
     private boolean mWasRoot = false;
     private boolean mWasPermissive = false;
