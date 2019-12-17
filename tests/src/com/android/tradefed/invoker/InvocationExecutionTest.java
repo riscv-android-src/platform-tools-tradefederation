@@ -328,9 +328,10 @@ public class InvocationExecutionTest {
         holder.addSpecificConfig(cleaner);
         mConfig.setDeviceConfig(holder);
         mContext.addAllocatedDevice("default", mock(ITestDevice.class));
-
-        mExec.doSetup(mContext, mConfig, mMockListener);
-        mExec.doTeardown(mContext, mConfig, mMockLogger, null);
+        TestInformation testInfo =
+                TestInformation.newBuilder().setInvocationContext(mContext).build();
+        mExec.doSetup(testInfo, mConfig, mMockListener);
+        mExec.doTeardown(testInfo, mConfig, mMockLogger, null);
 
         // Pre multi preparers are always called before.
         InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
@@ -339,7 +340,7 @@ public class InvocationExecutionTest {
         inOrder.verify(stub2).isDisabled();
         inOrder.verify(stub2).setUp(mContext);
 
-        inOrder.verify(cleaner).setUp(Mockito.any(), Mockito.any());
+        inOrder.verify(cleaner).setUp(Mockito.any());
 
         inOrder.verify(stub3).isDisabled();
         inOrder.verify(stub3).setUp(mContext);
@@ -352,7 +353,7 @@ public class InvocationExecutionTest {
         inOrder.verify(stub3).isDisabled();
         inOrder.verify(stub3).tearDown(mContext, null);
 
-        inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any(), Mockito.any());
+        inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any());
 
         inOrder.verify(stub2).isDisabled();
         inOrder.verify(stub2).tearDown(mContext, null);
@@ -375,10 +376,12 @@ public class InvocationExecutionTest {
         holder.addSpecificConfig(cleaner);
         mConfig.setDeviceConfig(holder);
         mContext.addAllocatedDevice("default", mock(ITestDevice.class));
-        mExec.doSetup(mContext, mConfig, mMockLogger);
+        TestInformation testInfo =
+                TestInformation.newBuilder().setInvocationContext(mContext).build();
+        mExec.doSetup(testInfo, mConfig, mMockLogger);
         // Ensure that the original error is the one passed around.
         Throwable exception = new Throwable("Original error");
-        mExec.doTeardown(mContext, mConfig, mMockLogger, exception);
+        mExec.doTeardown(testInfo, mConfig, mMockLogger, exception);
 
         InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
         inOrder.verify(stub1).isDisabled();
@@ -386,7 +389,7 @@ public class InvocationExecutionTest {
         inOrder.verify(stub2).isDisabled();
         inOrder.verify(stub2).setUp(mContext);
         inOrder.verify(cleaner).isDisabled();
-        inOrder.verify(cleaner).setUp(Mockito.any(), Mockito.any());
+        inOrder.verify(cleaner).setUp(Mockito.any());
         inOrder.verify(stub3).isDisabled();
         inOrder.verify(stub3).setUp(mContext);
         inOrder.verify(stub4).isDisabled();
@@ -397,7 +400,7 @@ public class InvocationExecutionTest {
         inOrder.verify(stub3).isDisabled();
         inOrder.verify(stub3).tearDown(mContext, exception);
 
-        inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any(), Mockito.any());
+        inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any());
 
         inOrder.verify(stub2).isDisabled();
         inOrder.verify(stub2).tearDown(mContext, exception);
@@ -427,8 +430,10 @@ public class InvocationExecutionTest {
         // Ensure that the original error is the one passed around.
         Throwable exception = new Throwable("Original error");
         ITestLogger logger = new CollectingTestListener();
-        mExec.doSetup(mContext, mConfig, logger);
-        mExec.doTeardown(mContext, mConfig, logger, exception);
+        TestInformation testInfo =
+                TestInformation.newBuilder().setInvocationContext(mContext).build();
+        mExec.doSetup(testInfo, mConfig, logger);
+        mExec.doTeardown(testInfo, mConfig, logger, exception);
 
         InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
         inOrder.verify(stub1).isDisabled();
@@ -436,7 +441,7 @@ public class InvocationExecutionTest {
         inOrder.verify(stub2).isDisabled();
         inOrder.verify(stub2).setUp(mContext);
         inOrder.verify(cleaner).isDisabled();
-        inOrder.verify(cleaner).setUp(Mockito.any(), Mockito.any());
+        inOrder.verify(cleaner).setUp(Mockito.any());
         inOrder.verify(stub3).isDisabled();
         inOrder.verify(stub3).setUp(mContext);
         inOrder.verify(stub4).isDisabled();
@@ -447,7 +452,7 @@ public class InvocationExecutionTest {
         inOrder.verify(stub3).isDisabled();
         inOrder.verify(stub3).tearDown(mContext, exception);
 
-        inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any(), Mockito.any());
+        inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any());
 
         inOrder.verify(stub2).isDisabled();
         inOrder.verify(stub2).tearDown(mContext, exception);
@@ -475,10 +480,11 @@ public class InvocationExecutionTest {
         // Ensure that the original error is the one passed around.
         Throwable exception = new Throwable("Original error");
         doThrow(new RuntimeException("Oups I failed")).when(stub3).tearDown(mContext, exception);
-
+        TestInformation testInfo =
+                TestInformation.newBuilder().setInvocationContext(mContext).build();
         try {
-            mExec.doSetup(mContext, mConfig, mMockLogger);
-            mExec.doTeardown(mContext, mConfig, null, exception);
+            mExec.doSetup(testInfo, mConfig, mMockLogger);
+            mExec.doTeardown(testInfo, mConfig, null, exception);
             fail("Should have thrown an exception");
         } catch (RuntimeException expected) {
             // Expected
@@ -490,7 +496,7 @@ public class InvocationExecutionTest {
         inOrder.verify(stub2).isDisabled();
         inOrder.verify(stub2).setUp(mContext);
         inOrder.verify(cleaner).isDisabled();
-        inOrder.verify(cleaner).setUp(Mockito.any(), Mockito.any());
+        inOrder.verify(cleaner).setUp(Mockito.any());
         inOrder.verify(stub3).isDisabled();
         inOrder.verify(stub3).setUp(mContext);
         inOrder.verify(stub4).isDisabled();
@@ -501,7 +507,7 @@ public class InvocationExecutionTest {
         inOrder.verify(stub3).isDisabled();
         inOrder.verify(stub3).tearDown(mContext, exception);
 
-        inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any(), Mockito.any());
+        inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any());
 
         inOrder.verify(stub2).isDisabled();
         inOrder.verify(stub2).tearDown(mContext, exception);

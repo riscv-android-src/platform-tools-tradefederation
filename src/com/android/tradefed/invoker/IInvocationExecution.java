@@ -66,7 +66,7 @@ public interface IInvocationExecution {
      * Execute the target_preparer and multi_target_preparer setUp step. Does all the devices setup
      * required for the test to run.
      *
-     * @param context the {@link IInvocationContext} of the invocation.
+     * @param testInfo the {@link TestInformation} of the invocation.
      * @param config the {@link IConfiguration} of this test run.
      * @param logger the {@link ITestLogger} to report setup failures logs.
      * @throws TargetSetupError
@@ -74,7 +74,7 @@ public interface IInvocationExecution {
      * @throws DeviceNotAvailableException
      */
     public default void doSetup(
-            IInvocationContext context, IConfiguration config, final ITestLogger logger)
+            TestInformation testInfo, IConfiguration config, final ITestLogger logger)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {}
 
     /**
@@ -106,14 +106,14 @@ public interface IInvocationExecution {
      * Execute the target_preparer and multi_target_preparer teardown step. Does the devices tear
      * down associated with the setup.
      *
-     * @param context the {@link IInvocationContext} of the invocation.
+     * @param testInfo the {@link TestInformation} of the invocation.
      * @param config the {@link IConfiguration} of this test run.
      * @param logger the {@link ITestLogger} to report logs.
      * @param exception the original exception thrown by the test running.
      * @throws Throwable
      */
     public default void doTeardown(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             ITestLogger logger,
             Throwable exception)
