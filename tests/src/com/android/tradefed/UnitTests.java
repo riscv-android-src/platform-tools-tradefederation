@@ -141,6 +141,7 @@ import com.android.tradefed.invoker.shard.StrictShardHelperTest;
 import com.android.tradefed.invoker.shard.TestsPoolPollerTest;
 import com.android.tradefed.invoker.shard.token.TelephonyTokenProviderTest;
 import com.android.tradefed.invoker.shard.token.TokenProviderHelperTest;
+import com.android.tradefed.lite.HostUtilsTest;
 import com.android.tradefed.log.FileLoggerTest;
 import com.android.tradefed.log.HistoryLoggerTest;
 import com.android.tradefed.log.LogRegistryTest;
@@ -560,6 +561,9 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // invoker.sandbox
     ParentSandboxInvocationExecutionTest.class,
+
+    // lite
+    HostUtilsTest.class,
 
     // log
     FileLoggerTest.class,
