@@ -318,7 +318,9 @@ public class DeviceManagerTest {
     public void testAllocateDevice_match() {
         mDeviceSelections.addSerial(DEVICE_SERIAL);
         setCheckAvailableDeviceExpectations();
-        EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))
+        EasyMock.expect(
+                        mMockTestDevice.handleAllocationEvent(
+                                DeviceEvent.EXPLICIT_ALLOCATE_REQUEST))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
         replayMocks();
         DeviceManager manager = createDeviceManager(null, mMockIDevice);
@@ -337,7 +339,9 @@ public class DeviceManagerTest {
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FORCE_AVAILABLE))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Available, true));
         // Device get allocated
-        EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))
+        EasyMock.expect(
+                        mMockTestDevice.handleAllocationEvent(
+                                DeviceEvent.EXPLICIT_ALLOCATE_REQUEST))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
 
         mMockTestDevice.stopLogcat();
