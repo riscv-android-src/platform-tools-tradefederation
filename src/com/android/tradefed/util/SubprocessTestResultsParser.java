@@ -59,8 +59,10 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -82,6 +84,8 @@ public class SubprocessTestResultsParser implements Closeable {
     private EventReceiverThread mEventReceiver = null;
     private IInvocationContext mContext = null;
     private Long mStartTime = null;
+    // Keep track of which files we received TEST_LOG event from.
+    private Set<String> mTestLogged = new HashSet<>();
 
     /** Relevant test status keys. */
     public static class StatusKeys {
@@ -495,6 +499,7 @@ public class SubprocessTestResultsParser implements Closeable {
             String name = String.format("subprocess-%s", logInfo.mDataName);
             try (InputStreamSource data = new FileInputStreamSource(logInfo.mDataFile, true)) {
                 mListener.testLog(name, logInfo.mLogType, data);
+                mTestLogged.add(logInfo.mDataName);
             }
         }
     }
@@ -512,6 +517,12 @@ public class SubprocessTestResultsParser implements Closeable {
             File path = new File(file.getPath());
             String name = String.format("subprocess-%s", assosInfo.mDataName);
             if (Strings.isNullOrEmpty(file.getUrl()) && path.exists()) {
+                if (mTestLogged.contains(assosInfo.mDataName)) {
+                    CLog.d(
+                            "Already called testLog on %s, ignoring the logAssociation.",
+                            assosInfo.mDataName);
+                    return;
+                }
                 try (InputStreamSource source = new FileInputStreamSource(path)) {
                     LogDataType type = file.getType();
                     // File might have already been compressed

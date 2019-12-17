@@ -19,7 +19,6 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionCopier;
-import com.android.tradefed.config.OptionUpdateRule;
 import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.UniqueMultiMap;
@@ -40,9 +39,6 @@ public class CommandOptions implements ICommandOptions {
     @Option(name = "help-all", description = "display the full help text for all options.",
             importance = Importance.ALWAYS)
     private boolean mFullHelpMode = false;
-
-    @Option(name = "json-help", description = "display the full help in json format.")
-    private boolean mJsonHelpMode = false;
 
     public static final String DRY_RUN_OPTION = "dry-run";
     public static final String NOISY_DRY_RUN_OPTION = "noisy-dry-run";
@@ -68,13 +64,6 @@ public class CommandOptions implements ICommandOptions {
     @Option(name = "min-loop-time", description =
             "the minimum invocation time in ms when in loop mode.")
     private Long mMinLoopTime = 10L * 60L * 1000L;
-
-    @Option(name = "max-random-loop-time", description =
-            "the maximum time to wait between invocation attempts when in loop mode. " +
-            "when set, the actual value will be a random number between min-loop-time and this " +
-            "number.",
-            updateRule = OptionUpdateRule.LEAST)
-    private Long mMaxRandomLoopTime = null;
 
     @Option(name = "test-tag", description = "Identifier for the invocation during reporting.")
     private String mTestTag = "stub";
@@ -233,23 +222,6 @@ public class CommandOptions implements ICommandOptions {
     }
 
     /**
-     * Set the json help mode for the config.
-     * <p/>
-     * Exposed for testing.
-     */
-    void setJsonHelpMode(boolean jsonHelpMode) {
-        mJsonHelpMode = jsonHelpMode;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isJsonHelpMode() {
-        return mJsonHelpMode;
-    }
-
-    /**
      * Set the dry run mode for the config.
      * <p/>
      * Exposed for testing.
@@ -301,28 +273,9 @@ public class CommandOptions implements ICommandOptions {
 
     /**
      * {@inheritDoc}
-     * @deprecated use {@link #getLoopTime()} instead
-     */
-    @Deprecated
-    @Override
-    public long getMinLoopTime() {
-        return mMinLoopTime;
-    }
-
-    /**
-     * {@inheritDoc}
      */
     @Override
     public long getLoopTime() {
-        if (mMaxRandomLoopTime != null) {
-            long randomizedValue = mMaxRandomLoopTime - mMinLoopTime;
-            if (randomizedValue > 0) {
-                return mMinLoopTime + Math.round(randomizedValue * Math.random());
-            } else {
-                CLog.e("max loop time %d is less than min loop time %d", mMaxRandomLoopTime,
-                        mMinLoopTime);
-            }
-        }
         return mMinLoopTime;
     }
 

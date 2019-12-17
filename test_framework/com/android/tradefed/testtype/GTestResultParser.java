@@ -22,8 +22,6 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 
-import com.google.common.base.Joiner;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -773,7 +771,7 @@ public class GTestResultParser extends MultiLineReceiver {
                 listener.testRunFailed(
                         String.format(
                                 "%s did not report any run:\n%s",
-                                mTestRunName, Joiner.on("\n").join(mTrackLogsBeforeRunStart)));
+                                mTestRunName, String.join("\n", mTrackLogsBeforeRunStart)));
                 listener.testRunEnded(0L, new HashMap<String, Metric>());
             }
         }

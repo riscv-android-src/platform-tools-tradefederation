@@ -22,7 +22,6 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.build.BuildInfo;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
@@ -37,7 +36,6 @@ import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.StubTest;
@@ -56,7 +54,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /** Unit tests for {@link StrictShardHelper}. */
 @RunWith(JUnit4.class)
@@ -321,17 +318,11 @@ public class StrictShardHelperTest {
      * Test class to ensure that when sharding interfaces are properly called and forwarded so the
      * tests have all their information for sharding.
      */
-    public static class TestInterfaceClass
-            implements IShardableTest, IMultiDeviceTest, IInvocationContextReceiver {
+    public static class TestInterfaceClass implements IShardableTest, IInvocationContextReceiver {
 
         @Override
         public void setInvocationContext(IInvocationContext invocationContext) {
             Assert.assertNotNull(invocationContext);
-        }
-
-        @Override
-        public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
-            Assert.assertNotNull(deviceInfos);
         }
 
         @Override

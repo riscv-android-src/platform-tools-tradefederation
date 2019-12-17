@@ -20,6 +20,7 @@ import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.File;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -420,10 +421,10 @@ public class ConfigurationDef {
             throws ConfigurationException {
         try {
             Class<?> objectClass = getClassForObject(objectTypeName, className);
-            Object configObject = objectClass.newInstance();
+            Object configObject = objectClass.getDeclaredConstructor().newInstance();
             checkObjectValid(objectTypeName, configObject);
             return configObject;
-        } catch (InstantiationException e) {
+        } catch (InstantiationException | InvocationTargetException | NoSuchMethodException e) {
             throw new ConfigurationException(String.format(
                     "Could not instantiate class %s for config object type %s", className,
                     objectTypeName), e);

@@ -25,11 +25,14 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.CommandResult;
@@ -57,6 +60,7 @@ public class ExecutableHostTestTest {
     private ITestInvocationListener mMockListener;
     private ITestDevice mMockDevice;
     private IRunUtil mMockRunUtil;
+    private TestInformation mTestInfo;
 
     @Before
     public void setUp() {
@@ -70,12 +74,14 @@ public class ExecutableHostTestTest {
                         return mMockRunUtil;
                     }
                 };
-        mExecutableTest.setDevice(mMockDevice);
+        InvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mMockDevice);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     @Test
     public void testRunHostExecutable_noBinaries() throws Exception {
-        mExecutableTest.run(mMockListener);
+        mExecutableTest.run(mTestInfo, mMockListener);
 
         verify(mMockListener, times(0)).testRunStarted(any(), anyInt());
     }
@@ -85,8 +91,8 @@ public class ExecutableHostTestTest {
         String path = "/does/not/exists/path/bin/test";
         OptionSetter setter = new OptionSetter(mExecutableTest);
         setter.setOptionValue("binary", path);
-
-        mExecutableTest.run(mMockListener);
+        mTestInfo.getContext().addDeviceBuildInfo("device", new BuildInfo());
+        mExecutableTest.run(mTestInfo, mMockListener);
 
         verify(mMockListener, Mockito.times(1)).testRunStarted(eq("test"), eq(0));
         verify(mMockListener, Mockito.times(1))
@@ -111,7 +117,7 @@ public class ExecutableHostTestTest {
                             Mockito.any(),
                             Mockito.eq(tmpBinary.getAbsolutePath()));
 
-            mExecutableTest.run(mMockListener);
+            mExecutableTest.run(mTestInfo, mMockListener);
 
             verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(1));
             verify(mMockListener, Mockito.times(0)).testRunFailed(any());
@@ -145,7 +151,7 @@ public class ExecutableHostTestTest {
                                             "pushd %s; ./%s;",
                                             tmpBinary.getParent(), tmpBinary.getName())));
 
-            mExecutableTest.run(mMockListener);
+            mExecutableTest.run(mTestInfo, mMockListener);
 
             verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(1));
             verify(mMockListener, Mockito.times(0)).testRunFailed(any());
@@ -175,7 +181,7 @@ public class ExecutableHostTestTest {
 
             doThrow(new DeviceNotAvailableException()).when(mMockDevice).waitForDeviceAvailable();
             try {
-                mExecutableTest.run(mMockListener);
+                mExecutableTest.run(mTestInfo, mMockListener);
                 fail("Should have thrown an exception.");
             } catch (DeviceNotAvailableException expected) {
                 // Expected
@@ -204,7 +210,7 @@ public class ExecutableHostTestTest {
         try {
             IDeviceBuildInfo info = new DeviceBuildInfo();
             info.setTestsDir(testsDir, "testversion");
-            mExecutableTest.setBuild(info);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
             OptionSetter setter = new OptionSetter(mExecutableTest);
             setter.setOptionValue("binary", tmpBinary.getName());
 
@@ -217,7 +223,7 @@ public class ExecutableHostTestTest {
                             Mockito.any(),
                             Mockito.eq(tmpBinary.getAbsolutePath()));
 
-            mExecutableTest.run(mMockListener);
+            mExecutableTest.run(mTestInfo, mMockListener);
 
             verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(1));
             verify(mMockListener, Mockito.times(0)).testRunFailed(any());
@@ -236,7 +242,7 @@ public class ExecutableHostTestTest {
         try {
             IDeviceBuildInfo info = new DeviceBuildInfo();
             info.setTestsDir(testsDir, "testversion");
-            mExecutableTest.setBuild(info);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
             OptionSetter setter = new OptionSetter(mExecutableTest);
             setter.setOptionValue("binary", tmpBinary.getName());
             tmpBinary.delete();
@@ -246,7 +252,7 @@ public class ExecutableHostTestTest {
                     .when(mMockRunUtil)
                     .runTimedCmd(Mockito.anyLong(), Mockito.eq(tmpBinary.getAbsolutePath()));
 
-            mExecutableTest.run(mMockListener);
+            mExecutableTest.run(mTestInfo, mMockListener);
 
             verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(0));
             verify(mMockListener, Mockito.times(1))
@@ -291,7 +297,7 @@ public class ExecutableHostTestTest {
                             Mockito.any(),
                             Mockito.eq(tmpBinary.getAbsolutePath()));
 
-            mExecutableTest.run(mMockListener);
+            mExecutableTest.run(mTestInfo, mMockListener);
 
             verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(1));
             verify(mMockListener, Mockito.times(0)).testRunFailed(any());

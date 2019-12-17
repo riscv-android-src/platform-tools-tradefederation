@@ -41,5 +41,16 @@
       // Jar Host with ApkInstaller.
       "name": "CtsSampleHostTestCases"
     }
+  ],
+  // TODO(b/144852628): Remove after actual platinum tests are added to TEST_MAPPING files.
+  "staged-platinum-postsubmit": [
+    {
+      "name": "HelloWorldTests"
+    }
+  ],
+  "platinum-postsubmit": [
+    {
+      "name": "HelloWorldTests"
+    }
   ]
 }

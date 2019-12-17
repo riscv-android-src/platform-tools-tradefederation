@@ -31,7 +31,7 @@ import java.util.concurrent.Semaphore;
  * in the command file.
  */
 @OptionClass(alias = "semaphore-token")
-public class SemaphoreTokenTargetPreparer extends BaseTargetPreparer implements ITargetCleaner {
+public class SemaphoreTokenTargetPreparer extends BaseTargetPreparer {
     private boolean mTokenAcquired = true;
     static final Semaphore mRunToken = new Semaphore(1);
 

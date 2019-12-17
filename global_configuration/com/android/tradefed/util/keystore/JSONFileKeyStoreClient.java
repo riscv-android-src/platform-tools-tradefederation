@@ -105,4 +105,21 @@ public class JSONFileKeyStoreClient implements IKeyStoreClient {
         mJsonKeyStore = keyStore;
     }
 
+    /**
+     * Maps {@code key} to {@code value}. Equivalent to {@code mJsonKeyStore.put(key, value)}.
+     *
+     * @param the key to set value.
+     * @param the {@link String} value of the key.
+     */
+    protected void setKey(String key, String value) throws JSONException {
+        if (key == null) {
+            CLog.w("null key passed");
+            return;
+        }
+        if (mJsonKeyStore == null) {
+            CLog.w("null keystore");
+            return;
+        }
+        mJsonKeyStore.put(key, value);
+    }
 }

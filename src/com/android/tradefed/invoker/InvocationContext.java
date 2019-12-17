@@ -421,9 +421,9 @@ public class InvocationContext implements IInvocationContext {
         // Test Tag.
         context.mTestTag = protoContext.getTestTag();
         // Map Build Info
-        for (String key : protoContext.getNameBuildInfo().keySet()) {
+        for (String key : protoContext.getNameBuildInfoMap().keySet()) {
             context.mNameAndBuildinfoMap.put(
-                    key, BuildInfo.fromProto(protoContext.getNameBuildInfo().get(key)));
+                    key, BuildInfo.fromProto(protoContext.getNameBuildInfoMap().get(key)));
         }
         // Metadata
         for (Metadata meta : protoContext.getMetadataList()) {

@@ -17,6 +17,7 @@ package com.android.tradefed.testtype.suite;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
@@ -37,6 +38,7 @@ import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.shard.token.ITokenRequest;
@@ -59,7 +61,6 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IReportNotExecuted;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
@@ -75,6 +76,7 @@ import com.google.inject.Injector;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -98,7 +100,6 @@ import java.util.stream.Collectors;
 public abstract class ITestSuite
         implements IRemoteTest,
                 IDeviceTest,
-                IMultiDeviceTest,
                 IBuildReceiver,
                 ISystemStatusCheckerReceiver,
                 IShardableTest,
@@ -321,7 +322,6 @@ public abstract class ITestSuite
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
-    private Map<ITestDevice, IBuildInfo> mDeviceInfos;
     private List<ISystemStatusChecker> mSystemStatusCheckers;
     private IInvocationContext mContext;
     private List<IMetricCollector> mMetricCollectors;
@@ -386,8 +386,11 @@ public abstract class ITestSuite
      */
     private ITestSuite createInstance() {
         try {
-            return this.getClass().newInstance();
-        } catch (InstantiationException | IllegalAccessException e) {
+            return this.getClass().getDeclaredConstructor().newInstance();
+        } catch (InstantiationException
+                | IllegalAccessException
+                | InvocationTargetException
+                | NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
     }
@@ -466,7 +469,7 @@ public abstract class ITestSuite
             try {
                 mDynamicResolver.resolvePartialDownloadZip(
                         getTestsDir(), remoteFile.toString(), includeFilters, excludeFilters);
-            } catch (ConfigurationException | FileNotFoundException e) {
+            } catch (BuildRetrievalError | FileNotFoundException e) {
                 CLog.e(
                         String.format(
                                 "Failed to download partial zip from %s for modules: %s",
@@ -491,7 +494,6 @@ public abstract class ITestSuite
             // If we are sharded and already know what to run then we just do it.
             runModules.add(mDirectModule);
             mDirectModule.setDevice(mDevice);
-            mDirectModule.setDeviceInfos(mDeviceInfos);
             mDirectModule.setBuild(mBuildInfo);
             return runModules;
         }
@@ -518,7 +520,6 @@ public abstract class ITestSuite
                 module.disableAutoRetryReportingTime();
             }
             module.setDevice(mDevice);
-            module.setDeviceInfos(mDeviceInfos);
             module.setBuild(mBuildInfo);
             runModules.add(module);
         }
@@ -589,7 +590,8 @@ public abstract class ITestSuite
 
     /** Generic run method for all test loaded from {@link #loadTests()}. */
     @Override
-    public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public final void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         mCurrentLogger = listener;
         // Load and check the module checkers, runners and preparers in black and whitelist
         checkClassLoad(mSystemStatusCheckBlacklist, SKIP_SYSTEM_STATUS_CHECKER);
@@ -661,8 +663,11 @@ public abstract class ITestSuite
                 // Trigger module start on module level listener too
                 new ResultForwarder(moduleListeners)
                         .testModuleStarted(module.getModuleInvocationContext());
+                TestInformation moduleInfo =
+                        TestInformation.createModuleTestInfo(
+                                testInfo, module.getModuleInvocationContext());
                 try {
-                    runSingleModule(module, listener, moduleListeners, failureListener);
+                    runSingleModule(module, moduleInfo, listener, moduleListeners, failureListener);
                 } finally {
                     // Trigger module end on module level listener too
                     new ResultForwarder(moduleListeners).testModuleEnded();
@@ -724,6 +729,7 @@ public abstract class ITestSuite
      * Helper method that handle running a single module logic.
      *
      * @param module The {@link ModuleDefinition} to be ran.
+     * @param moduleInfo The {@link TestInformation} for the module.
      * @param listener The {@link ITestInvocationListener} where to report results
      * @param moduleListeners The {@link ITestInvocationListener}s that runs at the module level.
      * @param failureListener special listener that we add to collect information on failures.
@@ -731,6 +737,7 @@ public abstract class ITestSuite
      */
     private void runSingleModule(
             ModuleDefinition module,
+            TestInformation moduleInfo,
             ITestInvocationListener listener,
             List<ITestInvocationListener> moduleListeners,
             TestFailureListener failureListener)
@@ -772,6 +779,7 @@ public abstract class ITestSuite
         module.setEnableDynamicDownload(mEnableDynamicDownload);
         // Actually run the module
         module.run(
+                moduleInfo,
                 listener,
                 moduleListeners,
                 failureListener,
@@ -969,9 +977,6 @@ public abstract class ITestSuite
                 if (test instanceof IDeviceTest) {
                     ((IDeviceTest) test).setDevice(mDevice);
                 }
-                if (test instanceof IMultiDeviceTest) {
-                    ((IMultiDeviceTest) test).setDeviceInfos(mDeviceInfos);
-                }
                 if (test instanceof IInvocationContextReceiver) {
                     ((IInvocationContextReceiver) test).setInvocationContext(mContext);
                 }
@@ -1014,12 +1019,6 @@ public abstract class ITestSuite
      */
     public IBuildInfo getBuildInfo() {
         return mBuildInfo;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
-        mDeviceInfos = deviceInfos;
     }
 
     /** Set the value of mPrimaryAbiRun */

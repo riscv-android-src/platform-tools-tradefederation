@@ -196,7 +196,7 @@ public class BuildInfoTest {
 
         assertEquals("1", proto.getBuildId());
         assertEquals(BuildInfo.class.getCanonicalName(), proto.getBuildInfoClass());
-        assertEquals("value", proto.getAttributes().get("attribute"));
+        assertEquals("value", proto.getAttributesMap().get("attribute"));
         assertEquals(3, proto.getVersionedFileList().size());
         assertNotNull(proto.getVersionedFileList().get(0));
 

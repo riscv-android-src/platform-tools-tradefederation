@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -24,9 +26,25 @@ import com.android.tradefed.device.ITestDevice;
 @OptionClass(alias = "reboot-preparer")
 public class RebootTargetPreparer extends BaseTargetPreparer {
 
+    @Option(name = "pre-reboot", description = "Reboot the device during setUp.")
+    private boolean mPreReboot = true;
+
+    @Option(name = "post-reboot", description = "Reboot the device during tearDown.")
+    private boolean mPostReboot = false;
+
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
-        device.reboot();
+        if (mPreReboot) {
+            device.reboot();
+        }
+    }
+
+    @Override
+    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
+            throws DeviceNotAvailableException {
+        if (mPostReboot) {
+            device.reboot();
+        }
     }
 }

@@ -64,7 +64,8 @@ public class ContentProviderHandlerTest {
     public void testSetUp_install() throws Exception {
         doReturn(1).when(mMockDevice).getCurrentUser();
         doReturn(null).when(mMockDevice).installPackage(any(), eq(true), eq(true));
-        doReturn(null)
+        CommandResult resSet = new CommandResult(CommandStatus.SUCCESS);
+        doReturn(resSet)
                 .when(mMockDevice)
                 .executeShellV2Command(
                         String.format(
@@ -166,6 +167,33 @@ public class ContentProviderHandlerTest {
             assertTrue(mProvider.pushFile(toPush, devicePath));
         } finally {
             FileUtil.deleteFile(toPush);
+        }
+    }
+
+    /** Test {@link ContentProviderHandler#pushFile(File, String)} when the file doesn't exists */
+    @Test
+    public void testPushFile_notExists() throws Exception {
+        File toPush = new File("content-provider-test.txt");
+        try {
+            String devicePath = "path/somewhere/file.txt";
+            assertFalse(mProvider.pushFile(toPush, devicePath));
+        } finally {
+            FileUtil.deleteFile(toPush);
+        }
+    }
+
+    /**
+     * Test {@link ContentProviderHandler#pushFile(File, String)} when the file exists but is a
+     * directory
+     */
+    @Test
+    public void testPushFile_directory() throws Exception {
+        File toPush = FileUtil.createTempDir("content-provider-test");
+        try {
+            String devicePath = "path/somewhere/file.txt";
+            assertFalse(mProvider.pushFile(toPush, devicePath));
+        } finally {
+            FileUtil.recursiveDelete(toPush);
         }
     }
 

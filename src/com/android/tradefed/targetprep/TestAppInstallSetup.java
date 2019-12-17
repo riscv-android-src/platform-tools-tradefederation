@@ -46,8 +46,7 @@ import java.util.List;
  * the first.
  */
 @OptionClass(alias = "tests-zip-app")
-public class TestAppInstallSetup extends BaseTargetPreparer
-        implements ITargetCleaner, IAbiReceiver {
+public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiReceiver {
 
     /** The mode the apk should be install in. */
     private enum InstallMode {

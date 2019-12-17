@@ -23,6 +23,7 @@ import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -198,17 +199,18 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
     }
 
     /**
-     * Schedule a series of {@link IRemoteTest#run(ITestInvocationListener)}.
+     * Schedule a series of {@link IRemoteTest#run(TestInformation, ITestInvocationListener)}.
      *
      * @param listener The ResultForwarder listener which contains a new moduleListener for each
      *     run.
      */
     @Override
-    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         mMainGranularRunListener.setCollectTestsOnly(mCollectTestsOnly);
         ITestInvocationListener allListeners = initializeListeners();
         // First do the regular run, not retried.
-        intraModuleRun(allListeners);
+        intraModuleRun(testInfo, allListeners);
 
         if (mMaxRunLimit <= 1) {
             return;
@@ -240,7 +242,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                 }
                 CLog.d("Intra-module retry attempt number %s", attemptNumber);
                 // Run the tests again
-                intraModuleRun(allListeners);
+                intraModuleRun(testInfo, allListeners);
             }
             // Feed the last attempt if we reached here.
             mRetryDecision.addLastAttempt(
@@ -253,14 +255,14 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
     }
 
     /** The workflow for each individual {@link IRemoteTest} run. */
-    private final void intraModuleRun(ITestInvocationListener runListener)
+    private final void intraModuleRun(TestInformation testInfo, ITestInvocationListener runListener)
             throws DeviceNotAvailableException {
         try {
             List<IMetricCollector> clonedCollectors = cloneCollectors(mRunMetricCollectors);
             if (mTest instanceof IMetricCollectorReceiver) {
                 ((IMetricCollectorReceiver) mTest).setMetricCollectors(clonedCollectors);
                 // If test can receive collectors then let it handle how to set them up
-                mTest.run(runListener);
+                mTest.run(testInfo, runListener);
             } else {
                 // Module only init the collectors here to avoid triggering the collectors when
                 // replaying the cached events at the end. This ensures metrics are capture at
@@ -272,7 +274,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                         runListener = collector.init(mModuleInvocationContext, runListener);
                     }
                 }
-                mTest.run(runListener);
+                mTest.run(testInfo, runListener);
             }
         } catch (RuntimeException | AssertionError re) {
             CLog.e("Module '%s' - test '%s' threw exception:", mModuleId, mTest.getClass());

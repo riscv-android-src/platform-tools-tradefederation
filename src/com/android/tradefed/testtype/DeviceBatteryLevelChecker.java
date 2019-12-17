@@ -22,6 +22,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.targetprep.ITargetPreparer;
@@ -32,11 +33,11 @@ import com.android.tradefed.util.TimeUtil;
 import org.junit.Assert;
 
 /**
- * An {@link ITargetPreparer} that checks for a minimum battery charge, and waits for the battery
- * to reach a second charging threshold if the minimum charge isn't present.
+ * An {@link ITargetPreparer} that checks for a minimum battery charge, and waits for the battery to
+ * reach a second charging threshold if the minimum charge isn't present.
  */
 @OptionClass(alias = "battery-checker")
-public class DeviceBatteryLevelChecker implements IDeviceTest, IRemoteTest {
+public class DeviceBatteryLevelChecker implements IRemoteTest {
 
     private ITestDevice mTestDevice = null;
 
@@ -88,14 +89,14 @@ public class DeviceBatteryLevelChecker implements IDeviceTest, IRemoteTest {
     }
 
     private void stopDeviceRuntime() throws DeviceNotAvailableException {
-        getDevice().executeShellCommand("stop");
+        mTestDevice.executeShellCommand("stop");
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        mTestDevice = testInfo.getDevice();
         Assert.assertNotNull(mTestDevice);
 
         Integer batteryLevel = checkBatteryLevel(mTestDevice);
@@ -130,7 +131,7 @@ public class DeviceBatteryLevelChecker implements IDeviceTest, IRemoteTest {
         }
         // Stop our logcat receiver
         if (mStopLogcat) {
-            getDevice().stopLogcat();
+            mTestDevice.stopLogcat();
         }
 
         // If we're down here, it's time to hold the device until it reaches mResumeLevel
@@ -191,16 +192,6 @@ public class DeviceBatteryLevelChecker implements IDeviceTest, IRemoteTest {
     @VisibleForTesting
     IRunUtil getRunUtil() {
         return RunUtil.getDefault();
-    }
-
-    @Override
-    public void setDevice(ITestDevice device) {
-        mTestDevice = device;
-    }
-
-    @Override
-    public ITestDevice getDevice() {
-        return mTestDevice;
     }
 
     protected void setResumeLevel(int level) {

@@ -46,7 +46,7 @@ import java.util.Map;
  * <p>Should be performed <strong>after</strong> a new build is flashed.
  */
 @OptionClass(alias = "device-setup")
-public class DeviceSetup extends BaseTargetPreparer implements ITargetCleaner {
+public class DeviceSetup extends BaseTargetPreparer {
 
     // Networking
     @Option(name = "airplane-mode",

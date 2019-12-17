@@ -23,8 +23,7 @@ import com.android.tradefed.device.ITestDevice;
 
 /** Target preparer that restarts the system server without rebooting the device. */
 @OptionClass(alias = "restart-system-server")
-public class RestartSystemServerTargetPreparer extends BaseTargetPreparer
-        implements ITargetCleaner {
+public class RestartSystemServerTargetPreparer extends BaseTargetPreparer {
     @Option(name = "restart-setup", description = "Restart system server on setup.")
     private boolean mRestartBefore = true;
 

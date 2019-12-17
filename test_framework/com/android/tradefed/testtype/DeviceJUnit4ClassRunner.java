@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype;
 
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
@@ -58,13 +59,11 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
                 IBuildReceiver,
                 IAbiReceiver,
                 ISetOptionReceiver,
-                IMultiDeviceTest,
                 IInvocationContextReceiver {
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private IAbi mAbi;
     private IInvocationContext mContext;
-    private Map<ITestDevice, IBuildInfo> mDeviceInfos;
 
     /** Keep track of the list of downloaded files. */
     private List<File> mDownloadedFiles = new ArrayList<>();
@@ -97,9 +96,6 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
         // We are more flexible about abi information since not always available.
         if (testObj instanceof IAbiReceiver) {
             ((IAbiReceiver) testObj).setAbi(mAbi);
-        }
-        if (testObj instanceof IMultiDeviceTest) {
-            ((IMultiDeviceTest) testObj).setDeviceInfos(mDeviceInfos);
         }
         if (testObj instanceof IInvocationContextReceiver) {
             ((IInvocationContextReceiver) testObj).setInvocationContext(mContext);
@@ -165,11 +161,6 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
         mContext = invocationContext;
     }
 
-    @Override
-    public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
-        mDeviceInfos = deviceInfos;
-    }
-
     @VisibleForTesting
     OptionSetter createOptionSetter(Object obj) throws ConfigurationException {
         return new OptionSetter(obj);
@@ -179,7 +170,7 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
         try {
             OptionSetter setter = createOptionSetter(obj);
             return setter.validateRemoteFilePath();
-        } catch (ConfigurationException e) {
+        } catch (BuildRetrievalError | ConfigurationException e) {
             throw new RuntimeException(e);
         }
     }

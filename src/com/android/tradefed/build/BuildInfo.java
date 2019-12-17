@@ -19,7 +19,6 @@ import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.proto.BuildInformation;
 import com.android.tradefed.build.proto.BuildInformation.BuildFile;
 import com.android.tradefed.build.proto.BuildInformation.KeyBuildFilePair;
-import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
@@ -646,8 +645,14 @@ public class BuildInfo implements IBuildInfo {
         } else {
             // Restore the original type of build info.
             try {
-                buildInfo = (IBuildInfo) Class.forName(buildClass).newInstance();
-            } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+                buildInfo =
+                        (BuildInfo)
+                                Class.forName(buildClass).getDeclaredConstructor().newInstance();
+            } catch (InstantiationException
+                    | IllegalAccessException
+                    | ClassNotFoundException
+                    | InvocationTargetException
+                    | NoSuchMethodException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -726,7 +731,7 @@ public class BuildInfo implements IBuildInfo {
                 new DynamicRemoteFileResolver()
                         .resolvePartialDownloadZip(
                                 workingDir, file.toString(), includeFilters, null);
-            } catch (ConfigurationException e) {
+            } catch (BuildRetrievalError e) {
                 throw new RuntimeException(e);
             }
 

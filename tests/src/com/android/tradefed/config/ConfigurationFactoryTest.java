@@ -27,8 +27,6 @@ import com.android.tradefed.targetprep.multi.StubMultiTargetPreparer;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
-import com.google.common.base.Joiner;
-
 import junit.framework.TestCase;
 
 import org.mockito.Mockito;
@@ -130,7 +128,7 @@ public class ConfigurationFactoryTest extends TestCase {
             fail(
                     String.format(
                             "Found some dependencies of core on contrib:\n%s",
-                            Joiner.on("\n").join(exceptionConfigJar)));
+                            String.join("\n", exceptionConfigJar)));
         }
     }
 
@@ -419,12 +417,12 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * Test {@link ConfigurationFactory#getConfigList(String)} where we list the config in a sub
-     * path only
+     * Test {@link ConfigurationFactory#getConfigList(String, boolean)} where we list the config in
+     * a sub path only
      */
     public void testListSubConfig() {
         final String subDir = "suite/";
-        List<String> listConfigs = mRealFactory.getConfigList(subDir);
+        List<String> listConfigs = mRealFactory.getConfigList(subDir, false);
         assertTrue(listConfigs.size() != 0);
         // Check that our basic configs are always here
         assertTrue(listConfigs.contains("suite/stub1"));

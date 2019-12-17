@@ -18,11 +18,10 @@ package com.android.tradefed.testtype.rust;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
-import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -30,8 +29,6 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.testtype.IBuildReceiver;
-import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -48,27 +45,14 @@ import java.util.Set;
 
 /** Host test meant to run a rust binary file from the Android Build system (Soong) */
 @OptionClass(alias = "rust-host")
-public class RustBinaryHostTest implements IRemoteTest, IBuildReceiver, IInvocationContextReceiver {
+public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
 
-    private static final String RUST_LOG_STDERR_FORMAT = "%s-stderr";
+    static final String RUST_LOG_STDERR_FORMAT = "%s-stderr";
 
     @Option(name = "test-file", description = "The test file name or file path.")
     private Set<String> mBinaryNames = new HashSet<>();
 
-    @Option(
-            name = "test-timeout",
-            description = "Timeout for a single test file to terminate.",
-            isTimeVal = true)
-    private long mTestTimeout = 20 * 1000L;
-
-    @Option(
-            name = "test-options",
-            description = "Option string to be passed to the binary when running")
-    private List<String> mTestOptions = new ArrayList<>();
-
     private IBuildInfo mBuildInfo;
-    private IInvocationContext mContext;
-
     private IRunUtil mRunUtil;
 
     @Override
@@ -77,12 +61,8 @@ public class RustBinaryHostTest implements IRemoteTest, IBuildReceiver, IInvocat
     }
 
     @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
-    }
-
-    @Override
-    public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public final void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         List<File> rustFilesList = findFiles();
         for (File file : rustFilesList) {
             if (!file.exists()) {
@@ -112,10 +92,7 @@ public class RustBinaryHostTest implements IRemoteTest, IBuildReceiver, IInvocat
             } else {
                 paths = testsDir + "\n";
                 String baseName = filePath.getName();
-                if (baseName.equals(fileName)) {
-                    // Simple fileName, findFile returns the first match under testsDir.
-                    res = FileUtil.findFile(testsDir, fileName);
-                } else {
+                if (!baseName.equals(fileName)) {
                     // fileName has base directory, findFilesObject returns baseName under testsDir.
                     try {
                         Set<File> candidates = FileUtil.findFilesObject(testsDir, baseName);
@@ -126,9 +103,17 @@ public class RustBinaryHostTest implements IRemoteTest, IBuildReceiver, IInvocat
                                 break;
                             }
                         }
+                        if (res == null) {
+                            CLog.e("Cannot find %s; try to find %s", fileName, baseName);
+                        }
                     } catch (IOException e) {
                         res = null; // report error later
                     }
+                }
+                if (res == null) {
+                    // When fileName is a simple file name, or its path cannot be found
+                    // look up the first matching baseName under testsDir.
+                    res = FileUtil.findFile(testsDir, baseName);
                 }
             }
             if (res == null) {
@@ -149,7 +134,7 @@ public class RustBinaryHostTest implements IRemoteTest, IBuildReceiver, IInvocat
 
         CommandResult result =
                 getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
-        String runName = file.getName(); // TODO(chh): use original relative path in mBinaryNames
+        String runName = file.getName();
         RustForwarder forwarder = new RustForwarder(listener, runName);
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
             CLog.e(
@@ -166,8 +151,8 @@ public class RustBinaryHostTest implements IRemoteTest, IBuildReceiver, IInvocat
                 listener.testLog(
                         String.format(RUST_LOG_STDERR_FORMAT, runName), LogDataType.TEXT, data);
             }
-            RustTestResultParser parser = new RustTestResultParser(forwarder, runName);
-            parser.processNewLines(result.getStdout().split("\n"));
+            String[] lines = result.getStdout().split("\n");
+            new RustTestResultParser(forwarder, runName).processNewLines(lines);
         } catch (RuntimeException e) {
             reportFailure(
                     listener,
@@ -187,11 +172,6 @@ public class RustBinaryHostTest implements IRemoteTest, IBuildReceiver, IInvocat
             mRunUtil = new RunUtil();
         }
         return mRunUtil;
-    }
-
-    @VisibleForTesting
-    String getAdbPath() {
-        return GlobalConfiguration.getDeviceManagerInstance().getAdbPath();
     }
 
     private void reportFailure(

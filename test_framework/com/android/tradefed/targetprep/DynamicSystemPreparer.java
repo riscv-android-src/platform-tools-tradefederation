@@ -36,7 +36,7 @@ import org.apache.commons.compress.archivers.zip.ZipFile;
  * System Update.
  */
 @OptionClass(alias = "dynamic-system-update")
-public class DynamicSystemPreparer extends BaseTargetPreparer implements ITargetCleaner {
+public class DynamicSystemPreparer extends BaseTargetPreparer {
     static final int DSU_MAX_WAIT_SEC = 10 * 60;
 
     private static final String DEST_PATH = "/sdcard/system.raw.gz";

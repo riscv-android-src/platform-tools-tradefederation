@@ -33,6 +33,7 @@ import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -54,7 +55,7 @@ import java.util.Set;
  */
 @OptionClass(alias = "push-file")
 public class PushFilePreparer extends BaseTargetPreparer
-        implements ITargetCleaner, IAbiReceiver, IInvocationContextReceiver {
+        implements IAbiReceiver, IInvocationContextReceiver {
     private static final String LOG_TAG = "PushFilePreparer";
     private static final String MEDIA_SCAN_INTENT =
             "am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://%s "
@@ -103,9 +104,19 @@ public class PushFilePreparer extends BaseTargetPreparer
             + "been deleted.")
     private boolean mCleanup = false;
 
-    @Option(name="remount-system", description="Remounts system partition to be writable "
-            + "so that files could be pushed there too")
-    private boolean mRemount = false;
+    @Option(
+            name = "remount-system",
+            description =
+                    "Remounts system partition to be writable "
+                            + "so that files could be pushed there too")
+    private boolean mRemountSystem = false;
+
+    @Option(
+            name = "remount-vendor",
+            description =
+                    "Remounts vendor partition to be writable "
+                            + "so that files could be pushed there too")
+    private boolean mRemountVendor = false;
 
     private Set<String> mFilesPushed = null;
     /** If the preparer is part of a module, we can use the test module name as a search criteria */
@@ -194,7 +205,7 @@ public class PushFilePreparer extends BaseTargetPreparer
                                 return src;
                             }
                         } else {
-                            CLog.e("Did not find any module directory for '%s'", mModuleName);
+                            CLog.d("Did not find any module directory for '%s'", mModuleName);
                         }
 
                     } catch (IOException e) {
@@ -253,8 +264,11 @@ public class PushFilePreparer extends BaseTargetPreparer
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError, BuildError,
             DeviceNotAvailableException {
         mFilesPushed = new HashSet<>();
-        if (mRemount) {
+        if (mRemountSystem) {
             device.remountSystemWritable();
+        }
+        if (mRemountVendor) {
+            device.remountVendorWritable();
         }
 
         Map<String, File> remoteToLocalMapping = new HashMap<>();
@@ -298,8 +312,11 @@ public class PushFilePreparer extends BaseTargetPreparer
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
         if (!(e instanceof DeviceNotAvailableException) && mCleanup && mFilesPushed != null) {
-            if (mRemount) {
+            if (mRemountSystem) {
                 device.remountSystemWritable();
+            }
+            if (mRemountVendor) {
+                device.remountVendorWritable();
             }
             for (String devicePath : mFilesPushed) {
                 device.deleteFile(devicePath);

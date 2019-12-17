@@ -19,24 +19,23 @@ package com.android.tradefed.device.battery;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 
-
 /** The interface defining the interaction with a battery of a device. */
 public interface IBatteryInfo {
 
-  /** Describes the current battery charging state. */
-  public enum BatteryState {
-    NOT_CHARGING,
-    CHARGING,
-    UNDEFINED,
-    INFEASIBLE
-  }
+    /** Describes the current battery charging state. */
+    public enum BatteryState {
+        NOT_CHARGING,
+        CHARGING,
+        UNDEFINED,
+        INFEASIBLE
+    }
 
-  /** Enable the battery charging of a device. */
-  public void enableCharging(ITestDevice device) throws DeviceNotAvailableException;
+    /** Enable the battery charging of a device. */
+    public void enableCharging(ITestDevice device) throws DeviceNotAvailableException;
 
-  /** Disable the battery charging of a device. */
-  public void disableCharging(ITestDevice device) throws DeviceNotAvailableException;
+    /** Disable the battery charging of a device. */
+    public void disableCharging(ITestDevice device) throws DeviceNotAvailableException;
 
-  /** Returns the current state of a device battery. */
-  public BatteryState checkBatteryState(ITestDevice device) throws DeviceNotAvailableException;
+    /** Returns the current state of a device battery. */
+    public BatteryState checkBatteryState(ITestDevice device) throws DeviceNotAvailableException;
 }

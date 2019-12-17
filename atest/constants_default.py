@@ -59,6 +59,7 @@ EXIT_CODE_ERROR = 3
 EXIT_CODE_TEST_NOT_FOUND = 4
 EXIT_CODE_TEST_FAILURE = 5
 EXIT_CODE_VERIFY_FAILURE = 6
+EXIT_CODE_OUTSIDE_ROOT = 7
 
 # Codes of specific events. These are exceptions that don't stop anything
 # but sending metrics.
@@ -218,3 +219,5 @@ QCLASS_OUTPUT_RE = re.compile(r'(?P<java_path>.*/(?P<class>[A-Z]\w+)\.\w+)'
                               r'[:]\s*package\s+(?P<package>[^(;|\s)]+)\s*')
 PACKAGE_OUTPUT_RE = re.compile(r'(?P<java_dir>/.*/).*[.](java|kt)[:]\s*package\s+'
                                r'(?P<package>[^(;|\s)]+)\s*')
+
+ATEST_RESULT_ROOT = '/tmp/atest_result'

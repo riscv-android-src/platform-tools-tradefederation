@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.JUnitToInvocationResultForwarder;
@@ -27,8 +28,8 @@ import junit.framework.TestResult;
 import java.util.HashMap;
 
 /**
- * A helper class for directing a {@link IRemoteTest#run(ITestInvocationListener)} call to a
- * {@link Test#run(TestResult)} call.
+ * A helper class for directing a {@link IRemoteTest#run(TestInformation, ITestInvocationListener)}
+ * call to a {@link Test#run(TestResult)} call.
  */
 public class JUnitRunUtil {
 

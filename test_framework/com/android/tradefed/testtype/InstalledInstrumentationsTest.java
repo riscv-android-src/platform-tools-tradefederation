@@ -180,12 +180,12 @@ public class InstalledInstrumentationsTest
     private boolean mHiddenApiChecks = true;
 
     @Option(
-            name = "test-api-checks",
+            name = "test-api-access",
             description =
-                    "If set to false and hidden API checks are enabled, the '--no-test-api-checks'"
+                    "If set to false and hidden API checks are enabled, the '--no-test-api-access'"
                             + " flag will be passed to the am instrument command."
                             + " Only works for R or later.")
-    private boolean mTestApiChecks = false;
+    private boolean mTestApiAccess = true;
 
     @Option(
         name = "isolated-storage",
@@ -202,6 +202,13 @@ public class InstalledInstrumentationsTest
                         + "instrument command. Only works for ICS or later."
     )
     private boolean mWindowAnimation = true;
+
+    @Option(
+            name = "disable-duplicate-test-check",
+            description =
+                    "If set to true, it will not check that a method is only run once by a "
+                            + "given instrumentation.")
+    private boolean mDisableDuplicateCheck = false;
 
     @Option(
             name = "create-instrumentation-tests",

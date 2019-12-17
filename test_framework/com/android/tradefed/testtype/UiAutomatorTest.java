@@ -23,6 +23,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IFileEntry;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -143,12 +144,12 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
     private boolean mHiddenApiChecks = true;
 
     @Option(
-            name = "test-api-checks",
+            name = "test-api-access",
             description =
-                    "If set to false and hidden API checks are enabled, the '--no-test-api-checks'"
+                    "If set to false and hidden API checks are enabled, the '--no-test-api-access'"
                             + " flag will be passed to the am instrument command."
                             + " Only works for R or later.")
-    private boolean mTestApiChecks = false;
+    private boolean mTestApiAccess = true;
 
     @Option(
         name = "isolated-storage",
@@ -204,11 +205,10 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
         mRunName = runName;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         mListeners.add(listener);
         if (!isInstrumentationTest()) {
             buildJarPaths();
@@ -260,13 +260,13 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
             if (!mHiddenApiChecks && apiLevel >= 28) {
                 runOptions += "--no-hidden-api-checks ";
             }
-            // test-api-checks flag only exists in R and after.
+            // test-api-access flag only exists in R and after.
             // Test API checks are subset of hidden API checks, so only make sense if hidden API
             // checks are enabled.
             if (mHiddenApiChecks
-                    && !mTestApiChecks
+                    && !mTestApiAccess
                     && getDevice().checkApiLevelAgainstNextRelease(30)) {
-                runOptions += "--no-test-api-checks ";
+                runOptions += "--no-test-api-access ";
             }
             // isolated-storage flag only exists in Q and after.
             if (!mIsolatedStorage && getDevice().checkApiLevelAgainstNextRelease(29)) {
