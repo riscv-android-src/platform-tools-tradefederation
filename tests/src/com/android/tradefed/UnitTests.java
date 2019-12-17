@@ -16,17 +16,6 @@
 
 package com.android.tradefed;
 
-import com.android.tradefed.cluster.ClusterCommandEventTest;
-import com.android.tradefed.cluster.ClusterCommandLauncherTest;
-import com.android.tradefed.cluster.ClusterCommandSchedulerTest;
-import com.android.tradefed.cluster.ClusterCommandTest;
-import com.android.tradefed.cluster.ClusterDeviceMonitorTest;
-import com.android.tradefed.cluster.ClusterEventUploaderTest;
-import com.android.tradefed.cluster.ClusterHostUtilTest;
-import com.android.tradefed.cluster.ClusterLogSaverTest;
-import com.android.tradefed.cluster.SubprocessConfigBuilderTest;
-import com.android.tradefed.cluster.SubprocessReportingHelperTest;
-import com.android.tradefed.cluster.TestOutputUploaderTest;
 import com.android.tradefed.build.AppDeviceBuildInfoTest;
 import com.android.tradefed.build.BootstrapBuildProviderTest;
 import com.android.tradefed.build.BuildInfoTest;
@@ -38,6 +27,17 @@ import com.android.tradefed.build.GCSTestResourceProviderTest;
 import com.android.tradefed.build.LocalDeviceBuildProviderTest;
 import com.android.tradefed.build.OtaZipfileBuildProviderTest;
 import com.android.tradefed.clearcut.ClearcutClientTest;
+import com.android.tradefed.cluster.ClusterCommandEventTest;
+import com.android.tradefed.cluster.ClusterCommandLauncherTest;
+import com.android.tradefed.cluster.ClusterCommandSchedulerTest;
+import com.android.tradefed.cluster.ClusterCommandTest;
+import com.android.tradefed.cluster.ClusterDeviceMonitorTest;
+import com.android.tradefed.cluster.ClusterEventUploaderTest;
+import com.android.tradefed.cluster.ClusterHostUtilTest;
+import com.android.tradefed.cluster.ClusterLogSaverTest;
+import com.android.tradefed.cluster.SubprocessConfigBuilderTest;
+import com.android.tradefed.cluster.SubprocessReportingHelperTest;
+import com.android.tradefed.cluster.TestOutputUploaderTest;
 import com.android.tradefed.command.CommandFileParserTest;
 import com.android.tradefed.command.CommandFileWatcherTest;
 import com.android.tradefed.command.CommandInterrupterTest;
@@ -338,6 +338,8 @@ import com.android.tradefed.util.PsParserTest;
 import com.android.tradefed.util.QuotationAwareTokenizerTest;
 import com.android.tradefed.util.RegexTrieTest;
 import com.android.tradefed.util.RemoteZipTest;
+import com.android.tradefed.util.ResourceUtilTest;
+import com.android.tradefed.util.RestApiHelperTest;
 import com.android.tradefed.util.RunUtilTest;
 import com.android.tradefed.util.SerializationUtilTest;
 import com.android.tradefed.util.ShellOutputReceiverStreamTest;
@@ -374,7 +376,6 @@ import com.android.tradefed.util.statsd.MetricUtilTest;
 import com.android.tradefed.util.testmapping.TestInfoTest;
 import com.android.tradefed.util.testmapping.TestMappingTest;
 import com.android.tradefed.util.zip.MergedZipEntryCollectionTest;
-import com.android.tradefed.util.RestApiHelperTest;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -805,6 +806,7 @@ import org.junit.runners.Suite.SuiteClasses;
     QuotationAwareTokenizerTest.class,
     RegexTrieTest.class,
     RemoteZipTest.class,
+    ResourceUtilTest.class,
     RestApiHelperTest.class,
     RunUtilTest.class,
     SerializationUtilTest.class,
