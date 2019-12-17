@@ -20,6 +20,11 @@ from __future__ import print_function
 import logging
 import json
 import os
+import sys
+
+import constants
+
+from metrics import metrics_utils
 
 _ARGS_KEY = 'args'
 _STATUS_PASSED_KEY = 'PASSED'
@@ -32,10 +37,26 @@ _TEST_NAME_KEY = 'test_name'
 _TEST_TIME_KEY = 'test_time'
 _TEST_DETAILS_KEY = 'details'
 _TEST_RESULT_NAME = 'test_result'
+_EXIT_CODE_ATTR = 'EXIT_CODE'
+_MAIN_MODULE_KEY = '__main__'
 
 _SUMMARY_MAP_TEMPLATE = {_STATUS_PASSED_KEY : 0,
                          _STATUS_FAILED_KEY : 0,
                          _STATUS_IGNORED_KEY : 0,}
+
+PREPARE_END_TIME = None
+
+
+def preparation_time(start_time):
+    """Return the preparation time.
+
+    Args:
+        start_time: The time.
+
+    Returns:
+        The preparation time if PREPARE_END_TIME is set, None otherwise.
+    """
+    return PREPARE_END_TIME - start_time if PREPARE_END_TIME else None
 
 
 class AtestExecutionInfo(object):
@@ -106,6 +127,13 @@ class AtestExecutionInfo(object):
             self.result_file.write(AtestExecutionInfo.
                                    _generate_execution_detail(self.args))
             self.result_file.close()
+        main_module = sys.modules.get(_MAIN_MODULE_KEY)
+        main_exit_code = getattr(main_module, _EXIT_CODE_ATTR,
+                                 constants.EXIT_CODE_ERROR)
+        if main_exit_code == constants.EXIT_CODE_SUCCESS:
+            metrics_utils.send_exit_event(main_exit_code)
+        else:
+            metrics_utils.handle_exc_and_send_exit_event(main_exit_code)
 
     @staticmethod
     def _generate_execution_detail(args):

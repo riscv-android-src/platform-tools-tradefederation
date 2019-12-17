@@ -20,7 +20,6 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.ICommandOptions;
-import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
@@ -32,6 +31,7 @@ import com.android.tradefed.result.TextResultReporter;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.IDisableable;
 import com.android.tradefed.util.MultiMap;
 
 import junit.framework.TestCase;
@@ -46,6 +46,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -71,13 +72,18 @@ public class ConfigurationTest extends TestCase {
         public boolean getBool();
     }
 
-    private static class TestConfigObject implements TestConfig {
+    private static class TestConfigObject implements TestConfig, IDisableable {
 
         @Option(name = OPTION_NAME, description = OPTION_DESCRIPTION, requiredForRerun = true)
         private boolean mBool;
 
         @Option(name = ALT_OPTION_NAME, description = OPTION_DESCRIPTION)
         private Map<String, Boolean> mBoolMap = new HashMap<String, Boolean>();
+
+        @Option(name = "mandatory-option", mandatory = true)
+        private String mMandatory = null;
+
+        private boolean mIsDisabled = false;
 
         @Override
         public boolean getBool() {
@@ -86,6 +92,16 @@ public class ConfigurationTest extends TestCase {
 
         public Map<String, Boolean> getMap() {
             return mBoolMap;
+        }
+
+        @Override
+        public void setDisable(boolean isDisabled) {
+            mIsDisabled = isDisabled;
+        }
+
+        @Override
+        public boolean isDisabled() {
+            return mIsDisabled;
         }
     }
 
@@ -98,6 +114,11 @@ public class ConfigurationTest extends TestCase {
     protected void setUp() throws Exception {
         super.setUp();
         mConfig = new Configuration(CONFIG_NAME, CONFIG_DESCRIPTION);
+
+        try {
+            GlobalConfiguration.createGlobalConfiguration(new String[] {"empty"});
+        } catch (IllegalStateException ignored) {
+        }
     }
 
     /**
@@ -570,6 +591,33 @@ public class ConfigurationTest extends TestCase {
     }
 
     /**
+     * Test that {@link Configuration#validateOptions()} throw when all mandatory fields are not set
+     * and object is not disabled.
+     */
+    public void testValidateOptions_nonDisabledObject() throws ConfigurationException {
+        TestConfigObject object = new TestConfigObject();
+        object.setDisable(false);
+        mConfig.setConfigurationObject("helper", object);
+        try {
+            mConfig.validateOptions();
+            fail("Should have thrown an exception.");
+        } catch (ConfigurationException expected) {
+            assertTrue(expected.getMessage().contains("Found missing mandatory options"));
+        }
+    }
+
+    /**
+     * Test that {@link Configuration#validateOptions()} doesn't throw when all mandatory fields are
+     * not set but the object is disabled.
+     */
+    public void testValidateOptions_disabledObject() throws ConfigurationException {
+        TestConfigObject object = new TestConfigObject();
+        object.setDisable(true);
+        mConfig.setConfigurationObject("helper", object);
+        mConfig.validateOptions();
+    }
+
+    /**
      * Test that {@link Configuration#validateOptions()} throws a config exception when shard
      * count is negative number.
      */
@@ -637,6 +685,13 @@ public class ConfigurationTest extends TestCase {
      * shards are kicked-off in new invocations.
      */
     public void testValidateOptions_localSharding_skipDownload() throws ConfigurationException {
+        mConfig =
+                new Configuration(CONFIG_NAME, CONFIG_DESCRIPTION) {
+                    @Override
+                    protected boolean isRemoteEnvironment() {
+                        return false;
+                    }
+                };
         CommandOptions options = new CommandOptions();
         options.setShardCount(5);
         options.setShardIndex(null);
@@ -647,7 +702,8 @@ public class ConfigurationTest extends TestCase {
         mConfig.setDeviceOptions(deviceOptions);
 
         // No exception for download is thrown because no download occurred.
-        mConfig.validateOptions(true);
+        mConfig.validateOptions();
+        mConfig.resolveDynamicOptions();
         // Dynamic file is not resolved.
         assertEquals(fakeConfigFile, deviceOptions.getAvdConfigFile());
     }
@@ -735,5 +791,65 @@ public class ConfigurationTest extends TestCase {
         } finally {
             FileUtil.deleteFile(test);
         }
+    }
+
+    /** Ensure that the dump xml only considere trully changed option on the same object. */
+    public void testDumpChangedOption() throws Exception {
+        CommandOptions options1 = new CommandOptions();
+        Configuration one = new Configuration("test", "test");
+        one.setCommandOptions(options1);
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        one.dumpXml(pw, new ArrayList<>(), true, false);
+        String noOption = sw.toString();
+        assertTrue(
+                noOption.contains(
+                        "<cmd_options class=\"com.android.tradefed.command.CommandOptions\" />"));
+
+        OptionSetter setter = new OptionSetter(options1);
+        setter.setOptionValue("test-tag", "tag-value");
+        sw = new StringWriter();
+        pw = new PrintWriter(sw);
+        one.dumpXml(pw, new ArrayList<>(), true, false);
+        String withOption = sw.toString();
+        assertTrue(withOption.contains("<option name=\"test-tag\" value=\"tag-value\" />"));
+
+        CommandOptions options2 = new CommandOptions();
+        one.setCommandOptions(options2);
+        sw = new StringWriter();
+        pw = new PrintWriter(sw);
+        one.dumpXml(pw, new ArrayList<>(), true, false);
+        String differentObject = sw.toString();
+        assertTrue(
+                differentObject.contains(
+                        "<cmd_options class=\"com.android.tradefed.command.CommandOptions\" />"));
+    }
+
+    /** Ensure we print modified option if they are structures. */
+    public void testDumpChangedOption_structure() throws Exception {
+        CommandOptions options1 = new CommandOptions();
+        Configuration one = new Configuration("test", "test");
+        one.setCommandOptions(options1);
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        one.dumpXml(pw, new ArrayList<>(), true, false);
+        String noOption = sw.toString();
+        assertTrue(
+                noOption.contains(
+                        "<cmd_options class=\"com.android.tradefed.command.CommandOptions\" />"));
+
+        OptionSetter setter = new OptionSetter(options1);
+        setter.setOptionValue("invocation-data", "key", "value");
+        setter.setOptionValue("auto-collect", "LOGCAT_ON_FAILURE");
+        sw = new StringWriter();
+        pw = new PrintWriter(sw);
+        one.dumpXml(pw, new ArrayList<>(), true, false);
+        String withOption = sw.toString();
+        assertTrue(
+                withOption.contains(
+                        "<option name=\"invocation-data\" key=\"key\" value=\"value\" />"));
+        assertTrue(
+                withOption.contains(
+                        "<option name=\"auto-collect\" value=\"LOGCAT_ON_FAILURE\" />"));
     }
 }

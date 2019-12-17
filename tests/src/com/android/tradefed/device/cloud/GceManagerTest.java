@@ -18,6 +18,7 @@ package com.android.tradefed.device.cloud;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
 
@@ -36,6 +37,7 @@ import com.android.tradefed.util.IRunUtil;
 
 import com.google.common.net.HostAndPort;
 
+import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Assert;
@@ -104,7 +106,7 @@ public class GceManagerTest {
                         + "reehugger, zone us-central1-f, body:{'networkInterfaces': [{'network': "
                         + "u'https://www.googleapis.com/compute/v1/projects/android-treehugger/glo"
                         + "bal/networks/default', 'accessConfigs': [{'type': 'ONE_TO_ONE_NAT', 'na"
-                        + "me': 'External NAT'}]}], 'name': 'gce-x86-phone-userdebug-fastbuild-lin"
+                        + "me': 'External NAT'}]}], 'name': u'gce-x86-phone-userdebug-fastbuild-lin"
                         + "ux-3266697-144fcf59', 'serviceAccounts': [{'email': 'default', 'scopes'"
                         + ": ['https://www.googleapis.com/auth/devstorage.read_only', 'https://www"
                         + ".googleapis.com/auth/logging.write']}], 'disks': [{'autoDelete': True, "
@@ -570,7 +572,7 @@ public class GceManagerTest {
                                 EasyMock.eq("--instance_names"),
                                 EasyMock.eq("instance1"),
                                 EasyMock.eq("--config_file"),
-                                EasyMock.eq(mGceManager.getAvdConfigFile().getAbsolutePath()),
+                                EasyMock.contains(mGceManager.getAvdConfigFile().getAbsolutePath()),
                                 EasyMock.eq("--report_file"),
                                 EasyMock.anyObject()))
                 .andReturn(cmd);
@@ -578,6 +580,34 @@ public class GceManagerTest {
         EasyMock.replay(mMockRunUtil);
         mGceManager.shutdownGce();
         EasyMock.verify(mMockRunUtil);
+    }
+
+    @Test
+    public void testShutdownGce_noWait() throws Exception {
+        OptionSetter setter = new OptionSetter(mOptions);
+        setter.setOptionValue("wait-gce-teardown", "false");
+        mGceManager =
+                new GceManager(
+                        mMockDeviceDesc, mOptions, mMockBuildInfo, null, "instance1", "host1") {
+                    @Override
+                    IRunUtil getRunUtil() {
+                        return mMockRunUtil;
+                    }
+                };
+        mGceManager.startGce();
+        CommandResult cmd = new CommandResult();
+        cmd.setStatus(CommandStatus.SUCCESS);
+        cmd.setStdout("output");
+        Capture<List<String>> capture = new Capture<>();
+        EasyMock.expect(mMockRunUtil.runCmdInBackground(EasyMock.<List<String>>capture(capture)))
+                .andReturn(Mockito.mock(Process.class));
+
+        EasyMock.replay(mMockRunUtil);
+        mGceManager.shutdownGce();
+        EasyMock.verify(mMockRunUtil);
+
+        List<String> args = capture.getValue();
+        assertTrue(args.get(5).contains(mAvdBinary.getName()));
     }
 
     /**
@@ -609,7 +639,7 @@ public class GceManagerTest {
                                 EasyMock.eq("--instance_names"),
                                 EasyMock.eq("instance1"),
                                 EasyMock.eq("--config_file"),
-                                EasyMock.eq(mGceManager.getAvdConfigFile().getAbsolutePath()),
+                                EasyMock.contains(mGceManager.getAvdConfigFile().getAbsolutePath()),
                                 EasyMock.eq("--service_account_json_private_key_path"),
                                 EasyMock.eq("/path/to/key.json"),
                                 EasyMock.eq("--report_file"),

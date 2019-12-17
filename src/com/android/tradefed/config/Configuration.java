@@ -19,7 +19,6 @@ package com.android.tradefed.config;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.ICommandOptions;
-import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.config.OptionSetter.FieldDef;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
@@ -35,17 +34,23 @@ import com.android.tradefed.result.FileSystemLogSaver;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TextResultReporter;
+import com.android.tradefed.retry.BaseRetryDecision;
+import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.sandbox.SandboxOptions;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
+import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.IDisableable;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.QuotationAwareTokenizer;
+import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 
 import org.json.JSONArray;
@@ -98,6 +103,8 @@ public class Configuration implements IConfiguration {
     public static final String METRIC_POST_PROCESSOR_TYPE_NAME = "metric_post_processor";
     public static final String SANDBOX_TYPE_NAME = "sandbox";
     public static final String SANBOX_OPTIONS_TYPE_NAME = "sandbox_options";
+    public static final String RETRY_DECISION_TYPE_NAME = "retry_decision";
+    public static final String COVERAGE_OPTIONS_TYPE_NAME = "coverage";
 
     private static Map<String, ObjTypeInfo> sObjTypeMap = null;
     private static Set<String> sMultiDeviceSupportedTag = null;
@@ -185,6 +192,9 @@ public class Configuration implements IConfiguration {
                     METRIC_POST_PROCESSOR_TYPE_NAME,
                     new ObjTypeInfo(BasePostProcessor.class, true));
             sObjTypeMap.put(SANBOX_OPTIONS_TYPE_NAME, new ObjTypeInfo(SandboxOptions.class, false));
+            sObjTypeMap.put(RETRY_DECISION_TYPE_NAME, new ObjTypeInfo(IRetryDecision.class, false));
+            sObjTypeMap.put(
+                    COVERAGE_OPTIONS_TYPE_NAME, new ObjTypeInfo(CoverageOptions.class, false));
         }
         return sObjTypeMap;
     }
@@ -239,7 +249,9 @@ public class Configuration implements IConfiguration {
         setConfigurationDescriptor(new ConfigurationDescriptor());
         setDeviceMetricCollectors(new ArrayList<>());
         setPostProcessors(new ArrayList<>());
+        setCoverageOptions(new CoverageOptions());
         setConfigurationObjectNoThrow(SANBOX_OPTIONS_TYPE_NAME, new SandboxOptions());
+        setConfigurationObjectNoThrow(RETRY_DECISION_TYPE_NAME, new BaseRetryDecision());
     }
 
     /**
@@ -347,6 +359,12 @@ public class Configuration implements IConfiguration {
     @Override
     public ILogSaver getLogSaver() {
         return (ILogSaver) getConfigurationObject(LOG_SAVER_TYPE_NAME);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public IRetryDecision getRetryDecision() {
+        return (IRetryDecision) getConfigurationObject(RETRY_DECISION_TYPE_NAME);
     }
 
     /**
@@ -472,6 +490,13 @@ public class Configuration implements IConfiguration {
         return (List<IDeviceConfiguration>)getConfigurationObjectList(DEVICE_NAME);
     }
 
+    /** {@inheritDoc} */
+    @SuppressWarnings("unchecked")
+    @Override
+    public CoverageOptions getCoverageOptions() {
+        return (CoverageOptions) getConfigurationObject(COVERAGE_OPTIONS_TYPE_NAME);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -518,23 +543,34 @@ public class Configuration implements IConfiguration {
      * Return a copy of all config objects
      */
     private Collection<Object> getAllConfigurationObjects() {
-        return getAllConfigurationObjects(null);
+        return getAllConfigurationObjects(null, true);
+    }
+
+    /** Return a copy of all config objects that are not disabled via {@link IDisableable}. */
+    private Collection<Object> getAllNonDisabledConfigurationObjects() {
+        return getAllConfigurationObjects(null, false);
     }
 
     /**
      * Return a copy of all config objects, minus the object configuration of the type specified.
      * Returns all the config objects if param is null.
      */
-    private Collection<Object> getAllConfigurationObjects(String excludedConfigName) {
+    private Collection<Object> getAllConfigurationObjects(
+            String excludedConfigName, boolean includeDisabled) {
         Collection<Object> objectsCopy = new ArrayList<Object>();
         for (Entry<String, List<Object>> entryList : mConfigMap.entrySet()) {
-            if (excludedConfigName != null) {
-                // Only add if not a descriptor config object type.
-                if (!excludedConfigName.equals(entryList.getKey())) {
-                    objectsCopy.addAll(entryList.getValue());
-                }
-            } else {
+            if (excludedConfigName != null && excludedConfigName.equals(entryList.getKey())) {
+                continue;
+            }
+            if (includeDisabled) {
                 objectsCopy.addAll(entryList.getValue());
+            } else {
+                for (Object o : entryList.getValue()) {
+                    if (o instanceof IDisableable && ((IDisableable) o).isDisabled()) {
+                        continue;
+                    }
+                    objectsCopy.add(o);
+                }
             }
         }
         return objectsCopy;
@@ -763,6 +799,12 @@ public class Configuration implements IConfiguration {
         setConfigurationObjectListNoThrow(DEVICE_NAME, deviceConfigs);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void setCoverageOptions(CoverageOptions coverageOptions) {
+        setConfigurationObjectNoThrow(COVERAGE_OPTIONS_TYPE_NAME, coverageOptions);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -833,6 +875,12 @@ public class Configuration implements IConfiguration {
     @Override
     public void setLogSaver(ILogSaver logSaver) {
         setConfigurationObjectNoThrow(LOG_SAVER_TYPE_NAME, logSaver);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setRetryDecision(IRetryDecision decisionRetry) {
+        setConfigurationObjectNoThrow(RETRY_DECISION_TYPE_NAME, decisionRetry);
     }
 
     /** Sets the {@link ConfigurationDescriptor} to be used in the configuration. */
@@ -1029,7 +1077,7 @@ public class Configuration implements IConfiguration {
         // allow passing its option via command line.
         ArgsOptionParser parser =
                 new ArgsOptionParser(
-                        getAllConfigurationObjects(CONFIGURATION_DESCRIPTION_TYPE_NAME));
+                        getAllConfigurationObjects(CONFIGURATION_DESCRIPTION_TYPE_NAME, true));
         if (keyStoreClient != null) {
             parser.setKeyStore(keyStoreClient);
         }
@@ -1272,13 +1320,7 @@ public class Configuration implements IConfiguration {
      */
     @Override
     public void validateOptions() throws ConfigurationException {
-        validateOptions(true);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void validateOptions(boolean download) throws ConfigurationException {
-        ArgsOptionParser argsParser = new ArgsOptionParser(getAllConfigurationObjects());
+        ArgsOptionParser argsParser = new ArgsOptionParser(getAllNonDisabledConfigurationObjects());
         argsParser.validateMandatoryOptions();
         ICommandOptions options = getCommandOptions();
         if (options.getShardCount() != null && options.getShardCount() < 1) {
@@ -1289,21 +1331,36 @@ public class Configuration implements IConfiguration {
                         || options.getShardIndex() >= options.getShardCount())) {
             throw new ConfigurationException("a shard index must be in range [0, shard count)");
         }
-        // Parent invocation for local sharding should not resolved the dynamic @option yet.
-        if (options.getShardCount() != null && options.getShardIndex() == null) {
-            download = false;
-            CLog.w("Skipping download due to local sharding detected.");
-        }
-        if (download) {
-            CLog.d("Resolve and download remote files from @Option");
-            // Setup and validate the GCS File paths
-            mRemoteFiles.addAll(argsParser.validateRemoteFilePath());
-        }
     }
 
     /** {@inheritDoc} */
     @Override
-    public void cleanDynamicOptionFiles() {
+    public void resolveDynamicOptions() throws ConfigurationException {
+        // Resolve regardless of sharding if we are in remote environment because we know that's
+        // where the execution will occur.
+        if (!isRemoteEnvironment()) {
+            ICommandOptions options = getCommandOptions();
+            if (options.getShardCount() != null && options.getShardIndex() == null) {
+                CLog.w("Skipping download due to local sharding detected.");
+                return;
+            }
+        }
+
+        ArgsOptionParser argsParser = new ArgsOptionParser(getAllConfigurationObjects());
+        CLog.d("Resolve and download remote files from @Option");
+        // Setup and validate the GCS File paths
+        mRemoteFiles.addAll(argsParser.validateRemoteFilePath());
+    }
+
+    /** Returns whether or not the environment of TF is a remote invocation. */
+    @VisibleForTesting
+    protected boolean isRemoteEnvironment() {
+        return SystemUtil.isRemoteEnvironment();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void cleanConfigurationData() {
         for (File file : mRemoteFiles) {
             FileUtil.recursiveDelete(file);
         }
@@ -1320,13 +1377,16 @@ public class Configuration implements IConfiguration {
     /** {@inheritDoc} */
     @Override
     public void dumpXml(PrintWriter output, List<String> excludeFilters) throws IOException {
-        dumpXml(output, excludeFilters, true);
+        dumpXml(output, excludeFilters, true, true);
     }
 
     /** {@inheritDoc} */
     @Override
     public void dumpXml(
-            PrintWriter output, List<String> excludeFilters, boolean printDeprecatedOptions)
+            PrintWriter output,
+            List<String> excludeFilters,
+            boolean printDeprecatedOptions,
+            boolean printUnchangedOptions)
             throws IOException {
         KXmlSerializer serializer = new KXmlSerializer();
         serializer.setOutput(output);
@@ -1340,7 +1400,8 @@ public class Configuration implements IConfiguration {
                     MULTI_PRE_TARGET_PREPARER_TYPE_NAME,
                     multiPreTargerPrep,
                     excludeFilters,
-                    printDeprecatedOptions);
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
         }
 
         for (IMultiTargetPreparer multipreparer : getMultiTargetPreparers()) {
@@ -1349,7 +1410,8 @@ public class Configuration implements IConfiguration {
                     MULTI_PREPARER_TYPE_NAME,
                     multipreparer,
                     excludeFilters,
-                    printDeprecatedOptions);
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
         }
 
         if (getDeviceConfig().size() > 1) {
@@ -1365,33 +1427,38 @@ public class Configuration implements IConfiguration {
                         BUILD_PROVIDER_TYPE_NAME,
                         deviceConfig.getBuildProvider(),
                         excludeFilters,
-                        printDeprecatedOptions);
+                        printDeprecatedOptions,
+                        printUnchangedOptions);
                 for (ITargetPreparer preparer : deviceConfig.getTargetPreparers()) {
                     ConfigurationUtil.dumpClassToXml(
                             serializer,
                             TARGET_PREPARER_TYPE_NAME,
                             preparer,
                             excludeFilters,
-                            printDeprecatedOptions);
+                            printDeprecatedOptions,
+                            printUnchangedOptions);
                 }
                 ConfigurationUtil.dumpClassToXml(
                         serializer,
                         DEVICE_RECOVERY_TYPE_NAME,
                         deviceConfig.getDeviceRecovery(),
                         excludeFilters,
-                        printDeprecatedOptions);
+                        printDeprecatedOptions,
+                        printUnchangedOptions);
                 ConfigurationUtil.dumpClassToXml(
                         serializer,
                         DEVICE_REQUIREMENTS_TYPE_NAME,
                         deviceConfig.getDeviceRequirements(),
                         excludeFilters,
-                        printDeprecatedOptions);
+                        printDeprecatedOptions,
+                        printUnchangedOptions);
                 ConfigurationUtil.dumpClassToXml(
                         serializer,
                         DEVICE_OPTIONS_TYPE_NAME,
                         deviceConfig.getDeviceOptions(),
                         excludeFilters,
-                        printDeprecatedOptions);
+                        printDeprecatedOptions,
+                        printUnchangedOptions);
                 serializer.endTag(null, Configuration.DEVICE_NAME);
             }
         } else {
@@ -1401,70 +1468,85 @@ public class Configuration implements IConfiguration {
                     BUILD_PROVIDER_TYPE_NAME,
                     getBuildProvider(),
                     excludeFilters,
-                    printDeprecatedOptions);
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
             for (ITargetPreparer preparer : getTargetPreparers()) {
                 ConfigurationUtil.dumpClassToXml(
                         serializer,
                         TARGET_PREPARER_TYPE_NAME,
                         preparer,
                         excludeFilters,
-                        printDeprecatedOptions);
+                        printDeprecatedOptions,
+                        printUnchangedOptions);
             }
             ConfigurationUtil.dumpClassToXml(
                     serializer,
                     DEVICE_RECOVERY_TYPE_NAME,
                     getDeviceRecovery(),
                     excludeFilters,
-                    printDeprecatedOptions);
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
             ConfigurationUtil.dumpClassToXml(
                     serializer,
                     DEVICE_REQUIREMENTS_TYPE_NAME,
                     getDeviceRequirements(),
                     excludeFilters,
-                    printDeprecatedOptions);
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
             ConfigurationUtil.dumpClassToXml(
                     serializer,
                     DEVICE_OPTIONS_TYPE_NAME,
                     getDeviceOptions(),
                     excludeFilters,
-                    printDeprecatedOptions);
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
         }
         for (IRemoteTest test : getTests()) {
             ConfigurationUtil.dumpClassToXml(
-                    serializer, TEST_TYPE_NAME, test, excludeFilters, printDeprecatedOptions);
+                    serializer,
+                    TEST_TYPE_NAME,
+                    test,
+                    excludeFilters,
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
         }
         ConfigurationUtil.dumpClassToXml(
                 serializer,
                 CONFIGURATION_DESCRIPTION_TYPE_NAME,
                 getConfigurationDescription(),
                 excludeFilters,
-                printDeprecatedOptions);
+                printDeprecatedOptions,
+                printUnchangedOptions);
         ConfigurationUtil.dumpClassToXml(
                 serializer,
                 LOGGER_TYPE_NAME,
                 getLogOutput(),
                 excludeFilters,
-                printDeprecatedOptions);
+                printDeprecatedOptions,
+                printUnchangedOptions);
         ConfigurationUtil.dumpClassToXml(
                 serializer,
                 LOG_SAVER_TYPE_NAME,
                 getLogSaver(),
                 excludeFilters,
-                printDeprecatedOptions);
+                printDeprecatedOptions,
+                printUnchangedOptions);
         for (ITestInvocationListener listener : getTestInvocationListeners()) {
             ConfigurationUtil.dumpClassToXml(
                     serializer,
                     RESULT_REPORTER_TYPE_NAME,
                     listener,
                     excludeFilters,
-                    printDeprecatedOptions);
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
         }
         ConfigurationUtil.dumpClassToXml(
                 serializer,
                 CMD_OPTIONS_TYPE_NAME,
                 getCommandOptions(),
                 excludeFilters,
-                printDeprecatedOptions);
+                printDeprecatedOptions,
+                printUnchangedOptions);
 
         for (IMetricCollector collector : getMetricCollectors()) {
             ConfigurationUtil.dumpClassToXml(
@@ -1472,7 +1554,8 @@ public class Configuration implements IConfiguration {
                     DEVICE_METRICS_COLLECTOR_TYPE_NAME,
                     collector,
                     excludeFilters,
-                    printDeprecatedOptions);
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
         }
 
         for (ISystemStatusChecker checker : getSystemStatusCheckers()) {
@@ -1481,7 +1564,8 @@ public class Configuration implements IConfiguration {
                     SYSTEM_STATUS_CHECKER_TYPE_NAME,
                     checker,
                     excludeFilters,
-                    printDeprecatedOptions);
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
         }
 
         ConfigurationUtil.dumpClassToXml(
@@ -1489,7 +1573,15 @@ public class Configuration implements IConfiguration {
                 SANBOX_OPTIONS_TYPE_NAME,
                 getConfigurationObject(SANBOX_OPTIONS_TYPE_NAME),
                 excludeFilters,
-                printDeprecatedOptions);
+                printDeprecatedOptions,
+                printUnchangedOptions);
+        ConfigurationUtil.dumpClassToXml(
+                serializer,
+                RETRY_DECISION_TYPE_NAME,
+                getRetryDecision(),
+                excludeFilters,
+                printDeprecatedOptions,
+                printUnchangedOptions);
 
         serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
         serializer.endDocument();

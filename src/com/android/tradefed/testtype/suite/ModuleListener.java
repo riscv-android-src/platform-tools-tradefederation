@@ -26,7 +26,6 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.TestDescription;
-import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 
 import java.util.HashMap;
@@ -41,7 +40,6 @@ public class ModuleListener extends CollectingTestListener {
     private boolean mTestFailed = false;
     private int mTestsRan = 1;
     private ITestInvocationListener mMainListener;
-    private boolean mHasFailed = false;
 
     private boolean mCollectTestsOnly = false;
     /** Track runs in progress for logging purpose */
@@ -61,6 +59,11 @@ public class ModuleListener extends CollectingTestListener {
 
     @Override
     public void testRunStarted(String name, int numTests, int attemptNumber) {
+        testRunStarted(name, numTests, attemptNumber, System.currentTimeMillis());
+    }
+
+    @Override
+    public void testRunStarted(String name, int numTests, int attemptNumber, long startTime) {
         mRunInProgress = true;
         // In case of retry of the same run, do not add the expected count again. This allows
         // situation where test runner has a built-in retry (like InstrumentationTest) and calls
@@ -68,16 +71,16 @@ public class ModuleListener extends CollectingTestListener {
         if (getTestRunAtAttempt(name, attemptNumber) != null) {
             numTests = 0;
         }
-        super.testRunStarted(name, numTests, attemptNumber);
+        super.testRunStarted(name, numTests, attemptNumber, startTime);
         if (attemptNumber != 0) {
             mTestsRan = 1;
         }
+        CLog.d("ModuleListener.testRunStarted(%s, %s, %s)", name, numTests, attemptNumber);
     }
 
     /** {@inheritDoc} */
     @Override
     public void testRunFailed(String errorMessage) {
-        mHasFailed = true;
         CLog.d("ModuleListener.testRunFailed(%s)", errorMessage);
         super.testRunFailed(errorMessage);
     }
@@ -89,9 +92,9 @@ public class ModuleListener extends CollectingTestListener {
         mRunInProgress = false;
     }
 
-    /** Returns whether or not the listener session has failed. */
-    public boolean hasFailed() {
-        return mHasFailed;
+    /** Returns whether or not the listener last retry session has failed. */
+    public boolean hasLastAttemptFailed() {
+        return getCurrentRunResults().isRunFailure();
     }
 
     /** {@inheritDoc} */
@@ -111,7 +114,12 @@ public class ModuleListener extends CollectingTestListener {
     private void logTestPassed(String testName) {
         if (!mTestFailed && !mCollectTestsOnly) {
             CLog.logAndDisplay(
-                    LogLevel.INFO, "[%d/%d] %s pass", mTestsRan, getExpectedTests(), testName);
+                    LogLevel.INFO,
+                    "[%d/%d] %s %s pass",
+                    mTestsRan,
+                    getExpectedTests(),
+                    getCurrentRunResults().getName(),
+                    testName);
         }
         mTestsRan++;
     }
@@ -137,9 +145,10 @@ public class ModuleListener extends CollectingTestListener {
         }
         CLog.logAndDisplay(
                 LogLevel.INFO,
-                "[%d/%d] %s fail:\n%s",
+                "[%d/%d] %s %s fail:\n%s",
                 mTestsRan,
                 getExpectedTests(),
+                getCurrentRunResults().getName(),
                 test.toString(),
                 trace);
         mTestFailed = true;
@@ -187,21 +196,5 @@ public class ModuleListener extends CollectingTestListener {
                 ((ILogSaverListener) mMainListener).logAssociation(dataName, logFile);
             }
         }
-    }
-
-    /**
-     * Check if any runs in the given attempt have incompleted (aka "run failure").
-     *
-     * @param attemptNumber indicates which attempt should the test runs come from.
-     * @return true if any of the runs in the given attempt has crashed.
-     */
-    public boolean hasRunCrashedAtAttempt(int attemptNumber) {
-        for (String runName : getTestRunNames()) {
-            TestRunResult run = getTestRunAtAttempt(runName, attemptNumber);
-            if (run != null && run.isRunFailure()) {
-                return true;
-            }
-        }
-        return false;
     }
 }

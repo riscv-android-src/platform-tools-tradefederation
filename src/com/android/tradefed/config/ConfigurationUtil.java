@@ -72,16 +72,24 @@ public class ConfigurationUtil {
      *     be excluded from the dump. for example: {@link Configuration#TARGET_PREPARER_TYPE_NAME}.
      *     com.android.tradefed.testtype.StubTest
      * @param printDeprecatedOptions whether or not to print deprecated options
+     * @param printUnchangedOptions whether or not to print options that haven't been changed
      */
     static void dumpClassToXml(
             KXmlSerializer serializer,
             String classTypeName,
             Object obj,
             List<String> excludeClassFilter,
-            boolean printDeprecatedOptions)
+            boolean printDeprecatedOptions,
+            boolean printUnchangedOptions)
             throws IOException {
         dumpClassToXml(
-                serializer, classTypeName, obj, false, excludeClassFilter, printDeprecatedOptions);
+                serializer,
+                classTypeName,
+                obj,
+                false,
+                excludeClassFilter,
+                printDeprecatedOptions,
+                printUnchangedOptions);
     }
 
     /**
@@ -95,6 +103,7 @@ public class ConfigurationUtil {
      *     be excluded from the dump. for example: {@link Configuration#TARGET_PREPARER_TYPE_NAME}.
      *     com.android.tradefed.testtype.StubTest
      * @param printDeprecatedOptions whether or not to print deprecated options
+     * @param printUnchangedOptions whether or not to print options that haven't been changed
      */
     static void dumpClassToXml(
             KXmlSerializer serializer,
@@ -102,7 +111,8 @@ public class ConfigurationUtil {
             Object obj,
             boolean isGenericObject,
             List<String> excludeClassFilter,
-            boolean printDeprecatedOptions)
+            boolean printDeprecatedOptions,
+            boolean printUnchangedOptions)
             throws IOException {
         if (excludeClassFilter.contains(classTypeName)) {
             return;
@@ -114,12 +124,12 @@ public class ConfigurationUtil {
             serializer.startTag(null, "object");
             serializer.attribute(null, "type", classTypeName);
             serializer.attribute(null, CLASS_NAME, obj.getClass().getName());
-            dumpOptionsToXml(serializer, obj, printDeprecatedOptions);
+            dumpOptionsToXml(serializer, obj, printDeprecatedOptions, printUnchangedOptions);
             serializer.endTag(null, "object");
         } else {
             serializer.startTag(null, classTypeName);
             serializer.attribute(null, CLASS_NAME, obj.getClass().getName());
-            dumpOptionsToXml(serializer, obj, printDeprecatedOptions);
+            dumpOptionsToXml(serializer, obj, printDeprecatedOptions, printUnchangedOptions);
             serializer.endTag(null, classTypeName);
         }
     }
@@ -130,11 +140,24 @@ public class ConfigurationUtil {
      * @param serializer a {@link KXmlSerializer} to create the XML dump
      * @param obj {@link Object} to be added to the XML dump
      * @param printDeprecatedOptions whether or not to skip the deprecated options
+     * @param printUnchangedOptions whether or not to print options that haven't been changed
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static void dumpOptionsToXml(
-            KXmlSerializer serializer, Object obj, boolean printDeprecatedOptions)
+            KXmlSerializer serializer,
+            Object obj,
+            boolean printDeprecatedOptions,
+            boolean printUnchangedOptions)
             throws IOException {
+        Object comparisonBaseObj = null;
+        if (!printUnchangedOptions) {
+            try {
+                comparisonBaseObj = obj.getClass().newInstance();
+            } catch (InstantiationException | IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
         for (Field field : OptionSetter.getOptionFieldsForClass(obj.getClass())) {
             Option option = field.getAnnotation(Option.class);
             Deprecated deprecatedAnnotation = field.getAnnotation(Deprecated.class);
@@ -145,7 +168,15 @@ public class ConfigurationUtil {
             Object fieldVal = OptionSetter.getFieldValue(field, obj);
             if (fieldVal == null) {
                 continue;
-            } else if (fieldVal instanceof Collection) {
+            }
+            if (comparisonBaseObj != null) {
+                Object compField = OptionSetter.getFieldValue(field, comparisonBaseObj);
+                if (fieldVal.equals(compField)) {
+                    continue;
+                }
+            }
+
+            if (fieldVal instanceof Collection) {
                 for (Object entry : (Collection) fieldVal) {
                     dumpOptionToXml(serializer, option.name(), null, entry.toString());
                 }
