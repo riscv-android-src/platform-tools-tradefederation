@@ -105,7 +105,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
     @Override
     public boolean fetchBuild(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             IRescheduler rescheduler,
             ITestInvocationListener listener)
@@ -121,7 +121,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
         if (info == null) {
             return false;
         }
-        context.addDeviceBuildInfo(deviceName, info);
+        testInfo.getContext().addDeviceBuildInfo(deviceName, info);
         updateBuild(info, config);
         return true;
     }

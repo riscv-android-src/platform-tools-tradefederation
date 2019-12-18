@@ -536,9 +536,11 @@ public class InvocationExecutionTest {
         listDeviceConfig.add(holder2);
 
         mConfig.setDeviceConfigList(listDeviceConfig);
+        TestInformation testInfo =
+                TestInformation.newBuilder().setInvocationContext(mContext).build();
         // Download
         EasyMock.replay(mMockDevice);
-        assertTrue(mExec.fetchBuild(mContext, mConfig, null, mMockListener));
+        assertTrue(mExec.fetchBuild(testInfo, mConfig, null, mMockListener));
         EasyMock.verify(mMockDevice);
 
         List<IBuildInfo> builds = mContext.getBuildInfos();
