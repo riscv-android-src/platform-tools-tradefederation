@@ -336,6 +336,9 @@ public class DynamicRemoteFileResolver {
         IRemoteFileResolver resolver = getResolver(protocol);
         if (resolver != null) {
             try {
+                CLog.d(
+                        "Considering option '%s' with path: '%s' for download.",
+                        option.name(), path);
                 return resolver.resolveRemoteFiles(fileToResolve, option, query);
             } catch (BuildRetrievalError e) {
                 if (isOptional(query)) {

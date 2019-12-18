@@ -16,8 +16,6 @@
 package com.android.tradefed.config.remote;
 
 import com.android.tradefed.build.BuildRetrievalError;
-import com.android.tradefed.config.Option;
-import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.File;
 
@@ -29,10 +27,9 @@ public class LocalFileResolver implements IRemoteFileResolver {
     public static final String PROTOCOL = "file";
 
     @Override
-    public File resolveRemoteFiles(File consideredFile, Option option) throws BuildRetrievalError {
+    public File resolveRemoteFiles(File consideredFile) throws BuildRetrievalError {
         // Don't use absolute path as it would not start with gs:
         String path = consideredFile.getPath();
-        CLog.d("Considering option '%s' with path: '%s' for download.", option.name(), path);
         String pathWithoutProtocol = path.replaceFirst(PROTOCOL + ":", "");
         File localFile = new File(pathWithoutProtocol);
         if (localFile.exists()) {
