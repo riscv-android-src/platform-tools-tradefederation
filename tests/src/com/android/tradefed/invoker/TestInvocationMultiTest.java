@@ -176,8 +176,10 @@ public class TestInvocationMultiTest {
         mMockConfig.resolveDynamicOptions();
         mMockConfig.cleanConfigurationData();
         IBuildInfo build1 = new BuildInfo();
+        mProvider1.setWorkingDirectory(EasyMock.anyObject());
         EasyMock.expect(mProvider1.getBuild()).andReturn(build1);
         // Second build is not found
+        mProvider2.setWorkingDirectory(EasyMock.anyObject());
         EasyMock.expect(mProvider2.getBuild()).andReturn(null);
         // The downloaded build is cleaned
         mProvider1.cleanUp(build1);
@@ -371,8 +373,10 @@ public class TestInvocationMultiTest {
         mMockLogSaver.invocationEnded(EasyMock.anyLong());
 
         IBuildInfo build1 = new BuildInfo();
+        mProvider1.setWorkingDirectory(EasyMock.anyObject());
         EasyMock.expect(mProvider1.getBuild()).andReturn(build1);
         // Second build is not found
+        mProvider2.setWorkingDirectory(EasyMock.anyObject());
         EasyMock.expect(mProvider2.getBuild()).andThrow(new BuildRetrievalError("fail"));
         // The downloaded build is cleaned
         mProvider1.cleanUp(build1);
@@ -458,8 +462,10 @@ public class TestInvocationMultiTest {
         mMockLogSaver.invocationEnded(EasyMock.anyLong());
 
         IBuildInfo build1 = new BuildInfo();
+        mProvider1.setWorkingDirectory(EasyMock.anyObject());
         EasyMock.expect(mProvider1.getBuild()).andReturn(build1);
         // Second build is not found
+        mProvider2.setWorkingDirectory(EasyMock.anyObject());
         EasyMock.expect(mProvider2.getBuild()).andThrow(new BuildRetrievalError("fail"));
         // The downloaded build is cleaned
         mProvider1.cleanUp(build1);
