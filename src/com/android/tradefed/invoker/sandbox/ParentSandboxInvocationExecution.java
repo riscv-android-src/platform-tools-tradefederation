@@ -62,7 +62,8 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
     }
 
     @Override
-    public void doSetup(IInvocationContext context, IConfiguration config, ITestLogger logger)
+    public void doSetup(
+            IInvocationContext context, IConfiguration config, ITestInvocationListener listener)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         // Skip
         mParentPreparerConfig = getParentTargetConfig(config);
@@ -70,7 +71,7 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
             return;
         }
         CLog.d("Using %s to run in the parent setup.", SandboxOptions.PARENT_PREPARER_CONFIG);
-        super.doSetup(context, mParentPreparerConfig, logger);
+        super.doSetup(context, mParentPreparerConfig, listener);
     }
 
     @Override
@@ -110,12 +111,12 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
     }
 
     @Override
-    public void reportLogs(ITestDevice device, ITestLogger logger, Stage stage) {
+    public void reportLogs(ITestDevice device, ITestInvocationListener listener, Stage stage) {
         // If it's not a major error we do not report it if no setup or teardown ran.
         if (mParentPreparerConfig == null || !Stage.ERROR.equals(stage)) {
             return;
         }
-        super.reportLogs(device, logger, stage);
+        super.reportLogs(device, listener, stage);
     }
 
     /** Returns the {@link IConfigurationFactory} used to created configurations. */

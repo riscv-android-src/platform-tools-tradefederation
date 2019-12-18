@@ -21,6 +21,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 
 import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.build.IAppBuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.VersionedFile;
 import com.android.tradefed.config.OptionSetter;
@@ -29,21 +30,19 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.FileUtil;
 
-import org.easymock.EasyMock;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-import org.mockito.Mockito;
-
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+
+import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 /**
  * Unit Tests for {@link AppSetup}.
@@ -54,28 +53,17 @@ public class AppSetupTest {
     private static final String SERIAL = "serial";
     private AppSetup mAppSetup;
     private ITestDevice mMockDevice;
-    private IBuildInfo mMockBuildInfo;
+    private IAppBuildInfo mMockBuildInfo;
     private AaptParser mMockAaptParser;
-    private List<VersionedFile> mApps;
 
     @Before
-    public void setUp() throws IOException {
+    public void setUp() {
         mAppSetup = new AppSetup();
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(SERIAL);
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
-        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        mMockBuildInfo = EasyMock.createMock(IAppBuildInfo.class);
         mMockAaptParser = Mockito.mock(AaptParser.class);
-        mApps = new ArrayList<>();
-        File tmpFile = FileUtil.createTempFile("versioned", ".test");
-        mApps.add(new VersionedFile(tmpFile, "1"));
-    }
-
-    @After
-    public void tearDown() {
-        for (VersionedFile f : mApps) {
-            FileUtil.deleteFile(f.getFile());
-        }
     }
 
     private void replayMocks() {
@@ -87,14 +75,18 @@ public class AppSetupTest {
     }
 
     /**
-     * Test for {@link AppSetup#setUp(ITestDevice, IBuildInfo)} when the IBuildInfo doesn't contain
-     * any apps.
+     * Test for {@link AppSetup#setUp(ITestDevice, IBuildInfo)} when the IBuildInfo is not an
+     * instance of {@link IAppBuildInfo}.
      */
     @Test
-    public void testSetup_notApps() throws Exception {
+    public void testSetup_notIAppBuildInfo() throws Exception {
         replayMocks();
-        // Inop setup
-        mAppSetup.setUp(mMockDevice, new BuildInfo());
+        try {
+            mAppSetup.setUp(mMockDevice, new BuildInfo());
+            fail("Should have thrown an exception.");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("Provided buildInfo is not a AppBuildInfo", expected.getMessage());
+        }
         verifyMocks();
     }
 
@@ -282,7 +274,6 @@ public class AppSetupTest {
      */
     @Test
     public void testSetup_executePostInstall() throws Exception {
-        EasyMock.expect(mMockBuildInfo.getAppPackageFiles()).andReturn(mApps);
         final String fakeCmd = "fake command";
         OptionSetter setter = new OptionSetter(mAppSetup);
         setter.setOptionValue("install", "false");
@@ -301,7 +292,6 @@ public class AppSetupTest {
      */
     @Test
     public void testSetup_uninstallAll_noPackage() throws Exception {
-        EasyMock.expect(mMockBuildInfo.getAppPackageFiles()).andReturn(mApps);
         OptionSetter setter = new OptionSetter(mAppSetup);
         setter.setOptionValue("install", "false");
         setter.setOptionValue("uninstall-all", "true");
@@ -318,7 +308,6 @@ public class AppSetupTest {
      */
     @Test
     public void testSetup_uninstallAll() throws Exception {
-        EasyMock.expect(mMockBuildInfo.getAppPackageFiles()).andReturn(mApps);
         OptionSetter setter = new OptionSetter(mAppSetup);
         setter.setOptionValue("install", "false");
         setter.setOptionValue("uninstall-all", "true");
@@ -337,7 +326,6 @@ public class AppSetupTest {
      */
     @Test
     public void testSetup_uninstallAll_fails() throws Exception {
-        EasyMock.expect(mMockBuildInfo.getAppPackageFiles()).andReturn(mApps);
         OptionSetter setter = new OptionSetter(mAppSetup);
         setter.setOptionValue("install", "false");
         setter.setOptionValue("uninstall-all", "true");

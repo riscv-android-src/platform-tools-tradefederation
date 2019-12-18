@@ -35,7 +35,6 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.log.ILogRegistry;
-import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -180,8 +179,7 @@ public class SandboxedInvocationExecutionTest {
                             public boolean shardConfig(
                                     IConfiguration config,
                                     IInvocationContext context,
-                                    IRescheduler rescheduler,
-                                    ITestLogger logger) {
+                                    IRescheduler rescheduler) {
                                 // Ensure that sharding is not called against a sandbox
                                 // configuration run
                                 throw new RuntimeException("Should not be called.");
@@ -310,7 +308,7 @@ public class SandboxedInvocationExecutionTest {
         // Device early preInvocationSetup was called and even if no tests run we still call tear
         // down
         Mockito.verify(mMockDevice).preInvocationSetup(any(), any());
-        Mockito.verify(mMockDevice).postInvocationTearDown(null);
+        Mockito.verify(mMockDevice).postInvocationTearDown();
     }
 
     /**
@@ -372,12 +370,14 @@ public class SandboxedInvocationExecutionTest {
         // No tests to run but we still call start/end
         Mockito.verify(mMockListener).invocationStarted(mContext);
         Mockito.verify(mMockListener).invocationFailed(exception);
+        Mockito.verify(mMockListener)
+                .testLog(eq(TestInvocation.TRADEFED_LOG_NAME), eq(LogDataType.TEXT), any());
         Mockito.verify(mMockListener).invocationEnded(0L);
         // Invocation did not start for real so context is not locked.
         mContext.addInvocationAttribute("test", "test");
         // Device early preInvocationSetup was called and even if no tests run we still call tear
         // down
         Mockito.verify(mMockDevice).preInvocationSetup(any(), any());
-        Mockito.verify(mMockDevice).postInvocationTearDown(exception);
+        Mockito.verify(mMockDevice).postInvocationTearDown();
     }
 }

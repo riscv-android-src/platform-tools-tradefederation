@@ -21,7 +21,7 @@ tools/tradefederation/core/res/config/native-benchmark.xml
 
 ###[Test Finder: MODULE_CLASS, Test Runner:AtestTradefedTestRunner]###
 ###Purpose: Test with finder: MODULE_CLASS and runner: AtestTradefedTestRunner###
-CtsAnimationTestCases:AnimatorTest
+CtsJankDeviceTestCases:CtsDeviceJankUi
 CtsSampleDeviceTestCases:SampleDeviceTest#testSharedPreferences
 CtsSampleDeviceTestCases:android.sample.cts.SampleDeviceReportLogTest
 
@@ -39,12 +39,12 @@ CtsSampleDeviceTestCases:android.sample.cts
 
 ###[Test Finder: PACKAGE, Test Runner:AtestTradefedTestRunner]###
 ###Purpose: Test with finder: PACKAGE and runner: AtestTradefedTestRunner###
-android.animation.cts
+android.jank.cts
 
 
 ###[Test Finder: CLASS, Test Runner:AtestTradefedTestRunner]###
 ###Purpose: Test with finder: CLASS and runner: AtestTradefedTestRunner###
-AnimatorTest
+CtsDeviceJankUi
 
 
 ###[Test Finder: CC_CLASS, Test Runner:AtestTradefedTestRunner]###
@@ -68,7 +68,7 @@ VtsCodelabHelloWorldTest
 ###Purpose: Test with finder: MODULE and runner: RobolectricTestRunner###
 CarMessengerRoboTests
 ###Purpose: Test with input path for RobolectricTest###
-packages/apps/Car/Messenger/tests/robotests/src/com/android/car/messenger/MessengerDelegateTest.java
+packages/apps/Car/Messenger/tests/robotests/src/com/android/car/messenger/tts/TTSHelperTest.java
 
 
 ###[Test Finder: SUITE_PLAN, Test Runner: SuitePlanTestRunner]###
@@ -83,4 +83,4 @@ packages/apps/Car/Messenger/tests/robotests/src/com/android/car/messenger/Messen
 
 ###[MULTIPLE-TESTS + AtestTradefedTestRunner]###
 ###Purpose: Test with mixed testcases###
-CtsSampleDeviceTestCases CtsAnimationTestCases
+CtsSampleDeviceTestCases CtsJankDeviceTestCases

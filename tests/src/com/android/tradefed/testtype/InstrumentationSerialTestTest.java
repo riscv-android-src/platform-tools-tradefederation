@@ -17,7 +17,6 @@ package com.android.tradefed.testtype;
 
 import static org.junit.Assert.*;
 
-import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -73,7 +72,6 @@ public class InstrumentationSerialTestTest {
                 };
 
         // mock out InstrumentationTest that will be used to create InstrumentationSerialTest
-        mockITest.setConfiguration(new Configuration("", ""));
         mockITest.setDevice(mMockTestDevice);
         mockITest.setPackageName(packageName);
 
@@ -120,7 +118,6 @@ public class InstrumentationSerialTestTest {
                     }
                 };
         // mock out InstrumentationTest that will be used to create InstrumentationSerialTest
-        mockITest.setConfiguration(new Configuration("", ""));
         mockITest.setDevice(mMockTestDevice);
         mockITest.setPackageName(packageName);
         mInstrumentationSerialTest = new InstrumentationSerialTest(mockITest, testList) {
@@ -193,7 +190,6 @@ public class InstrumentationSerialTestTest {
                 };
 
         // mock out InstrumentationTest that will be used to create InstrumentationSerialTest
-        mockITest.setConfiguration(new Configuration("", ""));
         mockITest.setDevice(mMockTestDevice);
         mockITest.setPackageName(packageName);
         // A test-package was specified for the original instrumentation.

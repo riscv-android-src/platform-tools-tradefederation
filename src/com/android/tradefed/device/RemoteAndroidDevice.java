@@ -63,8 +63,8 @@ public class RemoteAndroidDevice extends TestDevice {
     }
 
     @Override
-    public void postInvocationTearDown(Throwable exception) {
-        super.postInvocationTearDown(exception);
+    public void postInvocationTearDown() {
+        super.postInvocationTearDown();
         FileUtil.deleteFile(mAdbConnectLogs);
     }
 

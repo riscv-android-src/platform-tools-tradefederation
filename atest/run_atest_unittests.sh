@@ -15,20 +15,22 @@
 # limitations under the License.
 
 # A simple helper script that runs all of the atest unit tests.
-# There are 2 situations that we take care of:
-#   1. User wants to invoke this script directly.
+# We have 2 situations we take care of:
+#   1. User wants to invoke this script by itself.
 #   2. PREUPLOAD hook invokes this script.
 
-ATEST_DIR=$(dirname $0)
+ATEST_DIR=`dirname $0`/
 [ "$(uname -s)" == "Darwin" ] && { realpath(){ echo "$(cd $(dirname $1);pwd -P)/$(basename $1)"; }; }
-ATEST_REAL_PATH=$(realpath $ATEST_DIR)
+ATEST_REAL_PATH=`realpath $ATEST_DIR`
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 COVERAGE=false
 
-function get_pythonpath() {
-    echo "$ATEST_REAL_PATH:$PYTHONPATH"
+function set_pythonpath() {
+    if ! echo $PYTHONPATH | grep -q $ATEST_REAL_PATH; then
+        PYTHONPATH=$ATEST_REAL_PATH:$PYTHONPATH
+    fi
 }
 
 function print_summary() {
@@ -48,6 +50,7 @@ function run_atest_unittests() {
     echo "Running tests..."
     local run_cmd="python"
     local rc=0
+    set_pythonpath
     if [[ $COVERAGE == true ]]; then
         # Clear previously coverage data.
         python -m coverage erase
@@ -56,7 +59,7 @@ function run_atest_unittests() {
     fi
 
     for test_file in $(find $ATEST_DIR -name "*_unittest.py"); do
-        if ! PYTHONPATH=$(get_pythonpath) $run_cmd $test_file; then
+        if ! $run_cmd $test_file; then
           rc=1
           echo -e "${RED}$t failed${NC}"
         fi

@@ -49,7 +49,6 @@ import com.android.tradefed.util.IRunUtil;
 import com.google.common.net.HostAndPort;
 
 import org.easymock.EasyMock;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -57,7 +56,6 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -134,11 +132,6 @@ public class RemoteAndroidVirtualDeviceTest {
         mGceHandler = Mockito.mock(GceManager.class);
 
         mMockBuildInfo = new BuildInfo();
-    }
-
-    @After
-    public void tearDown() {
-        FileUtil.deleteFile(mTestDevice.getExecuteShellCommandLog());
     }
 
     /**
@@ -248,7 +241,7 @@ public class RemoteAndroidVirtualDeviceTest {
     @Test
     public void testPreInvocationSetup() throws Exception {
         IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        mTestDevice =
+        TestableRemoteAndroidVirtualDevice testDevice =
                 new TestableRemoteAndroidVirtualDevice() {
                     @Override
                     protected void launchGce(IBuildInfo buildInfo) throws TargetSetupError {
@@ -279,7 +272,7 @@ public class RemoteAndroidVirtualDeviceTest {
                 .andReturn(mMockIDevice);
         EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
         replayMocks(mMockBuildInfo);
-        mTestDevice.preInvocationSetup(mMockBuildInfo);
+        testDevice.preInvocationSetup(mMockBuildInfo);
         verifyMocks(mMockBuildInfo);
 
         Mockito.verify(mGceHandler).logStableHostImageInfos(mMockBuildInfo);
@@ -292,7 +285,7 @@ public class RemoteAndroidVirtualDeviceTest {
     @Test
     public void testPreInvocationSetup_fails() throws Exception {
         IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        mTestDevice =
+        TestableRemoteAndroidVirtualDevice testDevice =
                 new TestableRemoteAndroidVirtualDevice() {
                     @Override
                     protected void launchGce(IBuildInfo buildInfo) throws TargetSetupError {
@@ -309,7 +302,7 @@ public class RemoteAndroidVirtualDeviceTest {
         EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.OFFLINE).times(2);
         replayMocks(mMockBuildInfo);
         try {
-            mTestDevice.preInvocationSetup(mMockBuildInfo);
+            testDevice.preInvocationSetup(mMockBuildInfo);
             fail("Should have thrown an exception.");
         } catch (DeviceNotAvailableException expected) {
             // expected
@@ -317,7 +310,7 @@ public class RemoteAndroidVirtualDeviceTest {
         verifyMocks(mMockBuildInfo);
     }
 
-    /** Test {@link RemoteAndroidVirtualDevice#postInvocationTearDown(Throwable)}. */
+    /** Test {@link RemoteAndroidVirtualDevice#postInvocationTearDown()}. */
     @Test
     public void testPostInvocationTearDown() throws Exception {
         mTestDevice.setTestLogger(mTestLogger);
@@ -334,7 +327,7 @@ public class RemoteAndroidVirtualDeviceTest {
 
         // Initial serial is not set because we call postInvoc directly.
         replayMocks();
-        mTestDevice.postInvocationTearDown(null);
+        mTestDevice.postInvocationTearDown();
         verifyMocks();
         Mockito.verify(mGceSshMonitor).shutdown();
         Mockito.verify(mGceSshMonitor).joinMonitor();
@@ -425,7 +418,7 @@ public class RemoteAndroidVirtualDeviceTest {
         EasyMock.expect(mMockBuildInfo.getBuildBranch()).andStubReturn("branch");
         EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andStubReturn("flavor");
         EasyMock.expect(mMockBuildInfo.getBuildId()).andStubReturn("id");
-        mTestDevice =
+        TestableRemoteAndroidVirtualDevice testDevice =
                 new TestableRemoteAndroidVirtualDevice() {
                     @Override
                     public IDevice getIDevice() {
@@ -457,10 +450,10 @@ public class RemoteAndroidVirtualDeviceTest {
                         return mockRunUtil;
                     }
                 };
-        mTestDevice.setTestLogger(mTestLogger);
+        testDevice.setTestLogger(mTestLogger);
         File tmpKeyFile = FileUtil.createTempFile("test-gce", "key");
         try {
-            OptionSetter setter = new OptionSetter(mTestDevice.getOptions());
+            OptionSetter setter = new OptionSetter(testDevice.getOptions());
             setter.setOptionValue("gce-private-key-path", tmpKeyFile.getAbsolutePath());
             // We use a missing ssh to prevent the real tunnel from running.
             FileUtil.deleteFile(tmpKeyFile);
@@ -496,22 +489,22 @@ public class RemoteAndroidVirtualDeviceTest {
 
             replayMocks(mMockBuildInfo);
             // Run device a first time
-            mTestDevice.preInvocationSetup(mMockBuildInfo);
-            mTestDevice.getGceSshMonitor().joinMonitor();
+            testDevice.preInvocationSetup(mMockBuildInfo);
+            testDevice.getGceSshMonitor().joinMonitor();
             // We expect to find our Runtime exception for the ssh key
-            assertNotNull(mTestDevice.getGceSshMonitor().getLastException());
-            mTestDevice.postInvocationTearDown(null);
+            assertNotNull(testDevice.getGceSshMonitor().getLastException());
+            testDevice.postInvocationTearDown();
             // Bridge is set to null after tear down
-            assertNull(mTestDevice.getGceSshMonitor());
+            assertNull(testDevice.getGceSshMonitor());
 
             // run a second time on same device should yield exact same exception.
-            mTestDevice.preInvocationSetup(mMockBuildInfo);
-            mTestDevice.getGceSshMonitor().joinMonitor();
+            testDevice.preInvocationSetup(mMockBuildInfo);
+            testDevice.getGceSshMonitor().joinMonitor();
             // Should have the same result, the run time exception from ssh key
-            assertNotNull(mTestDevice.getGceSshMonitor().getLastException());
-            mTestDevice.postInvocationTearDown(null);
+            assertNotNull(testDevice.getGceSshMonitor().getLastException());
+            testDevice.postInvocationTearDown();
             // Bridge is set to null after tear down
-            assertNull(mTestDevice.getGceSshMonitor());
+            assertNull(testDevice.getGceSshMonitor());
 
             verifyMocks(mMockBuildInfo);
         } finally {
@@ -528,7 +521,7 @@ public class RemoteAndroidVirtualDeviceTest {
         EasyMock.expect(mMockBuildInfo.getBuildBranch()).andStubReturn("branch");
         EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andStubReturn("flavor");
         EasyMock.expect(mMockBuildInfo.getBuildId()).andStubReturn("id");
-        mTestDevice =
+        TestableRemoteAndroidVirtualDevice testDevice =
                 new TestableRemoteAndroidVirtualDevice() {
                     @Override
                     public IDevice getIDevice() {
@@ -560,10 +553,10 @@ public class RemoteAndroidVirtualDeviceTest {
                         return mockRunUtil;
                     }
                 };
-        mTestDevice.setTestLogger(mTestLogger);
+        testDevice.setTestLogger(mTestLogger);
         File tmpKeyFile = FileUtil.createTempFile("test-gce", "key");
         try {
-            OptionSetter setter = new OptionSetter(mTestDevice.getOptions());
+            OptionSetter setter = new OptionSetter(testDevice.getOptions());
             setter.setOptionValue("gce-private-key-path", tmpKeyFile.getAbsolutePath());
             // We use a missing ssh to prevent the real tunnel from running.
             FileUtil.deleteFile(tmpKeyFile);
@@ -593,11 +586,11 @@ public class RemoteAndroidVirtualDeviceTest {
 
             replayMocks(mMockBuildInfo);
             // Run device a first time
-            mTestDevice.preInvocationSetup(mMockBuildInfo);
-            mTestDevice.getGceSshMonitor().joinMonitor();
+            testDevice.preInvocationSetup(mMockBuildInfo);
+            testDevice.getGceSshMonitor().joinMonitor();
             // We expect to find our Runtime exception for the ssh key
-            assertNotNull(mTestDevice.getGceSshMonitor().getLastException());
-            mTestDevice.postInvocationTearDown(null);
+            assertNotNull(testDevice.getGceSshMonitor().getLastException());
+            testDevice.postInvocationTearDown();
             // shutdown was disabled, it should not have been called.
             verify(mGceHandler, never()).shutdownGce();
             verifyMocks(mMockBuildInfo);
@@ -615,7 +608,7 @@ public class RemoteAndroidVirtualDeviceTest {
         EasyMock.expect(mMockBuildInfo.getBuildBranch()).andStubReturn("branch");
         EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andStubReturn("flavor");
         EasyMock.expect(mMockBuildInfo.getBuildId()).andStubReturn("id");
-        mTestDevice =
+        TestableRemoteAndroidVirtualDevice testDevice =
                 new TestableRemoteAndroidVirtualDevice() {
                     @Override
                     public IDevice getIDevice() {
@@ -647,10 +640,10 @@ public class RemoteAndroidVirtualDeviceTest {
                         return mockRunUtil;
                     }
                 };
-        mTestDevice.setTestLogger(mTestLogger);
+        testDevice.setTestLogger(mTestLogger);
         File tmpKeyFile = FileUtil.createTempFile("test-gce", "key");
         try {
-            OptionSetter setter = new OptionSetter(mTestDevice.getOptions());
+            OptionSetter setter = new OptionSetter(testDevice.getOptions());
             setter.setOptionValue("gce-private-key-path", tmpKeyFile.getAbsolutePath());
             // We use a missing ssh to prevent the real tunnel from running.
             FileUtil.deleteFile(tmpKeyFile);
@@ -699,48 +692,18 @@ public class RemoteAndroidVirtualDeviceTest {
             replayMocks(mMockBuildInfo);
             // Run device a first time
             try {
-                mTestDevice.preInvocationSetup(mMockBuildInfo);
+                testDevice.preInvocationSetup(mMockBuildInfo);
                 fail("Should have thrown an exception.");
             } catch (DeviceNotAvailableException expected) {
                 assertEquals("AVD device booted but was in OFFLINE state", expected.getMessage());
             }
-            mTestDevice.getGceSshMonitor().joinMonitor();
+            testDevice.getGceSshMonitor().joinMonitor();
             // We expect to find our Runtime exception for the ssh key
-            assertNotNull(mTestDevice.getGceSshMonitor().getLastException());
-            mTestDevice.postInvocationTearDown(null);
+            assertNotNull(testDevice.getGceSshMonitor().getLastException());
+            testDevice.postInvocationTearDown();
             verifyMocks(mMockBuildInfo);
         } finally {
             FileUtil.deleteFile(tmpKeyFile);
         }
-    }
-
-    @Test
-    public void testGetRemoteTombstone() throws Exception {
-        mTestDevice =
-                new TestableRemoteAndroidVirtualDevice() {
-                    @Override
-                    boolean fetchRemoteDir(File localDir, String remotePath) {
-                        try {
-                            FileUtil.createTempFile("tombstone_00", "", localDir);
-                            FileUtil.createTempFile("tombstone_01", "", localDir);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                        return true;
-                    }
-                };
-        OptionSetter setter = new OptionSetter(mTestDevice.getOptions());
-        setter.setOptionValue(TestDeviceOptions.INSTANCE_TYPE_OPTION, "CUTTLEFISH");
-
-        replayMocks();
-        List<File> tombstones = mTestDevice.getTombstones();
-        try {
-            assertEquals(2, tombstones.size());
-        } finally {
-            for (File f : tombstones) {
-                FileUtil.deleteFile(f);
-            }
-        }
-        verifyMocks();
     }
 }

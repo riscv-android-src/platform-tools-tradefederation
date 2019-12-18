@@ -28,20 +28,15 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.testtype.coverage.CoverageOptions;
-import com.android.tradefed.util.JavaCodeCoverageFlusher;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.base.VerifyException;
-import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 
 import org.jacoco.core.tools.ExecFileLoader;
@@ -68,7 +63,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /** Unit tests for {@link JavaCodeCoverageListener}. */
@@ -88,25 +82,17 @@ public class JavaCodeCoverageListenerTest {
     @Rule public TemporaryFolder folder = new TemporaryFolder();
 
     @Mock ITestDevice mMockDevice;
-    @Mock JavaCodeCoverageFlusher mMockFlusher;
 
     @Spy LogFileReader mFakeListener = new LogFileReader();
 
     /** Object under test. */
     JavaCodeCoverageListener mCodeCoverageListener;
 
-    CoverageOptions mCoverageOptions = null;
-    OptionSetter mCoverageOptionsSetter = null;
-
     @Before
-    public void setUp() throws ConfigurationException {
+    public void setUp() {
         MockitoAnnotations.initMocks(this);
 
-        mCoverageOptions = new CoverageOptions();
-        mCoverageOptionsSetter = new OptionSetter(mCoverageOptions);
-
-        mCodeCoverageListener =
-                new JavaCodeCoverageListener(mMockDevice, mCoverageOptions, false, mFakeListener);
+        mCodeCoverageListener = new JavaCodeCoverageListener(mMockDevice, false, mFakeListener);
     }
 
     @Test
@@ -184,8 +170,7 @@ public class JavaCodeCoverageListenerTest {
             measurement.writeTo(out);
         }
 
-        mCodeCoverageListener =
-                new JavaCodeCoverageListener(mMockDevice, mCoverageOptions, true, mFakeListener);
+        mCodeCoverageListener = new JavaCodeCoverageListener(mMockDevice, true, mFakeListener);
 
         Map<String, String> metric = new HashMap<>();
         metric.put("coverageFilePath", DEVICE_PATH);
@@ -220,42 +205,6 @@ public class JavaCodeCoverageListenerTest {
         assertThat(execData.contains(vmName(JavaCodeCoverageListenerTest.class))).isTrue();
         assertThat(getProbes(JavaCodeCoverageListenerTest.class, execData))
                 .isEqualTo(partiallyCovered);
-    }
-
-    @Test
-    public void testCoverageFlush_producesMultipleMeasurements() throws Exception {
-        List<String> coverageFileList =
-                ImmutableList.of(
-                        "/data/misc/trace/com.android.test1.ec",
-                        "/data/misc/trace/com.android.test2.ec",
-                        "/data/misc/trace/com.google.test3.ec");
-
-        mCoverageOptionsSetter.setOptionValue("coverage-flush", "true");
-
-        // Setup mocks.
-        File coverageFile = folder.newFile("coverage.ec");
-        try (OutputStream out = new FileOutputStream(coverageFile)) {
-            COVERAGE_MEASUREMENT.writeTo(out);
-        }
-        doReturn(coverageFile).when(mMockDevice).pullFile(DEVICE_PATH);
-
-        for (String additionalFile : coverageFileList) {
-            File coverage = folder.newFile();
-            try (OutputStream out = new FileOutputStream(coverage)) {
-                COVERAGE_MEASUREMENT.writeTo(out);
-            }
-            doReturn(coverage).when(mMockDevice).pullFile(additionalFile);
-        }
-
-        doReturn(coverageFileList).when(mMockFlusher).forceCoverageFlush();
-
-        mCodeCoverageListener.setCoverageFlusher(mMockFlusher);
-
-        // Simulate a test run.
-        mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
-        Map<String, String> metric = new HashMap<>();
-        metric.put("coverageFilePath", DEVICE_PATH);
-        mCodeCoverageListener.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
     }
 
     private static <T> String vmName(Class<T> clazz) {

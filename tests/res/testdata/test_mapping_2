@@ -30,9 +30,6 @@
         },
         {
           "include-filter": "filter.com"
-        },
-        {
-          "run-a-test": "true"
         }
       ]
     }

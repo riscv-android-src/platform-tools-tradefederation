@@ -17,7 +17,6 @@
 package com.android.tradefed.device.metric;
 
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.times;
 
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
@@ -37,15 +36,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.io.File;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 
 /** Unit tests for {@link PerfettoPullerMetricCollector}. */
 @RunWith(JUnit4.class)
@@ -57,6 +53,7 @@ public class PerfettoPullerMetricCollectorTest {
     @Mock
     private ITestDevice mMockDevice;
     private IInvocationContext mContext;
+
 
     @Before
     public void setUp() {
@@ -102,51 +99,14 @@ public class PerfettoPullerMetricCollectorTest {
         cr.setStatus(CommandStatus.SUCCESS);
         cr.setStdout("abc:efg");
 
-        Mockito.doReturn(cr).when(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
-                Mockito.any(), Mockito.any(), Mockito.any());
+        Mockito.doReturn(cr).when(mPerfettoMetricCollector).runHostCommand(Mockito.any());
 
         mPerfettoMetricCollector.testStarted(testDesc);
         mPerfettoMetricCollector.testEnded(testDesc, currentMetrics);
 
-        Mockito.verify(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
-                Mockito.any(), Mockito.any(), Mockito.any());
+        Mockito.verify(mPerfettoMetricCollector).runHostCommand(Mockito.any());
         Mockito.verify(mMockListener)
                 .testLog(Mockito.eq("trace"), Mockito.eq(LogDataType.PB), Mockito.any());
-        assertTrue("Expected two metrics that includes success status",
-                currentMetrics.get("perfetto_trace_extractor_status").getMeasurements()
-                        .getSingleString().equals("1"));
-        assertTrue("Trace duration metrics not available but expected.",
-                currentMetrics.get("perfetto_trace_extractor_runtime").getMeasurements()
-                        .getSingleDouble() >= 0);
-    }
-
-    @Test
-    public void testCompressedProcessingFlow() throws Exception {
-        OptionSetter setter = new OptionSetter(mPerfettoMetricCollector);
-        setter.setOptionValue("pull-pattern-keys", "perfettofile");
-        setter.setOptionValue("perfetto-binary-path", "trx");
-        setter.setOptionValue("compress-perfetto", "true");
-        HashMap<String, Metric> currentMetrics = new HashMap<>();
-        currentMetrics.put("perfettofile", TfMetricProtoUtil.stringToMetric("/data/trace.pb"));
-        Mockito.when(mMockDevice.pullFile(Mockito.eq("/data/trace.pb")))
-                .thenReturn(null);
-
-        TestDescription testDesc = new TestDescription("xyz", "abc");
-        CommandResult cr = new CommandResult();
-        cr.setStatus(CommandStatus.SUCCESS);
-        cr.setStdout("abc:efg");
-
-        Mockito.doReturn(cr).when(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
-                Mockito.any(), Mockito.any(), Mockito.any());
-
-        mPerfettoMetricCollector.testStarted(testDesc);
-        mPerfettoMetricCollector.testEnded(testDesc, currentMetrics);
-
-        Mockito.verify(mMockDevice, times(0)).pullFile(Mockito.eq("/data/trace.pb"));
-        Mockito.verify(mPerfettoMetricCollector, times(2)).runHostCommand(Mockito.anyLong(),
-                Mockito.any(), Mockito.any(), Mockito.any());
-        Mockito.verify(mMockListener).testLog(Mockito.contains("compressed"),
-                Mockito.eq(LogDataType.GZIP), Mockito.any());
         assertTrue("Expected two metrics that includes success status",
                 currentMetrics.get("perfetto_trace_extractor_status").getMeasurements()
                         .getSingleString().equals("1"));
@@ -171,14 +131,12 @@ public class PerfettoPullerMetricCollectorTest {
         cr.setStatus(CommandStatus.FAILED);
         cr.setStdout("abc:efg");
 
-        Mockito.doReturn(cr).when(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
-                Mockito.any(), Mockito.any(), Mockito.any());
+        Mockito.doReturn(cr).when(mPerfettoMetricCollector).runHostCommand(Mockito.any());
 
         mPerfettoMetricCollector.testStarted(testDesc);
         mPerfettoMetricCollector.testEnded(testDesc, currentMetrics);
 
-        Mockito.verify(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
-                Mockito.any(), Mockito.any(), Mockito.any());
+        Mockito.verify(mPerfettoMetricCollector).runHostCommand(Mockito.any());
         Mockito.verify(mMockListener)
                 .testLog(Mockito.eq("trace"), Mockito.eq(LogDataType.PB), Mockito.any());
         assertTrue("Expected two metrics that includes failure status",
@@ -187,39 +145,6 @@ public class PerfettoPullerMetricCollectorTest {
         assertTrue("Trace duration metrics not available but expected.",
                 currentMetrics.get("perfetto_trace_extractor_runtime").getMeasurements()
                         .getSingleDouble() >= 0);
-    }
-
-    @Test
-    public void testBinaryArgs() throws Exception {
-        OptionSetter setter = new OptionSetter(mPerfettoMetricCollector);
-        setter.setOptionValue("pull-pattern-keys", "perfettofile");
-        setter.setOptionValue("perfetto-binary-path", "trx");
-        setter.setOptionValue("perfetto-binary-args", "--uno");
-        setter.setOptionValue("perfetto-binary-args", "--dos");
-        setter.setOptionValue("perfetto-binary-args", "--tres");
-        HashMap<String, Metric> currentMetrics = new HashMap<>();
-        currentMetrics.put("perfettofile", TfMetricProtoUtil.stringToMetric("/data/trace.pb"));
-        Mockito.when(mMockDevice.pullFile(Mockito.eq("/data/trace.pb")))
-                .thenReturn(new File("trace"));
-
-        TestDescription testDesc = new TestDescription("xyz", "abc");
-        CommandResult cr = new CommandResult();
-        cr.setStatus(CommandStatus.SUCCESS);
-        cr.setStdout("abc:efg");
-
-        Mockito.doReturn(cr).when(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
-                Mockito.any(), Mockito.any(), Mockito.any());
-
-        mPerfettoMetricCollector.testStarted(testDesc);
-        mPerfettoMetricCollector.testEnded(testDesc, currentMetrics);
-
-        ArgumentCaptor<String[]> captor = ArgumentCaptor.forClass(String[].class);
-        Mockito.verify(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
-                captor.capture(), Mockito.any(), Mockito.any());
-        List<String> args = Arrays.asList(captor.getValue());
-        Assert.assertTrue(args.contains("--uno"));
-        Assert.assertTrue(args.contains("--dos"));
-        Assert.assertTrue(args.contains("--tres"));
     }
 
     @Test
