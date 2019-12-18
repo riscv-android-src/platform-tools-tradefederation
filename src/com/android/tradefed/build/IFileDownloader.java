@@ -49,7 +49,7 @@ public interface IFileDownloader {
      * Alternate form of {@link #downloadFile(String, File)}, that allows caller to download a
      * section of the file and save to a specific destination file.
      *
-     * @param relativeRemotePath the remote path to the file to download, relative to an
+     * @param remoteFilePath the remote path to the file to download, relative to an
      *     implementation-specific root.
      * @param destFile the file to place the downloaded contents into. Should not exist.
      * @param startOffset the start offset in the remote file.
@@ -90,6 +90,7 @@ public interface IFileDownloader {
      * @param includeFilters a list of filters to download matching files.
      * @param excludeFilters a list of filters to skip downloading matching files.
      * @throws BuildRetrievalError if files could not be downloaded.
+     * @throws IOException
      */
     public default void downloadZippedFiles(
             File destDir,
