@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
+	<classpathentry excluding="Android.bp" kind="src" path="lite"/>
 	<classpathentry excluding="Android.bp" kind="src" path="test_framework"/>
 	<classpathentry excluding="Android.bp" kind="src" path="invocation_interfaces"/>
 	<classpathentry excluding="Android.bp" kind="src" path="test_result_interfaces"/>
@@ -41,5 +42,6 @@
 	<classpathentry kind="var" path="TRADEFED_ROOT/prebuilts/tools/common/m2/repository/com/google/code/gson/gson/2.8.0/gson-2.8.0.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/prebuilts/tools/common/m2/protobuf-java-util-prebuilt-jar/linux_glibc_common/combined/protobuf-java-util-prebuilt-jar.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/platform_testing/libraries/health/runners/longevity/host/longevity-base-lib/linux_glibc_common/javac/longevity-base-lib.jar"/>
+	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/tools/tradefederation/core/isolation/tradefed-isolation-protos/linux_glibc_common/combined/tradefed-isolation-protos.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
