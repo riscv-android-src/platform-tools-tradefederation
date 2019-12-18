@@ -77,6 +77,18 @@ public class FileDownloadCacheTest {
     }
 
     /**
+     * Test basic case for {@link FileDownloadCache#fetchRemoteFile(IFileDownloader, String, File)}.
+     */
+    @Test
+    public void testFetchRemoteFile_destFile() throws Exception {
+        setDownloadExpections();
+        EasyMock.replay(mMockDownloader);
+        File destFile = FileUtil.createTempFile("test-download-cache", "txt");
+        assertFetchRemoteFile(REMOTE_PATH, null, destFile);
+        EasyMock.verify(mMockDownloader);
+    }
+
+    /**
      * Test {@link FileDownloadCache#fetchRemoteFile(IFileDownloader, String)} when file can be
      * retrieved from cache.
      */
@@ -214,11 +226,12 @@ public class FileDownloadCacheTest {
         mCache =
                 new FileDownloadCache(mCacheDir) {
                     @Override
-                    File copyFile(String remotePath, File cachedFile) throws BuildRetrievalError {
+                    File copyFile(String remotePath, File cachedFile, File desFile)
+                            throws BuildRetrievalError {
                         if (mFailCopy) {
                             FileUtil.deleteFile(cachedFile);
                         }
-                        return super.copyFile(remotePath, cachedFile);
+                        return super.copyFile(remotePath, cachedFile, desFile);
                     }
                 };
         // perform successful download
@@ -311,11 +324,21 @@ public class FileDownloadCacheTest {
         assertFetchRemoteFile(REMOTE_PATH, null);
     }
 
-    /** Perform one fetchRemoteFile call and verify contents */
     private void assertFetchRemoteFile(String remotePath, List<String> relativePaths)
             throws BuildRetrievalError, IOException {
+        assertFetchRemoteFile(remotePath, relativePaths, null);
+    }
+
+    /** Perform one fetchRemoteFile call and verify contents */
+    private void assertFetchRemoteFile(String remotePath, List<String> relativePaths, File dest)
+            throws BuildRetrievalError, IOException {
         // test downloading file not in cache
-        File fileCopy = mCache.fetchRemoteFile(mMockDownloader, remotePath);
+        File fileCopy = dest;
+        if (dest != null) {
+            mCache.fetchRemoteFile(mMockDownloader, remotePath, dest);
+        } else {
+            fileCopy = mCache.fetchRemoteFile(mMockDownloader, remotePath);
+        }
         try {
             assertNotNull(mCache.getCachedFile(remotePath));
             if (relativePaths == null || relativePaths.size() == 0) {
