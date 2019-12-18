@@ -22,7 +22,8 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceManager;
-import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.BaseTargetPreparer;
 import com.android.tradefed.targetprep.BuildError;
@@ -63,9 +64,9 @@ public class AdbStopServerPreparer extends BaseTargetPreparer {
 
     /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+    public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
-
+        IBuildInfo buildInfo = testInfo.getBuildInfo();
         getDeviceManager().stopAdbBridge();
 
         // Kill the default adb server
@@ -93,7 +94,7 @@ public class AdbStopServerPreparer extends BaseTargetPreparer {
             adb = buildInfo.getFile("adb");
             adb = renameAdbBinary(adb);
             // Track the updated adb file.
-            buildInfo.setFile(ADB_BINARY_KEY, adb, "adb");
+            testInfo.executionFiles().put(FilesKey.ADB_BINARY, adb);
         }
 
         if (adb != null) {
@@ -107,19 +108,19 @@ public class AdbStopServerPreparer extends BaseTargetPreparer {
                                 "Failed to restart adb with the build info one. stdout: %s.\n"
                                         + "sterr: %s",
                                 result.getStdout(), result.getStderr()),
-                        device.getDeviceDescriptor());
+                        testInfo.getDevice().getDeviceDescriptor());
             }
         } else {
             getRunUtil().runTimedCmd(CMD_TIMEOUT, "adb", "start-server");
             throw new TargetSetupError(
-                    "Could not find a new version of adb to tests.", device.getDeviceDescriptor());
+                    "Could not find a new version of adb to tests.",
+                    testInfo.getDevice().getDeviceDescriptor());
         }
     }
 
     /** {@inheritDoc} */
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
         FileUtil.recursiveDelete(mTmpDir);
         // Kill the test adb server
         getRunUtil().runTimedCmd(CMD_TIMEOUT, "adb", "kill-server");
