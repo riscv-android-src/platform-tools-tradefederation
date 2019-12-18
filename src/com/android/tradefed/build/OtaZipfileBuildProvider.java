@@ -92,11 +92,6 @@ public class OtaZipfileBuildProvider implements IBuildProvider {
     }
 
     @Override
-    public void buildNotTested(IBuildInfo info) {
-        // ignore
-    }
-
-    @Override
     public void cleanUp(IBuildInfo info) {
         // ignore
     }
