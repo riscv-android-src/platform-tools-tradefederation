@@ -25,7 +25,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 
 /** Target preparer to fill up storage so some amount of free space is available. */
 @OptionClass(alias = "fill-storage")
-public class DeviceStorageFiller extends BaseTargetPreparer implements ITargetCleaner {
+public class DeviceStorageFiller extends BaseTargetPreparer {
 
     @Option(name = "partition", description = "Partition to check storage")
     private String mPartition = "/data";

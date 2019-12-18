@@ -54,7 +54,6 @@ import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStatistics;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.targetprep.BuildError;
-import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
@@ -347,7 +346,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // Setup
         long prepStartTime = getCurrentTime();
         if (preparationException == null) {
-            preparationException = runTargetPreparation(listener);
+            preparationException = runTargetPreparation(moduleInfo, listener);
         }
         // Skip multi-preparation if preparation already failed.
         if (preparationException == null) {
@@ -467,7 +466,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             try {
                 Throwable exception = (runException != null) ? runException : preparationException;
                 // Tear down
-                runTearDown(exception);
+                runTearDown(moduleInfo, exception);
             } catch (DeviceNotAvailableException dnae) {
                 CLog.e(
                         "Module %s failed during tearDown with: %s",
@@ -698,7 +697,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     /** Run all the prepare steps. */
     private Throwable runPreparerSetup(
-            ITestDevice device, IBuildInfo build, ITargetPreparer preparer, ITestLogger logger) {
+            TestInformation moduleInfo, ITargetPreparer preparer, ITestLogger logger) {
         if (preparer.isDisabled()) {
             // If disabled skip completely.
             return null;
@@ -713,7 +712,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 ((IInvocationContextReceiver) preparer)
                         .setInvocationContext(mModuleInvocationContext);
             }
-            preparer.setUp(device, build);
+            preparer.setUp(moduleInfo);
             return null;
         } catch (BuildError
                 | TargetSetupError
@@ -762,7 +761,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     /** Run all the tear down steps from preparers. */
-    private void runTearDown(Throwable exception) throws DeviceNotAvailableException {
+    private void runTearDown(TestInformation moduleInfo, Throwable exception)
+            throws DeviceNotAvailableException {
         // Tear down
         List<IMultiTargetPreparer> cleanerList = new ArrayList<>(mMultiPreparers);
         Collections.reverse(cleanerList);
@@ -797,30 +797,24 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             ListIterator<ITargetPreparer> itr = preparers.listIterator(preparers.size());
             while (itr.hasPrevious()) {
                 ITargetPreparer preparer = itr.previous();
-                if (preparer instanceof ITargetCleaner) {
-                    ITargetCleaner cleaner = (ITargetCleaner) preparer;
-                    // do not call the cleaner if it was disabled
-                    if (cleaner.isDisabled() || cleaner.isTearDownDisabled()) {
-                        CLog.d("%s has been disabled. skipping.", cleaner);
-                        continue;
-                    }
+                // do not call the cleaner if it was disabled
+                if (preparer.isDisabled() || preparer.isTearDownDisabled()) {
+                    CLog.d("%s has been disabled. skipping.", preparer);
+                    continue;
+                }
 
-                    RecoveryMode origMode = null;
-                    try {
-                        // If an exception was generated in setup with a DNAE do not attempt any
-                        // recovery again in case we hit the device not available again.
-                        if (exception != null && exception instanceof DeviceNotAvailableException) {
-                            origMode = device.getRecoveryMode();
-                            device.setRecoveryMode(RecoveryMode.NONE);
-                        }
-                        cleaner.tearDown(
-                                device,
-                                mModuleInvocationContext.getBuildInfo(deviceName),
-                                exception);
-                    } finally {
-                        if (origMode != null) {
-                            device.setRecoveryMode(origMode);
-                        }
+                RecoveryMode origMode = null;
+                try {
+                    // If an exception was generated in setup with a DNAE do not attempt any
+                    // recovery again in case we hit the device not available again.
+                    if (exception != null && exception instanceof DeviceNotAvailableException) {
+                        origMode = device.getRecoveryMode();
+                        device.setRecoveryMode(RecoveryMode.NONE);
+                    }
+                    preparer.tearDown(moduleInfo, exception);
+                } finally {
+                    if (origMode != null) {
+                        device.setRecoveryMode(origMode);
                     }
                 }
             }
@@ -962,11 +956,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 InvocationMetricKey.AUTO_RETRY_TIME, retryTimeMs);
     }
 
-    private Throwable runTargetPreparation(ITestLogger logger) {
+    private Throwable runTargetPreparation(TestInformation moduleInfo, ITestLogger logger) {
         Throwable preparationException = null;
         for (int i = 0; i < mModuleInvocationContext.getDeviceConfigNames().size(); i++) {
             String deviceName = mModuleInvocationContext.getDeviceConfigNames().get(i);
-            ITestDevice device = mModuleInvocationContext.getDevice(deviceName);
             if (i >= mPreparersPerDevice.size()) {
                 CLog.d(
                         "Main configuration has more devices than the module configuration. '%s' "
@@ -984,12 +977,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 preparers = mPreparersPerDevice.get(key);
             }
             for (ITargetPreparer preparer : preparers) {
-                preparationException =
-                        runPreparerSetup(
-                                device,
-                                mModuleInvocationContext.getBuildInfo(deviceName),
-                                preparer,
-                                logger);
+                preparationException = runPreparerSetup(moduleInfo, preparer, logger);
                 if (preparationException != null) {
                     mIsFailedModule = true;
                     CLog.e("Some preparation step failed. failing the module %s", getId());

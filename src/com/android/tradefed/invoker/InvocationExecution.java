@@ -54,7 +54,6 @@ import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.IHostCleaner;
-import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
@@ -194,8 +193,7 @@ public class InvocationExecution implements IInvocationExecution {
     }
 
     @Override
-    public void doSetup(
-            IInvocationContext context, IConfiguration config, final ITestLogger listener)
+    public void doSetup(TestInformation testInfo, IConfiguration config, final ITestLogger listener)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         long start = System.currentTimeMillis();
         try {
@@ -203,17 +201,18 @@ public class InvocationExecution implements IInvocationExecution {
             runMultiTargetPreparers(
                     config.getMultiPreTargetPreparers(),
                     listener,
-                    context,
+                    testInfo.getContext(),
                     "multi pre target preparer setup");
 
             // TODO: evaluate doing device setup in parallel
             mTrackTargetPreparers = new HashMap<>();
-            for (String deviceName : context.getDeviceConfigNames()) {
+            for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
                 mTrackTargetPreparers.put(deviceName, new HashSet<>());
-                ITestDevice device = context.getDevice(deviceName);
+                ITestDevice device = testInfo.getContext().getDevice(deviceName);
                 CLog.d("Starting setup for device: '%s'", device.getSerialNumber());
                 if (device instanceof ITestLoggerReceiver) {
-                    ((ITestLoggerReceiver) context.getDevice(deviceName)).setTestLogger(listener);
+                    ((ITestLoggerReceiver) testInfo.getContext().getDevice(deviceName))
+                            .setTestLogger(listener);
                 }
                 for (ITargetPreparer preparer :
                         config.getDeviceConfigByName(deviceName).getTargetPreparers()) {
@@ -228,7 +227,7 @@ public class InvocationExecution implements IInvocationExecution {
                     CLog.d(
                             "starting preparer '%s' on device: '%s'",
                             preparer, device.getSerialNumber());
-                    preparer.setUp(device, context.getBuildInfo(deviceName));
+                    preparer.setUp(testInfo);
                     mTrackTargetPreparers.get(deviceName).add(preparer);
                     CLog.d(
                             "done with preparer '%s' on device: '%s'",
@@ -240,18 +239,19 @@ public class InvocationExecution implements IInvocationExecution {
             runMultiTargetPreparers(
                     config.getMultiTargetPreparers(),
                     listener,
-                    context,
+                    testInfo.getContext(),
                     "multi target preparer setup");
         } finally {
             // Note: These metrics are handled in a try in case of a kernel reset or device issue.
             // Setup timing metric. It does not include flashing time on boot tests.
             long setupDuration = System.currentTimeMillis() - start;
-            context.addInvocationTimingMetric(IInvocationContext.TimingEvent.SETUP, setupDuration);
+            testInfo.getContext()
+                    .addInvocationTimingMetric(IInvocationContext.TimingEvent.SETUP, setupDuration);
             InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.SETUP, setupDuration);
             CLog.d("Setup duration: %s'", TimeUtil.formatElapsedTime(setupDuration));
             // Upload the setup logcat after setup is complete.
-            for (String deviceName : context.getDeviceConfigNames()) {
-                reportLogs(context.getDevice(deviceName), listener, Stage.SETUP);
+            for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
+                reportLogs(testInfo.getContext().getDevice(deviceName), listener, Stage.SETUP);
             }
         }
     }
@@ -359,11 +359,12 @@ public class InvocationExecution implements IInvocationExecution {
 
     @Override
     public void doTeardown(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             ITestLogger logger,
             Throwable exception)
             throws Throwable {
+        IInvocationContext context = testInfo.getContext();
         Throwable deferredThrowable = null;
 
         List<IMultiTargetPreparer> multiPreparers = config.getMultiTargetPreparers();
@@ -384,40 +385,37 @@ public class InvocationExecution implements IInvocationExecution {
             ListIterator<ITargetPreparer> itr = preparers.listIterator(preparers.size());
             while (itr.hasPrevious()) {
                 ITargetPreparer preparer = itr.previous();
-                if (preparer instanceof ITargetCleaner) {
-                    ITargetCleaner cleaner = (ITargetCleaner) preparer;
-                    // do not call the cleaner if it was disabled
-                    if (cleaner.isDisabled() || cleaner.isTearDownDisabled()) {
-                        CLog.d("%s has been disabled. skipping.", cleaner);
-                        continue;
-                    }
-                    if (mTrackTargetPreparers == null
-                            || !mTrackTargetPreparers.containsKey(deviceName)
-                            || !mTrackTargetPreparers.get(deviceName).contains(cleaner)) {
-                        CLog.d("%s didn't run setUp, skipping tearDown.", cleaner);
-                        continue;
-                    }
-                    // If setup hit a targetSetupError, the setUp() and setTestLogger might not have
-                    // run, ensure we still have the logger.
-                    if (preparer instanceof ITestLoggerReceiver) {
-                        ((ITestLoggerReceiver) preparer).setTestLogger(logger);
-                    }
-                    try {
-                        CLog.d(
-                                "starting tearDown '%s' on device: '%s'",
-                                preparer, device.getSerialNumber());
-                        cleaner.tearDown(device, context.getBuildInfo(deviceName), exception);
-                        CLog.d(
-                                "done with tearDown '%s' on device: '%s'",
-                                preparer, device.getSerialNumber());
-                    } catch (Throwable e) {
-                        // We catch it and rethrow later to allow each targetprep to be attempted.
-                        // Only the first one will be thrown but all should be logged.
-                        CLog.e("Deferring throw for:");
-                        CLog.e(e);
-                        if (deferredThrowable == null) {
-                            deferredThrowable = e;
-                        }
+                // do not call the cleaner if it was disabled
+                if (preparer.isDisabled() || preparer.isTearDownDisabled()) {
+                    CLog.d("%s has been disabled. skipping.", preparer);
+                    continue;
+                }
+                if (mTrackTargetPreparers == null
+                        || !mTrackTargetPreparers.containsKey(deviceName)
+                        || !mTrackTargetPreparers.get(deviceName).contains(preparer)) {
+                    CLog.d("%s didn't run setUp, skipping tearDown.", preparer);
+                    continue;
+                }
+                // If setup hit a targetSetupError, the setUp() and setTestLogger might not have
+                // run, ensure we still have the logger.
+                if (preparer instanceof ITestLoggerReceiver) {
+                    ((ITestLoggerReceiver) preparer).setTestLogger(logger);
+                }
+                try {
+                    CLog.d(
+                            "starting tearDown '%s' on device: '%s'",
+                            preparer, device.getSerialNumber());
+                    preparer.tearDown(testInfo, exception);
+                    CLog.d(
+                            "done with tearDown '%s' on device: '%s'",
+                            preparer, device.getSerialNumber());
+                } catch (Throwable e) {
+                    // We catch it and rethrow later to allow each targetprep to be attempted.
+                    // Only the first one will be thrown but all should be logged.
+                    CLog.e("Deferring throw for:");
+                    CLog.e(e);
+                    if (deferredThrowable == null) {
+                        deferredThrowable = e;
                     }
                 }
             }

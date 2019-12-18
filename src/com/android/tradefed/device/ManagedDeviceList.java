@@ -55,7 +55,11 @@ class ManagedDeviceList implements Iterable<IManagedTestDevice> {
         @Override
         public boolean matches(IManagedTestDevice element) {
             if (mDeviceSelectionMatcher.matches(element.getIDevice())) {
-                DeviceEventResponse r = element.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST);
+                DeviceEvent event = DeviceEvent.ALLOCATE_REQUEST;
+                if (!mDeviceSelectionMatcher.getSerials().isEmpty()) {
+                    event = DeviceEvent.EXPLICIT_ALLOCATE_REQUEST;
+                }
+                DeviceEventResponse r = element.handleAllocationEvent(event);
                 return r.stateChanged && r.allocationState == DeviceAllocationState.Allocated;
             }
             return false;

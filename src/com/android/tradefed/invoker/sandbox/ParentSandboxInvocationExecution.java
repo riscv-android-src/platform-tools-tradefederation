@@ -63,7 +63,7 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
     }
 
     @Override
-    public void doSetup(IInvocationContext context, IConfiguration config, ITestLogger logger)
+    public void doSetup(TestInformation testInfo, IConfiguration config, ITestLogger logger)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         // Skip
         mParentPreparerConfig = getParentTargetConfig(config);
@@ -71,12 +71,12 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
             return;
         }
         CLog.d("Using %s to run in the parent setup.", SandboxOptions.PARENT_PREPARER_CONFIG);
-        super.doSetup(context, mParentPreparerConfig, logger);
+        super.doSetup(testInfo, mParentPreparerConfig, logger);
     }
 
     @Override
     public void doTeardown(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             ITestLogger logger,
             Throwable exception)
@@ -89,7 +89,7 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
             return;
         }
         CLog.d("Using %s to run in the parent tear down.", SandboxOptions.PARENT_PREPARER_CONFIG);
-        super.doTeardown(context, mParentPreparerConfig, logger, exception);
+        super.doTeardown(testInfo, mParentPreparerConfig, logger, exception);
     }
 
     @Override

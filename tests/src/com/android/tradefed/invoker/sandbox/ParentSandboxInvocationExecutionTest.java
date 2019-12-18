@@ -37,10 +37,11 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.sandbox.SandboxOptions;
-import com.android.tradefed.targetprep.ITargetCleaner;
+import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 
 import org.junit.Before;
@@ -55,17 +56,18 @@ public class ParentSandboxInvocationExecutionTest {
 
     private ParentSandboxInvocationExecution mParentSandbox;
     private IConfiguration mConfig;
+    private TestInformation mTestInfo;
     private IInvocationContext mContext;
     private IConfigurationFactory mMockFactory;
     private SandboxOptions mOptions;
-    private ITargetCleaner mMockPreparer;
+    private ITargetPreparer mMockPreparer;
     private ITestDevice mMockDevice;
     private ITestLogger mMockLogger;
 
     @Before
     public void setUp() {
         mMockFactory = Mockito.mock(IConfigurationFactory.class);
-        mMockPreparer = Mockito.mock(ITargetCleaner.class);
+        mMockPreparer = Mockito.mock(ITargetPreparer.class);
         mMockDevice = Mockito.mock(ITestDevice.class);
         mMockLogger = Mockito.mock(ITestLogger.class);
 
@@ -84,14 +86,15 @@ public class ParentSandboxInvocationExecutionTest {
         mContext = new InvocationContext();
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
         mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, new BuildInfo());
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(mContext).build();
         mConfig = new Configuration("test", "test");
         mOptions = new SandboxOptions();
     }
 
     @Test
     public void testDefaultSkipSetup_tearDown() throws Throwable {
-        mParentSandbox.doSetup(mContext, mConfig, null);
-        mParentSandbox.doTeardown(mContext, mConfig, null, null);
+        mParentSandbox.doSetup(mTestInfo, mConfig, null);
+        mParentSandbox.doTeardown(mTestInfo, mConfig, null, null);
         mParentSandbox.doCleanUp(mContext, mConfig, null);
 
         verify(mMockFactory, times(0)).createConfigurationFromArgs(Mockito.any());
@@ -110,13 +113,13 @@ public class ParentSandboxInvocationExecutionTest {
                 .when(mMockFactory)
                 .createConfigurationFromArgs(new String[] {"parent-config"});
 
-        mParentSandbox.doSetup(mContext, mConfig, null);
-        mParentSandbox.doTeardown(mContext, mConfig, mMockLogger, null);
+        mParentSandbox.doSetup(mTestInfo, mConfig, null);
+        mParentSandbox.doTeardown(mTestInfo, mConfig, mMockLogger, null);
         mParentSandbox.doCleanUp(mContext, mConfig, null);
 
         verify(mMockFactory, times(1)).createConfigurationFromArgs(Mockito.any());
-        verify(mMockPreparer, times(1)).setUp(Mockito.any(), Mockito.any());
-        verify(mMockPreparer, times(1)).tearDown(Mockito.any(), Mockito.any(), Mockito.any());
+        verify(mMockPreparer, times(1)).setUp(Mockito.any());
+        verify(mMockPreparer, times(1)).tearDown(Mockito.any(), Mockito.any());
         verify(mMockDevice, times(0)).getIDevice();
     }
 
@@ -134,15 +137,15 @@ public class ParentSandboxInvocationExecutionTest {
 
         doReturn(new StubDevice("stub")).when(mMockDevice).getIDevice();
 
-        mParentSandbox.doSetup(mContext, mConfig, null);
-        mParentSandbox.doTeardown(mContext, mConfig, mMockLogger, null);
+        mParentSandbox.doSetup(mTestInfo, mConfig, null);
+        mParentSandbox.doTeardown(mTestInfo, mConfig, mMockLogger, null);
         mParentSandbox.doCleanUp(mContext, mConfig, null);
         mParentSandbox.reportLogs(
                 mMockDevice, configParent.getTestInvocationListeners().get(0), Stage.ERROR);
 
         verify(mMockFactory, times(1)).createConfigurationFromArgs(Mockito.any());
-        verify(mMockPreparer, times(1)).setUp(Mockito.any(), Mockito.any());
-        verify(mMockPreparer, times(1)).tearDown(Mockito.any(), Mockito.any(), Mockito.any());
+        verify(mMockPreparer, times(1)).setUp(Mockito.any());
+        verify(mMockPreparer, times(1)).tearDown(Mockito.any(), Mockito.any());
         // Ensure we reported the logs for the device during ERROR stage.
         verify(mMockDevice, times(1)).getIDevice();
     }
@@ -157,7 +160,7 @@ public class ParentSandboxInvocationExecutionTest {
                 .createConfigurationFromArgs(new String[] {"parent-config"});
 
         try {
-            mParentSandbox.doSetup(mContext, mConfig, null);
+            mParentSandbox.doSetup(mTestInfo, mConfig, null);
             fail("Should have thrown an exception.");
         } catch (TargetSetupError expected) {
             // Expected.
