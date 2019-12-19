@@ -593,10 +593,10 @@ public class TestInvocation implements ITestInvocation {
     }
 
     /**
-     * Invoke {@link IInvocationExecution#fetchBuild(IInvocationContext, IConfiguration,
-     * IRescheduler, ITestInvocationListener)} and handles the output as well as failures.
+     * Invoke {@link IInvocationExecution#fetchBuild(TestInformation, IConfiguration, IRescheduler,
+     * ITestInvocationListener)} and handles the output as well as failures.
      *
-     * @param context the {@link IInvocationContext} of the invocation.
+     * @param testInfo the {@link TestInformation} of the invocation.
      * @param config the {@link IConfiguration} of this test run.
      * @param rescheduler the {@link IRescheduler}, for rescheduling portions of the invocation for
      *     execution on another resource(s)
@@ -606,7 +606,7 @@ public class TestInvocation implements ITestInvocation {
      * @throws DeviceNotAvailableException
      */
     private boolean invokeFetchBuild(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             IRescheduler rescheduler,
             ITestInvocationListener listener,
@@ -615,7 +615,7 @@ public class TestInvocation implements ITestInvocation {
         Exception buildException = null;
         boolean res = false;
         try {
-            res = invocationPath.fetchBuild(context, config, rescheduler, listener);
+            res = invocationPath.fetchBuild(testInfo, config, rescheduler, listener);
             if (res) {
                 // Successful fetch of build.
                 return true;
@@ -629,10 +629,10 @@ public class TestInvocation implements ITestInvocation {
             buildException = e;
         }
         // Report an empty invocation, so this error is sent to listeners
-        startInvocation(config, context, listener);
+        startInvocation(config, testInfo.getContext(), listener);
         // Don't want to use #reportFailure, since that will call buildNotTested
         listener.invocationFailed(buildException);
-        for (ITestDevice device : context.getDevices()) {
+        for (ITestDevice device : testInfo.getContext().getDevices()) {
             invocationPath.reportLogs(device, listener, Stage.ERROR);
         }
         reportHostLog(listener, config);
@@ -788,7 +788,7 @@ public class TestInvocation implements ITestInvocation {
 
             long start = System.currentTimeMillis();
             boolean providerSuccess =
-                    invokeFetchBuild(context, config, rescheduler, listener, invocationPath);
+                    invokeFetchBuild(info, config, rescheduler, listener, invocationPath);
             long fetchBuildDuration = System.currentTimeMillis() - start;
             context.addInvocationTimingMetric(IInvocationContext.TimingEvent.FETCH_BUILD,
                     fetchBuildDuration);
@@ -889,6 +889,10 @@ public class TestInvocation implements ITestInvocation {
             config.cleanConfigurationData();
             // Delete the invocation work directory at the end
             FileUtil.recursiveDelete(info.dependenciesFolder());
+            // Delete all the execution files
+            for (File f : info.executionFiles().getAll().values()) {
+                FileUtil.recursiveDelete(f);
+            }
         }
     }
 

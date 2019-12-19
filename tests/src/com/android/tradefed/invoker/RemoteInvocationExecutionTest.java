@@ -75,8 +75,9 @@ public class RemoteInvocationExecutionTest {
         mConfiguration.setBuildProvider(originalProvider);
         OptionSetter setter = new OptionSetter(originalProvider);
         setter.setOptionValue("build-id", "5555");
-
-        boolean fetched = mRemoteInvocation.fetchBuild(mContext, mConfiguration, null, null);
+        TestInformation testInfo =
+                TestInformation.newBuilder().setInvocationContext(mContext).build();
+        boolean fetched = mRemoteInvocation.fetchBuild(testInfo, mConfiguration, null, null);
         assertTrue(fetched);
         IBuildInfo info = mContext.getBuildInfos().get(0);
         // The build id is carried to the remote invocation build

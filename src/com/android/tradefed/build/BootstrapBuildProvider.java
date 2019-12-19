@@ -21,7 +21,6 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
-import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.BuildInfoUtil;
 import com.android.tradefed.util.FileUtil;
 
@@ -75,6 +74,7 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
     private File mTestsDir = null;
 
     private boolean mCreatedTestDir = false;
+    private File mWorkDir;
 
     @Override
     public IBuildInfo getBuild() throws BuildRetrievalError {
@@ -82,9 +82,8 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
     }
 
     @Override
-    public void buildNotTested(IBuildInfo info) {
-        // no op
-        CLog.i("ignoring buildNotTested call, build = %s ", info.getBuildId());
+    public void setWorkingDirectory(File workDir) {
+        mWorkDir = workDir;
     }
 
     @Override
@@ -125,7 +124,7 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
         if (mTestsDir == null) {
             mCreatedTestDir = true;
             try {
-                mTestsDir = FileUtil.createTempDir("bootstrap-test-dir");
+                mTestsDir = FileUtil.createTempDir("bootstrap-test-dir", mWorkDir);
             } catch (IOException e) {
                 throw new BuildRetrievalError(e.getMessage(), e);
             }
