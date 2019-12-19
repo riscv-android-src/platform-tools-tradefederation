@@ -100,14 +100,6 @@ public class StubBuildProvider implements IBuildProvider {
      * {@inheritDoc}
      */
     @Override
-    public void buildNotTested(IBuildInfo info) {
-        // ignore
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void cleanUp(IBuildInfo info) {
         // ignore
     }

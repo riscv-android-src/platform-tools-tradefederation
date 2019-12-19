@@ -444,7 +444,7 @@ public class ITestSuiteTest {
         mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
         // Setup should have been called.
-        Mockito.verify(mMockPreparer).setUp(Mockito.any(), Mockito.any());
+        Mockito.verify(mMockPreparer).setUp(Mockito.any());
     }
 
     /** Test that when preparer-whitelist is set only the preparer whitelisted can run. */
@@ -471,7 +471,7 @@ public class ITestSuiteTest {
         mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
         // Setup should have been called.
-        Mockito.verify(mMockPreparer, Mockito.times(0)).setUp(Mockito.any(), Mockito.any());
+        Mockito.verify(mMockPreparer, Mockito.times(0)).setUp(Mockito.any());
     }
 
     /**

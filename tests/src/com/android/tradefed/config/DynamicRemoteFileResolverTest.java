@@ -469,11 +469,9 @@ public class DynamicRemoteFileResolverTest {
                                     new IRemoteFileResolver() {
 
                                         @Override
-                                        public @Nonnull File resolveRemoteFiles(
-                                                File consideredFile, Option option)
+                                        public @Nonnull File resolveRemoteFiles(File consideredFile)
                                                 throws BuildRetrievalError {
-                                            return mMockResolver.resolveRemoteFiles(
-                                                    consideredFile, option);
+                                            return mMockResolver.resolveRemoteFiles(consideredFile);
                                         }
 
                                         @Override
@@ -504,8 +502,7 @@ public class DynamicRemoteFileResolverTest {
 
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
-                                EasyMock.eq(new File("fakeprotocol:/fake/path")),
-                                EasyMock.anyObject()))
+                                EasyMock.eq(new File("fakeprotocol:/fake/path"))))
                 .andReturn(fake);
         EasyMock.replay(mMockResolver);
 

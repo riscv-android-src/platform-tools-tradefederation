@@ -24,6 +24,7 @@ import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 
 import org.junit.Before;
@@ -53,8 +54,9 @@ public class SandboxedInvocationExecutionTest {
         assertEquals("stub", info.getTestTag());
         mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, info);
         mConfig.getCommandOptions().setTestTag("test");
-
-        mExecution.fetchBuild(mContext, mConfig, null, null);
+        TestInformation testInfo =
+                TestInformation.newBuilder().setInvocationContext(mContext).build();
+        mExecution.fetchBuild(testInfo, mConfig, null, null);
         // Build test tag was updated
         assertEquals("test", info.getTestTag());
     }

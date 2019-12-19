@@ -30,6 +30,8 @@ public final class SandboxOptions {
     public static final String CHILD_GLOBAL_CONFIG = "sub-global-config";
     public static final String PARENT_PREPARER_CONFIG = "parent-preparer-config";
     public static final String WAIT_FOR_EVENTS_TIMEOUT = "wait-for-events";
+    public static final String EXTRA_BRANCH_TARGET = "extra-branch-target";
+    public static final String EXTRA_BUILD_ID_TARGET = "extra-build-id-target";
 
     @Option(
         name = TF_LOCATION,
@@ -74,6 +76,20 @@ public final class SandboxOptions {
     )
     private long mWaitForEventsTimeoutMs = 30000L;
 
+    @Option(
+            name = EXTRA_BRANCH_TARGET,
+            description =
+                    "Which branch to target to download the sandbox extras. Default will be "
+                            + "current target branch.")
+    private String mExtraBranchTarget = null;
+
+    @Option(
+            name = EXTRA_BUILD_ID_TARGET,
+            description =
+                    "Which build-id to target to download the sandbox extras. Default will be "
+                            + "current target build-id.")
+    private String mExtraBuildIdTarget = null;
+
     /**
      * Returns the provided directories containing the Trade Federation version to use for
      * sandboxing the run.
@@ -110,5 +126,21 @@ public final class SandboxOptions {
      */
     public long getWaitForEventsTimeout() {
         return mWaitForEventsTimeoutMs;
+    }
+
+    /**
+     * Returns the branch from which to download the sandbox extras. If null, extras will be
+     * downloaded from the branch under tests.
+     */
+    public String getExtraBranchTarget() {
+        return mExtraBranchTarget;
+    }
+
+    /**
+     * Returns the build-id from which to download the sandbox extras. If null, extras will be
+     * downloaded from the build-id under tests.
+     */
+    public String getExtraBuildIdTarget() {
+        return mExtraBuildIdTarget;
     }
 }

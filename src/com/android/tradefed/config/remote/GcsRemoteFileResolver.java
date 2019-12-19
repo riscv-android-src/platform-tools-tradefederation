@@ -19,7 +19,6 @@ import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.gcs.GCSDownloaderHelper;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
-import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.File;
@@ -36,11 +35,10 @@ public class GcsRemoteFileResolver implements IRemoteFileResolver {
     private GCSDownloaderHelper mHelper = null;
 
     @Override
-    public File resolveRemoteFiles(File consideredFile, Option option, Map<String, String> query)
+    public File resolveRemoteFiles(File consideredFile, Map<String, String> query)
             throws BuildRetrievalError {
         // Don't use absolute path as it would not start with gs:
         String path = consideredFile.getPath();
-        CLog.d("Considering option '%s' with path: '%s' for download.", option.name(), path);
         try {
             // We need to download the file from the bucket
             File downloadedFile = getDownloader().fetchTestResource(path);

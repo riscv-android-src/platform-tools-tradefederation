@@ -102,7 +102,7 @@ public class InvocationExecution implements IInvocationExecution {
 
     @Override
     public boolean fetchBuild(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             IRescheduler rescheduler,
             ITestInvocationListener listener)
@@ -110,16 +110,18 @@ public class InvocationExecution implements IInvocationExecution {
         String currentDeviceName = null;
         try {
             // TODO: evaluate fetching build in parallel
-            for (String deviceName : context.getDeviceConfigNames()) {
+            for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
                 currentDeviceName = deviceName;
                 IBuildInfo info = null;
-                ITestDevice device = context.getDevice(deviceName);
+                ITestDevice device = testInfo.getContext().getDevice(deviceName);
                 IDeviceConfiguration deviceConfig = config.getDeviceConfigByName(deviceName);
                 IBuildProvider provider = deviceConfig.getBuildProvider();
                 // Inject the context to the provider if it can receive it
                 if (provider instanceof IInvocationContextReceiver) {
-                    ((IInvocationContextReceiver) provider).setInvocationContext(context);
+                    ((IInvocationContextReceiver) provider)
+                            .setInvocationContext(testInfo.getContext());
                 }
+                provider.setWorkingDirectory(testInfo.dependenciesFolder());
                 // Get the build
                 if (provider instanceof IDeviceBuildProvider) {
                     // Download a device build if the provider can handle it.
@@ -129,7 +131,7 @@ public class InvocationExecution implements IInvocationExecution {
                 }
                 if (info != null) {
                     info.setDeviceSerial(device.getSerialNumber());
-                    context.addDeviceBuildInfo(deviceName, info);
+                    testInfo.getContext().addDeviceBuildInfo(deviceName, info);
                     device.setRecovery(deviceConfig.getDeviceRecovery());
                 } else {
                     CLog.logAndDisplay(
@@ -138,7 +140,7 @@ public class InvocationExecution implements IInvocationExecution {
                             device.getSerialNumber());
                     IBuildInfo notFoundStub = new BuildInfo();
                     updateBuild(notFoundStub, config);
-                    context.addDeviceBuildInfo(currentDeviceName, notFoundStub);
+                    testInfo.getContext().addDeviceBuildInfo(currentDeviceName, notFoundStub);
                     return false;
                 }
                 // TODO: remove build update when reporting is done on context
@@ -150,12 +152,12 @@ public class InvocationExecution implements IInvocationExecution {
             if (currentDeviceName != null) {
                 IBuildInfo errorBuild = e.getBuildInfo();
                 updateBuild(errorBuild, config);
-                context.addDeviceBuildInfo(currentDeviceName, errorBuild);
+                testInfo.getContext().addDeviceBuildInfo(currentDeviceName, errorBuild);
             }
             throw e;
         }
-        createSharedResources(context);
-        setBinariesVersion(context);
+        createSharedResources(testInfo);
+        setBinariesVersion(testInfo.getContext());
         return true;
     }
 
@@ -193,8 +195,7 @@ public class InvocationExecution implements IInvocationExecution {
     }
 
     @Override
-    public void doSetup(
-            IInvocationContext context, IConfiguration config, final ITestLogger listener)
+    public void doSetup(TestInformation testInfo, IConfiguration config, final ITestLogger listener)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         long start = System.currentTimeMillis();
         try {
@@ -202,17 +203,18 @@ public class InvocationExecution implements IInvocationExecution {
             runMultiTargetPreparers(
                     config.getMultiPreTargetPreparers(),
                     listener,
-                    context,
+                    testInfo.getContext(),
                     "multi pre target preparer setup");
 
             // TODO: evaluate doing device setup in parallel
             mTrackTargetPreparers = new HashMap<>();
-            for (String deviceName : context.getDeviceConfigNames()) {
+            for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
                 mTrackTargetPreparers.put(deviceName, new HashSet<>());
-                ITestDevice device = context.getDevice(deviceName);
+                ITestDevice device = testInfo.getContext().getDevice(deviceName);
                 CLog.d("Starting setup for device: '%s'", device.getSerialNumber());
                 if (device instanceof ITestLoggerReceiver) {
-                    ((ITestLoggerReceiver) context.getDevice(deviceName)).setTestLogger(listener);
+                    ((ITestLoggerReceiver) testInfo.getContext().getDevice(deviceName))
+                            .setTestLogger(listener);
                 }
                 for (ITargetPreparer preparer :
                         config.getDeviceConfigByName(deviceName).getTargetPreparers()) {
@@ -227,7 +229,7 @@ public class InvocationExecution implements IInvocationExecution {
                     CLog.d(
                             "starting preparer '%s' on device: '%s'",
                             preparer, device.getSerialNumber());
-                    preparer.setUp(device, context.getBuildInfo(deviceName));
+                    preparer.setUp(testInfo);
                     mTrackTargetPreparers.get(deviceName).add(preparer);
                     CLog.d(
                             "done with preparer '%s' on device: '%s'",
@@ -239,18 +241,19 @@ public class InvocationExecution implements IInvocationExecution {
             runMultiTargetPreparers(
                     config.getMultiTargetPreparers(),
                     listener,
-                    context,
+                    testInfo.getContext(),
                     "multi target preparer setup");
         } finally {
             // Note: These metrics are handled in a try in case of a kernel reset or device issue.
             // Setup timing metric. It does not include flashing time on boot tests.
             long setupDuration = System.currentTimeMillis() - start;
-            context.addInvocationTimingMetric(IInvocationContext.TimingEvent.SETUP, setupDuration);
+            testInfo.getContext()
+                    .addInvocationTimingMetric(IInvocationContext.TimingEvent.SETUP, setupDuration);
             InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.SETUP, setupDuration);
             CLog.d("Setup duration: %s'", TimeUtil.formatElapsedTime(setupDuration));
             // Upload the setup logcat after setup is complete.
-            for (String deviceName : context.getDeviceConfigNames()) {
-                reportLogs(context.getDevice(deviceName), listener, Stage.SETUP);
+            for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
+                reportLogs(testInfo.getContext().getDevice(deviceName), listener, Stage.SETUP);
             }
         }
     }
@@ -358,11 +361,12 @@ public class InvocationExecution implements IInvocationExecution {
 
     @Override
     public void doTeardown(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             ITestLogger logger,
             Throwable exception)
             throws Throwable {
+        IInvocationContext context = testInfo.getContext();
         Throwable deferredThrowable = null;
 
         List<IMultiTargetPreparer> multiPreparers = config.getMultiTargetPreparers();
@@ -403,7 +407,7 @@ public class InvocationExecution implements IInvocationExecution {
                     CLog.d(
                             "starting tearDown '%s' on device: '%s'",
                             preparer, device.getSerialNumber());
-                    preparer.tearDown(device, context.getBuildInfo(deviceName), exception);
+                    preparer.tearDown(testInfo, exception);
                     CLog.d(
                             "done with tearDown '%s' on device: '%s'",
                             preparer, device.getSerialNumber());
@@ -765,8 +769,8 @@ public class InvocationExecution implements IInvocationExecution {
     }
 
     /** Populate the shared resources directory for all non-resource build */
-    private void createSharedResources(IInvocationContext context) {
-        List<IBuildInfo> infos = context.getBuildInfos();
+    private void createSharedResources(TestInformation testInfo) {
+        List<IBuildInfo> infos = testInfo.getContext().getBuildInfos();
         if (infos.size() <= 1) {
             return;
         }
@@ -775,7 +779,9 @@ public class InvocationExecution implements IInvocationExecution {
             for (IBuildInfo info : infos) {
                 if (info.isTestResourceBuild()) {
                     if (resourcesDir == null) {
-                        resourcesDir = FileUtil.createTempDir("invocation-resources-dir");
+                        resourcesDir =
+                                FileUtil.createTempDir(
+                                        "invocation-resources-dir", testInfo.dependenciesFolder());
                     }
                     // Create a reception sub-folder for each build info resource to avoid mixing
                     String name =

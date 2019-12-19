@@ -164,7 +164,7 @@ public class ITestSuiteMultiTest {
 
         // Target preparation is triggered against the preparer in the second device.
         EasyMock.expect(mMockTargetPrep.isDisabled()).andReturn(false).times(2);
-        mMockTargetPrep.setUp(mMockDevice2, mMockBuildInfo2);
+        mMockTargetPrep.setUp(EasyMock.anyObject());
         EasyMock.expect(mMockTargetPrep.isTearDownDisabled()).andReturn(true);
 
         EasyMock.replay(

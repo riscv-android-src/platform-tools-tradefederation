@@ -246,14 +246,6 @@ public class LocalDeviceBuildProvider extends StubBuildProvider {
      * {@inheritDoc}
      */
     @Override
-    public void buildNotTested(IBuildInfo info) {
-        // ignore
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void cleanUp(IBuildInfo info) {
         // ignore
     }

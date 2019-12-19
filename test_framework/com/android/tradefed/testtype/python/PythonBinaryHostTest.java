@@ -22,6 +22,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -29,7 +30,6 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
-import com.android.tradefed.targetprep.adb.AdbStopServerPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.PythonUnitTestResultParser;
 import com.android.tradefed.util.CommandResult;
@@ -105,7 +105,7 @@ public class PythonBinaryHostTest implements IRemoteTest {
                 continue;
             }
             pyFile.setExecutable(true);
-            runSinglePythonFile(listener, pyFile);
+            runSinglePythonFile(listener, testInfo, pyFile);
         }
     }
 
@@ -133,7 +133,8 @@ public class PythonBinaryHostTest implements IRemoteTest {
         return files;
     }
 
-    private void runSinglePythonFile(ITestInvocationListener listener, File pyFile) {
+    private void runSinglePythonFile(
+            ITestInvocationListener listener, TestInformation testInfo, File pyFile) {
         List<String> commandLine = new ArrayList<>();
         commandLine.add(pyFile.getAbsolutePath());
         // If we have a physical device, pass it to the python test by serial
@@ -148,7 +149,7 @@ public class PythonBinaryHostTest implements IRemoteTest {
                     .setEnvVariable(ANDROID_SERIAL_VAR, mTestInfo.getDevice().getSerialNumber());
         }
 
-        File updatedAdb = mTestInfo.getBuildInfo().getFile(AdbStopServerPreparer.ADB_BINARY_KEY);
+        File updatedAdb = testInfo.executionFiles().get(FilesKey.ADB_BINARY);
         if (updatedAdb == null) {
             String adbPath = getAdbPath();
             // Don't check if it's the adb on the $PATH
