@@ -58,11 +58,6 @@ public class GCSTestResourceProvider implements IBuildProvider {
     }
 
     @Override
-    public void buildNotTested(IBuildInfo info) {
-        // Ignored.
-    }
-
-    @Override
     public void cleanUp(IBuildInfo info) {
         info.cleanUp();
     }

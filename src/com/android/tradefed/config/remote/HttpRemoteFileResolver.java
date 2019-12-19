@@ -17,8 +17,6 @@ package com.android.tradefed.config.remote;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildRetrievalError;
-import com.android.tradefed.config.Option;
-import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.net.HttpHelper;
 import com.android.tradefed.util.net.IHttpHelper;
@@ -36,12 +34,10 @@ public class HttpRemoteFileResolver implements IRemoteFileResolver {
     public static final String PROTOCOL_HTTP = "http";
 
     @Override
-    public File resolveRemoteFiles(
-            File consideredFile, Option option, Map<String, String> queryArgs)
+    public File resolveRemoteFiles(File consideredFile, Map<String, String> queryArgs)
             throws BuildRetrievalError {
         // Don't use absolute path as it would not start with gs:
         String path = consideredFile.getPath();
-        CLog.d("Considering option '%s' with path: '%s' for download.", option.name(), path);
         // Replace the very first / by // to be http:// again.
         path = path.replaceFirst(":/", "://");
 

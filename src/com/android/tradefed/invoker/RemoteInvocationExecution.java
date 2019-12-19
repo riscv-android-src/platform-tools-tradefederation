@@ -105,7 +105,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
     @Override
     public boolean fetchBuild(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             IRescheduler rescheduler,
             ITestInvocationListener listener)
@@ -121,7 +121,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
         if (info == null) {
             return false;
         }
-        context.addDeviceBuildInfo(deviceName, info);
+        testInfo.getContext().addDeviceBuildInfo(deviceName, info);
         updateBuild(info, config);
         return true;
     }
@@ -294,14 +294,14 @@ public class RemoteInvocationExecution extends InvocationExecution {
     }
 
     @Override
-    public void doSetup(IInvocationContext context, IConfiguration config, ITestLogger logger)
+    public void doSetup(TestInformation testInfo, IConfiguration config, ITestLogger logger)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         // Skip
     }
 
     @Override
     public void doTeardown(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             ITestLogger logger,
             Throwable exception)
@@ -326,7 +326,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
             }
         } finally {
             // Only run device post invocation teardown
-            super.runDevicePostInvocationTearDown(context, config, exception);
+            super.runDevicePostInvocationTearDown(testInfo.getContext(), config, exception);
         }
     }
 

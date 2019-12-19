@@ -134,7 +134,7 @@ public class ModuleDefinitionMultiTest {
 
         // Target preparation is triggered against the preparer in the second device.
         EasyMock.expect(mMockTargetPrep.isDisabled()).andReturn(false).times(2);
-        mMockTargetPrep.setUp(mDevice2, mBuildInfo2);
+        mMockTargetPrep.setUp(moduleInfo);
         EasyMock.expect(mMockTargetPrep.isTearDownDisabled()).andReturn(true);
 
         replayMocks();
@@ -175,7 +175,7 @@ public class ModuleDefinitionMultiTest {
         // Target preparation is of first device in module configuration is triggered against the
         // first device from main configuration
         EasyMock.expect(mMockTargetPrep.isDisabled()).andReturn(false).times(2);
-        mMockTargetPrep.setUp(mDevice1, mBuildInfo1);
+        mMockTargetPrep.setUp(moduleInfo);
         EasyMock.expect(mMockTargetPrep.isTearDownDisabled()).andReturn(true);
 
         replayMocks();
