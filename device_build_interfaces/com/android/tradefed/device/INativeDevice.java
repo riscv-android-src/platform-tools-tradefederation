@@ -90,6 +90,29 @@ public interface INativeDevice {
     public String getProperty(String name) throws DeviceNotAvailableException;
 
     /**
+     * Returns integer value of the given property from the device.
+     *
+     * @param name the property name
+     * @param defaultValue default value to return if property is empty or doesn't exist.
+     * @return the property value or {@code defaultValue} if the property is empty, doesn't exist,
+     *     or doesn't have an integer value.
+     */
+    public long getIntProperty(String name, long defaultValue) throws DeviceNotAvailableException;
+
+    /**
+     * Returns boolean value of the given property.
+     *
+     * @param name the property name
+     * @param defaultValue default value to return if property is empty or doesn't exist.
+     * @return {@code true} if the property has value {@code "1"}, {@code "y"}, {@code "yes"},
+     *     {@code "on"}, or {@code "true"}, {@code false} if the property has value of {@code "0"},
+     *     {@code "n"}, {@code "no"}, {@code "off"}, {@code "false"}, or {@code defaultValue}
+     *     otherwise.
+     */
+    public boolean getBooleanProperty(String name, boolean defaultValue)
+            throws DeviceNotAvailableException;
+
+    /**
      * Sets the given property value on the device. Requires adb root is true.
      *
      * @param propKey The key targeted to be set.
