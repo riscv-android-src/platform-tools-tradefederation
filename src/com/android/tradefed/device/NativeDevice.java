@@ -472,6 +472,40 @@ public class NativeDevice implements IManagedTestDevice {
 
     /** {@inheritDoc} */
     @Override
+    public long getIntProperty(String name, long defaultValue) throws DeviceNotAvailableException {
+        String value = getProperty(name);
+        if (value == null) {
+            return defaultValue;
+        }
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    private static final List<String> TRUE_VALUES = Arrays.asList("1", "y", "yes", "on", "true");
+    private static final List<String> FALSE_VALUES = Arrays.asList("0", "n", "no", "off", "false");
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean getBooleanProperty(String name, boolean defaultValue)
+            throws DeviceNotAvailableException {
+        String value = getProperty(name);
+        if (value == null) {
+            return defaultValue;
+        }
+        if (TRUE_VALUES.contains(value)) {
+            return true;
+        }
+        if (FALSE_VALUES.contains(value)) {
+            return false;
+        }
+        return defaultValue;
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public boolean setProperty(String propKey, String propValue)
             throws DeviceNotAvailableException {
         if (propKey == null || propValue == null) {
