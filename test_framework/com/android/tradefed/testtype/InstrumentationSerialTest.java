@@ -19,6 +19,7 @@ package com.android.tradefed.testtype;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
@@ -82,11 +83,10 @@ class InstrumentationSerialTest implements IRemoteTest {
         return runner;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void run(final ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(TestInformation testInfo, final ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         if (mInstrumentationTest.getDevice() == null) {
             throw new IllegalArgumentException("Device has not been set");
         }
@@ -100,7 +100,7 @@ class InstrumentationSerialTest implements IRemoteTest {
                 runner.setMethodName(testToRun.getTestNameWithoutParams());
                 // Unset package name if any just in case to avoid conflict with classname.
                 runner.setTestPackageName(null);
-                runTest(runner, listener, testToRun);
+                runTest(runner, testInfo, listener, testToRun);
             }
         } catch (ConfigurationException e) {
             CLog.e("Failed to create new InstrumentationTest: %s", e.getMessage());
@@ -108,7 +108,10 @@ class InstrumentationSerialTest implements IRemoteTest {
     }
 
     private void runTest(
-            InstrumentationTest runner, ITestInvocationListener listener, TestDescription testToRun)
+            InstrumentationTest runner,
+            TestInformation testInfo,
+            ITestInvocationListener listener,
+            TestDescription testToRun)
             throws DeviceNotAvailableException {
         // use a listener filter, to track if the test failed to run
         CollectingTestListener trackingListener =
@@ -121,6 +124,7 @@ class InstrumentationSerialTest implements IRemoteTest {
                 };
         for (int i=1; i <= FAILED_RUN_TEST_ATTEMPTS; i++) {
             runner.run(
+                    testInfo,
                     new RetryResultForwarder(
                             i,
                             trackingListener,

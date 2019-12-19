@@ -15,12 +15,17 @@
  */
 package com.android.tradefed.testtype;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
@@ -45,6 +50,7 @@ public class InstrumentationSerialTestTest {
     // The mock objects.
     private ITestDevice mMockTestDevice;
     private ITestInvocationListener mMockListener;
+    private TestInformation mTestInfo;
 
     @Before
     public void setUp() throws Exception {
@@ -52,6 +58,9 @@ public class InstrumentationSerialTestTest {
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
 
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn("serial");
+
+        IInvocationContext context = new InvocationContext();
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     /** Test normal run scenario with a single test. */
@@ -64,7 +73,7 @@ public class InstrumentationSerialTestTest {
         final InstrumentationTest mockITest =
                 new InstrumentationTest() {
                     @Override
-                    public void run(ITestInvocationListener listener) {
+                    public void run(TestInformation testInfo, ITestInvocationListener listener) {
                         listener.testRunStarted(packageName, 1);
                         listener.testStarted(test);
                         listener.testEnded(test, 10l, new HashMap<String, Metric>());
@@ -92,7 +101,7 @@ public class InstrumentationSerialTestTest {
         mMockListener.testRunEnded(0, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockListener, mMockTestDevice);
-        mInstrumentationSerialTest.run(mMockListener);
+        mInstrumentationSerialTest.run(mTestInfo, mMockListener);
         assertEquals(mMockTestDevice, mockITest.getDevice());
         assertEquals(test.getClassName(), mockITest.getClassName());
         assertEquals(test.getTestNameWithoutParams(), mockITest.getMethodName());
@@ -113,7 +122,7 @@ public class InstrumentationSerialTestTest {
         final InstrumentationTest mockITest =
                 new InstrumentationTest() {
                     @Override
-                    public void run(ITestInvocationListener listener) {
+                    public void run(TestInformation testInfo, ITestInvocationListener listener) {
                         listener.testRunStarted(packageName, 1);
                         listener.testRunFailed(runFailureMsg);
                         listener.testRunEnded(0, new HashMap<String, Metric>());
@@ -151,7 +160,7 @@ public class InstrumentationSerialTestTest {
         mMockListener.testEnded(EasyMock.eq(test), EasyMock.eq(new HashMap<String, Metric>()));
 
         EasyMock.replay(mMockListener, mMockTestDevice);
-        mInstrumentationSerialTest.run(mMockListener);
+        mInstrumentationSerialTest.run(mTestInfo, mMockListener);
         assertEquals(mMockTestDevice, mockITest.getDevice());
         assertEquals(test.getClassName(), mockITest.getClassName());
         assertEquals(test.getTestName(), mockITest.getMethodName());
@@ -166,7 +175,7 @@ public class InstrumentationSerialTestTest {
                         new InstrumentationTest(), new ArrayList<TestDescription>());
         EasyMock.replay(mMockListener);
         try {
-            mInstrumentationSerialTest.run(mMockListener);
+            mInstrumentationSerialTest.run(mTestInfo, mMockListener);
             fail("IllegalArgumentException not thrown");
         } catch (IllegalArgumentException e) {
             // expected
@@ -184,7 +193,7 @@ public class InstrumentationSerialTestTest {
         final InstrumentationTest mockITest =
                 new InstrumentationTest() {
                     @Override
-                    public void run(ITestInvocationListener listener) {
+                    public void run(TestInformation testInfo, ITestInvocationListener listener) {
                         listener.testRunStarted(packageName, 1);
                         listener.testStarted(test);
                         listener.testEnded(test, 10l, new HashMap<String, Metric>());
@@ -214,7 +223,7 @@ public class InstrumentationSerialTestTest {
         mMockListener.testRunEnded(0, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockListener, mMockTestDevice);
-        mInstrumentationSerialTest.run(mMockListener);
+        mInstrumentationSerialTest.run(mTestInfo, mMockListener);
         assertEquals(mMockTestDevice, mockITest.getDevice());
         assertEquals(test.getClassName(), mockITest.getClassName());
         assertEquals(test.getTestName(), mockITest.getMethodName());

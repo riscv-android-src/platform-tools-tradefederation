@@ -38,7 +38,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.BugreportCollector;
@@ -82,7 +82,6 @@ public class InstrumentationTest
                 ITestCollector,
                 IAbiReceiver,
                 IConfigurationReceiver,
-                IInvocationContextReceiver,
                 IMetricCollectorReceiver {
 
     private static final String LOG_TAG = "InstrumentationTest";
@@ -340,7 +339,6 @@ public class InstrumentationTest
     private boolean mIsRerun = false;
 
     private IConfiguration mConfiguration = null;
-    private IInvocationContext mContext;
     private List<IMetricCollector> mCollectors = new ArrayList<>();
 
     /** {@inheritDoc} */
@@ -794,11 +792,10 @@ public class InstrumentationTest
         return intersection.iterator().next();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void run(final ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(TestInformation testInfo, final ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         checkArgument(mDevice != null, "Device has not been set.");
         checkArgument(mPackageName != null, "Package name has not been set.");
         // Install the apk before checking the runner
@@ -823,7 +820,7 @@ public class InstrumentationTest
         mRunner = createRemoteAndroidTestRunner(mPackageName, mRunnerName, mDevice.getIDevice());
         setRunnerArgs(mRunner);
 
-        doTestRun(listener);
+        doTestRun(testInfo, listener);
         if (mInstallFile != null) {
             mDevice.uninstallPackage(mPackageName);
         }
@@ -885,7 +882,8 @@ public class InstrumentationTest
      * @param listener the test result listener
      * @throws DeviceNotAvailableException if device stops communicating
      */
-    private void doTestRun(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    private void doTestRun(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         // If this is a dry-run, just collect the tests and return
         if (mCollectTestsOnly) {
             checkState(
@@ -949,7 +947,7 @@ public class InstrumentationTest
                     CLog.d(
                             "Initializing %s for instrumentation.",
                             collector.getClass().getCanonicalName());
-                    listener = collector.init(mContext, listener);
+                    listener = collector.init(testInfo.getContext(), listener);
                 }
             }
         }
@@ -963,7 +961,7 @@ public class InstrumentationTest
             // Failed to collect the tests or collection is off. Just try to run them all.
             mDevice.runInstrumentationTests(mRunner, listener);
         } else if (!testsToRun.isEmpty()) {
-            runWithRerun(listener, testsToRun);
+            runWithRerun(testInfo, listener, testsToRun);
         } else {
             CLog.i("No tests expected for %s, skipping", mPackageName);
         }
@@ -1038,7 +1036,9 @@ public class InstrumentationTest
      * @param expectedTests the full set of expected tests in this run.
      */
     private void runWithRerun(
-            final ITestInvocationListener listener, Collection<TestDescription> expectedTests)
+            TestInformation testInfo,
+            final ITestInvocationListener listener,
+            Collection<TestDescription> expectedTests)
             throws DeviceNotAvailableException {
         CollectingTestListener testTracker = new CollectingTestListener();
         mDevice.runInstrumentationTests(
@@ -1112,7 +1112,7 @@ public class InstrumentationTest
                     return;
                 }
             }
-            rerunTests(expectedTests, listener);
+            rerunTests(expectedTests, testInfo, listener);
         }
     }
 
@@ -1123,7 +1123,9 @@ public class InstrumentationTest
      * @throws DeviceNotAvailableException
      */
     private void rerunTests(
-            Collection<TestDescription> expectedTests, final ITestInvocationListener listener)
+            Collection<TestDescription> expectedTests,
+            TestInformation testInfo,
+            final ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         if (expectedTests.isEmpty()) {
             CLog.d("No tests to re-run, all tests executed at least once.");
@@ -1148,7 +1150,7 @@ public class InstrumentationTest
             mNativeCoverageListener.setCollectOnTestEnd(false);
         }
 
-        testReRunner.run(listener);
+        testReRunner.run(testInfo, listener);
 
         if (mNativeCoverageListener != null) {
             mNativeCoverageListener.setCollectOnTestEnd(true);
@@ -1280,11 +1282,6 @@ public class InstrumentationTest
     @Override
     public IAbi getAbi() {
         return mAbi;
-    }
-
-    @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
     }
 
     @Override
