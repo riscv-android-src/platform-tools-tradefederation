@@ -2250,6 +2250,69 @@ public class NativeDeviceTest {
         EasyMock.verify(mMockIDevice);
     }
 
+    @Test
+    public void testGetIntProperty() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("123").when(spy).getProperty("ro.test.prop");
+        EasyMock.replay(mMockIDevice);
+        assertEquals(123, spy.getIntProperty("ro.test.prop", -1));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    @Test
+    public void testGetIntPropertyNotAnIntegerPropertyReturnsDefaultValue() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("not-an-int").when(spy).getProperty("ro.test.prop");
+        EasyMock.replay(mMockIDevice);
+        assertEquals(-1, spy.getIntProperty("ro.test.prop", -1));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    @Test
+    public void testGetIntPropertyUnknownPropertyReturnsDefaultValue() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn(null).when(spy).getProperty("ro.test.prop");
+        EasyMock.replay(mMockIDevice);
+        assertEquals(-1, spy.getIntProperty("ro.test.prop", -1));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    @Test
+    public void testGetBooleanPropertyReturnsTrue() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("true").when(spy).getProperty("ro.test.prop");
+        EasyMock.replay(mMockIDevice);
+        assertTrue(spy.getBooleanProperty("ro.test.prop", false));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    @Test
+    public void testGetBooleanPropertyReturnsFalse() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("no").when(spy).getProperty("ro.test.prop");
+        EasyMock.replay(mMockIDevice);
+        assertFalse(spy.getBooleanProperty("ro.test.prop", true));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    @Test
+    public void testGetBooleanPropertyUnknownPropertyReturnsDefaultValue() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn(null).when(spy).getProperty("ro.test.prop");
+        EasyMock.replay(mMockIDevice);
+        assertTrue(spy.getBooleanProperty("ro.test.prop", true));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    @Test
+    public void testGetBooleanPropertyInvalidValueReturnsDefaultValue() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("123").when(spy).getProperty("ro.test.prop");
+        EasyMock.replay(mMockIDevice);
+        assertTrue(spy.getBooleanProperty("ro.test.prop", true));
+        EasyMock.verify(mMockIDevice);
+    }
+
     /** Test get boot history */
     @Test
     public void testGetBootHistory() throws Exception {
