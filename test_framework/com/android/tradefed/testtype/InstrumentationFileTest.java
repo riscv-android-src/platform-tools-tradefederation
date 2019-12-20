@@ -19,6 +19,7 @@ package com.android.tradefed.testtype;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.FilteredResultForwarder;
@@ -95,18 +96,16 @@ class InstrumentationFileTest implements IRemoteTest {
         mMaxAttemps = maxAttempts;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void run(final ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(TestInformation testInfo, final ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         if (mInstrumentationTest.getDevice() == null) {
             throw new IllegalArgumentException("Device has not been set");
         }
         // reuse InstrumentationTest class to perform actual test run
-        writeTestsToFileAndRun(mTests, listener);
+        writeTestsToFileAndRun(mTests, testInfo, listener);
     }
-
 
     /**
      * Creates a file based on the {@link Collection} of tests to run. Upon successful file creation
@@ -118,7 +117,9 @@ class InstrumentationFileTest implements IRemoteTest {
      * @throws DeviceNotAvailableException
      */
     private void writeTestsToFileAndRun(
-            Collection<TestDescription> tests, final ITestInvocationListener listener)
+            Collection<TestDescription> tests,
+            TestInformation testInfo,
+            final ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         mAttemps += 1;
         if (mMaxAttemps > 0 && mAttemps <= mMaxAttemps) {
@@ -128,7 +129,7 @@ class InstrumentationFileTest implements IRemoteTest {
             if (mRetrySerially) {
                 CLog.d("Running tests from file exceeded max attempts."
                         + " Try to run tests serially.");
-                reRunTestsSerially(mInstrumentationTest, listener);
+                reRunTestsSerially(mInstrumentationTest, testInfo, listener);
             } else {
                 CLog.d("Running tests from file exceeded max attempts. Ignore the rest tests");
                 return;
@@ -166,11 +167,11 @@ class InstrumentationFileTest implements IRemoteTest {
                 mInstrumentationTest.setTestFilePathOnDevice(mFilePathOnDevice);
                 CLog.d("Test file %s was successfully pushed to %s on device",
                         testFile.getAbsolutePath(), mFilePathOnDevice);
-                runTests(mInstrumentationTest, listener);
+                runTests(mInstrumentationTest, testInfo, listener);
             } else {
                 if (mRetrySerially) {
                     CLog.e("Failed to push file to device, re-running tests serially");
-                    reRunTestsSerially(mInstrumentationTest, listener);
+                    reRunTestsSerially(mInstrumentationTest, testInfo, listener);
                 } else {
                     CLog.e("Failed to push file to device, ignore the rest of tests");
                 }
@@ -179,7 +180,7 @@ class InstrumentationFileTest implements IRemoteTest {
             if (mRetrySerially) {
                 CLog.e("Failed to run tests from file, re-running tests serially: %s",
                         e.getMessage());
-                reRunTestsSerially(mInstrumentationTest, listener);
+                reRunTestsSerially(mInstrumentationTest, testInfo, listener);
             } else {
                 CLog.e("Failed to push file to device, ignore the rest of tests");
             }
@@ -190,25 +191,26 @@ class InstrumentationFileTest implements IRemoteTest {
     }
 
     /**
-     * Run all tests from file. Attempt to re-run not finished tests.
-     * If all tests in file fail to run default to executing them serially.
+     * Run all tests from file. Attempt to re-run not finished tests. If all tests in file fail to
+     * run default to executing them serially.
      */
-    private void runTests(InstrumentationTest runner, ITestInvocationListener listener)
+    private void runTests(
+            InstrumentationTest runner, TestInformation testInfo, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         CollectingTestListener testTracker = new CollectingTestListener();
         try {
-            runner.run(new FilteredResultForwarder(mTests, listener, testTracker));
+            runner.run(testInfo, new FilteredResultForwarder(mTests, listener, testTracker));
         } finally {
             deleteTestFileFromDevice(mFilePathOnDevice);
             Collection<TestDescription> completedTests =
                     testTracker.getCurrentRunResults().getCompletedTests();
             if (mTests.removeAll(completedTests) && !mTests.isEmpty()) {
                 // re-run remaining tests from file
-                writeTestsToFileAndRun(mTests, listener);
+                writeTestsToFileAndRun(mTests, testInfo, listener);
             } else if (!mTests.isEmpty()) {
                 if (mRetrySerially) {
                     CLog.e("all remaining tests failed to run from file, re-running tests serially");
-                    reRunTestsSerially(runner, listener);
+                    reRunTestsSerially(runner, testInfo, listener);
                 } else {
                     CLog.e("all remaining tests failed to run from file, will be ignored");
                 }
@@ -216,10 +218,9 @@ class InstrumentationFileTest implements IRemoteTest {
         }
     }
 
-    /**
-     * Re-runs remaining tests one-by-one
-     */
-    private void reRunTestsSerially(InstrumentationTest runner, ITestInvocationListener listener)
+    /** Re-runs remaining tests one-by-one */
+    private void reRunTestsSerially(
+            InstrumentationTest runner, TestInformation testInfo, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         // clear file path arguments to ensure it won't get used.
         runner.setTestFilePathOnDevice(null);
@@ -227,7 +228,7 @@ class InstrumentationFileTest implements IRemoteTest {
         runner.setReRunUsingTestFile(false);
         // Set tests to run
         runner.setTestsToRun(mTests);
-        runner.run(listener);
+        runner.run(testInfo, listener);
     }
 
     /**
