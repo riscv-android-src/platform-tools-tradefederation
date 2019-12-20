@@ -25,6 +25,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -63,6 +64,7 @@ public class LongevityHostRunnerTest {
     private IBuildInfo mMockBuildInfo;
     private IInvocationContext mMockContext;
     private ITestDevice mMockDevice;
+    private TestInformation mTestInfo;
     private ITestInvocationListener mMockListener;
 
     @RunWith(DeviceJUnit4ClassRunner.class)
@@ -167,17 +169,18 @@ public class LongevityHostRunnerTest {
         // Setup mocks
         mMockAbi = mock(IAbi.class);
         mMockBuildInfo = mock(IBuildInfo.class);
-        mMockContext = mock(IInvocationContext.class);
         mMockDevice = mock(ITestDevice.class);
         mMockListener = mock(ITestInvocationListener.class);
+        mMockContext = new InvocationContext();
+        mMockContext.addAllocatedDevice("device", mMockDevice);
+        mMockContext.addDeviceBuildInfo("device", mMockBuildInfo);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(mMockContext).build();
     }
 
     public void setUpRunner(Class<?> suiteClass) throws Exception {
         mHostRunner = new LongevityHostRunner(suiteClass);
         mHostRunner.setAbi(mMockAbi);
-        mHostRunner.setBuild(mMockBuildInfo);
-        mHostRunner.setDevice(mMockDevice);
-        mHostRunner.setInvocationContext(mMockContext);
+        mHostRunner.setTestInformation(mTestInfo);
     }
 
     /** Test that we are able to run sub-tests with features set. */
@@ -221,8 +224,7 @@ public class LongevityHostRunnerTest {
         mHostTest.setDevice(mMockDevice);
         mHostTest.setBuild(mMockBuildInfo);
         mHostTest.publicSetClassName(PassingLongevitySuite.class.getName());
-        TestInformation testInfo = TestInformation.newBuilder().build();
-        mHostTest.run(testInfo, mMockListener);
+        mHostTest.run(mTestInfo, mMockListener);
         // Verify nothing failed, but something passed.
         verify(mMockListener, never()).testFailed(any(), any());
         verify(mMockListener).testEnded(any(), Mockito.<HashMap<String, Metric>>any());
