@@ -121,13 +121,12 @@ TF_SKIP_LOADING_CONFIG_JAR = '--skip-loading-config-jar'
 # Suite Plans
 SUITE_PLANS = frozenset(['cts'])
 
-# Constants used for AtestArgParser
-HELP_DESC = 'Build, install and run Android tests locally.'
+# Constants of Steps
+REBUILD_MODULE_INFO_FLAG = '--rebuild-module-info'
 BUILD_STEP = 'build'
 INSTALL_STEP = 'install'
 TEST_STEP = 'test'
 ALL_STEPS = [BUILD_STEP, INSTALL_STEP, TEST_STEP]
-REBUILD_MODULE_INFO_FLAG = '--rebuild-module-info'
 
 # ANSI code shift for colorful print
 BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
