@@ -381,7 +381,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer
      * Attempt to install a package or split package on the device.
      *
      * @param device the {@link ITestDevice} to install package
-     * @param apkFiles List of Files. If apkFiles contains only one apk file, the app will be
+     * @param appFiles List of Files. If apkFiles contains only one apk file, the app will be
      *     installed as a whole package with single file. If apkFiles contains more than one name,
      *     the app will be installed as split apk with multiple files.
      */

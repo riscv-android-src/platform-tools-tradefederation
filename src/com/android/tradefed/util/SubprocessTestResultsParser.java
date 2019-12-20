@@ -17,11 +17,15 @@ package com.android.tradefed.util;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.FailedTestEventInfo;
@@ -37,6 +41,8 @@ import com.android.tradefed.util.SubprocessEventHelper.TestRunFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestStartedEventInfo;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
+
+import com.google.common.base.Strings;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -55,7 +61,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -101,21 +107,29 @@ public class SubprocessTestResultsParser implements Closeable {
      */
     private class EventReceiverThread extends Thread {
         private ServerSocket mSocket;
-        private CountDownLatch mCountDown;
+        // initial state: 1 permit available, joins that don't wait for connection will succeed
+        private Semaphore mSemaphore = new Semaphore(1);
         private boolean mShouldParse = true;
 
         public EventReceiverThread() throws IOException {
             super("EventReceiverThread");
             mSocket = new ServerSocket(0);
-            mCountDown = new CountDownLatch(1);
         }
 
         protected int getLocalPort() {
             return mSocket.getLocalPort();
         }
 
-        protected CountDownLatch getCountDown() {
-            return mCountDown;
+        /** @return True if parsing completes before timeout (optionally waiting for connection). */
+        boolean await(long millis, boolean waitForConnection) throws InterruptedException {
+            // As only 1 permit is available prior to connecting, changing the number of permits
+            // requested controls whether the receiver will wait for a connection.
+            int permits = waitForConnection ? 2 : 1;
+            if (mSemaphore.tryAcquire(permits, millis, TimeUnit.MILLISECONDS)) {
+                mSemaphore.release(permits);
+                return true;
+            }
+            return false;
         }
 
         public void cancel() throws IOException {
@@ -138,6 +152,7 @@ public class SubprocessTestResultsParser implements Closeable {
             BufferedReader in = null;
             try {
                 client = mSocket.accept();
+                mSemaphore.acquire(); // connected: 0 permits available, all joins will wait
                 in = new BufferedReader(new InputStreamReader(client.getInputStream()));
                 String event = null;
                 while ((event = in.readLine()) != null) {
@@ -152,27 +167,39 @@ public class SubprocessTestResultsParser implements Closeable {
                         CLog.e(e);
                     }
                 }
-            } catch (IOException e) {
+            } catch (IOException | InterruptedException e) {
                 CLog.e(e);
             } finally {
                 StreamUtil.close(in);
-                mCountDown.countDown();
+                mSemaphore.release(2); // finished: 2 permits available, all joins succeed
             }
             CLog.d("EventReceiverThread done.");
         }
     }
 
     /**
-     * If the event receiver is being used, ensure that we wait for it to terminate.
+     * Wait for the event receiver to finish processing events. Will wait even if a connection
+     * wasn't established, i.e. processing hasn't begun yet.
      *
      * @param millis timeout in milliseconds.
      * @return True if receiver thread terminate before timeout, False otherwise.
      */
     public boolean joinReceiver(long millis) {
+        return joinReceiver(millis, true);
+    }
+
+    /**
+     * Wait for the event receiver to finish processing events.
+     *
+     * @param millis timeout in milliseconds.
+     * @param waitForConnection False to skip waiting if a connection was never established.
+     * @return True if receiver thread terminate before timeout, False otherwise.
+     */
+    public boolean joinReceiver(long millis, boolean waitForConnection) {
         if (mEventReceiver != null) {
             try {
                 CLog.i("Waiting for events to finish being processed.");
-                if (!mEventReceiver.getCountDown().await(millis, TimeUnit.MILLISECONDS)) {
+                if (!mEventReceiver.await(millis, waitForConnection)) {
                     mEventReceiver.stopParsing();
                     CLog.e("Event receiver thread did not complete. Some events may be missing.");
                     return false;
@@ -338,8 +365,9 @@ public class SubprocessTestResultsParser implements Closeable {
         @Override
         public void handleEvent(String eventJson) throws JSONException {
             TestRunStartedEventInfo rsi = new TestRunStartedEventInfo(new JSONObject(eventJson));
-            if (rsi.mAttempt != null && rsi.mAttempt != 0) {
-                mListener.testRunStarted(rsi.mRunName, rsi.mTestCount, rsi.mAttempt);
+            if (rsi.mAttempt != null) {
+                mListener.testRunStarted(
+                        rsi.mRunName, rsi.mTestCount, rsi.mAttempt, rsi.mStartTime);
             } else {
                 mListener.testRunStarted(rsi.mRunName, rsi.mTestCount);
             }
@@ -476,9 +504,30 @@ public class SubprocessTestResultsParser implements Closeable {
         public void handleEvent(String eventJson) throws JSONException {
             LogAssociationEventInfo assosInfo =
                     new LogAssociationEventInfo(new JSONObject(eventJson));
-            if (mListener instanceof ILogSaverListener) {
-                ((ILogSaverListener) mListener)
-                        .logAssociation(assosInfo.mDataName, assosInfo.mLoggedFile);
+            LogFile file = assosInfo.mLoggedFile;
+            if (Strings.isNullOrEmpty(file.getPath())) {
+                CLog.e("Log '%s' was registered but without a path.", assosInfo.mDataName);
+                return;
+            }
+            File path = new File(file.getPath());
+            String name = String.format("subprocess-%s", assosInfo.mDataName);
+            if (Strings.isNullOrEmpty(file.getUrl()) && path.exists()) {
+                try (InputStreamSource source = new FileInputStreamSource(path)) {
+                    LogDataType type = file.getType();
+                    // File might have already been compressed
+                    if (file.getPath().endsWith(LogDataType.ZIP.getFileExt())) {
+                        type = LogDataType.ZIP;
+                    }
+                    CLog.d("Logging %s from subprocess: %s ", assosInfo.mDataName, file.getPath());
+                    mListener.testLog(name, type, source);
+                }
+            } else {
+                CLog.d(
+                        "Logging %s from subprocess. url: %s, path: %s",
+                        name, file.getUrl(), file.getPath());
+                if (mListener instanceof ILogSaverListener) {
+                    ((ILogSaverListener) mListener).logAssociation(name, assosInfo.mLoggedFile);
+                }
             }
         }
     }
@@ -504,7 +553,24 @@ public class SubprocessTestResultsParser implements Closeable {
             // provider of the running configuration).
             List<IBuildInfo> infos = mContext.getBuildInfos();
             if (!infos.isEmpty()) {
-                infos.get(0).addBuildAttributes(eventEnd.mBuildAttributes);
+                Map<String, String> attributes = eventEnd.mBuildAttributes;
+                for (InvocationMetricKey key : InvocationMetricKey.values()) {
+                    if (!attributes.containsKey(key.toString())) {
+                        continue;
+                    }
+                    String val = attributes.remove(key.toString());
+                    if (key.shouldAdd()) {
+                        try {
+                            InvocationMetricLogger.addInvocationMetrics(key, Long.parseLong(val));
+                        } catch (NumberFormatException e) {
+                            CLog.e("Key %s should have a number value, instead was: %s", key, val);
+                            CLog.e(e);
+                        }
+                    } else {
+                        InvocationMetricLogger.addInvocationMetrics(key, val);
+                    }
+                }
+                infos.get(0).addBuildAttributes(attributes);
             }
         }
     }

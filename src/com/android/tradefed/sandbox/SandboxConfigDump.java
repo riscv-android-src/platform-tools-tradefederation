@@ -28,6 +28,7 @@ import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.SubprocessResultsReporter;
 import com.android.tradefed.result.proto.StreamProtoResultReporter;
+import com.android.tradefed.testtype.SubprocessTfLauncher;
 import com.android.tradefed.util.StreamUtil;
 
 import java.io.File;
@@ -110,6 +111,11 @@ public class SandboxConfigDump {
 
                 // Ensure in special conditions (placeholder devices) we can still allocate.
                 secureDeviceAllocation(config);
+
+                // Mark as subprocess
+                config.getCommandOptions()
+                        .getInvocationData()
+                        .put(SubprocessTfLauncher.SUBPROCESS_TAG_NAME, "true");
             }
             if (DumpCmd.TEST_MODE.equals(cmd)) {
                 // We allow one more layer of sandbox to be generated
@@ -121,7 +127,11 @@ public class SandboxConfigDump {
             pw = new PrintWriter(resFile);
             if (DumpCmd.NON_VERSIONED_CONFIG.equals(cmd)) {
                 // Remove elements that are versioned.
-                config.dumpXml(pw, new ArrayList<>(VERSIONED_ELEMENTS));
+                config.dumpXml(
+                        pw,
+                        new ArrayList<>(VERSIONED_ELEMENTS),
+                        true, /* Don't print unchanged options */
+                        false);
             } else {
                 // FULL_XML in that case.
                 config.dumpXml(pw);

@@ -17,6 +17,7 @@ package com.android.tradefed.testtype;
 
 import static org.easymock.EasyMock.anyLong;
 import static org.easymock.EasyMock.anyObject;
+import static org.easymock.EasyMock.endsWith;
 import static org.easymock.EasyMock.eq;
 import static org.easymock.EasyMock.getCurrentArguments;
 import static org.junit.Assert.assertEquals;
@@ -260,7 +261,7 @@ public class NoisyDryRunTestTest {
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
                                 anyLong(),
-                                eq("java"),
+                                endsWith("/java"),
                                 eq("-cp"),
                                 anyObject(),
                                 eq(SandboxConfigDump.class.getCanonicalName()),
@@ -321,7 +322,7 @@ public class NoisyDryRunTestTest {
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
                                 anyLong(),
-                                eq("java"),
+                                endsWith("/java"),
                                 eq("-cp"),
                                 anyObject(),
                                 eq(SandboxConfigDump.class.getCanonicalName()),

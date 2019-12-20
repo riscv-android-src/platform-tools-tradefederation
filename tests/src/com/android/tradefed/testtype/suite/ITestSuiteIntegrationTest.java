@@ -504,7 +504,7 @@ public class ITestSuiteIntegrationTest {
         mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockBuildInfo);
 
         StrictShardHelper helper = new StrictShardHelper();
-        helper.shardConfig(config, mContext, new TestShardRescheduler());
+        helper.shardConfig(config, mContext, new TestShardRescheduler(), null);
 
         assertEquals(2, mListener.getTotalModules());
         assertEquals(2, mListener.getCompleteModules());
@@ -545,7 +545,7 @@ public class ITestSuiteIntegrationTest {
 
         StrictShardHelper helper = new StrictShardHelper();
         TestParallelShardRescheduler rescheduler = new TestParallelShardRescheduler();
-        helper.shardConfig(config, mContext, rescheduler);
+        helper.shardConfig(config, mContext, rescheduler, null);
         // Wait until all results are received, we expect 2 modules.
         while (mListener.getTotalModules() < 2) {
             for (Thread t : rescheduler.mRunning) {
@@ -591,7 +591,7 @@ public class ITestSuiteIntegrationTest {
         mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockBuildInfo);
 
         StrictShardHelper helper = new StrictShardHelper();
-        helper.shardConfig(config, mContext, null);
+        helper.shardConfig(config, mContext, null, null);
         // rescheduler is not called, execution is in the same invocation.
         new ResultForwarder(config.getTestInvocationListeners()).invocationStarted(mContext);
         for (IRemoteTest test : config.getTests()) {
@@ -670,7 +670,7 @@ public class ITestSuiteIntegrationTest {
         mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockBuildInfo);
 
         StrictShardHelper helper = new StrictShardHelper();
-        helper.shardConfig(config, mContext, null);
+        helper.shardConfig(config, mContext, null, null);
         // rescheduler is not called, execution is in the same invocation.
         new ResultForwarder(config.getTestInvocationListeners()).invocationStarted(mContext);
         for (IRemoteTest test : config.getTests()) {

@@ -47,7 +47,9 @@ public abstract class FormattedGeneratorReporter extends SuiteResultReporter {
     public void invocationFailed(Throwable cause) {
         // Some exception indicate a harness level issue, the tests result cannot be trusted at
         // that point so we should skip the reporting.
-        if (cause instanceof TargetSetupError || cause instanceof RuntimeException) {
+        if (cause instanceof TargetSetupError
+                || cause instanceof RuntimeException
+                || cause instanceof OutOfMemoryError) {
             mTestHarnessError = cause;
         }
         super.invocationFailed(cause);

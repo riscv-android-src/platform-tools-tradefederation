@@ -141,5 +141,10 @@ public class RunCommandTargetPreparer extends BaseTargetPreparer implements ITar
             }
         }
     }
+
+    /** Add a command that will be run by the preparer. */
+    public final void addRunCommand(String cmd) {
+        mCommands.add(cmd);
+    }
 }
 
