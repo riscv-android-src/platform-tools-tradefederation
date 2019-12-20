@@ -15,11 +15,11 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -52,15 +52,14 @@ public class WifiPreparer extends BaseTargetPreparer {
     @Option(name = "verify-only", description = "Skip setup and verify a wifi connection.")
     private boolean mVerifyOnly = false;
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
-            BuildError, DeviceNotAvailableException {
+    public void setUp(TestInformation testInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
         if (mSkip) {
             return;
         }
+        ITestDevice device = testInfo.getDevice();
         if (mVerifyOnly) {
             if (!device.isWifiEnabled()) {
                 throw new TargetSetupError(
@@ -87,16 +86,13 @@ public class WifiPreparer extends BaseTargetPreparer {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
         if (mSkip || mVerifyOnly) {
             return;
         }
-
+        ITestDevice device = testInfo.getDevice();
         if (e instanceof DeviceFailedToBootError) {
             CLog.d("boot failure: skipping wifi teardown");
             return;
