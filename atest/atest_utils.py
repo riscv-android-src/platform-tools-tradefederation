@@ -25,6 +25,7 @@ import logging
 import os
 import pickle
 import re
+import shutil
 import subprocess
 import sys
 
@@ -62,6 +63,7 @@ BUILD_TOP_HASH = hashlib.md5(os.environ.get(constants.ANDROID_BUILD_TOP, '').
 TEST_INFO_CACHE_ROOT = os.path.join(os.path.expanduser('~'), '.atest',
                                     'info_cache', BUILD_TOP_HASH[:8])
 _DEFAULT_TERMINAL_WIDTH = 80
+_DEFAULT_TERMINAL_HEIGHT = 25
 _BUILD_CMD = 'build/soong/soong_ui.bash'
 
 
@@ -114,12 +116,7 @@ def _run_limited_output(cmd, env_vars=None):
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, env=env_vars)
     sys.stdout.write('\n')
-    # Determine the width of the terminal. We'll need to clear this many
-    # characters when carriage returning. Set default value as 80.
-    term_width = _DEFAULT_TERMINAL_WIDTH
-    stty_size = os.popen('stty size').read()
-    if stty_size:
-        term_width = int(stty_size.split()[1])
+    term_width, _ = _get_terminal_size()
     white_space = " " * int(term_width)
     full_output = []
     while proc.poll() is None:
@@ -318,6 +315,27 @@ def colorful_print(text, color, highlight=False, auto_wrap=True):
         print(output)
     else:
         print(output, end="")
+
+
+# pylint: disable=no-member
+# TODO: remove the above disable when migrating to python3.
+def _get_terminal_size():
+    """Get terminal size and return a tuple.
+
+    Returns:
+        2 integers: the size of X(columns) and Y(lines/rows).
+    """
+    # Determine the width of the terminal. We'll need to clear this many
+    # characters when carriage returning. Set default value as 80.
+    try:
+        if sys.version_info[0] == 2:
+            _y, _x = subprocess.check_output(['stty', 'size']).decode().split()
+            return int(_x), int(_y)
+        return (shutil.get_terminal_size().columns,
+                shutil.get_terminal_size().lines)
+    # b/137521782 stty size could have changed for reasones.
+    except subprocess.CalledProcessError:
+        return _DEFAULT_TERMINAL_WIDTH, _DEFAULT_TERMINAL_HEIGHT
 
 
 def is_external_run():
