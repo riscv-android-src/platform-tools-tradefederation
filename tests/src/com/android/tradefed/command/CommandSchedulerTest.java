@@ -34,7 +34,6 @@ import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
-import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceSelectionOptions;
@@ -52,8 +51,6 @@ import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.ILogRegistry.EventType;
-import com.android.tradefed.log.ITerribleFailureHandler;
-import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
@@ -301,8 +298,8 @@ public class CommandSchedulerTest {
         String[] args2 = new String[] {"test"};
         setCreateConfigExpectations(args2, 1);
         setExpectedInvokeCalls(1);
-        mMockConfiguration.validateOptions(false);
         mMockConfiguration.validateOptions();
+        EasyMock.expectLastCall().times(2);
 
         replayMocks();
         mScheduler.start();
@@ -462,40 +459,6 @@ public class CommandSchedulerTest {
         public void uncaughtException(Thread t, Throwable e) {
             e.printStackTrace();
             mThrowable  = e;
-        }
-    }
-
-    /** Verify that scheduler goes into shutdown mode when a {@link FatalHostError} is thrown. */
-    @Test
-    public void testRun_fatalError() throws Throwable {
-        mMockInvocation.invoke((IInvocationContext)EasyMock.anyObject(),
-                (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject(),
-                (ITestInvocationListener)EasyMock.anyObject());
-        EasyMock.expectLastCall().andThrow(new FatalHostError("error"));
-        // set up a mock global config and wtfhandler to handle CLog.wtf when FatalHostError occurs
-        IGlobalConfiguration mockGc = EasyMock.createMock(IGlobalConfiguration.class);
-        CLog.setGlobalConfigInstance(mockGc);
-        try {
-            ITerribleFailureHandler mockWtf = EasyMock.createMock(ITerribleFailureHandler.class);
-            EasyMock.expect(mockGc.getWtfHandler()).andReturn(mockWtf).anyTimes();
-            EasyMock.expect(mockWtf.onTerribleFailure((String)EasyMock.anyObject(),
-                    (Throwable)EasyMock.anyObject())).andReturn(Boolean.TRUE);
-            String[] args = new String[] {"test"};
-            mMockManager.setNumDevices(2);
-            setCreateConfigExpectations(args, 1);
-            mMockConfiguration.validateOptions();
-            replayMocks(mockGc, mockWtf);
-            mScheduler.start();
-            mScheduler.addCommand(args);
-            // no need to call shutdown explicitly - scheduler should shutdown by itself
-            mScheduler.join(2 * 1000);
-            // We don't verify the mockManager for this test since after failure, the device might
-            // not have time to go back to list before shutdown on scheduler.
-            EasyMock.verify(
-                    mMockConfigFactory, mMockConfiguration, mMockInvocation, mockGc, mockWtf);
-        } finally {
-            // reset global config to null, which means 'not overloaded/use default'
-            CLog.setGlobalConfigInstance(null);
         }
     }
 

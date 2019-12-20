@@ -313,6 +313,9 @@ public interface ICommandScheduler {
     /** Returns the number of Commands in ready state in the queue. */
     public int getReadyCommandCount();
 
+    /** Returns the number of Commands in executing state. */
+    public int getExecutingCommandCount();
+
     /** Set the client to report harness data */
     public void setClearcutClient(ClearcutClient client);
 }

@@ -609,6 +609,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         ConfigurationDef configDef = getConfigurationDef(configName, true, null);
         IGlobalConfiguration config = configDef.createGlobalConfiguration();
         config.setOriginalConfig(configName);
+        config.setConfigurationFactory(this);
         return config;
     }
 
@@ -680,6 +681,12 @@ public class ConfigurationFactory implements IConfigurationFactory {
     @VisibleForTesting
     Set<String> getConfigNamesFromTestCases(String subPath) {
         return ConfigurationUtil.getConfigNamesFromDirs(subPath, getExternalTestCasesDirs());
+    }
+
+    @VisibleForTesting
+    Map<String, String> getConfigSetFromClasspathFromJar(String subPath) {
+        ClassPathScanner cpScanner = new ClassPathScanner();
+        return cpScanner.getClassPathEntriesFromJar(new ConfigClasspathFilter(subPath));
     }
 
     /**

@@ -90,7 +90,45 @@ public class TestRunToTestInvocationForwarderTest {
         mMockListener.testEnded(td1, new HashMap<String, Metric>());
         // Second bad method is not propagated, instead we fail the run
         mMockListener.testRunFailed(
-                String.format(TestRunToTestInvocationForwarder.ERROR_MESSAGE_FORMAT, tid2));
+                String.format(
+                        TestRunToTestInvocationForwarder.ERROR_MESSAGE_FORMAT + " Stack:I failed",
+                        tid2.getTestName(),
+                        tid2));
+
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+
+        EasyMock.replay(mMockListener);
+        mForwarder.testRunStarted(RUN_NAME, 2);
+
+        mForwarder.testStarted(tid1);
+        mForwarder.testFailed(tid1, "I failed");
+        mForwarder.testEnded(tid1, new HashMap<>());
+
+        mForwarder.testStarted(tid2);
+        mForwarder.testFailed(tid2, "I failed");
+        mForwarder.testEnded(tid2, new HashMap<>());
+
+        mForwarder.testRunEnded(500L, new HashMap<>());
+        EasyMock.verify(mMockListener);
+    }
+
+    @Test
+    public void testForwarding_initError() {
+        TestIdentifier tid1 = new TestIdentifier("class", "test1");
+        TestDescription td1 = new TestDescription(tid1.getClassName(), tid1.getTestName());
+        TestIdentifier tid2 = new TestIdentifier("class", "initializationError");
+        mMockListener.testRunStarted(RUN_NAME, 2);
+
+        mMockListener.testStarted(td1);
+        mMockListener.testFailed(td1, "I failed");
+        mMockListener.testEnded(td1, new HashMap<String, Metric>());
+        // Second bad method is not propagated, instead we fail the run
+        mMockListener.testRunFailed(
+                String.format(
+                        TestRunToTestInvocationForwarder.ERROR_MESSAGE_FORMAT + " Stack:I failed",
+                        tid2.getTestName(),
+                        tid2));
 
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());

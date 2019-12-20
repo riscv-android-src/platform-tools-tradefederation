@@ -34,13 +34,12 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.TextResultReporter;
-import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.BaseTestSuite;
+import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.testtype.suite.SuiteTestFilter;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.QuotationAwareTokenizer;
-import com.android.tradefed.util.TestRecordInterpreter;
 
 import com.google.inject.Inject;
 
@@ -92,6 +91,13 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
         importance = Importance.ALWAYS
     )
     private Set<String> mExcludeFilters = new HashSet<>();
+
+    // Carry some options from suites that are convenient and don't impact the tests selection.
+    @Option(
+        name = ITestSuite.REBOOT_BEFORE_TEST,
+        description = "Reboot the device before the test suite starts."
+    )
+    private boolean mRebootBeforeTest = false;
 
     public static final String PREVIOUS_LOADER_NAME = "previous_loader";
 
@@ -155,12 +161,8 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
             throw new RuntimeException(e);
         }
         // Get previous results
-        TestRecord previousRecord = previousLoader.loadPreviousRecord();
-        CollectingTestListener collectedTests =
-                TestRecordInterpreter.interpreteRecord(previousRecord);
-
+        CollectingTestListener collectedTests = previousLoader.loadPreviousResults();
         previousLoader.cleanUp();
-        previousRecord = null;
 
         // Appropriately update the configuration
         IRemoteTest test = originalConfig.getTests().get(0);
@@ -175,6 +177,10 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
         updateConfiguration(originalConfig, replayer);
         // Do the customization of the configuration for specialized use cases.
         customizeConfig(previousLoader, originalConfig);
+
+        if (mRebootBeforeTest) {
+            suite.enableRebootBeforeTest();
+        }
 
         mRescheduledConfiguration = originalConfig;
 

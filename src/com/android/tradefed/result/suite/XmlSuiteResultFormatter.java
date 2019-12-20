@@ -127,6 +127,10 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
     public static final class RunHistory {
         public long startTime;
         public long endTime;
+        public long passedTests;
+        public long failedTests;
+        public String commandLineArgs;
+        public String hostName;
     }
 
     /**
@@ -256,6 +260,10 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
                 serializer.startTag(NS, RUN_TAG);
                 serializer.attribute(NS, START_TIME_ATTR, String.valueOf(runHistory.startTime));
                 serializer.attribute(NS, END_TIME_ATTR, String.valueOf(runHistory.endTime));
+                serializer.attribute(NS, PASS_ATTR, Long.toString(runHistory.passedTests));
+                serializer.attribute(NS, FAILED_ATTR, Long.toString(runHistory.failedTests));
+                serializer.attribute(NS, COMMAND_LINE_ARGS, runHistory.commandLineArgs);
+                serializer.attribute(NS, HOST_NAME_ATTR, runHistory.hostName);
                 serializer.endTag(NS, RUN_TAG);
             }
             serializer.endTag(NS, RUN_HISTORY_TAG);
@@ -458,6 +466,7 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
             parser.require(XmlPullParser.START_TAG, NS, RESULT_TAG);
             invocation.startTime = (Long.valueOf(parser.getAttributeValue(NS, START_TIME_ATTR)));
             invocation.endTime = (Long.valueOf(parser.getAttributeValue(NS, END_TIME_ATTR)));
+            invocation.hostName = parser.getAttributeValue(NS, HOST_NAME_ATTR);
             context.addInvocationAttribute(
                     COMMAND_LINE_ARGS, parser.getAttributeValue(NS, COMMAND_LINE_ARGS));
             parseSuiteAttributes(parser, context);
@@ -681,7 +690,8 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
         return metrics;
     }
 
-    private static String sanitizeXmlContent(String s) {
+    @VisibleForTesting
+    static String sanitizeXmlContent(String s) {
         return XmlEscapers.xmlContentEscaper().escape(s);
     }
 }

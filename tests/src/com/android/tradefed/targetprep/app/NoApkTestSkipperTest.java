@@ -20,7 +20,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.build.AppBuildInfo;
-import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.ITestDevice;
@@ -49,11 +48,6 @@ public class NoApkTestSkipperTest {
         mMockDevice = Mockito.mock(ITestDevice.class);
         mAppBuildInfo = new AppBuildInfo("buildid", "buildname");
         mConfig = new Configuration("name", "desc");
-    }
-
-    @Test
-    public void testNotAppBuild() throws Exception {
-        mSkipper.setUp(mMockDevice, new BuildInfo());
     }
 
     @Test
