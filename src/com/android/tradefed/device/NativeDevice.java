@@ -3006,6 +3006,11 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@inheritDoc} */
     @Override
     public void rebootIntoSideload() throws DeviceNotAvailableException {
+        rebootIntoSideload(false);
+    }
+    /** {@inheritDoc} */
+    @Override
+    public void rebootIntoSideload(boolean autoReboot) throws DeviceNotAvailableException {
         if (TestDeviceState.FASTBOOT == getDeviceState()) {
             CLog.w(
                     "device %s in fastboot when requesting boot to sideload. "
@@ -3013,7 +3018,13 @@ public class NativeDevice implements IManagedTestDevice {
                     getSerialNumber());
             rebootUntilOnline();
         }
-        doAdbReboot("sideload");
+        String targetMode = null;
+        if (autoReboot) {
+            targetMode = "sideload-auto-reboot";
+        } else {
+            targetMode = "sideload";
+        }
+        doAdbReboot(targetMode);
         if (!waitForDeviceInSideload(mOptions.getAdbRecoveryTimeout())) {
             // using recovery mode because sideload is a sub-mode under recovery
             recoverDeviceInRecovery();

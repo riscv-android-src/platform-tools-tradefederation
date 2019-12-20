@@ -941,6 +941,16 @@ public interface INativeDevice {
     public void rebootIntoSideload() throws DeviceNotAvailableException;
 
     /**
+     * Reboots the device into adb sideload mode (note that this is a special mode under recovery)
+     *
+     * <p>Blocks until device enters sideload mode
+     *
+     * @param autoReboot whether to automatically reboot the device after sideload
+     * @throws DeviceNotAvailableException if device is not in sideload after reboot
+     */
+    public void rebootIntoSideload(boolean autoReboot) throws DeviceNotAvailableException;
+
+    /**
      * An alternate to {@link #reboot()} that only blocks until device is online ie visible to adb.
      *
      * @throws DeviceNotAvailableException if device is not available after reboot
