@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.cluster;
 
+import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.command.CommandScheduler;
 import com.android.tradefed.command.ICommandScheduler;
@@ -186,6 +187,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
                                 result.getNumTests(),
                                 result.getNumCompleteTests(),
                                 result.getNumAllFailedTests(),
+                                result.getNumTestsInState(TestStatus.PASSED),
                                 result.isRunComplete(),
                                 result.getElapsedTime(),
                                 result.getRunFailureMessage());
@@ -326,6 +328,9 @@ public class ClusterCommandScheduler extends CommandScheduler {
                             .setData(
                                     ClusterCommandEvent.DATA_KEY_FAILED_TEST_COUNT,
                                     Integer.toString(getNumAllFailedTests()))
+                            .setData(
+                                    ClusterCommandEvent.DATA_KEY_PASSED_TEST_COUNT,
+                                    Integer.toString(getNumTestsInState(TestStatus.PASSED)))
                             .setData(
                                     ClusterCommandEvent.DATA_KEY_FAILED_TEST_RUN_COUNT,
                                     Integer.toString(getNumAllFailedTestRuns()))

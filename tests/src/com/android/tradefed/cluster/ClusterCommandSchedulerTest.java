@@ -664,6 +664,8 @@ public class ClusterCommandSchedulerTest {
         assertEquals(
                 "0", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_FAILED_TEST_COUNT));
         assertEquals(
+                "1", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_PASSED_TEST_COUNT));
+        assertEquals(
                 "100",
                 capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_FETCH_BUILD_TIME_MILLIS));
         assertEquals(
@@ -732,6 +734,8 @@ public class ClusterCommandSchedulerTest {
         // We only count test failure and not assumption failures.
         assertEquals(
                 "2", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_FAILED_TEST_COUNT));
+        assertEquals(
+                "0", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_PASSED_TEST_COUNT));
         assertEquals(
                 "1",
                 capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_FAILED_TEST_RUN_COUNT));
