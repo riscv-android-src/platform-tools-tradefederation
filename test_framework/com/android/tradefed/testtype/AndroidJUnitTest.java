@@ -23,6 +23,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -305,11 +306,10 @@ public class AndroidJUnitTest extends InstrumentationTest
         mExcludeAnnotation.clear();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void run(final ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(TestInformation testInfo, final ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         if (getDevice() == null) {
             throw new IllegalArgumentException("Device has not been set");
         }
@@ -334,7 +334,7 @@ public class AndroidJUnitTest extends InstrumentationTest
             CLog.i("%s is not shardable.", getRunnerName());
             return;
         }
-        super.run(listener);
+        super.run(testInfo, listener);
         if (pushedFile) {
             // Remove the directory where the files where pushed
             removeTestFilterDir();
