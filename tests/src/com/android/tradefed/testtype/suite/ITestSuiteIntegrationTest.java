@@ -523,9 +523,11 @@ public class ITestSuiteIntegrationTest {
         mContext = new InvocationContext();
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
         mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockBuildInfo);
+        TestInformation testInfo =
+                TestInformation.newBuilder().setInvocationContext(mContext).build();
 
         StrictShardHelper helper = new StrictShardHelper();
-        helper.shardConfig(config, mContext, new TestShardRescheduler(), null);
+        helper.shardConfig(config, testInfo, new TestShardRescheduler(), null);
 
         assertEquals(2, mListener.getTotalModules());
         assertEquals(2, mListener.getCompleteModules());
@@ -563,10 +565,12 @@ public class ITestSuiteIntegrationTest {
         mContext = new InvocationContext();
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
         mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockBuildInfo);
+        TestInformation testInfo =
+                TestInformation.newBuilder().setInvocationContext(mContext).build();
 
         StrictShardHelper helper = new StrictShardHelper();
         TestParallelShardRescheduler rescheduler = new TestParallelShardRescheduler();
-        helper.shardConfig(config, mContext, rescheduler, null);
+        helper.shardConfig(config, testInfo, rescheduler, null);
         // Wait until all results are received, we expect 2 modules.
         while (mListener.getTotalModules() < 2) {
             for (Thread t : rescheduler.mRunning) {
@@ -613,7 +617,7 @@ public class ITestSuiteIntegrationTest {
         mTestInfo = TestInformation.newBuilder().setInvocationContext(mContext).build();
 
         StrictShardHelper helper = new StrictShardHelper();
-        helper.shardConfig(config, mContext, null, null);
+        helper.shardConfig(config, mTestInfo, null, null);
         // rescheduler is not called, execution is in the same invocation.
         new ResultForwarder(config.getTestInvocationListeners()).invocationStarted(mContext);
         for (IRemoteTest test : config.getTests()) {
@@ -693,7 +697,7 @@ public class ITestSuiteIntegrationTest {
         mTestInfo = TestInformation.newBuilder().setInvocationContext(mContext).build();
 
         StrictShardHelper helper = new StrictShardHelper();
-        helper.shardConfig(config, mContext, null, null);
+        helper.shardConfig(config, mTestInfo, null, null);
         // rescheduler is not called, execution is in the same invocation.
         new ResultForwarder(config.getTestInvocationListeners()).invocationStarted(mContext);
         for (IRemoteTest test : config.getTests()) {

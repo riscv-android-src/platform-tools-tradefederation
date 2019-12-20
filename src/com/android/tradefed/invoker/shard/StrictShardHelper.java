@@ -17,8 +17,8 @@ package com.android.tradefed.invoker.shard;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.IConfiguration;
-import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestLoggerReceiver;
@@ -44,21 +44,21 @@ public class StrictShardHelper extends ShardHelper {
     @Override
     public boolean shardConfig(
             IConfiguration config,
-            IInvocationContext context,
+            TestInformation testInfo,
             IRescheduler rescheduler,
             ITestLogger logger) {
         Integer shardCount = config.getCommandOptions().getShardCount();
         Integer shardIndex = config.getCommandOptions().getShardIndex();
 
         if (shardIndex == null) {
-            return super.shardConfig(config, context, rescheduler, logger);
+            return super.shardConfig(config, testInfo, rescheduler, logger);
         }
         if (shardCount == null) {
             throw new RuntimeException("shard-count is null while shard-index is " + shardIndex);
         }
 
         // Split tests in place, without actually sharding.
-        List<IRemoteTest> listAllTests = getAllTests(config, shardCount, context, logger);
+        List<IRemoteTest> listAllTests = getAllTests(config, shardCount, testInfo, logger);
         // We cannot shuffle to get better average results
         normalizeDistribution(listAllTests, shardCount);
         List<IRemoteTest> splitList;
@@ -78,26 +78,26 @@ public class StrictShardHelper extends ShardHelper {
      *
      * @param config the {@link IConfiguration} describing the invocation.
      * @param shardCount the shard count hint to be provided to some tests.
-     * @param context the {@link IInvocationContext} of the parent invocation.
+     * @param testInfo the {@link TestInformation} of the parent invocation.
      * @return the list of all {@link IRemoteTest}.
      */
     private List<IRemoteTest> getAllTests(
             IConfiguration config,
             Integer shardCount,
-            IInvocationContext context,
+            TestInformation testInfo,
             ITestLogger logger) {
         List<IRemoteTest> allTests = new ArrayList<>();
         for (IRemoteTest test : config.getTests()) {
             if (test instanceof IShardableTest) {
                 // Inject current information to help with sharding
                 if (test instanceof IBuildReceiver) {
-                    ((IBuildReceiver) test).setBuild(context.getBuildInfos().get(0));
+                    ((IBuildReceiver) test).setBuild(testInfo.getBuildInfo());
                 }
                 if (test instanceof IDeviceTest) {
-                    ((IDeviceTest) test).setDevice(context.getDevices().get(0));
+                    ((IDeviceTest) test).setDevice(testInfo.getDevice());
                 }
                 if (test instanceof IInvocationContextReceiver) {
-                    ((IInvocationContextReceiver) test).setInvocationContext(context);
+                    ((IInvocationContextReceiver) test).setInvocationContext(testInfo.getContext());
                 }
                 if (test instanceof ITestLoggerReceiver) {
                     ((ITestLoggerReceiver) test).setTestLogger(logger);

@@ -37,6 +37,7 @@ import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.suite.checker.KeyguardStatusChecker;
 import com.android.tradefed.testtype.HostTest;
@@ -75,6 +76,7 @@ public class ShardHelperTest {
     private ShardHelper mHelper;
     private IConfiguration mConfig;
     private ILogSaver mMockLogSaver;
+    private TestInformation mTestInfo;
     private IInvocationContext mContext;
     private IRescheduler mRescheduler;
     private IBuildInfo mBuildInfo;
@@ -106,6 +108,7 @@ public class ShardHelperTest {
         mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mBuildInfo);
         mContext.addAllocatedDevice(
                 ConfigurationDef.DEFAULT_DEVICE_NAME, Mockito.mock(ITestDevice.class));
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(mContext).build();
         mRescheduler = Mockito.mock(IRescheduler.class);
         mMockLogSaver = Mockito.mock(ILogSaver.class);
         mConfig.setLogSaver(mMockLogSaver);
@@ -135,7 +138,7 @@ public class ShardHelperTest {
         setter.setOptionValue("num-shards", "5");
         mConfig.setTest(test);
         assertEquals(1, mConfig.getTests().size());
-        assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler, null));
+        assertTrue(mHelper.shardConfig(mConfig, mTestInfo, mRescheduler, null));
         // Ensure that we did split 1 tests per shard rescheduled.
         Mockito.verify(mRescheduler, Mockito.times(3))
                 .scheduleConfig(
@@ -161,7 +164,7 @@ public class ShardHelperTest {
         setter.setOptionValue("num-shards", "5");
         mConfig.setTest(test);
         assertEquals(1, mConfig.getTests().size());
-        assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler, null));
+        assertTrue(mHelper.shardConfig(mConfig, mTestInfo, mRescheduler, null));
         // Ensure that we did split 1 tests per shard rescheduled.
         Mockito.verify(mRescheduler, Mockito.times(5))
                 .scheduleConfig(
@@ -193,7 +196,7 @@ public class ShardHelperTest {
         setter.setOptionValue("num-shards", "5");
         mConfig.setTest(test);
         assertEquals(1, mConfig.getTests().size());
-        assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler, null));
+        assertTrue(mHelper.shardConfig(mConfig, mTestInfo, mRescheduler, null));
         // We only reschedule 5 times and not 10 like --shard-count because there is not enough
         // tests to put at least 1 test per shard. So there is no point in rescheduling on new
         // devices.
@@ -238,7 +241,7 @@ public class ShardHelperTest {
             setter.setOptionValue("num-shards", "5");
             mConfig.setTest(test);
             assertEquals(1, mConfig.getTests().size());
-            assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler, null));
+            assertTrue(mHelper.shardConfig(mConfig, mTestInfo, mRescheduler, null));
             // Ensure that we did split 1 tests per shard rescheduled.
             Mockito.verify(mRescheduler, Mockito.times(3))
                     .scheduleConfig(
@@ -285,7 +288,7 @@ public class ShardHelperTest {
             setter.setOptionValue("num-shards", "5");
             mConfig.setTest(test);
             assertEquals(1, mConfig.getTests().size());
-            assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler, null));
+            assertTrue(mHelper.shardConfig(mConfig, mTestInfo, mRescheduler, null));
             // Ensure that we did split 1 tests per shard rescheduled.
             Mockito.verify(mRescheduler, Mockito.times(3))
                     .scheduleConfig(
@@ -359,7 +362,7 @@ public class ShardHelperTest {
         doReturn(true).when(mockClient).isAvailable();
         doReturn(SuccessTestCase.class.getName()).when(mockClient).fetchKey("test");
 
-        assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler, null));
+        assertTrue(mHelper.shardConfig(mConfig, mTestInfo, mRescheduler, null));
         // Ensure that we did split 1 tests per shard rescheduled.
         Mockito.verify(mRescheduler, Mockito.times(2))
                 .scheduleConfig(
@@ -420,7 +423,7 @@ public class ShardHelperTest {
         doReturn(SuccessTestCase.class.getName()).when(mockClient).fetchKey("test");
         doThrow(new RuntimeException()).when(mockClient).fetchKey("test");
         try {
-            mHelper.shardConfig(mConfig, mContext, mRescheduler, null);
+            mHelper.shardConfig(mConfig, mTestInfo, mRescheduler, null);
             fail("Should have thrown an exception.");
         } catch (RuntimeException expected) {
             // expected
@@ -452,7 +455,7 @@ public class ShardHelperTest {
         tests.add(new TokenTestClass());
         mConfig.setTests(tests);
         assertEquals(2, mConfig.getTests().size());
-        assertTrue(mHelper.shardConfig(mConfig, mContext, mRescheduler, null));
+        assertTrue(mHelper.shardConfig(mConfig, mTestInfo, mRescheduler, null));
         // Ensure that we did split 1 tests per shard rescheduled.
         Mockito.verify(mRescheduler, Mockito.times(3))
                 .scheduleConfig(
