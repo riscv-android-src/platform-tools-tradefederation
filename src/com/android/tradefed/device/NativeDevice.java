@@ -4392,11 +4392,18 @@ public class NativeDevice implements IManagedTestDevice {
 
     /** Return the process start time since epoch for the given pid string */
     private long getProcessStartTimeByPid(String pidString) throws DeviceNotAvailableException {
-        String output = executeShellCommand("stat -c%Z /proc/" + pidString);
+        String output = executeShellCommand(String.format("ps -p %s -o stime=", pidString));
         if (output != null && !output.trim().isEmpty()) {
+            output = output.trim();
+            String dateInSecond = executeShellCommand("date -d\"" + output + "\" +%s");
+            if (Strings.isNullOrEmpty(dateInSecond)) {
+                return -1L;
+            }
             try {
-                return Long.parseLong(output.trim());
+                return Long.parseLong(dateInSecond.trim());
             } catch (NumberFormatException e) {
+                CLog.e("Failed to parse the start time for process:");
+                CLog.e(e);
                 return -1L;
             }
         }
@@ -4554,6 +4561,9 @@ public class NativeDevice implements IManagedTestDevice {
         if (currSystemServerProcess.getPid() == prevSystemServerProcess.getPid()
                 && currSystemServerProcess.getStartTime()
                         == prevSystemServerProcess.getStartTime()) {
+            CLog.e(
+                    "current system_server: %s different from prev system_server: %s",
+                    currSystemServerProcess, prevSystemServerProcess);
             return false;
         }
 
