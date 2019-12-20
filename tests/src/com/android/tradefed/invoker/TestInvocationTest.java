@@ -1340,7 +1340,7 @@ public class TestInvocationTest {
         IRemoteTest shard2 = EasyMock.createMock(IRemoteTest.class);
         shards.add(shard1);
         shards.add(shard2);
-        EasyMock.expect(test.split()).andReturn(shards);
+        EasyMock.expect(test.split(EasyMock.isNull(), EasyMock.anyObject())).andReturn(shards);
         mStubConfiguration.setTest(test);
         mStubConfiguration.setCommandLine(commandLine);
         mMockBuildProvider.cleanUp(mMockBuildInfo);
@@ -1402,7 +1402,7 @@ public class TestInvocationTest {
         IRemoteTest shard2 = EasyMock.createMock(IRemoteTest.class);
         shards.add(shard1);
         shards.add(shard2);
-        EasyMock.expect(test.split()).andReturn(shards);
+        EasyMock.expect(test.split(EasyMock.isNull(), EasyMock.anyObject())).andReturn(shards);
         mStubConfiguration.setTest(test);
         mStubConfiguration.setCommandLine(commandLine);
 
