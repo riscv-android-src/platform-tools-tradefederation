@@ -75,5 +75,18 @@ public class ProcessInfo {
     public long getStartTime() {
         return mStartTime;
     }
+
+    @Override
+    public String toString() {
+        return "ProcessInfo [mUser="
+                + mUser
+                + ", mPid="
+                + mPid
+                + ", mName="
+                + mName
+                + ", mStartTime="
+                + mStartTime
+                + "]";
+    }
 }
 
