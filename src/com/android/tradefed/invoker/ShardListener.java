@@ -28,13 +28,10 @@ import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
-import com.android.tradefed.result.retry.ISupportGranularResults;
 import com.android.tradefed.util.TimeUtil;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -43,12 +40,9 @@ import java.util.Map.Entry;
  * invocation split to run on multiple resources in parallel), and forwards them to another
  * listener.
  */
-public class ShardListener extends CollectingTestListener implements ISupportGranularResults {
+public class ShardListener extends CollectingTestListener {
 
     private ITestInvocationListener mMasterListener;
-    private IInvocationContext mModuleContext = null;
-    private int mAttemptInProgress = 0;
-    private boolean mEnableGranularResults = false;
 
     /**
      * Create a {@link ShardListener}.
@@ -60,16 +54,6 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
      */
     public ShardListener(ITestInvocationListener master) {
         mMasterListener = master;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public boolean supportGranularResults() {
-        return mEnableGranularResults;
-    }
-
-    public void setSupportGranularResults(boolean enableGranularResults) {
-        mEnableGranularResults = enableGranularResults;
     }
 
     /**
@@ -128,16 +112,10 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
 
     /** {@inheritDoc} */
     @Override
-    public void testModuleStarted(IInvocationContext moduleContext) {
-        super.testModuleStarted(moduleContext);
-        mModuleContext = moduleContext;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void testRunStarted(String name, int numTests, int attemptNumber, long startTime) {
-        super.testRunStarted(name, numTests, attemptNumber, startTime);
-        mAttemptInProgress = attemptNumber;
+    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
+        super.testRunEnded(elapsedTime, runMetrics);
+        CLog.logAndDisplay(LogLevel.INFO, "Sharded test completed: %s",
+                getCurrentRunResults().getName());
     }
 
     /**
@@ -150,83 +128,54 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
                 getCurrentRunResults().getName(), failureMessage);
     }
 
-    /** {@inheritDoc} */
-    @Override
-    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
-        super.testRunEnded(elapsedTime, runMetrics);
-        CLog.logAndDisplay(
-                LogLevel.INFO, "Sharded test completed: %s", getCurrentRunResults().getName());
-        if (mModuleContext == null) {
-            // testRunEnded only forwards if it's not part of a module. If it's a module
-            // testModuleEnded is in charge of forwarding all run results.
-            synchronized (mMasterListener) {
-                forwardRunResults(getCurrentRunResults(), mAttemptInProgress);
-            }
-            mAttemptInProgress = 0;
-        }
-
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void testModuleEnded() {
-        super.testModuleEnded();
-
-        synchronized (mMasterListener) {
-            mMasterListener.testModuleStarted(mModuleContext);
-            List<String> resultNames = new ArrayList<String>();
-            if (mEnableGranularResults) {
-                for (int i = 0; i < mAttemptInProgress + 1; i++) {
-                    List<TestRunResult> runResults = getTestRunForAttempts(i);
-                    for (TestRunResult runResult : runResults) {
-                        forwardRunResults(runResult, i);
-                        resultNames.add(runResult.getName());
-                    }
-                }
-            } else {
-                for (TestRunResult runResult : getMergedTestRunResults()) {
-                    // Forward the run level results
-                    forwardRunResults(runResult, 0);
-                    resultNames.add(runResult.getName());
-                }
-            }
-
-            // Ensure we don't carry results from one module to another.
-            for (String name : resultNames) {
-                clearResultsForName(name);
-            }
-            mMasterListener.testModuleEnded();
-        }
-        mModuleContext = null;
-    }
-
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void invocationEnded(long elapsedTime) {
         super.invocationEnded(elapsedTime);
         synchronized (mMasterListener) {
             logShardContent(getMergedTestRunResults());
-            // Report all logs not associated with test runs
-            forwardLogAssociation(getNonAssociatedLogFiles(), mMasterListener);
+            IInvocationContext moduleContext = null;
+            for (TestRunResult runResult : getMergedTestRunResults()) {
+
+                // Stop or start the module
+                if (moduleContext != null
+                        && !getModuleContextForRunResult(runResult.getName())
+                                .equals(moduleContext)) {
+                    mMasterListener.testModuleEnded();
+                    moduleContext = null;
+                }
+                if (moduleContext == null
+                        && getModuleContextForRunResult(runResult.getName()) != null) {
+                    moduleContext = getModuleContextForRunResult(runResult.getName());
+                    mMasterListener.testModuleStarted(moduleContext);
+                }
+
+                mMasterListener.testRunStarted(
+                        runResult.getName(), runResult.getExpectedTestCount());
+                forwardTestResults(runResult.getTestResults());
+                if (runResult.isRunFailure()) {
+                    mMasterListener.testRunFailed(runResult.getRunFailureMessage());
+                }
+
+                // Provide a strong association of the run to its logs.
+                forwardLogAssociation(runResult.getRunLoggedFiles(), mMasterListener);
+
+                mMasterListener.testRunEnded(
+                        runResult.getElapsedTime(), runResult.getRunProtoMetrics());
+            }
+            // Close the last module
+            if (moduleContext != null) {
+                mMasterListener.testModuleEnded();
+                moduleContext = null;
+            }
+            // In case there was no run, we still want to report the logs we received.
+            if (getMergedTestRunResults().isEmpty()) {
+                forwardLogAssociation(getCurrentRunResults().getRunLoggedFiles(), mMasterListener);
+            }
             mMasterListener.invocationEnded(elapsedTime);
         }
-    }
-
-    private void forwardRunResults(TestRunResult runResult, int attempt) {
-        mMasterListener.testRunStarted(
-                runResult.getName(),
-                runResult.getExpectedTestCount(),
-                attempt,
-                runResult.getStartTime());
-        forwardTestResults(runResult.getTestResults());
-        if (runResult.isRunFailure()) {
-            mMasterListener.testRunFailed(runResult.getRunFailureMessage());
-        }
-
-        // Provide a strong association of the run to its logs.
-        forwardLogAssociation(runResult.getRunLoggedFiles(), mMasterListener);
-
-        mMasterListener.testRunEnded(runResult.getElapsedTime(), runResult.getRunProtoMetrics());
     }
 
     private void forwardTestResults(Map<TestDescription, TestResult> testResults) {

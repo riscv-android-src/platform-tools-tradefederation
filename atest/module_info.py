@@ -79,12 +79,8 @@ class ModuleInfo(object):
         if not os.path.isfile(module_file_path) or force_build:
             logging.debug('Generating %s - this is required for '
                           'initial runs.', _MODULE_INFO)
-            build_env = dict(constants.ATEST_BUILD_ENV)
-            build_env.update(constants.DEPS_LICENSE_ENV)
-            # Also build the deps-license module to generate dependencies data.
-            atest_utils.build([module_info_target, constants.DEPS_LICENSE],
-                              verbose=logging.getLogger().isEnabledFor(logging.DEBUG),
-                              env_vars=build_env)
+            atest_utils.build([module_info_target],
+                              logging.getLogger().isEnabledFor(logging.DEBUG))
         return module_info_target, module_file_path
 
     def _load_module_info_file(self, force_build, module_file):

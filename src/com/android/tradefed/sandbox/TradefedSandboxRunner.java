@@ -77,7 +77,6 @@ public class TradefedSandboxRunner {
             json.put(EXCEPTION_KEY, serializedException.getAbsolutePath());
             System.err.println(json.toString());
         } catch (IOException | JSONException io) {
-            io.printStackTrace();
             FileUtil.deleteFile(serializedException);
         }
     }

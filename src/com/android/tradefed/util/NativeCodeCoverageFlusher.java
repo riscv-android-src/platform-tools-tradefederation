@@ -35,21 +35,18 @@ public final class NativeCodeCoverageFlusher {
     private static final String CLEAR_NATIVE_COVERAGE_FILES = "rm -rf /data/misc/trace/*";
 
     private final ITestDevice mDevice;
-    private final List<String> mProcessNames;
 
-    public NativeCodeCoverageFlusher(ITestDevice device, List<String> processNames) {
+    public NativeCodeCoverageFlusher(ITestDevice device) {
         mDevice = device;
-        mProcessNames = processNames;
     }
 
     /**
-     * Resets native coverage counters for processes running on the device and clears any existing
-     * coverage measurements from disk. Device must be in adb root.
+     * Clears coverage measurements from disk on the device. Device must be in adb root.
      *
      * @throws DeviceNotAvailableException
      */
-    public void resetCoverage() throws DeviceNotAvailableException {
-        forceCoverageFlush();
+    public void clearCoverageMeasurements() throws DeviceNotAvailableException {
+        checkState(mDevice.isAdbRoot(), "adb root is required to clear coverage files.");
         mDevice.executeShellCommand(CLEAR_NATIVE_COVERAGE_FILES);
     }
 
@@ -57,18 +54,20 @@ public final class NativeCodeCoverageFlusher {
      * Forces a flush of native coverage data from processes running on the device. Device must be
      * in adb root.
      *
+     * @param processNames the name of processes to target for flushing; if empty, flushes from all
+     *     running native processes on the device.
      * @throws DeviceNotAvailableException
      */
-    public void forceCoverageFlush() throws DeviceNotAvailableException {
+    public void forceCoverageFlush(List<String> processNames) throws DeviceNotAvailableException {
         checkState(mDevice.isAdbRoot(), "adb root is required to flush native coverage data.");
 
-        if ((mProcessNames == null) || mProcessNames.isEmpty()) {
+        if ((processNames == null) || processNames.isEmpty()) {
             // Use the special pid -1 to trigger a coverage flush of all running processes.
             mDevice.executeShellCommand(String.format(COVERAGE_FLUSH_COMMAND_FORMAT, "-1"));
         } else {
             // Look up the pid of the processes to send them the coverage flush signal.
             StringJoiner pidString = new StringJoiner(" ");
-            for (String processName : mProcessNames) {
+            for (String processName : processNames) {
                 String pid = mDevice.getProcessPid(processName);
                 if (pid == null) {
                     CLog.w("Did not find pid for process \"%s\".", processName);

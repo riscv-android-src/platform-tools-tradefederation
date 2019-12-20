@@ -193,6 +193,9 @@ public final class TestsPoolPoller
                 if (test instanceof IBuildReceiver) {
                     ((IBuildReceiver) test).setBuild(mBuildInfo);
                 }
+                if (test instanceof IConfigurationReceiver) {
+                    ((IConfigurationReceiver) test).setConfiguration(mConfig);
+                }
                 if (test instanceof IDeviceTest) {
                     ((IDeviceTest) test).setDevice(mDevice);
                 }
@@ -211,13 +214,7 @@ public final class TestsPoolPoller
                     // At this point only the <test> object needs to be validated for options, this
                     // ensures that the object is fine before running it.
                     validationConfig.setTest(test);
-                    validationConfig.validateOptions();
-                    validationConfig.resolveDynamicOptions();
-                    // Set the configuration after the validation, otherwise we override the config
-                    // available to the test.
-                    if (test instanceof IConfigurationReceiver) {
-                        ((IConfigurationReceiver) test).setConfiguration(mConfig);
-                    }
+                    validationConfig.validateOptions(true);
                     // Run the test itself and prevent random exception from stopping the poller.
                     if (test instanceof IMetricCollectorReceiver) {
                         ((IMetricCollectorReceiver) test).setMetricCollectors(mCollectors);
@@ -247,7 +244,7 @@ public final class TestsPoolPoller
                             test.getClass());
                     CLog.w(e);
                 } finally {
-                    validationConfig.cleanConfigurationData();
+                    validationConfig.cleanDynamicOptionFiles();
                 }
             }
         } finally {

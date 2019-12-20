@@ -18,6 +18,7 @@ package com.android.tradefed.config;
 
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.ICommandOptions;
+import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
@@ -27,18 +28,15 @@ import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.postprocessor.IPostProcessor;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -113,9 +111,6 @@ public interface IConfiguration {
      */
     public ILogSaver getLogSaver();
 
-    /** Returns the {@link IRetryDecision} used for the invocation. */
-    public IRetryDecision getRetryDecision();
-
     /**
      * Gets the {@link IMultiTargetPreparer}s from the configuration.
      *
@@ -166,13 +161,6 @@ public interface IConfiguration {
      * @return the {@link IDeviceSelection} provided in the configuration.
      */
     public IDeviceSelection getDeviceRequirements();
-
-    /**
-     * Gets the {@link CoverageOptions} to use from the configuration.
-     *
-     * @return the {@link CoverageOptions} provided in the configuration.
-     */
-    public CoverageOptions getCoverageOptions();
 
     /**
      * Generic interface to get the configuration object with the given type name.
@@ -284,13 +272,6 @@ public interface IConfiguration {
      * @param logger
      */
     public void setLogOutput(ILeveledLogOutput logger);
-
-    /**
-     * Set the {@link IRetryDecision}, replacing any existing value.
-     *
-     * @param decisionRetry
-     */
-    public void setRetryDecision(IRetryDecision decisionRetry);
 
     /**
      * Set the {@link ILogSaver}, replacing any existing value.
@@ -440,9 +421,6 @@ public interface IConfiguration {
      */
     public void setDeviceOptions(TestDeviceOptions deviceOptions);
 
-    /** Set the {@link CoverageOptions}, replacing any existing values. */
-    public void setCoverageOptions(CoverageOptions coverageOptions);
-
     /**
      * Generic method to set the config object with the given name, replacing any existing value.
      *
@@ -555,15 +533,17 @@ public interface IConfiguration {
     public void validateOptions() throws ConfigurationException;
 
     /**
-     * Resolve options of {@link File} pointing to a remote location. This requires {@link
-     * #cleanConfigurationData()} to be called to clean up the files.
+     * Validate option values.
      *
-     * @throws ConfigurationException
+     * <p>Currently this will just validate that all mandatory options have been set
+     *
+     * @param download Whether or not to download the files associated to a remote path
+     * @throws ConfigurationException if config is not valid
      */
-    public void resolveDynamicOptions() throws ConfigurationException;
+    public void validateOptions(boolean download) throws ConfigurationException;
 
     /** Delete any files that was downloaded to resolved Option fields of remote files. */
-    public void cleanConfigurationData();
+    public void cleanDynamicOptionFiles();
 
     /**
      * Sets the command line used to create this {@link IConfiguration}.
@@ -614,9 +594,6 @@ public interface IConfiguration {
      * @throws IOException
      */
     public void dumpXml(
-            PrintWriter output,
-            List<String> excludeFilters,
-            boolean printDeprecatedOptions,
-            boolean printUnchangedOptions)
+            PrintWriter output, List<String> excludeFilters, boolean printDeprecatedOptions)
             throws IOException;
 }

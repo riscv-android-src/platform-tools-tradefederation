@@ -239,19 +239,6 @@ public class ContentProviderHandlerTest {
         }
     }
 
-    @Test
-    public void testPullDir_failedDevice() throws Exception {
-        File pullTo = FileUtil.createTempDir("content-provider-test");
-
-        doReturn("Something crashed").when(mMockDevice).executeShellCommand(anyString());
-
-        try {
-            assertFalse(mProvider.pullDir("path/somewhere", pullTo));
-        } finally {
-            FileUtil.recursiveDelete(pullTo);
-        }
-    }
-
     /**
      * Test {@link ContentProviderHandler#pullDir(String, File)} to pull a directory that contains
      * one text file.

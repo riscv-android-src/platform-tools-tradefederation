@@ -99,7 +99,6 @@ public class AndroidJUnitTestTest {
         };
         mAndroidJUnitTest.setRunnerName(AJUR);
         mAndroidJUnitTest.setPackageName(TEST_PACKAGE_VALUE);
-        mAndroidJUnitTest.setConfiguration(new Configuration("", ""));
         mAndroidJUnitTest.setDevice(mMockTestDevice);
         // default to no rerun, for simplicity
         mAndroidJUnitTest.setRerunMode(false);

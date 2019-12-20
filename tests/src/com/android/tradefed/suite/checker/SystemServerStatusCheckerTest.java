@@ -16,18 +16,17 @@
 package com.android.tradefed.suite.checker;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.suite.checker.StatusCheckerResult.CheckStatus;
-import com.android.tradefed.util.ProcessInfo;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-
 
 /** Unit tests for {@link SystemServerStatusChecker} */
 @RunWith(JUnit4.class)
@@ -39,7 +38,6 @@ public class SystemServerStatusCheckerTest {
     @Before
     public void setUp() {
         mMockDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
         mChecker =
                 new SystemServerStatusChecker() {
                     @Override
@@ -49,39 +47,26 @@ public class SystemServerStatusCheckerTest {
                 };
     }
 
-    /** Test that system checker pass if system_server didn't restart. */
+    /** Test that system checker pass if the pid of system checker does not change. */
     @Test
-    public void testSystemServerProcessNotRestarted() throws Exception {
-        EasyMock.expect(mMockDevice.getProcessByName(EasyMock.eq("system_server")))
-                .andReturn(new ProcessInfo("system", 914, "system_server", 1559091922L));
-        EasyMock.expect(mMockDevice.deviceSoftRestarted(EasyMock.anyObject())).andReturn(false);
+    public void testPidRemainUnchanged() throws Exception {
+        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("pidof system_server")))
+                .andReturn("914")
+                .times(2);
         EasyMock.replay(mMockDevice);
         assertEquals(CheckStatus.SUCCESS, mChecker.preExecutionCheck(mMockDevice).getStatus());
         assertEquals(CheckStatus.SUCCESS, mChecker.postExecutionCheck(mMockDevice).getStatus());
         EasyMock.verify(mMockDevice);
     }
 
-    /** Test that system checker fail if system_server restarted without device reboot. */
+    /** Test that system checker fail if the pid of system checker does change. */
     @Test
-    public void testSystemServerProcessRestartedWithoutDeviceReboot() throws Exception {
-        EasyMock.expect(mMockDevice.getProcessByName(EasyMock.eq("system_server")))
-                .andReturn(new ProcessInfo("system", 914, "system_server", 1559091922L));
-        EasyMock.expect(mMockDevice.deviceSoftRestarted(EasyMock.anyObject())).andReturn(true);
-        EasyMock.replay(mMockDevice);
-        assertEquals(CheckStatus.SUCCESS, mChecker.preExecutionCheck(mMockDevice).getStatus());
-        StatusCheckerResult result = mChecker.postExecutionCheck(mMockDevice);
-        assertEquals(CheckStatus.FAILED, result.getStatus());
-        assertTrue(result.isBugreportNeeded());
-        EasyMock.verify(mMockDevice);
-    }
-
-    /** Test that system checker fail if system_server restarted with device reboot. */
-    @Test
-    public void testSystemServerProcessRestartedWithAbnormalDeviceReboot() throws Exception {
-        EasyMock.expect(mMockDevice.getProcessByName(EasyMock.eq("system_server")))
-                .andReturn(new ProcessInfo("system", 914, "system_server", 1559091922L));
-        EasyMock.expect(mMockDevice.deviceSoftRestarted(EasyMock.anyObject()))
-                .andThrow(new RuntimeException("abnormal reboot"));
+    public void testPidChanged() throws Exception {
+        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("pidof system_server")))
+                .andReturn("914\n");
+        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("pidof system_server")))
+                .andReturn("1024\n");
+        EasyMock.expect(mMockDevice.getLastExpectedRebootTimeMillis()).andReturn(200L);
         EasyMock.replay(mMockDevice);
         assertEquals(CheckStatus.SUCCESS, mChecker.preExecutionCheck(mMockDevice).getStatus());
         StatusCheckerResult result = mChecker.postExecutionCheck(mMockDevice);
@@ -91,17 +76,47 @@ public class SystemServerStatusCheckerTest {
     }
 
     /**
-     * Test that if fail to get system_server process at preExecutionCheck, we skip the
-     * system_server check in postExecution.
+     * Test that if the pid changed but there was a Tradefed reboot, we still fail the checker just
+     * in case, but don't collect a bugreport.
      */
     @Test
-    public void testFailToGetSystemServerProcess() throws Exception {
-        EasyMock.expect(mMockDevice.getProcessByName(EasyMock.eq("system_server"))).andReturn(null);
-        mMockDevice.reboot();
+    public void testPidChanged_tfReboot() throws Exception {
+        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("pidof system_server")))
+                .andReturn("914\n");
+        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("pidof system_server")))
+                .andReturn("1024\n");
+        // TF reboot was done
+        EasyMock.expect(mMockDevice.getLastExpectedRebootTimeMillis()).andReturn(600L);
+        EasyMock.replay(mMockDevice);
+        assertEquals(CheckStatus.SUCCESS, mChecker.preExecutionCheck(mMockDevice).getStatus());
+        StatusCheckerResult result = mChecker.postExecutionCheck(mMockDevice);
+        assertEquals(CheckStatus.FAILED, result.getStatus());
+        assertFalse(result.isBugreportNeeded());
+        EasyMock.verify(mMockDevice);
+    }
+
+    /** Test that if the format of the pid is unexpected, we skip the system checker. */
+    @Test
+    public void testFailToGetPid() throws Exception {
+        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("pidof system_server")))
+                .andReturn("not found\n");
+        EasyMock.replay(mMockDevice);
+        assertEquals(CheckStatus.SUCCESS, mChecker.preExecutionCheck(mMockDevice).getStatus());
+        assertEquals(CheckStatus.SUCCESS, mChecker.postExecutionCheck(mMockDevice).getStatus());
+        EasyMock.verify(mMockDevice);
+    }
+
+    /**
+     * Test that if the pid output is null, we fail the current preExecution but skip post
+     * execution.
+     */
+    @Test
+    public void testPid_null() throws Exception {
+        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("pidof system_server")))
+                .andReturn(null);
         EasyMock.replay(mMockDevice);
         assertEquals(CheckStatus.FAILED, mChecker.preExecutionCheck(mMockDevice).getStatus());
         assertEquals(CheckStatus.SUCCESS, mChecker.postExecutionCheck(mMockDevice).getStatus());
         EasyMock.verify(mMockDevice);
     }
-
 }

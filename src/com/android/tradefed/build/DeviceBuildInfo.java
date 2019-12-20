@@ -26,7 +26,6 @@ import java.io.File;
 public class DeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo {
 
     private static final long serialVersionUID = BuildSerializedVersion.VERSION;
-    private String mDeviceBuildFlavor = null;
 
     public DeviceBuildInfo() {
         super();
@@ -59,13 +58,7 @@ public class DeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo {
      */
     @Override
     public String getDeviceBuildFlavor() {
-        return mDeviceBuildFlavor == null ? getBuildFlavor() : mDeviceBuildFlavor;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void setDeviceBuildFlavor(String deviceBuildFlavor) {
-        mDeviceBuildFlavor = deviceBuildFlavor;
+        return getBuildFlavor();
     }
 
     /**

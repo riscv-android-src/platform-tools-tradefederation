@@ -74,7 +74,7 @@ public class NestedRemoteDeviceTest {
 
     @After
     public void tearDown() throws Exception {
-        mDevice.postInvocationTearDown(null);
+        mDevice.postInvocationTearDown();
     }
 
     /** Test that reset device returns true in case of success */
