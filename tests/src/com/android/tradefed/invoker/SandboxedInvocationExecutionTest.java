@@ -179,7 +179,7 @@ public class SandboxedInvocationExecutionTest {
                             @Override
                             public boolean shardConfig(
                                     IConfiguration config,
-                                    IInvocationContext context,
+                                    TestInformation testInfo,
                                     IRescheduler rescheduler,
                                     ITestLogger logger) {
                                 // Ensure that sharding is not called against a sandbox
