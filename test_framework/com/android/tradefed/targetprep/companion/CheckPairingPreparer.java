@@ -16,9 +16,9 @@
 
 package com.android.tradefed.targetprep.companion;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.BluetoothUtils;
@@ -30,12 +30,11 @@ import java.util.Set;
  */
 public class CheckPairingPreparer extends CompanionAwarePreparer {
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
-            BuildError, DeviceNotAvailableException {
+    public void setUp(TestInformation testInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
         String primaryMac = BluetoothUtils.getBluetoothMac(device);
         String companionMac = BluetoothUtils.getBluetoothMac(getCompanion(device));
         Set<String> primaryBonded = BluetoothUtils.getBondedDevices(device);

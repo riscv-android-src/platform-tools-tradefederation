@@ -15,11 +15,11 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.RunUtil;
 
@@ -52,12 +52,11 @@ public class CpuThrottlingWaiter extends BaseTargetPreparer {
             + " subject to throttling after timeout has reached; defaults to false")
     private boolean mAbortOnTimeout = false;
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
-            BuildError, DeviceNotAvailableException {
+    public void setUp(TestInformation testInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
         // first figure out number of CPU cores available and their corresponding max frequencies
         // map: path/to/core : max frequency
         Map<String, String> cpuMaxFreqs = getCpuMaxFreqs(device);

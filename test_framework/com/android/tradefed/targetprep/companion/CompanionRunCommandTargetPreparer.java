@@ -17,10 +17,9 @@
 
 package com.android.tradefed.targetprep.companion;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionClass;
-import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.RunCommandTargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -32,27 +31,16 @@ import com.android.tradefed.targetprep.TargetSetupError;
 public class CompanionRunCommandTargetPreparer extends RunCommandTargetPreparer {
 
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
-            DeviceNotAvailableException {
-        // get companion device first
-        ITestDevice companion = CompanionDeviceTracker.getInstance().getCompanionDevice(device);
+    protected ITestDevice getDevice(TestInformation testInfo) throws TargetSetupError {
+        ITestDevice companion =
+                CompanionDeviceTracker.getInstance().getCompanionDevice(testInfo.getDevice());
         if (companion == null) {
-            throw new TargetSetupError(String.format("no companion device allocated for %s",
-                    device.getSerialNumber()), device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    String.format(
+                            "no companion device allocated for %s",
+                            testInfo.getDevice().getSerialNumber()),
+                    testInfo.getDevice().getDeviceDescriptor());
         }
-        super.setUp(companion, buildInfo);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
-        // get companion device first
-        ITestDevice companion = CompanionDeviceTracker.getInstance().getCompanionDevice(device);
-        if (companion != null) {
-            super.tearDown(companion, buildInfo, e);
-        }
+        return companion;
     }
 }
