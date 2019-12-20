@@ -51,6 +51,9 @@ public class SideloadOtaTargetPreparer extends DeviceUpdateTargetPreparer {
     // defaults to 10m: assuming USB 2.0 transfer speed, concurrency and some buffer
     private long mSideloadTimeout = 10 * 60 * 1000;
 
+    @Option(name = "use-auto-reboot", description = "whether to use auto reboot after sideload")
+    private boolean mUseAutoReboot = false;
+
     /** {@inheritDoc} */
     @Override
     protected File getDeviceUpdateImage() {
@@ -61,20 +64,26 @@ public class SideloadOtaTargetPreparer extends DeviceUpdateTargetPreparer {
     @Override
     protected void preUpdateActions(File deviceUpdateImage, ITestDevice device)
             throws DeviceNotAvailableException, TargetSetupError {
-        device.rebootIntoSideload();
+        device.rebootIntoSideload(mUseAutoReboot);
     }
 
     /** Waits for device to transition from sideload to recovery, then reboot to userspace */
     @Override
     protected void postUpdateActions(File deviceUpdateImage, ITestDevice device)
             throws DeviceNotAvailableException, TargetSetupError {
-        // after applying sideload, device should transition to recovery mode
-        device.waitForDeviceInRecovery(POST_SIDELOAD_TRANSITION_TIMEOUT);
-        CLog.i(
-                "Sideloading completed on %s, rebooting and waiting for boot complete.",
-                device.getDeviceDescriptor());
-        // now reboot to userspace
-        device.reboot();
+        if (!mUseAutoReboot) {
+            // after applying sideload, device should transition to recovery
+            // mode
+            device.waitForDeviceInRecovery(POST_SIDELOAD_TRANSITION_TIMEOUT);
+            CLog.i(
+                    "Sideloading completed on %s, rebooting and waiting for boot complete.",
+                    device.getDeviceDescriptor());
+            // now reboot to userspace
+            device.reboot();
+        } else {
+            // reboot has been automatically performed, wait for it to become ready for testing
+            device.waitForDeviceAvailable();
+        }
     }
 
     /** Performs the sideload of OTA package */
