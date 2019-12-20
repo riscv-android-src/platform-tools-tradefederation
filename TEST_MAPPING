@@ -17,10 +17,6 @@
       "host": true
     },
     {
-      // Gtest with FilePusher/ApkInstaller.
-      "name": "CtsPerfettoTestCases"
-    },
-    {
       // Instrumentation Test with FilePusher/ApkInstaller/RumCommandTargetPreparer.
       "name": "CtsApacheHttpLegacy27ApiSignatureTestCases"
     },
