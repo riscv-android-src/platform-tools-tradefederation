@@ -29,6 +29,7 @@ public class TestGroupStatus {
     private int mTotalTestCount;
     private int mCompletedTestCount;
     private int mFailedTestCount;
+    private int mPassedTestCount;
     private boolean mIsComplete;
     private long mElapsedTime;
     private String mFailureMessage;
@@ -38,6 +39,7 @@ public class TestGroupStatus {
             final int totalTestCount,
             final int completedTestCount,
             final int failedTestCount,
+            final int passedTestCount,
             final boolean isComplete,
             final long elapsedTime,
             final String failureMessage) {
@@ -45,6 +47,7 @@ public class TestGroupStatus {
         mTotalTestCount = totalTestCount;
         mCompletedTestCount = completedTestCount;
         mFailedTestCount = failedTestCount;
+        mPassedTestCount = passedTestCount;
         mIsComplete = isComplete;
         mElapsedTime = elapsedTime;
         mFailureMessage = failureMessage;
@@ -66,6 +69,10 @@ public class TestGroupStatus {
         return mFailedTestCount;
     }
 
+    public int getPassedTestCount() {
+        return mPassedTestCount;
+    }
+
     public boolean isComplete() {
         return mIsComplete;
     }
@@ -84,6 +91,7 @@ public class TestGroupStatus {
         json.put("total_test_count", mTotalTestCount);
         json.put("completed_test_count", mCompletedTestCount);
         json.put("failed_test_count", mFailedTestCount);
+        json.put("passed_test_count", mPassedTestCount);
         json.put("is_complete", mIsComplete);
         json.put("elapsed_time", mElapsedTime);
         json.put("failure_message", mFailureMessage);

@@ -201,7 +201,8 @@ public class FileDownloadCacheTest {
         // now be sneaky and delete the cachedFile, so copy will fail
         File cachedFile = mCache.getCachedFile(REMOTE_PATH);
         assertNotNull(cachedFile);
-        cachedFile.delete();
+        boolean res = cachedFile.delete();
+        assertTrue(res);
         File file = null;
         try {
             EasyMock.reset(mMockDownloader);
@@ -277,6 +278,7 @@ public class FileDownloadCacheTest {
         File cacheDir = FileUtil.createTempDir("cache-unittest");
         File subDir = FileUtil.createTempDir("subdir", cacheDir);
         File file = FileUtil.createTempFile("test-cache-file", ".txt", subDir);
+        FileUtil.writeToFile("test", file);
         File cacheFile = null;
         try {
             mCache = new FileDownloadCache(cacheDir);

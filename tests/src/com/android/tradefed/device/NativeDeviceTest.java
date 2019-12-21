@@ -2217,7 +2217,8 @@ public class NativeDeviceTest {
         final String fakeCreationTime = "1559091922";
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn(fakePid).when(spy).executeShellCommand("pidof system_server");
-        doReturn(fakeCreationTime).when(spy).executeShellCommand("stat -c%Z /proc/" + fakePid);
+        doReturn("12:07:32").when(spy).executeShellCommand("ps -p " + fakePid + " -o stime=");
+        doReturn(fakeCreationTime).when(spy).executeShellCommand("date -d\"12:07:32\" +%s");
         doReturn("system").when(spy).executeShellCommand("stat -c%U /proc/" + fakePid);
         EasyMock.replay(mMockIDevice);
         assertEquals(Integer.parseInt(fakePid), spy.getProcessByName("system_server").getPid());
@@ -2242,9 +2243,7 @@ public class NativeDeviceTest {
     public void testGetProcessByNameInvalidStartTime() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("120").when(spy).executeShellCommand("pidof system_server");
-        doReturn("stat: '/proc/120': No such file or directory")
-                .when(spy)
-                .executeShellCommand("stat -c%Z /proc/120");
+        doReturn("").when(spy).executeShellCommand("ps -p 120 -o stime=");
         EasyMock.replay(mMockIDevice);
         assertNull(spy.getProcessByName("system_server"));
         EasyMock.verify(mMockIDevice);
@@ -2395,7 +2394,8 @@ public class NativeDeviceTest {
     public void testDeviceSoftRestartedSince() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("914").when(spy).executeShellCommand("pidof system_server");
-        doReturn("1559091922").when(spy).executeShellCommand("stat -c%Z /proc/914");
+        doReturn("12:07:32").when(spy).executeShellCommand("ps -p 914 -o stime=");
+        doReturn("1559091922").when(spy).executeShellCommand("date -d\"12:07:32\" +%s");
         doReturn("system").when(spy).executeShellCommand("stat -c%U /proc/914");
         doReturn(
                         "kernel_panic,1556587278\n"
@@ -2427,7 +2427,8 @@ public class NativeDeviceTest {
     public void testDeviceSoftRestartedSinceWithAbnormalReboot() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("914").when(spy).executeShellCommand("pidof system_server");
-        doReturn("1559091999").when(spy).executeShellCommand("stat -c%Z /proc/914");
+        doReturn("12:07:32").when(spy).executeShellCommand("ps -p 914 -o stime=");
+        doReturn("1559091999").when(spy).executeShellCommand("date -d\"12:07:32\" +%s");
         doReturn("system").when(spy).executeShellCommand("stat -c%U /proc/914");
         doReturn(
                         "kernel_panic,1559091933\n"
@@ -2451,7 +2452,8 @@ public class NativeDeviceTest {
     public void testDeviceSoftRestartedSinceNotAfterNormalReboot() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("914").when(spy).executeShellCommand("pidof system_server");
-        doReturn("1559091939").when(spy).executeShellCommand("stat -c%Z /proc/914");
+        doReturn("12:07:32").when(spy).executeShellCommand("ps -p 914 -o stime=");
+        doReturn("1559091939").when(spy).executeShellCommand("date -d\"12:07:32\" +%s");
         doReturn("system").when(spy).executeShellCommand("stat -c%U /proc/914");
         doReturn(
                         "reboot,1559091933\n"
@@ -2470,7 +2472,8 @@ public class NativeDeviceTest {
     public void testDeviceSoftRestartedSinceAfterNormalReboot() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("914").when(spy).executeShellCommand("pidof system_server");
-        doReturn("1559091992").when(spy).executeShellCommand("stat -c%Z /proc/914");
+        doReturn("12:07:32").when(spy).executeShellCommand("ps -p 914 -o stime=");
+        doReturn("1559091992").when(spy).executeShellCommand("date -d\"12:07:32\" +%s");
         doReturn("system").when(spy).executeShellCommand("stat -c%U /proc/914");
         doReturn(
                         "reboot,1559091933\n"
@@ -2491,7 +2494,8 @@ public class NativeDeviceTest {
         ProcessInfo prev1 = new ProcessInfo("system", 123, "system_server", 1559000000L);
         ProcessInfo prev2 = new ProcessInfo("system", 914, "system_server", 1559091922L);
         doReturn("914").when(spy).executeShellCommand("pidof system_server");
-        doReturn("1559091922").when(spy).executeShellCommand("stat -c%Z /proc/914");
+        doReturn("12:07:32").when(spy).executeShellCommand("ps -p 914 -o stime=");
+        doReturn("1559091922").when(spy).executeShellCommand("date -d\"12:07:32\" +%s");
         doReturn("system").when(spy).executeShellCommand("stat -c%U /proc/914");
         doReturn(
                         "kernel_panic,1556587278\n"
@@ -2500,7 +2504,6 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237725\n")
                 .when(spy)
                 .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
-        ;
         EasyMock.replay(mMockIDevice);
         assertTrue(spy.deviceSoftRestarted(prev1));
         assertFalse(spy.deviceSoftRestarted(prev2));
@@ -2522,7 +2525,8 @@ public class NativeDeviceTest {
     public void testDeviceSoftRestartedWithAbnormalReboot() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("914").when(spy).executeShellCommand("pidof system_server");
-        doReturn("1559091999").when(spy).executeShellCommand("stat -c%Z /proc/914");
+        doReturn("12:07:32").when(spy).executeShellCommand("ps -p 914 -o stime=");
+        doReturn("1559091999").when(spy).executeShellCommand("date -d\"12:07:32\" +%s");
         doReturn("system").when(spy).executeShellCommand("stat -c%U /proc/914");
         doReturn(
                         "kernel_panic,1559091933\n"
@@ -2546,7 +2550,8 @@ public class NativeDeviceTest {
     public void testDeviceSoftRestartedNotAfterNormalReboot() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("914").doReturn("914").when(spy).executeShellCommand("pidof system_server");
-        doReturn("1559091935").when(spy).executeShellCommand("stat -c%Z /proc/914");
+        doReturn("12:07:32").when(spy).executeShellCommand("ps -p 914 -o stime=");
+        doReturn("1559091935").when(spy).executeShellCommand("date -d\"12:07:32\" +%s");
         doReturn("system").when(spy).executeShellCommand("stat -c%U /proc/914");
         doReturn(
                         "reboot,,1559091933\n"
@@ -2567,7 +2572,8 @@ public class NativeDeviceTest {
     public void testDeviceSoftRestartedAfterNormalReboot() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("914").doReturn("914").when(spy).executeShellCommand("pidof system_server");
-        doReturn("1559091995").when(spy).executeShellCommand("stat -c%Z /proc/914");
+        doReturn("12:07:32").when(spy).executeShellCommand("ps -p 914 -o stime=");
+        doReturn("1559091995").when(spy).executeShellCommand("date -d\"12:07:32\" +%s");
         doReturn("system").when(spy).executeShellCommand("stat -c%U /proc/914");
         doReturn(
                         "reboot,,1559091933\n"

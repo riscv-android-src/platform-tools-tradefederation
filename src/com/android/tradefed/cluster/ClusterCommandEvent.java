@@ -35,8 +35,8 @@ public class ClusterCommandEvent implements IClusterEvent {
     public static final String DATA_KEY_FETCH_BUILD_TIME_MILLIS = "fetch_build_time_millis";
     public static final String DATA_KEY_TOTAL_TEST_COUNT = "total_test_count";
     public static final String DATA_KEY_FAILED_TEST_COUNT = "failed_test_count";
+    public static final String DATA_KEY_PASSED_TEST_COUNT = "passed_test_count";
     public static final String DATA_KEY_FAILED_TEST_RUN_COUNT = "failed_test_run_count";
-    public static final String EVENT_QUEUE = "command-event-queue";
 
     // Maximum size of an individual data string value.
     public static final int MAX_DATA_STRING_SIZE = 4095;

@@ -22,6 +22,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceProperties;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 
 /**
  * A {@link ITargetPreparer} that inserts {@link DeviceBuildDescriptor} metadata into the {@link
@@ -45,12 +46,12 @@ public class DeviceBuildInfoInjector extends BaseTargetPreparer {
             "the device build flavor to inject.")
     private String mOverrideDeviceBuildFlavor = null;
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
-            BuildError, DeviceNotAvailableException {
+    public void setUp(TestInformation testInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        IBuildInfo buildInfo = testInfo.getBuildInfo();
+        ITestDevice device = testInfo.getDevice();
         if (mOverrideDeviceBuildId != null) {
             buildInfo.addBuildAttribute(DeviceBuildDescriptor.DEVICE_BUILD_ID,
                     mOverrideDeviceBuildId);

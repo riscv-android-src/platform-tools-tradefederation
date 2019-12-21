@@ -182,10 +182,10 @@ public class InvocationExecution implements IInvocationExecution {
     @Override
     public boolean shardConfig(
             IConfiguration config,
-            IInvocationContext context,
+            TestInformation testInfo,
             IRescheduler rescheduler,
             ITestLogger logger) {
-        return createShardHelper().shardConfig(config, context, rescheduler, logger);
+        return createShardHelper().shardConfig(config, testInfo, rescheduler, logger);
     }
 
     /** Create an return the {@link IShardHelper} to be used. */
@@ -203,7 +203,7 @@ public class InvocationExecution implements IInvocationExecution {
             runMultiTargetPreparers(
                     config.getMultiPreTargetPreparers(),
                     listener,
-                    testInfo.getContext(),
+                    testInfo,
                     "multi pre target preparer setup");
 
             // TODO: evaluate doing device setup in parallel
@@ -241,7 +241,7 @@ public class InvocationExecution implements IInvocationExecution {
             runMultiTargetPreparers(
                     config.getMultiTargetPreparers(),
                     listener,
-                    testInfo.getContext(),
+                    testInfo,
                     "multi target preparer setup");
         } finally {
             // Note: These metrics are handled in a try in case of a kernel reset or device issue.
@@ -294,7 +294,7 @@ public class InvocationExecution implements IInvocationExecution {
     private void runMultiTargetPreparers(
             List<IMultiTargetPreparer> multiPreparers,
             ITestLogger logger,
-            IInvocationContext context,
+            TestInformation testInfo,
             String description)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         if (mTrackMultiPreparers == null) {
@@ -310,7 +310,7 @@ public class InvocationExecution implements IInvocationExecution {
                 ((ITestLoggerReceiver) multiPreparer).setTestLogger(logger);
             }
             CLog.d("Starting %s '%s'", description, multiPreparer);
-            multiPreparer.setUp(context);
+            multiPreparer.setUp(testInfo);
             mTrackMultiPreparers.add(multiPreparer);
             CLog.d("done with %s '%s'", description, multiPreparer);
         }
@@ -319,7 +319,7 @@ public class InvocationExecution implements IInvocationExecution {
     /** Runs the {@link IMultiTargetPreparer} specified tearDown. */
     private Throwable runMultiTargetPreparersTearDown(
             List<IMultiTargetPreparer> multiPreparers,
-            IInvocationContext context,
+            TestInformation testInfo,
             ITestLogger logger,
             Throwable throwable,
             String description)
@@ -343,7 +343,7 @@ public class InvocationExecution implements IInvocationExecution {
             }
             CLog.d("Starting %s '%s'", description, multipreparer);
             try {
-                multipreparer.tearDown(context, throwable);
+                multipreparer.tearDown(testInfo, throwable);
             } catch (Throwable t) {
                 // We catch it and rethrow later to allow each multi_targetprep to be attempted.
                 // Only the first one will be thrown but all should be logged.
@@ -373,7 +373,7 @@ public class InvocationExecution implements IInvocationExecution {
         deferredThrowable =
                 runMultiTargetPreparersTearDown(
                         multiPreparers,
-                        context,
+                        testInfo,
                         logger,
                         exception,
                         "multi target preparer teardown");
@@ -431,7 +431,7 @@ public class InvocationExecution implements IInvocationExecution {
         Throwable preTargetTearDownException =
                 runMultiTargetPreparersTearDown(
                         multiPrePreparers,
-                        context,
+                        testInfo,
                         logger,
                         exception,
                         "multi pre target preparer teardown");
