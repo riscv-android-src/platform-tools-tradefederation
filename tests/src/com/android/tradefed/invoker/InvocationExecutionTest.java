@@ -336,29 +336,29 @@ public class InvocationExecutionTest {
         // Pre multi preparers are always called before.
         InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
         inOrder.verify(stub1).isDisabled();
-        inOrder.verify(stub1).setUp(mContext);
+        inOrder.verify(stub1).setUp(testInfo);
         inOrder.verify(stub2).isDisabled();
-        inOrder.verify(stub2).setUp(mContext);
+        inOrder.verify(stub2).setUp(testInfo);
 
         inOrder.verify(cleaner).setUp(Mockito.any());
 
         inOrder.verify(stub3).isDisabled();
-        inOrder.verify(stub3).setUp(mContext);
+        inOrder.verify(stub3).setUp(testInfo);
         inOrder.verify(stub4).isDisabled();
-        inOrder.verify(stub4).setUp(mContext);
+        inOrder.verify(stub4).setUp(testInfo);
 
         // tear down
         inOrder.verify(stub4).isDisabled();
-        inOrder.verify(stub4).tearDown(mContext, null);
+        inOrder.verify(stub4).tearDown(testInfo, null);
         inOrder.verify(stub3).isDisabled();
-        inOrder.verify(stub3).tearDown(mContext, null);
+        inOrder.verify(stub3).tearDown(testInfo, null);
 
         inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any());
 
         inOrder.verify(stub2).isDisabled();
-        inOrder.verify(stub2).tearDown(mContext, null);
+        inOrder.verify(stub2).tearDown(testInfo, null);
         inOrder.verify(stub1).isDisabled();
-        inOrder.verify(stub1).tearDown(mContext, null);
+        inOrder.verify(stub1).tearDown(testInfo, null);
     }
 
     /** Ensure that during tear down the original exception is kept. */
@@ -385,27 +385,27 @@ public class InvocationExecutionTest {
 
         InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
         inOrder.verify(stub1).isDisabled();
-        inOrder.verify(stub1).setUp(mContext);
+        inOrder.verify(stub1).setUp(testInfo);
         inOrder.verify(stub2).isDisabled();
-        inOrder.verify(stub2).setUp(mContext);
+        inOrder.verify(stub2).setUp(testInfo);
         inOrder.verify(cleaner).isDisabled();
         inOrder.verify(cleaner).setUp(Mockito.any());
         inOrder.verify(stub3).isDisabled();
-        inOrder.verify(stub3).setUp(mContext);
+        inOrder.verify(stub3).setUp(testInfo);
         inOrder.verify(stub4).isDisabled();
-        inOrder.verify(stub4).setUp(mContext);
+        inOrder.verify(stub4).setUp(testInfo);
         // tear down
         inOrder.verify(stub4).isDisabled();
-        inOrder.verify(stub4).tearDown(mContext, exception);
+        inOrder.verify(stub4).tearDown(testInfo, exception);
         inOrder.verify(stub3).isDisabled();
-        inOrder.verify(stub3).tearDown(mContext, exception);
+        inOrder.verify(stub3).tearDown(testInfo, exception);
 
         inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any());
 
         inOrder.verify(stub2).isDisabled();
-        inOrder.verify(stub2).tearDown(mContext, exception);
+        inOrder.verify(stub2).tearDown(testInfo, exception);
         inOrder.verify(stub1).isDisabled();
-        inOrder.verify(stub1).tearDown(mContext, exception);
+        inOrder.verify(stub1).tearDown(testInfo, exception);
     }
 
     /** Interface to test a preparer receiving the logger. */
@@ -437,28 +437,28 @@ public class InvocationExecutionTest {
 
         InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
         inOrder.verify(stub1).isDisabled();
-        inOrder.verify(stub1).setUp(mContext);
+        inOrder.verify(stub1).setUp(testInfo);
         inOrder.verify(stub2).isDisabled();
-        inOrder.verify(stub2).setUp(mContext);
+        inOrder.verify(stub2).setUp(testInfo);
         inOrder.verify(cleaner).isDisabled();
         inOrder.verify(cleaner).setUp(Mockito.any());
         inOrder.verify(stub3).isDisabled();
-        inOrder.verify(stub3).setUp(mContext);
+        inOrder.verify(stub3).setUp(testInfo);
         inOrder.verify(stub4).isDisabled();
-        inOrder.verify(stub4).setUp(mContext);
+        inOrder.verify(stub4).setUp(testInfo);
         // tear down
         inOrder.verify(stub4).isDisabled();
-        inOrder.verify(stub4).tearDown(mContext, exception);
+        inOrder.verify(stub4).tearDown(testInfo, exception);
         inOrder.verify(stub3).isDisabled();
-        inOrder.verify(stub3).tearDown(mContext, exception);
+        inOrder.verify(stub3).tearDown(testInfo, exception);
 
         inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any());
 
         inOrder.verify(stub2).isDisabled();
-        inOrder.verify(stub2).tearDown(mContext, exception);
+        inOrder.verify(stub2).tearDown(testInfo, exception);
         inOrder.verify(stub1).isDisabled();
         inOrder.verify(stub1).setTestLogger(logger);
-        inOrder.verify(stub1).tearDown(mContext, exception);
+        inOrder.verify(stub1).tearDown(testInfo, exception);
     }
 
     /** Ensure that the full tear down is attempted before throwning an exception. */
@@ -476,12 +476,12 @@ public class InvocationExecutionTest {
         holder.addSpecificConfig(cleaner);
         mConfig.setDeviceConfig(holder);
         mContext.addAllocatedDevice("default", mock(ITestDevice.class));
-
-        // Ensure that the original error is the one passed around.
-        Throwable exception = new Throwable("Original error");
-        doThrow(new RuntimeException("Oups I failed")).when(stub3).tearDown(mContext, exception);
         TestInformation testInfo =
                 TestInformation.newBuilder().setInvocationContext(mContext).build();
+        // Ensure that the original error is the one passed around.
+        Throwable exception = new Throwable("Original error");
+        doThrow(new RuntimeException("Oups I failed")).when(stub3).tearDown(testInfo, exception);
+
         try {
             mExec.doSetup(testInfo, mConfig, mMockLogger);
             mExec.doTeardown(testInfo, mConfig, null, exception);
@@ -492,27 +492,27 @@ public class InvocationExecutionTest {
         // Ensure that even in case of exception, the full tear down goes through before throwing.
         InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
         inOrder.verify(stub1).isDisabled();
-        inOrder.verify(stub1).setUp(mContext);
+        inOrder.verify(stub1).setUp(testInfo);
         inOrder.verify(stub2).isDisabled();
-        inOrder.verify(stub2).setUp(mContext);
+        inOrder.verify(stub2).setUp(testInfo);
         inOrder.verify(cleaner).isDisabled();
         inOrder.verify(cleaner).setUp(Mockito.any());
         inOrder.verify(stub3).isDisabled();
-        inOrder.verify(stub3).setUp(mContext);
+        inOrder.verify(stub3).setUp(testInfo);
         inOrder.verify(stub4).isDisabled();
-        inOrder.verify(stub4).setUp(mContext);
+        inOrder.verify(stub4).setUp(testInfo);
         // tear down
         inOrder.verify(stub4).isDisabled();
-        inOrder.verify(stub4).tearDown(mContext, exception);
+        inOrder.verify(stub4).tearDown(testInfo, exception);
         inOrder.verify(stub3).isDisabled();
-        inOrder.verify(stub3).tearDown(mContext, exception);
+        inOrder.verify(stub3).tearDown(testInfo, exception);
 
         inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any());
 
         inOrder.verify(stub2).isDisabled();
-        inOrder.verify(stub2).tearDown(mContext, exception);
+        inOrder.verify(stub2).tearDown(testInfo, exception);
         inOrder.verify(stub1).isDisabled();
-        inOrder.verify(stub1).tearDown(mContext, exception);
+        inOrder.verify(stub1).tearDown(testInfo, exception);
     }
 
     /** Ensure we create the shared folder from the resource build. */
