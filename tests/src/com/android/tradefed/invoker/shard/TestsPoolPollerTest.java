@@ -22,8 +22,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.android.ddmlib.Log.LogLevel;
-import com.android.tradefed.config.Configuration;
-import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
@@ -61,7 +59,6 @@ public class TestsPoolPollerTest {
     private ITestDevice mDevice;
     private List<IMetricCollector> mMetricCollectors;
     private ILogRegistry mMockRegistry;
-    private IConfiguration mConfiguration;
 
     @Before
     public void setUp() {
@@ -69,7 +66,6 @@ public class TestsPoolPollerTest {
         mDevice = Mockito.mock(ITestDevice.class);
         mMockRegistry = Mockito.mock(ILogRegistry.class);
         Mockito.doReturn("serial").when(mDevice).getSerialNumber();
-        mConfiguration = new Configuration("test", "test");
         mMetricCollectors = new ArrayList<>();
     }
 
@@ -108,13 +104,9 @@ public class TestsPoolPollerTest {
      */
     @Test
     public void testPollingRun() throws Exception {
-        StubTest first = new StubTest();
-        OptionSetter setterFirst = new OptionSetter(first);
-        setterFirst.setOptionValue("run-a-test", "true");
         int numTests = 5;
         List<IRemoteTest> testsList = new ArrayList<>();
-        testsList.add(first);
-        for (int i = 0; i < numTests - 1; i++) {
+        for (int i = 0; i < numTests; i++) {
             IRemoteTest test = new StubTest();
             OptionSetter setter = new OptionSetter(test);
             setter.setOptionValue("run-a-test", "true");
@@ -122,7 +114,6 @@ public class TestsPoolPollerTest {
         }
         CountDownLatch tracker = new CountDownLatch(1);
         TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
-        poller.setConfiguration(mConfiguration);
         poller.setMetricCollectors(mMetricCollectors);
         poller.run(mListener);
         Mockito.verify(mListener, Mockito.times(numTests))
@@ -130,9 +121,6 @@ public class TestsPoolPollerTest {
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         assertEquals(0, tracker.getCount());
-
-        // Ensure that the configuration set is the one that we passed.
-        assertEquals(mConfiguration, first.getConfiguration());
     }
 
     /**

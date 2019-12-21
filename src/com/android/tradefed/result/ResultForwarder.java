@@ -178,19 +178,6 @@ public class ResultForwarder implements ITestInvocationListener {
         }
     }
 
-    /** {@inheritDoc} */
-    @Override
-    public void testRunStarted(String runName, int testCount, int attemptNumber, long startTime) {
-        for (ITestInvocationListener listener : mListeners) {
-            try {
-                listener.testRunStarted(runName, testCount, attemptNumber, startTime);
-            } catch (RuntimeException e) {
-                CLog.e("Exception while invoking %s#testRunStarted", listener.getClass().getName());
-                CLog.e(e);
-            }
-        }
-    }
-
     /**
      * {@inheritDoc}
      */

@@ -52,35 +52,25 @@ python_binary_host {
     exclude_srcs: [
         "*_unittest.py",
         "*/*_unittest.py",
-        "asuite_lib_test/*.py",
         "proto/*_pb2.py",
         "proto/__init__.py",
     ],
     libs: [
         "atest_proto",
     ],
-    data: [
-        "tools/updatedb_darwin.sh",
-        ":asuite_version",
-    ],
     // Make atest's built name to atest-dev
     stem: "atest-dev",
     defaults: ["atest_py2_default"],
-    dist: {
-        targets: ["droidcore"],
-    },
 }
 
 python_library_host {
     name: "atest_module_info",
     defaults: ["atest_lib_default"],
     srcs: [
-        "atest_error.py",
-        "atest_decorator.py",
+        "module_info.py",
         "atest_utils.py",
         "constants.py",
-        "constants_default.py",
-        "module_info.py",
+        "constants_default.py"
     ],
 }
 
@@ -109,8 +99,6 @@ python_library_host {
     ],
 }
 
-// Exclude atest_updatedb_unittest due to it's a test for ATest's wrapper of updatedb, but there's
-// no updatedb binary on test server.
 python_test_host {
     name: "atest_unittests",
     main: "atest_run_unittests.py",
@@ -119,15 +107,12 @@ python_test_host {
         "**/*.py",
     ],
     data: [
-        "tools/updatedb_darwin.sh",
         "unittest_data/**/*",
         "unittest_data/**/.*",
     ],
     exclude_srcs: [
-        "asuite_lib_test/*.py",
         "proto/*_pb2.py",
         "proto/__init__.py",
-        "tools/atest_updatedb_unittest.py",
     ],
     libs: [
         "py-mock",
@@ -169,8 +154,10 @@ java_library_host {
     srcs: [
         "proto/*.proto",
     ],
+    libs: [
+        "libprotobuf-java-full",
+    ],
     proto: {
-        type: "full",
         canonical_path_from_root: false,
         include_dirs: ["external/protobuf/src"],
     },
@@ -191,8 +178,6 @@ python_library_host {
     name: "asuite_cc_client",
     defaults: ["asuite_default"],
     srcs: [
-        "atest_error.py",
-        "atest_decorator.py",
         "atest_utils.py",
         "constants.py",
         "constants_default.py",
@@ -201,19 +186,5 @@ python_library_host {
     libs: [
         "asuite_proto",
         "asuite_metrics",
-    ],
-}
-
-
-genrule {
-    name: "asuite_version",
-    cmd: "DATETIME=$$(TZ='America/Log_Angelos' date +'%F');" +
-         "if [[ -n $$BUILD_NUMBER ]]; then" +
-         "  echo $${DATETIME}_$${BUILD_NUMBER} > $(out);" +
-         "else" +
-         "  echo $$(date +'%F_%R') > $(out);" +
-         "fi",
-    out: [
-        "VERSION",
     ],
 }

@@ -108,30 +108,22 @@ public class FileDownloadCache {
                         mCacheRoot.getAbsolutePath()));
             }
         } else {
-            mCacheMapLock.lock();
-            try {
-                Log.d(
-                        LOG_TAG,
-                        String.format(
-                                "Building file cache from contents at %s",
-                                mCacheRoot.getAbsolutePath()));
-                // create an unsorted list of all the files in mCacheRoot. Need to create list first
-                // rather than inserting in Map directly because Maps cannot be sorted
-                List<FilePair> cacheEntryList = new LinkedList<FilePair>();
-                addFiles(mCacheRoot, new Stack<String>(), cacheEntryList);
-                // now sort them based on file timestamp, to get them in LRU order
-                Collections.sort(cacheEntryList, new FileTimeComparator());
-                // now insert them into the map
-                for (FilePair cacheEntry : cacheEntryList) {
-                    mCacheMap.put(cacheEntry.mRelPath, cacheEntry.mFile);
-                    mCurrentCacheSize += cacheEntry.mFile.length();
-                }
-                // this would be an unusual situation, but check if current cache is already too big
-                if (mCurrentCacheSize > getMaxFileCacheSize()) {
-                    incrementAndAdjustCache(0);
-                }
-            } finally {
-                mCacheMapLock.unlock();
+            Log.d(LOG_TAG, String.format("Building file cache from contents at %s",
+                    mCacheRoot.getAbsolutePath()));
+            // create an unsorted list of all the files in mCacheRoot. Need to create list first
+            // rather than inserting in Map directly because Maps cannot be sorted
+            List<FilePair> cacheEntryList = new LinkedList<FilePair>();
+            addFiles(mCacheRoot, new Stack<String>(), cacheEntryList);
+            // now sort them based on file timestamp, to get them in LRU order
+            Collections.sort(cacheEntryList, new FileTimeComparator());
+            // now insert them into the map
+            for (FilePair cacheEntry : cacheEntryList) {
+                mCacheMap.put(cacheEntry.mRelPath, cacheEntry.mFile);
+                mCurrentCacheSize += cacheEntry.mFile.length();
+            }
+            // this would be an unusual situation, but check if current cache is already too big
+            if (mCurrentCacheSize > getMaxFileCacheSize()) {
+                incrementAndAdjustCache(0);
             }
         }
     }

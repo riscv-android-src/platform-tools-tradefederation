@@ -18,7 +18,6 @@ package com.android.tradefed.build;
 
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
-import com.android.tradefed.device.DeviceProperties;
 import com.android.tradefed.util.ZipUtil;
 
 import java.io.BufferedReader;
@@ -50,7 +49,7 @@ public class OtaZipfileBuildProvider implements IBuildProvider {
             throw new BuildRetrievalError(
                     "Error processing build.prop contents from file: " + getOtaPath(), e);
         }
-        String bid = buildProp.getProperty(DeviceProperties.BUILD_ID);
+        String bid = buildProp.getProperty("ro.build.version.incremental");
         IDeviceBuildInfo buildInfo = new DeviceBuildInfo(bid, bid);
         buildInfo.setOtaPackageFile(new File(getOtaPath()), bid);
         return buildInfo;

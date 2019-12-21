@@ -438,12 +438,11 @@ public class RuntimeRestartCollectorTest {
     }
 
     /**
-     * Test that the collector reports counts based on the {@link StatsdStatsReport} results when it
-     * disagrees with info from the {@link AppCrashOccurred} atom.
+     * Test that the collector reports counts based on the {@link AppCrashOccurred} results when it
+     * disagrees with info from statsd metadata.
      */
     @Test
-    public void testAddingMetrics_withRuntimeRestart_useStatsdMetadataResultsForCount()
-            throws Exception {
+    public void testAddingMetrics_withRuntimeRestart_useAtomResultsForCount() throws Exception {
         ITestDevice testDevice = mockTestDevice(DEVICE_SERIAL_1);
         doReturn(Arrays.asList(testDevice)).when(mContext).getDevices();
         // Two data points from the AppCrashOccurred data.
@@ -472,7 +471,7 @@ public class RuntimeRestartCollectorTest {
         // Count should be two as in the stubbed EventMetricDataResults, even though statsd metadata
         // only reported one timestamp.
         int count = getCount(runMetrics);
-        Assert.assertEquals(1, count);
+        Assert.assertEquals(2, count);
     }
 
     /**

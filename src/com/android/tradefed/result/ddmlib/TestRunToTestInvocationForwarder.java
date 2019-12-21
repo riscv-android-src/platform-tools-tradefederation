@@ -22,12 +22,9 @@ import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
-import com.google.common.collect.ImmutableSet;
-
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Forwarder from ddmlib {@link ITestRunListener} to {@link ITestLifeCycleReceiver}. Interface that
@@ -37,11 +34,9 @@ import java.util.Set;
  */
 public class TestRunToTestInvocationForwarder implements ITestRunListener {
 
-    private static final Set<String> INVALID_METHODS =
-            ImmutableSet.<String>of("null", "initializationError");
-
+    private static final String NULL_STRING = "null";
     public static final String ERROR_MESSAGE_FORMAT =
-            "Runner reported an invalid method '%s' (%s). Something went wrong, Skipping "
+            "Runner reported an invalid method 'null' (%s). Something went wrong, Skipping "
                     + "its reporting.";
 
     private Collection<ITestLifeCycleReceiver> mListeners;
@@ -50,7 +45,6 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     // and report a "null" as a test method. This creates a lot of issues in the reporting pipeline
     // so catch it, and avoid it at the root.
     private TestIdentifier mNullMethod = null;
-    private String mNullStack = null;
 
     public TestRunToTestInvocationForwarder(Collection<ITestLifeCycleReceiver> listeners) {
         mListeners = listeners;
@@ -63,7 +57,7 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
 
     @Override
     public void testStarted(TestIdentifier testId) {
-        if (INVALID_METHODS.contains(testId.getTestName())) {
+        if (NULL_STRING.equals(testId.getTestName())) {
             mNullMethod = testId;
             return;
         }
@@ -82,7 +76,7 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
 
     @Override
     public void testStarted(TestIdentifier testId, long startTime) {
-        if (INVALID_METHODS.contains(testId.getTestName())) {
+        if (NULL_STRING.equals(testId.getTestName())) {
             mNullMethod = testId;
             return;
         }
@@ -120,7 +114,6 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     @Override
     public void testFailed(TestIdentifier testId, String trace) {
         if (mNullMethod != null && mNullMethod.equals(testId)) {
-            mNullStack = trace;
             return;
         }
         for (ITestLifeCycleReceiver listener : mListeners) {
@@ -156,13 +149,7 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     public void testEnded(TestIdentifier testId, Map<String, String> testMetrics) {
         for (ITestLifeCycleReceiver listener : mListeners) {
             if (mNullMethod != null && mNullMethod.equals(testId)) {
-                String message =
-                        String.format(ERROR_MESSAGE_FORMAT, mNullMethod.getTestName(), mNullMethod);
-                if (mNullStack != null) {
-                    message = String.format("%s Stack:%s", message, mNullStack);
-                }
-                listener.testRunFailed(message);
-                mNullStack = null;
+                listener.testRunFailed(String.format(ERROR_MESSAGE_FORMAT, mNullMethod));
                 continue;
             }
             try {
@@ -182,9 +169,7 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     public void testEnded(TestIdentifier testId, long endTime, Map<String, String> testMetrics) {
         for (ITestLifeCycleReceiver listener : mListeners) {
             if (mNullMethod != null && mNullMethod.equals(testId)) {
-                listener.testRunFailed(
-                        String.format(
-                                ERROR_MESSAGE_FORMAT, mNullMethod.getTestName(), mNullMethod));
+                listener.testRunFailed(String.format(ERROR_MESSAGE_FORMAT, mNullMethod));
                 continue;
             }
             try {

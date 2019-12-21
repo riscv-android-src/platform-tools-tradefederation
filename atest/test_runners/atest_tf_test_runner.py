@@ -21,7 +21,6 @@ import json
 import logging
 import os
 import re
-import select
 import socket
 import subprocess
 
@@ -38,8 +37,6 @@ POLL_FREQ_SECS = 10
 SOCKET_HOST = '127.0.0.1'
 SOCKET_QUEUE_MAX = 1
 SOCKET_BUFFER = 4096
-SELECT_TIMEOUT = 5
-
 # Socket Events of form FIRST_EVENT {JSON_DATA}\nSECOND_EVENT {JSON_DATA}
 # EVENT_RE has groups for the name and the data. "." does not match \n.
 EVENT_RE = re.compile(r'^(?P<event_name>[A-Z_]+) (?P<json_data>{.*})(?:\n|$)')
@@ -48,9 +45,6 @@ EXEC_DEPENDENCIES = ('adb', 'aapt')
 
 TRADEFED_EXIT_MSG = ('TradeFed subprocess exited early with exit code=%s.')
 
-LOG_FOLDER_NAME = 'log'
-
-_INTEGRATION_FINDERS = frozenset(['', 'INTEGRATION', 'INTEGRATION_FILE_PATH'])
 
 class TradeFedExitError(Exception):
     """Raised when TradeFed exists before test run has finished."""
@@ -60,24 +54,18 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
     """TradeFed Test Runner class."""
     NAME = 'AtestTradefedTestRunner'
     EXECUTABLE = 'atest_tradefed.sh'
-    _TF_TEMPLATE = 'template/atest_local_min'
-    _LOG_ARGS = '--logcat-on-failure --atest-log-file-path={log_path}'
+    _TF_TEMPLATE = 'template/local_min'
     _RUN_CMD = ('{exe} {template} --template:map '
-                'test=atest {log_args} {args}')
+                'test=atest {args}')
     _BUILD_REQ = {'tradefed-core'}
 
     def __init__(self, results_dir, module_info=None, **kwargs):
         """Init stuff for base class."""
         super(AtestTradefedTestRunner, self).__init__(results_dir, **kwargs)
         self.module_info = module_info
-        self.log_path = os.path.join(results_dir, LOG_FOLDER_NAME)
-        if not os.path.exists(self.log_path):
-            os.makedirs(self.log_path)
-        log_args = {'log_path': self.log_path}
         self.run_cmd_dict = {'exe': self.EXECUTABLE,
                              'template': self._TF_TEMPLATE,
-                             'args': '',
-                             'log_args': self._LOG_ARGS.format(**log_args)}
+                             'args': ''}
         self.is_verbose = logging.getLogger().isEnabledFor(logging.DEBUG)
         self.root_dir = os.environ.get(constants.ANDROID_BUILD_TOP)
 
@@ -102,7 +90,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             os.environ['APE_API_KEY'] = ape_api_key
         else:
             logging.debug('APE_API_KEY not set, some GTS tests may fail'
-                          ' without authentication.')
+                          'without authentication.')
 
     def run_tests(self, test_infos, extra_args, reporter):
         """Run the list of test_infos. See base class for more.
@@ -115,7 +103,6 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         Returns:
             0 if tests succeed, non-zero otherwise.
         """
-        reporter.log_path = self.log_path
         # Set google service key if it's available or found before running tests.
         self._try_set_gts_authentication_key()
         if os.getenv(test_runner_base.OLD_OUTPUT_ENV_VAR):
@@ -161,88 +148,26 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             run_cmds = self.generate_run_commands(test_infos, extra_args,
                                                   server.getsockname()[1])
             subproc = self.run(run_cmds[0], output_to_stdout=self.is_verbose)
+            event_handler = EventHandler(reporter, self.NAME)
             self.handle_subprocess(subproc, partial(self._start_monitor,
                                                     server,
                                                     subproc,
-                                                    reporter))
+                                                    event_handler))
             server.close()
             ret_code |= self.wait_for_subprocess(subproc)
         return ret_code
 
-    def _start_monitor(self, server, tf_subproc, reporter):
+    def _start_monitor(self, server, tf_subproc, event_handler):
         """Polling and process event.
 
         Args:
             server: Socket server object.
             tf_subproc: The tradefed subprocess to poll.
-            reporter: Result_Reporter object.
-        """
-        inputs = [server]
-        event_handlers = {}
-        data_map = {}
-        while inputs:
-            try:
-                readable, _, _ = select.select(inputs, [], [], SELECT_TIMEOUT)
-                for socket_object in readable:
-                    if socket_object is server:
-                        conn, addr = socket_object.accept()
-                        logging.debug('Accepted connection from %s', addr)
-                        conn.setblocking(False)
-                        inputs.append(conn)
-                        data_map[conn] = ''
-                    else:
-                        event_handler = event_handlers.setdefault(
-                            socket_object, EventHandler(reporter, self.NAME))
-                        recv_data = self._process_connection(data_map,
-                                                             socket_object,
-                                                             event_handler)
-                        if not recv_data:
-                            inputs.remove(socket_object)
-                            socket_object.close()
-            finally:
-                if tf_subproc.poll() is not None:
-                    while inputs:
-                        inputs.pop(0).close()
-                    if not data_map:
-                        raise TradeFedExitError(TRADEFED_EXIT_MSG
-                                                % tf_subproc.returncode)
-
-    def _process_connection(self, data_map, conn, event_handler):
-        """Process a socket connection betwen TF and ATest.
-
-        Expect data of form EVENT_NAME {JSON_DATA}.  Multiple events will be
-        \n deliminated.  Need to buffer data in case data exceeds socket
-        buffer.
-        E.q.
-            TEST_RUN_STARTED {runName":"hello_world_test","runAttempt":0}\n
-            TEST_STARTED {"start_time":2172917, "testName":"PrintHelloWorld"}\n
-        Args:
-            data_map: The data map of all connections.
-            conn: Socket connection.
             event_handler: EventHandler object.
-
-        Returns:
-            True if conn.recv() has data , False otherwise.
         """
-        # Set connection into blocking mode.
-        conn.settimeout(None)
-        data = conn.recv(SOCKET_BUFFER)
-        logging.debug('received: %s', data)
-        if data:
-            data_map[conn] += data
-            while True:
-                match = EVENT_RE.match(data_map[conn])
-                if not match:
-                    break
-                try:
-                    event_data = json.loads(match.group('json_data'))
-                except ValueError:
-                    logging.debug('Json incomplete, wait for more data')
-                    break
-                event_name = match.group('event_name')
-                event_handler.process_event(event_name, event_data)
-                data_map[conn] = data_map[conn][match.end():]
-        return bool(data)
+        conn, addr = self._exec_with_tf_polling(server.accept, tf_subproc)
+        logging.debug('Accepted connection from %s', addr)
+        self._process_connection(conn, event_handler)
 
     def _start_socket_server(self):
         """Start a TCP server."""
@@ -255,6 +180,60 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         logging.debug('Socket server started on port %s',
                       server.getsockname()[1])
         return server
+
+    def _exec_with_tf_polling(self, socket_func, tf_subproc):
+        """Check for TF subproc exit during blocking socket func.
+
+        Args:
+            socket_func: A blocking socket function, e.g. recv(), accept().
+            tf_subproc: The tradefed subprocess to poll.
+        """
+        while True:
+            try:
+                return socket_func()
+            except socket.timeout:
+                logging.debug('Polling TF subproc for early exit.')
+                if tf_subproc.poll() is not None:
+                    logging.debug('TF subproc exited early')
+                    raise TradeFedExitError(TRADEFED_EXIT_MSG
+                                            % tf_subproc.returncode)
+
+    def _process_connection(self, conn, event_handler):
+        """Process a socket connection from TradeFed.
+
+        Expect data of form EVENT_NAME {JSON_DATA}.  Multiple events will be
+        \n deliminated.  Need to buffer data in case data exceeds socket
+        buffer.
+
+        Args:
+            conn: A socket connection.
+            event_handler: EventHandler object.
+        """
+        conn.settimeout(None)
+        buf = ''
+        while True:
+            logging.debug('Waiting to receive data')
+            data = conn.recv(SOCKET_BUFFER)
+            logging.debug('received: %s', data)
+            if data:
+                buf += data
+                while True:
+                    match = EVENT_RE.match(buf)
+                    if match:
+                        try:
+                            event_data = json.loads(match.group('json_data'))
+                        except ValueError:
+                            # Json incomplete, wait for more data.
+                            break
+                        event_name = match.group('event_name')
+                        buf = buf[match.end():]
+                        event_handler.process_event(event_name, event_data)
+                        continue
+                    break
+            else:
+                # client sent empty string, so no more data.
+                conn.close()
+                break
 
     def host_env_check(self):
         """Check that host env has everything we need.
@@ -301,7 +280,6 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 build_req.add(executable)
         return build_req
 
-    # pylint: disable=too-many-branches
     @staticmethod
     def _parse_extra_args(extra_args):
         """Convert the extra args into something tf can understand.
@@ -347,12 +325,6 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 args_to_append.append('--enable-parameterized-modules')
                 args_to_append.append('--module-parameter')
                 args_to_append.append('instant_app')
-                continue
-            if constants.USER_TYPE == arg:
-                args_to_append.append('--enable-parameterized-modules')
-                args_to_append.append('--enable-optional-parameterization')
-                args_to_append.append('--module-parameter')
-                args_to_append.append(extra_args[arg])
                 continue
             args_not_supported.append(arg)
         return args_to_append, args_not_supported
@@ -449,7 +421,6 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             no_filters = False
             filters = set()
             test_runner = None
-            test_finder = None
             build_targets = set()
             data = {}
             module_args = []
@@ -458,7 +429,6 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 # Extend data with constants.TI_MODULE_ARG instead of overwriting.
                 module_args.extend(test_info_i.data.get(constants.TI_MODULE_ARG, []))
                 test_runner = test_info_i.test_runner
-                test_finder = test_info_i.test_finder
                 build_targets |= test_info_i.build_targets
                 test_filters = test_info_i.data.get(constants.TI_FILTER)
                 if not test_filters or no_filters:
@@ -473,7 +443,6 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             results.add(
                 test_info.TestInfo(test_name=module,
                                    test_runner=test_runner,
-                                   test_finder=test_finder,
                                    build_targets=build_targets,
                                    data=data))
         return results
@@ -531,16 +500,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         if test_infos[0].from_test_mapping:
             args.extend(constants.TEST_MAPPING_RESULT_SERVER_ARGS)
         test_infos = self._flatten_test_infos(test_infos)
-        # In order to do dry-run verification, sort it to make each run has the
-        # same result
-        test_infos = list(test_infos)
-        test_infos.sort()
-        has_integration_test = False
+
         for info in test_infos:
-            # Integration test exists in TF's jar, so it must have the option
-            # if it's integration finder.
-            if info.test_finder in _INTEGRATION_FINDERS:
-                has_integration_test = True
             args.extend([constants.TF_INCLUDE_FILTER, info.test_name])
             filters = set()
             for test_filter in info.data.get(constants.TI_FILTER, []):
@@ -566,8 +527,4 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                             test_name=info.test_name, option_name=option[0],
                             option_value=option[1]))
                     args.extend([constants.TF_MODULE_ARG, module_arg])
-        # TODO (b/141090547) Pass the config path to TF to load configs.
-        # Compile option in TF if finder is not INTEGRATION or not set.
-        if not has_integration_test:
-            args.append(constants.TF_SKIP_LOADING_CONFIG_JAR)
         return args

@@ -15,10 +15,9 @@
  */
 package com.android.tradefed.result;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
-import com.android.tradefed.retry.MergeStrategy;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -52,7 +51,6 @@ public class TestResultTest {
                 TestResult.merge(testResults, MergeStrategy.ONE_TESTCASE_PASS_IS_PASS);
         // Merge Strategy leave it a PASSED
         assertEquals(TestStatus.PASSED, finalRes.getStatus());
-        assertTrue(finalRes.getProtoMetrics().containsKey(TestResult.IS_FLAKY));
         assertEquals(2, finalRes.getStartTime());
         assertEquals(7, finalRes.getEndTime());
         assertEquals("failed", finalRes.getStackTrace());

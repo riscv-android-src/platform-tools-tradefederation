@@ -16,14 +16,10 @@
 package com.android.tradefed.device.metric;
 
 import com.android.annotations.VisibleForTesting;
-import com.android.tradefed.device.CollectingByteOutputReceiver;
-import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ILogcatReceiver;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.LogcatReceiver;
-import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
@@ -38,24 +34,16 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
 
     private static final int MAX_LOGAT_SIZE_BYTES = 4 * 1024 * 1024;
     /** Always include a bit of prior data to capture what happened before */
-    private static final int OFFSET_CORRECTION = 10000;
+    private static final int OFFSET_CORRECTION = 20000;
 
     private static final String NAME_FORMAT = "%s-%s-logcat-on-failure";
-
-    private static final String LOGCAT_COLLECT_CMD = "logcat -T 150";
-    // -t implies -d (dump) so it's a one time collection
-    private static final String LOGCAT_COLLECT_CMD_LEGACY = "logcat -t 5000";
-    private static final int API_LIMIT = 20;
 
     private Map<ITestDevice, ILogcatReceiver> mLogcatReceivers = new HashMap<>();
     private Map<ITestDevice, Integer> mOffset = new HashMap<>();
 
     @Override
     public void onTestRunStart(DeviceMetricData runData) {
-        for (ITestDevice device : getRealDevices()) {
-            if (getApiLevelNoThrow(device) < API_LIMIT) {
-                continue;
-            }
+        for (ITestDevice device : getDevices()) {
             // In case of multiple runs for the same test runner, re-init the receiver.
             initReceiver(device);
             // Get the current offset of the buffer to be able to query later
@@ -74,9 +62,17 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
 
     @Override
     public void onTestFail(DeviceMetricData testData, TestDescription test) {
-        // Delay slightly for the error to get in the logcat
-        getRunUtil().sleep(100);
-        collectAndLog(test);
+        for (ITestDevice device : getDevices()) {
+            // Delay slightly for the error to get in the logcat
+            getRunUtil().sleep(100);
+            try (InputStreamSource logcatSource =
+                    mLogcatReceivers
+                            .get(device)
+                            .getLogcatData(MAX_LOGAT_SIZE_BYTES, mOffset.get(device))) {
+                String name = String.format(NAME_FORMAT, test.toString(), device.getSerialNumber());
+                super.testLog(name, LogDataType.LOGCAT, logcatSource);
+            }
+        }
     }
 
     @Override
@@ -86,39 +82,12 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
 
     @VisibleForTesting
     ILogcatReceiver createLogcatReceiver(ITestDevice device) {
-        // Use logcat -T 'count' to only print a few line before we start and not the full buffer
-        return new LogcatReceiver(
-                device, LOGCAT_COLLECT_CMD, device.getOptions().getMaxLogcatDataSize(), 0);
+        return new LogcatReceiver(device, "logcat", device.getOptions().getMaxLogcatDataSize(), 0);
     }
 
     @VisibleForTesting
     IRunUtil getRunUtil() {
         return RunUtil.getDefault();
-    }
-
-    private void collectAndLog(TestDescription test) {
-        for (ITestDevice device : getRealDevices()) {
-            ILogcatReceiver receiver = mLogcatReceivers.get(device);
-            // Receiver is only initialized above API 19, if not supported, we use a legacy command
-            if (receiver == null) {
-                CollectingByteOutputReceiver outputReceiver = new CollectingByteOutputReceiver();
-                try {
-                    device.executeShellCommand(LOGCAT_COLLECT_CMD_LEGACY, outputReceiver);
-                    saveLogcatSource(
-                            test,
-                            new ByteArrayInputStreamSource(outputReceiver.getOutput()),
-                            device.getSerialNumber());
-                } catch (DeviceNotAvailableException e) {
-                    CLog.e(e);
-                }
-                continue;
-            }
-            // If supported get the logcat buffer
-            saveLogcatSource(
-                    test,
-                    receiver.getLogcatData(MAX_LOGAT_SIZE_BYTES, mOffset.get(device)),
-                    device.getSerialNumber());
-        }
     }
 
     private void initReceiver(ITestDevice device) {
@@ -136,20 +105,5 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
         }
         mLogcatReceivers.clear();
         mOffset.clear();
-    }
-
-    private int getApiLevelNoThrow(ITestDevice device) {
-        try {
-            return device.getApiLevel();
-        } catch (DeviceNotAvailableException e) {
-            return 1;
-        }
-    }
-
-    private void saveLogcatSource(TestDescription test, InputStreamSource source, String serial) {
-        try (InputStreamSource logcatSource = source) {
-            String name = String.format(NAME_FORMAT, test.toString(), serial);
-            super.testLog(name, LogDataType.LOGCAT, logcatSource);
-        }
     }
 }

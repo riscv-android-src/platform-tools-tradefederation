@@ -38,5 +38,4 @@ public class SuiteResultHolder {
     public long failedTests;
     public long startTime;
     public long endTime;
-    public String hostName;
 }

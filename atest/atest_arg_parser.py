@@ -66,8 +66,6 @@ class AtestArgParser(argparse.ArgumentParser):
                                'debugger prior to execution.')
         self.add_argument('-v', '--verbose', action='store_true',
                           help='Display DEBUG level logging.')
-        self.add_argument('-V', '--version', action='store_true',
-                          help='Display version string.')
         self.add_argument('-a', '--all-abi', action='store_true',
                           help='Set to run tests for all abi.')
         self.add_argument('--generate-baseline', nargs='?', type=int, const=5, default=0,
@@ -85,8 +83,6 @@ class AtestArgParser(argparse.ArgumentParser):
                                'if the module supports it. Note: running a test '
                                'that does not support instant with --instant '
                                'will result in nothing running.')
-        self.add_argument('--user-type', help='Run test with specific user type.'
-                                              'E.g. --user-type secondary_user')
         # Options related to Test Mapping
         self.add_argument('-p', '--test-mapping', action='store_true',
                           help='Run tests in TEST_MAPPING files.')
@@ -97,17 +93,6 @@ class AtestArgParser(argparse.ArgumentParser):
                           help='Run the test completely on the host without '
                                'a device. (Note: running a host test that '
                                'requires a device with --host will fail.)')
-        # Option for updating dry-run command mapping result.
-        self.add_argument('-u', '--update-cmd-mapping', action='store_true',
-                          help='Update the test command of input tests. '
-                               'Warning: result will be saved under '
-                               'tools/tradefederation/core/atest/test_data.')
-        # Option for verifying dry-run command mapping result.
-        self.add_argument('-y', '--verify-cmd-mapping', action='store_true',
-                          help='Verify the test command of input tests.')
-        # Option for clearing cache of input test reference .
-        self.add_argument('-c', '--clear-cache', action='store_true',
-                          help='Wipe out the test_infos cache of the test.')
         # This arg actually doesn't consume anything, it's primarily used for the
         # help description and creating custom_args in the NameSpace object.
         self.add_argument('--', dest='custom_args', nargs='*',
