@@ -18,9 +18,9 @@ package com.android.tradefed.command;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
+import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionUpdateRule;
-import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.UniqueMultiMap;
 
@@ -122,6 +122,14 @@ public class CommandOptions implements ICommandOptions {
     private boolean mTokenSharding = false;
 
     @Option(
+        name = "skip-pre-device-setup",
+        description =
+                "allow TestInvocation to skip calling device.preInvocationSetup. This is for "
+                        + "delaying device setup when the test runs with VersionedTfLauncher."
+    )
+    private boolean mSkipPreDeviceSetup = false;
+
+    @Option(
         name = "dynamic-sharding",
         description =
                 "Allow to dynamically move IRemoteTest from one shard to another. Only for local "
@@ -167,20 +175,6 @@ public class CommandOptions implements ICommandOptions {
                 "For remote sharded invocation, whether or not to attempt the setup in parallel."
     )
     private boolean mUseParallelRemoteSetup = false;
-
-    @Option(
-        name = "report-module-progression",
-        description = "For remote invocation, whether or not to report progress at module level."
-    )
-    private boolean mReportModuleProgression = false;
-
-    @Option(
-        name = "extra-postsubmit-remote-instance",
-        description =
-                "Option that allows to run more instances in the remote VM in postsubmit. "
-                        + "Used for experimentation."
-    )
-    private int mExtraRemoteInstancePostsubmit = 0;
 
     @Option(
         name = "auto-collect",
@@ -454,6 +448,13 @@ public class CommandOptions implements ICommandOptions {
 
     /** {@inheritDoc} */
     @Override
+
+    public boolean shouldSkipPreDeviceSetup() {
+        return mSkipPreDeviceSetup;
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public boolean shouldUseDynamicSharding() {
         return mDynamicSharding;
     }
@@ -534,17 +535,5 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean shouldUseParallelRemoteSetup() {
         return mUseParallelRemoteSetup;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public boolean shouldReportModuleProgression() {
-        return mReportModuleProgression;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public int getExtraRemotePostsubmitInstance() {
-        return mExtraRemoteInstancePostsubmit;
     }
 }

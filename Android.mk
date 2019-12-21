@@ -29,21 +29,31 @@ $(HOST_OUT_JAVA_LIBRARIES)/tradefed.jar : $(deps)
 $(HOST_OUT_JAVA_LIBRARIES)/tradefed.jar : $(HOST_OUT)/tradefed/loganalysis.jar
 
 #######################################################
+include $(CLEAR_VARS)
 
 # Create a simple alias to build all the TF-related targets
 # Note that this is incompatible with `make dist`.  If you want to make
 # the distribution, you must run `tapas` with the individual target names.
 .PHONY: tradefed-core
-tradefed-core: tradefed atest_tradefed.sh tradefed-contrib tf-contrib-tests script_help.sh tradefed.sh
+tradefed-core: tradefed atest_tradefed tradefed-contrib tf-contrib-tests script_help
 
 .PHONY: tradefed-all
-tradefed-all: tradefed-core tradefed-tests tradefed_win loganalysis-tests
+tradefed-all: tradefed-core tradefed-tests tradefed_win verify loganalysis-tests
+
+# ====================================
+include $(CLEAR_VARS)
+# copy tradefed.sh script to host dir
+
+LOCAL_MODULE_TAGS := optional
+
+LOCAL_PREBUILT_EXECUTABLES := tradefed.sh tradefed_win.bat script_help.sh verify.sh run_tf_cmd.sh atest_tradefed.sh
+include $(BUILD_HOST_PREBUILT)
 
 ########################################################
 # Zip up the built files and dist it as tradefed.zip
 
 tradefed_dist_host_jars := tradefed tradefed-tests loganalysis loganalysis-tests tf-remote-client tradefed-contrib tf-contrib-tests
-tradefed_dist_host_exes := tradefed.sh tradefed_win.bat script_help.sh run_tf_cmd.sh atest_tradefed.sh
+tradefed_dist_host_exes := tradefed.sh tradefed_win.bat script_help.sh verify.sh run_tf_cmd.sh atest_tradefed.sh
 tradefed_dist_test_apks := TradeFedUiTestApp TradeFedTestApp DeviceSetupUtil
 
 # Generate a src:dest list of copies to perform.

@@ -16,8 +16,6 @@
 Various globals used by atest.
 """
 
-import os
-import re
 
 MODE = 'DEFAULT'
 
@@ -46,7 +44,6 @@ CUSTOM_ARGS = 'CUSTOM_ARGS'
 DRY_RUN = 'DRY_RUN'
 ANDROID_SERIAL = 'ANDROID_SERIAL'
 INSTANT = 'INSTANT'
-USER_TYPE = 'USER_TYPE'
 
 # Application exit codes.
 EXIT_CODE_SUCCESS = 0
@@ -55,14 +52,6 @@ EXIT_CODE_BUILD_FAILURE = 2
 EXIT_CODE_ERROR = 3
 EXIT_CODE_TEST_NOT_FOUND = 4
 EXIT_CODE_TEST_FAILURE = 5
-EXIT_CODE_VERIFY_FAILURE = 6
-
-# Codes of specific events. These are exceptions that don't stop anything
-# but sending metrics.
-ACCESS_CACHE_FAILURE = 101
-ACCESS_HISTORY_FAILURE = 102
-IMPORT_FAILURE = 103
-MLOCATEDB_LOCKED = 104
 
 # Test finder constants.
 MODULE_CONFIG = 'AndroidTest.xml'
@@ -112,7 +101,6 @@ TF_ATEST_INCLUDE_FILTER_VALUE_FMT = '{test_name}:{test_filter}'
 TF_MODULE_ARG = '--module-arg'
 TF_MODULE_ARG_VALUE_FMT = '{test_name}:{option_name}:{option_value}'
 TF_SUITE_FILTER_ARG_VALUE_FMT = '"{test_name} {option_value}"'
-TF_SKIP_LOADING_CONFIG_JAR = '--skip-loading-config-jar'
 
 # Suite Plans
 SUITE_PLANS = frozenset(['cts'])
@@ -146,7 +134,6 @@ METRICS_URL = 'http://asuite-218222.appspot.com/atest/metrics'
 EXTERNAL = 'EXTERNAL_RUN'
 INTERNAL = 'INTERNAL_RUN'
 INTERNAL_EMAIL = '@google.com'
-INTERNAL_HOSTNAME = '.google.com'
 CONTENT_LICENSES_URL = 'https://source.android.com/setup/start/licenses'
 CONTRIBUTOR_AGREEMENT_URL = {
     'INTERNAL': 'https://cla.developers.google.com/',
@@ -155,16 +142,6 @@ CONTRIBUTOR_AGREEMENT_URL = {
 PRIVACY_POLICY_URL = 'https://policies.google.com/privacy'
 TERMS_SERVICE_URL = 'https://policies.google.com/terms'
 TOOL_NAME = 'atest'
-TF_PREPARATION = 'tf-preparation'
-
-# Detect type for local_detect_event.
-# Next expansion : DETECT_TYPE_XXX = 1
-DETECT_TYPE_BUG_DETECTED = 0
-# Considering a trade-off between speed and size, we set UPPER_LIMIT to 100000
-# to make maximum file space 10M(100000(records)*100(byte/record)) at most.
-# Therefore, to update history file will spend 1 sec at most in each run.
-UPPER_LIMIT = 100000
-TRIM_TO_SIZE = 50000
 
 # VTS plans
 VTS_STAGING_PLAN = 'vts-staging-default'
@@ -177,41 +154,3 @@ VTS_TF_MODULE = 'vts-tradefed'
 
 # ATest TF
 ATEST_TF_MODULE = 'atest-tradefed'
-
-# Build environment variable for each build on ATest
-# With SOONG_COLLECT_JAVA_DEPS enabled, out/soong/module_bp_java_deps.json will
-# be generated when make.
-ATEST_BUILD_ENV = {'SOONG_COLLECT_JAVA_DEPS':'true'}
-
-# For generating dependencies in module-info.json, appending deps-license in the
-# make command is a must. Also the environment variables PROJ_PATH and DEP_PATH
-# are necessary.
-DEPS_LICENSE = 'deps-license'
-DEPS_LICENSE_ENV = {'PROJ_PATH': '.', 'DEP_PATH': '.'}
-
-# Atest index path and relative dirs/caches.
-INDEX_DIR = os.path.join(os.getenv(ANDROID_HOST_OUT, ''), 'indexes')
-LOCATE_CACHE = os.path.join(INDEX_DIR, 'mlocate.db')
-INT_INDEX = os.path.join(INDEX_DIR, 'integration.idx')
-CLASS_INDEX = os.path.join(INDEX_DIR, 'classes.idx')
-CC_CLASS_INDEX = os.path.join(INDEX_DIR, 'cc_classes.idx')
-PACKAGE_INDEX = os.path.join(INDEX_DIR, 'packages.idx')
-QCLASS_INDEX = os.path.join(INDEX_DIR, 'fqcn.idx')
-MODULE_INDEX = os.path.join(INDEX_DIR, 'modules.idx')
-VERSION_FILE = os.path.join(os.path.dirname(__file__), 'VERSION')
-
-# Regeular Expressions
-CC_EXT_RE = re.compile(r'.*\.(cc|cpp)$')
-JAVA_EXT_RE = re.compile(r'.*\.(java|kt)$')
-# e.g. /path/to/ccfile.cc: TEST_F(test_name, method_name){
-CC_OUTPUT_RE = re.compile(r'(?P<file_path>/.*):\s*TEST(_F|_P)?[ ]*\('
-                          r'(?P<test_name>\w+)\s*,\s*(?P<method_name>\w+)\)'
-                          r'\s*\{')
-CC_GREP_RE = r'^[ ]*TEST(_P|_F)?[ ]*\([[:alnum:]].*,'
-# e.g. /path/to/Javafile.java:package com.android.settings.accessibility
-# grab the path, Javafile(class) and com.android.settings.accessibility(package)
-CLASS_OUTPUT_RE = re.compile(r'(?P<java_path>.*/(?P<class>[A-Z]\w+)\.\w+)[:].*')
-QCLASS_OUTPUT_RE = re.compile(r'(?P<java_path>.*/(?P<class>[A-Z]\w+)\.\w+)'
-                              r'[:]\s*package\s+(?P<package>[^(;|\s)]+)\s*')
-PACKAGE_OUTPUT_RE = re.compile(r'(?P<java_dir>/.*/).*[.](java|kt)[:]\s*package\s+'
-                               r'(?P<package>[^(;|\s)]+)\s*')

@@ -54,7 +54,6 @@ import org.junit.Rule;
 import org.junit.runner.RunWith;
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.JUnit4;
-import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
 import org.mockito.Mockito;
@@ -273,17 +272,6 @@ public class HostTestTest extends TestCase {
         }
     }
 
-    /** Test Class completely ignored */
-    @Ignore
-    @RunWith(JUnit4.class)
-    public static class Junit4IgnoredClass {
-        @org.junit.Test
-        public void testPass() {}
-
-        @org.junit.Test
-        public void testPass2() {}
-    }
-
     /**
      * Test class that run a test throwing an {@link AssumptionViolatedException} which should be
      * handled as the testAssumptionFailure.
@@ -349,13 +337,6 @@ public class HostTestTest extends TestCase {
     })
     public class Junit4SuiteClass {
     }
-
-    @RunWith(Suite.class)
-    @SuiteClasses({
-        Junit4TestClass.class,
-        Junit4IgnoredClass.class,
-    })
-    public class Junit4SuiteClassWithIgnored {}
 
     /**
      * JUnit4 runner that implements {@link ISetOptionReceiver} but does not actually have the
@@ -502,43 +483,6 @@ public class HostTestTest extends TestCase {
         }
     }
 
-    public static class OptionEscapeColonTestCase extends TestCase {
-        @Option(name = "gcs-bucket-file")
-        private File mGcsBucketFile = null;
-
-        @Option(name = "hello")
-        private String mHelloWorld = null;
-
-        @Option(name = "foobar")
-        private String mFoobar = null;
-
-        @Rule public TestMetrics metrics = new TestMetrics();
-
-        public OptionEscapeColonTestCase() {}
-
-        public OptionEscapeColonTestCase(String name) {
-            super(name);
-        }
-
-        public void testGcsBucket() {
-            assertTrue(
-                    "Expect a GCS bucket file: "
-                            + (mGcsBucketFile != null ? mGcsBucketFile.toString() : "null"),
-                    FAKE_REMOTE_FILE_PATH.equals(mGcsBucketFile));
-            metrics.addTestMetric("gcs-bucket-file", mGcsBucketFile.toURI().toString());
-        }
-
-        public void testEscapeStrings() {
-            assertTrue(mHelloWorld != null && mFoobar != null);
-            assertTrue(
-                    "Expects 'hello' value to be 'hello:world'", mHelloWorld.equals("hello:world"));
-            assertTrue("Expects 'foobar' value to be 'baz:qux'", mFoobar.equals("baz:qux"));
-
-            metrics.addTestMetric("hello", mHelloWorld);
-            metrics.addTestMetric("foobar", mFoobar);
-        }
-    }
-
     public static class TestableHostTest extends HostTest {
 
         private IRemoteFileResolver mRemoteFileResolver;
@@ -560,7 +504,7 @@ public class HostTestTest extends TestCase {
                             new DynamicRemoteFileResolver() {
                                 @Override
                                 protected IRemoteFileResolver getResolver(String protocol) {
-                                    if (GcsRemoteFileResolver.PROTOCOL.equals(protocol)) {
+                                    if (protocol.equals(GcsRemoteFileResolver.PROTOCOL)) {
                                         return mRemoteFileResolver;
                                     }
                                     return null;
@@ -728,8 +672,7 @@ public class HostTestTest extends TestCase {
     public void testRun_junit3TestSuite_dynamicOptions() throws Exception {
         doReturn(new File("/downloaded/somewhere"))
                 .when(mMockResolver)
-                .resolveRemoteFiles(
-                        Mockito.eq(FAKE_REMOTE_FILE_PATH), Mockito.any(), Mockito.any());
+                .resolveRemoteFiles(Mockito.eq(FAKE_REMOTE_FILE_PATH), Mockito.any());
         mHostTest.setClassName(DynamicTestCase.class.getName());
         TestDescription test1 = new TestDescription(DynamicTestCase.class.getName(), "testPass");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
@@ -1225,43 +1168,6 @@ public class HostTestTest extends TestCase {
 
     /**
      * Test for {@link HostTest#run(ITestInvocationListener)}, for test with Junit4 style and
-     * handling of @Ignored on the class.
-     */
-    public void testRun_junit4style_class_ignored() throws Exception {
-        mHostTest.setClassName(Junit4IgnoredClass.class.getName());
-        TestDescription test1 = new TestDescription(Junit4IgnoredClass.class.getName(), "No Tests");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testIgnored(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        assertEquals(1, mHostTest.countTestCases());
-        mHostTest.run(mListener);
-        EasyMock.verify(mListener);
-    }
-
-    /**
-     * Test for {@link HostTest#run(ITestInvocationListener)}, for test with Junit4 style and
-     * handling of @Ignored on the class and collect-tests-only.
-     */
-    public void testRun_junit4style_class_ignored_collect() throws Exception {
-        mHostTest.setCollectTestsOnly(true);
-        mHostTest.setClassName(Junit4IgnoredClass.class.getName());
-        TestDescription test1 = new TestDescription(Junit4IgnoredClass.class.getName(), "No Tests");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testIgnored(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        assertEquals(1, mHostTest.countTestCases());
-        mHostTest.run(mListener);
-        EasyMock.verify(mListener);
-    }
-
-    /**
-     * Test for {@link HostTest#run(ITestInvocationListener)}, for test with Junit4 style and
      * handling of Assume.
      */
     public void testRun_junit4style_assumeFailure() throws Exception {
@@ -1423,27 +1329,6 @@ public class HostTestTest extends TestCase {
         EasyMock.expectLastCall().times(expectedRun);
         EasyMock.replay(mListener);
         hostTest.run(mListener);
-        EasyMock.verify(mListener);
-    }
-
-    /** Test a Junit4 suite with Ignored class in it. */
-    public void testRun_junit_suite_mix_ignored() throws Exception {
-        mHostTest.setClassName(Junit4SuiteClassWithIgnored.class.getName());
-        TestDescription test1 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
-        TestDescription test2 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
-        TestDescription test3 = new TestDescription(Junit4IgnoredClass.class.getName(), "No Tests");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(3));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test2));
-        mListener.testEnded(EasyMock.eq(test2), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test3));
-        mListener.testIgnored(test3);
-        mListener.testEnded(EasyMock.eq(test3), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        assertEquals(3, mHostTest.countTestCases());
-        mHostTest.run(mListener);
         EasyMock.verify(mListener);
     }
 
@@ -2245,40 +2130,6 @@ public class HostTestTest extends TestCase {
         } catch (IllegalArgumentException expected) {
             // expected
         }
-        EasyMock.verify(mListener);
-    }
-
-    /**
-     * Test success case for {@link HostTest#run(OptionEscapeColonTestCase)}, where test to run is a
-     * {@link TestSuite} and has set-options with the char ':' escaped.
-     */
-    public void testRun_junit3TestSuite_optionEscapeColon() throws Exception {
-        mHostTest.setClassName(OptionEscapeColonTestCase.class.getName());
-        OptionSetter setter = new OptionSetter(mHostTest);
-        setter.setOptionValue(
-                "set-option",
-                OptionEscapeColonTestCase.class.getName()
-                        + ":gcs-bucket-file:gs\\://bucket/path/file");
-        setter.setOptionValue("set-option", "hello:hello\\:world");
-        setter.setOptionValue(
-                "set-option", OptionEscapeColonTestCase.class.getName() + ":foobar:baz\\:qux");
-        TestDescription testGcsBucket =
-                new TestDescription(OptionEscapeColonTestCase.class.getName(), "testGcsBucket");
-        TestDescription testEscapeStrings =
-                new TestDescription(OptionEscapeColonTestCase.class.getName(), "testEscapeStrings");
-
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(testGcsBucket));
-        mListener.testEnded(
-                EasyMock.eq(testGcsBucket), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(testEscapeStrings));
-        mListener.testEnded(
-                EasyMock.eq(testEscapeStrings), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-
-        EasyMock.replay(mListener);
-        assertEquals(2, mHostTest.countTestCases());
-        mHostTest.run(mListener);
         EasyMock.verify(mListener);
     }
 }

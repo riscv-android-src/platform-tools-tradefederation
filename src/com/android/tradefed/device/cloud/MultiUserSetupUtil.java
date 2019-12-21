@@ -77,6 +77,39 @@ public class MultiUserSetupUtil {
         return null;
     }
 
+    /** Setup the tuntap interface required to start the Android devices if they are missing. */
+    public static CommandResult setupNetworkInterface(
+            int userId,
+            GceAvdInfo remoteInstance,
+            TestDeviceOptions options,
+            IRunUtil runUtil,
+            long timeoutMs) {
+        if (userId < 9) {
+            // TODO: use 'tuntap show' to check if interface exists already or not.
+            return null;
+        }
+        String useridString = getUserNumber(userId);
+        String mtap = String.format("cvd-mtap-%s", useridString);
+        String wtap = String.format("cvd-wtap-%s", useridString);
+        String addNetworkInterface = "sudo ip tuntap add dev %s mode tap group cvdnetwork";
+        String mtapCommand = String.format(addNetworkInterface, mtap);
+        CommandResult addNetworkInterfaceRes =
+                RemoteSshUtil.remoteSshCommandExec(
+                        remoteInstance, options, runUtil, timeoutMs, mtapCommand.split(" "));
+        if (!CommandStatus.SUCCESS.equals(addNetworkInterfaceRes.getStatus())) {
+            return addNetworkInterfaceRes;
+        }
+
+        String wtapCommand = String.format(addNetworkInterface, wtap);
+        addNetworkInterfaceRes =
+                RemoteSshUtil.remoteSshCommandExec(
+                        remoteInstance, options, runUtil, timeoutMs, wtapCommand.split(" "));
+        if (!CommandStatus.SUCCESS.equals(addNetworkInterfaceRes.getStatus())) {
+            return addNetworkInterfaceRes;
+        }
+        return null;
+    }
+
     /** Setup a new remote user on an existing Cuttlefish VM. */
     public static CommandResult prepareRemoteHomeDir(
             String mainRootUser,
@@ -85,7 +118,7 @@ public class MultiUserSetupUtil {
             TestDeviceOptions options,
             IRunUtil runUtil,
             long timeoutMs) {
-        StringBuilder copyCommandBuilder = new StringBuilder("sudo cp --reflink=auto ");
+        StringBuilder copyCommandBuilder = new StringBuilder("sudo cp ");
         for (String file : FILE_TO_BE_COPIED) {
             copyCommandBuilder.append(" /home/" + mainRootUser + "/" + file);
         }

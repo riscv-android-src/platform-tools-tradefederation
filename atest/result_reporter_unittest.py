@@ -16,17 +16,11 @@
 
 """Unittests for result_reporter."""
 
-import sys
 import unittest
 import mock
 
 import result_reporter
 from test_runners import test_runner_base
-
-if sys.version_info[0] == 2:
-    from StringIO import StringIO
-else:
-    from io import StringIO
 
 RESULT_PASSED_TEST = test_runner_base.TestResult(
     runner_name='someTestRunner',
@@ -38,8 +32,7 @@ RESULT_PASSED_TEST = test_runner_base.TestResult(
     test_time='(10ms)',
     runner_total=None,
     group_total=2,
-    additional_info={},
-    test_run_name='com.android.UnitTests'
+    perf_info={}
 )
 
 RESULT_PASSED_TEST_MODULE_2 = test_runner_base.TestResult(
@@ -52,8 +45,7 @@ RESULT_PASSED_TEST_MODULE_2 = test_runner_base.TestResult(
     test_time='(10ms)',
     runner_total=None,
     group_total=2,
-    additional_info={},
-    test_run_name='com.android.UnitTests'
+    perf_info={}
 )
 
 RESULT_PASSED_TEST_RUNNER_2_NO_MODULE = test_runner_base.TestResult(
@@ -66,8 +58,7 @@ RESULT_PASSED_TEST_RUNNER_2_NO_MODULE = test_runner_base.TestResult(
     test_time='(10ms)',
     runner_total=None,
     group_total=2,
-    additional_info={},
-    test_run_name='com.android.UnitTests'
+    perf_info={}
 )
 
 RESULT_FAILED_TEST = test_runner_base.TestResult(
@@ -80,8 +71,7 @@ RESULT_FAILED_TEST = test_runner_base.TestResult(
     test_time='',
     runner_total=None,
     group_total=2,
-    additional_info={},
-    test_run_name='com.android.UnitTests'
+    perf_info={}
 )
 
 RESULT_RUN_FAILURE = test_runner_base.TestResult(
@@ -94,8 +84,7 @@ RESULT_RUN_FAILURE = test_runner_base.TestResult(
     test_time='',
     runner_total=None,
     group_total=2,
-    additional_info={},
-    test_run_name='com.android.UnitTests'
+    perf_info={}
 )
 
 RESULT_INVOCATION_FAILURE = test_runner_base.TestResult(
@@ -108,8 +97,7 @@ RESULT_INVOCATION_FAILURE = test_runner_base.TestResult(
     test_time='',
     runner_total=None,
     group_total=None,
-    additional_info={},
-    test_run_name='com.android.UnitTests'
+    perf_info={}
 )
 
 RESULT_IGNORED_TEST = test_runner_base.TestResult(
@@ -122,8 +110,7 @@ RESULT_IGNORED_TEST = test_runner_base.TestResult(
     test_time='(10ms)',
     runner_total=None,
     group_total=2,
-    additional_info={},
-    test_run_name='com.android.UnitTests'
+    perf_info={}
 )
 
 RESULT_ASSUMPTION_FAILED_TEST = test_runner_base.TestResult(
@@ -136,8 +123,7 @@ RESULT_ASSUMPTION_FAILED_TEST = test_runner_base.TestResult(
     test_time='(10ms)',
     runner_total=None,
     group_total=2,
-    additional_info={},
-    test_run_name='com.android.UnitTests'
+    perf_info={}
 )
 
 #pylint: disable=protected-access
@@ -181,51 +167,6 @@ class ResultReporterUnittests(unittest.TestCase):
         self.rr.process_test_result(RESULT_PASSED_TEST_RUNNER_2_NO_MODULE)
         self.assertTrue('someTestRunner2' in self.rr.runners)
         mock_title.assert_called_with(RESULT_PASSED_TEST_RUNNER_2_NO_MODULE)
-
-    def test_print_result_run_name(self):
-        """Test print run name function in print_result method."""
-        try:
-            rr = result_reporter.ResultReporter()
-            capture_output = StringIO()
-            sys.stdout = capture_output
-            run_name = 'com.android.UnitTests'
-            rr._print_result(test_runner_base.TestResult(
-                runner_name='runner_name',
-                group_name='someTestModule',
-                test_name='someClassName#someTestName',
-                status=test_runner_base.FAILED_STATUS,
-                details='someTrace',
-                test_count=2,
-                test_time='(2h44m36.402s)',
-                runner_total=None,
-                group_total=2,
-                additional_info={},
-                test_run_name=run_name
-            ))
-            # Make sure run name in the first line.
-            capture_output_str = capture_output.getvalue().strip()
-            self.assertTrue(run_name in capture_output_str.split('\n')[0])
-            run_name2 = 'com.android.UnitTests2'
-            capture_output = StringIO()
-            sys.stdout = capture_output
-            rr._print_result(test_runner_base.TestResult(
-                runner_name='runner_name',
-                group_name='someTestModule',
-                test_name='someClassName#someTestName',
-                status=test_runner_base.FAILED_STATUS,
-                details='someTrace',
-                test_count=2,
-                test_time='(2h43m36.402s)',
-                runner_total=None,
-                group_total=2,
-                additional_info={},
-                test_run_name=run_name2
-            ))
-            # Make sure run name in the first line.
-            capture_output_str = capture_output.getvalue().strip()
-            self.assertTrue(run_name2 in capture_output_str.split('\n')[0])
-        finally:
-            sys.stdout = sys.__stdout__
 
     def test_register_unsupported_runner(self):
         """Test register_unsupported_runner method."""

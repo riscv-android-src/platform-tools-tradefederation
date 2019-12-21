@@ -18,7 +18,6 @@ package com.android.tradefed.invoker.shard;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
-import com.android.tradefed.log.ITestLogger;
 
 /** Interface of an object that describes the sharding strategy to adopt for a configuration. */
 public interface IShardHelper {
@@ -32,8 +31,5 @@ public interface IShardHelper {
      * @return True if the configuration was sharded. false otherwise.
      */
     public boolean shardConfig(
-            IConfiguration config,
-            IInvocationContext context,
-            IRescheduler rescheduler,
-            ITestLogger logger);
+            IConfiguration config, IInvocationContext context, IRescheduler rescheduler);
 }

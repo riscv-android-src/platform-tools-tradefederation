@@ -15,16 +15,17 @@
  */
 package com.android.tradefed.suite.checker;
 
-import java.util.Arrays;
-import java.util.Map;
-import java.util.HashMap;
+import com.android.tradefed.suite.checker.UserChecker.DeviceUserState;
 
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.HashSet;
+
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.UserInfo;
 import com.android.tradefed.suite.checker.StatusCheckerResult.CheckStatus;
 
 import org.junit.Test;
@@ -34,12 +35,7 @@ import org.junit.runners.JUnit4;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyBoolean;
-import static org.mockito.Matchers.anyInt;
-
 
 /** Unit tests for {@link UserChecker} */
 @RunWith(JUnit4.class)
@@ -49,138 +45,18 @@ public class UserCheckerTest {
         UserChecker checker = new UserChecker();
 
         ITestDevice preDevice =
-                mockDeviceUserState(/* currentUser=  */ 0, /* userIds= */ new Integer[] {0});
-        assertEquals(CheckStatus.SUCCESS, checker.preExecutionCheck(preDevice).getStatus());
-
-        ITestDevice postDevice =
-                mockDeviceUserState(/* currentUser=  */ 0, /* userIds= */ new Integer[] {0});
-        assertEquals(CheckStatus.SUCCESS, checker.postExecutionCheck(postDevice).getStatus());
-    }
-
-    @Test
-    public void testSwitchIsSuccess() throws Exception {
-        UserChecker checker = new UserChecker();
-        OptionSetter mOptionSetter = new OptionSetter(checker);
-        mOptionSetter.setOptionValue("user-type", "system");
-        ITestDevice preDevice =
                 mockDeviceUserState(
-                        /* currentUser=  */ 10,
-                        /* userIds=        */ new Integer[] {0, 10},
-                        /* flags=        */ new Integer[] {0, 0},
-                        /* isRunning= */ new Boolean[] {true, true});
-        when(preDevice.switchUser(0)).thenReturn(true);
-
-        assertEquals(CheckStatus.SUCCESS, checker.preExecutionCheck(preDevice).getStatus());
-        verify(preDevice, never()).createUser(any(), anyBoolean(), anyBoolean());
-        verify(preDevice, times(1)).switchUser(0);
-
-        ITestDevice postDevice =
-                mockDeviceUserState(
-                        /* currentUser=  */ 0,
-                        /* userIds=        */ new Integer[] {0, 10},
-                        /* flags=        */ new Integer[] {0, 0},
-                        /* isRunning= */ new Boolean[] {true, false});
-        assertEquals(CheckStatus.SUCCESS, checker.postExecutionCheck(postDevice).getStatus());
-        verify(postDevice, never()).createUser(any(), anyBoolean(), anyBoolean());
-        verify(postDevice, never()).switchUser(anyInt());
-    }
-
-    @Test
-    public void testCreateIsSuccess() throws Exception {
-        UserChecker checker = new UserChecker();
-        OptionSetter mOptionSetter = new OptionSetter(checker);
-        mOptionSetter.setOptionValue("user-type", "secondary");
-        ITestDevice preDevice =
-                mockDeviceUserState(
-                        /* currentUser=  */ 0,
                         /* userIds=        */ new Integer[] {0},
-                        /* flags=        */ new Integer[] {0},
-                        /* isRunning= */ new Boolean[] {true});
-        when(preDevice.createUser("Tfsecondary", false, false)).thenReturn(10);
-        when(preDevice.switchUser(10)).thenReturn(true);
-
+                        /* runningUsers= */ new Integer[] {0},
+                        /* currentUser=  */ 0);
         assertEquals(CheckStatus.SUCCESS, checker.preExecutionCheck(preDevice).getStatus());
-        verify(preDevice, times(1)).createUser("Tfsecondary", false, false);
-        verify(preDevice, times(1)).switchUser(10);
 
         ITestDevice postDevice =
                 mockDeviceUserState(
-                        /* currentUser=  */ 10,
-                        /* userIds=        */ new Integer[] {0, 10},
-                        /* flags=        */ new Integer[] {0, 0},
-                        /* isRunning= */ new Boolean[] {true, true});
-        assertEquals(CheckStatus.SUCCESS, checker.postExecutionCheck(postDevice).getStatus());
-        verify(postDevice, never()).removeUser(anyInt());
-        verify(postDevice, never()).switchUser(anyInt());
-    }
-
-    @Test
-    public void testCreateCleanup() throws Exception {
-        UserChecker checker = new UserChecker();
-        OptionSetter mOptionSetter = new OptionSetter(checker);
-        mOptionSetter.setOptionValue("user-type", "secondary");
-        mOptionSetter.setOptionValue("user-cleanup", "true");
-        ITestDevice preDevice =
-                mockDeviceUserState(
-                        /* currentUser=  */ 0,
                         /* userIds=        */ new Integer[] {0},
-                        /* flags=        */ new Integer[] {0},
-                        /* isRunning= */ new Boolean[] {true});
-        when(preDevice.createUser("Tfsecondary", false, false)).thenReturn(10);
-        when(preDevice.switchUser(10)).thenReturn(true);
-
-        assertEquals(CheckStatus.SUCCESS, checker.preExecutionCheck(preDevice).getStatus());
-        verify(preDevice, times(1)).createUser("Tfsecondary", false, false);
-        verify(preDevice, times(1)).switchUser(10);
-
-        ITestDevice postDevice =
-                mockDeviceUserState(
-                        /* currentUser=  */ 10,
-                        /* userIds=        */ new Integer[] {0, 10},
-                        /* flags=        */ new Integer[] {0, 0},
-                        /* isRunning= */ new Boolean[] {true, true});
-        when(postDevice.switchUser(0)).thenReturn(true);
-        when(postDevice.removeUser(10)).thenReturn(true);
+                        /* runningUsers= */ new Integer[] {0},
+                        /* currentUser=  */ 0);
         assertEquals(CheckStatus.SUCCESS, checker.postExecutionCheck(postDevice).getStatus());
-        verify(postDevice, times(1)).switchUser(0);
-        verify(postDevice, times(1)).removeUser(10);
-    }
-
-    @Test
-    public void testCreateCleanup_cleanupFail() throws Exception {
-        UserChecker checker = new UserChecker();
-        OptionSetter mOptionSetter = new OptionSetter(checker);
-        mOptionSetter.setOptionValue("user-type", "secondary");
-        mOptionSetter.setOptionValue("user-cleanup", "true");
-        ITestDevice preDevice =
-                mockDeviceUserState(
-                        /* currentUser=  */ 0,
-                        /* userIds=        */ new Integer[] {0},
-                        /* flags=        */ new Integer[] {0},
-                        /* isRunning= */ new Boolean[] {true});
-        when(preDevice.createUser("Tfsecondary", false, false)).thenReturn(10);
-        when(preDevice.switchUser(10)).thenReturn(true);
-
-        assertEquals(CheckStatus.SUCCESS, checker.preExecutionCheck(preDevice).getStatus());
-        verify(preDevice, times(1)).createUser("Tfsecondary", false, false);
-        verify(preDevice, times(1)).switchUser(10);
-
-        ITestDevice postDevice =
-                mockDeviceUserState(
-                        /* currentUser=  */ 10,
-                        /* userIds=        */ new Integer[] {0, 10},
-                        /* flags=        */ new Integer[] {0, 0},
-                        /* isRunning= */ new Boolean[] {true, true});
-        when(postDevice.switchUser(0)).thenReturn(false);
-        when(postDevice.removeUser(10)).thenReturn(false);
-        StatusCheckerResult result = checker.postExecutionCheck(postDevice);
-        verify(postDevice, times(1)).switchUser(0);
-        verify(postDevice, times(1)).removeUser(10);
-        assertEquals(CheckStatus.FAILED, result.getStatus());
-        assertTrue(
-                result.getErrorMessage()
-                        .contains("Failed to switch back to previous current user 0"));
-        assertTrue(result.getErrorMessage().contains("Failed to remove new user 10"));
     }
 
     @Test
@@ -190,165 +66,170 @@ public class UserCheckerTest {
 
         ITestDevice preDevice =
                 mockDeviceUserState(
-                        /* currentUser=  */ 10,
                         /* userIds=        */ new Integer[] {0, 10, 11},
-                        /* flags=        */ new Integer[] {0, 0, 0},
-                        /* isRunning= */ new Boolean[] {true, true, false});
+                        /* runningUsers= */ new Integer[] {0, 10},
+                        /* currentUser=  */ 10);
         assertEquals(CheckStatus.SUCCESS, checker.preExecutionCheck(preDevice).getStatus());
 
         // User12 created, User11 deleted, User10 stopped, currentUser changed
         ITestDevice postDevice =
                 mockDeviceUserState(
-                        /* currentUser=  */ 0,
-                        /* userIds= */ new Integer[] {0, 10, 12},
-                        /* flags=        */ new Integer[] {0, 0, 0},
-                        /* isRunning= */ new Boolean[] {true, false, false});
+                        /* userIds=        */ new Integer[] {0, 10, 12},
+                        /* runningUsers= */ new Integer[] {0},
+                        /* currentUser=  */ 0);
         assertEquals(CheckStatus.FAILED, checker.postExecutionCheck(postDevice).getStatus());
     }
 
     @Test
-    public void testSwitchToSystem() throws Exception {
-        UserChecker checker = new UserChecker();
-        OptionSetter mOptionSetter = new OptionSetter(checker);
-        mOptionSetter.setOptionValue("user-type", "system");
-        ITestDevice device =
-                mockDeviceUserState(/* currentUser=  */ 10, /* userIds= */ new Integer[] {0, 10});
-
-        when(device.switchUser(0)).thenReturn(true);
-
-        StatusCheckerResult result = checker.preExecutionCheck(device);
-        assertEquals(CheckStatus.SUCCESS, result.getStatus());
-        verify(device, never()).createUser(any(), anyBoolean(), anyBoolean());
-        verify(device, times(1)).switchUser(0);
-    }
-
-    @Test
-    public void testSwitchToSecondary() throws Exception {
+    public void testSwitchToExistingOrCreateUserType() throws Exception {
         UserChecker checker = new UserChecker();
         OptionSetter mOptionSetter = new OptionSetter(checker);
         mOptionSetter.setOptionValue("user-type", "secondary");
         ITestDevice device =
-                mockDeviceUserState(/* currentUser=  */ 0, /* userIds= */ new Integer[] {0, 10});
+                mockDeviceUserState(
+                        /* userIds=        */ new Integer[] {0},
+                        /* runningUsers= */ new Integer[] {0},
+                        /* currentUser=  */ 0);
 
+        when(device.getCurrentUser()).thenReturn(0);
+        mockListUsers(device, new Integer[] {0});
+        when(device.createUserNoThrow(UserChecker.DEFAULT_NAME)).thenReturn(10);
+        when(device.getCurrentUser()).thenReturn(0);
+        mockListUsers(device, new Integer[] {0, 10});
+        when(device.isUserSecondary(10)).thenReturn(true);
         when(device.switchUser(10)).thenReturn(true);
 
         StatusCheckerResult result = checker.preExecutionCheck(device);
         assertEquals(CheckStatus.SUCCESS, result.getStatus());
-        verify(device, never()).createUser(any(), anyBoolean(), anyBoolean());
         verify(device, times(1)).switchUser(10);
     }
 
     @Test
-    public void testSwitchToSecondary_fail() throws Exception {
+    public void testSwitchToSecondaryUserCreateNewFail() throws Exception {
         UserChecker checker = new UserChecker();
         OptionSetter mOptionSetter = new OptionSetter(checker);
         mOptionSetter.setOptionValue("user-type", "secondary");
         ITestDevice device =
-                mockDeviceUserState(/* currentUser=  */ 0, /* userIds= */ new Integer[] {0, 10});
+                mockDeviceUserState(
+                        /* userIds=        */ new Integer[] {0},
+                        /* runningUsers= */ new Integer[] {0},
+                        /* currentUser=  */ 0);
 
-        when(device.switchUser(10)).thenReturn(false);
+        when(device.getCurrentUser()).thenReturn(0);
+        mockListUsers(device, new Integer[] {0});
+        when(device.createUserNoThrow(UserChecker.DEFAULT_NAME)).thenReturn(-1);
 
         StatusCheckerResult result = checker.preExecutionCheck(device);
         assertEquals(CheckStatus.FAILED, result.getStatus());
-        verify(device, never()).createUser(any(), anyBoolean(), anyBoolean());
-        verify(device, times(1)).switchUser(10);
+        verify(device, times(1)).createUserNoThrow(UserChecker.DEFAULT_NAME);
     }
 
     @Test
-    public void testSwitchToGuest() throws Exception {
-        UserChecker checker = new UserChecker();
-        OptionSetter mOptionSetter = new OptionSetter(checker);
-        mOptionSetter.setOptionValue("user-type", "guest");
-        ITestDevice device =
-                mockDeviceUserState(
-                        /* currentUser=  */ 0,
-                        /* userIds= */ new Integer[] {0, 10},
-                        /* flags=        */ new Integer[] {0, UserInfo.FLAG_GUEST},
-                        /* isRunning= */ new Boolean[] {true, false});
+    public void testFindRemovedUsers() throws Exception {
+        DeviceUserState preState =
+                getMockedUserState(
+                        /* userIds=        */ new Integer[] {0, 10},
+                        /* runningUsers= */ new Integer[] {0, 10},
+                        /* currentUser=  */ 0);
+        DeviceUserState postState =
+                getMockedUserState(
+                        /* userIds=        */ new Integer[] {0},
+                        /* runningUsers= */ new Integer[] {0},
+                        /* currentUser=  */ 0);
 
-        when(device.switchUser(10)).thenReturn(true);
-
-        StatusCheckerResult result = checker.preExecutionCheck(device);
-        assertEquals(CheckStatus.SUCCESS, result.getStatus());
-        verify(device, never()).createUser(any(), anyBoolean(), anyBoolean());
-        verify(device, times(1)).switchUser(10);
+        assertArrayEquals(new Integer[] {10}, preState.findRemovedUsers(postState).toArray());
     }
 
     @Test
-    public void testCreateSecondary() throws Exception {
-        UserChecker checker = new UserChecker();
-        OptionSetter mOptionSetter = new OptionSetter(checker);
-        mOptionSetter.setOptionValue("user-type", "secondary");
-        ITestDevice device =
-                mockDeviceUserState(/* currentUser=  */ 0, /* userIds= */ new Integer[] {0});
+    public void testFindAddedUsers() throws Exception {
+        DeviceUserState preState =
+                getMockedUserState(
+                        /* userIds=        */ new Integer[] {0},
+                        /* runningUsers= */ new Integer[] {0},
+                        /* currentUser=  */ 0);
+        DeviceUserState postState =
+                getMockedUserState(
+                        /* userIds=        */ new Integer[] {0, 10},
+                        /* runningUsers= */ new Integer[] {0},
+                        /* currentUser=  */ 0);
 
-        when(device.createUser("Tfsecondary", false, false)).thenReturn(10);
-        when(device.switchUser(10)).thenReturn(true);
-
-        StatusCheckerResult result = checker.preExecutionCheck(device);
-        assertEquals(CheckStatus.SUCCESS, result.getStatus());
-        verify(device, times(1)).createUser("Tfsecondary", false, false);
-        verify(device, times(1)).switchUser(10);
+        assertArrayEquals(new Integer[] {10}, preState.findAddedUsers(postState).toArray());
     }
 
     @Test
-    public void testCreateGuest() throws Exception {
-        UserChecker checker = new UserChecker();
-        OptionSetter mOptionSetter = new OptionSetter(checker);
-        mOptionSetter.setOptionValue("user-type", "guest");
-        ITestDevice device =
-                mockDeviceUserState(/* currentUser=  */ 0, /* userIds= */ new Integer[] {0});
+    public void testCurrentUserChanged() throws Exception {
+        DeviceUserState preState =
+                getMockedUserState(
+                        /* userIds=        */ new Integer[] {0, 10},
+                        /* runningUsers= */ new Integer[] {0, 10},
+                        /* currentUser=  */ 10);
+        DeviceUserState postState =
+                getMockedUserState(
+                        /* userIds=        */ new Integer[] {0, 10},
+                        /* runningUsers= */ new Integer[] {0, 10},
+                        /* currentUser=  */ 0);
 
-        when(device.createUser("Tfguest", /* guest= */ true, /* ephemeral= */ false))
-                .thenReturn(10);
-        when(device.switchUser(10)).thenReturn(true);
-
-        StatusCheckerResult result = checker.preExecutionCheck(device);
-        assertEquals(CheckStatus.SUCCESS, result.getStatus());
-        verify(device, times(1)).createUser("Tfguest", /* guest= */ true, /* ephemeral= */ false);
-        verify(device, times(1)).switchUser(10);
+        assertEquals(true, preState.currentUserChanged(postState));
     }
 
-    // // TEST HELPERS
+    @Test
+    public void testfindStartedUsers() throws Exception {
+        DeviceUserState preState =
+                getMockedUserState(
+                        /* userIds=        */ new Integer[] {0, 10},
+                        /* runningUsers= */ new Integer[] {0},
+                        /* currentUser=  */ 0);
+        DeviceUserState postState =
+                getMockedUserState(
+                        /* userIds=        */ new Integer[] {0, 10},
+                        /* runningUsers= */ new Integer[] {0, 10},
+                        /* currentUser=  */ 0);
 
-    /** Return a device with the user state calls mocked. */
-    private ITestDevice mockDeviceUserState(int currentUser, Integer[] userIds) throws Exception {
-        Integer[] flags = new Integer[userIds.length];
-        Arrays.fill(flags, 0);
+        assertArrayEquals(new Integer[] {10}, preState.findStartedUsers(postState).toArray());
+        assertArrayEquals(new Integer[] {}, preState.findStoppedUsers(postState).toArray());
+    }
 
-        Boolean[] isRunning = new Boolean[userIds.length];
-        Arrays.fill(isRunning, false);
-        isRunning[0] = true;
+    @Test
+    public void testFindStopedUsers() throws Exception {
+        DeviceUserState preState =
+                getMockedUserState(
+                        /* userIds=        */ new Integer[] {0, 10},
+                        /* runningUsers= */ new Integer[] {0, 10},
+                        /* currentUser=  */ 0);
+        DeviceUserState postState =
+                getMockedUserState(
+                        /* userIds=        */ new Integer[] {0, 10},
+                        /* runningUsers= */ new Integer[] {0},
+                        /* currentUser=  */ 0);
 
-        return mockDeviceUserState(currentUser, userIds, flags, isRunning);
+        assertArrayEquals(new Integer[] {}, preState.findStartedUsers(postState).toArray());
+        assertArrayEquals(new Integer[] {10}, preState.findStoppedUsers(postState).toArray());
+    }
+
+    // TEST HELPERS
+
+    /** Return an instantiated DeviceUserState which was mocked. */
+    private DeviceUserState getMockedUserState(
+            Integer[] userIds, Integer[] runningUsers, int currentUser) throws Exception {
+        ITestDevice device = mockDeviceUserState(userIds, runningUsers, currentUser);
+        return new UserChecker.DeviceUserState(device);
     }
 
     /** Return a device with the user state calls mocked. */
     private ITestDevice mockDeviceUserState(
-            int currentUser, Integer[] userIds, Integer[] flags, Boolean[] isRunning)
-            throws Exception {
+            Integer[] userIds, Integer[] runningUsers, int currentUser) throws Exception {
+        HashSet<Integer> runningUsersSet = new HashSet<Integer>(Arrays.asList(runningUsers));
         ITestDevice device = mock(ITestDevice.class);
-
         when(device.getCurrentUser()).thenReturn(currentUser);
-        mockListUsersInfo(device, userIds, flags, isRunning);
+        mockListUsers(device, userIds);
+        for (int userId : userIds) {
+            when(device.isUserRunning(userId)).thenReturn(runningUsersSet.contains(userId));
+        }
 
         return device;
     }
 
-    private void mockListUsersInfo(
-            ITestDevice device, Integer[] userIds, Integer[] flags, Boolean[] isRunning)
-            throws Exception {
-        Map<Integer, UserInfo> result = new HashMap<>();
-        for (int i = 0; i < userIds.length; i++) {
-            int userId = userIds[i];
-            result.put(
-                    userId,
-                    new UserInfo(
-                            /* userId= */ userId,
-                            /* userName= */ "usr" + userId,
-                            /* flag= */ flags[i],
-                            /* isRunning= */ isRunning[i]));
-        }
-        when(device.getUserInfos()).thenReturn(result);
+    private void mockListUsers(ITestDevice device, Integer[] userIds) throws Exception {
+        when(device.listUsers()).thenReturn(new ArrayList<Integer>(Arrays.asList(userIds)));
     }
 }

@@ -16,8 +16,6 @@
 package com.android.tradefed.build;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.List;
 
 /**
  * A wrapper class that provides {@link FileDownloadCache} facilities while implementing the
@@ -55,17 +53,5 @@ public class FileDownloadCacheWrapper implements IFileDownloader {
     @Override
     public boolean isFresh(File localFile, String remoteFilePath) throws BuildRetrievalError {
         return mDelegateDownloader.isFresh(localFile, remoteFilePath);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void downloadZippedFiles(
-            File destDir,
-            String remoteFilePath,
-            List<String> includeFilters,
-            List<String> excludeFilters)
-            throws BuildRetrievalError, IOException {
-        mDelegateDownloader.downloadZippedFiles(
-                destDir, remoteFilePath, includeFilters, excludeFilters);
     }
 }

@@ -16,10 +16,24 @@
 
 package com.android.tradefed.build;
 
+import java.io.File;
+import java.util.List;
+
 /**
- * A {@link IBuildInfo} that represents an Android application and its test package(s).
- *
- * @deprecated Use {@link IBuildInfo} directly.
+ *  * A {@link IBuildInfo} that represents an Android application and its test package(s).
  */
-@Deprecated
-public interface IAppBuildInfo extends IBuildInfo {}
+public interface IAppBuildInfo extends IBuildInfo {
+
+    /**
+     * Gets a copy of the set of local app apk file(s) and their versions.  The returned order
+     * matches the order in which the apks were added to the {@code IAppBuildInfo}.
+     */
+    public List<VersionedFile> getAppPackageFiles();
+
+    /**
+     * Adds the local apk file and its associated version.  Note that apks will be returned from
+     * {@link #getAppPackageFiles()} in the order in which they were added by this method.
+     */
+    public void addAppPackageFile(File appPackageFile, String version);
+
+}

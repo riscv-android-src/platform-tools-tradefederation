@@ -20,10 +20,6 @@
     <system_checker class="com.android.tradefed.suite.checker.SystemServerStatusChecker" />
     <system_checker class="com.android.tradefed.suite.checker.SystemServerFileDescriptorChecker" />
 
-    <target_preparer class="com.android.tradefed.targetprep.RootTargetPreparer">
-        <option name="force-root" value="false" />
-    </target_preparer>
-
     <test class="com.android.tradefed.testtype.suite.TestMappingSuiteRunner"/>
 
     <!-- Tell all AndroidJUnitTests to exclude certain annotations -->

@@ -47,8 +47,8 @@ public class ConfigurationUtilTest {
     private static final String DEVICE_MANAGER_TYPE_NAME = "device_manager";
 
     /**
-     * Test {@link ConfigurationUtil#dumpClassToXml(KXmlSerializer, String, Object, List, boolean,
-     * boolean)} to create a dump of a configuration.
+     * Test {@link ConfigurationUtil#dumpClassToXml(KXmlSerializer, String, Object, List, boolean)}
+     * to create a dump of a configuration.
      */
     @Test
     public void testDumpClassToXml() throws Throwable {
@@ -67,7 +67,6 @@ public class ConfigurationUtilTest {
                     DEVICE_MANAGER_TYPE_NAME,
                     deviceManager,
                     new ArrayList<String>(),
-                    true,
                     true);
 
             serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
@@ -88,8 +87,8 @@ public class ConfigurationUtilTest {
     }
 
     /**
-     * Test {@link ConfigurationUtil#dumpClassToXml(KXmlSerializer, String, Object, List, boolean,
-     * boolean)} to create a dump of a configuration with filters
+     * Test {@link ConfigurationUtil#dumpClassToXml(KXmlSerializer, String, Object, List, boolean)}
+     * to create a dump of a configuration with filters
      */
     @Test
     public void testDumpClassToXml_filtered() throws Throwable {
@@ -108,14 +107,12 @@ public class ConfigurationUtilTest {
                     GlobalConfiguration.DEVICE_MANAGER_TYPE_NAME,
                     deviceManager,
                     Arrays.asList("com.android.tradefed.device.DeviceManager"),
-                    true,
                     true);
             ConfigurationUtil.dumpClassToXml(
                     serializer,
                     GlobalConfiguration.SCHEDULER_TYPE_NAME,
                     new CommandScheduler(),
                     Arrays.asList("com.android.tradefed.device.DeviceManager"),
-                    true,
                     true);
 
             serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
@@ -287,49 +284,6 @@ public class ConfigurationUtilTest {
                     Configuration.TARGET_PREPARER_TYPE_NAME,
                     preparer,
                     new ArrayList<String>(),
-                    false,
-                    true);
-
-            serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
-            serializer.endDocument();
-
-            // Read the dump XML file, make sure configurations can be loaded.
-            String content = FileUtil.readStringFromFile(tmpXml);
-            assertTrue(content.length() > 100);
-            assertTrue(content.contains("<configuration>"));
-            assertTrue(content.contains("<option name=\"real-option\" value=\"false\" />"));
-            // Does not contain any trace of the deprecated option
-            assertFalse(content.contains("deprecated-option"));
-            assertTrue(
-                    content.contains(
-                            "<target_preparer class=\"com.android.tradefed.config."
-                                    + "ConfigurationUtilTest$TestTargetPreparer\">"));
-        } finally {
-            FileUtil.deleteFile(tmpXml);
-        }
-    }
-
-    /** Only print options that have been changed. */
-    @Test
-    public void testDumpClassToXml_filterNotChanged() throws Throwable {
-        File tmpXml = FileUtil.createTempFile("global_config", ".xml");
-        try {
-            PrintWriter output = new PrintWriter(tmpXml);
-            KXmlSerializer serializer = new KXmlSerializer();
-            serializer.setOutput(output);
-            serializer.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
-            serializer.startDocument("UTF-8", null);
-            serializer.startTag(null, ConfigurationUtil.CONFIGURATION_NAME);
-
-            ITargetPreparer preparer = new TestTargetPreparer();
-            OptionSetter changeOneOption = new OptionSetter(preparer);
-            changeOneOption.setOptionValue("real-option", "true");
-            ConfigurationUtil.dumpClassToXml(
-                    serializer,
-                    Configuration.TARGET_PREPARER_TYPE_NAME,
-                    preparer,
-                    new ArrayList<String>(),
-                    true,
                     false);
 
             serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
@@ -339,7 +293,7 @@ public class ConfigurationUtilTest {
             String content = FileUtil.readStringFromFile(tmpXml);
             assertTrue(content.length() > 100);
             assertTrue(content.contains("<configuration>"));
-            assertTrue(content.contains("<option name=\"real-option\" value=\"true\" />"));
+            assertTrue(content.contains("<option name=\"real-option\" value=\"false\" />"));
             // Does not contain any trace of the deprecated option
             assertFalse(content.contains("deprecated-option"));
             assertTrue(
