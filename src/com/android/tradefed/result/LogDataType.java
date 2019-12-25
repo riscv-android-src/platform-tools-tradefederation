@@ -27,6 +27,8 @@ public enum LogDataType {
     MP4("mp4", "video/mp4", true, false),
     EAR("ear", "application/octet-stream", true, false),
     ZIP("zip", "application/zip", true, false),
+    SEVEN_Z("7z", "application/x-7z-compressed", true, false),
+    BITS("bits", "application/octet-stream", true, false),
     JPEG("jpeg", "image/jpeg", true, false),
     TAR_GZ("tar.gz", "application/gzip", true, false),
     GZIP("gz", "application/gzip", true, false),

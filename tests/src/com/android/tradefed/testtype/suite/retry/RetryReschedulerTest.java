@@ -347,6 +347,45 @@ public class RetryReschedulerTest {
         verify(mSuite).setExcludeFilter(excludeRun1);
     }
 
+    /** Ensure that the --module option can be used to force a single module to run. */
+    @Test
+    public void testReschedule_module_option() throws Exception {
+        OptionSetter setter = new OptionSetter(mTest);
+        setter.setOptionValue(BaseTestSuite.MODULE_OPTION, "run0");
+        populateFakeResults(2, 2, 1, 0, 0, false);
+        mMockLoader.init();
+        EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
+        EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
+                .andReturn(mRescheduledConfiguration);
+        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+
+        mRescheduledConfiguration.setTests(EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
+
+        EasyMock.expect(mMockRescheduler.scheduleConfig(mRescheduledConfiguration)).andReturn(true);
+        EasyMock.replay(
+                mMockRescheduler,
+                mMockLoader,
+                mMockFactory,
+                mRescheduledConfiguration,
+                mMockCommandOptions);
+        mTest.run(null);
+        EasyMock.verify(
+                mMockRescheduler,
+                mMockLoader,
+                mMockFactory,
+                mRescheduledConfiguration,
+                mMockCommandOptions);
+
+        Set<String> excludeRun0 = new HashSet<>();
+        excludeRun0.add("run0 test.class#testPass0");
+        verify(mSuite).setExcludeFilter(excludeRun0);
+        Set<String> excludeRun1 = new HashSet<>();
+        // Only run0 was requested to run.
+        excludeRun1.add("run1");
+        verify(mSuite).setExcludeFilter(excludeRun1);
+    }
+
     /**
      * Test that if an exclude-filter is provided without abi, we are still able to exclude all the
      * matching modules for all abis.
@@ -356,6 +395,47 @@ public class RetryReschedulerTest {
         OptionSetter setter = new OptionSetter(mTest);
         // We specify to exclude "run1"
         setter.setOptionValue(BaseTestSuite.EXCLUDE_FILTER_OPTION, "run1");
+        populateFakeResults(2, 2, 1, 0, 0, false, new Abi("armeabi-v7a", "32"));
+        mMockLoader.init();
+        EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");
+        EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
+                .andReturn(mRescheduledConfiguration);
+        EasyMock.expect(mMockLoader.loadPreviousRecord()).andReturn(mFakeRecord);
+
+        mRescheduledConfiguration.setTests(EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
+
+        EasyMock.expect(mMockRescheduler.scheduleConfig(mRescheduledConfiguration)).andReturn(true);
+        EasyMock.replay(
+                mMockRescheduler,
+                mMockLoader,
+                mMockFactory,
+                mRescheduledConfiguration,
+                mMockCommandOptions);
+        mTest.run(null);
+        EasyMock.verify(
+                mMockRescheduler,
+                mMockLoader,
+                mMockFactory,
+                mRescheduledConfiguration,
+                mMockCommandOptions);
+
+        Set<String> excludeRun0 = new HashSet<>();
+        // Run with the abi are excluded
+        excludeRun0.add("armeabi-v7a run0 test.class#testPass0");
+        verify(mSuite).setExcludeFilter(excludeRun0);
+        Set<String> excludeRun1 = new HashSet<>();
+        // Even if run1 had failed test cases, it was excluded so it's not running.
+        excludeRun1.add("armeabi-v7a run1");
+        verify(mSuite).setExcludeFilter(excludeRun1);
+    }
+
+    /** Ensure that --module works when abi are present. */
+    @Test
+    public void testReschedule_moduleOption_abi() throws Exception {
+        OptionSetter setter = new OptionSetter(mTest);
+        // We specify to exclude "run1"
+        setter.setOptionValue(BaseTestSuite.MODULE_OPTION, "run0");
         populateFakeResults(2, 2, 1, 0, 0, false, new Abi("armeabi-v7a", "32"));
         mMockLoader.init();
         EasyMock.expect(mMockLoader.getCommandLine()).andReturn("previous_command");

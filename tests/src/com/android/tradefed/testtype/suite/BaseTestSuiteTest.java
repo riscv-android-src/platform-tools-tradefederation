@@ -133,6 +133,41 @@ public class BaseTestSuiteTest {
         }
     }
 
+    /**
+     * Test that we create a module and the parameterized version of it for the include filter if
+     * not explicitly excluded.
+     */
+    @Test
+    public void testSetupFilters_parameterized_filter() throws Exception {
+        File tmpDir = FileUtil.createTempDir(TEST_MODULE);
+        File moduleConfig = new File(tmpDir, "CtsGestureTestCases.config");
+        moduleConfig.createNewFile();
+        try {
+            OptionSetter setter = new OptionSetter(mRunner);
+            setter.setOptionValue("enable-parameterized-modules", "true");
+            // The Gesture module has a parameter "instant".
+            setter.setOptionValue("module", "Gesture");
+            mRunner.setupFilters(tmpDir);
+            assertEquals(2, mRunner.getIncludeFilter().size());
+            assertThat(
+                    mRunner.getIncludeFilter(),
+                    hasItem(
+                            new SuiteTestFilter(
+                                            mRunner.getRequestedAbi(), "CtsGestureTestCases", null)
+                                    .toString()));
+            assertThat(
+                    mRunner.getIncludeFilter(),
+                    hasItem(
+                            new SuiteTestFilter(
+                                            mRunner.getRequestedAbi(),
+                                            "CtsGestureTestCases[instant]",
+                                            null)
+                                    .toString()));
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
     @Test
     public void testSetupFilters_match() throws Exception {
         File tmpDir = FileUtil.createTempDir(TEST_MODULE);
