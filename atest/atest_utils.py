@@ -116,7 +116,7 @@ def _run_limited_output(cmd, env_vars=None):
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, env=env_vars)
     sys.stdout.write('\n')
-    term_width, _ = _get_terminal_size()
+    term_width, _ = get_terminal_size()
     white_space = " " * int(term_width)
     full_output = []
     while proc.poll() is None:
@@ -319,7 +319,7 @@ def colorful_print(text, color, highlight=False, auto_wrap=True):
 
 # pylint: disable=no-member
 # TODO: remove the above disable when migrating to python3.
-def _get_terminal_size():
+def get_terminal_size():
     """Get terminal size and return a tuple.
 
     Returns:
