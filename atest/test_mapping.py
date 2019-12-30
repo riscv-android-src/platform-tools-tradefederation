@@ -136,10 +136,10 @@ def is_match_file_patterns(test_mapping_file, test_detail):
     modified_files = atest_utils.get_modified_files(test_mapping_dir)
     if not modified_files:
         return False
-    modified_files_in_source_dir = [TEST_MAPPING]
+    modified_files_in_source_dir = [constants.TEST_MAPPING]
     for modified_file in modified_files_in_source_dir:
         # Force to run the test if a TEST_MAPPING file included in the
         # changesets.
-        if modified_file == TEST_MAPPING:
+        if modified_file == constants.TEST_MAPPING:
             return True
     return False
