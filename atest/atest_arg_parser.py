@@ -38,6 +38,7 @@ BUILD = 'Run a build.'
 CLEAR_CACHE = 'Wipe out the test_infos cache of the test.'
 DISABLE_TEARDOWN = 'Disable test teardown and cleanup.'
 DRY_RUN = 'Dry run atest without building, installing and running tests in real.'
+ENABLE_FILE_PATTERNS = 'Enable FILE_PATTERNS in TEST_MAPPING.'
 HOST = ('Run the test completely on the host without a device. '
         '(Note: running a host test that requires a device without '
         '--host will fail.)')
@@ -125,6 +126,10 @@ class AtestArgParser(argparse.ArgumentParser):
                           help=TEST_MAPPING)
         self.add_argument('--include-subdirs', action='store_true',
                           help=INCLUDE_SUBDIRS)
+        # TODO(146980564): Remove enable-file-patterns when support
+        # file-patterns in TEST_MAPPING by default.
+        self.add_argument('--enable-file-patterns', action='store_true',
+                          help=ENABLE_FILE_PATTERNS)
 
         # Options for information queries and dry-runs:
         self.add_argument('--dry-run', action='store_true', help=DRY_RUN)
@@ -208,6 +213,7 @@ def print_epilog_text():
                                          CLEAR_CACHE=CLEAR_CACHE,
                                          DISABLE_TEARDOWN=DISABLE_TEARDOWN,
                                          DRY_RUN=DRY_RUN,
+                                         ENABLE_FILE_PATTERNS=ENABLE_FILE_PATTERNS,
                                          HELP_DESC=HELP_DESC,
                                          HOST=HOST,
                                          INCLUDE_SUBDIRS=INCLUDE_SUBDIRS,
@@ -279,6 +285,9 @@ OPTIONS
 
         --include-subdirs
             {INCLUDE_SUBDIRS}
+
+        --enable-file-patterns
+            {ENABLE_FILE_PATTERNS}
 
 
         [ Information/Queries ]
