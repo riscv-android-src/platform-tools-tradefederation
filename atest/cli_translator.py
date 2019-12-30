@@ -275,7 +275,8 @@ class CLITranslator(object):
                 tests = []
                 for test in test_list:
                     if (self.enable_file_patterns and
-                            not test_mapping.is_match_file_patterns()):
+                            not test_mapping.is_match_file_patterns(
+                                test_mapping_file, test)):
                         continue
                     test_mod_info = self.mod_info.name_to_module_info.get(
                         test['name'])
