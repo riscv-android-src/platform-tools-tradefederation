@@ -579,7 +579,12 @@ def clean_test_info_caches(tests, cache_root=TEST_INFO_CACHE_ROOT):
 
 def get_modified_files(root_dir):
     """Get the git modified files. The git path here is git top level of
-    the root_dir.
+    the root_dir. It's inevitable to utilise different commands to fulfill
+    2 scenario:
+        1. locate unstaged/staged files
+        2. locate committed files but not yet merged.
+    the 'git_status_cmd' fulfils the former while the 'find_modified_files'
+    fulfils the latter.
 
     Args:
         root_dir: the root where it starts finding.
@@ -593,6 +598,14 @@ def get_modified_files(root_dir):
         git_paths = subprocess.check_output(
             find_git_cmd, shell=True).splitlines()
         for git_path in git_paths:
+            # Find modified files from git working tree status.
+            git_status_cmd = ("repo forall {} -c git status --short | "
+                              "awk '{{print $NF}}'").format(git_path)
+            modified_wo_commit = subprocess.check_output(
+                git_status_cmd, shell=True).rstrip().splitlines()
+            for change in modified_wo_commit:
+                modified_files.add(
+                    os.path.normpath('{}/{}'.format(git_path, change)))
             # Find modified files that are committed but not yet merged.
             find_modified_files = _FIND_MODIFIED_FILES_CMDS.format(git_path)
             commit_modified_files = subprocess.check_output(
