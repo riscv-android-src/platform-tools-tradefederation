@@ -75,6 +75,13 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
                             + "and \"not_executed\".")
     private RetryType mRetryType = null;
 
+    @Option(
+        name = BaseTestSuite.MODULE_OPTION,
+        shortName = BaseTestSuite.MODULE_OPTION_SHORT_NAME,
+        description = "the test module to run. Only works for configuration in the tests dir."
+    )
+    private String mModuleName = null;
+
     /**
      * It's possible to add extra exclusion from the rerun. But these tests will not change their
      * state.
@@ -224,6 +231,22 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
             types.add(mRetryType);
         }
 
+        // Expand the --module option in case no abi is specified.
+        Set<String> expandedModuleOption = new HashSet<>();
+        if (mModuleName != null) {
+            SuiteTestFilter moduleFilter = SuiteTestFilter.createFrom(mModuleName);
+            expandedModuleOption.add(mModuleName);
+            if (moduleFilter.getAbi() == null) {
+                Set<String> abis = AbiUtils.getAbisSupportedByCompatibility();
+                for (String abi : abis) {
+                    SuiteTestFilter namingFilter =
+                            new SuiteTestFilter(
+                                    abi, moduleFilter.getName(), moduleFilter.getTest());
+                    expandedModuleOption.add(namingFilter.toString());
+                }
+            }
+        }
+
         // Expand the exclude-filter in case no abi is specified.
         Set<String> extendedExcludeRetryFilters = new HashSet<>();
         for (String excludeFilter : mExcludeFilters) {
@@ -245,6 +268,8 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
         for (TestRunResult moduleResult : results.getMergedTestRunResults()) {
             // If the module is explicitly excluded from retries, preserve the original results.
             if (!extendedExcludeRetryFilters.contains(moduleResult.getName())
+                    && (expandedModuleOption.isEmpty()
+                            || expandedModuleOption.contains(moduleResult.getName()))
                     && RetryResultHelper.shouldRunModule(moduleResult, types)) {
                 if (types.contains(RetryType.NOT_EXECUTED)) {
                     // Clear the run failure since we are attempting to rerun all non-executed

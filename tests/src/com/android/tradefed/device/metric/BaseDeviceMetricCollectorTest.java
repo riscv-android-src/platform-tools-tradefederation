@@ -485,4 +485,49 @@ public class BaseDeviceMetricCollectorTest {
         assertTrue(allValues.get(2).containsKey("onteststart"));
         assertTrue(allValues.get(2).containsKey("ontestend"));
     }
+
+    /**
+     * Test that onTestEnd with TestDescription formal supercedes the method signature without a
+     * TestDescription.
+     */
+    @Test
+    public void testOnTestEndWithTestDescription() throws Exception {
+        mBase =
+                new TwoMetricsBaseCollector() {
+                    @Override
+                    public void onTestEnd(
+                            DeviceMetricData testData,
+                            final Map<String, Metric> currentTestCaseMetrics,
+                            TestDescription test) {
+                        testData.addMetric(
+                                test.getTestName(),
+                                Metric.newBuilder()
+                                        .setMeasurements(
+                                                Measurements.newBuilder()
+                                                        .setSingleString("value1")));
+                    }
+                };
+        mBase.init(mContext, mMockListener);
+        mBase.invocationStarted(mContext);
+        mBase.testRunStarted("testRun", 1);
+        TestDescription test = new TestDescription("class", "method");
+        mBase.testStarted(test);
+        mBase.testEnded(test, new HashMap<String, Metric>());
+        mBase.testRunEnded(0L, new HashMap<String, Metric>());
+        mBase.invocationEnded(0L);
+
+        Mockito.verify(mMockListener, times(1)).invocationStarted(Mockito.any());
+        Mockito.verify(mMockListener, times(1)).testRunStarted("testRun", 1);
+        Mockito.verify(mMockListener, times(1)).testStarted(Mockito.eq(test), Mockito.anyLong());
+        Mockito.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(test), Mockito.anyLong(), mCapturedMetrics.capture());
+
+        Mockito.verify(mMockListener, times(1))
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+
+        List<HashMap<String, Metric>> allValues = mCapturedMetrics.getAllValues();
+        assertTrue(allValues.get(0).containsKey("onteststart"));
+        assertTrue(allValues.get(0).containsKey("method"));
+        assertTrue(!allValues.get(0).containsKey("ontestend"));
+    }
 }
