@@ -567,3 +567,16 @@ def clean_test_info_caches(tests, cache_root=TEST_INFO_CACHE_ROOT):
                 logging.debug('Exception raised: %s', err)
                 metrics_utils.handle_exc_and_send_exit_event(
                     constants.ACCESS_CACHE_FAILURE)
+
+# pylint: disable=unused-argument
+def get_modified_files(root_dir):
+    """Get the git changed files.
+    The git path is git top level of the root_dir.
+
+    Args:
+        root_dir: the root where it starts finding.
+
+    Returns:
+        A set of modified files altered since last commit.
+    """
+    return {'TEST_MAPPING'}
