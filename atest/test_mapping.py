@@ -20,7 +20,10 @@ Classes for test mapping related objects
 import copy
 import os
 
+import atest_utils
 import constants
+
+TEST_MAPPING = 'TEST_MAPPING'
 
 
 class TestDetail(object):
@@ -114,11 +117,29 @@ class Import(object):
         # The import path can't be located.
         return None
 
-def is_match_file_patterns():
+def is_match_file_patterns(test_mapping_file, test_detail):
     """Check if the changed file names match the regex pattern defined in
     file_patterns of TEST_MAPPING files.
 
+    Args:
+        test_mapping_file: Path to a TEST_MAPPING file.
+        test_detail: A TestDetail object.
+
     Returns:
-        True for pass to next step.
+        True if the test's file_patterns setting is not set or contains a pattern
+        matches any of the modified files.
     """
-    return True
+    file_patterns = test_detail.get('file_patterns', [])
+    if not file_patterns:
+        return True
+    test_mapping_dir = os.path.dirname(test_mapping_file)
+    modified_files = atest_utils.get_modified_files(test_mapping_dir)
+    if not modified_files:
+        return False
+    modified_files_in_source_dir = [TEST_MAPPING]
+    for modified_file in modified_files_in_source_dir:
+        # Force to run the test if a TEST_MAPPING file included in the
+        # changesets.
+        if modified_file == TEST_MAPPING:
+            return True
+    return False
