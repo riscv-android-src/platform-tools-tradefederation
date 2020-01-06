@@ -69,6 +69,7 @@ class CLITranslator(object):
             module_info: ModuleInfo class that has cached module-info.json.
         """
         self.mod_info = module_info
+        self.enable_file_patterns = False
 
     # pylint: disable=too-many-locals
     def _find_test_infos(self, test, tm_test_detail):
@@ -492,6 +493,8 @@ class CLITranslator(object):
         # Test details from TEST_MAPPING files
         test_details_list = None
         if atest_utils.is_test_mapping(args):
+            if args.enable_file_patterns:
+                self.enable_file_patterns = True
             tests, test_details_list = self._get_test_mapping_tests(args)
         atest_utils.colorful_print("\nFinding Tests...", constants.CYAN)
         logging.debug('Finding Tests: %s', tests)
