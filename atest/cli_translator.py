@@ -37,7 +37,6 @@ from metrics import metrics
 from metrics import metrics_utils
 from test_finders import module_finder
 
-TEST_MAPPING = 'TEST_MAPPING'
 FUZZY_FINDER = 'FUZZY'
 CACHE_FINDER = 'CACHE'
 
@@ -302,7 +301,7 @@ class CLITranslator(object):
                 grouped_tests.update(tests)
         return all_tests, imports
 
-    def _find_files(self, path, file_name=TEST_MAPPING):
+    def _find_files(self, path, file_name=constants.TEST_MAPPING):
         """Find all files with given name under the given path.
 
         Args:
@@ -358,7 +357,8 @@ class CLITranslator(object):
     # pylint: disable=too-many-locals
     def _find_tests_by_test_mapping(
             self, path='', test_group=constants.TEST_GROUP_PRESUBMIT,
-            file_name=TEST_MAPPING, include_subdirs=False, checked_files=None):
+            file_name=constants.TEST_MAPPING, include_subdirs=False,
+            checked_files=None):
         """Find tests defined in TEST_MAPPING in the given path.
 
         Args:
