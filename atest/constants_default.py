@@ -99,6 +99,8 @@ TI_MODULE_ARG = 'module-arg'
 GTF_MODULE = 'google-tradefed'
 GTF_TARGET = 'google-tradefed-core'
 
+# TEST_MAPPING filename
+TEST_MAPPING = 'TEST_MAPPING'
 # Test group for tests in TEST_MAPPING
 TEST_GROUP_PRESUBMIT = 'presubmit'
 TEST_GROUP_POSTSUBMIT = 'postsubmit'
