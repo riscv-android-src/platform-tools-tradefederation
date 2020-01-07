@@ -283,17 +283,15 @@ class AtestUnittests(unittest.TestCase):
         """Test make_test_run_dir."""
         tmp_dir = tempfile.mkdtemp()
         constants.ATEST_RESULT_ROOT = tmp_dir
-        data_time = None
-        try:
-            word_dir = atest.make_test_run_dir()
-            folder_name = os.path.basename(word_dir)
-            data_time = datetime.datetime.strptime('_'.join(folder_name.split('_')[:-1]),
-                                                   atest.TEST_RUN_DIR_PREFIX)
-        except ValueError:
-            pass
-        finally:
-            reload(constants)
-        self.assertTrue(data_time)
+        date_time = None
+
+        work_dir = atest.make_test_run_dir()
+        folder_name = os.path.basename(work_dir)
+        date_time = datetime.datetime.strptime('_'.join(folder_name.split('_')[0:2]),
+                                               atest.TEST_RUN_DIR_PREFIX)
+
+        reload(constants)
+        self.assertIsNotNone(date_time)
 
 
 if __name__ == '__main__':
