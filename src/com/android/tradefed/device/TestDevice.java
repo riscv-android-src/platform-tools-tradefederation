@@ -363,8 +363,8 @@ public class TestDevice extends NativeDevice {
      *
      * @param packageFiles the local apk files
      * @param reinstall <code>true</code> if a reinstall should be performed
-     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
-     *     available options.
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm -h' for available
+     *     options.
      * @return the response from the installation <code>null</code> if installation succeeds.
      * @throws DeviceNotAvailableException
      */
@@ -467,8 +467,8 @@ public class TestDevice extends NativeDevice {
      *
      * @param remoteApkPaths the remote apk file paths
      * @param reinstall <code>true</code> if a reinstall should be performed
-     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
-     *     available options.
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm -h' for available
+     *     options.
      * @return the response from the installation <code>null</code> if installation succeeds.
      * @throws DeviceNotAvailableException
      */
