@@ -152,9 +152,30 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
         mForwarder.testLog(dataName, dataType, dataStream);
     }
 
+    @Override
+    public final void testModuleStarted(IInvocationContext moduleContext) {
+        mForwarder.testModuleStarted(moduleContext);
+    }
+
+    @Override
+    public final void testModuleEnded() {
+        mForwarder.testModuleEnded();
+    }
+
     /** Test run callbacks */
     @Override
     public final void testRunStarted(String runName, int testCount) {
+        testRunStarted(runName, testCount, 0);
+    }
+
+    @Override
+    public final void testRunStarted(String runName, int testCount, int attemptNumber) {
+        testRunStarted(runName, testCount, 0, System.currentTimeMillis());
+    }
+
+    @Override
+    public final void testRunStarted(
+            String runName, int testCount, int attemptNumber, long startTime) {
         mRunData = new DeviceMetricData(mContext);
         mRunName = runName;
         try {
@@ -163,7 +184,7 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
             // Prevent exception from messing up the status reporting.
             CLog.e(t);
         }
-        mForwarder.testRunStarted(runName, testCount);
+        mForwarder.testRunStarted(runName, testCount, attemptNumber, startTime);
     }
 
     @Override
