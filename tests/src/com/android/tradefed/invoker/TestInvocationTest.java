@@ -1845,7 +1845,8 @@ public class TestInvocationTest {
         collectors.add(new TestableCollector("collector4"));
         configuration.setDeviceMetricCollectors(collectors);
 
-        mMockTestListener.testRunStarted("TestStub", 1);
+        mMockTestListener.testRunStarted(
+                EasyMock.eq("TestStub"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         TestDescription testId = new TestDescription("StubTest", "StubMethod");
         mMockTestListener.testStarted(EasyMock.eq(testId), EasyMock.anyLong());
         mMockTestListener.testEnded(
@@ -1889,7 +1890,8 @@ public class TestInvocationTest {
         collectors.add(new TestableCollector("collector4"));
         configuration.setDeviceMetricCollectors(collectors);
 
-        mMockTestListener.testRunStarted("TestStub", 1);
+        mMockTestListener.testRunStarted(
+                EasyMock.eq("TestStub"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         TestDescription testId = new TestDescription("StubTest", "StubMethod");
         mMockTestListener.testStarted(EasyMock.eq(testId), EasyMock.anyLong());
         mMockTestListener.testEnded(
