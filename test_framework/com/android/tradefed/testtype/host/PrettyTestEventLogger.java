@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.host;
 
+import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -78,7 +79,8 @@ public class PrettyTestEventLogger implements ITestInvocationListener {
     private void logOnAllDevices(String format, Object... args) {
         for (ITestDevice device : mDevices) {
             // Only attempt to log on real devices.
-            if (!(device.getIDevice() instanceof StubDevice)) {
+            if (!(device.getIDevice() instanceof StubDevice)
+                    && DeviceState.ONLINE.equals(device.getIDevice().getState())) {
                 device.logOnDevice(TAG, LogLevel.DEBUG, format, args);
             }
         }

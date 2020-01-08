@@ -462,9 +462,14 @@ public class NativeDevice implements IManagedTestDevice {
         if (getIDevice() instanceof StubDevice) {
             return null;
         }
-        if (!TestDeviceState.ONLINE.equals(getDeviceState())) {
-            // Only query property for online device
-            CLog.d("Device %s is not online cannot get property %s.", getSerialNumber(), name);
+        TestDeviceState state = getDeviceState();
+        if (TestDeviceState.FASTBOOT.equals(state)) {
+            return getFastbootVariable(name);
+        } else if (!TestDeviceState.ONLINE.equals(state)) {
+            // Only query property for online/fastboot device
+            CLog.d(
+                    "Device %s is in state %s, which is not online or fastboot mode, cannot get property %s.",
+                    getSerialNumber(), state, name);
             return null;
         }
         return getIDevice().getProperty(name);
@@ -627,7 +632,7 @@ public class NativeDevice implements IManagedTestDevice {
         return prop;
     }
 
-    private String getFastbootVariable(String variableName)
+    private String getFastbootVariable(final String variableName)
             throws DeviceNotAvailableException, UnsupportedOperationException {
         CommandResult result = executeFastbootCommand("getvar", variableName);
         if (result.getStatus() == CommandStatus.SUCCESS) {
@@ -2890,28 +2895,46 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public void rebootIntoBootloader()
             throws DeviceNotAvailableException, UnsupportedOperationException {
+        rebootIntoFastbootInternal(true);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void rebootIntoFastbootd()
+            throws DeviceNotAvailableException, UnsupportedOperationException {
+        rebootIntoFastbootInternal(false);
+    }
+
+    /**
+     * Reboots the device into bootloader or fastbootd mode.
+     *
+     * @param isBootloader: true to boot the device into bootloader mode, false to boot the device
+     *     into fastbootd mode.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     */
+    private void rebootIntoFastbootInternal(boolean isBootloader)
+            throws DeviceNotAvailableException, UnsupportedOperationException {
+        final String mode = isBootloader ? "bootloader" : "fastboot";
         if (!mFastbootEnabled) {
             throw new UnsupportedOperationException(
-                    "Fastboot is not available and cannot reboot into bootloader");
+                    String.format("Fastboot is not available and cannot reboot into %s", mode));
         }
         // If we go to bootloader, it's probably for flashing so ensure we re-check the provider
         mShouldSkipContentProviderSetup = false;
-        CLog.i("Rebooting device %s in state %s into bootloader", getSerialNumber(),
-                getDeviceState());
+        CLog.i(
+                "Rebooting device %s in state %s into %s",
+                getSerialNumber(), getDeviceState(), mode);
         if (TestDeviceState.FASTBOOT.equals(getDeviceState())) {
             CLog.i("device %s already in fastboot. Rebooting anyway", getSerialNumber());
-            executeFastbootCommand("reboot-bootloader");
+            executeFastbootCommand(String.format("reboot-%s", mode));
         } else {
-            CLog.i("Booting device %s into bootloader", getSerialNumber());
-            doAdbRebootBootloader();
+            CLog.i("Booting device %s into %s", getSerialNumber(), mode);
+            doAdbReboot(mode);
         }
         if (!mStateMonitor.waitForDeviceBootloader(mOptions.getFastbootTimeout())) {
             recoverDeviceFromBootloader();
         }
-    }
-
-    private void doAdbRebootBootloader() throws DeviceNotAvailableException {
-        doAdbReboot("bootloader");
     }
 
     /**
