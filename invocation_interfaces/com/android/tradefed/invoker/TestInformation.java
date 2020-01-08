@@ -39,6 +39,8 @@ public class TestInformation {
     /** Main folder for all dependencies of tests */
     private final File mDependenciesFolder;
 
+    private int mPrimaryDeviceIndex = 0;
+
     private TestInformation(Builder builder) {
         mContext = builder.mContext;
         mProperties = builder.mProperties;
@@ -71,7 +73,7 @@ public class TestInformation {
 
     /** Returns the primary device under tests. */
     public ITestDevice getDevice() {
-        return mContext.getDevices().get(0);
+        return mContext.getDevices().get(mPrimaryDeviceIndex);
     }
 
     /** Returns the list of devices part of the invocation. */
@@ -81,7 +83,15 @@ public class TestInformation {
 
     /** Returns the primary device build information. */
     public IBuildInfo getBuildInfo() {
-        return mContext.getBuildInfos().get(0);
+        return mContext.getBuildInfos().get(mPrimaryDeviceIndex);
+    }
+
+    /**
+     * Test Harness internal method to switch which device is returned by default with {@link
+     * #getDevice()}. Always reset to 0.
+     */
+    public final void setActiveDeviceIndex(int index) {
+        mPrimaryDeviceIndex = index;
     }
 
     /**

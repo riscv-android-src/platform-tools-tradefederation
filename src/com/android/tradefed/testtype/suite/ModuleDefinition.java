@@ -697,7 +697,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     /** Run all the prepare steps. */
     private Throwable runPreparerSetup(
-            TestInformation moduleInfo, ITargetPreparer preparer, ITestLogger logger) {
+            TestInformation moduleInfo,
+            ITargetPreparer preparer,
+            ITestLogger logger,
+            int deviceIndex) {
         if (preparer.isDisabled()) {
             // If disabled skip completely.
             return null;
@@ -712,6 +715,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 ((IInvocationContextReceiver) preparer)
                         .setInvocationContext(mModuleInvocationContext);
             }
+            moduleInfo.setActiveDeviceIndex(deviceIndex);
             preparer.setUp(moduleInfo);
             return null;
         } catch (BuildError
@@ -725,6 +729,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             CLog.e("Unexpected Exception from preparer: %s", preparer.getClass().getName());
             CLog.e(e);
             return e;
+        } finally {
+            moduleInfo.setActiveDeviceIndex(0);
         }
     }
 
@@ -811,8 +817,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                         origMode = device.getRecoveryMode();
                         device.setRecoveryMode(RecoveryMode.NONE);
                     }
+                    moduleInfo.setActiveDeviceIndex(i);
                     preparer.tearDown(moduleInfo, exception);
                 } finally {
+                    moduleInfo.setActiveDeviceIndex(0);
                     if (origMode != null) {
                         device.setRecoveryMode(origMode);
                     }
@@ -977,7 +985,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 preparers = mPreparersPerDevice.get(key);
             }
             for (ITargetPreparer preparer : preparers) {
-                preparationException = runPreparerSetup(moduleInfo, preparer, logger);
+                preparationException = runPreparerSetup(moduleInfo, preparer, logger, i);
                 if (preparationException != null) {
                     mIsFailedModule = true;
                     CLog.e("Some preparation step failed. failing the module %s", getId());
