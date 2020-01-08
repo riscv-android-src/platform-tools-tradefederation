@@ -96,7 +96,8 @@ public class LogcatOnFailureCollectorTest {
         mMockReceiver.start();
         mMockReceiver.clear();
         mMockReceiver.stop();
-        mMockListener.testRunStarted("runName", 1);
+        mMockListener.testRunStarted(
+                EasyMock.eq("runName"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         TestDescription test = new TestDescription("class", "test");
         mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
         mMockListener.testFailed(EasyMock.eq(test), EasyMock.anyObject());
@@ -147,7 +148,8 @@ public class LogcatOnFailureCollectorTest {
         EasyMock.expectLastCall().times(2);
         mMockReceiver.stop();
         EasyMock.expectLastCall().times(2);
-        mMockListener.testRunStarted("runName", 1);
+        mMockListener.testRunStarted(
+                EasyMock.eq("runName"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         TestDescription test = new TestDescription("class", "test");
         TestDescription test2 = new TestDescription("class2", "test2");
         mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
@@ -168,7 +170,8 @@ public class LogcatOnFailureCollectorTest {
                 EasyMock.eq(LogDataType.LOGCAT),
                 EasyMock.anyObject());
 
-        mMockListener.testRunStarted("runName2", 1);
+        mMockListener.testRunStarted(
+                EasyMock.eq("runName2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
         mMockListener.testFailed(EasyMock.eq(test2), EasyMock.anyObject());
         mMockListener.testEnded(

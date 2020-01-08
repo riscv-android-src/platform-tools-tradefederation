@@ -17,6 +17,7 @@ package com.android.tradefed.device.metric;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.times;
 
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -111,7 +112,9 @@ public class DebugHostLogOnFailureCollectorTest {
         assertTrue(mCollector.mOnTestStartCalled);
         assertTrue(mCollector.mOnTestFailCalled);
 
-        Mockito.verify(mMockListener).testRunStarted("runName", 1);
+        Mockito.verify(mMockListener, times(1))
+                .testRunStarted(
+                        Mockito.eq("runName"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
         Mockito.verify(mMockListener).testStarted(Mockito.eq(test), Mockito.anyLong());
         Mockito.verify(mMockListener).testFailed(Mockito.eq(test), Mockito.any());
         Mockito.verify(mMockListener)
