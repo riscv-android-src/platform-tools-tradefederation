@@ -19,6 +19,7 @@ import com.android.ddmlib.Log;
 import com.android.tradefed.command.FatalHostError;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -265,6 +266,8 @@ public class FileDownloadCache {
                     fLock.release();
                 } catch (IOException e) {
                     CLog.e(e);
+                } finally {
+                    StreamUtil.close(fLock.channel());
                 }
             }
         }
