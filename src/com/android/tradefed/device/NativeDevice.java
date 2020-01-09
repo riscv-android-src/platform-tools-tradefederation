@@ -991,6 +991,14 @@ public class NativeDevice implements IManagedTestDevice {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isAppEnumerationSupported() throws DeviceNotAvailableException {
+        return getApiLevel() > 29;
+    }
+
+    /**
      * helper method to throw exception if runtime permission isn't supported
      * @throws DeviceNotAvailableException
      */

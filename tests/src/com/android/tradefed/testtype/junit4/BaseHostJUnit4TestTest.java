@@ -134,6 +134,7 @@ public class BaseHostJUnit4TestTest {
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockBuild = EasyMock.createMock(IBuildInfo.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mMockDevice.isAppEnumerationSupported()).andStubReturn(false);
         mMockContext = new InvocationContext();
         mMockContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
         mMockContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockBuild);
