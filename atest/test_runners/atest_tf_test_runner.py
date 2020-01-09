@@ -376,6 +376,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 args_to_append.append('--enable-optional-parameterization')
                 args_to_append.append('--module-parameter')
                 args_to_append.append(extra_args[arg])
+                continue
             if constants.ITERATIONS == arg:
                 args_to_append.append('--retry-strategy')
                 args_to_append.append(constants.ITERATIONS)
