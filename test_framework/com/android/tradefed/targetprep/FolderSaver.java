@@ -45,6 +45,9 @@ public class FolderSaver extends BaseTargetPreparer implements ITestLoggerReceiv
             + "logged, may be repeated.")
     private List<String> mDevicePaths = new ArrayList<>();
 
+    @Option(name = "include-empty", description = "Upload empty folders if set; don't if not.")
+    private Boolean mIncludeEmpty = false;
+
     private ITestLogger mTestLogger;
 
     /**
@@ -79,6 +82,24 @@ public class FolderSaver extends BaseTargetPreparer implements ITestLoggerReceiv
             return;
         }
         for (String path : mDevicePaths) {
+            // Don't try to pull a directory if it doesn't exist.
+            if (!device.doesFileExist(path)) {
+                CLog.w("Directory, %s, does not exist.", path);
+                continue;
+            }
+
+            // Don't try to pull a file that isn't a directory.
+            if (!device.isDirectory(path)) {
+                CLog.w("File, %s, is not a directory.", path);
+                continue;
+            }
+
+            // Don't pull empty directories if it's specified not to.
+            if (!mIncludeEmpty && device.getFileEntry(path).getChildren(false).isEmpty()) {
+                CLog.w("Skipping empty directory, %s.", path);
+                continue;
+            }
+
             File tempDir = null;
             try {
                 tempDir = FileUtil.createTempDir("tf-pulled-dir");
