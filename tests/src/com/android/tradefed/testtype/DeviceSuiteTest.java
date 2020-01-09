@@ -21,6 +21,8 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -66,7 +68,10 @@ public class DeviceSuiteTest {
         OptionSetter setter = new OptionSetter(mHostTest);
         // Disable pretty logging for testing
         setter.setOptionValue("enable-pretty-logs", "false");
-        mTestInfo = TestInformation.newBuilder().build();
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mMockDevice);
+        context.addDeviceBuildInfo("device", mMockBuildInfo);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     @RunWith(DeviceJUnit4ClassRunner.class)
