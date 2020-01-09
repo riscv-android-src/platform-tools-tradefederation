@@ -63,6 +63,8 @@ TEST = ('Run the tests. WARNING: Many test configs force cleanup of device '
         'disable cleanup for "-t" to work. Otherwise, device will need to be '
         'setup again with "-i".')
 TEST_MAPPING = 'Run tests defined in TEST_MAPPING files.'
+TF_TEMPLATE = ('Add extra tradefed template for ATest suite, '
+               'e.g. atest <test> --tf-template <template_key>=<template_path>')
 UPDATE_CMD_MAPPING = ('Update the test command of input tests. Warning: result '
                       'will be saved under tools/tradefederation/core/atest/test_data.')
 USER_TYPE = 'Run test with specific user type, e.g. atest <test> --user-type secondary_user'
@@ -167,6 +169,10 @@ class AtestArgParser(argparse.ArgumentParser):
         self.add_argument('-y', '--verify-cmd-mapping', action='store_true',
                           help=VERIFY_CMD_MAPPING)
 
+        # Options for Tradefed customization related.
+        self.add_argument('--tf-template', action='append',
+                          help=TF_TEMPLATE)
+
         # A group of options for rerun strategy. They are mutually exclusive
         # in a command line.
         group = self.add_mutually_exclusive_group()
@@ -228,6 +234,7 @@ def print_epilog_text():
                                          SERIAL=SERIAL,
                                          TEST=TEST,
                                          TEST_MAPPING=TEST_MAPPING,
+                                         TF_TEMPLATE=TF_TEMPLATE,
                                          USER_TYPE=USER_TYPE,
                                          UPDATE_CMD_MAPPING=UPDATE_CMD_MAPPING,
                                          VERBOSE=VERBOSE,
@@ -274,6 +281,9 @@ OPTIONS
 
         -t, --test
             {TEST} (default)
+
+        --tf-template
+            {TF_TEMPLATE}
 
         -w, --wait-for-debugger
             {WAIT_FOR_DEBUGGER}
