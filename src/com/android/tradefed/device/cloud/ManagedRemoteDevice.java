@@ -108,18 +108,19 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
             }
 
             if (mGceAvd != null) {
-                // attempt to get a bugreport if Gce Avd is a failure
-                if (!GceStatus.SUCCESS.equals(mGceAvd.getStatus())) {
-                    // Get a bugreport via ssh
-                    getSshBugreport();
+                if (mGceAvd.hostAndPort() != null) {
+                    // attempt to get a bugreport if Gce Avd is a failure
+                    if (!GceStatus.SUCCESS.equals(mGceAvd.getStatus())) {
+                        // Get a bugreport via ssh
+                        getSshBugreport();
+                    }
+                    // Log the serial output of the instance.
+                    getGceHandler().logSerialOutput(mGceAvd, mTestLogger);
+
+                    // Fetch remote files
+                    CommonLogRemoteFileUtil.fetchCommonFiles(
+                            mTestLogger, mGceAvd, getOptions(), getRunUtil());
                 }
-                // Log the serial output of the instance.
-                getGceHandler().logSerialOutput(mGceAvd, mTestLogger);
-
-                // Fetch remote files
-                CommonLogRemoteFileUtil.fetchCommonFiles(
-                        mTestLogger, mGceAvd, getOptions(), getRunUtil());
-
                 // Cleanup GCE first to make sure ssh tunnel has nowhere to go.
                 if (!getOptions().shouldSkipTearDown()) {
                     getGceHandler().shutdownGce();
