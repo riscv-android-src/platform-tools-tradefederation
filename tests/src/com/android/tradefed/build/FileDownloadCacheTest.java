@@ -16,12 +16,16 @@
 package com.android.tradefed.build;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
 import org.easymock.EasyMock;
@@ -346,6 +350,11 @@ public class FileDownloadCacheTest {
             if (relativePaths == null || relativePaths.size() == 0) {
                 String contents = StreamUtil.getStringFromStream(new FileInputStream(fileCopy));
                 assertEquals(DOWNLOADED_CONTENTS, contents);
+                FileUtil.chmodGroupRWX(fileCopy);
+                CommandResult res =
+                        RunUtil.getDefault().runTimedCmd(60000, fileCopy.getAbsolutePath());
+                assertNotEquals(
+                        "File should not be busy.", CommandStatus.EXCEPTION, res.getStatus());
             } else {
                 assertTrue(fileCopy.isDirectory());
                 for (String relativePath : relativePaths) {
