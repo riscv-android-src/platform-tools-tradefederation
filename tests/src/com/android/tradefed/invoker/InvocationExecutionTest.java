@@ -25,6 +25,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
@@ -47,9 +48,12 @@ import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.LogSaverResultForwarder;
+import com.android.tradefed.targetprep.BaseTargetPreparer;
+import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.IHostCleaner;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.TestSuiteStub;
@@ -406,6 +410,51 @@ public class InvocationExecutionTest {
         inOrder.verify(stub2).tearDown(testInfo, exception);
         inOrder.verify(stub1).isDisabled();
         inOrder.verify(stub1).tearDown(testInfo, exception);
+    }
+
+    /** Ensure that setup and teardown are called with the proper device. */
+    @Test
+    public void testDoTearDown_multiDevice() throws Throwable {
+        boolean[] wasCalled = new boolean[2];
+        wasCalled[0] = false;
+        wasCalled[1] = false;
+        ITestDevice mockDevice1 = mock(ITestDevice.class);
+        ITestDevice mockDevice2 = mock(ITestDevice.class);
+        BaseTargetPreparer cleaner =
+                new BaseTargetPreparer() {
+                    @Override
+                    public void setUp(TestInformation testInformation)
+                            throws TargetSetupError, BuildError, DeviceNotAvailableException {
+                        wasCalled[0] = true;
+                        assertEquals(mockDevice2, testInformation.getDevice());
+                    }
+
+                    @Override
+                    public void tearDown(TestInformation testInformation, Throwable e)
+                            throws DeviceNotAvailableException {
+                        wasCalled[1] = true;
+                        assertEquals(mockDevice2, testInformation.getDevice());
+                    }
+                };
+        IDeviceConfiguration holder1 = new DeviceConfigurationHolder("device1");
+        IDeviceConfiguration holder2 = new DeviceConfigurationHolder("device2");
+        holder2.addSpecificConfig(cleaner);
+        List<IDeviceConfiguration> deviceConfigs = new ArrayList<>();
+        deviceConfigs.add(holder1);
+        deviceConfigs.add(holder2);
+        mConfig.setDeviceConfigList(deviceConfigs);
+        mContext.addAllocatedDevice("device1", mockDevice1);
+        mContext.addDeviceBuildInfo("device1", new BuildInfo());
+        mContext.addAllocatedDevice("device2", mockDevice2);
+        mContext.addDeviceBuildInfo("device2", new BuildInfo());
+        TestInformation testInfo =
+                TestInformation.newBuilder().setInvocationContext(mContext).build();
+        mExec.doSetup(testInfo, mConfig, mMockLogger);
+        // Ensure that the original error is the one passed around.
+        Throwable exception = new Throwable("Original error");
+        mExec.doTeardown(testInfo, mConfig, mMockLogger, exception);
+        assertTrue(wasCalled[0]);
+        assertTrue(wasCalled[1]);
     }
 
     /** Interface to test a preparer receiving the logger. */

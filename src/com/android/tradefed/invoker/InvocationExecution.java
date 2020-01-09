@@ -208,6 +208,7 @@ public class InvocationExecution implements IInvocationExecution {
 
             // TODO: evaluate doing device setup in parallel
             mTrackTargetPreparers = new HashMap<>();
+            int index = 0;
             for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
                 mTrackTargetPreparers.put(deviceName, new HashSet<>());
                 ITestDevice device = testInfo.getContext().getDevice(deviceName);
@@ -229,13 +230,19 @@ public class InvocationExecution implements IInvocationExecution {
                     CLog.d(
                             "starting preparer '%s' on device: '%s'",
                             preparer, device.getSerialNumber());
-                    preparer.setUp(testInfo);
+                    try {
+                        testInfo.setActiveDeviceIndex(index);
+                        preparer.setUp(testInfo);
+                    } finally {
+                        testInfo.setActiveDeviceIndex(0);
+                    }
                     mTrackTargetPreparers.get(deviceName).add(preparer);
                     CLog.d(
                             "done with preparer '%s' on device: '%s'",
                             preparer, device.getSerialNumber());
                 }
                 CLog.d("Done with setup of device: '%s'", device.getSerialNumber());
+                index++;
             }
             // After all the individual setup, make the multi-devices setup
             runMultiTargetPreparers(
@@ -379,6 +386,7 @@ public class InvocationExecution implements IInvocationExecution {
                         "multi target preparer teardown");
 
         // Clear wifi settings, to prevent wifi errors from interfering with teardown process.
+        int deviceIndex = 0;
         for (String deviceName : context.getDeviceConfigNames()) {
             ITestDevice device = context.getDevice(deviceName);
             device.clearLastConnectedWifiNetwork();
@@ -407,6 +415,7 @@ public class InvocationExecution implements IInvocationExecution {
                     CLog.d(
                             "starting tearDown '%s' on device: '%s'",
                             preparer, device.getSerialNumber());
+                    testInfo.setActiveDeviceIndex(deviceIndex);
                     preparer.tearDown(testInfo, exception);
                     CLog.d(
                             "done with tearDown '%s' on device: '%s'",
@@ -419,8 +428,11 @@ public class InvocationExecution implements IInvocationExecution {
                     if (deferredThrowable == null) {
                         deferredThrowable = e;
                     }
+                } finally {
+                    testInfo.setActiveDeviceIndex(0);
                 }
             }
+            deviceIndex++;
         }
 
         // Extra tear down step for the device
