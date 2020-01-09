@@ -140,6 +140,89 @@ RESULT_ASSUMPTION_FAILED_TEST = test_runner_base.TestResult(
     test_run_name='com.android.UnitTests'
 )
 
+ADDITIONAL_INFO_PERF01_TEST01 = {u'repetition_index': u'0',
+                                 u'cpu_time': u'10001.10001',
+                                 u'name': u'perfName01',
+                                 u'repetitions': u'0', u'run_type': u'iteration',
+                                 u'label': u'2123', u'threads': u'1',
+                                 u'time_unit': u'ns', u'iterations': u'1001',
+                                 u'run_name': u'perfName01',
+                                 u'real_time': u'11001.11001'}
+
+RESULT_PERF01_TEST01 = test_runner_base.TestResult(
+    runner_name='someTestRunner',
+    group_name='someTestModule',
+    test_name='somePerfClass01#perfName01',
+    status=test_runner_base.PASSED_STATUS,
+    details=None,
+    test_count=1,
+    test_time='(10ms)',
+    runner_total=None,
+    group_total=2,
+    additional_info=ADDITIONAL_INFO_PERF01_TEST01,
+    test_run_name='com.android.UnitTests'
+)
+
+RESULT_PERF01_TEST02 = test_runner_base.TestResult(
+    runner_name='someTestRunner',
+    group_name='someTestModule',
+    test_name='somePerfClass01#perfName02',
+    status=test_runner_base.PASSED_STATUS,
+    details=None,
+    test_count=1,
+    test_time='(10ms)',
+    runner_total=None,
+    group_total=2,
+    additional_info={u'repetition_index': u'0', u'cpu_time': u'10002.10002',
+                     u'name': u'perfName02',
+                     u'repetitions': u'0', u'run_type': u'iteration',
+                     u'label': u'2123', u'threads': u'1',
+                     u'time_unit': u'ns', u'iterations': u'1002',
+                     u'run_name': u'perfName02',
+                     u'real_time': u'11002.11002'},
+    test_run_name='com.android.UnitTests'
+)
+
+RESULT_PERF01_TEST03_NO_CPU_TIME = test_runner_base.TestResult(
+    runner_name='someTestRunner',
+    group_name='someTestModule',
+    test_name='somePerfClass01#perfName03',
+    status=test_runner_base.PASSED_STATUS,
+    details=None,
+    test_count=1,
+    test_time='(10ms)',
+    runner_total=None,
+    group_total=2,
+    additional_info={u'repetition_index': u'0',
+                     u'name': u'perfName03',
+                     u'repetitions': u'0', u'run_type': u'iteration',
+                     u'label': u'2123', u'threads': u'1',
+                     u'time_unit': u'ns', u'iterations': u'1003',
+                     u'run_name': u'perfName03',
+                     u'real_time': u'11003.11003'},
+    test_run_name='com.android.UnitTests'
+)
+
+RESULT_PERF02_TEST01 = test_runner_base.TestResult(
+    runner_name='someTestRunner',
+    group_name='someTestModule',
+    test_name='somePerfClass02#perfName11',
+    status=test_runner_base.PASSED_STATUS,
+    details=None,
+    test_count=1,
+    test_time='(10ms)',
+    runner_total=None,
+    group_total=2,
+    additional_info={u'repetition_index': u'0', u'cpu_time': u'20001.20001',
+                     u'name': u'perfName11',
+                     u'repetitions': u'0', u'run_type': u'iteration',
+                     u'label': u'2123', u'threads': u'1',
+                     u'time_unit': u'ns', u'iterations': u'2001',
+                     u'run_name': u'perfName11',
+                     u'real_time': u'210001.21001'},
+    test_run_name='com.android.UnitTests'
+)
+
 #pylint: disable=protected-access
 #pylint: disable=invalid-name
 class ResultReporterUnittests(unittest.TestCase):
@@ -366,6 +449,98 @@ class ResultReporterUnittests(unittest.TestCase):
         # PASS Case + Fail Case + PASS Case
         self.rr.process_test_result(RESULT_PASSED_TEST_MODULE_2)
         self.assertNotEqual(0, self.rr.print_summary())
+
+    def test_update_perf_info(self):
+        """Test update_perf_info method."""
+        group = result_reporter.RunStat()
+        # 1. Test PerfInfo after RESULT_PERF01_TEST01
+        # _update_stats() will call _update_perf_info()
+        self.rr._update_stats(RESULT_PERF01_TEST01, group)
+        correct_perf_info = []
+        # trim the time form 10001.10001 to 10001
+        trim_perf01_test01 = {u'repetition_index': u'0', u'cpu_time': u'10001',
+                              u'name': u'perfName01',
+                              u'repetitions': u'0', u'run_type': u'iteration',
+                              u'label': u'2123', u'threads': u'1',
+                              u'time_unit': u'ns', u'iterations': u'1001',
+                              u'run_name': u'perfName01',
+                              u'real_time': u'11001',
+                              'test_name': 'somePerfClass01#perfName01'}
+        correct_perf_info.append(trim_perf01_test01)
+        self.assertEquals(self.rr.run_stats.perf_info.perf_info,
+                          correct_perf_info)
+        # 2. Test PerfInfo after RESULT_PERF01_TEST01
+        self.rr._update_stats(RESULT_PERF01_TEST02, group)
+        trim_perf01_test02 = {u'repetition_index': u'0', u'cpu_time': u'10002',
+                              u'name': u'perfName02',
+                              u'repetitions': u'0', u'run_type': u'iteration',
+                              u'label': u'2123', u'threads': u'1',
+                              u'time_unit': u'ns', u'iterations': u'1002',
+                              u'run_name': u'perfName02',
+                              u'real_time': u'11002',
+                              'test_name': 'somePerfClass01#perfName02'}
+        correct_perf_info.append(trim_perf01_test02)
+        self.assertEquals(self.rr.run_stats.perf_info.perf_info,
+                          correct_perf_info)
+        # 3. Test PerfInfo after RESULT_PERF02_TEST01
+        self.rr._update_stats(RESULT_PERF02_TEST01, group)
+        trim_perf02_test01 = {u'repetition_index': u'0', u'cpu_time': u'20001',
+                              u'name': u'perfName11',
+                              u'repetitions': u'0', u'run_type': u'iteration',
+                              u'label': u'2123', u'threads': u'1',
+                              u'time_unit': u'ns', u'iterations': u'2001',
+                              u'run_name': u'perfName11',
+                              u'real_time': u'210001',
+                              'test_name': 'somePerfClass02#perfName11'}
+        correct_perf_info.append(trim_perf02_test01)
+        self.assertEquals(self.rr.run_stats.perf_info.perf_info,
+                          correct_perf_info)
+        # 4. Test PerfInfo after RESULT_PERF01_TEST03_NO_CPU_TIME
+        self.rr._update_stats(RESULT_PERF01_TEST03_NO_CPU_TIME, group)
+        # Nothing added since RESULT_PERF01_TEST03_NO_CPU_TIME lack of cpu_time
+        self.assertEquals(self.rr.run_stats.perf_info.perf_info,
+                          correct_perf_info)
+
+    def test_classify_perf_info(self):
+        """Test _classify_perf_info method."""
+        group = result_reporter.RunStat()
+        self.rr._update_stats(RESULT_PERF01_TEST01, group)
+        self.rr._update_stats(RESULT_PERF01_TEST02, group)
+        self.rr._update_stats(RESULT_PERF02_TEST01, group)
+        # trim the time form 10001.10001 to 10001
+        trim_perf01_test01 = {u'repetition_index': u'0', u'cpu_time': u'10001',
+                              u'name': u'perfName01',
+                              u'repetitions': u'0', u'run_type': u'iteration',
+                              u'label': u'2123', u'threads': u'1',
+                              u'time_unit': u'ns', u'iterations': u'1001',
+                              u'run_name': u'perfName01',
+                              u'real_time': u'11001',
+                              'test_name': 'somePerfClass01#perfName01'}
+        trim_perf01_test02 = {u'repetition_index': u'0', u'cpu_time': u'10002',
+                              u'name': u'perfName02',
+                              u'repetitions': u'0', u'run_type': u'iteration',
+                              u'label': u'2123', u'threads': u'1',
+                              u'time_unit': u'ns', u'iterations': u'1002',
+                              u'run_name': u'perfName02',
+                              u'real_time': u'11002',
+                              'test_name': 'somePerfClass01#perfName02'}
+        trim_perf02_test01 = {u'repetition_index': u'0', u'cpu_time': u'20001',
+                              u'name': u'perfName11',
+                              u'repetitions': u'0', u'run_type': u'iteration',
+                              u'label': u'2123', u'threads': u'1',
+                              u'time_unit': u'ns', u'iterations': u'2001',
+                              u'run_name': u'perfName11',
+                              u'real_time': u'210001',
+                              'test_name': 'somePerfClass02#perfName11'}
+        correct_classify_perf_info = {"somePerfClass01":[trim_perf01_test01,
+                                                         trim_perf01_test02],
+                                      "somePerfClass02":[trim_perf02_test01]}
+        classify_perf_info, max_len = self.rr.run_stats.perf_info._classify_perf_info()
+        correct_max_len = {'real_time': 6, 'cpu_time': 5, 'name': 10,
+                           'iterations': 9, 'time_unit': 2}
+        self.assertEquals(max_len, correct_max_len)
+        self.assertEquals(classify_perf_info, correct_classify_perf_info)
+
 
 if __name__ == '__main__':
     unittest.main()
