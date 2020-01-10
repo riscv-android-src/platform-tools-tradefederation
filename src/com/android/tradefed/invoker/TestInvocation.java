@@ -34,7 +34,9 @@ import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.guice.InvocationScope;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecution;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
@@ -395,6 +397,7 @@ public class TestInvocation implements ITestInvocation {
                     }
                 }
             } finally {
+                CurrentInvocation.clearInvocationInfos();
                 invocationPath.cleanUpBuilds(context, config);
             }
         }
@@ -705,6 +708,7 @@ public class TestInvocation implements ITestInvocation {
                         .setInvocationContext(context)
                         .setDependenciesFolder(mWorkFolder)
                         .build();
+        CurrentInvocation.addInvocationInfo(InvocationInfo.WORK_FOLDER, mWorkFolder);
 
         List<ITestInvocationListener> allListeners =
                 new ArrayList<>(config.getTestInvocationListeners().size() + extraListeners.length);

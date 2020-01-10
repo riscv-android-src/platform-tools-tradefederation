@@ -17,6 +17,8 @@ package com.android.tradefed.build;
 
 import com.android.ddmlib.Log;
 import com.android.tradefed.command.FatalHostError;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
+import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -394,7 +396,9 @@ public class FileDownloadCache {
         File hardlinkFile = destFile;
         try {
             if (hardlinkFile == null) {
-                hardlinkFile = FileUtil.createTempFileForRemote(remotePath, null);
+                hardlinkFile =
+                        FileUtil.createTempFileForRemote(
+                                remotePath, CurrentInvocation.getInfo(InvocationInfo.WORK_FOLDER));
             }
             hardlinkFile.delete();
             CLog.d(
