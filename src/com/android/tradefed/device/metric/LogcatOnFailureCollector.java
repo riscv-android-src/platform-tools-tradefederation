@@ -21,6 +21,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ILogcatReceiver;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.LogcatReceiver;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
@@ -98,6 +99,9 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
 
     private void collectAndLog(TestDescription test) {
         for (ITestDevice device : getRealDevices()) {
+            if (!shouldCollect(device)) {
+                continue;
+            }
             ILogcatReceiver receiver = mLogcatReceivers.get(device);
             // Receiver is only initialized above API 19, if not supported, we use a legacy command
             if (receiver == null) {
@@ -151,5 +155,14 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
             String name = String.format(NAME_FORMAT, test.toString(), serial);
             super.testLog(name, LogDataType.LOGCAT, logcatSource);
         }
+    }
+
+    private boolean shouldCollect(ITestDevice device) {
+        TestDeviceState state = device.getDeviceState();
+        if (!TestDeviceState.ONLINE.equals(state)) {
+            CLog.d("Skip LogcatOnFailureCollector device is in state '%s'", state);
+            return false;
+        }
+        return true;
     }
 }
