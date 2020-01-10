@@ -27,11 +27,11 @@ import com.android.tradefed.util.proto.TfMetricProtoUtil;
 import java.io.File;
 import java.io.IOException;
 import java.util.AbstractMap.SimpleEntry;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -41,16 +41,15 @@ import java.util.regex.Pattern;
 public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCollector {
 
     @Option(
-        name = "pull-pattern-keys",
-        description = "The pattern key name to be pull from the device as a file. Can be repeated."
-    )
-    private List<String> mKeys = new ArrayList<>();
+            name = "pull-pattern-keys",
+            description =
+                    "The pattern key name to be pull from the device as a file. Can be repeated.")
+    private Set<String> mKeys = new HashSet<>();
 
     @Option(
-        name = "directory-keys",
-        description = "Path to the directory on the device that contains the metrics."
-        )
-    protected List<String> mDirectoryKeys = new ArrayList<>();
+            name = "directory-keys",
+            description = "Path to the directory on the device that contains the metrics.")
+    protected Set<String> mDirectoryKeys = new HashSet<>();
 
     @Option(
         name = "clean-up",
