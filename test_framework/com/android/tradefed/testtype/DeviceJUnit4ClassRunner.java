@@ -16,12 +16,10 @@
 package com.android.tradefed.testtype;
 
 import com.android.tradefed.build.BuildRetrievalError;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
-import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
@@ -55,15 +53,9 @@ import java.util.Set;
  * with the RunWith annotation.
  */
 public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
-        implements IDeviceTest,
-                IBuildReceiver,
-                IAbiReceiver,
-                ISetOptionReceiver,
-                IInvocationContextReceiver {
-    private ITestDevice mDevice;
-    private IBuildInfo mBuildInfo;
+        implements IAbiReceiver, ISetOptionReceiver, ITestInformationReceiver {
     private IAbi mAbi;
-    private IInvocationContext mContext;
+    private TestInformation mTestInformation;
 
     /** Keep track of the list of downloaded files. */
     private List<File> mDownloadedFiles = new ArrayList<>();
@@ -82,23 +74,21 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
     protected Object createTest() throws Exception {
         Object testObj = super.createTest();
         if (testObj instanceof IDeviceTest) {
-            if (mDevice == null) {
-                throw new IllegalArgumentException("Missing device");
-            }
-            ((IDeviceTest) testObj).setDevice(mDevice);
+            ((IDeviceTest) testObj).setDevice(mTestInformation.getDevice());
         }
         if (testObj instanceof IBuildReceiver) {
-            if (mBuildInfo == null) {
-                throw new IllegalArgumentException("Missing build information");
-            }
-            ((IBuildReceiver) testObj).setBuild(mBuildInfo);
+            ((IBuildReceiver) testObj).setBuild(mTestInformation.getBuildInfo());
         }
         // We are more flexible about abi information since not always available.
         if (testObj instanceof IAbiReceiver) {
             ((IAbiReceiver) testObj).setAbi(mAbi);
         }
         if (testObj instanceof IInvocationContextReceiver) {
-            ((IInvocationContextReceiver) testObj).setInvocationContext(mContext);
+            ((IInvocationContextReceiver) testObj)
+                    .setInvocationContext(mTestInformation.getContext());
+        }
+        if (testObj instanceof ITestInformationReceiver) {
+            ((ITestInformationReceiver) testObj).setTestInformation(mTestInformation);
         }
         // Set options of test object
         HostTest.setOptionToLoadedObject(testObj, mKeyValueOptions);
@@ -132,16 +122,6 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
     }
 
     @Override
-    public void setDevice(ITestDevice device) {
-        mDevice = device;
-    }
-
-    @Override
-    public ITestDevice getDevice() {
-        return mDevice;
-    }
-
-    @Override
     public void setAbi(IAbi abi) {
         mAbi = abi;
     }
@@ -152,13 +132,13 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
     }
 
     @Override
-    public void setBuild(IBuildInfo buildInfo) {
-        mBuildInfo = buildInfo;
+    public void setTestInformation(TestInformation testInformation) {
+        mTestInformation = testInformation;
     }
 
     @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
+    public TestInformation getTestInformation() {
+        return mTestInformation;
     }
 
     @VisibleForTesting

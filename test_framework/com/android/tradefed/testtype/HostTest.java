@@ -465,6 +465,9 @@ public class HostTest
         if (testObj instanceof IInvocationContextReceiver) {
             ((IInvocationContextReceiver) testObj).setInvocationContext(mTestInfo.getContext());
         }
+        if (testObj instanceof ITestInformationReceiver) {
+            ((ITestInformationReceiver) testObj).setTestInformation(mTestInfo);
+        }
         // managed runner should have the same set-option to pass option too.
         if (testObj instanceof ISetOptionReceiver) {
             try {
