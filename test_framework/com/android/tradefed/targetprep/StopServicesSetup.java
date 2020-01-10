@@ -15,10 +15,10 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -32,11 +32,10 @@ public class StopServicesSetup extends BaseTargetPreparer {
     @Option(name = "service", description = "the service to stop on the device. Can be repeated.")
     private Collection<String> mServices = new ArrayList<String>();
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws DeviceNotAvailableException {
+    public void setUp(TestInformation testInfo) throws DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
         if (mStopFramework) {
             device.executeShellCommand("stop");
         }
