@@ -4580,10 +4580,12 @@ public class NativeDevice implements IManagedTestDevice {
             return true;
         }
 
-
+        // Compare the start time with a 1 seconds accuracy due to how the date is computed
         if (currSystemServerProcess.getPid() == prevSystemServerProcess.getPid()
-                && currSystemServerProcess.getStartTime()
-                        == prevSystemServerProcess.getStartTime()) {
+                && Math.abs(
+                                currSystemServerProcess.getStartTime()
+                                        - prevSystemServerProcess.getStartTime())
+                        <= 1) {
             CLog.e(
                     "current system_server: %s different from prev system_server: %s",
                     currSystemServerProcess, prevSystemServerProcess);
