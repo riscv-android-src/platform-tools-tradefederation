@@ -386,12 +386,14 @@ class AtestUtilsUnittests(unittest.TestCase):
     def test_get_modified_files(self, mock_co):
         """Test method get_modified_files"""
         mock_co.side_effect = ['/a/b/',
+                               '\n',
                                'test_fp1.java\nc/test_fp2.java']
         self.assertEqual({'/a/b/test_fp1.java', '/a/b/c/test_fp2.java'},
                          atest_utils.get_modified_files(''))
         mock_co.side_effect = ['/a/b/',
+                               'test_fp4',
                                '/test_fp3.java']
-        self.assertEqual({'/a/b/test_fp3.java'},
+        self.assertEqual({'/a/b/test_fp4', '/a/b/test_fp3.java'},
                          atest_utils.get_modified_files(''))
 
 if __name__ == "__main__":
