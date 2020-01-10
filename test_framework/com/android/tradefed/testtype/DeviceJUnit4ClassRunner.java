@@ -49,8 +49,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * JUnit4 test runner that also accommodate {@link IDeviceTest}. Should be specify above JUnit4 Test
- * with the RunWith annotation.
+ * JUnit4 test runner that also accommodates {@link IDeviceTest}. Should be specified above JUnit4
+ * Test with a RunWith annotation.
  */
 public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
         implements IAbiReceiver, ISetOptionReceiver, ITestInformationReceiver {
