@@ -20,6 +20,7 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -79,10 +80,16 @@ public class PrettyTestEventLogger implements ITestInvocationListener {
     private void logOnAllDevices(String format, Object... args) {
         for (ITestDevice device : mDevices) {
             // Only attempt to log on real devices.
-            if (!(device.getIDevice() instanceof StubDevice)
-                    && DeviceState.ONLINE.equals(device.getIDevice().getState())) {
-                device.logOnDevice(TAG, LogLevel.DEBUG, format, args);
+            if (device.getIDevice() instanceof StubDevice) {
+                continue;
             }
+            if (!DeviceState.ONLINE.equals(device.getIDevice().getState())) {
+                continue;
+            }
+            if (!TestDeviceState.ONLINE.equals(device.getDeviceState())) {
+                continue;
+            }
+            device.logOnDevice(TAG, LogLevel.DEBUG, format, args);
         }
     }
 }
