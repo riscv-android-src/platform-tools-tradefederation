@@ -15,10 +15,6 @@
  */
 package com.android.tradefed.targetprep;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Option;
@@ -27,8 +23,13 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
 
 /**
  * A {@link ITargetPreparer} that installs one or more apps from a {@link
@@ -53,16 +54,16 @@ public class TestSystemAppInstallSetup extends BaseTargetPreparer {
         mTestFileNames.add(fileName);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
-            DeviceNotAvailableException {
+    public void setUp(TestInformation testInfo)
+            throws TargetSetupError, DeviceNotAvailableException {
+        IBuildInfo buildInfo = testInfo.getBuildInfo();
         if (!(buildInfo instanceof IDeviceBuildInfo)) {
             throw new IllegalArgumentException(String.format("Provided buildInfo is not a %s",
                     IDeviceBuildInfo.class.getCanonicalName()));
         }
+        ITestDevice device = testInfo.getDevice();
         if (mTestFileNames.size() == 0) {
             CLog.i("No test apps to install, skipping");
             return;
