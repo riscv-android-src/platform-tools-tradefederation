@@ -15,10 +15,9 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.util.concurrent.Semaphore;
@@ -42,8 +41,8 @@ public class SemaphoreTokenTargetPreparer extends BaseTargetPreparer {
 
     /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
-            throws TargetSetupError, DeviceNotAvailableException {
+    public void setUp(TestInformation testInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
         try {
             CLog.v("Waiting to acquire run token");
             mRunToken.acquire();
@@ -58,8 +57,7 @@ public class SemaphoreTokenTargetPreparer extends BaseTargetPreparer {
 
     /** {@inheritDoc} */
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
         if (mTokenAcquired) {
             CLog.v("Releasing run token");
             mRunToken.drainPermits();

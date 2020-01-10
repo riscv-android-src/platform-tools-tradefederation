@@ -15,11 +15,11 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.RunUtil;
 
@@ -59,15 +59,14 @@ public class TemperatureThrottlingWaiter extends BaseTargetPreparer {
         + "defaults to 30c")
     private int mTargetTemperature = 30;
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
-            BuildError, DeviceNotAvailableException {
+    public void setUp(TestInformation testInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
         if (mDeviceTemperatureFilePath == null) {
             return;
         }
+        ITestDevice device = testInfo.getDevice();
         long start = System.currentTimeMillis();
         long maxWaitMs = mMaxWaitSecs * 1000;
         long intervalMs = mPollIntervalSecs * 1000;
