@@ -62,6 +62,7 @@ import com.android.tradefed.targetprep.DeviceFailedToBootError;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
+import com.android.tradefed.testtype.SubprocessTfLauncher;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.PrettyPrintDelimiter;
@@ -715,7 +716,11 @@ public class TestInvocation implements ITestInvocation {
         IRetryDecision decision = config.getRetryDecision();
         ResultAggregator aggregator = null;
         decision.setInvocationContext(context);
-        if (decision.isAutoRetryEnabled()
+        // We don't need the aggregator in the subprocess because the parent will take care of it.
+        if (!config.getCommandOptions()
+                        .getInvocationData()
+                        .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME)
+                && decision.isAutoRetryEnabled()
                 && decision.getMaxRetryCount() > 1
                 && !RetryStrategy.NO_RETRY.equals(decision.getRetryStrategy())) {
             CLog.d("Auto-retry enabled, using the ResultAggregator to handle multiple retries.");
