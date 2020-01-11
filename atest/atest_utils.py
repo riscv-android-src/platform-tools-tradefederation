@@ -65,6 +65,15 @@ TEST_INFO_CACHE_ROOT = os.path.join(os.path.expanduser('~'), '.atest',
 _DEFAULT_TERMINAL_WIDTH = 80
 _DEFAULT_TERMINAL_HEIGHT = 25
 _BUILD_CMD = 'build/soong/soong_ui.bash'
+_FIND_MODIFIED_FILES_CMDS = (
+    "cd {};"
+    "local_branch=$(git rev-parse --abbrev-ref HEAD);"
+    "remote_branch=$(git branch -r | grep '\\->' | awk '{{print $1}}');"
+    # Get the number of commits from local branch to remote branch.
+    "ahead=$(git rev-list --left-right --count $local_branch...$remote_branch "
+    "| awk '{{print $1}}');"
+    # Get the list of modified files from HEAD to previous $ahead generation.
+    "git diff HEAD~$ahead --name-only")
 
 
 def get_build_cmd():
@@ -568,10 +577,14 @@ def clean_test_info_caches(tests, cache_root=TEST_INFO_CACHE_ROOT):
                 metrics_utils.handle_exc_and_send_exit_event(
                     constants.ACCESS_CACHE_FAILURE)
 
-# pylint: disable=unused-argument
 def get_modified_files(root_dir):
-    """Get the git changed files.
-    The git path is git top level of the root_dir.
+    """Get the git modified files. The git path here is git top level of
+    the root_dir. It's inevitable to utilise different commands to fulfill
+    2 scenario:
+        1. locate unstaged/staged files
+        2. locate committed files but not yet merged.
+    the 'git_status_cmd' fulfils the former while the 'find_modified_files'
+    fulfils the latter.
 
     Args:
         root_dir: the root where it starts finding.
@@ -579,4 +592,27 @@ def get_modified_files(root_dir):
     Returns:
         A set of modified files altered since last commit.
     """
-    return {'TEST_MAPPING'}
+    modified_files = set()
+    try:
+        find_git_cmd = 'cd {}; git rev-parse --show-toplevel'.format(root_dir)
+        git_paths = subprocess.check_output(
+            find_git_cmd, shell=True).splitlines()
+        for git_path in git_paths:
+            # Find modified files from git working tree status.
+            git_status_cmd = ("repo forall {} -c git status --short | "
+                              "awk '{{print $NF}}'").format(git_path)
+            modified_wo_commit = subprocess.check_output(
+                git_status_cmd, shell=True).rstrip().splitlines()
+            for change in modified_wo_commit:
+                modified_files.add(
+                    os.path.normpath('{}/{}'.format(git_path, change)))
+            # Find modified files that are committed but not yet merged.
+            find_modified_files = _FIND_MODIFIED_FILES_CMDS.format(git_path)
+            commit_modified_files = subprocess.check_output(
+                find_modified_files, shell=True).splitlines()
+            for line in commit_modified_files:
+                modified_files.add(os.path.normpath('{}/{}'.format(
+                    git_path, line)))
+    except (OSError, subprocess.CalledProcessError) as err:
+        logging.debug('Exception raised: %s', err)
+    return modified_files

@@ -17,6 +17,7 @@ package com.android.tradefed.config.remote;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildRetrievalError;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.net.HttpHelper;
 import com.android.tradefed.util.net.IHttpHelper;
@@ -49,12 +50,12 @@ public class HttpRemoteFileResolver implements IRemoteFileResolver {
                             FileUtil.getBaseName(consideredFile.getName()),
                             FileUtil.getExtension(consideredFile.getName()));
             downloader.doGet(path, new FileOutputStream(downloadedFile));
+            return DynamicRemoteFileResolver.unzipIfRequired(downloadedFile, queryArgs);
         } catch (IOException | RuntimeException e) {
             FileUtil.deleteFile(downloadedFile);
             throw new BuildRetrievalError(
                     String.format("Failed to download %s due to: %s", path, e.getMessage()), e);
         }
-        return downloadedFile;
     }
 
     @Override

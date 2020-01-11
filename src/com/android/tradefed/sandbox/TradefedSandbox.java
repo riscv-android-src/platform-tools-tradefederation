@@ -72,6 +72,7 @@ public class TradefedSandbox implements ISandbox {
     private File mStderrFile = null;
     private OutputStream mStdout = null;
     private FileOutputStream mStderr = null;
+    private File mHeapDump = null;
 
     private File mSandboxTmpFolder = null;
     private File mRootFolder = null;
@@ -91,6 +92,14 @@ public class TradefedSandbox implements ISandbox {
         mCmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
         mCmdArgs.add(String.format("-Djava.io.tmpdir=%s", mSandboxTmpFolder.getAbsolutePath()));
         mCmdArgs.add(String.format("-DTF_JAR_DIR=%s", mRootFolder.getAbsolutePath()));
+        // Setup heap dump collection
+        try {
+            mHeapDump = FileUtil.createTempDir("heap-dump");
+            mCmdArgs.add("-XX:+HeapDumpOnOutOfMemoryError");
+            mCmdArgs.add(String.format("-XX:HeapDumpPath=%s", mHeapDump.getAbsolutePath()));
+        } catch (IOException e) {
+            CLog.e(e);
+        }
         mCmdArgs.add("-cp");
         mCmdArgs.add(createClasspath(mRootFolder));
         mCmdArgs.add(TradefedSandboxRunner.class.getCanonicalName());
@@ -121,6 +130,8 @@ public class TradefedSandbox implements ISandbox {
         try (InputStreamSource sourceStdErr = new FileInputStreamSource(mStderrFile)) {
             logger.testLog("sandbox-stderr", LogDataType.TEXT, sourceStdErr);
         }
+        // Collect heap dump if any
+        logAndCleanHeapDump(mHeapDump, logger);
 
         boolean failedStatus = false;
         String stderrText;
@@ -451,6 +462,20 @@ public class TradefedSandbox implements ISandbox {
             return null;
         } finally {
             StreamUtil.close(pw);
+        }
+    }
+
+    private void logAndCleanHeapDump(File heapDumpDir, ITestLogger logger) {
+        try {
+            if (heapDumpDir != null && heapDumpDir.listFiles().length != 0) {
+                for (File f : heapDumpDir.listFiles()) {
+                    FileInputStreamSource fileInput = new FileInputStreamSource(f);
+                    logger.testLog(f.getName(), LogDataType.HPROF, fileInput);
+                    StreamUtil.cancel(fileInput);
+                }
+            }
+        } finally {
+            FileUtil.recursiveDelete(heapDumpDir);
         }
     }
 }
