@@ -26,10 +26,14 @@ import static org.junit.Assert.fail;
 
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
@@ -56,6 +60,7 @@ public class BaseTestSuiteTest {
     private BaseTestSuite mRunner;
     private IDeviceBuildInfo mBuildInfo;
     private ITestDevice mMockDevice;
+    private TestInformation mTestInfo;
 
     private static final String TEST_MODULE = "test-module";
 
@@ -66,6 +71,11 @@ public class BaseTestSuiteTest {
         mRunner = new AbiBaseTestSuite();
         mRunner.setBuild(mBuildInfo);
         mRunner.setDevice(mMockDevice);
+
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
+        context.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mBuildInfo);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
 
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn("arm64-v8a");
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn("armeabi-v7a");
@@ -303,7 +313,7 @@ public class BaseTestSuiteTest {
         OptionSetter setter = new OptionSetter(mRunner);
         setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "example-suite");
-        Collection<IRemoteTest> tests = mRunner.split(2);
+        Collection<IRemoteTest> tests = mRunner.split(2, mTestInfo);
         assertEquals(4, tests.size());
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof BaseTestSuite);
@@ -337,7 +347,7 @@ public class BaseTestSuiteTest {
         mRunner.setTestLogger(logger);
 
         EasyMock.replay(logger);
-        Collection<IRemoteTest> tests = mRunner.split(2);
+        Collection<IRemoteTest> tests = mRunner.split(2, mTestInfo);
         assertEquals(4, tests.size());
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof BaseTestSuite);
