@@ -44,9 +44,6 @@ public class BuildInfoKey {
         TARGET_LINKED_DIR("target_testcases", false),
         HOST_LINKED_DIR("host_testcases", false),
 
-        // A folder containing the resources from isFake=true devices
-        SHARED_RESOURCE_DIR("resources_dir", false),
-
         // Keys that can hold lists of files.
         PACKAGE_FILES("package_files", true);
 

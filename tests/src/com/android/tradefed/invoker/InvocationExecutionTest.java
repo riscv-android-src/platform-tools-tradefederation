@@ -16,8 +16,6 @@
 package com.android.tradefed.invoker;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doThrow;
@@ -26,7 +24,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.build.BuildInfo;
-import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.build.StubBuildProvider;
@@ -57,6 +55,7 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.TestSuiteStub;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IDisableable;
 
 import org.easymock.EasyMock;
@@ -567,6 +566,13 @@ public class InvocationExecutionTest {
     /** Ensure we create the shared folder from the resource build. */
     @Test
     public void testFetchBuild_createSharedFolder() throws Throwable {
+        mExec =
+                new InvocationExecution() {
+                    @Override
+                    protected String getAdbVersion() {
+                        return "1";
+                    }
+                };
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("serial");
         mMockDevice.setRecovery(EasyMock.anyObject());
         EasyMock.expectLastCall().times(2);
@@ -579,14 +585,28 @@ public class InvocationExecutionTest {
         listDeviceConfig.add(holder);
 
         DeviceConfigurationHolder holder2 = new DeviceConfigurationHolder("device2", true);
-        IBuildProvider provider2 = new StubBuildProvider();
+        IBuildProvider provider2 =
+                new StubBuildProvider() {
+                    @Override
+                    public IBuildInfo getBuild() throws BuildRetrievalError {
+                        IBuildInfo info = super.getBuild();
+                        info.setBuildId("1234");
+                        info.setBuildBranch("branch");
+                        info.setBuildFlavor("flavor");
+                        return info;
+                    }
+                };
         holder2.addSpecificConfig(provider2);
         mContext.addAllocatedDevice("device2", mMockDevice);
         listDeviceConfig.add(holder2);
 
         mConfig.setDeviceConfigList(listDeviceConfig);
+        File tmpWorkDir = FileUtil.createTempDir("invocation-execution-shared-test");
         TestInformation testInfo =
-                TestInformation.newBuilder().setInvocationContext(mContext).build();
+                TestInformation.newBuilder()
+                        .setInvocationContext(mContext)
+                        .setDependenciesFolder(tmpWorkDir)
+                        .build();
         // Download
         EasyMock.replay(mMockDevice);
         assertTrue(mExec.fetchBuild(testInfo, mConfig, null, mMockListener));
@@ -595,16 +615,14 @@ public class InvocationExecutionTest {
         List<IBuildInfo> builds = mContext.getBuildInfos();
         try {
             assertEquals(2, builds.size());
-            IBuildInfo realBuild = builds.get(0);
-            File shared = realBuild.getFile(BuildInfoFileKey.SHARED_RESOURCE_DIR);
-            assertNotNull(shared);
-
-            IBuildInfo fakeBuild = builds.get(1);
-            assertNull(fakeBuild.getFile(BuildInfoFileKey.SHARED_RESOURCE_DIR));
+            assertEquals(1, tmpWorkDir.listFiles().length);
+            // The resource build was linked to dependencies
+            assertTrue(tmpWorkDir.listFiles()[0].getName().startsWith("branch_1234_flavor"));
         } finally {
             for (IBuildInfo info : builds) {
                 info.cleanUp();
             }
+            FileUtil.recursiveDelete(tmpWorkDir);
         }
         assertTrue(mContext.getAttributes().containsKey(InvocationExecution.JAVA_VERSION_KEY));
     }
