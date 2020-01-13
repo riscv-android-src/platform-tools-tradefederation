@@ -786,14 +786,8 @@ public class InvocationExecution implements IInvocationExecution {
             return;
         }
         try {
-            File resourcesDir = null;
             for (IBuildInfo info : infos) {
                 if (info.isTestResourceBuild()) {
-                    if (resourcesDir == null) {
-                        resourcesDir =
-                                FileUtil.createTempDir(
-                                        "invocation-resources-dir", testInfo.dependenciesFolder());
-                    }
                     // Create a reception sub-folder for each build info resource to avoid mixing
                     String name =
                             String.format(
@@ -801,7 +795,7 @@ public class InvocationExecution implements IInvocationExecution {
                                     info.getBuildBranch(),
                                     info.getBuildId(),
                                     info.getBuildFlavor());
-                    File buildDir = FileUtil.createTempDir(name, resourcesDir);
+                    File buildDir = FileUtil.createTempDir(name, testInfo.dependenciesFolder());
                     for (BuildInfoFileKey key : BuildInfoKey.SHARED_KEY) {
                         File f = info.getFile(key);
                         if (f == null) {
@@ -810,16 +804,6 @@ public class InvocationExecution implements IInvocationExecution {
                         File subDir = new File(buildDir, f.getName());
                         FileUtil.symlinkFile(f, subDir);
                     }
-                }
-            }
-            if (resourcesDir == null) {
-                return;
-            }
-            // Only set the shared dir on real build if it exists.
-            CLog.d("Creating shared resources directory.");
-            for (IBuildInfo info : infos) {
-                if (!info.isTestResourceBuild()) {
-                    info.setFile(BuildInfoFileKey.SHARED_RESOURCE_DIR, resourcesDir, "v1");
                 }
             }
         } catch (IOException e) {

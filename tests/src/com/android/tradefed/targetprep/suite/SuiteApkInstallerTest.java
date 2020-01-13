@@ -22,10 +22,10 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.FileUtil;
 
@@ -298,7 +298,7 @@ public class SuiteApkInstallerTest {
 
     /** If the file is found in the build shared resources directory, use it. */
     @Test
-    public void testGetLocalPathForFileName_inSharedDir() throws Exception {
+    public void testGetLocalPathForFileName_inDependenciesDir() throws Exception {
         File tmpDir = FileUtil.createTempDir("suite-apk-installer");
         File tmpApk = FileUtil.createTempFile("suite-apk-installer", ".apk", tmpDir);
         mPreparer =
@@ -307,8 +307,12 @@ public class SuiteApkInstallerTest {
                     protected File getRootDir(IBuildInfo buildInfo) throws FileNotFoundException {
                         return null;
                     }
+
+                    @Override
+                    public TestInformation getTestInfo() {
+                        return TestInformation.newBuilder().setDependenciesFolder(tmpDir).build();
+                    }
                 };
-        Mockito.doReturn(tmpDir).when(mMockBuildInfo).getFile(BuildInfoFileKey.SHARED_RESOURCE_DIR);
         try {
             File apk =
                     mPreparer.getLocalPathForFilename(
