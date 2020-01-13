@@ -720,8 +720,7 @@ public class HostTestTest extends TestCase {
     public void testRun_junit3TestSuite_dynamicOptions() throws Exception {
         doReturn(new File("/downloaded/somewhere"))
                 .when(mMockResolver)
-                .resolveRemoteFiles(
-                        Mockito.eq(FAKE_REMOTE_FILE_PATH), Mockito.any(), Mockito.any());
+                .resolveRemoteFiles(Mockito.eq(FAKE_REMOTE_FILE_PATH), Mockito.any());
         mHostTest.setClassName(DynamicTestCase.class.getName());
         TestDescription test1 = new TestDescription(DynamicTestCase.class.getName(), "testPass");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
