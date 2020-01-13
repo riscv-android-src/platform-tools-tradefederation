@@ -33,6 +33,7 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.ddmlib.DefaultRemoteAndroidTestRunner;
+import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.suite.SuiteApkInstaller;
 import com.android.tradefed.testtype.IAbi;
@@ -162,7 +163,13 @@ public abstract class BaseHostJUnit4Test
         for (String option : options) {
             installer.addInstallArg(option);
         }
-        installer.setUp(device, mContext.getBuildInfo(device));
+        try {
+            installer.setUp(device, mContext.getBuildInfo(device));
+        } catch (BuildError e) {
+            // For some reason we forgot the BuildError part of the interface so it's hard to add
+            // it now
+            throw new TargetSetupError(e.getMessage(), e, device.getDeviceDescriptor());
+        }
     }
 
     /**
@@ -207,7 +214,13 @@ public abstract class BaseHostJUnit4Test
         for (String option : options) {
             installer.addInstallArg(option);
         }
-        installer.setUp(device, mContext.getBuildInfo(device));
+        try {
+            installer.setUp(device, mContext.getBuildInfo(device));
+        } catch (BuildError e) {
+            // For some reason we forgot the BuildError part of the interface so it's hard to add
+            // it now
+            throw new TargetSetupError(e.getMessage(), e, device.getDeviceDescriptor());
+        }
     }
 
     /**

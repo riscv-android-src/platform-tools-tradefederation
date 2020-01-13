@@ -22,6 +22,7 @@ import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.TestAppInstallSetup;
@@ -37,12 +38,10 @@ import com.android.tradefed.targetprep.TestAppInstallSetup;
 public class CompanionTestAppInstallSetup extends TestAppInstallSetup {
     ITestDevice mCompanion;
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
-            DeviceNotAvailableException {
+    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
         // get companion device first
         mCompanion = CompanionDeviceTracker.getInstance().getCompanionDevice(device);
         if (mCompanion == null) {

@@ -203,7 +203,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     /** {@inheritDoc} */
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
-            throws TargetSetupError, DeviceNotAvailableException {
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
         if (mTestFileNames.isEmpty() && mSplitApkFileNames.isEmpty()) {
             CLog.i("No test apps to install, skipping");
             return;
