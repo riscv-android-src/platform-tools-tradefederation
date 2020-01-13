@@ -109,7 +109,8 @@ public class StrictShardHelper extends ShardHelper {
                     ((ITestSuite) test).setShouldMakeDynamicModule(false);
                 }
 
-                Collection<IRemoteTest> subTests = ((IShardableTest) test).split(shardCount);
+                Collection<IRemoteTest> subTests =
+                        ((IShardableTest) test).split(shardCount, testInfo);
                 if (subTests == null) {
                     // test did not shard so we add it as is.
                     allTests.add(test);

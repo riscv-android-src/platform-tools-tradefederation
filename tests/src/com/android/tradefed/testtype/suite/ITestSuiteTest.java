@@ -840,9 +840,8 @@ public class ITestSuiteTest {
     @Test
     public void testShardModules_notShardable() {
         mTestSuite = new TestSuiteImpl(5);
-        mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setConfiguration(mStubMainConfiguration);
-        Collection<IRemoteTest> tests = mTestSuite.split(3);
+        Collection<IRemoteTest> tests = mTestSuite.split(3, mTestInfo);
         assertEquals(5, tests.size());
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof TestSuiteImpl);
@@ -852,7 +851,7 @@ public class ITestSuiteTest {
     /** Test that when splitting a single non-splitable test we end up with only one IRemoteTest. */
     @Test
     public void testGetTestShard_onlyOneTest() {
-        Collection<IRemoteTest> tests = mTestSuite.split(2);
+        Collection<IRemoteTest> tests = mTestSuite.split(2, mTestInfo);
         assertEquals(1, tests.size());
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof TestSuiteImpl);
@@ -865,9 +864,8 @@ public class ITestSuiteTest {
         // default runtime hint is 0, it is only meant to be used for sharding.
         assertEquals(0l, mTestSuite.getRuntimeHint());
         mTestSuite = new TestSuiteImpl(5);
-        mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setConfiguration(mStubMainConfiguration);
-        Collection<IRemoteTest> tests = mTestSuite.split(3);
+        Collection<IRemoteTest> tests = mTestSuite.split(3, mTestInfo);
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof TestSuiteImpl);
             // once sharded modules from the shard start reporting their runtime.

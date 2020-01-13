@@ -21,6 +21,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Configuration;
@@ -74,6 +75,7 @@ public class TfSuiteRunnerTest {
     private TfSuiteRunner mRunner;
     private IConfiguration mStubMainConfiguration;
     private ILogSaver mMockLogSaver;
+    private TestInformation mTestInfo;
 
     @Before
     public void setUp() {
@@ -82,6 +84,11 @@ public class TfSuiteRunnerTest {
         mStubMainConfiguration = new Configuration("stub", "stub");
         mStubMainConfiguration.setLogSaver(mMockLogSaver);
         mRunner.setConfiguration(mStubMainConfiguration);
+
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, null);
+        context.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, new BuildInfo());
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     /**
@@ -132,7 +139,7 @@ public class TfSuiteRunnerTest {
         OptionSetter setter = new OptionSetter(mRunner);
         setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "example-suite");
-        Collection<IRemoteTest> tests = mRunner.split(2);
+        Collection<IRemoteTest> tests = mRunner.split(2, mTestInfo);
         assertEquals(2, tests.size());
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof TfSuiteRunner);
