@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.android.tradefed.targetprep.suite;
 
-import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.TestAppInstallSetup;
 import com.android.tradefed.util.FileUtil;
@@ -92,11 +93,9 @@ public class SuiteApkInstaller extends TestAppInstallSetup {
         return null;
     }
 
-    /** Check within the shared resouces directory if the apk can be found. */
-    private File getApkFromBuildSharedDir(IBuildInfo buildInfo, String apkFileName) {
-        File sharedDir = buildInfo.getFile(BuildInfoFileKey.SHARED_RESOURCE_DIR);
-        if (sharedDir != null && sharedDir.isDirectory()) {
-            return FileUtil.findFile(sharedDir, apkFileName);
+    private File getApkFromDependencies(TestInformation testInfo, String apkFileName) {
+        if (testInfo != null && testInfo.dependenciesFolder() != null) {
+            return FileUtil.findFile(testInfo.dependenciesFolder(), apkFileName);
         }
         return null;
     }
@@ -125,8 +124,7 @@ public class SuiteApkInstaller extends TestAppInstallSetup {
                 return apkFile;
             }
 
-            // Check shared resources
-            apkFile = getApkFromBuildSharedDir(buildInfo, apkFileName);
+            apkFile = getApkFromDependencies(getTestInfo(), apkFileName);
             if (apkFile != null && apkFile.isFile()) {
                 return apkFile;
             }
