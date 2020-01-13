@@ -19,6 +19,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.OptionCopier;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IAbiReceiver;
@@ -58,6 +59,7 @@ public class ModuleSplitter {
      * Create a List of executable unit {@link ModuleDefinition}s based on the map of configuration
      * that was loaded.
      *
+     * @param testInfo the current {@link TestInformation} to proceed with sharding.
      * @param runConfig {@link LinkedHashMap} loaded from {@link ITestSuite#loadTests()}.
      * @param shardCount a shard count hint to help with sharding.
      * @param dynamicModule Whether or not module can be shared in pool or must be independent
@@ -66,6 +68,7 @@ public class ModuleSplitter {
      * @return List of {@link ModuleDefinition}
      */
     public static List<ModuleDefinition> splitConfiguration(
+            TestInformation testInfo,
             LinkedHashMap<String, IConfiguration> runConfig,
             int shardCount,
             boolean dynamicModule,
@@ -81,6 +84,7 @@ public class ModuleSplitter {
             ValidateSuiteConfigHelper.validateConfig(configMap.getValue());
 
             createAndAddModule(
+                    testInfo,
                     runModules,
                     configMap.getKey(),
                     configMap.getValue(),
@@ -92,6 +96,7 @@ public class ModuleSplitter {
     }
 
     private static void createAndAddModule(
+            TestInformation testInfo,
             List<ModuleDefinition> currentList,
             String moduleName,
             IConfiguration config,
@@ -128,7 +133,8 @@ public class ModuleSplitter {
         // If configuration is possibly shardable we attempt to shard it.
         for (IRemoteTest test : tests) {
             if (test instanceof IShardableTest) {
-                Collection<IRemoteTest> shardedTests = ((IShardableTest) test).split(shardCount);
+                Collection<IRemoteTest> shardedTests =
+                        ((IShardableTest) test).split(shardCount, testInfo);
                 if (shardedTests != null) {
                     // Test did shard we put the shard pool in ModuleDefinition which has a polling
                     // behavior on the pool.
