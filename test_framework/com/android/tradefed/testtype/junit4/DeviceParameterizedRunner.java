@@ -15,10 +15,8 @@
  */
 package com.android.tradefed.testtype.junit4;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
-import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.testtype.HostTest;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
@@ -26,6 +24,7 @@ import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.ISetOptionReceiver;
+import com.android.tradefed.testtype.ITestInformationReceiver;
 
 import org.junit.runners.Parameterized;
 import org.junit.runners.model.FrameworkMethod;
@@ -46,19 +45,13 @@ import junitparams.JUnitParamsRunner;
  * @see JUnitParamsRunner
  */
 public class DeviceParameterizedRunner extends JUnitParamsRunner
-        implements IDeviceTest,
-                IBuildReceiver,
-                IAbiReceiver,
-                ISetOptionReceiver,
-                IInvocationContextReceiver {
+        implements IAbiReceiver, ISetOptionReceiver, ITestInformationReceiver {
 
     @Option(name = HostTest.SET_OPTION_NAME, description = HostTest.SET_OPTION_DESC)
     private List<String> mKeyValueOptions = new ArrayList<>();
 
-    private ITestDevice mDevice;
-    private IBuildInfo mBuildInfo;
+    private TestInformation mTestInformation;
     private IAbi mAbi;
-    private IInvocationContext mContext;
 
     /**
      * @param klass
@@ -71,37 +64,25 @@ public class DeviceParameterizedRunner extends JUnitParamsRunner
     @Override
     protected Statement methodInvoker(FrameworkMethod method, Object testObj) {
         if (testObj instanceof IDeviceTest) {
-            if (mDevice == null) {
-                throw new IllegalArgumentException("Missing device");
-            }
-            ((IDeviceTest) testObj).setDevice(mDevice);
+            ((IDeviceTest) testObj).setDevice(mTestInformation.getDevice());
         }
         if (testObj instanceof IBuildReceiver) {
-            if (mBuildInfo == null) {
-                throw new IllegalArgumentException("Missing build information");
-            }
-            ((IBuildReceiver) testObj).setBuild(mBuildInfo);
+            ((IBuildReceiver) testObj).setBuild(mTestInformation.getBuildInfo());
         }
         // We are more flexible about abi information since not always available.
         if (testObj instanceof IAbiReceiver) {
             ((IAbiReceiver) testObj).setAbi(mAbi);
         }
         if (testObj instanceof IInvocationContextReceiver) {
-            ((IInvocationContextReceiver) testObj).setInvocationContext(mContext);
+            ((IInvocationContextReceiver) testObj)
+                    .setInvocationContext(mTestInformation.getContext());
+        }
+        if (testObj instanceof ITestInformationReceiver) {
+            ((ITestInformationReceiver) testObj).setTestInformation(mTestInformation);
         }
         // Set options of test object
         HostTest.setOptionToLoadedObject(testObj, mKeyValueOptions);
         return super.methodInvoker(method, testObj);
-    }
-
-    @Override
-    public void setDevice(ITestDevice device) {
-        mDevice = device;
-    }
-
-    @Override
-    public ITestDevice getDevice() {
-        return mDevice;
     }
 
     @Override
@@ -115,12 +96,12 @@ public class DeviceParameterizedRunner extends JUnitParamsRunner
     }
 
     @Override
-    public void setBuild(IBuildInfo buildInfo) {
-        mBuildInfo = buildInfo;
+    public void setTestInformation(TestInformation testInformation) {
+        mTestInformation = testInformation;
     }
 
     @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
+    public TestInformation getTestInformation() {
+        return mTestInformation;
     }
 }

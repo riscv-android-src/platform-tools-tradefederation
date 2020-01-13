@@ -173,9 +173,7 @@ public class BaseHostJUnit4TestTest {
     @Test
     public void testRunDeviceTests() throws Exception {
         TestableHostJUnit4Test test = new TestableHostJUnit4Test();
-        test.setDevice(mMockDevice);
-        test.setBuild(mMockBuild);
-        test.setInvocationContext(mMockContext);
+        test.setTestInformation(mTestInfo);
         mMockDevice.executeShellCommand(
                 EasyMock.eq("pm list instrumentation"), EasyMock.anyObject());
         EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
@@ -198,9 +196,7 @@ public class BaseHostJUnit4TestTest {
     @Test
     public void testRunDeviceTests_assumptionFailure() throws Exception {
         TestableHostJUnit4Test test = new TestableHostJUnit4Test();
-        test.setDevice(mMockDevice);
-        test.setBuild(mMockBuild);
-        test.setInvocationContext(mMockContext);
+        test.setTestInformation(mTestInfo);
         mMockDevice.executeShellCommand(
                 EasyMock.eq("pm list instrumentation"), EasyMock.anyObject());
         EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
@@ -257,9 +253,7 @@ public class BaseHostJUnit4TestTest {
                         return runner;
                     }
                 };
-        test.setDevice(mMockDevice);
-        test.setBuild(mMockBuild);
-        test.setInvocationContext(mMockContext);
+        test.setTestInformation(mTestInfo);
         test.setAbi(new Abi("arm", "32"));
         EasyMock.expect(
                         mMockDevice.runInstrumentationTests(
@@ -285,9 +279,7 @@ public class BaseHostJUnit4TestTest {
     @Test
     public void testRunDeviceTests_asUser() throws Exception {
         TestableHostJUnit4Test test = new TestableHostJUnit4Test();
-        test.setDevice(mMockDevice);
-        test.setBuild(mMockBuild);
-        test.setInvocationContext(mMockContext);
+        test.setTestInformation(mTestInfo);
         mMockDevice.executeShellCommand(
                 EasyMock.eq("pm list instrumentation"), EasyMock.anyObject());
         EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
@@ -323,9 +315,7 @@ public class BaseHostJUnit4TestTest {
                         return mockRunner;
                     }
                 };
-        test.setDevice(mMockDevice);
-        test.setBuild(mMockBuild);
-        test.setInvocationContext(mMockContext);
+        test.setTestInformation(mTestInfo);
         EasyMock.expect(
                         mMockDevice.runInstrumentationTests(
                                 (IRemoteAndroidTestRunner) EasyMock.anyObject(),
@@ -355,9 +345,7 @@ public class BaseHostJUnit4TestTest {
     @Test
     public void testRunDeviceTests_crashedInstrumentation() throws Exception {
         FailureHostJUnit4Test test = new FailureHostJUnit4Test();
-        test.setDevice(mMockDevice);
-        test.setBuild(mMockBuild);
-        test.setInvocationContext(mMockContext);
+        test.setTestInformation(mTestInfo);
         mMockDevice.executeShellCommand(
                 EasyMock.eq("pm list instrumentation"), EasyMock.anyObject());
         EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
