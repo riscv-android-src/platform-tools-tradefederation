@@ -43,11 +43,12 @@ import java.util.List;
 public class ModuleSplitterTest {
 
     private static final String DEFAULT_DEVICE = ConfigurationDef.DEFAULT_DEVICE_NAME;
+    private TestInformation mTestInfo = TestInformation.newBuilder().build();
 
     /**
-     * Tests that {@link ModuleSplitter#splitConfiguration(LinkedHashMap, int, boolean, boolean)} on
-     * a non shardable configuration results in a matching ModuleDefinition to be created with the
-     * same objects.
+     * Tests that {@link ModuleSplitter#splitConfiguration(TestInformation, LinkedHashMap, int,
+     * boolean, boolean)} on a non shardable configuration results in a matching ModuleDefinition to
+     * be created with the same objects.
      */
     @Test
     public void testSplitModule_configNotShardable() throws Exception {
@@ -64,7 +65,8 @@ public class ModuleSplitterTest {
         OptionSetter setter = new OptionSetter(config.getConfigurationDescription());
         setter.setOptionValue("not-shardable", "true");
         runConfig.put("module1", config);
-        List<ModuleDefinition> res = ModuleSplitter.splitConfiguration(runConfig, 5, true, true);
+        List<ModuleDefinition> res =
+                ModuleSplitter.splitConfiguration(mTestInfo, runConfig, 5, true, true);
         // matching 1 for 1, config to ModuleDefinition since not shardable
         assertEquals(1, res.size());
         // The original target preparer is changed since we split multiple <test> tags.
@@ -78,9 +80,9 @@ public class ModuleSplitterTest {
     }
 
     /**
-     * Tests that {@link ModuleSplitter#splitConfiguration(LinkedHashMap, int, boolean, boolean)} on
-     * a non strict shardable configuration and a dynamic context results in a matching
-     * ModuleDefinitions to be created for each shards since they will be sharded.
+     * Tests that {@link ModuleSplitter#splitConfiguration(TestInformation, LinkedHashMap, int,
+     * boolean, boolean)} on a non strict shardable configuration and a dynamic context results in a
+     * matching ModuleDefinitions to be created for each shards since they will be sharded.
      */
     @Test
     public void testSplitModule_configNotStrictShardable_dynamic() throws Exception {
@@ -97,7 +99,8 @@ public class ModuleSplitterTest {
         OptionSetter setter = new OptionSetter(config.getConfigurationDescription());
         setter.setOptionValue("not-strict-shardable", "true");
         runConfig.put("module1", config);
-        List<ModuleDefinition> res = ModuleSplitter.splitConfiguration(runConfig, 5, true, true);
+        List<ModuleDefinition> res =
+                ModuleSplitter.splitConfiguration(mTestInfo, runConfig, 5, true, true);
         // We are sharding since even if we are not-strict-shardable, we are in dynamic context
         assertEquals(10, res.size());
         // The original target preparer is changed since we split multiple <test> tags.
@@ -110,9 +113,9 @@ public class ModuleSplitterTest {
     }
 
     /**
-     * Tests that {@link ModuleSplitter#splitConfiguration(LinkedHashMap, int, boolean, boolean)} on
-     * a non strict shardable configuration and not dymaic results in a matching ModuleDefinition to
-     * be created with the same objects, since we will not be sharding.
+     * Tests that {@link ModuleSplitter#splitConfiguration(TestInformation, LinkedHashMap, int,
+     * boolean, boolean)} on a non strict shardable configuration and not dymaic results in a
+     * matching ModuleDefinition to be created with the same objects, since we will not be sharding.
      */
     @Test
     public void testSplitModule_configNotStrictShardable_notDynamic() throws Exception {
@@ -129,7 +132,8 @@ public class ModuleSplitterTest {
         OptionSetter setter = new OptionSetter(config.getConfigurationDescription());
         setter.setOptionValue("not-strict-shardable", "true");
         runConfig.put("module1", config);
-        List<ModuleDefinition> res = ModuleSplitter.splitConfiguration(runConfig, 5, false, true);
+        List<ModuleDefinition> res =
+                ModuleSplitter.splitConfiguration(mTestInfo, runConfig, 5, false, true);
         // matching 1 for 1, config to ModuleDefinition since not shardable
         assertEquals(1, res.size());
         // The original target preparer is changed since we split multiple <test> tags.
@@ -155,7 +159,8 @@ public class ModuleSplitterTest {
         config.setTest(test);
 
         runConfig.put("module1", config);
-        List<ModuleDefinition> res = ModuleSplitter.splitConfiguration(runConfig, 5, true, false);
+        List<ModuleDefinition> res =
+                ModuleSplitter.splitConfiguration(mTestInfo, runConfig, 5, true, false);
         // matching 1 for 1, config to ModuleDefinition since no intra-module sharding
         assertEquals(1, res.size());
         // The original target preparer is changed since we split multiple <test> tags.
@@ -168,9 +173,9 @@ public class ModuleSplitterTest {
     }
 
     /**
-     * Tests that {@link ModuleSplitter#splitConfiguration(LinkedHashMap, int, boolean, boolean)} on
-     * a non shardable test results in a matching ModuleDefinition created with the original
-     * IRemoteTest and copied ITargetPreparers.
+     * Tests that {@link ModuleSplitter#splitConfiguration(TestInformation, LinkedHashMap, int,
+     * boolean, boolean)} on a non shardable test results in a matching ModuleDefinition created
+     * with the original IRemoteTest and copied ITargetPreparers.
      */
     @Test
     public void testSplitModule_testNotShardable() throws Exception {
@@ -189,7 +194,8 @@ public class ModuleSplitterTest {
         config.setTargetPreparer(new StubTargetPreparer());
 
         runConfig.put("module1", config);
-        List<ModuleDefinition> res = ModuleSplitter.splitConfiguration(runConfig, 5, true, true);
+        List<ModuleDefinition> res =
+                ModuleSplitter.splitConfiguration(mTestInfo, runConfig, 5, true, true);
         // matching 1 for 1, config to ModuleDefinition since not shardable
         assertEquals(1, res.size());
         // The original target preparer is not there, it has been copied
@@ -205,9 +211,9 @@ public class ModuleSplitterTest {
     }
 
     /**
-     * Tests that {@link ModuleSplitter#splitConfiguration(LinkedHashMap, int, boolean, boolean)} on
-     * a shardable test but did not shard (for any reasons) results in a ModuleDefition with
-     * original IRemoteTest and copied ITargetPreparers.
+     * Tests that {@link ModuleSplitter#splitConfiguration(TestInformation, LinkedHashMap, int,
+     * boolean, boolean)} on a shardable test but did not shard (for any reasons) results in a
+     * ModuleDefition with original IRemoteTest and copied ITargetPreparers.
      */
     @Test
     public void testSplitModule_testShardable_didNotShard() throws Exception {
@@ -219,7 +225,8 @@ public class ModuleSplitterTest {
         config.setTargetPreparer(new StubTargetPreparer());
 
         runConfig.put("module1", config);
-        List<ModuleDefinition> res = ModuleSplitter.splitConfiguration(runConfig, 5, true, true);
+        List<ModuleDefinition> res =
+                ModuleSplitter.splitConfiguration(mTestInfo, runConfig, 5, true, true);
         // matching 1 for 1, config to ModuleDefinition since did not shard
         assertEquals(1, res.size());
         // The original target preparer is not there, it has been copied
@@ -235,8 +242,9 @@ public class ModuleSplitterTest {
     }
 
     /**
-     * Tests that {@link ModuleSplitter#splitConfiguration(LinkedHashMap, int, boolean, boolean)} on
-     * a shardable test that shards results in one ModuleDefinition per shard-count.
+     * Tests that {@link ModuleSplitter#splitConfiguration(TestInformation, LinkedHashMap, int,
+     * boolean, boolean)} on a shardable test that shards results in one ModuleDefinition per
+     * shard-count.
      */
     @Test
     public void testSplitModule_testShardable_shard() throws Exception {
@@ -250,7 +258,8 @@ public class ModuleSplitterTest {
         config.setTest(test);
 
         runConfig.put("module1", config);
-        List<ModuleDefinition> res = ModuleSplitter.splitConfiguration(runConfig, 5, true, true);
+        List<ModuleDefinition> res =
+                ModuleSplitter.splitConfiguration(mTestInfo, runConfig, 5, true, true);
         // matching 1 for 10 since tests sharding in 5 units times 2.
         assertEquals(10, res.size());
         // The original IRemoteTest does not exists anymore, new IRemoteTests have been created.
@@ -261,9 +270,10 @@ public class ModuleSplitterTest {
     }
 
     /**
-     * Tests that {@link ModuleSplitter#splitConfiguration(LinkedHashMap, int, boolean, boolean)} on
-     * a shardable test that shards results in one ModuleDefinition per IRemoteTest generated by the
-     * test because we did not allow dynamically putting tests in a pool for all modules.
+     * Tests that {@link ModuleSplitter#splitConfiguration(TestInformation, LinkedHashMap, int,
+     * boolean, boolean)} on a shardable test that shards results in one ModuleDefinition per
+     * IRemoteTest generated by the test because we did not allow dynamically putting tests in a
+     * pool for all modules.
      */
     @Test
     public void testSplitModule_testShardable_shard_noDynamic() throws Exception {
@@ -277,7 +287,8 @@ public class ModuleSplitterTest {
         config.setTest(test);
 
         runConfig.put("module1", config);
-        List<ModuleDefinition> res = ModuleSplitter.splitConfiguration(runConfig, 5, false, true);
+        List<ModuleDefinition> res =
+                ModuleSplitter.splitConfiguration(mTestInfo, runConfig, 5, false, true);
         // matching 1 for 6 since tests sharding in 6 tests.
         assertEquals(6, res.size());
         // The original IRemoteTest does not exists anymore, new IRemoteTests have been created.
