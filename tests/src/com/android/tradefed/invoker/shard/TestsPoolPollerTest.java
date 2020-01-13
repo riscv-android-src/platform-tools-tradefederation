@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
@@ -77,6 +78,7 @@ public class TestsPoolPollerTest {
         mMetricCollectors = new ArrayList<>();
         IInvocationContext context = new InvocationContext();
         context.addAllocatedDevice("device", mDevice);
+        context.addDeviceBuildInfo("device", new BuildInfo());
         mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
@@ -262,7 +264,7 @@ public class TestsPoolPollerTest {
         // Add tests that from a suite that can report their not executed tests.
         int numTests = 5;
         ITestSuite suite = new TestSuiteImpl(numTests);
-        testsList.addAll(suite.split(3));
+        testsList.addAll(suite.split(3, mTestInfo));
         CountDownLatch tracker = new CountDownLatch(1);
         TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
         poller.setMetricCollectors(mMetricCollectors);
