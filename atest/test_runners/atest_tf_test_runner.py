@@ -395,6 +395,9 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 args_to_append.append('--max-testcase-run-count')
                 args_to_append.append(str(extra_args[arg]))
                 continue
+            if constants.COLLECT_TESTS_ONLY == arg:
+                args_to_append.append('--collect-tests-only')
+                continue
             args_not_supported.append(arg)
         return args_to_append, args_not_supported
 
