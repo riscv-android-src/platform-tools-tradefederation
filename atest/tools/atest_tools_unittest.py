@@ -20,11 +20,13 @@ import os
 import pickle
 import platform
 import subprocess
+import sys
 import unittest
 import mock
 
-from tools import atest_tools
-
+import atest_tools
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# pylint: disable=wrong-import-position
 import unittest_constants as uc
 
 SEARCH_ROOT = uc.TEST_DATA_DIR
@@ -39,7 +41,7 @@ class AtestToolsUnittests(unittest.TestCase):
     def test_index_targets(self, mock_mod_info, mock_testable_mod):
         """Test method index_targets."""
         mock_mod_info.return_value = None
-        mock_testable_mod.return_value = {uc.MODULE_NAME, uc.MODULE2_NAME}
+        mock_testable_mod.return_value = set()
         if atest_tools.has_command('updatedb'):
             atest_tools.run_updatedb(SEARCH_ROOT, uc.LOCATE_CACHE,
                                      prunepaths=PRUNEPATH)
@@ -60,40 +62,34 @@ class AtestToolsUnittests(unittest.TestCase):
         if atest_tools.has_command('locate'):
             atest_tools.index_targets(uc.LOCATE_CACHE,
                                       class_index=uc.CLASS_INDEX,
+                                      qclass_index=uc.QCLASS_INDEX,
                                       cc_class_index=uc.CC_CLASS_INDEX,
-                                      module_index=uc.MODULE_INDEX,
                                       package_index=uc.PACKAGE_INDEX,
-                                      qclass_index=uc.QCLASS_INDEX)
-            _cache = {}
-            # Test finding a Java class.
-            with open(uc.CLASS_INDEX, 'rb') as cache:
-                _cache = pickle.load(cache)
-            self.assertIsNotNone(_cache.get('PathTesting'))
-            # Test finding a CC class.
-            with open(uc.CC_CLASS_INDEX, 'rb') as cache:
-                _cache = pickle.load(cache)
-            self.assertIsNotNone(_cache.get('HelloWorldTest'))
-            # Test finding a package.
-            with open(uc.PACKAGE_INDEX, 'rb') as cache:
-                _cache = pickle.load(cache)
-            self.assertIsNotNone(_cache.get(uc.PACKAGE))
-            # Test finding a fully qualified class name.
-            with open(uc.QCLASS_INDEX, 'rb') as cache:
-                _cache = pickle.load(cache)
-            self.assertIsNotNone(_cache.get('android.jank.cts.ui.PathTesting'))
-            _cache = set()
-            # Test finding a module name.
-            with open(uc.MODULE_INDEX, 'rb') as cache:
-                _cache = pickle.load(cache)
-            self.assertTrue(uc.MODULE_NAME in _cache)
-            self.assertFalse(uc.CLASS_NAME in _cache)
+                                      module_index=uc.MODULE_INDEX)
+            _dict = {}
+            # Test finding a Java class
+            with open(uc.CLASS_INDEX, 'rb') as _cache:
+                _dict = pickle.load(_cache)
+            self.assertIsNotNone(_dict.get('PathTesting'))
+            # Test finding a CC class
+            with open(uc.CC_CLASS_INDEX, 'rb') as _cache:
+                _dict = pickle.load(_cache)
+            self.assertIsNotNone(_dict.get('HelloWorldTest'))
+            # Test finding a package
+            with open(uc.PACKAGE_INDEX, 'rb') as _cache:
+                _dict = pickle.load(_cache)
+            self.assertIsNotNone(_dict.get('android.jank.cts.ui'))
+            # Test finding a fully qualified class name
+            with open(uc.QCLASS_INDEX, 'rb') as _cache:
+                _dict = pickle.load(_cache)
+            self.assertIsNotNone(_dict.get('android.jank.cts.ui.PathTesting'))
             # Clean up.
-            targets_to_delete = (uc.CC_CLASS_INDEX,
+            targets_to_delete = (uc.LOCATE_CACHE,
                                  uc.CLASS_INDEX,
-                                 uc.LOCATE_CACHE,
-                                 uc.MODULE_INDEX,
+                                 uc.QCLASS_INDEX,
+                                 uc.CC_CLASS_INDEX,
                                  uc.PACKAGE_INDEX,
-                                 uc.QCLASS_INDEX)
+                                 uc.MODULE_INDEX)
             for idx in targets_to_delete:
                 os.remove(idx)
         else:
