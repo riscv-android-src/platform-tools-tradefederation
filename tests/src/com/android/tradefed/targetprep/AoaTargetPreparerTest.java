@@ -33,6 +33,9 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.TestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -41,7 +44,7 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.awt.*;
+import java.awt.Point;
 import java.time.Duration;
 
 /** Unit tests for {@link AoaTargetPreparer} */
@@ -56,22 +59,28 @@ public class AoaTargetPreparerTest {
     @Mock private UsbHelper mUsb;
     @Mock private AoaDevice mDevice;
 
+    private TestInformation mTestInfo;
+
     @Before
     public void setUp() throws ConfigurationException {
         when(mUsb.getAoaDevice(any(), any())).thenReturn(mDevice);
         doReturn(mUsb).when(mPreparer).getUsbHelper();
         mOptionSetter = new OptionSetter(mPreparer);
         when(mDevice.getSerialNumber()).thenReturn("SERIAL");
+
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mTestDevice);
+        context.addDeviceBuildInfo("device", mBuildInfo);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     @Test
-    public void testSetUp()
-            throws TargetSetupError, DeviceNotAvailableException, ConfigurationException {
+    public void testSetUp() throws Exception {
         mOptionSetter.setOptionValue("action", "wake");
         mOptionSetter.setOptionValue("device-timeout", "1s");
         mOptionSetter.setOptionValue("wait-for-device-online", "true");
 
-        mPreparer.setUp(mTestDevice, mBuildInfo);
+        mPreparer.setUp(mTestInfo);
         // fetched device, executed actions, and verified status
         verify(mUsb, times(1)).getAoaDevice(any(), eq(Duration.ofSeconds(1L)));
         verify(mPreparer, times(1)).execute(eq(mDevice), eq("wake"));
@@ -79,8 +88,8 @@ public class AoaTargetPreparerTest {
     }
 
     @Test
-    public void testSetUp_noActions() throws TargetSetupError, DeviceNotAvailableException {
-        mPreparer.setUp(mTestDevice, mBuildInfo);
+    public void testSetUp_noActions() throws Exception {
+        mPreparer.setUp(mTestInfo);
         // no-op if no actions provided
         verifyZeroInteractions(mUsb);
         verify(mPreparer, never()).execute(eq(mDevice), any());
@@ -88,20 +97,18 @@ public class AoaTargetPreparerTest {
     }
 
     @Test(expected = DeviceNotAvailableException.class)
-    public void testSetUp_noDevice()
-            throws TargetSetupError, DeviceNotAvailableException, ConfigurationException {
+    public void testSetUp_noDevice() throws Exception {
         mOptionSetter.setOptionValue("action", "wake");
         when(mUsb.getAoaDevice(any(), any())).thenReturn(null); // device not found or incompatible
-        mPreparer.setUp(mTestDevice, mBuildInfo);
+        mPreparer.setUp(mTestInfo);
     }
 
     @Test
-    public void testSetUp_skipDeviceCheck()
-            throws TargetSetupError, DeviceNotAvailableException, ConfigurationException {
+    public void testSetUp_skipDeviceCheck() throws Exception {
         mOptionSetter.setOptionValue("action", "wake");
         mOptionSetter.setOptionValue("wait-for-device-online", "false"); // device check disabled
 
-        mPreparer.setUp(mTestDevice, mBuildInfo);
+        mPreparer.setUp(mTestInfo);
         // actions executed, but status check skipped
         verify(mPreparer, times(1)).execute(eq(mDevice), eq("wake"));
         verify(mTestDevice, never()).waitForDeviceOnline();
