@@ -13,25 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.lite;
-
-import static org.junit.Assert.assertTrue;
-
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-
-/** {@link com.android.tradefed.lite.HostUtils} */
-@RunWith(JUnit4.class)
-public class HostUtilsTest {
-    /**
-     * This test checks if our test class is correctly detected to bes annotated with the JUnit
-     * annotation.
-     */
-    @Test
-    public void testHasJUnit4Annotation() {
-        assertTrue(
-                "Has JUnit annotation on crafted test class",
-                HostUtils.hasJUnit4Annotation(SampleTests.class));
-    }
+java_library_host {
+    name: "IsolatedSampleTests",
+    defaults: ["tradefed_defaults"],
+    srcs: ["./SampleTests.java"],
+    static_libs: [
+        "junit"
+    ]
 }
