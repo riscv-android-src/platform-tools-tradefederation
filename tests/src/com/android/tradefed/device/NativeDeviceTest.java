@@ -1666,6 +1666,106 @@ public class NativeDeviceTest {
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
+    /** Unit test for {@link NativeDevice#rebootIntoBootloader()}}. */
+    @Test
+    public void testRebootIntoBootloader() throws Exception {
+        NativeDevice testDevice =
+                new NativeDevice(mMockIDevice, mMockStateMonitor, mMockDvcMonitor) {
+                    @Override
+                    public TestDeviceState getDeviceState() {
+                        return TestDeviceState.ONLINE;
+                    }
+                };
+        String into = "bootloader";
+        mMockIDevice.reboot(into);
+        EasyMock.expectLastCall();
+        EasyMock.expect(mMockStateMonitor.waitForDeviceBootloader(EasyMock.anyLong()))
+                .andReturn(true);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        testDevice.rebootIntoBootloader();
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#rebootIntoBootloader()}} when device is already in fastboot
+     * mode.
+     */
+    @Test
+    public void testRebootIntoBootloader_forceFastboot() throws Exception {
+        TestableAndroidNativeDevice testDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public TestDeviceState getDeviceState() {
+                        return TestDeviceState.FASTBOOT;
+                    }
+
+                    @Override
+                    public CommandResult executeFastbootCommand(String... cmdArgs)
+                            throws DeviceNotAvailableException, UnsupportedOperationException {
+                        if (cmdArgs[0].equals("reboot-bootloader")) {
+                            wasCalled = true;
+                        }
+                        return new CommandResult();
+                    }
+                };
+        EasyMock.expect(mMockStateMonitor.waitForDeviceBootloader(EasyMock.anyLong()))
+                .andReturn(true);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        testDevice.rebootIntoBootloader();
+        assertTrue(testDevice.wasCalled);
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+    }
+
+    /** Unit test for {@link NativeDevice#rebootIntoFastbootd()}}. */
+    @Test
+    public void testRebootIntoFastbootd() throws Exception {
+        NativeDevice testDevice =
+                new NativeDevice(mMockIDevice, mMockStateMonitor, mMockDvcMonitor) {
+                    @Override
+                    public TestDeviceState getDeviceState() {
+                        return TestDeviceState.ONLINE;
+                    }
+                };
+        String into = "fastboot";
+        mMockIDevice.reboot(into);
+        EasyMock.expectLastCall();
+        EasyMock.expect(mMockStateMonitor.waitForDeviceBootloader(EasyMock.anyLong()))
+                .andReturn(true);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        testDevice.rebootIntoFastbootd();
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#rebootIntoFastbootd()}} when device is already in fastboot
+     * mode.
+     */
+    @Test
+    public void testRebootIntoFastbootd_forceFastboot() throws Exception {
+        TestableAndroidNativeDevice testDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public TestDeviceState getDeviceState() {
+                        return TestDeviceState.FASTBOOT;
+                    }
+
+                    @Override
+                    public CommandResult executeFastbootCommand(String... cmdArgs)
+                            throws DeviceNotAvailableException, UnsupportedOperationException {
+                        if (cmdArgs[0].equals("reboot-fastboot")) {
+                            wasCalled = true;
+                        }
+                        return new CommandResult();
+                    }
+                };
+        EasyMock.expect(mMockStateMonitor.waitForDeviceBootloader(EasyMock.anyLong()))
+                .andReturn(true);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        testDevice.rebootIntoFastbootd();
+        assertTrue(testDevice.wasCalled);
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+    }
+
     /** Unit test for {@link NativeDevice#unlockDevice()} already decrypted. */
     @Test
     public void testUnlockDevice_skipping() throws Exception {
