@@ -64,6 +64,9 @@ PRUNENAMES = ['.abc', '.appveyor', '.azure-pipelines',
               '.semaphore', '.settings', '.static', '.svn',
               '.test', '.travis', '.tx',
               '.vscode']
+# Running locate + grep consumes tremendous amount of time in MacOS. Running it
+# with a physical script file can increase the performance.
+TMPRUN = '/tmp/._'
 
 def _mkdir_when_inexists(dirname):
     if not os.path.isdir(dirname):
@@ -179,7 +182,8 @@ def _get_cc_result(locatedb=None):
                     "| xargs egrep -sH '{1}' || true")
     find_cc_cmd = find_cmd.format(locatedb, cc_grep_re)
     logging.debug('Probing CC classes:\n %s', find_cc_cmd)
-    return subprocess.check_output(find_cc_cmd, shell=True)
+    return subprocess.check_output('echo \"%s\" > %s; sh %s'
+                                   % (find_cc_cmd, TMPRUN, TMPRUN), shell=True)
 
 def _get_java_result(locatedb=None):
     """Search all testable java/kt and grep package.
@@ -196,7 +200,8 @@ def _get_java_result(locatedb=None):
         find_cmd = r"locate -d%s / | egrep -i '/*.test.*\.(java|kt)$'" % locatedb
     find_java_cmd = find_cmd + '| xargs egrep -sH \'%s\' || true' % package_grep_re
     logging.debug('Probing Java classes:\n %s', find_java_cmd)
-    return subprocess.check_output(find_java_cmd, shell=True)
+    return subprocess.check_output('echo \"%s\" > %s; sh %s'
+                                   % (find_java_cmd, TMPRUN, TMPRUN), shell=True)
 
 def _index_testable_modules(index):
     """Dump testable modules read by tab completion.
@@ -334,9 +339,10 @@ def index_targets(output_cache=constants.LOCATE_CACHE, **kwargs):
         _index_java_classes(java_result, class_index)
         _index_qualified_classes(java_result, qclass_index)
         _index_packages(java_result, package_index)
-        # Step 3: index testable mods and TEST_MAPPING files.
         _index_testable_modules(module_index)
-
+        # Step 3: Clean up the temp script.
+        if os.path.isfile(TMPRUN):
+            os.remove(TMPRUN)
     # Delete indexes when mlocate.db is locked() or other CalledProcessError.
     # (b/141588997)
     except subprocess.CalledProcessError as err:
