@@ -180,10 +180,10 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
                 }
             } catch (IOException | AdbCommandRejectedException |
                     ShellCommandUnresponsiveException e) {
-                CLog.i("%s failed:", cmd);
+                CLog.e("%s failed on: %s", cmd, getSerialNumber());
                 CLog.e(e);
             } catch (TimeoutException e) {
-                CLog.i("%s failed: timeout", cmd);
+                CLog.e("%s failed on %s: timeout", cmd, getSerialNumber());
                 CLog.e(e);
             }
             getRunUtil().sleep(Math.min(getCheckPollTime() * counter, MAX_CHECK_POLL_TIME));
