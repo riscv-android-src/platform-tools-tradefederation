@@ -95,8 +95,8 @@ _atest() {
     esac
 
     case "$prev" in
-        --iterations|--rerun-until-failure|--retry-any-failure)
-            COMPREPLY=(10) ;;
+        --generate-baseline|--generate-new-metrics)
+            COMPREPLY=(5) ;;
         --list-modules|-L)
             # TODO: genetate the list automately when the API is available.
             COMPREPLY=($(compgen -W "cts vts" -- $cur)) ;;
