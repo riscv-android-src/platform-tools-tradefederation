@@ -40,6 +40,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.ProcessBuilder.Redirect;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
@@ -106,6 +107,18 @@ public class IsolatedHostTest
                             + "none of the annotations in this list to run.")
     private Set<String> mExcludeAnnotations = new HashSet<>();
 
+    @Option(
+            name = "java-flags",
+            description =
+                    "The set of flags to pass to the Java subprocess for complicated test "
+                            + "needs.")
+    private List<String> mJavaFlags = new ArrayList<>();
+
+    @Option(
+            name = "exclude-paths",
+            description = "The (prefix) paths to exclude from searching in the jars.")
+    private Set<String> mExcludePaths = new HashSet<>();
+
     private IBuildInfo mBuildInfo;
     private Set<String> mIncludeFilters = new HashSet<>();
     private Set<String> mExcludeFilters = new HashSet<>();
@@ -123,23 +136,27 @@ public class IsolatedHostTest
             mServer = new ServerSocket(0);
             mServer.setSoTimeout(mSocketTimeout);
 
-            String[] cmdArgs = {
-                SystemUtil.getRunningJavaBinaryPath().getAbsolutePath(),
-                "-cp",
-                this.compileClassPath(),
-                "com.android.tradefed.isolation.IsolationRunner",
-                "-",
-                "--port",
-                Integer.toString(mServer.getLocalPort()),
-                "--address",
-                mServer.getInetAddress().getHostAddress(),
-                "--timeout",
-                Integer.toString(mSocketTimeout)
-            };
+            ArrayList<String> cmdArgs =
+                    new ArrayList<>(
+                            List.of(
+                                    SystemUtil.getRunningJavaBinaryPath().getAbsolutePath(),
+                                    "-cp",
+                                    this.compileClassPath()));
+            cmdArgs.addAll(mJavaFlags);
+            cmdArgs.addAll(
+                    List.of(
+                            "com.android.tradefed.isolation.IsolationRunner",
+                            "-",
+                            "--port",
+                            Integer.toString(mServer.getLocalPort()),
+                            "--address",
+                            mServer.getInetAddress().getHostAddress(),
+                            "--timeout",
+                            Integer.toString(mSocketTimeout)));
 
             CLog.v(String.join(" ", cmdArgs));
             RunUtil runner = new RunUtil();
-            Process isolationRunner = runner.runCmdInBackground(cmdArgs);
+            Process isolationRunner = runner.runCmdInBackground(Redirect.INHERIT, cmdArgs);
             CLog.v("Started subprocess.");
 
             Socket socket = mServer.accept();
@@ -148,20 +165,25 @@ public class IsolatedHostTest
 
             List<String> testJarAbsPaths = getJarPaths(mJars);
 
-            TestParameters params =
+            TestParameters.Builder paramsBuilder =
                     TestParameters.newBuilder()
                             .addAllTestClasses(mClasses)
                             .addAllTestJarAbsPaths(testJarAbsPaths)
-                            .setFilter(
-                                    FilterSpec.newBuilder()
-                                            .addAllIncludeFilters(mIncludeFilters)
-                                            .addAllExcludeFilters(mExcludeFilters)
-                                            .addAllIncludeAnnotations(mIncludeAnnotations)
-                                            .addAllExcludeAnnotations(mExcludeAnnotations))
-                            .setDryRun(mCollectTestsOnly)
-                            .build();
+                            .addAllExcludePaths(mExcludePaths)
+                            .setDryRun(mCollectTestsOnly);
 
-            this.executeTests(socket, listener, params);
+            if (!mIncludeFilters.isEmpty()
+                    || !mExcludeFilters.isEmpty()
+                    || !mIncludeAnnotations.isEmpty()
+                    || !mExcludeAnnotations.isEmpty()) {
+                paramsBuilder.setFilter(
+                        FilterSpec.newBuilder()
+                                .addAllIncludeFilters(mIncludeFilters)
+                                .addAllExcludeFilters(mExcludeFilters)
+                                .addAllIncludeAnnotations(mIncludeAnnotations)
+                                .addAllExcludeAnnotations(mExcludeAnnotations));
+            }
+            this.executeTests(socket, listener, paramsBuilder.build());
 
             RunnerMessage.newBuilder()
                     .setCommand(RunnerOp.RUNNER_OP_STOP)
