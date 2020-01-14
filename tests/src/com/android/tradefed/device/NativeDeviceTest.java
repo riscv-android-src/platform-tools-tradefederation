@@ -2723,30 +2723,6 @@ public class NativeDeviceTest {
         assertNull(mTestDevice.getMacAddress());
     }
 
-    /** Test that a non online device return null for sim state. */
-    @Test
-    public void testGetSimState_unavailableDevice() {
-        mMockIDevice = EasyMock.createMock(IDevice.class);
-        mMockStateMonitor.setState(TestDeviceState.NOT_AVAILABLE);
-        EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn("serial").times(2);
-        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
-        mTestDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
-        assertNull(mTestDevice.getSimState());
-        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
-    }
-
-    /** Test that a non online device return null for sim operator. */
-    @Test
-    public void testGetSimOperator_unavailableDevice() {
-        mMockIDevice = EasyMock.createMock(IDevice.class);
-        mMockStateMonitor.setState(TestDeviceState.NOT_AVAILABLE);
-        EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn("serial").times(2);
-        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
-        mTestDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
-        assertNull(mTestDevice.getSimOperator());
-        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
-    }
-
     /** Test if valid shell output returns correct memory size. */
     @Test
     public void testGetTotalMemory() {

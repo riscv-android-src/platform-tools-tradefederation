@@ -4364,6 +4364,8 @@ public class NativeDevice implements IManagedTestDevice {
             if (idevice instanceof NullDevice) {
                 isTemporary = ((NullDevice) idevice).isTemporary();
             }
+            // All the operations to create the descriptor need to be safe (should not trigger any
+            // device side effects like recovery)
             return new DeviceDescriptor(
                     idevice.getSerialNumber(),
                     null,
@@ -4649,25 +4651,15 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@inheritDoc} */
     @Override
     public String getSimState() {
-        try {
-            return getProperty(SIM_STATE_PROP);
-        } catch (DeviceNotAvailableException e) {
-            CLog.w("Failed to query SIM state for %s", mIDevice.getSerialNumber());
-            CLog.w(e);
-            return null;
-        }
+        // Use ddmlib getProperty directly to avoid possible recovery path
+        return getIDevice().getProperty(SIM_STATE_PROP);
     }
 
     /** {@inheritDoc} */
     @Override
     public String getSimOperator() {
-        try {
-            return getProperty(SIM_OPERATOR_PROP);
-        } catch (DeviceNotAvailableException e) {
-            CLog.w("Failed to query SIM operator for %s", mIDevice.getSerialNumber());
-            CLog.w(e);
-            return null;
-        }
+        // Use ddmlib getProperty directly to avoid possible recovery path
+        return getIDevice().getProperty(SIM_OPERATOR_PROP);
     }
 
     /** {@inheritDoc} */
