@@ -15,8 +15,6 @@
  */
 package com.android.tradefed.lite;
 
-import org.junit.runner.Description;
-import org.junit.runner.notification.RunListener;
 import org.junit.runners.Suite.SuiteClasses;
 
 import java.io.File;
@@ -27,11 +25,12 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Implements some useful utility methods for running host tests.
@@ -44,35 +43,6 @@ public final class HostUtils {
     private HostUtils() {}
 
     /**
-     * Takes a description of a JUnit test and fakes its execution.
-     *
-     * <p>It takes a description of the test unit, then recursively calls the listener methods using
-     * that description to make the listener believe the test ran, but without actually executing
-     * the test.
-     *
-     * @param desc
-     * @param listener
-     * @throws IOException
-     */
-    public static void fakeExecution(Description desc, RunListener listener) throws IOException {
-        if (desc.getMethodName() == null || !desc.getChildren().isEmpty()) {
-            for (Description child : desc.getChildren()) {
-                fakeExecution(child, listener);
-            }
-        } else {
-            try {
-                listener.testStarted(desc);
-                listener.testFinished(desc);
-            } catch (IOException e) {
-                throw e;
-            } catch (Exception e) {
-                // Something surprising happened.
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    /**
      * Gets JUnit4 test cases from provided classnames and jar paths.
      *
      * @param classNames Classes that exist in the current class path to check for JUnit tests
@@ -81,7 +51,8 @@ public final class HostUtils {
      * @throws IllegalArgumentException
      */
     public static final List<Class<?>> getJUnit4Classes(
-            List<String> classNames, List<String> jarAbsPaths) throws IllegalArgumentException {
+            List<String> classNames, List<String> jarAbsPaths, List<String> filterPaths)
+            throws IllegalArgumentException {
         Set<String> outputNames = new HashSet<String>();
         List<Class<?>> output = new ArrayList<>();
 
@@ -104,55 +75,57 @@ public final class HostUtils {
             try {
                 File file = new File(jarName);
                 jarFile = new JarFile(file);
-                Iterator<JarEntry> i = jarFile.entries().asIterator();
+                Stream<JarEntry> s = jarFile.stream().parallel();
                 URL[] urls = {new URL(String.format("jar:file:%s!/", file.getAbsolutePath()))};
                 URLClassLoader cl = URLClassLoader.newInstance(urls);
 
-                while (i.hasNext()) {
-                    JarEntry je = i.next();
-                    if (je.isDirectory()
-                            || !je.getName().endsWith(".class")
-                            || je.getName().contains("$")) {
-                        continue;
-                    }
-                    String className = getClassName(je.getName());
-                    if (outputNames.contains(className)) {
-                        continue;
-                    }
-                    try {
-                        Class<?> cls = cl.loadClass(className);
-                        int modifiers = cls.getModifiers();
-                        if (hasJUnit4Annotation(cls)
-                                && !Modifier.isStatic(modifiers)
-                                && !Modifier.isPrivate(modifiers)
-                                && !Modifier.isProtected(modifiers)
-                                && !Modifier.isInterface(modifiers)
-                                && !Modifier.isAbstract(modifiers)) {
-                            outputNames.add(className);
-                            output.add(cls);
-                        }
-                    } catch (UnsupportedClassVersionError ucve) {
-                        throw new IllegalArgumentException(
-                                String.format(
-                                        "Could not load class %s from jar %s. Reason:\n%s",
-                                        className, jarName, ucve.toString()));
-                    } catch (ClassNotFoundException cnfe) {
-                        throw new IllegalArgumentException(
-                                String.format("Cannot find test class %s", className));
-                    } catch (IllegalAccessError | NoClassDefFoundError err) {
-                        // IllegalAccessError can happen when the class or one of its super
-                        // class/interfaces are package-private. We can't load such class from
-                        // here (= outside of the package). Since our intention is not to load
-                        // all classes in the jar, but to find our the main test classes, this
-                        // can be safely skipped.
-                        // NoClassDefFoundError is also okay because certain CTS test cases
-                        // might statically link to a jar library (e.g. tools.jar from JDK)
-                        // where certain internal classes in the library are referencing
-                        // classes that are not available in the jar. Again, since our goal here
-                        // is to find test classes, this can be safely skipped.
-                        continue;
-                    }
+                // This first stage of filtering makes sure that the jar entries are somewhat valid;
+                // this includes not being a directory, not being a java language class,
+                // not being a class that we've already seen, etc.
+                List<JarEntry> classEntries =
+                        s.filter(
+                                        je ->
+                                                (!je.isDirectory()
+                                                        && je.getName().endsWith(".class")
+                                                        && !je.getName().contains("$")
+                                                        && !outputNames.contains(
+                                                                getClassName(je.getName()))))
+                                .collect(Collectors.toList());
+
+                if (!filterPaths.isEmpty()) {
+                    classEntries =
+                            classEntries
+                                    .stream()
+                                    .filter(
+                                            je -> {
+                                                return filterPaths
+                                                        .stream()
+                                                        .noneMatch(
+                                                                path ->
+                                                                        je.getName()
+                                                                                .startsWith(path));
+                                            })
+                                    .collect(Collectors.toList());
                 }
+
+                classEntries
+                        .stream()
+                        .parallel()
+                        .map(je -> HostUtils.getClassName(je.getName()))
+                        .filter(className -> HostUtils.testLoadClass(className, cl, jarName))
+                        .forEach(
+                                className -> {
+                                    try {
+                                        Class<?> cls = cl.loadClass(className);
+                                        output.add(cls);
+                                        outputNames.add(className);
+                                    } catch (ClassNotFoundException e) {
+                                        // Not possible because we already loaded this class before.
+                                        throw new IllegalArgumentException(
+                                                String.format(
+                                                        "Cannot find test class %s", className));
+                                    }
+                                });
             } catch (IOException e) {
                 throw new IllegalArgumentException(e);
             } finally {
@@ -167,6 +140,62 @@ public final class HostUtils {
         return output;
     }
 
+    public static final List<Class<?>> getJUnit4Classes(
+            List<String> classNames, List<String> jarAbsPaths) throws IllegalArgumentException {
+        return HostUtils.getJUnit4Classes(classNames, jarAbsPaths, new ArrayList<>());
+    }
+
+    /**
+     * Tests whether the class is a suitable test class or not.
+     *
+     * <p>In this case, suitable means it is a valid JUnit test class using one of the standard
+     * runners or a subclass thereof. The class should also load, obviously.
+     *
+     * @param className
+     * @param cl
+     * @param jarName
+     * @return true if we should consider this class a test class, false otherwise
+     */
+    public static boolean testLoadClass(String className, URLClassLoader cl, String jarName) {
+        try {
+            Class<?> cls = cl.loadClass(className);
+            int modifiers = cls.getModifiers();
+            if (HostUtils.hasJUnit4Annotation(cls)
+                    && !Modifier.isStatic(modifiers)
+                    && !Modifier.isPrivate(modifiers)
+                    && !Modifier.isProtected(modifiers)
+                    && !Modifier.isInterface(modifiers)
+                    && !Modifier.isAbstract(modifiers)) {
+                return true;
+            }
+        } catch (UnsupportedClassVersionError ucve) {
+            throw new IllegalArgumentException(
+                    String.format(
+                            "Could not load class %s from jar %s. Reason:\n%s",
+                            className, jarName, ucve.toString()));
+        } catch (ClassNotFoundException cnfe) {
+            throw new IllegalArgumentException(
+                    String.format("Cannot find test class %s", className));
+        } catch (IllegalAccessError | NoClassDefFoundError err) {
+            // IllegalAccessError can happen when the class or one of its super
+            // class/interfaces are package-private. We can't load such class from
+            // here (= outside of the package). Since our intention is not to load
+            // all classes in the jar, but to find our the main test classes, this
+            // can be safely skipped.
+            // NoClassDefFoundError is also okay because certain CTS test cases
+            // might statically link to a jar library (e.g. tools.jar from JDK)
+            // where certain internal classes in the library are referencing
+            // classes that are not available in the jar. Again, since our goal here
+            // is to find test classes, this can be safely skipped.
+            return false;
+        } catch (SecurityException e) {
+            throw new IllegalArgumentException(
+                    String.format("Tried to load %s from jar %s , but failed", className, jarName),
+                    e);
+        }
+        return false;
+    }
+
     /**
      * Checks whether a class has a JUnit4 annotation
      *
@@ -174,12 +203,18 @@ public final class HostUtils {
      * @return whether the class object has the JUnit4 test annotation
      */
     public static boolean hasJUnit4Annotation(Class<?> classObj) {
-        if (classObj.isAnnotationPresent(SuiteClasses.class)) {
+        if (classObj.isAnnotationPresent(org.junit.runner.RunWith.class)
+                && org.junit.runners.JUnit4.class.isAssignableFrom(
+                        classObj.getAnnotation(org.junit.runner.RunWith.class).value())) {
             return true;
-        }
-        for (Method m : classObj.getMethods()) {
-            if (m.isAnnotationPresent(org.junit.Test.class)) {
+        } else if (!classObj.isAnnotationPresent(org.junit.runner.RunWith.class)) {
+            if (classObj.isAnnotationPresent(SuiteClasses.class)) {
                 return true;
+            }
+            for (Method m : classObj.getMethods()) {
+                if (m.isAnnotationPresent(org.junit.Test.class)) {
+                    return true;
+                }
             }
         }
         return false;

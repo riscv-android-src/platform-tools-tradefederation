@@ -46,8 +46,9 @@ enum TestStatus {
 message TestParameters {
   repeated string testClasses = 1;
   repeated string testJarAbsPaths = 2;
-  FilterSpec filter = 3;
-  bool dryRun = 4;
+  repeated string excludePaths = 3;
+  FilterSpec filter = 4;
+  bool dryRun = 5;
 }
 
 message FilterSpec {
