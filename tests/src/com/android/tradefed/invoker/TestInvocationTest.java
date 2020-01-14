@@ -645,7 +645,6 @@ public class TestInvocationTest {
         mStubConfiguration.setTestInvocationListener(resumeListener);
 
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
-        mMockBuildProvider.setWorkingDirectory(EasyMock.anyObject());
         EasyMock.expectLastCall().anyTimes();
         resumeListener.invocationStarted(mStubInvocationMetadata);
         EasyMock.expect(resumeListener.getSummary()).andReturn(null);
@@ -1099,7 +1098,6 @@ public class TestInvocationTest {
         mMockBuildInfo.setTestTag(EasyMock.eq(testTag));
         mockProvider.setInvocationContext((IInvocationContext)EasyMock.anyObject());
         EasyMock.expect(mockProvider.getBuild(mMockDevice)).andReturn(mMockBuildInfo);
-        mockProvider.setWorkingDirectory(EasyMock.anyObject());
         EasyMock.expectLastCall().anyTimes();
         mockProvider.cleanUp(mMockBuildInfo);
         EasyMock.expectLastCall().times(2);
@@ -1136,7 +1134,6 @@ public class TestInvocationTest {
         mMockDevice.startLogcat();
         mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.stopLogcat();
-        mMockBuildProvider.setWorkingDirectory(EasyMock.anyObject());
         EasyMock.expectLastCall().anyTimes();
     }
 
