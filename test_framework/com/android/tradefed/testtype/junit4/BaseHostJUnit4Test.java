@@ -26,6 +26,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
@@ -33,6 +34,7 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.ddmlib.DefaultRemoteAndroidTestRunner;
+import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.suite.SuiteApkInstaller;
 import com.android.tradefed.testtype.IAbi;
@@ -71,6 +73,8 @@ public abstract class BaseHostJUnit4Test
     private IBuildInfo mBuild;
     private IAbi mAbi;
     private IInvocationContext mContext;
+    // TODO: Replace with real testInformation
+    private TestInformation mInternalTestInfo;
     private Map<SuiteApkInstaller, ITestDevice> mInstallers = new LinkedHashMap<>();
     private TestRunResult mLatestInstruRes;
 
@@ -106,6 +110,7 @@ public abstract class BaseHostJUnit4Test
     @Override
     public final void setInvocationContext(IInvocationContext invocationContext) {
         mContext = invocationContext;
+        mInternalTestInfo = TestInformation.newBuilder().setInvocationContext(mContext).build();
     }
 
     public final IInvocationContext getInvocationContext() {
@@ -124,8 +129,7 @@ public abstract class BaseHostJUnit4Test
     public final void autoTearDown() throws DeviceNotAvailableException {
         mLatestInstruRes = null;
         for (SuiteApkInstaller installer : mInstallers.keySet()) {
-            ITestDevice device = mInstallers.get(installer);
-            installer.tearDown(device, mContext.getBuildInfo(device), null);
+            installer.tearDown(mInternalTestInfo, null);
         }
         mInstallers.clear();
     }
@@ -162,7 +166,13 @@ public abstract class BaseHostJUnit4Test
         for (String option : options) {
             installer.addInstallArg(option);
         }
-        installer.setUp(device, mContext.getBuildInfo(device));
+        try {
+            installer.setUp(mInternalTestInfo);
+        } catch (BuildError e) {
+            // For some reason we forgot the BuildError part of the interface so it's hard to add
+            // it now
+            throw new TargetSetupError(e.getMessage(), e, device.getDeviceDescriptor());
+        }
     }
 
     /**
@@ -207,7 +217,13 @@ public abstract class BaseHostJUnit4Test
         for (String option : options) {
             installer.addInstallArg(option);
         }
-        installer.setUp(device, mContext.getBuildInfo(device));
+        try {
+            installer.setUp(mInternalTestInfo);
+        } catch (BuildError e) {
+            // For some reason we forgot the BuildError part of the interface so it's hard to add
+            // it now
+            throw new TargetSetupError(e.getMessage(), e, device.getDeviceDescriptor());
+        }
     }
 
     /**

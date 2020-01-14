@@ -23,7 +23,6 @@ import static org.junit.Assert.fail;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.gcs.GCSDownloaderHelper;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
-import com.android.tradefed.config.Option;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ZipUtil;
 
@@ -58,8 +57,7 @@ public class GcsRemoteFileResolverTest {
 
     @Test
     public void testResolve() throws Exception {
-        mResolver.resolveRemoteFiles(
-                new File("gs:/fake/file"), Mockito.mock(Option.class), new HashMap<>());
+        mResolver.resolveRemoteFiles(new File("gs:/fake/file"), new HashMap<>());
 
         Mockito.verify(mMockHelper).fetchTestResource("gs:/fake/file");
     }
@@ -71,8 +69,7 @@ public class GcsRemoteFileResolverTest {
                 .fetchTestResource("gs:/fake/file");
 
         try {
-            mResolver.resolveRemoteFiles(
-                    new File("gs:/fake/file"), Mockito.mock(Option.class), new HashMap<>());
+            mResolver.resolveRemoteFiles(new File("gs:/fake/file"), new HashMap<>());
             fail("Should have thrown an exception.");
         } catch (BuildRetrievalError expected) {
             assertEquals(
@@ -93,9 +90,7 @@ public class GcsRemoteFileResolverTest {
             Mockito.doReturn(zipFile).when(mMockHelper).fetchTestResource("gs:/fake/file");
             Map<String, String> query = new HashMap<>();
             query.put(DynamicRemoteFileResolver.UNZIP_KEY, /* Case doesn't matter */ "TrUe");
-            resolvedFile =
-                    mResolver.resolveRemoteFiles(
-                            new File("gs:/fake/file"), Mockito.mock(Option.class), query);
+            resolvedFile = mResolver.resolveRemoteFiles(new File("gs:/fake/file"), query);
             // File was unzipped
             assertTrue(resolvedFile.isDirectory());
             // Zip file was cleaned
@@ -117,9 +112,7 @@ public class GcsRemoteFileResolverTest {
             Mockito.doReturn(testFile).when(mMockHelper).fetchTestResource("gs:/fake/file");
             Map<String, String> query = new HashMap<>();
             query.put(DynamicRemoteFileResolver.UNZIP_KEY, /* Case doesn't matter */ "TrUe");
-            File resolvedFile =
-                    mResolver.resolveRemoteFiles(
-                            new File("gs:/fake/file"), Mockito.mock(Option.class), query);
+            File resolvedFile = mResolver.resolveRemoteFiles(new File("gs:/fake/file"), query);
             // File was not unzipped since it's not one
             assertEquals(testFile, resolvedFile);
 

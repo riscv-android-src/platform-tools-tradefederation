@@ -23,6 +23,9 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
@@ -129,6 +132,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     private Boolean mGrantPermission = null;
 
     private List<String> mPackagesInstalled = null;
+    private TestInformation mTestInfo;
 
     /**
      * Adds a file name to the list of apks to installed
@@ -200,10 +204,24 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
         }
     }
 
-    /** {@inheritDoc} */
+    /** @deprecated Temporary backward compatible callback. */
+    @Deprecated
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
-            throws TargetSetupError, DeviceNotAvailableException {
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", device);
+        context.addDeviceBuildInfo("device", buildInfo);
+        TestInformation backwardCompatible =
+                TestInformation.newBuilder().setInvocationContext(context).build();
+        setUp(backwardCompatible);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setUp(TestInformation testInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        mTestInfo = testInfo;
         if (mTestFileNames.isEmpty() && mSplitApkFileNames.isEmpty()) {
             CLog.i("No test apps to install, skipping");
             return;
@@ -220,7 +238,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
         if (mAbi != null) {
             abiName = mAbi.getName();
         } else if (mForceAbi != null) {
-            abiName = AbiFormatter.getDefaultAbi(device, mForceAbi);
+            abiName = AbiFormatter.getDefaultAbi(getDevice(), mForceAbi);
         }
 
         // Set all the extra install args outside the loop to avoid adding them several times.
@@ -241,13 +259,29 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
         }
 
         for (String testAppName : mTestFileNames) {
-            installer(device, buildInfo, Arrays.asList(new String[] {testAppName}));
+            installer(
+                    getDevice(),
+                    testInfo.getBuildInfo(),
+                    Arrays.asList(new String[] {testAppName}));
         }
 
         for (String testAppNames : mSplitApkFileNames) {
             List<String> apkNames = Arrays.asList(testAppNames.split(","));
-            installer(device, buildInfo, apkNames);
+            installer(getDevice(), testInfo.getBuildInfo(), apkNames);
         }
+    }
+
+    /**
+     * Returns the device that the preparer should apply to.
+     *
+     * @throws TargetSetupError
+     */
+    public ITestDevice getDevice() throws TargetSetupError {
+        return mTestInfo.getDevice();
+    }
+
+    public TestInformation getTestInfo() {
+        return mTestInfo;
     }
 
     @Override
@@ -273,15 +307,17 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
         return mInstantMode;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
+        mTestInfo = testInfo;
         if (mCleanup && mPackagesInstalled != null && !(e instanceof DeviceNotAvailableException)) {
             for (String packageName : mPackagesInstalled) {
-                uninstallPackage(device, packageName);
+                try {
+                    uninstallPackage(getDevice(), packageName);
+                } catch (TargetSetupError tse) {
+                    CLog.e(tse);
+                }
             }
         }
     }

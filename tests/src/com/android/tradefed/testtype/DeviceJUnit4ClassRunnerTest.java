@@ -78,7 +78,6 @@ public class DeviceJUnit4ClassRunnerTest {
                                                     .when(mockResolver)
                                                     .resolveRemoteFiles(
                                                             Mockito.eq(FAKE_REMOTE_FILE_PATH),
-                                                            Mockito.any(),
                                                             Mockito.any());
                                             return mockResolver;
                                         } catch (BuildRetrievalError e) {

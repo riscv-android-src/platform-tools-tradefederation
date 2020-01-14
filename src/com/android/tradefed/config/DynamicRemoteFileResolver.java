@@ -257,7 +257,7 @@ public class DynamicRemoteFileResolver {
         }
         // Downloaded individual files should be saved to destDir, return value is not needed.
         try {
-            resolver.resolveRemoteFiles(new File(remoteZipFilePath), null, queryArgs);
+            resolver.resolveRemoteFiles(new File(remoteZipFilePath), queryArgs);
         } catch (BuildRetrievalError e) {
             if (isOptional(queryArgs)) {
                 CLog.d(
@@ -339,7 +339,7 @@ public class DynamicRemoteFileResolver {
                 CLog.d(
                         "Considering option '%s' with path: '%s' for download.",
                         option.name(), path);
-                return resolver.resolveRemoteFiles(fileToResolve, option, query);
+                return resolver.resolveRemoteFiles(fileToResolve, query);
             } catch (BuildRetrievalError e) {
                 if (isOptional(query)) {
                     CLog.d(

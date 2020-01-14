@@ -903,9 +903,7 @@ public class TestInvocation implements ITestInvocation {
             // Delete the invocation work directory at the end
             FileUtil.recursiveDelete(info.dependenciesFolder());
             // Delete all the execution files
-            for (File f : info.executionFiles().getAll().values()) {
-                FileUtil.recursiveDelete(f);
-            }
+            info.executionFiles().clearFiles();
         }
     }
 
