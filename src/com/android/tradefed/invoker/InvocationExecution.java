@@ -36,6 +36,7 @@ import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
+import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
@@ -144,6 +145,7 @@ public class InvocationExecution implements IInvocationExecution {
                 }
                 // TODO: remove build update when reporting is done on context
                 updateBuild(info, config);
+                linkExternalDirs(info, testInfo);
                 info.setTestResourceBuild(config.isDeviceConfiguredFake(currentDeviceName));
             }
         } catch (BuildRetrievalError e) {
@@ -657,27 +659,6 @@ public class InvocationExecution implements IInvocationExecution {
                     "shard_index", config.getCommandOptions().getShardIndex().toString());
         }
         setTestTag(info, config);
-
-        if (info.getProperties().contains(BuildInfoProperties.DO_NOT_LINK_TESTS_DIR)) {
-            CLog.d("Skip linking external directory as FileProperty was set.");
-            return;
-        }
-        // Load environment tests dir.
-        if (info instanceof IDeviceBuildInfo) {
-            File testsDir = ((IDeviceBuildInfo) info).getTestsDir();
-            if (testsDir != null && testsDir.exists()) {
-                handleLinkingExternalDirs(
-                        (IDeviceBuildInfo) info,
-                        testsDir,
-                        EnvVariable.ANDROID_TARGET_OUT_TESTCASES,
-                        BuildInfoFileKey.TARGET_LINKED_DIR.getFileKey());
-                handleLinkingExternalDirs(
-                        (IDeviceBuildInfo) info,
-                        testsDir,
-                        EnvVariable.ANDROID_HOST_OUT_TESTCASES,
-                        BuildInfoFileKey.HOST_LINKED_DIR.getFileKey());
-            }
-        }
     }
 
     private void runTest(
@@ -744,7 +725,40 @@ public class InvocationExecution implements IInvocationExecution {
                 InvocationMetricKey.AUTO_RETRY_TIME, Long.toString(totalRetryMs));
     }
 
-    private void handleLinkingExternalDirs(
+    private void linkExternalDirs(IBuildInfo info, TestInformation testInfo) {
+        if (info.getProperties().contains(BuildInfoProperties.DO_NOT_LINK_TESTS_DIR)) {
+            CLog.d("Skip linking external directory as FileProperty was set.");
+            return;
+        }
+        // Load environment tests dir.
+        if (info instanceof IDeviceBuildInfo) {
+            File testsDir = ((IDeviceBuildInfo) info).getTestsDir();
+            if (testsDir != null && testsDir.exists()) {
+                File targetTestCases =
+                        handleLinkingExternalDirs(
+                                (IDeviceBuildInfo) info,
+                                testsDir,
+                                EnvVariable.ANDROID_TARGET_OUT_TESTCASES,
+                                BuildInfoFileKey.TARGET_LINKED_DIR.getFileKey());
+                if (targetTestCases != null) {
+                    testInfo.executionFiles()
+                            .put(FilesKey.TARGET_TESTS_DIRECTORY, targetTestCases, true);
+                }
+                File hostTestCases =
+                        handleLinkingExternalDirs(
+                                (IDeviceBuildInfo) info,
+                                testsDir,
+                                EnvVariable.ANDROID_HOST_OUT_TESTCASES,
+                                BuildInfoFileKey.HOST_LINKED_DIR.getFileKey());
+                if (hostTestCases != null) {
+                    testInfo.executionFiles()
+                            .put(FilesKey.HOST_TESTS_DIRECTORY, hostTestCases, true);
+                }
+            }
+        }
+    }
+
+    private File handleLinkingExternalDirs(
             IDeviceBuildInfo info, File testsDir, EnvVariable var, String baseName) {
         File externalDir = getExternalTestCasesDirs(var);
         if (externalDir == null) {
@@ -757,8 +771,9 @@ public class InvocationExecution implements IInvocationExecution {
                         varDir,
                         /** version */
                         "v1");
+                return varDir;
             }
-            return;
+            return null;
         }
         try {
             // Avoid conflict by creating a randomized name for the arriving symlink file.
@@ -773,10 +788,12 @@ public class InvocationExecution implements IInvocationExecution {
                     "v1");
             // Ensure we always delete the linking, no matter how the JVM exits.
             subDir.deleteOnExit();
+            return subDir;
         } catch (IOException e) {
             CLog.e("Failed to load external test dir %s. Ignoring it.", externalDir);
             CLog.e(e);
         }
+        return null;
     }
 
     /** Populate the shared resources directory for all non-resource build */
