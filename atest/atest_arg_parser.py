@@ -36,6 +36,8 @@ HELP_DESC = ('A command line tool that allows users to build, install, and run '
 ALL_ABI = 'Set to run tests for all abis.'
 BUILD = 'Run a build.'
 CLEAR_CACHE = 'Wipe out the test_infos cache of the test.'
+COLLECT_TESTS_ONLY = ('Collect a list test cases of the instrumentation tests '
+                      'without testing them in real.')
 DISABLE_TEARDOWN = 'Disable test teardown and cleanup.'
 DRY_RUN = 'Dry run atest without building, installing and running tests in real.'
 ENABLE_FILE_PATTERNS = 'Enable FILE_PATTERNS in TEST_MAPPING.'
@@ -134,7 +136,12 @@ class AtestArgParser(argparse.ArgumentParser):
                           help=ENABLE_FILE_PATTERNS)
 
         # Options for information queries and dry-runs:
-        self.add_argument('--dry-run', action='store_true', help=DRY_RUN)
+        # A group of options for dry-runs. They are mutually exclusive
+        # in a command line.
+        group = self.add_mutually_exclusive_group()
+        group.add_argument('--collect-tests-only', action='store_true',
+                           help=COLLECT_TESTS_ONLY)
+        group.add_argument('--dry-run', action='store_true', help=DRY_RUN)
         self.add_argument('-h', '--help', action='store_true',
                           help='Print this help message.')
         self.add_argument('--info', action='store_true', help=INFO)
@@ -217,6 +224,7 @@ def print_epilog_text():
     epilog_text = EPILOG_TEMPLATE.format(ALL_ABI=ALL_ABI,
                                          BUILD=BUILD,
                                          CLEAR_CACHE=CLEAR_CACHE,
+                                         COLLECT_TESTS_ONLY=COLLECT_TESTS_ONLY,
                                          DISABLE_TEARDOWN=DISABLE_TEARDOWN,
                                          DRY_RUN=DRY_RUN,
                                          ENABLE_FILE_PATTERNS=ENABLE_FILE_PATTERNS,
@@ -301,6 +309,9 @@ OPTIONS
 
 
         [ Information/Queries ]
+        --collect-tests-only
+            {COLLECT_TESTS_ONLY}
+
         --dry-run
             {DRY_RUN}
 
