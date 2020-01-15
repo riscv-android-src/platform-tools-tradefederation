@@ -15,7 +15,7 @@
 # Get testable module names from module_info.json.
 # Will return null if module_info.json doesn't exist.
 _fetch_testable_modules() {
-    [ -z $ANDROID_PRODUCT_OUT ] && { exit 0; }
+    [ -z $ANDROID_PRODUCT_OUT ] && { return 0; }
     $PYTHON - << END
 import hashlib
 import os
@@ -65,7 +65,7 @@ END
 # This function invoke get_args() and return each item
 # of the list for tab completion candidates.
 _fetch_atest_args() {
-    [ -z $ANDROID_BUILD_TOP ] && { exit 0; }
+    [ -z $ANDROID_BUILD_TOP ] && { return 0; }
     $PYTHON - << END
 import os
 import sys
