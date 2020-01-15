@@ -126,9 +126,9 @@ public interface IManagedTestDevice extends ITestDevice {
      */
     public String getMacAddress();
 
-    /** Return the SIM card state or null if device is not available. */
+    /** Return the SIM card state or null if not available or device is not available. */
     public String getSimState();
 
-    /** Return the SIM card operator or null if device is not available. */
+    /** Return the SIM card operator or null if not available or if device is not available. */
     public String getSimOperator();
 }
