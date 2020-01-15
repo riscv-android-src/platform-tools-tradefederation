@@ -30,33 +30,13 @@ import java.util.List;
  */
 @OptionClass(alias = "fastboot-command-preparer")
 public class FastbootCommandPreparer extends BaseTargetPreparer {
-
-    private enum FastbootMode {
-        BOOTLOADER,
-        FASTBOOTD,
-    }
-
-    @Option(
-            name = "fastboot-mode",
-            description = "True to boot the device into bootloader mode, false for fastbootd mode.")
-    private FastbootMode mFastbootMode = FastbootMode.BOOTLOADER;
-
-    @Option(
-            name = "stay-fastboot",
-            description = "True to keep the device in bootloader or fastbootd mode.")
-    private boolean mStayFastboot = false;
-
     @Option(name = "command", description = "Fastboot commands to run.")
     private List<String> mFastbootCommands = new ArrayList<String>();
 
     @Override
     public void setUp(TestInformation testInformation)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
-        if (mFastbootMode == FastbootMode.BOOTLOADER) {
-            testInformation.getDevice().rebootIntoBootloader();
-        } else {
-            testInformation.getDevice().rebootIntoFastbootd();
-        }
+        testInformation.getDevice().rebootIntoBootloader();
 
         for (String cmd : mFastbootCommands) {
             // Ignore reboots since we'll reboot in the end.
@@ -67,17 +47,13 @@ public class FastbootCommandPreparer extends BaseTargetPreparer {
             testInformation.getDevice().executeFastbootCommand(cmd.split("\\s+"));
         }
 
-        if (!mStayFastboot) {
-            testInformation.getDevice().reboot();
-        }
+        testInformation.getDevice().reboot();
     }
 
     /** {@inheritDoc} */
     @Override
     public void tearDown(TestInformation testInformation, Throwable e)
             throws DeviceNotAvailableException {
-        if (mStayFastboot) {
-            testInformation.getDevice().reboot();
-        }
+        testInformation.getDevice().reboot();
     }
 }
