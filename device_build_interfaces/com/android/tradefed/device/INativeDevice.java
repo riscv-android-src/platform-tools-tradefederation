@@ -902,16 +902,6 @@ public interface INativeDevice {
     public void rebootIntoBootloader() throws DeviceNotAvailableException;
 
     /**
-     * Reboots the device into fastbootd mode.
-     *
-     * <p>Blocks until device is in fastbootd mode.
-     *
-     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
-     *     recovered.
-     */
-    public void rebootIntoFastbootd() throws DeviceNotAvailableException;
-
-    /**
      * Reboots the device into adb mode.
      * <p/>
      * Blocks until device becomes available.

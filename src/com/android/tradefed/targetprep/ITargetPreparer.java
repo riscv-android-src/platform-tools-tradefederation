@@ -53,6 +53,7 @@ public interface ITargetPreparer extends IDisableable {
      *
      * @param testInformation The {@link TestInformation} of the invocation.
      * @throws TargetSetupError if fatal error occurred setting up environment
+     * @throws BuildError If an error occurs due to the build being prepared
      * @throws DeviceNotAvailableException if device became unresponsive
      */
     public default void setUp(TestInformation testInformation)
