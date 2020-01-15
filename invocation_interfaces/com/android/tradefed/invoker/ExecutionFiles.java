@@ -25,12 +25,21 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-/** Files generated during the execution of a test or invocation that need to be carried */
+/**
+ * Files dependencies generated during the execution of a test or invocation that need to be carried
+ * for testing.
+ */
 public class ExecutionFiles {
 
     /** Enumeration of known standard key for the map. */
     public static enum FilesKey {
-        ADB_BINARY
+        ADB_BINARY,
+        // Describes the directory containing the build target tests artifacts.
+        TESTS_DIRECTORY,
+        // Sub-directory of TESTS_DIRECTORY that contains target artifacts
+        TARGET_TESTS_DIRECTORY,
+        // Sub-directory of TESTS_DIRECTORY that contains host-side artifacts
+        HOST_TESTS_DIRECTORY
     }
 
     private final ConcurrentMap<String, File> mFiles = new ConcurrentHashMap<>();
