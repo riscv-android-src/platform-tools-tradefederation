@@ -189,13 +189,16 @@ public class FileDownloadCache {
             FileLock fLock = mJvmLocks.get(remoteFilePath);
             if (fLock == null) {
                 File f = new File(mCacheRoot, convertPath(remoteFilePath));
-                try {
-                    f.getParentFile().mkdirs();
-                    f.createNewFile();
-                    fLock = FileChannel.open(f.toPath(), StandardOpenOption.WRITE).lock();
-                    mJvmLocks.put(remoteFilePath, fLock);
-                } catch (IOException e) {
-                    CLog.e(e);
+                // We can't lock a directory
+                if (!f.isDirectory()) {
+                    try {
+                        f.getParentFile().mkdirs();
+                        f.createNewFile();
+                        fLock = FileChannel.open(f.toPath(), StandardOpenOption.WRITE).lock();
+                        mJvmLocks.put(remoteFilePath, fLock);
+                    } catch (IOException e) {
+                        CLog.e(e);
+                    }
                 }
             }
         }
