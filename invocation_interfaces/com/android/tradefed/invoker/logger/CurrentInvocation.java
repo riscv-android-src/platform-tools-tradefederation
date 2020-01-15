@@ -15,6 +15,9 @@
  */
 package com.android.tradefed.invoker.logger;
 
+import com.android.tradefed.invoker.ExecutionFiles;
+import com.android.tradefed.log.LogUtil.CLog;
+
 import java.io.File;
 import java.util.Collections;
 import java.util.HashMap;
@@ -50,6 +53,9 @@ public class CurrentInvocation {
      */
     private static final Map<ThreadGroup, Map<InvocationInfo, File>> mPerGroupInfo =
             Collections.synchronizedMap(new HashMap<ThreadGroup, Map<InvocationInfo, File>>());
+    /** Track the {@link ExecutionFiles} of each invocation */
+    private static final Map<ThreadGroup, ExecutionFiles> mExecFilesPerGroup =
+            Collections.synchronizedMap(new HashMap<ThreadGroup, ExecutionFiles>());
 
     /**
      * Add one key-value to be tracked at the invocation level.
@@ -82,5 +88,30 @@ public class CurrentInvocation {
     public static void clearInvocationInfos() {
         ThreadGroup group = Thread.currentThread().getThreadGroup();
         mPerGroupInfo.remove(group);
+    }
+
+    /**
+     * One-time registration of the {@link ExecutionFiles}. This is done by the Test Harness.
+     *
+     * @param invocFiles The registered {@link ExecutionFiles}.
+     */
+    public static void registerExecutionFiles(ExecutionFiles invocFiles) {
+        ThreadGroup group = Thread.currentThread().getThreadGroup();
+        synchronized (mExecFilesPerGroup) {
+            if (mExecFilesPerGroup.get(group) == null) {
+                mExecFilesPerGroup.put(group, invocFiles);
+            } else {
+                CLog.w(
+                        "CurrentInvocation#registerExecutionFiles should only be called once per invocation.");
+            }
+        }
+    }
+
+    /** Returns the {@link ExecutionFiles} for the invocation. */
+    public static ExecutionFiles getInvocationFiles() {
+        ThreadGroup group = Thread.currentThread().getThreadGroup();
+        synchronized (mExecFilesPerGroup) {
+            return mExecFilesPerGroup.get(group);
+        }
     }
 }
