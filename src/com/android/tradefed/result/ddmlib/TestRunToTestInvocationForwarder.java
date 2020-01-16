@@ -81,25 +81,6 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     }
 
     @Override
-    public void testStarted(TestIdentifier testId, long startTime) {
-        if (INVALID_METHODS.contains(testId.getTestName())) {
-            mNullMethod = testId;
-            return;
-        }
-        mNullMethod = null;
-        for (ITestLifeCycleReceiver listener : mListeners) {
-            try {
-                listener.testStarted(TestDescription.createFromTestIdentifier(testId), startTime);
-            } catch (RuntimeException any) {
-                CLog.e(
-                        "RuntimeException when invoking %s#testStarted",
-                        listener.getClass().getName());
-                CLog.e(any);
-            }
-        }
-    }
-
-    @Override
     public void testAssumptionFailure(TestIdentifier testId, String trace) {
         if (mNullMethod != null && mNullMethod.equals(testId)) {
             return;
@@ -168,29 +149,6 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
             try {
                 listener.testEnded(
                         TestDescription.createFromTestIdentifier(testId),
-                        TfMetricProtoUtil.upgradeConvert(testMetrics));
-            } catch (RuntimeException any) {
-                CLog.e(
-                        "RuntimeException when invoking %s#testEnded",
-                        listener.getClass().getName());
-                CLog.e(any);
-            }
-        }
-    }
-
-    @Override
-    public void testEnded(TestIdentifier testId, long endTime, Map<String, String> testMetrics) {
-        for (ITestLifeCycleReceiver listener : mListeners) {
-            if (mNullMethod != null && mNullMethod.equals(testId)) {
-                listener.testRunFailed(
-                        String.format(
-                                ERROR_MESSAGE_FORMAT, mNullMethod.getTestName(), mNullMethod));
-                continue;
-            }
-            try {
-                listener.testEnded(
-                        TestDescription.createFromTestIdentifier(testId),
-                        endTime,
                         TfMetricProtoUtil.upgradeConvert(testMetrics));
             } catch (RuntimeException any) {
                 CLog.e(

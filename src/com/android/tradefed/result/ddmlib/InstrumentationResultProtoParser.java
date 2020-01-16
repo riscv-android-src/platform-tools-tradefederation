@@ -206,9 +206,4 @@ public class InstrumentationResultProtoParser implements IShellOutputReceiver {
     public boolean isCancelled() {
         return false;
     }
-
-    /** Set to True to enforce searching for a final time stamp, and fail the run if missing. */
-    public void setEnforceTimeStamp(boolean isEnforced) {
-        parser.setEnforceTimeStamp(isEnforced);
-    }
 }
