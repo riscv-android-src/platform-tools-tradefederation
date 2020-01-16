@@ -26,7 +26,6 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner.TestSize;
-import com.android.ddmlib.testrunner.InstrumentationResultParser;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
@@ -273,10 +272,10 @@ public class InstrumentationTest
     )
     private boolean mMergeCoverageMeasurements = false;
 
+    @Deprecated
     @Option(
-        name = "enforce-ajur-format",
-        description = "Whether or not enforcing the AJUR instrumentation output format"
-    )
+            name = "enforce-ajur-format",
+            description = "Whether or not enforcing the AJUR instrumentation output format")
     private boolean mShouldEnforceFormat = false;
 
     @Option(
@@ -723,7 +722,6 @@ public class InstrumentationTest
             runner.setRunOptions(runOptions);
         }
 
-        runner.setEnforceTimeStamp(mShouldEnforceFormat);
         return runner;
     }
 
@@ -1239,11 +1237,6 @@ public class InstrumentationTest
                 CLog.w("Run failure %s when collecting tests to run for %s on device %s.",
                         runResults.getRunFailureMessage(), mPackageName,
                         mDevice.getSerialNumber());
-                if (mShouldEnforceFormat
-                        && InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG.equals(
-                                runResults.getRunFailureMessage())) {
-                    throw new RuntimeException(InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG);
-                }
                 return null;
             } else {
                 // success!
