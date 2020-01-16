@@ -81,6 +81,11 @@ public class PackageInfo {
         return mAttributes.get("versionName");
     }
 
+    /** Returns where the package is located in the filesystem. */
+    public String getCodePath() {
+        return mAttributes.get("codePath");
+    }
+
     void setIsUpdatedSystemApp(boolean isUpdatedSystemApp) {
         mIsUpdatedSystemApp = isUpdatedSystemApp;
     }
