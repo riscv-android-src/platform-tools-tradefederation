@@ -61,7 +61,7 @@ public class SubprocessConfigBuilder {
         // Make a new config name based on the original config name to make it possible to find
         // out the original command line from a modified one.
         // FIXME: Find a better way to preserve the original command line.
-        String configName = mOriginalConfig.replace("/", "$") + ".xml";
+        String configName = "_" + mOriginalConfig.replace("/", "$") + ".xml";
         // mOriginalConfig is from another test suite, so its content is hard to know at this
         // time. So it doesn't load mOriginalConfig as IConfiguration and add additional config.
         // Instead, it creates a wrapper config including mOriginalConfig.
