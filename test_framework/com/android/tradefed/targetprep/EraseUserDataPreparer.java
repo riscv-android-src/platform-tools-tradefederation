@@ -15,11 +15,11 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,15 +38,14 @@ public class EraseUserDataPreparer extends BaseTargetPreparer {
 
     private ITestsZipInstaller mTestsZipInstaller = null;
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
-            BuildError, DeviceNotAvailableException {
+    public void setUp(TestInformation testInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
         if (isDisabled()) {
             return;
         }
+        ITestDevice device = testInfo.getDevice();
         if (mWaitForAvailable) {
             device.waitForDeviceAvailable();
         }
