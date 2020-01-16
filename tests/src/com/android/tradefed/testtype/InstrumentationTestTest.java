@@ -36,7 +36,6 @@ import static org.mockito.Mockito.verify;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
-import com.android.ddmlib.testrunner.InstrumentationResultParser;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
@@ -896,63 +895,6 @@ public class InstrumentationTestTest {
         } catch (IllegalArgumentException e) {
             // expected
         }
-    }
-
-    /**
-     * Test for {@link InstrumentationTest#collectTestsAndRetry(IRemoteAndroidTestRunner,
-     * ITestInvocationListener)} when the collection fails.
-     */
-    @Test
-    public void testCollectTestsAndRetry_Failure() throws DeviceNotAvailableException {
-        RunInstrumentationTestsAnswer collected =
-                (runner, listener) -> {
-                    listener.testRunStarted(TEST_PACKAGE_VALUE, 0);
-                    listener.testRunFailed(InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG);
-                    listener.testRunEnded(1, EMPTY_STRING_MAP);
-                    return true;
-                };
-
-        doAnswer(collected)
-                .when(mMockTestDevice)
-                .runInstrumentationTests(
-                        any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
-
-        mInstrumentationTest.setEnforceFormat(true);
-
-        try {
-            mInstrumentationTest.collectTestsAndRetry(mock(IRemoteAndroidTestRunner.class), null);
-            fail("Should have thrown an exception");
-        } catch (RuntimeException e) {
-            // expected.
-        }
-    }
-
-    /**
-     * Test for {@link InstrumentationTest#collectTestsAndRetry(IRemoteAndroidTestRunner,
-     * ITestInvocationListener)} when the tests collection fails but we do not enforce the format,
-     * so we don't throw an exception.
-     */
-    @Test
-    public void testCollectTestsAndRetry_notEnforced() throws DeviceNotAvailableException {
-        RunInstrumentationTestsAnswer collected =
-                (runner, listener) -> {
-                    listener.testRunStarted(TEST_PACKAGE_VALUE, 0);
-                    listener.testRunFailed(InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG);
-                    listener.testRunEnded(1, EMPTY_STRING_MAP);
-                    return true;
-                };
-
-        doAnswer(collected)
-                .when(mMockTestDevice)
-                .runInstrumentationTests(
-                        any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
-
-        mInstrumentationTest.setEnforceFormat(false);
-
-        Collection<TestDescription> result =
-                mInstrumentationTest.collectTestsAndRetry(
-                        mock(IRemoteAndroidTestRunner.class), null);
-        assertThat(result).isNull();
     }
 
     /**
