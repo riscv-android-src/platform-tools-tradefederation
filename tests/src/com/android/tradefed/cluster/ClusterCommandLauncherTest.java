@@ -154,7 +154,7 @@ public class ClusterCommandLauncherTest {
                                     "--serial",
                                     DEVICE_SERIAL
                                 }));
-        assertTrue(new File(mRootDir, "original-command-line.xml").exists());
+        assertTrue(new File(mRootDir, "_original-command-line.xml").exists());
     }
 
     @Test
@@ -230,7 +230,7 @@ public class ClusterCommandLauncherTest {
                         Mockito.<OutputStream>any(),
                         Mockito.<String[]>any()))
                 .thenReturn(mockCommandResult);
-        final File subprocessReporterConfig = new File(mRootDir, "command-line.xml");
+        final File subprocessReporterConfig = new File(mRootDir, "_command-line.xml");
         Mockito.when(mLauncher.getRunUtil()).thenReturn(mMockRunUtil);
 
         mLauncher.run(mMockListener);

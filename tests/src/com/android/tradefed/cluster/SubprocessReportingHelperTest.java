@@ -17,7 +17,6 @@ package com.android.tradefed.cluster;
 
 import static org.junit.Assert.*;
 
-import com.android.tradefed.result.LegacySubprocessResultsReporter;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ZipUtil2;
 
@@ -34,15 +33,11 @@ import java.io.IOException;
 @RunWith(JUnit4.class)
 public class SubprocessReportingHelperTest {
     private SubprocessReportingHelper mHelper;
-    private SubprocessConfigBuilder mConfigBuilder;
-    private String reporterClassName;
     private File mWorkDir;
 
     @Before
     public void setUp() throws IOException {
         mHelper = new SubprocessReportingHelper();
-        mConfigBuilder = new SubprocessConfigBuilder();
-        reporterClassName = LegacySubprocessResultsReporter.class.getName();
         mWorkDir = FileUtil.createTempDir("tfjar");
     }
 
@@ -70,15 +65,15 @@ public class SubprocessReportingHelperTest {
     public void testGetNewCommandLine() throws IOException {
         String oldCommandLine = "cts arg1 arg2 arg3";
         String newCommandLine = mHelper.buildNewCommandConfig(oldCommandLine, "1024", mWorkDir);
-        assertNotNull(FileUtil.findFile(mWorkDir, "cts.xml"));
-        assertEquals("cts.xml arg1 arg2 arg3", newCommandLine);
+        assertNotNull(FileUtil.findFile(mWorkDir, "_cts.xml"));
+        assertEquals("_cts.xml arg1 arg2 arg3", newCommandLine);
     }
 
     @Test
     public void testGetNewCommandLine_withSlashes() throws IOException {
         String oldCommandLine = "foo/bar/cts arg1 arg2 arg3";
         String newCommandLine = mHelper.buildNewCommandConfig(oldCommandLine, "1024", mWorkDir);
-        assertNotNull(FileUtil.findFile(mWorkDir, "foo\\$bar\\$cts.xml"));
-        assertEquals("foo$bar$cts.xml arg1 arg2 arg3", newCommandLine);
+        assertNotNull(FileUtil.findFile(mWorkDir, "_foo\\$bar\\$cts.xml"));
+        assertEquals("_foo$bar$cts.xml arg1 arg2 arg3", newCommandLine);
     }
 }
