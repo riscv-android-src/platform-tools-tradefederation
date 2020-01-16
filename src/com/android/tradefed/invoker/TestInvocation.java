@@ -709,6 +709,8 @@ public class TestInvocation implements ITestInvocation {
                         .setDependenciesFolder(mWorkFolder)
                         .build();
         CurrentInvocation.addInvocationInfo(InvocationInfo.WORK_FOLDER, mWorkFolder);
+        CleanUpInvocationFiles cleanUpThread = new CleanUpInvocationFiles(info);
+        Runtime.getRuntime().addShutdownHook(cleanUpThread);
 
         List<ITestInvocationListener> allListeners =
                 new ArrayList<>(config.getTestInvocationListeners().size() + extraListeners.length);
@@ -900,6 +902,8 @@ public class TestInvocation implements ITestInvocation {
             getLogRegistry().unregisterLogger();
             config.getLogOutput().closeLog();
             config.cleanConfigurationData();
+
+            Runtime.getRuntime().removeShutdownHook(cleanUpThread);
             // Delete the invocation work directory at the end
             FileUtil.recursiveDelete(info.dependenciesFolder());
             // Delete all the execution files
@@ -1032,6 +1036,24 @@ public class TestInvocation implements ITestInvocation {
         public void run() {
             // Report all the logs that always be reported anyway.
             reportHostLog(mListener, mConfiguration);
+        }
+    }
+
+    /** Helper Thread to ensure invocation files are deleted in case of killed JVM */
+    private class CleanUpInvocationFiles extends Thread {
+
+        private TestInformation mTestInfo;
+
+        public CleanUpInvocationFiles(TestInformation currentInfo) {
+            mTestInfo = currentInfo;
+        }
+
+        @Override
+        public void run() {
+            // Delete the invocation work directory at the end
+            FileUtil.recursiveDelete(mTestInfo.dependenciesFolder());
+            // Delete all the execution files
+            mTestInfo.executionFiles().clearFiles();
         }
     }
 }
