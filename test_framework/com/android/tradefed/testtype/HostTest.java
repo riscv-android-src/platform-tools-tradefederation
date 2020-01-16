@@ -27,6 +27,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.lite.HostUtils;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -37,7 +38,6 @@ import com.android.tradefed.testtype.junit4.CarryDnaeError;
 import com.android.tradefed.testtype.junit4.JUnit4ResultForwarder;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.JUnit4TestFilter;
-import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SystemUtil.EnvVariable;
 import com.android.tradefed.util.TestFilterHelper;
 
@@ -65,8 +65,6 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -78,9 +76,8 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * A test runner for JUnit host based tests. If the test to be run implements {@link IDeviceTest}
@@ -842,86 +839,19 @@ public class HostTest
     }
 
     protected final List<Class<?>> getClasses() throws IllegalArgumentException {
-        // Use a set to avoid repeat between filters and jar search
-        Set<String> classNames = new HashSet<>();
-        List<Class<?>> classes = new ArrayList<>();
-        for (String className : mClasses) {
-            if (classNames.contains(className)) {
-                continue;
-            }
-            try {
-                classes.add(Class.forName(className, true, getClassLoader()));
-                classNames.add(className);
-            } catch (ClassNotFoundException e) {
-                throw new IllegalArgumentException(String.format("Could not load Test class %s",
-                        className), e);
-            }
-        }
-        // Inspect for the jar files
-        for (String jarName : mJars) {
-            JarFile jarFile = null;
-            try {
-                File file = getJarFile(jarName, getBuild());
-                jarFile = new JarFile(file);
-                Enumeration<JarEntry> e = jarFile.entries();
-                URL[] urls = {new URL(String.format("jar:file:%s!/", file.getAbsolutePath()))};
-                URLClassLoader cl = URLClassLoader.newInstance(urls);
-
-                while (e.hasMoreElements()) {
-                    JarEntry je = e.nextElement();
-                    if (je.isDirectory()
-                            || !je.getName().endsWith(".class")
-                            || je.getName().contains("$")) {
-                        continue;
-                    }
-                    String className = getClassName(je.getName());
-                    if (classNames.contains(className)) {
-                        continue;
-                    }
-                    try {
-                        Class<?> cls = cl.loadClass(className);
-                        int modifiers = cls.getModifiers();
-                        if ((IRemoteTest.class.isAssignableFrom(cls)
-                                        || Test.class.isAssignableFrom(cls)
-                                        || hasJUnit4Annotation(cls))
-                                && !Modifier.isStatic(modifiers)
-                                && !Modifier.isPrivate(modifiers)
-                                && !Modifier.isProtected(modifiers)
-                                && !Modifier.isInterface(modifiers)
-                                && !Modifier.isAbstract(modifiers)) {
-                            classes.add(cls);
-                            classNames.add(className);
-                        }
-                    } catch (UnsupportedClassVersionError ucve) {
-                        throw new IllegalArgumentException(
-                                String.format(
-                                        "Could not load class %s from jar %s. Reason:\n%s",
-                                        className, jarName, StreamUtil.getStackTrace(ucve)));
-                    } catch (ClassNotFoundException cnfe) {
-                        throw new IllegalArgumentException(
-                                String.format("Cannot find test class %s", className));
-                    } catch (IllegalAccessError | NoClassDefFoundError err) {
-                        // IllegalAccessError can happen when the class or one of its super
-                        // class/interfaces are package-private. We can't load such class from
-                        // here (= outside of the package). Since our intention is not to load
-                        // all classes in the jar, but to find our the main test classes, this
-                        // can be safely skipped.
-                        // NoClassDefFoundErrror is also okay because certain CTS test cases
-                        // might statically link to a jar library (e.g. tools.jar from JDK)
-                        // where certain internal classes in the library are referencing
-                        // classes that are not available in the jar. Again, since our goal here
-                        // is to find test classes, this can be safely skipped.
-                        continue;
-                    }
-                }
-            } catch (IOException e) {
-                CLog.e(e);
-                throw new IllegalArgumentException(e);
-            } finally {
-                StreamUtil.close(jarFile);
-            }
-        }
-        return classes;
+        return HostUtils.getJUnitClasses(
+                mClasses,
+                mJars.stream()
+                        .map(
+                                jar -> {
+                                    try {
+                                        return getJarFile(jar, mBuildInfo).getAbsolutePath();
+                                    } catch (IOException e) {
+                                        throw new IllegalArgumentException(e);
+                                    }
+                                })
+                        .collect(Collectors.toSet()),
+                this.getClassLoader());
     }
 
     /** Returns the default classloader. */
