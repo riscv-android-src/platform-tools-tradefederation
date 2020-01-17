@@ -35,6 +35,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashSet;
 import java.util.List;
 
 /**
@@ -151,10 +152,11 @@ public final class IsolationRunner {
     private List<Class<?>> getClasses(TestParameters params) {
         System.out.println("Excluded paths:");
         params.getExcludePathsList().stream().forEach(path -> System.out.println(path));
-        return HostUtils.getJUnit4Classes(
-                params.getTestClassesList(),
-                params.getTestJarAbsPathsList(),
-                params.getExcludePathsList());
+        return HostUtils.getJUnitClasses(
+                new HashSet<>(params.getTestClassesList()),
+                new HashSet<>(params.getTestJarAbsPathsList()),
+                params.getExcludePathsList(),
+                this.getClass().getClassLoader());
     }
 
     private static final class RunnerConfig {
@@ -170,19 +172,19 @@ public final class IsolationRunner {
             if (port > 0) {
                 mPort = port;
             } else {
-                mPort = this.DEFAULT_PORT;
+                mPort = RunnerConfig.DEFAULT_PORT;
             }
 
             if (address != null) {
                 mAddress = address;
             } else {
-                mAddress = this.DEFAULT_ADDRESS;
+                mAddress = RunnerConfig.DEFAULT_ADDRESS;
             }
 
             if (timeout > 0) {
                 mTimeout = timeout;
             } else {
-                mTimeout = this.DEFAULT_TIMEOUT;
+                mTimeout = RunnerConfig.DEFAULT_TIMEOUT;
             }
         }
 

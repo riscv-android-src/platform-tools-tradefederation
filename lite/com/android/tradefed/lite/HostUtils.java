@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.lite;
 
+import junit.framework.TestCase;
+
 import org.junit.runners.Suite.SuiteClasses;
 
 import java.io.File;
@@ -24,12 +26,13 @@ import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -50,8 +53,11 @@ public final class HostUtils {
      * @return a list of class objects that are test classes to execute.
      * @throws IllegalArgumentException
      */
-    public static final List<Class<?>> getJUnit4Classes(
-            List<String> classNames, List<String> jarAbsPaths, List<String> filterPaths)
+    public static final List<Class<?>> getJUnitClasses(
+            Set<String> classNames,
+            Set<String> jarAbsPaths,
+            List<String> excludePaths,
+            ClassLoader pcl)
             throws IllegalArgumentException {
         Set<String> outputNames = new HashSet<String>();
         List<Class<?>> output = new ArrayList<>();
@@ -61,12 +67,12 @@ public final class HostUtils {
                 continue;
             }
             try {
-                Class<?> klass = Class.forName(className, true, HostUtils.class.getClassLoader());
+                Class<?> klass = Class.forName(className, true, pcl);
                 outputNames.add(className);
                 output.add(klass);
             } catch (ClassNotFoundException e) {
                 throw new IllegalArgumentException(
-                        String.format("Could not load test class %s", className), e);
+                        String.format("Could not load Test class %s", className), e);
             }
         }
 
@@ -75,62 +81,62 @@ public final class HostUtils {
             try {
                 File file = new File(jarName);
                 jarFile = new JarFile(file);
-                Stream<JarEntry> s = jarFile.stream().parallel();
+                Stream<JarEntry> s = jarFile.stream();
                 URL[] urls = {new URL(String.format("jar:file:%s!/", file.getAbsolutePath()))};
                 URLClassLoader cl = URLClassLoader.newInstance(urls);
 
                 // This first stage of filtering makes sure that the jar entries are somewhat valid;
                 // this includes not being a directory, not being a java language class,
                 // not being a class that we've already seen, etc.
-                List<JarEntry> classEntries =
+                s =
                         s.filter(
-                                        je ->
-                                                (!je.isDirectory()
-                                                        && je.getName().endsWith(".class")
-                                                        && !je.getName().contains("$")
-                                                        && !outputNames.contains(
-                                                                getClassName(je.getName()))))
-                                .collect(Collectors.toList());
+                                je ->
+                                        (!je.isDirectory()
+                                                && je.getName().endsWith(".class")
+                                                && !je.getName().contains("$")
+                                                && !outputNames.contains(
+                                                        getClassName(je.getName()))));
 
-                if (!filterPaths.isEmpty()) {
-                    classEntries =
-                            classEntries
-                                    .stream()
-                                    .filter(
-                                            je -> {
-                                                return filterPaths
-                                                        .stream()
-                                                        .noneMatch(
-                                                                path ->
-                                                                        je.getName()
-                                                                                .startsWith(path));
-                                            })
-                                    .collect(Collectors.toList());
+                if (!excludePaths.isEmpty()) {
+                    s =
+                            s.filter(
+                                    je -> {
+                                        return excludePaths
+                                                .stream()
+                                                .noneMatch(path -> je.getName().startsWith(path));
+                                    });
                 }
 
-                classEntries
-                        .stream()
-                        .parallel()
-                        .map(je -> HostUtils.getClassName(je.getName()))
+                s.map(je -> HostUtils.getClassName(je.getName()))
                         .filter(className -> HostUtils.testLoadClass(className, cl, jarName))
-                        .forEach(
+                        .peek(className -> outputNames.add(className))
+                        .map(
                                 className -> {
                                     try {
-                                        Class<?> cls = cl.loadClass(className);
-                                        output.add(cls);
-                                        outputNames.add(className);
+                                        return cl.loadClass(className);
                                     } catch (ClassNotFoundException e) {
-                                        // Not possible because we already loaded this class before.
+                                        // Not possible because we have already loaded this
+                                        // class before.
                                         throw new IllegalArgumentException(
                                                 String.format(
                                                         "Cannot find test class %s", className));
                                     }
-                                });
+                                })
+                        .sorted(
+                                Comparator.comparing(
+                                        c ->
+                                                c.getProtectionDomain()
+                                                        .getCodeSource()
+                                                        .getLocation()
+                                                        .toString()))
+                        .forEachOrdered(cls -> output.add(cls));
             } catch (IOException e) {
                 throw new IllegalArgumentException(e);
             } finally {
                 try {
-                    jarFile.close();
+                    if (jarFile != null) {
+                        jarFile.close();
+                    }
                 } catch (IOException e) {
                     throw new RuntimeException(
                             String.format("Something went wrong closing the jarfile: " + jarName));
@@ -140,9 +146,10 @@ public final class HostUtils {
         return output;
     }
 
-    public static final List<Class<?>> getJUnit4Classes(
-            List<String> classNames, List<String> jarAbsPaths) throws IllegalArgumentException {
-        return HostUtils.getJUnit4Classes(classNames, jarAbsPaths, new ArrayList<>());
+    public static final List<Class<?>> getJUnitClasses(
+            Set<String> classNames, Set<String> jarAbsPaths, ClassLoader pcl)
+            throws IllegalArgumentException {
+        return HostUtils.getJUnitClasses(classNames, jarAbsPaths, new ArrayList<>(), pcl);
     }
 
     /**
@@ -156,11 +163,12 @@ public final class HostUtils {
      * @param jarName
      * @return true if we should consider this class a test class, false otherwise
      */
-    public static boolean testLoadClass(String className, URLClassLoader cl, String jarName) {
+    public static boolean testLoadClass(String className, URLClassLoader cl, String jarName)
+            throws IllegalArgumentException {
         try {
             Class<?> cls = cl.loadClass(className);
             int modifiers = cls.getModifiers();
-            if (HostUtils.hasJUnit4Annotation(cls)
+            if (HostUtils.hasJUnitAnnotation(cls)
                     && !Modifier.isStatic(modifiers)
                     && !Modifier.isPrivate(modifiers)
                     && !Modifier.isProtected(modifiers)
@@ -175,7 +183,7 @@ public final class HostUtils {
                             className, jarName, ucve.toString()));
         } catch (ClassNotFoundException cnfe) {
             throw new IllegalArgumentException(
-                    String.format("Cannot find test class %s", className));
+                    String.format("Cannot find test class %s", className), cnfe);
         } catch (IllegalAccessError | NoClassDefFoundError err) {
             // IllegalAccessError can happen when the class or one of its super
             // class/interfaces are package-private. We can't load such class from
@@ -197,14 +205,14 @@ public final class HostUtils {
     }
 
     /**
-     * Checks whether a class has a JUnit4 annotation
+     * Checks whether a class looks like a JUnit test or not.
      *
      * @param classObj Class to examine for the annotation
      * @return whether the class object has the JUnit4 test annotation
      */
-    public static boolean hasJUnit4Annotation(Class<?> classObj) {
+    public static boolean hasJUnitAnnotation(Class<?> classObj) {
         if (classObj.isAnnotationPresent(org.junit.runner.RunWith.class)
-                && org.junit.runners.JUnit4.class.isAssignableFrom(
+                && org.junit.runner.Runner.class.isAssignableFrom(
                         classObj.getAnnotation(org.junit.runner.RunWith.class).value())) {
             return true;
         } else if (!classObj.isAnnotationPresent(org.junit.runner.RunWith.class)) {
@@ -216,8 +224,22 @@ public final class HostUtils {
                     return true;
                 }
             }
+            if (TestCase.class.isAssignableFrom(classObj)) {
+                return Arrays.asList(classObj.getDeclaredMethods())
+                        .stream()
+                        .anyMatch(
+                                m -> {
+                                    return m.getName().startsWith("test")
+                                            && Arrays.asList(m.getAnnotations())
+                                                    .stream()
+                                                    .map(anno -> anno.toString())
+                                                    .noneMatch(s -> s.contains("Suppress"));
+                                });
+            }
+            return false;
+        } else {
+            return false;
         }
-        return false;
     }
 
     /**

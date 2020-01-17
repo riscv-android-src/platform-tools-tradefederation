@@ -32,6 +32,6 @@ public class HostUtilsTest {
     public void testHasJUnit4Annotation() {
         assertTrue(
                 "Has JUnit annotation on crafted test class",
-                HostUtils.hasJUnit4Annotation(SampleTests.class));
+                HostUtils.hasJUnitAnnotation(SampleTests.class));
     }
 }
