@@ -302,8 +302,12 @@ public class GceManager {
         return gceArgs;
     }
 
-    /** Shutdown the Gce instance associated with the {@link #startGce()}. */
-    public void shutdownGce() {
+    /**
+     * Shutdown the Gce instance associated with the {@link #startGce()}.
+     *
+     * @return returns true if gce shutdown was requested as non-blocking.
+     */
+    public boolean shutdownGce() {
         if (!getTestDeviceOptions().getAvdDriverBinary().canExecute()) {
             mGceAvdInfo = null;
             throw new RuntimeException(
@@ -313,7 +317,7 @@ public class GceManager {
         }
         if (mGceAvdInfo == null) {
             CLog.d("No instance to shutdown.");
-            return;
+            return false;
         }
         List<String> gceArgs =
                 ArrayUtil.list(getTestDeviceOptions().getAvdDriverBinary().getAbsolutePath());
@@ -345,13 +349,14 @@ public class GceManager {
                                 .runTimedCmd(
                                         getTestDeviceOptions().getGceCmdTimeout(),
                                         gceArgs.toArray(new String[gceArgs.size()]));
+                FileUtil.deleteFile(config);
                 if (!CommandStatus.SUCCESS.equals(cmd.getStatus())) {
                     CLog.w(
                             "Failed to tear down GCE %s with the following arg: %s."
                                     + "\nstdout:%s\nstderr:%s",
                             mGceAvdInfo.instanceName(), gceArgs, cmd.getStdout(), cmd.getStderr());
+                    return false;
                 }
-                FileUtil.deleteFile(config);
             } else {
                 // Discard the output so the process is not linked to the parent and doesn't die
                 // if the JVM exit.
@@ -366,6 +371,7 @@ public class GceManager {
             FileUtil.deleteFile(f);
             mGceAvdInfo = null;
         }
+        return true;
     }
 
     /**
