@@ -589,7 +589,6 @@ public class InstallApexModuleTargetPreparerTest {
         Set<ApexInfo> activatedApex = new HashSet<ApexInfo>();
         activatedApex.add(new ApexInfo("com.android.FAKE_APEX_PACKAGE_NAME", 1));
         EasyMock.expect(mMockDevice.getActiveApexes()).andReturn(activatedApex).times(2);
-        ;
         mMockDevice.reboot();
         EasyMock.expectLastCall();
         Set<String> installableModules = new HashSet<>();

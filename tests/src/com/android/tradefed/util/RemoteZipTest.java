@@ -63,9 +63,8 @@ public class RemoteZipTest {
         mDownloader = Mockito.mock(IFileDownloader.class);
 
         Mockito.doAnswer(
-                        (Answer)
+                        (Answer<?>)
                                 invocation -> {
-                                    String remoteFilePath = (String) invocation.getArgument(0);
                                     File destFile = (File) invocation.getArgument(1);
                                     long startOffset = (long) invocation.getArgument(2);
                                     long size = (long) invocation.getArgument(3);
@@ -75,7 +74,7 @@ public class RemoteZipTest {
                 .when(mDownloader)
                 .downloadFile(
                         Mockito.eq(REMOTE_FILE),
-                        Mockito.anyObject(),
+                        Mockito.any(),
                         Mockito.anyLong(),
                         Mockito.anyLong());
 
