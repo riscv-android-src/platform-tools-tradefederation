@@ -25,7 +25,6 @@ import com.android.commands.am.InstrumentationData.SessionStatus;
 import com.android.commands.am.InstrumentationData.SessionStatusCode;
 import com.android.commands.am.InstrumentationData.TestStatus;
 import com.android.ddmlib.testrunner.ITestRunListener;
-import com.android.ddmlib.testrunner.InstrumentationResultParser;
 import com.android.ddmlib.testrunner.TestIdentifier;
 
 import org.easymock.Capture;
@@ -557,24 +556,6 @@ public class InstrumentationResultProtoParserTest {
     }
 
     /**
-     * Test for time stamp missing when the time stamp parsing is enforced.
-     *
-     * @throws IOException
-     */
-    @Test
-    public void testTimeStampMissing() throws IOException {
-        // we enforce the time stamp
-        mParser.setEnforceTimeStamp(true);
-        protoTestFile = buildInvalidTimeStampResultsProto(false);
-
-        mMockListener.testRunStarted(RUN_KEY, 0);
-        mMockListener.testRunFailed(InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG);
-        mMockListener.testRunEnded(0, Collections.emptyMap());
-
-        processProtoAndVerify(protoTestFile);
-    }
-
-    /**
      * Test for no time stamp parsing error when the time stamp parsing is not enforced.
      *
      * @throws IOException
@@ -590,28 +571,6 @@ public class InstrumentationResultProtoParserTest {
     }
 
     /**
-     * Test for time stamp missing with the stack message when the time stamp parsing is enforced.
-     *
-     * @throws IOException
-     */
-    @Test
-    public void testMissingTimeStampWithStack() throws IOException {
-        mParser.setEnforceTimeStamp(true);
-        protoTestFile = buildInvalidTimeStampResultsProto(true);
-
-        Capture<String> capture = new Capture<>();
-        mMockListener.testRunStarted(RUN_KEY, 0);
-        mMockListener.testRunFailed(EasyMock.capture(capture));
-        mMockListener.testRunEnded(0, Collections.emptyMap());
-
-        processProtoAndVerify(protoTestFile);
-
-        String failure = capture.getValue();
-        assertTrue(failure.startsWith(InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG));
-        assertTrue(failure.contains(FATAL_EXCEPTION_MSG));
-    }
-
-    /**
      * Tests parsing the fatal error output of an instrumentation invoked with "-e log true". Since
      * it is log only, it will not report directly the failure, but the stream should still be
      * populated.
@@ -620,8 +579,6 @@ public class InstrumentationResultProtoParserTest {
      */
     @Test
     public void testDirectFailure() throws IOException {
-
-        mParser.setEnforceTimeStamp(true);
         protoTestFile = buildValidTimeStampWithFatalExceptionResultsProto();
 
         Capture<String> capture = new Capture<>();
@@ -642,8 +599,6 @@ public class InstrumentationResultProtoParserTest {
      */
     @Test
     public void testIgnoreProtoResult() throws IOException {
-
-        mParser.setEnforceTimeStamp(true);
         protoTestFile = buildTestIgnoredResultsProto();
 
         mMockListener.testRunStarted(RUN_KEY, 1);
@@ -663,7 +618,6 @@ public class InstrumentationResultProtoParserTest {
      */
     @Test
     public void testAssumptionProtoResult() throws IOException {
-        mParser.setEnforceTimeStamp(true);
         protoTestFile = buildTestAssumptionResultsProto();
 
         mMockListener.testRunStarted(RUN_KEY, 1);

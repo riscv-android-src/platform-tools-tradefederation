@@ -39,9 +39,7 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.suite.SuiteApkInstaller;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
-import com.android.tradefed.testtype.IBuildReceiver;
-import com.android.tradefed.testtype.IDeviceTest;
-import com.android.tradefed.testtype.IInvocationContextReceiver;
+import com.android.tradefed.testtype.ITestInformationReceiver;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
 
@@ -62,39 +60,33 @@ import java.util.stream.Collectors;
  * Should be the single source of truth to run instrumentation tests from host side in order to
  * avoid duplicated utility and base class.
  */
-public abstract class BaseHostJUnit4Test
-        implements IAbiReceiver, IBuildReceiver, IDeviceTest, IInvocationContextReceiver {
+public abstract class BaseHostJUnit4Test implements IAbiReceiver, ITestInformationReceiver {
 
     static final long DEFAULT_TEST_TIMEOUT_MS = 10 * 60 * 1000L;
     private static final long DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS = 10 * 60 * 1000L; // 10min
     private static final Map<String, String> DEFAULT_INSTRUMENTATION_ARGS = new HashMap<>();
 
-    private ITestDevice mDevice;
-    private IBuildInfo mBuild;
     private IAbi mAbi;
-    private IInvocationContext mContext;
-    // TODO: Replace with real testInformation
-    private TestInformation mInternalTestInfo;
+    private TestInformation mTestInfo;
     private Map<SuiteApkInstaller, ITestDevice> mInstallers = new LinkedHashMap<>();
     private TestRunResult mLatestInstruRes;
 
-    @Override
-    public final void setDevice(ITestDevice device) {
-        mDevice = device;
-    }
-
-    @Override
     public final ITestDevice getDevice() {
-        return mDevice;
-    }
-
-    @Override
-    public final void setBuild(IBuildInfo buildInfo) {
-        mBuild = buildInfo;
+        return mTestInfo.getDevice();
     }
 
     public final IBuildInfo getBuild() {
-        return mBuild;
+        return mTestInfo.getBuildInfo();
+    }
+
+    @Override
+    public final void setTestInformation(TestInformation testInformation) {
+        mTestInfo = testInformation;
+    }
+
+    @Override
+    public TestInformation getTestInformation() {
+        return mTestInfo;
     }
 
     @Override
@@ -107,18 +99,12 @@ public abstract class BaseHostJUnit4Test
         return mAbi;
     }
 
-    @Override
-    public final void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
-        mInternalTestInfo = TestInformation.newBuilder().setInvocationContext(mContext).build();
-    }
-
     public final IInvocationContext getInvocationContext() {
-        return mContext;
+        return mTestInfo.getContext();
     }
 
     public final List<ITestDevice> getListDevices() {
-        return mContext.getDevices();
+        return mTestInfo.getContext().getDevices();
     }
 
     /**
@@ -129,7 +115,7 @@ public abstract class BaseHostJUnit4Test
     public final void autoTearDown() throws DeviceNotAvailableException {
         mLatestInstruRes = null;
         for (SuiteApkInstaller installer : mInstallers.keySet()) {
-            installer.tearDown(mInternalTestInfo, null);
+            installer.tearDown(mTestInfo, null);
         }
         mInstallers.clear();
     }
@@ -167,7 +153,7 @@ public abstract class BaseHostJUnit4Test
             installer.addInstallArg(option);
         }
         try {
-            installer.setUp(mInternalTestInfo);
+            installer.setUp(mTestInfo);
         } catch (BuildError e) {
             // For some reason we forgot the BuildError part of the interface so it's hard to add
             // it now
@@ -218,7 +204,7 @@ public abstract class BaseHostJUnit4Test
             installer.addInstallArg(option);
         }
         try {
-            installer.setUp(mInternalTestInfo);
+            installer.setUp(mTestInfo);
         } catch (BuildError e) {
             // For some reason we forgot the BuildError part of the interface so it's hard to add
             // it now
