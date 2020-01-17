@@ -16,11 +16,14 @@
 
 package com.android.tradefed.build;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.invoker.ExecutionFiles;
+import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
 import com.android.tradefed.util.BuildInfoUtil;
@@ -129,6 +132,18 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
             }
             ((IDeviceBuildInfo) info).setTestsDir(mTestsDir, "1");
         }
+        if (getInvocationFiles() != null) {
+            getInvocationFiles()
+                    .put(
+                            FilesKey.TESTS_DIRECTORY,
+                            mTestsDir,
+                            !mCreatedTestDir /* shouldNotDelete */);
+        }
         return info;
+    }
+
+    @VisibleForTesting
+    ExecutionFiles getInvocationFiles() {
+        return CurrentInvocation.getInvocationFiles();
     }
 }

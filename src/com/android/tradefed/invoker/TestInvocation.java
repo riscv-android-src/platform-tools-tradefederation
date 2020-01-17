@@ -35,8 +35,8 @@ import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
-import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecution;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
@@ -711,6 +711,7 @@ public class TestInvocation implements ITestInvocation {
         CurrentInvocation.addInvocationInfo(InvocationInfo.WORK_FOLDER, mWorkFolder);
         CleanUpInvocationFiles cleanUpThread = new CleanUpInvocationFiles(info);
         Runtime.getRuntime().addShutdownHook(cleanUpThread);
+        registerExecutionFiles(info.executionFiles());
 
         List<ITestInvocationListener> allListeners =
                 new ArrayList<>(config.getTestInvocationListeners().size() + extraListeners.length);
@@ -915,6 +916,11 @@ public class TestInvocation implements ITestInvocation {
     @VisibleForTesting
     InvocationScope getInvocationScope() {
         return InvocationScope.getDefault();
+    }
+
+    @VisibleForTesting
+    public void registerExecutionFiles(ExecutionFiles executionFiles) {
+        CurrentInvocation.registerExecutionFiles(executionFiles);
     }
 
     /**

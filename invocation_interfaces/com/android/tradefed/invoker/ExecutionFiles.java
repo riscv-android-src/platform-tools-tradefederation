@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.invoker;
 
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 
 import com.google.common.collect.ImmutableMap;
@@ -27,7 +28,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
  * Files dependencies generated during the execution of a test or invocation that need to be carried
- * for testing.
+ * for testing. This object is shared by all the invocation (tests, modules, etc.).
  */
 public class ExecutionFiles {
 
@@ -89,6 +90,9 @@ public class ExecutionFiles {
             mShouldNotDelete.add(key.toString());
         } else {
             mShouldNotDelete.remove(key.toString());
+        }
+        if (f != null) {
+            CLog.w("Replaced key '%s' with value '%s' by '%s'", key, f, value);
         }
         return f;
     }
