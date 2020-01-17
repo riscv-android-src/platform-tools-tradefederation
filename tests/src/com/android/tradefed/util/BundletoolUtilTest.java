@@ -17,14 +17,12 @@
 package com.android.tradefed.util;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.ITestDevice;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
@@ -33,7 +31,8 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.File;
-import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /** Unit tests for {@link BundletoolUtil} */
 @RunWith(JUnit4.class)
@@ -72,7 +71,7 @@ public class BundletoolUtilTest {
     }
 
     @After
-    public void tearDown() throws IOException {
+    public void tearDown() {
         FileUtil.deleteFile(mBundletoolJar);
     }
 
