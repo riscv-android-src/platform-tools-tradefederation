@@ -17,12 +17,12 @@
 package com.android.tradefed.targetprep;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.TestDescription;
@@ -94,16 +94,16 @@ public class InstrumentationPreparer extends BaseTargetPreparer {
     private long mRetryDelayMs = 0L;
 
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError, BuildError,
-            DeviceNotAvailableException {
+    public void setUp(TestInformation testInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
         if (isDisabled()) {
             return;
         }
-
+        ITestDevice device = testInfo.getDevice();
         BuildError e = new BuildError("unknown error", device.getDeviceDescriptor());
         for (int i = 0; i < mAttempts; i++) {
             try {
-                runInstrumentation(device);
+                runInstrumentation(testInfo);
                 return;
             } catch (BuildError e1) {
                 e = e1;
@@ -116,8 +116,9 @@ public class InstrumentationPreparer extends BaseTargetPreparer {
         throw e;
     }
 
-    private void runInstrumentation(ITestDevice device) throws DeviceNotAvailableException,
-            BuildError {
+    private void runInstrumentation(TestInformation testInfo)
+            throws DeviceNotAvailableException, BuildError {
+        ITestDevice device = testInfo.getDevice();
         final InstrumentationTest test = createInstrumentationTest();
         test.setDevice(device);
         test.setPackageName(mPackageName);
@@ -131,7 +132,7 @@ public class InstrumentationPreparer extends BaseTargetPreparer {
         }
 
         final CollectingTestListener listener = new CollectingTestListener();
-        test.run(listener);
+        test.run(testInfo, listener);
         if (listener.hasFailedTests()) {
             String msg = String.format("Failed to run instrumentation %s on %s. failed tests = %s",
                     mPackageName, device.getSerialNumber(), getFailedTestNames(listener));

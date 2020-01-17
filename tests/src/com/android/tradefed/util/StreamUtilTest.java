@@ -185,7 +185,7 @@ public class StreamUtilTest extends TestCase {
 
     /**
      * Verify that {@link com.android.tradefed.util.StreamUtil#copyStreams(InputStream,
-     * OutputStream, int, int)} can copy partial content.
+     * OutputStream, long, long)} can copy partial content.
      */
     public void testCopyStreams_partialSuccess() throws Exception {
         String text = getLargeText();
@@ -205,8 +205,8 @@ public class StreamUtilTest extends TestCase {
 
     /**
      * Verify that {@link com.android.tradefed.util.StreamUtil#copyStreams(InputStream,
-     * OutputStream, int, int)} cannot copy partial content if requested size is larger than what's
-     * available.
+     * OutputStream, long, long)} cannot copy partial content if requested size is larger than
+     * what's available.
      */
     public void testCopyStreams_partialFail() throws Exception {
         ByteArrayInputStream bais = null;
