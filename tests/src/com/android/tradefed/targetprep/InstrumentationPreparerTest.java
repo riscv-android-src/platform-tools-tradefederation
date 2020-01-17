@@ -16,52 +16,59 @@
 
 package com.android.tradefed.targetprep;
 
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.InstrumentationTest;
 
-import junit.framework.TestCase;
-
 import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.util.HashMap;
 
-/**
- * Unit tests for {@link InstrumentationPreparer}.
- */
-public class InstrumentationPreparerTest extends TestCase {
+/** Unit tests for {@link InstrumentationPreparer}. */
+@RunWith(JUnit4.class)
+public class InstrumentationPreparerTest {
 
     private InstrumentationPreparer mInstrumentationPreparer;
     private ITestDevice mMockDevice;
     private IDeviceBuildInfo mMockBuildInfo;
     private InstrumentationTest mMockITest;
+    private TestInformation mTestInfo;
 
-    @Override
+    @Before
     public void setUp() throws Exception {
-        super.setUp();
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("foo").anyTimes();
         mMockBuildInfo = new DeviceBuildInfo("0","");
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mMockDevice);
+        context.addDeviceBuildInfo("device", mMockBuildInfo);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
-    @Override
-    public void tearDown() throws Exception {
-        super.tearDown();
-    }
-
+    @Test
     public void testRun() throws Exception {
         final String packageName = "packageName";
         final TestDescription test = new TestDescription("FooTest", "testFoo");
         mMockITest =
                 new InstrumentationTest() {
                     @Override
-                    public void run(ITestInvocationListener listener) {
+                    public void run(TestInformation testInfo, ITestInvocationListener listener) {
                         listener.testRunStarted(packageName, 1);
                         listener.testStarted(test);
                         listener.testEnded(test, new HashMap<String, Metric>());
@@ -78,17 +85,18 @@ public class InstrumentationPreparerTest extends TestCase {
                 false, DeviceAllocationState.Available, "unknown", "unknown", "unknown", "unknown",
                 "unknown"));
         EasyMock.replay(mMockDevice);
-        mInstrumentationPreparer.setUp(mMockDevice, mMockBuildInfo);
+        mInstrumentationPreparer.setUp(mTestInfo);
         EasyMock.verify(mMockDevice);
     }
 
+    @Test
     public void testRun_testFailed() throws Exception {
         final String packageName = "packageName";
         final TestDescription test = new TestDescription("FooTest", "testFoo");
         mMockITest =
                 new InstrumentationTest() {
                     @Override
-                    public void run(ITestInvocationListener listener) {
+                    public void run(TestInformation testInfo, ITestInvocationListener listener) {
                         listener.testRunStarted(packageName, 1);
                         listener.testStarted(test);
                         listener.testFailed(test, null);
@@ -107,7 +115,7 @@ public class InstrumentationPreparerTest extends TestCase {
                 "unknown", "unknown"));
         EasyMock.replay(mMockDevice);
         try {
-            mInstrumentationPreparer.setUp(mMockDevice, mMockBuildInfo);
+            mInstrumentationPreparer.setUp(mTestInfo);
             fail("BuildError not thrown");
         } catch(final BuildError e) {
             assertTrue("The exception message does not contain failed test names",

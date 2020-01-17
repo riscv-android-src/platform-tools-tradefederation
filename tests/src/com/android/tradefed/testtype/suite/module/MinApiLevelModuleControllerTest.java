@@ -37,7 +37,6 @@ import org.junit.runners.JUnit4;
 /** Unit tests for {@link MinApiLevelModuleController}. */
 @RunWith(JUnit4.class)
 public class MinApiLevelModuleControllerTest {
-    private OptionSetter mOptionSetter;
     private MinApiLevelModuleController mController;
     private IInvocationContext mContext;
     private ITestDevice mMockDevice;
