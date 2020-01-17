@@ -24,7 +24,11 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.MetricTestCase.LogHolder;
+import com.android.tradefed.testtype.junit4.AfterClassWithInfo;
+import com.android.tradefed.testtype.junit4.BeforeClassWithInfo;
 import com.android.tradefed.testtype.junit4.CarryDnaeError;
+import com.android.tradefed.testtype.junit4.RunAftersWithInfo;
+import com.android.tradefed.testtype.junit4.RunBeforesWithInfo;
 import com.android.tradefed.testtype.junit4.RunNotifierWrapper;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
@@ -109,6 +113,28 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
         if (wrapper.getDeviceNotAvailableException() != null) {
             throw new CarryDnaeError(wrapper.getDeviceNotAvailableException());
         }
+    }
+
+    @Override
+    protected Statement withBeforeClasses(Statement statement) {
+        Statement s = super.withBeforeClasses(statement);
+
+        List<FrameworkMethod> beforesWithDevice =
+                getTestClass().getAnnotatedMethods(BeforeClassWithInfo.class);
+        return beforesWithDevice.isEmpty()
+                ? s
+                : new RunBeforesWithInfo(statement, beforesWithDevice, mTestInformation);
+    }
+
+    @Override
+    protected Statement withAfterClasses(Statement statement) {
+        Statement s = super.withAfterClasses(statement);
+
+        List<FrameworkMethod> aftersWithDevice =
+                getTestClass().getAnnotatedMethods(AfterClassWithInfo.class);
+        return aftersWithDevice.isEmpty()
+                ? s
+                : new RunAftersWithInfo(statement, aftersWithDevice, mTestInformation);
     }
 
     @Override
