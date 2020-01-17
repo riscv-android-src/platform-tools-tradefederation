@@ -213,9 +213,19 @@ def _can_upload_to_result_server():
     return False
 
 
-def get_result_server_args():
-    """Return list of args for communication with result server."""
+def get_result_server_args(for_test_mapping=False):
+    """Return list of args for communication with result server.
+
+    Args:
+        for_test_mapping: True if the test run is for Test Mapping to include
+            additional reporting args. Default is False.
+    """
+    # TODO (b/147644460) Temporarily disable Sponge V1 since it will be turned
+    # down.
     if _can_upload_to_result_server():
+        if for_test_mapping:
+            return (constants.RESULT_SERVER_ARGS +
+                    constants.TEST_MAPPING_RESULT_SERVER_ARGS)
         return constants.RESULT_SERVER_ARGS
     return []
 
