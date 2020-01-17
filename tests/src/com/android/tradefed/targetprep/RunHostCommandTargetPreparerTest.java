@@ -26,6 +26,9 @@ import static org.mockito.Mockito.when;
 
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
@@ -52,6 +55,7 @@ public final class RunHostCommandTargetPreparerTest {
     @Mock private RunHostCommandTargetPreparer.BgCommandLog mBgCommandLog;
     @Mock private IRunUtil mRunUtil;
     private RunHostCommandTargetPreparer mPreparer;
+    private TestInformation mTestInfo;
 
     @Before
     public void setUp() {
@@ -68,6 +72,9 @@ public final class RunHostCommandTargetPreparerTest {
                         return Collections.singletonList(mBgCommandLog);
                     }
                 };
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mDevice);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     @Test
@@ -80,7 +87,7 @@ public final class RunHostCommandTargetPreparerTest {
         when(mRunUtil.runTimedCmd(anyLong(), any())).thenReturn(result);
 
         // Verify timeout and command (split, removed whitespace, and device serial)
-        mPreparer.setUp(mDevice, null);
+        mPreparer.setUp(mTestInfo);
         verify(mRunUtil).runTimedCmd(eq(10L), eq("command"), eq("argument"), eq(DEVICE_SERIAL));
     }
 
@@ -95,7 +102,7 @@ public final class RunHostCommandTargetPreparerTest {
         when(mRunUtil.runTimedCmd(anyLong(), any())).thenReturn(result);
 
         // Verify working directory and command execution
-        mPreparer.setUp(mDevice, null);
+        mPreparer.setUp(mTestInfo);
         verify(mRunUtil).setWorkingDir(any());
         verify(mRunUtil).runTimedCmd(eq(10L), eq("command"));
     }
@@ -109,7 +116,7 @@ public final class RunHostCommandTargetPreparerTest {
         // Verify that failed commands will throw exception during setup
         CommandResult result = new CommandResult(CommandStatus.FAILED);
         when(mRunUtil.runTimedCmd(anyLong(), any())).thenReturn(result);
-        mPreparer.setUp(mDevice, null);
+        mPreparer.setUp(mTestInfo);
     }
 
     @Test
@@ -122,7 +129,7 @@ public final class RunHostCommandTargetPreparerTest {
         when(mRunUtil.runTimedCmd(anyLong(), any())).thenReturn(result);
 
         // Verify timeout and command (split, removed whitespace, and device serial)
-        mPreparer.tearDown(mDevice, null, null);
+        mPreparer.tearDown(mTestInfo, null);
         verify(mRunUtil).runTimedCmd(eq(10L), eq("command"), eq("argument"), eq(DEVICE_SERIAL));
     }
 
@@ -135,7 +142,7 @@ public final class RunHostCommandTargetPreparerTest {
         // Verify that failed commands will NOT throw exception during teardown
         CommandResult result = new CommandResult(CommandStatus.FAILED);
         when(mRunUtil.runTimedCmd(anyLong(), any())).thenReturn(result);
-        mPreparer.tearDown(mDevice, null, null);
+        mPreparer.tearDown(mTestInfo, null);
     }
 
     @Test
@@ -148,7 +155,7 @@ public final class RunHostCommandTargetPreparerTest {
         when(mBgCommandLog.getOutputStream()).thenReturn(os);
 
         // Verify command (split, removed whitespace, and device serial) and output stream
-        mPreparer.setUp(mDevice, null);
+        mPreparer.setUp(mTestInfo);
         verify(mRunUtil)
                 .runCmdInBackground(
                         eq(Arrays.asList("command", "argument", DEVICE_SERIAL)), eq(os));

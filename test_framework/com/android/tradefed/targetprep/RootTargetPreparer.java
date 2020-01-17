@@ -15,12 +15,12 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.invoker.TestInformation;
 
 /**
  * Target preparer that performs "adb root" or "adb unroot" based on option "force-root".
@@ -28,7 +28,7 @@ import com.android.tradefed.device.StubDevice;
  * <p>Will restore back to original root state on tear down.
  */
 @OptionClass(alias = "root-preparer")
-public class RootTargetPreparer extends BaseTargetPreparer {
+public final class RootTargetPreparer extends BaseTargetPreparer {
 
     private boolean mWasRoot = false;
 
@@ -40,8 +40,9 @@ public class RootTargetPreparer extends BaseTargetPreparer {
     private boolean mForceRoot = true;
 
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+    public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
         // Ignore setUp if it's a stub device, since there is no real device to set up.
         if (device.getIDevice() instanceof StubDevice) {
             return;
@@ -55,8 +56,8 @@ public class RootTargetPreparer extends BaseTargetPreparer {
     }
 
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
         // Ignore tearDown if it's a stub device, since there is no real device to clean.
         if (device.getIDevice() instanceof StubDevice) {
             return;
