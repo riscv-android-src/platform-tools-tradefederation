@@ -37,6 +37,8 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.TestLogData;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.TestMetrics;
+import com.android.tradefed.testtype.junit4.AfterClassWithInfo;
+import com.android.tradefed.testtype.junit4.BeforeClassWithInfo;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
@@ -258,6 +260,20 @@ public class HostTestTest extends TestCase {
         private ITestDevice mDevice;
 
         public Junit4TestClassWithIgnore() {}
+
+        @BeforeClassWithInfo
+        public static void beforeClassWithDevice(TestInformation testInfo) {
+            assertNotNull(testInfo);
+            assertNotNull(testInfo.getDevice());
+            testInfo.properties().put("Junit4TestClassWithIgnore:test-prop", "test");
+        }
+
+        @AfterClassWithInfo
+        public static void afterClassWithDevice(TestInformation testInfo) {
+            assertNotNull(testInfo);
+            assertNotNull(testInfo.getDevice());
+            assertEquals("test", testInfo.properties().get("Junit4TestClassWithIgnore:test-prop"));
+        }
 
         @org.junit.Test
         public void testPass5() {}
