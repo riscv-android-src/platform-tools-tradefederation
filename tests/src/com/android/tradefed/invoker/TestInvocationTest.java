@@ -302,6 +302,11 @@ public class TestInvocationTest {
                         // Avoid re-entry in the current TF invocation scope for unit tests.
                         return new InvocationScope();
                     }
+
+                    @Override
+                    public void registerExecutionFiles(ExecutionFiles executionFiles) {
+                        // Empty of purpose
+                    }
                 };
     }
 
