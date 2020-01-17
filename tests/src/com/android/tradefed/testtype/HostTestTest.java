@@ -1323,7 +1323,7 @@ public class HostTestTest extends TestCase {
                 EasyMock.eq(test1),
                 EasyMock.contains("MultipleFailureException: There were 2 errors:"));
         mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunFailed(EasyMock.anyObject());
+        mListener.testRunFailed((String) EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.replay(mListener);
         try {
@@ -2185,7 +2185,7 @@ public class HostTestTest extends TestCase {
         mListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(1));
         TestDescription tid = new TestDescription(JUnit4FailedBefore.class.getName(), "test1");
         mListener.testStarted(EasyMock.eq(tid));
-        mListener.testFailed(EasyMock.eq(tid), EasyMock.anyObject());
+        mListener.testFailed(EasyMock.eq(tid), (String) EasyMock.anyObject());
         mListener.testEnded(EasyMock.eq(tid), (HashMap<String, Metric>) EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
