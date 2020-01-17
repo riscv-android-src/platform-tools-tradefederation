@@ -20,6 +20,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IAbiReceiver;
@@ -83,14 +84,19 @@ public class ModuleSplitter {
             // Check that it's a valid configuration for suites, throw otherwise.
             ValidateSuiteConfigHelper.validateConfig(configMap.getValue());
 
-            createAndAddModule(
-                    testInfo,
-                    runModules,
-                    configMap.getKey(),
-                    configMap.getValue(),
-                    shardCount,
-                    dynamicModule,
-                    intraModuleSharding);
+            try {
+                createAndAddModule(
+                        testInfo,
+                        runModules,
+                        configMap.getKey(),
+                        configMap.getValue(),
+                        shardCount,
+                        dynamicModule,
+                        intraModuleSharding);
+            } catch (RuntimeException e) {
+                CLog.e("Exception while creating module for '%s'", configMap.getKey());
+                throw e;
+            }
         }
         return runModules;
     }

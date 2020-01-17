@@ -307,7 +307,9 @@ public class BaseTestSuite extends ITestSuite {
         LinkedHashMap<String, IConfiguration> loadedConfigs = new LinkedHashMap<>();
         // Load and return directly the specific config files.
         if (!mConfigPaths.isEmpty()) {
-            CLog.d("Loading the specified configs and skip loading from the resources.");
+            CLog.d(
+                    "Loading the specified configs path '%s' and skip loading from the resources.",
+                    mConfigPaths);
             return getModuleLoader().loadConfigsFromSpecifiedPaths(mConfigPaths, abis, suiteTag);
         }
 
