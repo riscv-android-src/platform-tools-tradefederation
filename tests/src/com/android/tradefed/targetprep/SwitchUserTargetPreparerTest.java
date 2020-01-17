@@ -42,7 +42,6 @@ import java.util.HashMap;
 /** Unit tests for {@link SwitchUserTargetPreparer}. */
 @RunWith(JUnit4.class)
 public class SwitchUserTargetPreparerTest {
-    private static final int USER_SYSTEM = 0; // From the UserHandle class.
 
     @Mock private ITestDevice mMockDevice;
 
@@ -216,14 +215,6 @@ public class SwitchUserTargetPreparerTest {
         } catch (TargetSetupError e) {
             // do nothing
         }
-    }
-
-    private void mockUsers(int primaryUserId, int currentUserId)
-            throws DeviceNotAvailableException {
-        when(mMockDevice.getCurrentUser()).thenReturn(currentUserId);
-
-        when(mMockDevice.getPrimaryUserId()).thenReturn(primaryUserId);
-        when(mMockDevice.switchUser(anyInt())).thenReturn(true);
     }
 
     private void mockListUsersInfo(ITestDevice device, Integer[] userIds, Integer[] flags)
