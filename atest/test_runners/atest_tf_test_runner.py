@@ -416,7 +416,10 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             logging.info('%s does not support the following args %s',
                          self.EXECUTABLE, args_not_supported)
 
-        test_args.extend(atest_utils.get_result_server_args())
+        # Only need to check one TestInfo to determine if the tests are
+        # configured in TEST_MAPPING.
+        for_test_mapping = test_infos and test_infos[0].from_test_mapping
+        test_args.extend(atest_utils.get_result_server_args(for_test_mapping))
         self.run_cmd_dict['args'] = ' '.join(test_args)
         return [self._RUN_CMD.format(**self.run_cmd_dict)]
 
@@ -526,10 +529,6 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         if not test_infos:
             return []
 
-        # Only need to check one TestInfo to determine if the tests are
-        # configured in TEST_MAPPING.
-        if test_infos[0].from_test_mapping:
-            args.extend(constants.TEST_MAPPING_RESULT_SERVER_ARGS)
         test_infos = self._flatten_test_infos(test_infos)
         # In order to do dry-run verification, sort it to make each run has the
         # same result
