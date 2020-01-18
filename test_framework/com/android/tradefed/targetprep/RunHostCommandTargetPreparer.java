@@ -16,11 +16,11 @@
 
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -140,11 +140,12 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
 
     /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+    public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         if (mWorkDir != null) {
             getRunUtil().setWorkingDir(mWorkDir);
         }
+        ITestDevice device = testInfo.getDevice();
         replaceSerialNumber(mSetUpCommands, device);
         runCommandList(mSetUpCommands, device);
 
@@ -159,8 +160,8 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
 
     /** {@inheritDoc} */
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
         replaceSerialNumber(mTearDownCommands, device);
         try {
             runCommandList(mTearDownCommands, device);

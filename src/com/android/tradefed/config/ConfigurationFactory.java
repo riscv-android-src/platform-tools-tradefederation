@@ -392,7 +392,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
          * Loads a configuration.
          *
          * @param name the name of a built-in configuration to load or a file path to configuration
-         *     xml to load
+         *     file to load
          * @param def the loaded {@link ConfigurationDef}
          * @param deviceTagObject name of the current deviceTag if we are loading from a config
          *     inside an <include>. Null otherwise.
@@ -410,8 +410,19 @@ public class ConfigurationFactory implements IConfigurationFactory {
                 Set<String> templateSeen)
                 throws ConfigurationException {
             BufferedInputStream bufStream = getConfigStream(name);
-            ConfigurationXmlParser parser = new ConfigurationXmlParser(this, deviceTagObject);
-            parser.parse(def, name, bufStream, templateMap, templateSeen);
+            String extension = FileUtil.getExtension(name);
+            switch (extension) {
+                case ".xml":
+                case ".config":
+                case "":
+                    ConfigurationXmlParser parser =
+                            new ConfigurationXmlParser(this, deviceTagObject);
+                    parser.parse(def, name, bufStream, templateMap, templateSeen);
+                    break;
+                default:
+                    throw new ConfigurationException(
+                            String.format("The config format for %s is not supported.", name));
+            }
             trackConfig(name, def);
         }
 
@@ -465,7 +476,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
     /**
      * Retrieve the {@link ConfigurationDef} for the given name
      *
-     * @param name the name of a built-in configuration to load or a file path to configuration xml
+     * @param name the name of a built-in configuration to load or a file path to configuration file
      *     to load
      * @return {@link ConfigurationDef}
      * @throws ConfigurationException if an error occurred loading the config
@@ -555,21 +566,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
         // first arg is config name
         final String configName = listArgs.remove(0);
 
-        // Steal ConfigurationXmlParser arguments from the command line
-        final ConfigurationXmlParserSettings parserSettings = new ConfigurationXmlParserSettings();
-        final ArgsOptionParser templateArgParser = new ArgsOptionParser(parserSettings);
-        if (keyStoreClient != null) {
-            templateArgParser.setKeyStore(keyStoreClient);
-        }
-        optionArgsRef.addAll(templateArgParser.parseBestEffort(listArgs));
-        // Check that the same template is not attempted to be loaded twice.
-        for (String key : parserSettings.templateMap.keySet()) {
-            if (parserSettings.templateMap.get(key).size() > 1) {
-                throw new ConfigurationException(
-                        String.format("More than one template specified for key '%s'", key));
-            }
-        }
-        Map<String, String> uniqueMap = parserSettings.templateMap.getUniqueMap();
+        Map<String, String> uniqueMap =
+                extractTemplates(configName, listArgs, optionArgsRef, keyStoreClient);
         ConfigurationDef configDef = getConfigurationDef(configName, false, uniqueMap);
         if (!uniqueMap.isEmpty()) {
             // remove the bad ConfigDef from the cache.
@@ -584,6 +582,38 @@ public class ConfigurationFactory implements IConfigurationFactory {
                     String.format("Unused template:map parameters: %s", uniqueMap.toString()));
         }
         return configDef.createConfiguration();
+    }
+
+    private Map<String, String> extractTemplates(
+            String configName,
+            List<String> listArgs,
+            List<String> optionArgsRef,
+            IKeyStoreClient keyStoreClient)
+            throws ConfigurationException {
+        final String extension = FileUtil.getExtension(configName);
+        switch (extension) {
+            case ".xml":
+            case ".config":
+            case "":
+                final ConfigurationXmlParserSettings parserSettings =
+                        new ConfigurationXmlParserSettings();
+                final ArgsOptionParser templateArgParser = new ArgsOptionParser(parserSettings);
+                if (keyStoreClient != null) {
+                    templateArgParser.setKeyStore(keyStoreClient);
+                }
+                optionArgsRef.addAll(templateArgParser.parseBestEffort(listArgs));
+                // Check that the same template is not attempted to be loaded twice.
+                for (String key : parserSettings.templateMap.keySet()) {
+                    if (parserSettings.templateMap.get(key).size() > 1) {
+                        throw new ConfigurationException(
+                                String.format(
+                                        "More than one template specified for key '%s'", key));
+                    }
+                }
+                return parserSettings.templateMap.getUniqueMap();
+            default:
+                return new HashMap<>();
+        }
     }
 
     /**

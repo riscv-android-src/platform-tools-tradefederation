@@ -1786,6 +1786,19 @@ public class ConfigurationFactoryTest extends TestCase {
         }
     }
 
+    /** Test that an unexpected extension for a config file doesn't parse. */
+    public void testParseUnexpectedFormat() throws Exception {
+        File testConfigFile = FileUtil.createTempFile("test-config-file", ".txt");
+        try {
+            mFactory.createConfigurationFromArgs(new String[] {testConfigFile.getAbsolutePath()});
+            fail("Should have thrown an exception");
+        } catch (ConfigurationException expected) {
+            assertTrue(expected.getMessage().contains("not supported."));
+        } finally {
+            FileUtil.deleteFile(testConfigFile);
+        }
+    }
+
     private static String getClassName(String name) {
         // -6 because of .class
         return name.substring(0, name.length() - 6).replace('/', '.');
