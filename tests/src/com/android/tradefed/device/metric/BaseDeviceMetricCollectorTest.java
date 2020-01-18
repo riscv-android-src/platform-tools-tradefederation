@@ -20,6 +20,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.times;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -31,7 +33,10 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.HostTest;
+import com.android.tradefed.testtype.suite.ModuleDefinition;
+import com.android.tradefed.util.FileUtil;
 
+import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -42,6 +47,7 @@ import org.mockito.Captor;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
+import java.io.File;
 import java.lang.annotation.Annotation;
 import java.util.HashMap;
 import java.util.List;
@@ -567,5 +573,105 @@ public class BaseDeviceMetricCollectorTest {
         assertTrue(allValues.get(0).containsKey("onteststart"));
         assertTrue(allValues.get(0).containsKey("method"));
         assertTrue(!allValues.get(0).containsKey("ontestend"));
+    }
+
+    /**
+     * Test can locate a source file existed in tests directory of a device build.
+     */
+    @Test
+    public void testResolveRelativeFilePath_withDeviceBuildInfo() throws Exception {
+        IDeviceBuildInfo buildInfo = EasyMock.createStrictMock(IDeviceBuildInfo.class);
+        String fileName = "source_file";
+        File testsDir = null;
+        try {
+            testsDir = FileUtil.createTempDir("tests_dir");
+            File hostTestCasesDir = FileUtil.getFileForPath(testsDir, "host/testcases");
+            FileUtil.mkdirsRWX(hostTestCasesDir);
+            File sourceFile = FileUtil.createTempFile(fileName, null, hostTestCasesDir);
+
+            fileName = sourceFile.getName();
+            EasyMock.expect(buildInfo.getFile(fileName)).andReturn(null);
+            EasyMock.expect(buildInfo.getTestsDir()).andReturn(testsDir);
+            EasyMock.expect(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null);
+            EasyMock.replay(buildInfo);
+
+            mContext.addDeviceBuildInfo("abc", buildInfo);
+            mBase.init(mContext, mMockListener);
+
+            Assert.assertEquals(
+                    sourceFile.getAbsolutePath(),
+                    mBase.getFileFromTestArtifacts(fileName)
+                            .getAbsolutePath());
+            EasyMock.verify(buildInfo);
+        } finally {
+            FileUtil.recursiveDelete(testsDir);
+        }
+    }
+
+    /**
+     * Test file not available in the tests directory of a device build.
+     */
+    @Test
+    public void testUnableResolveRelativeFilePath_withDeviceBuildInfo() throws Exception {
+        IDeviceBuildInfo buildInfo = EasyMock.createStrictMock(IDeviceBuildInfo.class);
+        String fileName = "source_file";
+        File testsDir = null;
+        try {
+            testsDir = FileUtil.createTempDir("tests_dir");
+            File hostTestCasesDir = FileUtil.getFileForPath(testsDir, "host/testcases");
+            FileUtil.mkdirsRWX(hostTestCasesDir);
+            File sourceFile = FileUtil.createTempFile(fileName, null, hostTestCasesDir);
+
+            fileName = sourceFile.getName();
+            String differentFileName = "abc";
+            EasyMock.expect(buildInfo.getFile(differentFileName)).andReturn(null);
+            EasyMock.expect(buildInfo.getTestsDir()).andReturn(testsDir);
+            EasyMock.expect(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null);
+            EasyMock.replay(buildInfo);
+
+            mContext.addDeviceBuildInfo("abc", buildInfo);
+            mBase.init(mContext, mMockListener);
+
+            Assert.assertNull(
+                    sourceFile.getAbsolutePath(),
+                    mBase.getFileFromTestArtifacts(differentFileName));
+            EasyMock.verify(buildInfo);
+        } finally {
+            FileUtil.recursiveDelete(testsDir);
+        }
+    }
+
+    /**
+     * Test can locate a source file from the module directory if the directory named after the
+     * module name has the file looked up for.
+     */
+    @Test
+    public void testResolveRelativeFilePath_fromModule() throws Exception {
+        IDeviceBuildInfo buildInfo = EasyMock.createStrictMock(IDeviceBuildInfo.class);
+        String fileName = "source_file";
+        File testsDir = null;
+        try {
+            testsDir = FileUtil.createTempDir("module_name");
+            File hostTestCasesDir = FileUtil.getFileForPath(testsDir, "host/testcases");
+            FileUtil.mkdirsRWX(hostTestCasesDir);
+            File sourceFile = FileUtil.createTempFile(fileName, null, hostTestCasesDir);
+
+            fileName = sourceFile.getName();
+            EasyMock.expect(buildInfo.getFile(fileName)).andReturn(null);
+            EasyMock.expect(buildInfo.getTestsDir()).andReturn(testsDir);
+            EasyMock.expect(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null);
+            EasyMock.replay(buildInfo);
+
+            mContext.addDeviceBuildInfo("abc", buildInfo);
+            mContext.addInvocationAttribute(ModuleDefinition.MODULE_NAME, testsDir.getName());
+            mBase.init(mContext, mMockListener);
+
+            Assert.assertEquals(
+                    sourceFile.getAbsolutePath(),
+                    mBase.getFileFromTestArtifacts(fileName).getAbsolutePath());
+            EasyMock.verify(buildInfo);
+        } finally {
+            FileUtil.recursiveDelete(testsDir);
+        }
     }
 }
