@@ -182,6 +182,7 @@ public class ExecutionFiles {
                 continue;
             }
             FileUtil.recursiveDelete(mFiles.get(key));
+            mFiles.remove(key);
         }
     }
 }
