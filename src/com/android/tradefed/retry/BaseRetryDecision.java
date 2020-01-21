@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
  */
 public class BaseRetryDecision implements IRetryDecision {
 
-    private static final int ABORT_MAX_FAILURES = 50;
+    private static final int ABORT_MAX_FAILURES = 75;
 
     @Option(
         name = "reboot-at-last-retry",
