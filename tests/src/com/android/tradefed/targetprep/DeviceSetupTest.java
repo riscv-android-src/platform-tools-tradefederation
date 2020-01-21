@@ -18,7 +18,6 @@ package com.android.tradefed.targetprep;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.DeviceBuildInfo;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
@@ -26,6 +25,9 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TcpDevice;
 import com.android.tradefed.device.TestDeviceOptions;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.util.BinaryState;
 import com.android.tradefed.util.FileUtil;
 
@@ -46,6 +48,7 @@ public class DeviceSetupTest extends TestCase {
     private ITestDevice mMockDevice;
     private IDevice mMockIDevice;
     private IDeviceBuildInfo mMockBuildInfo;
+    private TestInformation mTestInfo;
     private File mTmpDir;
 
     private static final int DEFAULT_API_LEVEL = 23;
@@ -64,6 +67,10 @@ public class DeviceSetupTest extends TestCase {
         mMockBuildInfo = new DeviceBuildInfo("0", "");
         mDeviceSetup = new DeviceSetup();
         mTmpDir = FileUtil.createTempDir("tmp");
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mMockDevice);
+        context.addDeviceBuildInfo("device", mMockBuildInfo);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     /**
@@ -75,16 +82,14 @@ public class DeviceSetupTest extends TestCase {
         super.tearDown();
     }
 
-    /**
-     * Simple normal case test for {@link DeviceSetup#setUp(ITestDevice, IBuildInfo)}.
-     */
+    /** Simple normal case test for {@link DeviceSetup#setUp(TestInformation)}. */
     public void testSetup() throws Exception {
         Capture<String> setPropCapture = new Capture<>();
         doSetupExpectations(true, setPropCapture);
         doCheckExternalStoreSpaceExpectations();
         EasyMock.replay(mMockDevice);
 
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
 
@@ -108,7 +113,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setAirplaneMode(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -122,7 +127,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setAirplaneMode(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -135,7 +140,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setData(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -148,7 +153,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setData(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -160,7 +165,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setCell(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -172,7 +177,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setCell(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -184,7 +189,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setCellAutoSetting(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -196,7 +201,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setCellAutoSetting(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -209,7 +214,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setWifi(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -222,7 +227,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setWifi(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -239,7 +244,7 @@ public class DeviceSetupTest extends TestCase {
         mDeviceSetup.setWifiPsk("psk");
 
         mDeviceSetup.setWifi(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -262,7 +267,7 @@ public class DeviceSetupTest extends TestCase {
         mDeviceSetup.setWifiSsidToPsk(ssidToPsk);
 
         mDeviceSetup.setWifi(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -285,7 +290,7 @@ public class DeviceSetupTest extends TestCase {
         mDeviceSetup.setWifiSsidToPsk(ssidToPsk);
 
         mDeviceSetup.setWifi(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -297,7 +302,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setWifiWatchdog(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -309,7 +314,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setWifiWatchdog(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -321,7 +326,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setDisableCwWifiMediator(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -333,7 +338,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setDisableCwWifiMediator(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -345,7 +350,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setWifiScanAlwaysEnabled(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -357,7 +362,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setWifiScanAlwaysEnabled(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -369,7 +374,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setEthernet(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -381,7 +386,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setEthernet(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -393,7 +398,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setBluetooth(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -405,7 +410,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setBluetooth(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -417,7 +422,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setNfc(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -429,7 +434,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setNfc(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -441,7 +446,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setScreenAdaptiveBrightness(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -453,7 +458,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setScreenAdaptiveBrightness(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -465,7 +470,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setScreenBrightness(50);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -476,7 +481,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setScreenAlwaysOn(BinaryState.IGNORE);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -488,7 +493,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setScreenAlwaysOn(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -501,7 +506,7 @@ public class DeviceSetupTest extends TestCase {
 
         mDeviceSetup.setScreenAlwaysOn(BinaryState.IGNORE);
         mDeviceSetup.setScreenTimeoutSecs(5l);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -513,7 +518,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setScreenAmbientMode(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -525,7 +530,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setScreenAmbientMode(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -537,7 +542,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setWakeGesture(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -549,7 +554,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setWakeGesture(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -561,7 +566,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setScreenSaver(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -573,7 +578,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setScreenSaver(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -585,7 +590,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setNotificationLed(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -597,7 +602,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setNotificationLed(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -609,7 +614,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setInstallNonMarketApps(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -621,7 +626,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setInstallNonMarketApps(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -635,7 +640,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setTriggerMediaMounted(true);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -647,7 +652,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setLocationGps(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -659,7 +664,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setLocationGps(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -671,7 +676,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setLocationNetwork(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -683,7 +688,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setLocationNetwork(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -695,7 +700,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setAutoRotate(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -707,7 +712,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setAutoRotate(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -720,7 +725,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setBatterySaver(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -733,7 +738,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setBatterySaver(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -745,7 +750,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setBatterySaver(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -757,7 +762,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setBatterySaverTrigger(50);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -769,7 +774,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setEnableFullBatteryStatsHistory(true);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -781,7 +786,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setDisableDoze(true);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -793,7 +798,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setAutoUpdateTime(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -805,7 +810,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setAutoUpdateTime(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -817,7 +822,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setAutoUpdateTimezone(BinaryState.ON);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -829,7 +834,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setAutoUpdateTimezone(BinaryState.OFF);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -842,7 +847,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setTimezone("America/Los_Angeles");
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -854,7 +859,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setDisableDialing(false);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
 
@@ -869,7 +874,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setDefaultSimData(1);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -881,7 +886,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setDefaultSimVoice(1);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -893,7 +898,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setDefaultSimSms(1);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
     }
@@ -905,7 +910,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setDisableAudio(false);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
 
@@ -915,12 +920,18 @@ public class DeviceSetupTest extends TestCase {
 
     public void testSetup_no_test_harness() throws Exception {
         Capture<String> setPropCapture = new Capture<>();
-        doSetupExpectations(true, setPropCapture);
+        doSetupExpectations(
+                true /* screen on */,
+                true /* root enabled */,
+                true /* root response */,
+                false /* test harness mode */,
+                DEFAULT_API_LEVEL,
+                setPropCapture);
         doCheckExternalStoreSpaceExpectations();
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setTestHarness(false);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
 
@@ -938,7 +949,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setDisableDalvikVerifier(true);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
 
@@ -947,62 +958,51 @@ public class DeviceSetupTest extends TestCase {
                 setProp.contains("dalvik.vm.dexopt-flags=v=n\n"));
     }
 
-    /**
-     * Test {@link DeviceSetup#setUp(ITestDevice, IBuildInfo)} when free space check fails.
-     */
+    /** Test {@link DeviceSetup#setUp(TestInformation)} when free space check fails. */
     public void testSetup_freespace() throws Exception {
         doSetupExpectations();
         mDeviceSetup.setMinExternalStorageKb(500);
         EasyMock.expect(mMockDevice.getExternalStoreFreeSpace()).andReturn(1L);
         EasyMock.replay(mMockDevice);
         try {
-            mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+            mDeviceSetup.setUp(mTestInfo);
             fail("DeviceNotAvailableException not thrown");
         } catch (DeviceNotAvailableException e) {
             // expected
         }
     }
 
-    /**
-     * Test {@link DeviceSetup#setUp(ITestDevice, IBuildInfo)} when local data path does not
-     * exist.
-     */
+    /** Test {@link DeviceSetup#setUp(TestInformation)} when local data path does not exist. */
     public void testSetup_badLocalData() throws Exception {
         doSetupExpectations();
         mDeviceSetup.setLocalDataPath(new File("idontexist"));
         EasyMock.replay(mMockDevice);
         try {
-            mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+            mDeviceSetup.setUp(mTestInfo);
             fail("TargetSetupError not thrown");
         } catch (TargetSetupError e) {
             // expected
         }
     }
 
-    /**
-     * Test normal case {@link DeviceSetup#setUp(ITestDevice, IBuildInfo)} when local data
-     * is synced
-     */
+    /** Test normal case {@link DeviceSetup#setUp(TestInformation)} when local data is synced */
     public void testSetup_syncData() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSyncDataExpectations(true);
 
         EasyMock.replay(mMockDevice, mMockIDevice);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
         EasyMock.verify(mMockDevice, mMockIDevice);
     }
 
-    /**
-     * Test case {@link DeviceSetup#setUp(ITestDevice, IBuildInfo)} when local data fails to be
-     * synced.
-     */
+    /** Test case {@link DeviceSetup#setUp(TestInformation)} when local data fails to be synced. */
     public void testSetup_syncDataFails() throws Exception {
         doSetupExpectations();
         doSyncDataExpectations(false);
         EasyMock.replay(mMockDevice, mMockIDevice);
         try {
-            mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+            mDeviceSetup.setUp(mTestInfo);
             fail("TargetSetupError not thrown");
         } catch (TargetSetupError e) {
             // expected
@@ -1019,7 +1019,7 @@ public class DeviceSetupTest extends TestCase {
         mDeviceSetup.setDeprecatedAudioSilent(false);
         mDeviceSetup.setDeprecatedMinExternalStoreSpace(1000);
         mDeviceSetup.setDeprecatedSetProp("key=value");
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
 
@@ -1042,7 +1042,7 @@ public class DeviceSetupTest extends TestCase {
         mDeviceSetup.setMinExternalStorageKb(1000);
         mDeviceSetup.setDeprecatedMinExternalStoreSpace(1000);
         try {
-            mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+            mDeviceSetup.setUp(mTestInfo);
             fail("TargetSetupError expected");
         } catch (TargetSetupError e) {
             // Expected
@@ -1057,7 +1057,7 @@ public class DeviceSetupTest extends TestCase {
         mDeviceSetup.setDisableAudio(false);
         mDeviceSetup.setDeprecatedAudioSilent(false);
         try {
-            mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+            mDeviceSetup.setUp(mTestInfo);
             fail("TargetSetupError expected");
         } catch (TargetSetupError e) {
             // Expected
@@ -1072,7 +1072,7 @@ public class DeviceSetupTest extends TestCase {
         mDeviceSetup.setProperty("key", "value");
         mDeviceSetup.setDeprecatedSetProp("key=value");
         try {
-            mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+            mDeviceSetup.setUp(mTestInfo);
             fail("TargetSetupError expected");
         } catch (TargetSetupError e) {
             // Expected
@@ -1092,8 +1092,8 @@ public class DeviceSetupTest extends TestCase {
 
         mDeviceSetup.setRestoreProperties(true);
         mDeviceSetup.setProperty("key", "value");
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
-        mDeviceSetup.tearDown(mMockDevice, mMockBuildInfo, null);
+        mDeviceSetup.setUp(mTestInfo);
+        mDeviceSetup.tearDown(mTestInfo, null);
 
         EasyMock.verify(mMockDevice);
     }
@@ -1110,8 +1110,8 @@ public class DeviceSetupTest extends TestCase {
 
         mDeviceSetup.setRestoreProperties(true);
         mDeviceSetup.setProperty("key", "value");
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
-        mDeviceSetup.tearDown(mMockDevice, mMockBuildInfo, null);
+        mDeviceSetup.setUp(mTestInfo);
+        mDeviceSetup.tearDown(mTestInfo, null);
 
         EasyMock.verify(mMockDevice);
     }
@@ -1142,15 +1142,15 @@ public class DeviceSetupTest extends TestCase {
         mDeviceSetup.setSystemSetting("key", "value");
         mDeviceSetup.setGlobalSetting("key2", "value2");
         mDeviceSetup.setSecureSetting("key3", "value3");
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
-        mDeviceSetup.tearDown(mMockDevice, mMockBuildInfo, null);
+        mDeviceSetup.setUp(mTestInfo);
+        mDeviceSetup.tearDown(mTestInfo, null);
 
         EasyMock.verify(mMockDevice);
     }
 
     public void testTearDown() throws Exception {
         EasyMock.replay(mMockDevice);
-        mDeviceSetup.tearDown(mMockDevice, mMockBuildInfo, null);
+        mDeviceSetup.tearDown(mTestInfo, null);
         EasyMock.verify(mMockDevice);
     }
 
@@ -1159,7 +1159,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.expect(mMockDevice.disconnectFromWifi()).andReturn(Boolean.TRUE);
         mDeviceSetup.setWifiNetwork("wifi_network");
         EasyMock.replay(mMockDevice);
-        mDeviceSetup.tearDown(mMockDevice, mMockBuildInfo, null);
+        mDeviceSetup.tearDown(mTestInfo, null);
         EasyMock.verify(mMockDevice);
     }
 
@@ -1167,7 +1167,7 @@ public class DeviceSetupTest extends TestCase {
     public void testTearDown_tcpDevice() throws Exception {
         EasyMock.expect(mMockDevice.getIDevice()).andReturn(new TcpDevice("tcp-device-0"));
         EasyMock.replay(mMockDevice);
-        mDeviceSetup.tearDown(mMockDevice, mMockBuildInfo, null);
+        mDeviceSetup.tearDown(mTestInfo, null);
         EasyMock.verify(mMockDevice);
     }
 
@@ -1176,6 +1176,7 @@ public class DeviceSetupTest extends TestCase {
                 true /* screenOn */,
                 false /* root enabled */,
                 false /* root response */,
+                false /* test harness */,
                 DEFAULT_API_LEVEL,
                 new Capture<>());
         doCheckExternalStoreSpaceExpectations();
@@ -1183,7 +1184,7 @@ public class DeviceSetupTest extends TestCase {
         mDeviceSetup.setDisableDialing(false);
         mDeviceSetup.setDisableAudio(false);
         mDeviceSetup.setTestHarness(false);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
         EasyMock.verify(mMockDevice);
     }
 
@@ -1192,12 +1193,13 @@ public class DeviceSetupTest extends TestCase {
                 true /* screenOn */,
                 false /* root enabled */,
                 false /* root response */,
+                false /* test harness */,
                 DEFAULT_API_LEVEL,
                 new Capture<>());
         doCheckExternalStoreSpaceExpectations();
         EasyMock.replay(mMockDevice);
         mDeviceSetup.setForceSkipSystemProps(true);
-        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.setUp(mTestInfo);
         EasyMock.verify(mMockDevice);
     }
 
@@ -1212,7 +1214,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
         mDeviceSetup.setProperty("key", "value");
         try {
-            mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+            mDeviceSetup.setUp(mTestInfo);
             fail("TargetSetupError expected");
         } catch (TargetSetupError e) {
             // Expected
@@ -1224,7 +1226,7 @@ public class DeviceSetupTest extends TestCase {
                 false /* root response */, DEFAULT_API_LEVEL, new Capture<>());
         EasyMock.replay(mMockDevice);
         try {
-            mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+            mDeviceSetup.setUp(mTestInfo);
             fail("TargetSetupError expected");
         } catch (TargetSetupError e) {
             // Expected
@@ -1233,22 +1235,37 @@ public class DeviceSetupTest extends TestCase {
 
     /** Set EasyMock expectations for a normal setup call */
     private void doSetupExpectations() throws DeviceNotAvailableException, ConfigurationException {
-        doSetupExpectations(true /* screen on */, true /* root enabled */, true /* root response */,
-                DEFAULT_API_LEVEL, new Capture<String>());
+        doSetupExpectations(
+                true /* screen on */,
+                true /* root enabled */,
+                true /* root response */,
+                true /* test harness mode */,
+                DEFAULT_API_LEVEL,
+                new Capture<String>());
     }
 
     /** Set EasyMock expectations for a normal setup call */
     private void doSetupExpectations(int apiLevel)
             throws DeviceNotAvailableException, ConfigurationException {
-        doSetupExpectations(true /* screen on */, true /* root enabled */, true /* root response */,
-                apiLevel, new Capture<String>());
+        doSetupExpectations(
+                true /* screen on */,
+                true /* root enabled */,
+                true /* root response */,
+                true /* test harness mode */,
+                apiLevel,
+                new Capture<String>());
     }
 
     /** Set EasyMock expectations for a normal setup call */
     private void doSetupExpectations(boolean screenOn, Capture<String> setPropCapture)
             throws DeviceNotAvailableException, ConfigurationException {
-        doSetupExpectations(screenOn, true /* root enabled */, true /* root response */,
-                DEFAULT_API_LEVEL, setPropCapture);
+        doSetupExpectations(
+                screenOn,
+                true /* root enabled */,
+                true /* root response */,
+                true /* test harness mode */,
+                DEFAULT_API_LEVEL,
+                setPropCapture);
     }
 
     /** Set EasyMock expectations for a normal setup call */
@@ -1256,6 +1273,24 @@ public class DeviceSetupTest extends TestCase {
             boolean screenOn,
             boolean adbRootEnabled,
             boolean adbRootResponse,
+            int apiLevel,
+            Capture<String> setPropCapture)
+            throws DeviceNotAvailableException, ConfigurationException {
+        doSetupExpectations(
+                screenOn,
+                adbRootEnabled,
+                adbRootResponse,
+                true /* test harness mode */,
+                apiLevel,
+                setPropCapture);
+    }
+
+    /** Set EasyMock expectations for a normal setup call */
+    private void doSetupExpectations(
+            boolean screenOn,
+            boolean adbRootEnabled,
+            boolean adbRootResponse,
+            boolean testHarness,
             int apiLevel,
             Capture<String> setPropCapture)
             throws DeviceNotAvailableException, ConfigurationException {
@@ -1286,6 +1321,10 @@ public class DeviceSetupTest extends TestCase {
             EasyMock.expect(mMockDevice.executeShellCommand("svc power stayon true")).andReturn("");
             EasyMock.expect(mMockDevice.executeShellCommand("input keyevent 82")).andReturn("");
             EasyMock.expect(mMockDevice.executeShellCommand("input keyevent 3")).andReturn("");
+        }
+        if (testHarness) {
+            EasyMock.expect(mMockDevice.setProperty("persist.sys.test_harness", "1"))
+                    .andReturn(true);
         }
     }
 
