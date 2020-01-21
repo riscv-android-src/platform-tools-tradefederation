@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
@@ -52,7 +53,8 @@ public class BaseRetryDecisionTest {
         private Set<String> mExcludeFilters = new HashSet<>();
 
         @Override
-        public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        public void run(TestInformation testInfo, ITestInvocationListener listener)
+                throws DeviceNotAvailableException {
             // Do nothing
         }
 
@@ -172,8 +174,8 @@ public class BaseRetryDecisionTest {
     @Test
     public void testAbortTooManyFailures() throws Exception {
         TestRunResult result = new TestRunResult();
-        result.testRunStarted("TEST", 60);
-        for (int i = 0; i < 60; i++) {
+        result.testRunStarted("TEST", 80);
+        for (int i = 0; i < 80; i++) {
             TestDescription test = new TestDescription("class", "method" + i);
             result.testStarted(test);
             result.testFailed(test, "failure" + i);
