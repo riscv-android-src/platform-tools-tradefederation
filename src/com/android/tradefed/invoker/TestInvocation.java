@@ -40,7 +40,9 @@ import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecution;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
+import com.android.tradefed.invoker.shard.LastShardDetector;
 import com.android.tradefed.invoker.shard.ShardBuildCloner;
+import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.log.BaseLeveledLogOutput;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
@@ -279,7 +281,7 @@ public class TestInvocation implements ITestInvocation {
                 // under certain cases it might still be possible to grab a bugreport
                 bugreportName = DEVICE_UNRESPONSIVE_BUGREPORT_NAME;
             }
-            resumed = resume(config, context, rescheduler, System.currentTimeMillis() - startTime);
+            resumed = resume(config, testInfo, rescheduler, System.currentTimeMillis() - startTime);
             if (!resumed) {
                 reportFailure(e, listener, config, context, invocationPath);
             } else {
@@ -442,14 +444,19 @@ public class TestInvocation implements ITestInvocation {
 
     /**
      * Attempt to reschedule the failed invocation to resume where it left off.
-     * <p/>
-     * @see IResumableTest
      *
+     * <p>
+     *
+     * @see IResumableTest
      * @param config
      * @return <code>true</code> if invocation was resumed successfully
      */
-    private boolean resume(IConfiguration config, IInvocationContext context,
-            IRescheduler rescheduler, long elapsedTime) {
+    private boolean resume(
+            IConfiguration config,
+            TestInformation testInfo,
+            IRescheduler rescheduler,
+            long elapsedTime) {
+        IInvocationContext context = testInfo.getContext();
         for (IRemoteTest test : config.getTests()) {
             if (test instanceof IResumableTest) {
                 IResumableTest resumeTest = (IResumableTest)test;
@@ -457,7 +464,7 @@ public class TestInvocation implements ITestInvocation {
                     // resume this config if any test is resumable
                     IConfiguration resumeConfig = config.clone();
                     // reuse the same build for the resumed invocation
-                    ShardBuildCloner.cloneBuildInfos(resumeConfig, resumeConfig, context);
+                    ShardBuildCloner.cloneBuildInfos(resumeConfig, resumeConfig, testInfo);
 
                     // create a result forwarder, to prevent sending two invocationStarted events
                     resumeConfig.setTestInvocationListener(new ResumeResultForwarder(
@@ -702,14 +709,26 @@ public class TestInvocation implements ITestInvocation {
             throws DeviceNotAvailableException, Throwable {
         // Create the TestInformation for the invocation
         // TODO: Use invocation-id in the workfolder name
-        File mWorkFolder = FileUtil.createTempDir("tradefed-invocation-workfolder");
-        TestInformation info =
-                TestInformation.newBuilder()
-                        .setInvocationContext(context)
-                        .setDependenciesFolder(mWorkFolder)
-                        .build();
-        CurrentInvocation.addInvocationInfo(InvocationInfo.WORK_FOLDER, mWorkFolder);
-        CleanUpInvocationFiles cleanUpThread = new CleanUpInvocationFiles(info);
+        Object sharedInfoObject =
+                config.getConfigurationObject(ShardHelper.SHARED_TEST_INFORMATION);
+        TestInformation sharedTestInfo = null;
+        TestInformation info = null;
+        if (sharedInfoObject != null) {
+            sharedTestInfo = (TestInformation) sharedInfoObject;
+            // During sharding we share everything except the invocation context
+            info = TestInformation.createModuleTestInfo(sharedTestInfo, context);
+        }
+        if (info == null) {
+            File mWorkFolder = FileUtil.createTempDir("tradefed-invocation-workfolder");
+            info =
+                    TestInformation.newBuilder()
+                            .setInvocationContext(context)
+                            .setDependenciesFolder(mWorkFolder)
+                            .build();
+        }
+        CurrentInvocation.addInvocationInfo(InvocationInfo.WORK_FOLDER, info.dependenciesFolder());
+
+        CleanUpInvocationFiles cleanUpThread = new CleanUpInvocationFiles(info, config);
         Runtime.getRuntime().addShutdownHook(cleanUpThread);
         registerExecutionFiles(info.executionFiles());
 
@@ -769,6 +788,7 @@ public class TestInvocation implements ITestInvocation {
         // Seed our TF objects to the Guice scope
         scope.seed(IRescheduler.class, rescheduler);
         scope.seedConfiguration(config);
+        boolean sharding = false;
         try {
             ILeveledLogOutput leveledLogOutput = config.getLogOutput();
             leveledLogOutput.init();
@@ -852,7 +872,7 @@ public class TestInvocation implements ITestInvocation {
                     }
                 }
 
-                boolean sharding = invocationPath.shardConfig(config, info, rescheduler, listener);
+                sharding = invocationPath.shardConfig(config, info, rescheduler, listener);
                 if (sharding) {
                     CLog.i(
                             "Invocation for %s has been sharded, rescheduling",
@@ -890,7 +910,6 @@ public class TestInvocation implements ITestInvocation {
             scope.exit();
             // Ensure build infos are always cleaned up at the end of invocation.
             invocationPath.cleanUpBuilds(context, config);
-
             // ensure we always deregister the logger
             for (String deviceName : context.getDeviceConfigNames()) {
                 if (!(context.getDevice(deviceName).getIDevice() instanceof StubDevice)) {
@@ -905,10 +924,10 @@ public class TestInvocation implements ITestInvocation {
             config.cleanConfigurationData();
 
             Runtime.getRuntime().removeShutdownHook(cleanUpThread);
-            // Delete the invocation work directory at the end
-            FileUtil.recursiveDelete(info.dependenciesFolder());
-            // Delete all the execution files
-            info.executionFiles().clearFiles();
+            if (!sharding) {
+                // If we are the parent shard, we do not delete the test information
+                deleteInvocationFiles(info, config);
+            }
         }
     }
 
@@ -1027,6 +1046,24 @@ public class TestInvocation implements ITestInvocation {
         return testTag;
     }
 
+    /**
+     * Delete the invocation files if this is the last shard for local sharding or if we are not in
+     * a local sharding situation.
+     */
+    private void deleteInvocationFiles(TestInformation testInfo, IConfiguration config) {
+        Object obj = config.getConfigurationObject(ShardHelper.LAST_SHARD_DETECTOR);
+        if (obj != null) {
+            LastShardDetector lastShardDetector = (LastShardDetector) obj;
+            if (!lastShardDetector.isLastShardDone()) {
+                return;
+            }
+        }
+        // Delete the invocation work directory at the end
+        FileUtil.recursiveDelete(testInfo.dependenciesFolder());
+        // Delete all the execution files
+        testInfo.executionFiles().clearFiles();
+    }
+
     /** Helper Thread that ensures host_log is reported in case of killed JVM */
     private class ReportHostLog extends Thread {
 
@@ -1049,17 +1086,16 @@ public class TestInvocation implements ITestInvocation {
     private class CleanUpInvocationFiles extends Thread {
 
         private TestInformation mTestInfo;
+        private IConfiguration mConfig;
 
-        public CleanUpInvocationFiles(TestInformation currentInfo) {
+        public CleanUpInvocationFiles(TestInformation currentInfo, IConfiguration config) {
             mTestInfo = currentInfo;
+            mConfig = config;
         }
 
         @Override
         public void run() {
-            // Delete the invocation work directory at the end
-            FileUtil.recursiveDelete(mTestInfo.dependenciesFolder());
-            // Delete all the execution files
-            mTestInfo.executionFiles().clearFiles();
+            deleteInvocationFiles(mTestInfo, mConfig);
         }
     }
 }
