@@ -20,6 +20,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 
 /**
@@ -33,10 +34,11 @@ public class ShardBuildCloner {
      *
      * @param fromConfig Original configuration
      * @param toConfig cloned configuration recreated from the command line.
-     * @param context invocation context
+     * @param testInfo The {@link TestInformation} of the parent shard
      */
     public static void cloneBuildInfos(
-            IConfiguration fromConfig, IConfiguration toConfig, IInvocationContext context) {
+            IConfiguration fromConfig, IConfiguration toConfig, TestInformation testInfo) {
+        IInvocationContext context = testInfo.getContext();
         for (String deviceName : context.getDeviceConfigNames()) {
             IBuildInfo toBuild = context.getBuildInfo(deviceName).clone();
             try {
@@ -51,6 +53,12 @@ public class ShardBuildCloner {
                 // Should never happen, no action taken
                 CLog.e(e);
             }
+        }
+        try {
+            toConfig.setConfigurationObject(ShardHelper.SHARED_TEST_INFORMATION, testInfo);
+        } catch (ConfigurationException e) {
+            // Should never happen, no action taken
+            CLog.e(e);
         }
     }
 }
