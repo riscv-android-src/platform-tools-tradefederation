@@ -226,6 +226,26 @@ public class GTest extends GTestBase implements IDeviceTest {
         return sb.toString();
     }
 
+    @Override
+    protected String createFlagFile(String filter) throws DeviceNotAvailableException {
+        String flagPath = super.createFlagFile(filter);
+        if (flagPath == null) {
+            // Return null to fall back to base filter
+            return null;
+        }
+        File flagFile = new File(flagPath);
+        String devicePath = "/data/local/tmp/" + flagFile.getName();
+        try {
+            if (!mDevice.pushFile(flagFile, devicePath)) {
+                // Failed to push flagfile, return null to fall back to base filter
+                return null;
+            }
+        } finally {
+            FileUtil.deleteFile(flagFile);
+        }
+        return devicePath;
+    }
+
     /**
      * Run the given gtest binary
      *
