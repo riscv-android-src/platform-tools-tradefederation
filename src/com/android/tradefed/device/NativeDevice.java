@@ -4460,7 +4460,7 @@ public class NativeDevice implements IManagedTestDevice {
         long utcEpochTimeSec = TimeUnit.SECONDS.convert(utcEpochTime, timeUnit);
         Map<Long, String> bootHistory = new LinkedHashMap<Long, String>();
         for (Map.Entry<Long, String> entry : getBootHistory().entrySet()) {
-            if (entry.getKey() > utcEpochTimeSec) {
+            if (entry.getKey() >= utcEpochTimeSec) {
                 bootHistory.put(entry.getKey(), entry.getValue());
             }
         }
