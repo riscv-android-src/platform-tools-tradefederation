@@ -80,6 +80,10 @@ public class TestInvocationMultiTest {
         mMockConfig = EasyMock.createMock(IConfiguration.class);
         EasyMock.expect(mMockConfig.getPostProcessors()).andReturn(mPostProcessors);
         EasyMock.expect(mMockConfig.getRetryDecision()).andReturn(new BaseRetryDecision());
+        EasyMock.expect(mMockConfig.getConfigurationObject(ShardHelper.SHARED_TEST_INFORMATION))
+                .andReturn(null);
+        EasyMock.expect(mMockConfig.getConfigurationObject(ShardHelper.LAST_SHARD_DETECTOR))
+                .andReturn(null);
         mMockRescheduler = EasyMock.createMock(IRescheduler.class);
         mMockTestListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
