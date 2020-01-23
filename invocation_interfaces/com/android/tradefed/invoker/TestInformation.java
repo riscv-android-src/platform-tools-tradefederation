@@ -17,8 +17,11 @@ package com.android.tradefed.invoker;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
+import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.List;
 
 /**
@@ -142,5 +145,84 @@ public class TestInformation {
             this.mDependenciesFolder = dependenciesFolder;
             return this;
         }
+    }
+
+    /**
+     * Search for a dependency/artifact file based on its name, and whether or not it's a target or
+     * host file (for quicker search).
+     *
+     * @param fileName The name of the file we are looking for.
+     * @param targetFirst whether or not we are favoring target-side files vs. host-side files for
+     *     the search.
+     * @return The found artifact file.
+     * @throws FileNotFoundException If the file is not found.
+     */
+    public File getDependencyFile(String fileName, boolean targetFirst)
+            throws FileNotFoundException {
+        File dependency = null;
+        dependency = getFromEnv(fileName, targetFirst);
+        if (dependency != null && dependency.isFile()) {
+            return dependency;
+        }
+        dependency = getFromTestsDir(fileName);
+        if (dependency != null && dependency.isFile()) {
+            return dependency;
+        }
+        dependency = getFile(fileName);
+        if (dependency != null && dependency.isFile()) {
+            return dependency;
+        }
+        dependency = getFromDependencyFolder(fileName);
+        if (dependency != null && dependency.isFile()) {
+            return dependency;
+        }
+        throw new FileNotFoundException(
+                String.format("Could not find an artifact file associated with %s", fileName));
+    }
+
+    private File getFromEnv(String fileName, boolean targetFirst) {
+        FilesKey hostOrTarget = FilesKey.HOST_TESTS_DIRECTORY;
+        if (targetFirst) {
+            hostOrTarget = FilesKey.TARGET_TESTS_DIRECTORY;
+        }
+        File testsDir = mExecutionFiles.get(hostOrTarget);
+        if (testsDir != null && testsDir.exists()) {
+            File file = FileUtil.findFile(testsDir, fileName);
+            if (file != null) {
+                return file;
+            }
+        }
+        return null;
+    }
+
+    private File getFromTestsDir(String fileName) {
+        File testsDir = mExecutionFiles.get(FilesKey.TESTS_DIRECTORY);
+        if (testsDir != null && testsDir.exists()) {
+            File file = FileUtil.findFile(testsDir, fileName);
+            if (file == null) {
+                // TODO(b/138416078): Once build dependency can be fixed and test required
+                // APKs are all under the test module directory, we can remove this fallback
+                // approach to do individual download from remote artifact.
+                // Try to stage the files from remote zip files.
+                file = getBuildInfo().stageRemoteFile(fileName, testsDir);
+            }
+            return file;
+        }
+        return null;
+    }
+
+    private File getFile(String fileName) {
+        return mExecutionFiles.get(fileName);
+    }
+
+    private File getFromDependencyFolder(String fileName) {
+        File testsDir = mDependenciesFolder;
+        if (testsDir != null && testsDir.exists()) {
+            File file = FileUtil.findFile(testsDir, fileName);
+            if (file != null) {
+                return file;
+            }
+        }
+        return null;
     }
 }

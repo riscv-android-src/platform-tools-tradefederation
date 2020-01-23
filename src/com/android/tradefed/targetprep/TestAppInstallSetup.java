@@ -134,6 +134,10 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     private List<String> mPackagesInstalled = null;
     private TestInformation mTestInfo;
 
+    protected void setTestInformation(TestInformation testInfo) {
+        mTestInfo = testInfo;
+    }
+
     /**
      * Adds a file name to the list of apks to installed
      *
@@ -182,25 +186,28 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     /**
      * Resolve the actual apk path based on testing artifact information inside build info.
      *
-     * @param buildInfo build artifact information
+     * @param testInfo The {@link TestInformation} for the invocation.
      * @param apkFileName filename of the apk to install
-     * @param device the {@link ITestDevice} being prepared
      * @return a {@link File} representing the physical apk file on host or {@code null} if the file
      *     does not exist.
      */
-    protected File getLocalPathForFilename(
-            IBuildInfo buildInfo, String apkFileName, ITestDevice device) throws TargetSetupError {
+    protected File getLocalPathForFilename(TestInformation testInfo, String apkFileName)
+            throws TargetSetupError {
         try {
-            return BuildTestsZipUtils.getApkFile(buildInfo, apkFileName, mAltDirs, mAltDirBehavior,
+            return BuildTestsZipUtils.getApkFile(
+                    testInfo.getBuildInfo(),
+                    apkFileName,
+                    mAltDirs,
+                    mAltDirBehavior,
                     false /* use resource as fallback */,
                     null /* device signing key */);
         } catch (IOException ioe) {
             throw new TargetSetupError(
                     String.format(
                             "failed to resolve apk path for apk %s in build %s",
-                            apkFileName, buildInfo.toString()),
+                            apkFileName, testInfo.getBuildInfo().toString()),
                     ioe,
-                    device.getDeviceDescriptor());
+                    testInfo.getDevice().getDeviceDescriptor());
         }
     }
 
@@ -259,15 +266,12 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
         }
 
         for (String testAppName : mTestFileNames) {
-            installer(
-                    getDevice(),
-                    testInfo.getBuildInfo(),
-                    Arrays.asList(new String[] {testAppName}));
+            installer(testInfo, Arrays.asList(new String[] {testAppName}));
         }
 
         for (String testAppNames : mSplitApkFileNames) {
             List<String> apkNames = Arrays.asList(testAppNames.split(","));
-            installer(getDevice(), testInfo.getBuildInfo(), apkNames);
+            installer(testInfo, apkNames);
         }
     }
 
@@ -344,21 +348,21 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     /**
      * Attempt to install an package or split package on the device.
      *
-     * @param device the {@link ITestDevice} to install package
-     * @param buildInfo build artifact information
+     * @param testInfo the {@link TestInformation} for the invocation
      * @param apkNames List of String. The application file base names to be installed. If apkNames
      *     contains only one apk name, the apk will be installed as single package. If apkNames
      *     contains more than one name, the apks will be installed as split apks.
      */
-    protected void installer(ITestDevice device, IBuildInfo buildInfo, List<String> apkNames)
+    protected void installer(TestInformation testInfo, List<String> apkNames)
             throws TargetSetupError, DeviceNotAvailableException {
         List<File> appFiles = new ArrayList<File>();
         List<String> packageNames = new ArrayList<String>();
+        ITestDevice device = testInfo.getDevice();
         for (String name : apkNames) {
             if (name == null || name.trim().isEmpty()) {
                 continue;
             }
-            File testAppFile = getLocalPathForFilename(buildInfo, name, device);
+            File testAppFile = getLocalPathForFilename(testInfo, name);
             if (testAppFile == null) {
                 if (mThrowIfNoFile) {
                     throw new TargetSetupError(
