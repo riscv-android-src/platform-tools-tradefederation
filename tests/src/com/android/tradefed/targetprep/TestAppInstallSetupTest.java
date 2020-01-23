@@ -20,7 +20,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.OptionSetter;
@@ -84,8 +83,7 @@ public class TestAppInstallSetupTest {
 
                     @Override
                     protected File getLocalPathForFilename(
-                            IBuildInfo buildInfo, String apkFileName, ITestDevice device)
-                            throws TargetSetupError {
+                            TestInformation testInfo, String apkFileName) throws TargetSetupError {
                         return fakeApk;
                     }
                 };
@@ -139,8 +137,7 @@ public class TestAppInstallSetupTest {
 
                     @Override
                     protected File getLocalPathForFilename(
-                            IBuildInfo buildInfo, String apkFileName, ITestDevice device)
-                            throws TargetSetupError {
+                            TestInformation testInfo, String apkFileName) throws TargetSetupError {
                         return fakeApk;
                     }
                 };
@@ -166,8 +163,7 @@ public class TestAppInstallSetupTest {
 
                     @Override
                     protected File getLocalPathForFilename(
-                            IBuildInfo buildInfo, String apkFileName, ITestDevice device)
-                            throws TargetSetupError {
+                            TestInformation testInfo, String apkFileName) throws TargetSetupError {
                         return fakeApk;
                     }
                 };
