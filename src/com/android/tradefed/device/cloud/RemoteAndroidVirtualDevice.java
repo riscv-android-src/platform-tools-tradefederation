@@ -335,10 +335,11 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
     }
 
     @Override
-    protected void doAdbReboot(String into) throws DeviceNotAvailableException {
+    protected void doAdbReboot(RebootMode rebootMode, @Nullable final String reason)
+            throws DeviceNotAvailableException {
         // We catch that adb reboot is called to expect it from the tunnel.
         getGceSshMonitor().isAdbRebootCalled(true);
-        super.doAdbReboot(into);
+        super.doAdbReboot(rebootMode, reason);
         // We allow a little time for instance to reboot and be reachable.
         getRunUtil().sleep(WAIT_AFTER_REBOOT);
         // after the reboot we wait for tunnel to be online and device to be reconnected

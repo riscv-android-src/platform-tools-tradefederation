@@ -52,6 +52,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
 
 /**
@@ -855,15 +856,16 @@ public class TestDevice extends NativeDevice {
     /**
      * Performs an reboot via framework power manager
      *
-     * Must have root access, device must be API Level 18 or above
+     * <p>Must have root access, device must be API Level 18 or above
      *
-     * @param into the mode to reboot into, currently supported: bootloader, recovery, leave it
-     *         null for a plain reboot
+     * @param rebootMode a mode of this reboot.
+     * @param reason for this reboot.
      * @return <code>true</code> if the device rebooted, <code>false</code> if not successful or
-     *          unsupported
+     *     unsupported
      * @throws DeviceNotAvailableException
      */
-    private boolean doAdbFrameworkReboot(final String into) throws DeviceNotAvailableException {
+    private boolean doAdbFrameworkReboot(RebootMode rebootMode, @Nullable final String reason)
+            throws DeviceNotAvailableException {
         // use framework reboot when:
         // 1. device API level >= 18
         // 2. has adb root
@@ -881,10 +883,7 @@ public class TestDevice extends NativeDevice {
                     CLog.v("framework reboot: can't detect framework running");
                     return false;
                 }
-                String command = "svc power reboot";
-                if (into != null && !into.isEmpty()) {
-                    command = String.format("%s %s", command, into);
-                }
+                String command = "svc power reboot " + rebootMode.formatRebootCommand(reason);
                 executeShellCommand(command);
             } catch (DeviceUnresponsiveException due) {
                 CLog.v("framework reboot: device unresponsive to shell command, using fallback");
@@ -904,14 +903,16 @@ public class TestDevice extends NativeDevice {
     /**
      * Perform a adb reboot.
      *
-     * @param into the bootloader name to reboot into, or <code>null</code> to just reboot the
-     *            device.
+     * @param rebootMode a mode of this reboot.
+     * @param reason for this reboot.
      * @throws DeviceNotAvailableException
      */
     @Override
-    protected void doAdbReboot(final String into) throws DeviceNotAvailableException {
-        if (!TestDeviceState.ONLINE.equals(getDeviceState()) || !doAdbFrameworkReboot(into)) {
-            super.doAdbReboot(into);
+    protected void doAdbReboot(RebootMode rebootMode, @Nullable final String reason)
+            throws DeviceNotAvailableException {
+        if (!TestDeviceState.ONLINE.equals(getDeviceState())
+                || !doAdbFrameworkReboot(rebootMode, reason)) {
+            super.doAdbReboot(rebootMode, reason);
         }
     }
 
