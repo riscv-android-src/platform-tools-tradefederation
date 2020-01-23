@@ -2906,8 +2906,14 @@ public class NativeDeviceTest {
         res.setStatus(CommandStatus.SUCCESS);
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
-                                120000, stdout, stderr, "adb", "-s", "serial", "shell", "setprop",
-                                "test", "value"))
+                                120000,
+                                stdout,
+                                stderr,
+                                "adb",
+                                "-s",
+                                "serial",
+                                "shell",
+                                "setprop test 'value'"))
                 .andReturn(res);
         EasyMock.replay(mMockRunUtil, mMockIDevice);
         assertTrue(mTestDevice.setProperty("test", "value"));

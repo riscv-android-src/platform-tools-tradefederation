@@ -518,12 +518,14 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.e("setProperty requires adb root = true.");
             return false;
         }
-        CommandResult result =
-                executeShellV2Command(String.format("setprop \"%s\" \"%s\"", propKey, propValue));
+        String setPropCmd = String.format("\"setprop %s '%s'\"", propKey, propValue);
+        CommandResult result = executeShellV2Command(setPropCmd);
         if (CommandStatus.SUCCESS.equals(result.getStatus())) {
             return true;
         }
-        CLog.e("Something went wrong went setting property %s: %s", propKey, result.getStderr());
+        CLog.e(
+                "Something went wrong went setting property %s (command: %s): %s",
+                propKey, setPropCmd, result.getStderr());
         return false;
     }
 
