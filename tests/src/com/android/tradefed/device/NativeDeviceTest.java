@@ -2368,7 +2368,22 @@ public class NativeDeviceTest {
         Map<Long, String> history = new LinkedHashMap<Long, String>();
         history.put(1556587278L, "kernel_panic");
         EasyMock.replay(mMockIDevice);
-        assertEquals(history, spy.getBootHistorySince(1556238008L, TimeUnit.SECONDS));
+        assertEquals(history, spy.getBootHistorySince(1556238009L, TimeUnit.SECONDS));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test {@link NativeDevice#getBootHistorySince(long, TimeUnit)} on an edge condition. */
+    @Test
+    public void testGetBootHistorySince_limit() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("reboot,1579678463\n" + "        reboot,,1579678339\n")
+                .when(spy)
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
+        Map<Long, String> history = new LinkedHashMap<Long, String>();
+        history.put(1579678463L, "reboot");
+        EasyMock.replay(mMockIDevice);
+        // For the same value we should expect it to be part of the reboot.
+        assertEquals(history, spy.getBootHistorySince(1579678463, TimeUnit.SECONDS));
         EasyMock.verify(mMockIDevice);
     }
 
@@ -2386,7 +2401,7 @@ public class NativeDeviceTest {
         Map<Long, String> history = new LinkedHashMap<Long, String>();
         history.put(1556587278L, "kernel_panic");
         EasyMock.replay(mMockIDevice);
-        assertEquals(history, spy.getBootHistorySince(1556238008000L, TimeUnit.MILLISECONDS));
+        assertEquals(history, spy.getBootHistorySince(1556238009000L, TimeUnit.MILLISECONDS));
         EasyMock.verify(mMockIDevice);
     }
 
