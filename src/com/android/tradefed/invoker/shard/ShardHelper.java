@@ -56,6 +56,9 @@ import java.util.concurrent.CountDownLatch;
 /** Helper class that handles creating the shards and scheduling them for an invocation. */
 public class ShardHelper implements IShardHelper {
 
+    public static final String LAST_SHARD_DETECTOR = "last_shard_detector";
+    public static final String SHARED_TEST_INFORMATION = "shared_test_information";
+
     /**
      * List of the list configuration obj that should be clone to each shard in order to avoid state
      * issues.
@@ -113,8 +116,11 @@ public class ShardHelper implements IShardHelper {
         if (shardCount != null) {
             expectedShard = Math.min(shardCount, shardableTests.size());
         }
+        // Add a tracker so we know in invocation if the last shard is done running.
+        LastShardDetector lastShard = new LastShardDetector();
         ShardMasterResultForwarder resultCollector =
-                new ShardMasterResultForwarder(buildMasterShardListeners(config), expectedShard);
+                new ShardMasterResultForwarder(
+                        buildMasterShardListeners(config, lastShard), expectedShard);
 
         config.getLogSaver().invocationStarted(context);
         resultCollector.invocationStarted(context);
@@ -134,6 +140,11 @@ public class ShardHelper implements IShardHelper {
                 }
                 for (int i = 0; i < maxShard; i++) {
                     IConfiguration shardConfig = config.clone();
+                    try {
+                        shardConfig.setConfigurationObject(LAST_SHARD_DETECTOR, lastShard);
+                    } catch (ConfigurationException e) {
+                        throw new RuntimeException(e);
+                    }
                     TestsPoolPoller poller =
                             new TestsPoolPoller(shardableTests, tokenPool, tracker);
                     shardConfig.setTest(poller);
@@ -150,6 +161,11 @@ public class ShardHelper implements IShardHelper {
                 for (IRemoteTest testShard : shardableTests) {
                     CLog.d("Rescheduling sharded config...");
                     IConfiguration shardConfig = config.clone();
+                    try {
+                        shardConfig.setConfigurationObject(LAST_SHARD_DETECTOR, lastShard);
+                    } catch (ConfigurationException e) {
+                        throw new RuntimeException(e);
+                    }
                     if (config.getCommandOptions().shouldUseDynamicSharding()) {
                         TestsPoolPoller poller =
                                 new TestsPoolPoller(shardableTests, tokenPool, tracker);
@@ -180,7 +196,7 @@ public class ShardHelper implements IShardHelper {
             ShardMasterResultForwarder resultCollector,
             int index) {
         cloneConfigObject(config, shardConfig);
-        ShardBuildCloner.cloneBuildInfos(config, shardConfig, testInfo.getContext());
+        ShardBuildCloner.cloneBuildInfos(config, shardConfig, testInfo);
 
         shardConfig.setTestInvocationListeners(
                 buildShardListeners(resultCollector, config, config.getTestInvocationListeners()));
@@ -301,13 +317,15 @@ public class ShardHelper implements IShardHelper {
      * Builds the {@link ITestInvocationListener} listeners that will collect the results from all
      * shards. Currently excludes {@link IShardableListener}s.
      */
-    private static List<ITestInvocationListener> buildMasterShardListeners(IConfiguration config) {
+    private static List<ITestInvocationListener> buildMasterShardListeners(
+            IConfiguration config, LastShardDetector lastShardDetector) {
         List<ITestInvocationListener> newListeners = new ArrayList<ITestInvocationListener>();
         for (ITestInvocationListener l : config.getTestInvocationListeners()) {
             if (!(l instanceof IShardableListener)) {
                 newListeners.add(l);
             }
         }
+        newListeners.add(lastShardDetector);
         return newListeners;
     }
 

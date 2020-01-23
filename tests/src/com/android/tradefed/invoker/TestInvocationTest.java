@@ -1333,6 +1333,9 @@ public class TestInvocationTest {
      */
     @Test
     public void testInvoke_shardableTest_legacy() throws Throwable {
+        TestInformation info =
+                TestInformation.newBuilder().setInvocationContext(mStubInvocationMetadata).build();
+        mStubConfiguration.setConfigurationObject(ShardHelper.SHARED_TEST_INFORMATION, info);
         String command = "empty --test-tag t";
         String[] commandLine = {"empty", "--test-tag", "t"};
         int shardCount = 2;
@@ -1386,6 +1389,9 @@ public class TestInvocationTest {
     /** Test that the before sharding log is properly carried even with auto-retry. */
     @Test
     public void testInvoke_shardableTest_autoRetry() throws Throwable {
+        TestInformation info =
+                TestInformation.newBuilder().setInvocationContext(mStubInvocationMetadata).build();
+        mStubConfiguration.setConfigurationObject(ShardHelper.SHARED_TEST_INFORMATION, info);
         List<ITestInvocationListener> listenerList =
                 mStubConfiguration.getTestInvocationListeners();
         ILogSaverListener logSaverListener = EasyMock.createMock(ILogSaverListener.class);
