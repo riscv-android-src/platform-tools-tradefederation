@@ -4770,6 +4770,9 @@ public class NativeDevice implements IManagedTestDevice {
         if (getIDevice() instanceof StubDevice) {
             return null;
         }
+        if (TestDeviceState.FASTBOOT.equals(getDeviceState())) {
+            return null;
+        }
         try {
             // Use default 5 minutes freshness
             Future<Integer> batteryFuture = getIDevice().getBattery();
