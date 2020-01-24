@@ -25,6 +25,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -34,8 +35,10 @@ import static org.mockito.MockitoAnnotations.initMocks;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.util.Sl4aBluetoothUtil.BluetoothAccessLevel;
 import com.android.tradefed.util.Sl4aBluetoothUtil.BluetoothConnectionState;
 import com.android.tradefed.util.Sl4aBluetoothUtil.BluetoothProfile;
+import com.android.tradefed.util.Sl4aBluetoothUtil.BluetoothPriorityLevel;
 import com.android.tradefed.util.Sl4aBluetoothUtil.Commands;
 import com.android.tradefed.util.Sl4aBluetoothUtil.Events;
 import com.android.tradefed.util.sl4a.Sl4aClient;
@@ -49,10 +52,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -405,6 +410,129 @@ public class Sl4aBluetoothUtilTest {
 
         mBluetoothUtil.disableBluetoothSnoopLog(mPrimary);
         verify(mPrimary).executeShellCommand(String.format(BT_SNOOP_LOG_CMD_LEGACY, "false"));
+    }
+
+    @Test
+    public void testChangeProfileAccessPermission()
+            throws IOException, DeviceNotAvailableException {
+        when(mSecondaryClient.rpcCall(Commands.BLUETOOTH_GET_LOCAL_ADDRESS))
+                .thenReturn("address_2");
+
+        assertTrue(
+                mBluetoothUtil.changeProfileAccessPermission(
+                        mPrimary,
+                        mSecondary,
+                        BluetoothProfile.PBAP,
+                        BluetoothAccessLevel.ACCESS_ALLOWED));
+        // Verify that the sl4a command is called correctly
+        verify(mPrimaryClient)
+                .rpcCall(
+                        Commands.BLUETOOTH_CHANGE_PROFILE_ACCESS_PERMISSION,
+                        "address_2",
+                        BluetoothProfile.PBAP.getProfile(),
+                        BluetoothAccessLevel.ACCESS_ALLOWED.getAccess());
+    }
+
+    @Test
+    public void testChangeProfileAccessPermission_exception()
+            throws IOException, DeviceNotAvailableException {
+        when(mSecondaryClient.rpcCall(Commands.BLUETOOTH_GET_LOCAL_ADDRESS))
+                .thenReturn("address_2");
+        when(mPrimaryClient.rpcCall(anyString(), ArgumentMatchers.<Object>any()))
+                .thenThrow(new IOException());
+
+        assertFalse(
+                mBluetoothUtil.changeProfileAccessPermission(
+                        mPrimary,
+                        mSecondary,
+                        BluetoothProfile.PBAP,
+                        BluetoothAccessLevel.ACCESS_ALLOWED));
+    }
+
+    @Test
+    public void testSetProfilePriority_emptyProfile()
+            throws IOException, DeviceNotAvailableException {
+        when(mSecondaryClient.rpcCall(Commands.BLUETOOTH_GET_LOCAL_ADDRESS))
+                .thenReturn("address_2");
+
+        assertTrue(
+                mBluetoothUtil.setProfilePriority(
+                        mPrimary,
+                        mSecondary,
+                        Collections.emptySet(),
+                        BluetoothPriorityLevel.PRIORITY_ON));
+
+        verify(mPrimaryClient, never()).rpcCall(anyString(), ArgumentMatchers.<Object>any());
+    }
+
+    @Test
+    public void testSetProfilePriority_multipleProfiles()
+            throws IOException, DeviceNotAvailableException {
+        when(mSecondaryClient.rpcCall(Commands.BLUETOOTH_GET_LOCAL_ADDRESS))
+                .thenReturn("address_2");
+
+        Set<BluetoothProfile> supportedProfiles =
+                new HashSet<>(
+                        Arrays.asList(
+                                BluetoothProfile.A2DP_SINK,
+                                BluetoothProfile.HEADSET_CLIENT,
+                                BluetoothProfile.PBAP_CLIENT));
+
+        assertTrue(
+                mBluetoothUtil.setProfilePriority(
+                        mPrimary,
+                        mSecondary,
+                        supportedProfiles,
+                        BluetoothPriorityLevel.PRIORITY_ON));
+
+        verify(mPrimaryClient)
+                .rpcCall(
+                        Commands.BLUETOOTH_A2DP_SINK_SET_PRIORITY,
+                        "address_2",
+                        BluetoothPriorityLevel.PRIORITY_ON.getPriority());
+
+        verify(mPrimaryClient)
+                .rpcCall(
+                        Commands.BLUETOOTH_HFP_CLIENT_SET_PRIORITY,
+                        "address_2",
+                        BluetoothPriorityLevel.PRIORITY_ON.getPriority());
+
+        verify(mPrimaryClient)
+                .rpcCall(
+                        Commands.BLUETOOTH_PBAP_CLIENT_SET_PRIORITY,
+                        "address_2",
+                        BluetoothPriorityLevel.PRIORITY_ON.getPriority());
+    }
+
+    @Test
+    public void testSetProfilePriority_profileNotSupported()
+            throws IOException, DeviceNotAvailableException {
+        when(mSecondaryClient.rpcCall(Commands.BLUETOOTH_GET_LOCAL_ADDRESS))
+                .thenReturn("address_2");
+
+        assertFalse(
+                mBluetoothUtil.setProfilePriority(
+                        mPrimary,
+                        mSecondary,
+                        Collections.singleton(BluetoothProfile.PAN),
+                        BluetoothPriorityLevel.PRIORITY_ON));
+
+        verify(mPrimaryClient, never()).rpcCall(anyString(), ArgumentMatchers.<Object>any());
+    }
+
+    @Test
+    public void testSetProfilePriority_exception() throws IOException, DeviceNotAvailableException {
+        when(mSecondaryClient.rpcCall(Commands.BLUETOOTH_GET_LOCAL_ADDRESS))
+                .thenReturn("address_2");
+        when(mPrimaryClient.rpcCall(anyString(), ArgumentMatchers.<Object>any()))
+                .thenThrow(new IOException());
+
+        assertFalse(
+                mBluetoothUtil.setProfilePriority(
+                        mPrimary,
+                        mSecondary,
+                        Collections.singleton(BluetoothProfile.PBAP_CLIENT),
+                        BluetoothPriorityLevel.PRIORITY_ON));
     }
 
     private EventSl4aObject createEvent(String jsonData) throws JSONException {
