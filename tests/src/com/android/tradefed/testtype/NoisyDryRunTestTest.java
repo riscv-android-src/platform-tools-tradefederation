@@ -26,6 +26,7 @@ import static org.junit.Assert.fail;
 
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.sandbox.SandboxConfigDump;
@@ -57,6 +58,7 @@ public class NoisyDryRunTestTest {
     private File mFile;
     private ITestInvocationListener mMockListener;
     private IRunUtil mMockRunUtil;
+    private TestInformation mTestInfo;
 
     @BeforeClass
     public static void setUpClass() throws Exception {
@@ -73,6 +75,7 @@ public class NoisyDryRunTestTest {
         mFile = FileUtil.createTempFile("NoisyDryRunTestTest", "tmpFile");
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
+        mTestInfo = TestInformation.newBuilder().build();
     }
 
     @After
@@ -101,7 +104,7 @@ public class NoisyDryRunTestTest {
         NoisyDryRunTest noisyDryRunTest = new NoisyDryRunTest();
         OptionSetter setter = new OptionSetter(noisyDryRunTest);
         setter.setOptionValue("cmdfile", mFile.getAbsolutePath());
-        noisyDryRunTest.run(mMockListener);
+        noisyDryRunTest.run(mTestInfo, mMockListener);
         verifyMocks();
     }
 
@@ -128,7 +131,7 @@ public class NoisyDryRunTestTest {
         NoisyDryRunTest noisyDryRunTest = new NoisyDryRunTest();
         OptionSetter setter = new OptionSetter(noisyDryRunTest);
         setter.setOptionValue("cmdfile", mFile.getAbsolutePath());
-        noisyDryRunTest.run(mMockListener);
+        noisyDryRunTest.run(mTestInfo, mMockListener);
         verifyMocks();
     }
 
@@ -145,7 +148,7 @@ public class NoisyDryRunTestTest {
         NoisyDryRunTest noisyDryRunTest = new NoisyDryRunTest();
         OptionSetter setter = new OptionSetter(noisyDryRunTest);
         setter.setOptionValue("cmdfile", mFile.getAbsolutePath());
-        noisyDryRunTest.run(mMockListener);
+        noisyDryRunTest.run(mTestInfo, mMockListener);
         verifyMocks();
     }
 
@@ -171,7 +174,7 @@ public class NoisyDryRunTestTest {
         NoisyDryRunTest noisyDryRunTest = new NoisyDryRunTest();
         OptionSetter setter = new OptionSetter(noisyDryRunTest);
         setter.setOptionValue("cmdfile", mFile.getAbsolutePath());
-        noisyDryRunTest.run(mMockListener);
+        noisyDryRunTest.run(mTestInfo, mMockListener);
         verifyMocks();
     }
 
@@ -304,7 +307,7 @@ public class NoisyDryRunTestTest {
                 };
         OptionSetter setter = new OptionSetter(noisyDryRunTest);
         setter.setOptionValue("cmdfile", mFile.getAbsolutePath());
-        noisyDryRunTest.run(mMockListener);
+        noisyDryRunTest.run(mTestInfo, mMockListener);
         verifyMocks();
     }
 
@@ -359,7 +362,7 @@ public class NoisyDryRunTestTest {
                 };
         OptionSetter setter = new OptionSetter(noisyDryRunTest);
         setter.setOptionValue("cmdfile", mFile.getAbsolutePath());
-        noisyDryRunTest.run(mMockListener);
+        noisyDryRunTest.run(mTestInfo, mMockListener);
         verifyMocks();
     }
 
