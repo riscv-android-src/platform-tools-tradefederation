@@ -191,6 +191,10 @@ public class HostTest
                 mIncludeAnnotations, mExcludeAnnotations);
     }
 
+    public void setTestInformation(TestInformation testInfo) {
+        mTestInfo = testInfo;
+    }
+
     /**
      * {@inheritDoc}
      */
