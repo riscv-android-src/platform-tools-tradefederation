@@ -78,6 +78,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nullable;
+
 /**
  * Unit tests for {@link TestDevice}.
  */
@@ -119,7 +121,7 @@ public class TestDeviceTest extends TestCase {
         }
 
         @Override
-        void doReboot(final String into)
+        void doReboot(RebootMode rebootMode, @Nullable final String reason)
                 throws DeviceNotAvailableException, UnsupportedOperationException {}
 
         @Override
@@ -591,7 +593,7 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    void doReboot(final String into)
+                    void doReboot(RebootMode rebootMode, @Nullable final String reason)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
                 };
         mTestDevice.setRecovery(mMockRecovery);
@@ -658,7 +660,7 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    void doReboot(final String into)
+                    void doReboot(RebootMode rebootMode, @Nullable final String reason)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
                 };
         mTestDevice.setRecovery(mMockRecovery);
@@ -708,7 +710,7 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    void doReboot(final String into)
+                    void doReboot(RebootMode rebootMode, @Nullable final String reason)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
                 };
         mTestDevice.setRecovery(mMockRecovery);

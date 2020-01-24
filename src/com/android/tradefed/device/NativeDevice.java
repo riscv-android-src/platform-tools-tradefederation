@@ -94,6 +94,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
 
 /**
@@ -322,15 +323,17 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@link DeviceAction} for rebooting a device. */
     protected class RebootDeviceAction implements DeviceAction {
 
-        private final String mInto;
+        private final RebootMode mRebootMode;
+        @Nullable private final String mReason;
 
-        RebootDeviceAction(String into) {
-            mInto = into;
+        RebootDeviceAction(RebootMode rebootMode, @Nullable String reason) {
+            mRebootMode = rebootMode;
+            mReason = reason;
         }
 
         @Override
         public boolean run() throws TimeoutException, IOException, AdbCommandRejectedException {
-            getIDevice().reboot(mInto);
+            getIDevice().reboot(mRebootMode.formatRebootCommand(mReason));
             return true;
         }
     }
@@ -2912,7 +2915,7 @@ public class NativeDevice implements IManagedTestDevice {
     }
 
     private void doAdbRebootBootloader() throws DeviceNotAvailableException {
-        doAdbReboot("bootloader");
+        doAdbReboot(RebootMode.REBOOT_INTO_BOOTLOADER, null);
     }
 
     /**
@@ -2920,7 +2923,13 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public void reboot() throws DeviceNotAvailableException {
-        rebootUntilOnline();
+        reboot(null);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void reboot(@Nullable String reason) throws DeviceNotAvailableException {
+        rebootUntilOnline(reason);
 
         RecoveryMode cachedRecoveryMode = getRecoveryMode();
         setRecoveryMode(RecoveryMode.ONLINE);
@@ -2964,12 +2973,15 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void rebootUntilOnline() throws DeviceNotAvailableException {
-        doReboot(null);
+        rebootUntilOnline(null);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void rebootUntilOnline(@Nullable String reason) throws DeviceNotAvailableException {
+        doReboot(RebootMode.REBOOT_FULL, reason);
         RecoveryMode cachedRecoveryMode = getRecoveryMode();
         setRecoveryMode(RecoveryMode.ONLINE);
         waitForDeviceOnline();
@@ -2979,7 +2991,7 @@ public class NativeDevice implements IManagedTestDevice {
 
     @Override
     public void rebootUserspaceUntilOnline() throws DeviceNotAvailableException {
-        doReboot("userspace");
+        doReboot(RebootMode.REBOOT_USERSPACE, null);
         RecoveryMode cachedRecoveryMode = getRecoveryMode();
         setRecoveryMode(RecoveryMode.ONLINE);
         waitForDeviceOnline();
@@ -2997,7 +3009,7 @@ public class NativeDevice implements IManagedTestDevice {
                     "Rebooting to userspace first.", getSerialNumber());
             rebootUntilOnline();
         }
-        doAdbReboot("recovery");
+        doAdbReboot(RebootMode.REBOOT_INTO_RECOVERY, null);
         if (!waitForDeviceInRecovery(mOptions.getAdbRecoveryTimeout())) {
             recoverDeviceInRecovery();
         }
@@ -3019,13 +3031,13 @@ public class NativeDevice implements IManagedTestDevice {
                     getSerialNumber());
             rebootUntilOnline();
         }
-        String targetMode = null;
+        final RebootMode rebootMode;
         if (autoReboot) {
-            targetMode = "sideload-auto-reboot";
+            rebootMode = RebootMode.REBOOT_INTO_SIDELOAD_AUTO_REBOOT;
         } else {
-            targetMode = "sideload";
+            rebootMode = RebootMode.REBOOT_INTO_SIDELOAD;
         }
-        doAdbReboot(targetMode);
+        doAdbReboot(rebootMode, null);
         if (!waitForDeviceInSideload(mOptions.getAdbRecoveryTimeout())) {
             // using recovery mode because sideload is a sub-mode under recovery
             recoverDeviceInRecovery();
@@ -3037,18 +3049,50 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public void nonBlockingReboot() throws DeviceNotAvailableException {
-        doReboot(null);
+        doReboot(RebootMode.REBOOT_FULL, null);
+    }
+
+    /**
+     * A mode of a reboot.
+     *
+     * <p>Source of truth for available modes is defined in init.
+     */
+    @VisibleForTesting
+    protected enum RebootMode {
+        REBOOT_FULL(""),
+        REBOOT_USERSPACE("userspace"),
+        REBOOT_INTO_FASTBOOT("fastboot"),
+        REBOOT_INTO_BOOTLOADER("bootloader"),
+        REBOOT_INTO_SIDELOAD("sideload"),
+        REBOOT_INTO_SIDELOAD_AUTO_REBOOT("sideload-auto-reboot"),
+        REBOOT_INTO_RECOVERY("recovery");
+
+        private final String mRebootTarget;
+
+        RebootMode(String rebootTarget) {
+            mRebootTarget = rebootTarget;
+        }
+
+        @Nullable
+        String formatRebootCommand(@Nullable String reason) {
+            if (this == REBOOT_FULL) {
+                return Strings.isNullOrEmpty(reason) ? null : reason;
+            } else {
+                return Strings.isNullOrEmpty(reason) ? mRebootTarget : mRebootTarget + "," + reason;
+            }
+        }
     }
 
     /**
      * Trigger a reboot of the device, offers no guarantee of the device state after the call.
      *
-     * @param into mode to reboot into, e.g. "recovery,userspace"
+     * @param rebootMode a mode of this reboot
+     * @param reason reason for this reboot
      * @throws DeviceNotAvailableException
      * @throws UnsupportedOperationException
      */
     @VisibleForTesting
-    void doReboot(final String into)
+    void doReboot(RebootMode rebootMode, @Nullable final String reason)
             throws DeviceNotAvailableException, UnsupportedOperationException {
         // Track Tradefed reboot time
         mLastTradefedRebootTime = System.currentTimeMillis();
@@ -3061,12 +3105,14 @@ public class NativeDevice implements IManagedTestDevice {
                 CLog.i("Device reboot disabled by options, skipped.");
                 return;
             }
-            if (into == null) {
-                CLog.i("Rebooting device %s", getSerialNumber());
+            if (reason == null) {
+                CLog.i("Rebooting device %s mode: %s", getSerialNumber(), rebootMode);
             } else {
-                CLog.i("Rebooting device %s into %s", getSerialNumber(), into);
+                CLog.i(
+                        "Rebooting device %s mode: %s reason: %s",
+                        getSerialNumber(), rebootMode, reason);
             }
-            doAdbReboot(into);
+            doAdbReboot(rebootMode, reason);
             // Check if device shows as unavailable (as expected after reboot).
             boolean notAvailable = waitForDeviceNotAvailable(DEFAULT_UNAVAILABLE_TIMEOUT);
             if (notAvailable) {
@@ -3091,24 +3137,26 @@ public class NativeDevice implements IManagedTestDevice {
     /**
      * Perform a adb reboot.
      *
-     * @param into the bootloader name to reboot into, or <code>null</code> to just reboot the
-     *            device.
+     * @param rebootMode a mode of this reboot.
+     * @param reason for this reboot.
      * @throws DeviceNotAvailableException
      */
-    protected void doAdbReboot(final String into) throws DeviceNotAvailableException {
-        DeviceAction rebootAction = createRebootDeviceAction(into);
+    protected void doAdbReboot(RebootMode rebootMode, @Nullable final String reason)
+            throws DeviceNotAvailableException {
+        DeviceAction rebootAction = createRebootDeviceAction(rebootMode, reason);
         performDeviceAction("reboot", rebootAction, MAX_RETRY_ATTEMPTS);
     }
 
     /**
      * Create a {@link RebootDeviceAction} to be used when performing a reboot action.
      *
-     * @param into the bootloader name to reboot into, or <code>null</code> to just reboot the
-     *     device.
+     * @param rebootMode a mode of this reboot.
+     * @param reason for this reboot.
      * @return the created {@link RebootDeviceAction}.
      */
-    protected RebootDeviceAction createRebootDeviceAction(final String into) {
-        return new RebootDeviceAction(into);
+    protected RebootDeviceAction createRebootDeviceAction(
+            RebootMode rebootMode, @Nullable final String reason) {
+        return new RebootDeviceAction(rebootMode, reason);
     }
 
     protected void waitForDeviceNotAvailable(String operationDesc, long time) {
