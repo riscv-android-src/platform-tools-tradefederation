@@ -25,6 +25,7 @@ import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TextResultReporter;
@@ -245,7 +246,9 @@ public class ConfigurationTest extends TestCase {
      */
     public void testGetTests() throws DeviceNotAvailableException {
         // check that the default test is present and doesn't blow up
-        mConfig.getTests().get(0).run(new TextResultReporter());
+        mConfig.getTests()
+                .get(0)
+                .run(TestInformation.newBuilder().build(), new TextResultReporter());
         IRemoteTest test1 = EasyMock.createMock(IRemoteTest.class);
         mConfig.setTest(test1);
         assertEquals(test1, mConfig.getTests().get(0));
