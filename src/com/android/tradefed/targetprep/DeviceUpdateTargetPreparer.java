@@ -16,7 +16,6 @@
 
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -24,6 +23,7 @@ import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.File;
@@ -53,8 +53,9 @@ public abstract class DeviceUpdateTargetPreparer extends DeviceBuildInfoBootStra
 
     /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+    public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
         File deviceUpdateImage = getDeviceUpdateImage();
         if (deviceUpdateImage == null) {
             CLog.i("No device image zip file provided, assuming no-op; skipping ...");
@@ -108,7 +109,7 @@ public abstract class DeviceUpdateTargetPreparer extends DeviceBuildInfoBootStra
         CLog.i("Device update completed on %s", device.getDeviceDescriptor());
         // calling this last because we want to inject device side build info after device boots up
         if (mBootStrapBuildInfo) {
-            super.setUp(device, buildInfo);
+            super.setUp(testInfo);
         }
     }
 

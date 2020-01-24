@@ -22,6 +22,9 @@ import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -61,6 +64,7 @@ public class TfTestLauncherTest {
     private IRunUtil mMockRunUtil;
     private IFolderBuildInfo mMockBuildInfo;
     private IConfiguration mMockConfig;
+    private TestInformation mTestInfo;
 
     @Before
     public void setUp() throws Exception {
@@ -75,6 +79,10 @@ public class TfTestLauncherTest {
         mTfTestLauncher.setEventStreaming(false);
         mTfTestLauncher.setConfiguration(mMockConfig);
 
+        IInvocationContext context = new InvocationContext();
+        context.addDeviceBuildInfo("device", mMockBuildInfo);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
+
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
 
         OptionSetter setter = new OptionSetter(mTfTestLauncher);
@@ -82,7 +90,7 @@ public class TfTestLauncherTest {
         setter.setOptionValue("sub-global-config", SUB_GLOBAL_CONFIG);
     }
 
-    /** Test {@link TfTestLauncher#run(ITestInvocationListener)} */
+    /** Test {@link TfTestLauncher#run(TestInformation, ITestInvocationListener)} */
     @Test
     public void testRun() {
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
@@ -154,7 +162,7 @@ public class TfTestLauncherTest {
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         EasyMock.replay(mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
-        mTfTestLauncher.run(mMockListener);
+        mTfTestLauncher.run(mTestInfo, mMockListener);
         EasyMock.verify(mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
     }
 

@@ -21,6 +21,7 @@ import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
 import com.android.tradefed.util.BuildInfoUtil;
 
@@ -73,8 +74,10 @@ public class FastbootUpdateBootstrapPreparer extends DeviceFlashPreparer {
     private String mOverrideDeviceBuildBranch = null;
 
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+    public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
+        IBuildInfo buildInfo = testInfo.getBuildInfo();
         if (!(buildInfo instanceof IDeviceBuildInfo)) {
             throw new IllegalArgumentException("Provided build info must be a IDeviceBuildInfo");
         }
@@ -87,7 +90,7 @@ public class FastbootUpdateBootstrapPreparer extends DeviceFlashPreparer {
         setSkipPostFlashBuildIdCheck(true);
         setSkipPostFlashFlavorCheck(true);
         // performs the actual flashing
-        super.setUp(device, buildInfo);
+        super.setUp(testInfo);
 
         if (mBootStrapBuildInfo) {
             BuildInfoUtil.bootstrapDeviceBuildAttributes(
