@@ -44,6 +44,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nullable;
+
 /**
  * Provides an reliable and slightly higher level API to a ddmlib {@link IDevice}.
  * <p/>
@@ -911,6 +913,18 @@ public interface INativeDevice {
     public void reboot() throws DeviceNotAvailableException;
 
     /**
+     * Reboots the device into adb mode with given {@code reason} to be persisted across reboot.
+     *
+     * <p>Blocks until device becomes available.
+     *
+     * <p>Last reboot reason can be obtained by querying {@code sys.boot.reason} propety.
+     *
+     * @param reason a reason for this reboot, or {@code null} if no reason is specified.
+     * @throws DeviceNotAvailableException if device is not available after reboot
+     */
+    public void reboot(@Nullable String reason) throws DeviceNotAvailableException;
+
+    /**
      * Reboots only userspace part of device.
      *
      * <p>Blocks until device becomes available.
@@ -956,6 +970,15 @@ public interface INativeDevice {
      * @throws DeviceNotAvailableException if device is not available after reboot
      */
     public void rebootUntilOnline() throws DeviceNotAvailableException;
+
+    /**
+     * An alternate to {@link #reboot()} that only blocks until device is online ie visible to adb.
+     *
+     * @param reason a reason for this reboot, or {@code null} if no reason is specified.
+     * @throws DeviceNotAvailableException if device is not available after reboot
+     * @see #reboot(String)
+     */
+    public void rebootUntilOnline(@Nullable String reason) throws DeviceNotAvailableException;
 
     /**
      * An alternate to {@link #rebootUserspace()} ()} that only blocks until device is online ie

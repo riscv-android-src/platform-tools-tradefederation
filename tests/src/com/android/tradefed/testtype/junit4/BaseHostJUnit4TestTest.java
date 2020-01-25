@@ -29,6 +29,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
@@ -58,7 +59,6 @@ import org.mockito.Mockito;
 import java.io.File;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Map;
 
 /** Unit tests for {@link BaseHostJUnit4Test}. */
 @RunWith(JUnit4.class)
@@ -394,6 +394,7 @@ public class BaseHostJUnit4TestTest {
     @Test
     public void testInstallUninstall() throws Exception {
         File fakeTestsDir = FileUtil.createTempDir("fake-base-host-dir");
+        mTestInfo.executionFiles().put(FilesKey.TESTS_DIRECTORY, fakeTestsDir);
         try {
             File apk = new File(fakeTestsDir, "apkFileName");
             apk.createNewFile();
@@ -408,10 +409,6 @@ public class BaseHostJUnit4TestTest {
             TestDescription description =
                     new TestDescription(InstallApkHostJUnit4Test.class.getName(), "testInstall");
             mMockListener.testStarted(description);
-            Map<String, String> properties = new HashMap<>();
-            properties.put("ROOT_DIR", fakeTestsDir.getAbsolutePath());
-            EasyMock.expect(mMockBuild.getFile("apkFileName")).andReturn(null);
-            EasyMock.expect(mMockBuild.getBuildAttributes()).andReturn(properties).times(2);
             EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null);
 
             EasyMock.expect(mMockDevice.installPackage(apk, true)).andReturn(null);

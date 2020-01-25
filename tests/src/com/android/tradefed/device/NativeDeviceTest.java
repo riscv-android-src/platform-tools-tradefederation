@@ -39,6 +39,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.NativeDevice.RebootMode;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
@@ -1573,18 +1574,18 @@ public class NativeDeviceTest {
         assertNull(mTestDevice.getBuildFlavor());
     }
 
-    /** Unit test for {@link NativeDevice#doAdbReboot(String)}. */
+    /** Unit test for {@link NativeDevice#doAdbReboot(RebootMode, String)} )}. */
     @Test
     public void testDoAdbReboot_emulator() throws Exception {
         final String into = "bootloader";
         mMockIDevice.reboot(into);
         EasyMock.expectLastCall();
         EasyMock.replay(mMockIDevice);
-        mTestDevice.doAdbReboot(into);
+        mTestDevice.doAdbReboot(RebootMode.REBOOT_INTO_BOOTLOADER, "");
         EasyMock.verify(mMockIDevice);
     }
 
-    /** Unit test for {@link NativeDevice#doReboot()}. */
+    /** Unit test for {@link NativeDevice#doReboot(RebootMode, String)} ()}. */
     @Test
     public void testDoReboot() throws Exception {
         NativeDevice testDevice = new NativeDevice(mMockIDevice,
@@ -1599,11 +1600,11 @@ public class NativeDeviceTest {
         EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong()))
                 .andReturn(true);
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
-        testDevice.doReboot(null);
+        testDevice.doReboot(RebootMode.REBOOT_FULL, null);
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
-    /** Unit test for {@link NativeDevice#doReboot()}. */
+    /** Unit test for {@link NativeDevice#doReboot(RebootMode, String)} ()}. */
     @Test
     public void testDoReboot_skipped() throws Exception {
         NativeDevice testDevice = new NativeDevice(mMockIDevice,
@@ -1620,11 +1621,11 @@ public class NativeDeviceTest {
             }
         };
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
-        testDevice.doReboot(null);
+        testDevice.doReboot(RebootMode.REBOOT_FULL, null);
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
-    /** Unit test for {@link NativeDevice#doReboot()}. */
+    /** Unit test for {@link NativeDevice#doReboot(RebootMode, String)} ()}. */
     @Test
     public void testDoReboot_fastboot() throws Exception {
         mTestDevice = new TestableAndroidNativeDevice() {
@@ -1640,7 +1641,7 @@ public class NativeDeviceTest {
             }
         };
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
-        mTestDevice.doReboot(null);
+        mTestDevice.doReboot(RebootMode.REBOOT_FULL, null);
         assertTrue(mTestDevice.wasCalled);
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
@@ -2367,7 +2368,22 @@ public class NativeDeviceTest {
         Map<Long, String> history = new LinkedHashMap<Long, String>();
         history.put(1556587278L, "kernel_panic");
         EasyMock.replay(mMockIDevice);
-        assertEquals(history, spy.getBootHistorySince(1556238008L, TimeUnit.SECONDS));
+        assertEquals(history, spy.getBootHistorySince(1556238009L, TimeUnit.SECONDS));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test {@link NativeDevice#getBootHistorySince(long, TimeUnit)} on an edge condition. */
+    @Test
+    public void testGetBootHistorySince_limit() throws Exception {
+        TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
+        doReturn("reboot,1579678463\n" + "        reboot,,1579678339\n")
+                .when(spy)
+                .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
+        Map<Long, String> history = new LinkedHashMap<Long, String>();
+        history.put(1579678463L, "reboot");
+        EasyMock.replay(mMockIDevice);
+        // For the same value we should expect it to be part of the reboot.
+        assertEquals(history, spy.getBootHistorySince(1579678463, TimeUnit.SECONDS));
         EasyMock.verify(mMockIDevice);
     }
 
@@ -2385,7 +2401,7 @@ public class NativeDeviceTest {
         Map<Long, String> history = new LinkedHashMap<Long, String>();
         history.put(1556587278L, "kernel_panic");
         EasyMock.replay(mMockIDevice);
-        assertEquals(history, spy.getBootHistorySince(1556238008000L, TimeUnit.MILLISECONDS));
+        assertEquals(history, spy.getBootHistorySince(1556238009000L, TimeUnit.MILLISECONDS));
         EasyMock.verify(mMockIDevice);
     }
 
@@ -2890,8 +2906,14 @@ public class NativeDeviceTest {
         res.setStatus(CommandStatus.SUCCESS);
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
-                                120000, stdout, stderr, "adb", "-s", "serial", "shell", "setprop",
-                                "test", "value"))
+                                120000,
+                                stdout,
+                                stderr,
+                                "adb",
+                                "-s",
+                                "serial",
+                                "shell",
+                                "setprop test 'value'"))
                 .andReturn(res);
         EasyMock.replay(mMockRunUtil, mMockIDevice);
         assertTrue(mTestDevice.setProperty("test", "value"));
