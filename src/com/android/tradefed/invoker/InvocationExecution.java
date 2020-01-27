@@ -732,27 +732,32 @@ public class InvocationExecution implements IInvocationExecution {
         }
         // Load environment tests dir.
         if (info instanceof IDeviceBuildInfo) {
+            // TODO: Use tests directory from TestInformation instead.
             File testsDir = ((IDeviceBuildInfo) info).getTestsDir();
             if (testsDir != null && testsDir.exists()) {
-                File targetTestCases =
-                        handleLinkingExternalDirs(
-                                (IDeviceBuildInfo) info,
-                                testsDir,
-                                EnvVariable.ANDROID_TARGET_OUT_TESTCASES,
-                                BuildInfoFileKey.TARGET_LINKED_DIR.getFileKey());
-                if (targetTestCases != null) {
-                    testInfo.executionFiles()
-                            .put(FilesKey.TARGET_TESTS_DIRECTORY, targetTestCases, true);
+                if (testInfo.executionFiles().get(FilesKey.TARGET_TESTS_DIRECTORY) == null) {
+                    File targetTestCases =
+                            handleLinkingExternalDirs(
+                                    (IDeviceBuildInfo) info,
+                                    testsDir,
+                                    EnvVariable.ANDROID_TARGET_OUT_TESTCASES,
+                                    BuildInfoFileKey.TARGET_LINKED_DIR.getFileKey());
+                    if (targetTestCases != null) {
+                        testInfo.executionFiles()
+                                .put(FilesKey.TARGET_TESTS_DIRECTORY, targetTestCases, true);
+                    }
                 }
-                File hostTestCases =
-                        handleLinkingExternalDirs(
-                                (IDeviceBuildInfo) info,
-                                testsDir,
-                                EnvVariable.ANDROID_HOST_OUT_TESTCASES,
-                                BuildInfoFileKey.HOST_LINKED_DIR.getFileKey());
-                if (hostTestCases != null) {
-                    testInfo.executionFiles()
-                            .put(FilesKey.HOST_TESTS_DIRECTORY, hostTestCases, true);
+                if (testInfo.executionFiles().get(FilesKey.HOST_TESTS_DIRECTORY) == null) {
+                    File hostTestCases =
+                            handleLinkingExternalDirs(
+                                    (IDeviceBuildInfo) info,
+                                    testsDir,
+                                    EnvVariable.ANDROID_HOST_OUT_TESTCASES,
+                                    BuildInfoFileKey.HOST_LINKED_DIR.getFileKey());
+                    if (hostTestCases != null) {
+                        testInfo.executionFiles()
+                                .put(FilesKey.HOST_TESTS_DIRECTORY, hostTestCases, true);
+                    }
                 }
             }
         }

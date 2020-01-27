@@ -17,6 +17,7 @@
 package com.android.tradefed.build;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.tradefed.build.IBuildInfo.BuildInfoProperties;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -78,8 +79,6 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
     @Option(name="tests-dir", description="Path to top directory of expanded tests zip")
     private File mTestsDir = null;
 
-    private boolean mCreatedTestDir = false;
-
     @Override
     public IBuildInfo getBuild() throws BuildRetrievalError {
         throw new UnsupportedOperationException("Call getBuild(ITestDevice)");
@@ -87,16 +86,13 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
 
     @Override
     public void cleanUp(IBuildInfo info) {
-        // If we created the tests dir, we delete it.
-        if (mCreatedTestDir) {
-            FileUtil.recursiveDelete(((IDeviceBuildInfo) info).getTestsDir());
-        }
     }
 
     @Override
     public IBuildInfo getBuild(ITestDevice device) throws BuildRetrievalError,
             DeviceNotAvailableException {
         IBuildInfo info = new DeviceBuildInfo(mBuildId, mBuildTargetName);
+        info.setProperties(BuildInfoProperties.DO_NOT_COPY_ON_SHARDING);
         if (!(device.getIDevice() instanceof StubDevice)) {
             if (!device.waitForDeviceShell(mShellAvailableTimeout * 1000)) {
                 throw new DeviceNotAvailableException(
@@ -120,8 +116,9 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
             info.setFile("testsdir", mTestsDir, info.getBuildId());
         }
         // Avoid tests dir being null, by creating a temporary dir.
+        boolean createdTestDir = false;
         if (mTestsDir == null) {
-            mCreatedTestDir = true;
+            createdTestDir = true;
             try {
                 mTestsDir =
                         FileUtil.createTempDir(
@@ -137,7 +134,7 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
                     .put(
                             FilesKey.TESTS_DIRECTORY,
                             mTestsDir,
-                            !mCreatedTestDir /* shouldNotDelete */);
+                            !createdTestDir /* shouldNotDelete */);
         }
         return info;
     }
