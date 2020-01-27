@@ -42,7 +42,12 @@ public interface IRemoteTest {
      */
     @Deprecated
     public default void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        // Do nothing by default.
+        // Throw if not implemented: If the new interface is implemented this won't be called. If
+        // something is calling the old interface instead of new one, then it will throw and report
+        // the error.
+        throw new UnsupportedOperationException(
+                "run(ITestInvocationListener) is deprecated. You need to update to the new "
+                        + "run(TestInformation, ITestInvocationListener) interface.");
     }
 
     /**
