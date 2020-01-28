@@ -23,6 +23,9 @@ import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -84,7 +87,10 @@ public class JarHostTestTest {
         setter.setOptionValue("enable-pretty-logs", "false");
         mStubBuildInfo = new DeviceBuildInfo();
         mStubBuildInfo.setTestsDir(mTestDir, "v1");
-        mTestInfo = TestInformation.newBuilder().build();
+        IInvocationContext context = new InvocationContext();
+        context.addDeviceBuildInfo("device", mStubBuildInfo);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
+        mTestInfo.executionFiles().put(FilesKey.TESTS_DIRECTORY, mTestDir);
     }
 
     @After
@@ -144,9 +150,10 @@ public class JarHostTestTest {
         setter.setOptionValue("enable-pretty-logs", "false");
         setter.setOptionValue("jar", testJar.getName());
         // full class count without sharding
+        mTest.setTestInformation(mTestInfo);
         assertEquals(238, mTest.countTestCases());
 
-        List<IRemoteTest> tests = new ArrayList<>(mTest.split(5));
+        List<IRemoteTest> tests = new ArrayList<>(mTest.split(5, mTestInfo));
         // HostTest sharding does not respect the shard-count hint (expected)
         assertEquals(8, tests.size());
 
@@ -225,6 +232,7 @@ public class JarHostTestTest {
         // Explicitly request a class from the jar
         setter.setOptionValue("class", "android.ui.cts.TestClass8");
         // full class count without sharding should be 238
+        mTest.setTestInformation(mTestInfo);
         assertEquals(238, mTest.countTestCases());
     }
 
@@ -269,7 +277,8 @@ public class JarHostTestTest {
 
         mListener.testRunStarted(HostTest.class.getName(), 0);
         mListener.testRunFailed(
-                "java.io.FileNotFoundException: Could not find jar: thisjardoesnotexistatall.jar");
+                "java.io.FileNotFoundException: "
+                        + "Could not find an artifact file associated with thisjardoesnotexistatall.jar");
         mListener.testRunEnded(0L, new HashMap<String, Metric>());
 
         EasyMock.replay(mListener);
@@ -280,7 +289,7 @@ public class JarHostTestTest {
             // expected
             assertEquals(
                     "java.io.FileNotFoundException: "
-                            + "Could not find jar: thisjardoesnotexistatall.jar",
+                            + "Could not find an artifact file associated with thisjardoesnotexistatall.jar",
                     expected.getMessage());
         }
         EasyMock.verify(mListener);
