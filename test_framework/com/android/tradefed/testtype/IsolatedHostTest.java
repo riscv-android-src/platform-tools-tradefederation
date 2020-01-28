@@ -222,7 +222,7 @@ public class IsolatedHostTest
                             .toURI();
 
             String isolationJarPath =
-                    (new File(tradefedJarPath)).getParentFile().getAbsolutePath()
+                    new File(tradefedJarPath).getParentFile().getAbsolutePath()
                             + "/tradefed-isolation.jar";
 
             paths.add(isolationJarPath);

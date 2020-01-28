@@ -151,7 +151,7 @@ public class StrictShardHelper extends ShardHelper {
             // In some cases because of the Math.ceil, some combination might run out of tests
             // before the last shard, in that case we populate a correction to rebalance the tests.
             needsCorrection = (numPerShard * (shardCount - 1)) > fullList.size();
-            correctionRatio = numPerShard - ((fullList.size() / (float) shardCount));
+            correctionRatio = numPerShard - (fullList.size() / (float) shardCount);
         }
         // Recalculate the number of tests per shard with the correction taken into account.
         numPerShard = (int) Math.floor(numPerShard - correctionRatio);
