@@ -17,7 +17,6 @@ package com.android.tradefed.testtype;
 
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -38,7 +37,6 @@ import com.android.tradefed.testtype.junit4.JUnit4ResultForwarder;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.JUnit4TestFilter;
 import com.android.tradefed.util.StreamUtil;
-import com.android.tradefed.util.SystemUtil.EnvVariable;
 import com.android.tradefed.util.TestFilterHelper;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -181,7 +179,6 @@ public class HostTest
 
     private static final String EXCLUDE_NO_TEST_FAILURE = "org.junit.runner.manipulation.Filter";
     private static final String TEST_FULL_NAME_FORMAT = "%s#%s";
-    private static final String ROOT_DIR = "ROOT_DIR";
 
     /** Track the downloaded files. */
     private List<File> mDownloadedFiles = new ArrayList<>();
@@ -865,7 +862,7 @@ public class HostTest
         for (String jarName : mJars) {
             JarFile jarFile = null;
             try {
-                File file = getJarFile(jarName, getBuild());
+                File file = getJarFile(jarName, mTestInfo);
                 jarFile = new JarFile(file);
                 Enumeration<JarEntry> e = jarFile.entries();
                 URL[] urls = {new URL(String.format("jar:file:%s!/", file.getAbsolutePath()))};
@@ -1107,14 +1104,16 @@ public class HostTest
         }
     }
 
-    /**
-     * We split by individual by either test class or method.
-     */
+    /** We split by individual by either test class or method. */
     @Override
-    public Collection<IRemoteTest> split(int shardCount) {
+    public Collection<IRemoteTest> split(Integer shardCount, TestInformation testInfo) {
+        if (shardCount == null) {
+            return null;
+        }
         if (shardCount < 1) {
             throw new IllegalArgumentException("Must have at least 1 shard");
         }
+        mTestInfo = testInfo;
         List<IRemoteTest> listTests = new ArrayList<>();
         List<Class<?>> classes = getClasses();
         if (classes.isEmpty()) {
@@ -1226,37 +1225,9 @@ public class HostTest
      * find our jar.
      */
     @VisibleForTesting
-    protected File getJarFile(String jarName, IBuildInfo buildInfo) throws FileNotFoundException {
-        File jarFile = null;
-        // Check env variable
-        String testcasesPath = System.getenv(EnvVariable.ANDROID_HOST_OUT_TESTCASES.toString());
-        if (testcasesPath != null) {
-            File testCasesFile = new File(testcasesPath);
-            jarFile = searchJarFile(testCasesFile, jarName);
-        }
-        if (jarFile != null) {
-            return jarFile;
-        }
-
-        // Check tests dir
-        if (buildInfo instanceof IDeviceBuildInfo) {
-            IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) buildInfo;
-            File testDir = deviceBuildInfo.getTestsDir();
-            jarFile = searchJarFile(testDir, jarName);
-        }
-        if (jarFile != null) {
-            return jarFile;
-        }
-
-        // Check ROOT_DIR
-        if (buildInfo.getBuildAttributes().get(ROOT_DIR) != null) {
-            jarFile =
-                    searchJarFile(new File(buildInfo.getBuildAttributes().get(ROOT_DIR)), jarName);
-        }
-        if (jarFile != null) {
-            return jarFile;
-        }
-        throw new FileNotFoundException(String.format("Could not find jar: %s", jarName));
+    protected File getJarFile(String jarName, TestInformation testInfo)
+            throws FileNotFoundException {
+        return testInfo.getDependencyFile(jarName, /* target first*/ false);
     }
 
     @VisibleForTesting
@@ -1271,15 +1242,5 @@ public class HostTest
         } catch (BuildRetrievalError | ConfigurationException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private File searchJarFile(File baseSearchFile, String jarName) {
-        if (baseSearchFile != null && baseSearchFile.isDirectory()) {
-            File jarFile = FileUtil.findFile(baseSearchFile, jarName);
-            if (jarFile != null && jarFile.isFile()) {
-                return jarFile;
-            }
-        }
-        return null;
     }
 }
