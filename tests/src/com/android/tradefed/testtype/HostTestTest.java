@@ -1627,7 +1627,7 @@ public class HostTestTest extends TestCase {
         setter.setOptionValue("class", Junit4SuiteClass.class.getName());
         setter.setOptionValue("class", SuccessTestSuite.class.getName());
         setter.setOptionValue("class", TestRemoteNotCollector.class.getName());
-        List<IRemoteTest> list = (ArrayList<IRemoteTest>) mHostTest.split(1);
+        List<IRemoteTest> list = (ArrayList<IRemoteTest>) mHostTest.split(1, mTestInfo);
         // split by class; numShards parameter should be ignored
         assertEquals(3, list.size());
         assertEquals(
@@ -1686,7 +1686,8 @@ public class HostTestTest extends TestCase {
             SuccessTestSuite.class,
             TestRemoteNotCollector.class,
         };
-        List<IRemoteTest> list = (ArrayList<IRemoteTest>) mHostTest.split(expectedTestCaseClasses.length);
+        List<IRemoteTest> list =
+                (ArrayList<IRemoteTest>) mHostTest.split(expectedTestCaseClasses.length, mTestInfo);
         assertEquals(expectedTestCaseClasses.length, list.size());
         for (int i = 0; i < expectedTestCaseClasses.length; i++) {
             IRemoteTest shard = list.get(i);
@@ -1717,7 +1718,7 @@ public class HostTestTest extends TestCase {
      */
     public void testSplit_noClass() throws Exception {
         try {
-            mHostTest.split(1);
+            mHostTest.split(1, mTestInfo);
             fail("Should have thrown an exception");
         } catch (IllegalArgumentException e) {
             assertEquals("Missing Test class name", e.getMessage());
@@ -1734,7 +1735,7 @@ public class HostTestTest extends TestCase {
         setter.setOptionValue("class", SuccessTestSuite.class.getName());
         mHostTest.setMethodName("testPass2");
         try {
-            mHostTest.split(1);
+            mHostTest.split(1, mTestInfo);
             fail("Should have thrown an exception");
         } catch (IllegalArgumentException e) {
             assertEquals("Method name given with multiple test classes", e.getMessage());
@@ -1782,7 +1783,7 @@ public class HostTestTest extends TestCase {
         assertEquals(expectedTestCaseClasses.length, numTestCases);
         for (int i = 0, j = 0; i < numShards ; i++) {
             IRemoteTest shard;
-            shard = new ArrayList<>(mHostTest.split(numShards)).get(i);
+            shard = new ArrayList<>(mHostTest.split(numShards, mTestInfo)).get(i);
             assertTrue(shard instanceof HostTest);
             HostTest hostTest = (HostTest)shard;
             int q = numTestCases / numShards;
@@ -1956,7 +1957,7 @@ public class HostTestTest extends TestCase {
         setter.setOptionValue("class", AnotherTestCase.class.getName());
         mHostTest.addExcludeFilter(
                 "com.android.tradefed.testtype.HostTestTest$SuccessTestCase#testPass");
-        Collection<IRemoteTest> res = mHostTest.split(1);
+        Collection<IRemoteTest> res = mHostTest.split(1, mTestInfo);
         // split by class; numShards parameter should be ignored
         assertEquals(2, res.size());
 
@@ -2100,7 +2101,7 @@ public class HostTestTest extends TestCase {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("shard-unit", "method");
 
-        Collection<IRemoteTest> res = mHostTest.split(expectedTids.length);
+        Collection<IRemoteTest> res = mHostTest.split(expectedTids.length, mTestInfo);
         assertEquals(expectedTids.length, res.size());
 
         for (TestDescription tid : expectedTids) {
@@ -2217,7 +2218,7 @@ public class HostTestTest extends TestCase {
         mHostTest.addExcludeFilter(Junit4TestClass.class.getName());
         mHostTest.addExcludeFilter(AnotherTestCase.class.getName());
 
-        Collection<IRemoteTest> tests = mHostTest.split(6);
+        Collection<IRemoteTest> tests = mHostTest.split(6, mTestInfo);
         assertEquals(2, tests.size());
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof HostTest);
