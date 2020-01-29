@@ -248,7 +248,7 @@ public class BaseRetryDecision implements IRetryDecision {
         // Return all the non-stub device (the one we can actually do some recovery against)
         return listDevices
                 .stream()
-                .filter(d -> (!(d.getIDevice() instanceof StubDevice)))
+                .filter(d -> !(d.getIDevice() instanceof StubDevice))
                 .collect(Collectors.toList());
     }
 

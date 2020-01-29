@@ -299,7 +299,7 @@ public class LogUtil {
          *         class) for the given element of the stack trace.
          */
         public static String getClassName(int frame) {
-            StackTraceElement[] frames = (new Throwable()).getStackTrace();
+            StackTraceElement[] frames = new Throwable().getStackTrace();
             return parseClassName(frames[frame].getClassName());
         }
 
