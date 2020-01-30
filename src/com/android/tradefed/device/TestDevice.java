@@ -27,6 +27,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.KeyguardControllerState;
@@ -194,6 +195,9 @@ public class TestDevice extends NativeDevice {
                 packageFile.getAbsolutePath(), extraArgs.toString(), getSerialNumber());
         performDeviceAction(String.format("install %s", packageFile.getAbsolutePath()),
                 installAction, MAX_RETRY_ATTEMPTS);
+        List<File> packageFiles = new ArrayList();
+        packageFiles.add(packageFile);
+        allowLegacyStorageForApps(packageFiles);
         return response[0];
     }
 
@@ -332,6 +336,9 @@ public class TestDevice extends NativeDevice {
                 };
         performDeviceAction(String.format("install %s", packageFile.getAbsolutePath()),
                 installAction, MAX_RETRY_ATTEMPTS);
+        List<File> packageFiles = new ArrayList();
+        packageFiles.add(packageFile);
+        allowLegacyStorageForApps(packageFiles);
         return response[0];
     }
 
@@ -404,7 +411,43 @@ public class TestDevice extends NativeDevice {
                 String.format("install %s", packageFiles.toString()),
                 installAction,
                 MAX_RETRY_ATTEMPTS);
+        allowLegacyStorageForApps(packageFiles);
         return response[0];
+    }
+
+    /**
+     * Allows Legacy External Storage access for apps that request for it.
+     *
+     * <p>Apps that request for legacy external storage access are granted the access by setting
+     * MANAGE_EXTERNAL_STORAGE App Op. This gives the app File manager privileges, File managers
+     * have legacy external storage access.
+     *
+     * @param appFiles List of Files. Apk Files of the apps that are installed.
+     */
+    private void allowLegacyStorageForApps(List<File> appFiles) throws DeviceNotAvailableException {
+        for (File appFile : appFiles) {
+            AaptParser aaptParser = AaptParser.parse(appFile);
+            if (aaptParser != null && aaptParser.isRequestingLegacyStorage()) {
+                // Set the MANAGE_EXTERNAL_STORAGE App Op to MODE_ALLOWED (Code = 0)
+                // for all users.
+                ArrayList<Integer> userIds = listUsers();
+                for (int userId : userIds) {
+                    CommandResult setFileManagerAppOpResult =
+                            executeShellV2Command(
+                                    "appops set --user "
+                                            + userId
+                                            + " --uid "
+                                            + aaptParser.getPackageName()
+                                            + " MANAGE_EXTERNAL_STORAGE 0");
+                    if (!CommandStatus.SUCCESS.equals(setFileManagerAppOpResult.getStatus())) {
+                        CLog.e(
+                                "Failed to set MANAGE_EXTERNAL_STORAGE App Op to"
+                                        + " allow legacy external storage for: %s ; stderr: %s",
+                                aaptParser.getPackageName(), setFileManagerAppOpResult.getStderr());
+                    }
+                }
+            }
+        }
     }
 
     /** {@inheritDoc} */
