@@ -41,6 +41,9 @@ public class AaptParser {
     private static final Pattern NATIVE_CODE_PATTERN =
             Pattern.compile("native-code: '(.*?)'( '.*?')*");
 
+    private static final Pattern REQUEST_LEGACY_STORAGE_PATTERN =
+            Pattern.compile("requestLegacyExternalStorage.*=\\(.*\\)(.*)", Pattern.MULTILINE);
+
     private static final Pattern ALT_NATIVE_CODE_PATTERN =
             Pattern.compile("alt-native-code: '(.*)'");
     private static final int AAPT_TIMEOUT_MS = 60000;
@@ -52,6 +55,7 @@ public class AaptParser {
     private List<String> mNativeCode = new ArrayList<>();
     private String mLabel;
     private int mSdkVersion = INVALID_SDK;
+    private boolean mRequestLegacyStorage = false;
 
     // @VisibleForTesting
     AaptParser() {
@@ -96,6 +100,16 @@ public class AaptParser {
         return false;
     }
 
+    boolean parseXmlTree(String aaptOut) {
+        Matcher m = REQUEST_LEGACY_STORAGE_PATTERN.matcher(aaptOut);
+        if (m.find()) {
+            // 0xffffffff is true and 0x0 is false
+            mRequestLegacyStorage = m.group(1).equals("0xffffffff");
+        }
+        // REQUEST_LEGACY_STORAGE_PATTERN may or may not be present
+        return true;
+    }
+
     /**
      * Parse info from the apk.
      *
@@ -118,17 +132,38 @@ public class AaptParser {
         if (stderr != null && !stderr.isEmpty()) {
             CLog.e("aapt dump badging stderr: %s", stderr);
         }
-
-        if (CommandStatus.SUCCESS.equals(result.getStatus())) {
-            AaptParser p = new AaptParser();
-            if (p.parse(result.getStdout()))
-                return p;
+        AaptParser p = new AaptParser();
+        if (!CommandStatus.SUCCESS.equals(result.getStatus()) || !p.parse(result.getStdout())) {
+            CLog.e(
+                    "Failed to run aapt on %s. stdout: %s",
+                    apkFile.getAbsoluteFile(), result.getStdout());
             return null;
         }
-        CLog.e(
-                "Failed to run aapt on %s. stdout: %s",
-                apkFile.getAbsoluteFile(), result.getStdout());
-        return null;
+        result =
+                RunUtil.getDefault()
+                        .runTimedCmdRetry(
+                                AAPT_TIMEOUT_MS,
+                                0L,
+                                2,
+                                "aapt",
+                                "dump",
+                                "xmltree",
+                                apkFile.getAbsolutePath(),
+                                "AndroidManifest.xml");
+
+        stderr = result.getStderr();
+        if (stderr != null && !stderr.isEmpty()) {
+            CLog.e("aapt dump xmltree AndroidManifest.xml stderr: %s", stderr);
+        }
+
+        if (!CommandStatus.SUCCESS.equals(result.getStatus())
+                || !p.parseXmlTree(result.getStdout())) {
+            CLog.e(
+                    "Failed to run aapt on %s. stdout: %s",
+                    apkFile.getAbsoluteFile(), result.getStdout());
+            return null;
+        }
+        return p;
     }
 
     public String getPackageName() {
@@ -153,5 +188,14 @@ public class AaptParser {
 
     public int getSdkVersion() {
         return mSdkVersion;
+    }
+
+    /**
+     * Check if the app is requesting legacy storage.
+     *
+     * @return boolean return true if requestLegacyExternalStorage is true in AndroidManifest.xml
+     */
+    public boolean isRequestingLegacyStorage() {
+        return mRequestLegacyStorage;
     }
 }
