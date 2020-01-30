@@ -714,15 +714,9 @@ public class InvocationExecution implements IInvocationExecution {
     }
 
     private void addRetryTime(long retryTimeMs) {
-        long totalRetryMs = retryTimeMs;
-        String retryTime =
-                InvocationMetricLogger.getInvocationMetrics()
-                        .get(InvocationMetricKey.AUTO_RETRY_TIME.toString());
-        if (retryTime != null) {
-            totalRetryMs += Long.parseLong(retryTime) + retryTimeMs;
-        }
+        // InvocationMetricLogger automatically adds the auto retry time.
         InvocationMetricLogger.addInvocationMetrics(
-                InvocationMetricKey.AUTO_RETRY_TIME, Long.toString(totalRetryMs));
+                InvocationMetricKey.AUTO_RETRY_TIME, retryTimeMs);
     }
 
     private void linkExternalDirs(IBuildInfo info, TestInformation testInfo) {
