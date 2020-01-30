@@ -206,8 +206,9 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer {
                 start = System.currentTimeMillis();
                 deviceManager.takeFlashingPermit();
                 queueTime = System.currentTimeMillis() - start;
-                CLog.v("Flashing permit obtained after %ds",
-                        TimeUnit.MILLISECONDS.toSeconds((queueTime)));
+                CLog.v(
+                        "Flashing permit obtained after %ds",
+                        TimeUnit.MILLISECONDS.toSeconds(queueTime));
 
                 flasher.overrideDeviceOptions(device);
                 flasher.setUserDataFlashOption(mUserDataFlashOption);

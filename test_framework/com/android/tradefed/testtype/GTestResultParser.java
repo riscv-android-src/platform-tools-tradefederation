@@ -727,7 +727,7 @@ public class GTestResultParser extends MultiLineReceiver {
         String testRunStackTrace = "";
 
         // Report that the last known test failed
-        if ((mCurrentTestResult != null) && (mCurrentTestResult.isComplete())) {
+        if ((mCurrentTestResult != null) && mCurrentTestResult.isComplete()) {
             // current test results are cleared out after every complete test run,
             // if it's not null, assume the last test caused this and report as a test failure
             TestDescription testId =

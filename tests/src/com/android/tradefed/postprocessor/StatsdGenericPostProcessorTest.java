@@ -465,12 +465,12 @@ public class StatsdGenericPostProcessorTest {
                         .anyMatch(
                                 e ->
                                         keyComponents.stream().allMatch(c -> e.getKey().contains(c))
-                                                && (String.valueOf(value)
+                                                && String.valueOf(value)
                                                         .equals(
                                                                 e.getValue()
                                                                         .build()
                                                                         .getMeasurements()
-                                                                        .getSingleString()))));
+                                                                        .getSingleString())));
     }
 
     /** Assert that metrics do not contain a key with a series of components. */

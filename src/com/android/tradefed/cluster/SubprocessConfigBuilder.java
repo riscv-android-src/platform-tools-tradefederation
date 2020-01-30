@@ -66,7 +66,7 @@ public class SubprocessConfigBuilder {
         // time. So it doesn't load mOriginalConfig as IConfiguration and add additional config.
         // Instead, it creates a wrapper config including mOriginalConfig.
         File f = new File(mWorkdir, configName);
-        PrintWriter writer = new PrintWriter((f));
+        PrintWriter writer = new PrintWriter(f);
         KXmlSerializer serializer = new KXmlSerializer();
         serializer.setOutput(writer);
         serializer.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
