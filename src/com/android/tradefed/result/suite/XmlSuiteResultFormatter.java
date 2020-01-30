@@ -463,8 +463,8 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
 
             parser.nextTag();
             parser.require(XmlPullParser.START_TAG, NS, RESULT_TAG);
-            invocation.startTime = (Long.valueOf(parser.getAttributeValue(NS, START_TIME_ATTR)));
-            invocation.endTime = (Long.valueOf(parser.getAttributeValue(NS, END_TIME_ATTR)));
+            invocation.startTime = Long.valueOf(parser.getAttributeValue(NS, START_TIME_ATTR));
+            invocation.endTime = Long.valueOf(parser.getAttributeValue(NS, END_TIME_ATTR));
             invocation.hostName = parser.getAttributeValue(NS, HOST_NAME_ATTR);
             context.addInvocationAttribute(
                     COMMAND_LINE_ARGS, parser.getAttributeValue(NS, COMMAND_LINE_ARGS));

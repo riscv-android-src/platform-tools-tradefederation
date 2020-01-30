@@ -256,7 +256,7 @@ public class SubprocessTestResultsParserTest {
         ITestInvocationListener mockRunListener =
                 EasyMock.createMock(ITestInvocationListener.class);
         Capture<Throwable> cap = new Capture<Throwable>();
-        mockRunListener.invocationFailed((EasyMock.capture(cap)));
+        mockRunListener.invocationFailed(EasyMock.capture(cap));
         EasyMock.replay(mockRunListener);
         File tmp = FileUtil.createTempFile("sub", "unit");
         SubprocessTestResultsParser resultParser = null;
