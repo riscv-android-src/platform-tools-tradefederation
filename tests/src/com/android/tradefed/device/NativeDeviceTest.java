@@ -1666,6 +1666,46 @@ public class NativeDeviceTest {
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
+    /** Unit test for {@link NativeDevice#rebootIntoBootloader()}}. */
+    @Test
+    public void testRebootIntoBootloader() throws Exception {
+        NativeDevice testDevice =
+                new NativeDevice(mMockIDevice, mMockStateMonitor, mMockDvcMonitor) {
+                    @Override
+                    public TestDeviceState getDeviceState() {
+                        return TestDeviceState.ONLINE;
+                    }
+                };
+        String into = "bootloader";
+        mMockIDevice.reboot(into);
+        EasyMock.expectLastCall();
+        EasyMock.expect(mMockStateMonitor.waitForDeviceBootloader(EasyMock.anyLong()))
+                .andReturn(true);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        testDevice.rebootIntoBootloader();
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+    }
+
+    /** Unit test for {@link NativeDevice#rebootIntoFastbootd()}}. */
+    @Test
+    public void testRebootIntoFastbootd() throws Exception {
+        NativeDevice testDevice =
+                new NativeDevice(mMockIDevice, mMockStateMonitor, mMockDvcMonitor) {
+                    @Override
+                    public TestDeviceState getDeviceState() {
+                        return TestDeviceState.ONLINE;
+                    }
+                };
+        String into = "fastboot";
+        mMockIDevice.reboot(into);
+        EasyMock.expectLastCall();
+        EasyMock.expect(mMockStateMonitor.waitForDeviceBootloader(EasyMock.anyLong()))
+                .andReturn(true);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        testDevice.rebootIntoFastbootd();
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+    }
+
     /** Unit test for {@link NativeDevice#unlockDevice()} already decrypted. */
     @Test
     public void testUnlockDevice_skipping() throws Exception {
