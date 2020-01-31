@@ -255,8 +255,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
             String runOptions = "";
             // hidden-api-checks flag only exists in P and after.
             // Using a temp variable to consolidate the dynamic checks
-            int apiLevel = (!mHiddenApiChecks) || (!mWindowAnimation)
-                    ? getDevice().getApiLevel() : 0;
+            int apiLevel = !mHiddenApiChecks || !mWindowAnimation ? getDevice().getApiLevel() : 0;
             if (!mHiddenApiChecks && apiLevel >= 28) {
                 runOptions += "--no-hidden-api-checks ";
             }

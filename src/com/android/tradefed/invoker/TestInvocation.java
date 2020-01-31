@@ -355,6 +355,9 @@ public class TestInvocation implements ITestInvocation {
                 }
             }
             mStatus = "done running tests";
+            // Track the timestamp when we are done with devices
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.DEVICE_DONE_TIMESTAMP, System.currentTimeMillis());
             try {
                 // Clean up host.
                 invocationPath.doCleanUp(context, config, exception);
