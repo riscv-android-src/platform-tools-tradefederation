@@ -111,7 +111,7 @@ public class LogcatOnFailureCollectorTest {
                 EasyMock.eq("runName"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         TestDescription test = new TestDescription("class", "test");
         mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
-        mMockListener.testFailed(EasyMock.eq(test), EasyMock.anyObject());
+        mMockListener.testFailed(EasyMock.eq(test), (String) EasyMock.anyObject());
         mMockListener.testEnded(
                 EasyMock.eq(test),
                 EasyMock.anyLong(),
@@ -152,7 +152,7 @@ public class LogcatOnFailureCollectorTest {
                 EasyMock.eq("runName"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         TestDescription test = new TestDescription("class", "test");
         mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
-        mMockListener.testFailed(EasyMock.eq(test), EasyMock.anyObject());
+        mMockListener.testFailed(EasyMock.eq(test), (String) EasyMock.anyObject());
         mMockListener.testEnded(
                 EasyMock.eq(test),
                 EasyMock.anyLong(),
@@ -201,7 +201,7 @@ public class LogcatOnFailureCollectorTest {
         TestDescription test = new TestDescription("class", "test");
         TestDescription test2 = new TestDescription("class2", "test2");
         mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
-        mMockListener.testFailed(EasyMock.eq(test), EasyMock.anyObject());
+        mMockListener.testFailed(EasyMock.eq(test), (String) EasyMock.anyObject());
         mMockListener.testEnded(
                 EasyMock.eq(test),
                 EasyMock.anyLong(),
@@ -221,7 +221,7 @@ public class LogcatOnFailureCollectorTest {
         mMockListener.testRunStarted(
                 EasyMock.eq("runName2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mMockListener.testFailed(EasyMock.eq(test2), EasyMock.anyObject());
+        mMockListener.testFailed(EasyMock.eq(test2), (String) EasyMock.anyObject());
         mMockListener.testEnded(
                 EasyMock.eq(test2),
                 EasyMock.anyLong(),

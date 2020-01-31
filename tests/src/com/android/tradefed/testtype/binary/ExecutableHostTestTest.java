@@ -120,8 +120,8 @@ public class ExecutableHostTestTest {
             mExecutableTest.run(mTestInfo, mMockListener);
 
             verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(1));
-            verify(mMockListener, Mockito.times(0)).testRunFailed(any());
-            verify(mMockListener, Mockito.times(0)).testFailed(any(), any());
+            verify(mMockListener, Mockito.times(0)).testRunFailed((String) any());
+            verify(mMockListener, Mockito.times(0)).testFailed(any(), (String) any());
             verify(mMockListener, Mockito.times(1))
                     .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {
@@ -154,8 +154,8 @@ public class ExecutableHostTestTest {
             mExecutableTest.run(mTestInfo, mMockListener);
 
             verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(1));
-            verify(mMockListener, Mockito.times(0)).testRunFailed(any());
-            verify(mMockListener, Mockito.times(0)).testFailed(any(), any());
+            verify(mMockListener, Mockito.times(0)).testRunFailed((String) any());
+            verify(mMockListener, Mockito.times(0)).testFailed(any(), (String) any());
             verify(mMockListener, Mockito.times(1))
                     .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {
@@ -194,7 +194,7 @@ public class ExecutableHostTestTest {
                                     String.format(
                                             "Device became unavailable after %s.",
                                             tmpBinary.getAbsolutePath())));
-            verify(mMockListener, Mockito.times(0)).testFailed(any(), any());
+            verify(mMockListener, Mockito.times(0)).testFailed(any(), (String) any());
             verify(mMockListener, Mockito.times(1))
                     .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {
@@ -226,8 +226,8 @@ public class ExecutableHostTestTest {
             mExecutableTest.run(mTestInfo, mMockListener);
 
             verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(1));
-            verify(mMockListener, Mockito.times(0)).testRunFailed(any());
-            verify(mMockListener, Mockito.times(0)).testFailed(any(), any());
+            verify(mMockListener, Mockito.times(0)).testRunFailed((String) any());
+            verify(mMockListener, Mockito.times(0)).testFailed(any(), (String) any());
             verify(mMockListener, Mockito.times(1))
                     .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {
@@ -300,7 +300,7 @@ public class ExecutableHostTestTest {
             mExecutableTest.run(mTestInfo, mMockListener);
 
             verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(1));
-            verify(mMockListener, Mockito.times(0)).testRunFailed(any());
+            verify(mMockListener, Mockito.times(0)).testRunFailed((String) any());
             verify(mMockListener, Mockito.times(1)).testFailed(any(), eq("stdout\nExit Code: 5"));
             verify(mMockListener, Mockito.times(1))
                     .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());

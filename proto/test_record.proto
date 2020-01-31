@@ -94,4 +94,22 @@ message DebugInfo {
 
   // A stacktrace.
   string trace = 2;
+
+  // A more detailed failure status description.
+  FailureStatus failure_status = 3;
+}
+
+// A Fail TestStatus can be associated with a more granular failure status that helps understanding
+// the context.
+enum FailureStatus {
+  // The test in progress was the reason for the failure.
+  TEST_FAILURE = 0;
+  // A timeout condition on the operation in progress occurred.
+  TIMED_OUT = 1;
+  // The test in progress was cancelled.
+  CANCELLED = 2;
+  // A failure attributed to something not functioning properly.
+  INFRA_FAILURE = 10;
+  // System under test crashed and caused the test to fail.
+  SYSTEM_UNDER_TEST_CRASHED = 20;
 }

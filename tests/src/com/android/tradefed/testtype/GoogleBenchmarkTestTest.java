@@ -267,7 +267,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
                                         "%s/test1 --benchmark_list_tests=true", nativeTestPath)))
                 .andReturn("method1\nmethod2\nmethod3");
         mMockInvocationListener.testRunStarted(test1, 3);
-        mMockInvocationListener.testRunFailed(EasyMock.anyObject());
+        mMockInvocationListener.testRunFailed((String) EasyMock.anyObject());
         // Even with exception testrunEnded is expected.
         mMockInvocationListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());

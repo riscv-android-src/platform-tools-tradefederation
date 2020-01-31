@@ -160,6 +160,7 @@ import com.android.tradefed.result.ConsoleResultReporterTest;
 import com.android.tradefed.result.DeviceFileReporterTest;
 import com.android.tradefed.result.DeviceUnavailEmailResultReporterTest;
 import com.android.tradefed.result.EmailResultReporterTest;
+import com.android.tradefed.result.FailureDescriptionTest;
 import com.android.tradefed.result.FailureEmailResultReporterTest;
 import com.android.tradefed.result.FileSystemLogSaverTest;
 import com.android.tradefed.result.InvocationFailureEmailResultReporterTest;
@@ -170,6 +171,7 @@ import com.android.tradefed.result.LegacySubprocessResultsReporterTest;
 import com.android.tradefed.result.LogFileSaverTest;
 import com.android.tradefed.result.LogcatCrashResultForwarderTest;
 import com.android.tradefed.result.MetricsXMLResultReporterTest;
+import com.android.tradefed.result.MultiFailureDescriptionTest;
 import com.android.tradefed.result.SnapshotInputStreamSourceTest;
 import com.android.tradefed.result.SubprocessResultsReporterTest;
 import com.android.tradefed.result.TestDescriptionTest;
@@ -589,6 +591,7 @@ import org.junit.runners.Suite.SuiteClasses;
     DeviceFileReporterTest.class,
     DeviceUnavailEmailResultReporterTest.class,
     EmailResultReporterTest.class,
+    FailureDescriptionTest.class,
     FailureEmailResultReporterTest.class,
     FileSystemLogSaverTest.class,
     InvocationFailureEmailResultReporterTest.class,
@@ -599,6 +602,7 @@ import org.junit.runners.Suite.SuiteClasses;
     LogcatCrashResultForwarderTest.class,
     LogFileSaverTest.class,
     MetricsXMLResultReporterTest.class,
+    MultiFailureDescriptionTest.class,
     SnapshotInputStreamSourceTest.class,
     SubprocessResultsReporterTest.class,
     TestDescriptionTest.class,
