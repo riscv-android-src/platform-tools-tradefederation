@@ -166,7 +166,7 @@ public class RustBinaryHostTestTest {
                     EasyMock.anyObject());
             // Report a failure if we cannot parse the logs and the logs is not empty.
             mMockListener.testRunStarted(binary.getName(), 0);
-            mMockListener.testRunFailed(EasyMock.anyObject());
+            mMockListener.testRunFailed((String) EasyMock.anyObject());
             mMockListener.testRunEnded(
                     EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 

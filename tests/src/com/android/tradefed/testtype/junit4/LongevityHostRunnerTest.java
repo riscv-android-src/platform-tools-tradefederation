@@ -226,7 +226,7 @@ public class LongevityHostRunnerTest {
         mHostTest.publicSetClassName(PassingLongevitySuite.class.getName());
         mHostTest.run(mTestInfo, mMockListener);
         // Verify nothing failed, but something passed.
-        verify(mMockListener, never()).testFailed(any(), any());
+        verify(mMockListener, never()).testFailed(any(), (String) any());
         verify(mMockListener).testEnded(any(), Mockito.<HashMap<String, Metric>>any());
     }
 
