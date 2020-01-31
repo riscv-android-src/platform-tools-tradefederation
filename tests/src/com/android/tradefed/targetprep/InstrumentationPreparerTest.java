@@ -99,7 +99,7 @@ public class InstrumentationPreparerTest {
                     public void run(TestInformation testInfo, ITestInvocationListener listener) {
                         listener.testRunStarted(packageName, 1);
                         listener.testStarted(test);
-                        listener.testFailed(test, null);
+                        listener.testFailed(test, "error");
                         listener.testEnded(test, new HashMap<String, Metric>());
                         listener.testRunEnded(0, new HashMap<String, Metric>());
                     }

@@ -497,16 +497,16 @@ public class PythonUnitTestResultParserTest {
 
         mMockListener.testFailed(
                 EasyMock.eq(new TestDescription("__main__.DisconnectionTest", "test_disconnect")),
-                EasyMock.anyObject());
+                (String) EasyMock.anyObject());
         mMockListener.testFailed(
                 EasyMock.eq(new TestDescription("__main__.EmulatorTest", "test_emulator_connect")),
-                EasyMock.anyObject());
+                (String) EasyMock.anyObject());
         mMockListener.testIgnored(
                 EasyMock.eq(new TestDescription("__main__.PowerTest", "test_resume_usb_kick")));
         // Multi-line error
         mMockListener.testFailed(
                 EasyMock.eq(new TestDescription("__main__.ServerTest", "test_handle_inheritance")),
-                EasyMock.anyObject());
+                (String) EasyMock.anyObject());
 
         mMockListener.testRunEnded(10314, new HashMap<String, Metric>());
         replay(mMockListener);
@@ -550,7 +550,7 @@ public class PythonUnitTestResultParserTest {
 
         mMockListener.testFailed(
                 EasyMock.eq(new TestDescription("__main__.ConnectionTest", "test_reconnect")),
-                EasyMock.anyObject());
+                (String) EasyMock.anyObject());
         mMockListener.testIgnored(
                 EasyMock.eq(new TestDescription("__main__.PowerTest", "test_resume_usb_kick")));
 
