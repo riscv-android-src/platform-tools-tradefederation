@@ -456,7 +456,7 @@ public class ModuleDefinitionTest {
                     EasyMock.anyLong(),
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
-        mMockListener.testFailed(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testFailed(EasyMock.anyObject(), (String) EasyMock.anyObject());
         String aggError =
                 "unresponsive\n====Next Error====\n"
                         + "Module fakeName only ran 1 out of 4 expected tests.\n====Next "
@@ -877,8 +877,8 @@ public class ModuleDefinitionTest {
                     EasyMock.anyLong(),
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
-        mMockListener.testFailed(EasyMock.anyObject(), EasyMock.anyObject());
-        mMockListener.testRunFailed(EasyMock.anyObject());
+        mMockListener.testFailed(EasyMock.anyObject(), (String) EasyMock.anyObject());
+        mMockListener.testRunFailed((String) EasyMock.anyObject());
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         // Recovery is disabled during tearDown
@@ -939,8 +939,8 @@ public class ModuleDefinitionTest {
                     EasyMock.anyLong(),
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
-        mMockListener.testFailed(EasyMock.anyObject(), EasyMock.anyObject());
-        mMockListener.testRunFailed(EasyMock.anyObject());
+        mMockListener.testFailed(EasyMock.anyObject(), (String) EasyMock.anyObject());
+        mMockListener.testRunFailed((String) EasyMock.anyObject());
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
@@ -1283,7 +1283,7 @@ public class ModuleDefinitionTest {
                     EasyMock.anyLong(),
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
-        mMockListener.testFailed(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testFailed(EasyMock.anyObject(), (String) EasyMock.anyObject());
         mMockListener.testRunFailed(
                 "unresponsive"
                         + TestRunResult.ERROR_DIVIDER
@@ -1531,7 +1531,7 @@ public class ModuleDefinitionTest {
                     EasyMock.<HashMap<String, Metric>>anyObject());
             TestDescription testFail0 = new TestDescription(runName + "0class", "fail0");
             mMockListener.testStarted(EasyMock.eq(testFail0), EasyMock.anyLong());
-            mMockListener.testFailed(EasyMock.eq(testFail0), EasyMock.anyObject());
+            mMockListener.testFailed(EasyMock.eq(testFail0), (String) EasyMock.anyObject());
             mMockListener.testEnded(
                     EasyMock.eq(testFail0),
                     EasyMock.anyLong(),
@@ -1552,7 +1552,7 @@ public class ModuleDefinitionTest {
                     EasyMock.<HashMap<String, Metric>>anyObject());
             TestDescription testFail0_1 = new TestDescription(runName + "1class", "fail0");
             mMockListener.testStarted(EasyMock.eq(testFail0_1), EasyMock.anyLong());
-            mMockListener.testFailed(EasyMock.eq(testFail0_1), EasyMock.anyObject());
+            mMockListener.testFailed(EasyMock.eq(testFail0_1), (String) EasyMock.anyObject());
             mMockListener.testEnded(
                     EasyMock.eq(testFail0_1),
                     EasyMock.anyLong(),
@@ -1637,7 +1637,7 @@ public class ModuleDefinitionTest {
             }
             TestDescription testFail0 = new TestDescription(runName + "0class", "fail0");
             mMockListener.testStarted(EasyMock.eq(testFail0), EasyMock.anyLong());
-            mMockListener.testFailed(EasyMock.eq(testFail0), EasyMock.anyObject());
+            mMockListener.testFailed(EasyMock.eq(testFail0), (String) EasyMock.anyObject());
             mMockListener.testEnded(
                     EasyMock.eq(testFail0),
                     EasyMock.anyLong(),
@@ -1662,7 +1662,7 @@ public class ModuleDefinitionTest {
             }
             TestDescription testFail0_1 = new TestDescription(runName + "1class", "fail0");
             mMockListener.testStarted(EasyMock.eq(testFail0_1), EasyMock.anyLong());
-            mMockListener.testFailed(EasyMock.eq(testFail0_1), EasyMock.anyObject());
+            mMockListener.testFailed(EasyMock.eq(testFail0_1), (String) EasyMock.anyObject());
             mMockListener.testEnded(
                     EasyMock.eq(testFail0_1),
                     EasyMock.anyLong(),

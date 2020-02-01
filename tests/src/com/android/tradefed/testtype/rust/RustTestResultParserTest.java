@@ -134,9 +134,10 @@ public class RustTestResultParserTest {
                     EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
         }
         mMockListener.testFailed(
-                EasyMock.eq(new TestDescription("test", "idents")), EasyMock.anyObject());
+                EasyMock.eq(new TestDescription("test", "idents")), (String) EasyMock.anyObject());
         mMockListener.testFailed(
-                EasyMock.eq(new TestDescription("test", "literal_string")), EasyMock.anyObject());
+                EasyMock.eq(new TestDescription("test", "literal_string")),
+                (String) EasyMock.anyObject());
         mMockListener.testRunEnded(0, new HashMap<String, Metric>());
         replay(mMockListener);
         mParser.processNewLines(contents);
