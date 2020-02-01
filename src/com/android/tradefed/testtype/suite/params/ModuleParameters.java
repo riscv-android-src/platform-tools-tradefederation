@@ -29,10 +29,9 @@ public enum ModuleParameters {
 
     public static final String INSTANT_APP_FAMILY = "instant_app_family";
     public static final String MULTI_ABI_FAMILY = "multi_abi_family";
+    public static final String SECONDARY_USER_FAMILY = "secondary_user_family";
     public static final String[] FAMILY_LIST =
-            new String[] {
-                INSTANT_APP_FAMILY, MULTI_ABI_FAMILY,
-            };
+            new String[] {INSTANT_APP_FAMILY, MULTI_ABI_FAMILY, SECONDARY_USER_FAMILY};
 
     private final String mName;
     /** Defines whether several module parameters are associated and mutually exclusive. */
