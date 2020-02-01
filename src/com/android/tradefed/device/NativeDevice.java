@@ -632,9 +632,7 @@ public class NativeDevice implements IManagedTestDevice {
         return prop;
     }
 
-    /** {@inheritDoc} */
-    @Override
-    public String getFastbootVariable(String variableName)
+    private String getFastbootVariable(String variableName)
             throws DeviceNotAvailableException, UnsupportedOperationException {
         CommandResult result = executeFastbootCommand("getvar", variableName);
         if (result.getStatus() == CommandStatus.SUCCESS) {
@@ -2897,43 +2895,21 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public void rebootIntoBootloader()
             throws DeviceNotAvailableException, UnsupportedOperationException {
-        rebootIntoFastbootInternal(true);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void rebootIntoFastbootd()
-            throws DeviceNotAvailableException, UnsupportedOperationException {
-        rebootIntoFastbootInternal(false);
-    }
-
-    /**
-     * Reboots the device into bootloader or fastbootd mode.
-     *
-     * @param isBootloader: true to boot the device into bootloader mode, false to boot the device
-     *     into fastbootd mode.
-     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
-     *     recovered.
-     */
-    private void rebootIntoFastbootInternal(boolean isBootloader)
-            throws DeviceNotAvailableException {
-        final RebootMode mode =
-                isBootloader ? RebootMode.REBOOT_INTO_BOOTLOADER : RebootMode.REBOOT_INTO_FASTBOOT;
         if (!mFastbootEnabled) {
             throw new UnsupportedOperationException(
-                    String.format("Fastboot is not available and cannot reboot into %s", mode));
+                    "Fastboot is not available and cannot reboot into bootloader");
         }
         // If we go to bootloader, it's probably for flashing so ensure we re-check the provider
         mShouldSkipContentProviderSetup = false;
         CLog.i(
-                "Rebooting device %s in state %s into %s",
-                getSerialNumber(), getDeviceState(), mode);
+                "Rebooting device %s in state %s into bootloader",
+                getSerialNumber(), getDeviceState());
         if (TestDeviceState.FASTBOOT.equals(getDeviceState())) {
             CLog.i("device %s already in fastboot. Rebooting anyway", getSerialNumber());
-            executeFastbootCommand(String.format("reboot-%s", mode));
+            executeFastbootCommand("reboot-bootloader");
         } else {
-            CLog.i("Booting device %s into %s", getSerialNumber(), mode);
-            doAdbReboot(mode, null);
+            CLog.i("Booting device %s into bootloader", getSerialNumber());
+            doAdbRebootBootloader();
         }
         if (!mStateMonitor.waitForDeviceBootloader(mOptions.getFastbootTimeout())) {
             recoverDeviceFromBootloader();
