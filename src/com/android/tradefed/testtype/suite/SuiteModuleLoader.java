@@ -64,7 +64,7 @@ import java.util.regex.Pattern;
 public class SuiteModuleLoader {
 
     public static final String CONFIG_EXT = ".config";
-    private Map<String, List<OptionDef>> mTestOptions = new HashMap<>();
+    private Map<String, List<OptionDef>> mTestOrPreparerOptions = new HashMap<>();
     private Map<String, List<OptionDef>> mModuleOptions = new HashMap<>();
     private boolean mIncludeAll;
     private Map<String, List<SuiteTestFilter>> mIncludeFilters = new HashMap<>();
@@ -93,7 +93,7 @@ public class SuiteModuleLoader {
         mIncludeFilters = includeFilters;
         mExcludeFilters = excludeFilters;
 
-        parseArgs(testArgs, mTestOptions);
+        parseArgs(testArgs, mTestOrPreparerOptions);
         parseArgs(moduleArgs, mModuleOptions);
     }
 
@@ -620,6 +620,10 @@ public class SuiteModuleLoader {
         // Set target preparers
         List<ITargetPreparer> preparers = config.getTargetPreparers();
         for (ITargetPreparer preparer : preparers) {
+            String className = preparer.getClass().getName();
+            if (mTestOrPreparerOptions.containsKey(className)) {
+                config.injectOptionValues(mTestOrPreparerOptions.get(className));
+            }
             if (preparer instanceof IAbiReceiver) {
                 ((IAbiReceiver) preparer).setAbi(abi);
             }
@@ -629,8 +633,8 @@ public class SuiteModuleLoader {
         List<IRemoteTest> tests = config.getTests();
         for (IRemoteTest test : tests) {
             String className = test.getClass().getName();
-            if (mTestOptions.containsKey(className)) {
-                config.injectOptionValues(mTestOptions.get(className));
+            if (mTestOrPreparerOptions.containsKey(className)) {
+                config.injectOptionValues(mTestOrPreparerOptions.get(className));
             }
             addFiltersToTest(test, abi, fullId, mIncludeFilters, mExcludeFilters);
             if (test instanceof IAbiReceiver) {
