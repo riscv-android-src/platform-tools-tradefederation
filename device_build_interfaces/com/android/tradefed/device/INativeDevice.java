@@ -125,16 +125,6 @@ public interface INativeDevice {
     public boolean setProperty(String propKey, String propValue) throws DeviceNotAvailableException;
 
     /**
-     * Retrieve the given fastboot variable value from the device.
-     *
-     * @param variableName the variable name
-     * @return the property value or <code>null</code> if it does not exist
-     * @throws DeviceNotAvailableException, UnsupportedOperationException
-     */
-    public String getFastbootVariable(String variableName)
-            throws DeviceNotAvailableException, UnsupportedOperationException;
-
-    /**
      * Convenience method to get the bootloader version of this device.
      * <p/>
      * Will attempt to retrieve bootloader version from the device's current state. (ie if device
@@ -933,16 +923,6 @@ public interface INativeDevice {
      * @throws DeviceNotAvailableException if device is not available after reboot
      */
     public void reboot(@Nullable String reason) throws DeviceNotAvailableException;
-
-    /**
-     * Reboots the device into fastbootd mode.
-     *
-     * <p>Blocks until device is in fastbootd mode.
-     *
-     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
-     *     recovered.
-     */
-    public void rebootIntoFastbootd() throws DeviceNotAvailableException;
 
     /**
      * Reboots only userspace part of device.
