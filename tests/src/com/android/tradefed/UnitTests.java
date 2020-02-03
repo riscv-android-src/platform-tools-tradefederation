@@ -302,6 +302,7 @@ import com.android.tradefed.util.FixedByteArrayOutputStreamTest;
 import com.android.tradefed.util.GCSFileDownloaderTest;
 import com.android.tradefed.util.GoogleApiClientUtilTest;
 import com.android.tradefed.util.HprofAllocSiteParserTest;
+import com.android.tradefed.util.JavaCodeCoverageFlusherTest;
 import com.android.tradefed.util.JUnitXmlParserTest;
 import com.android.tradefed.util.KeyguardControllerStateTest;
 import com.android.tradefed.util.ListInstrumentationParserTest;
@@ -742,6 +743,7 @@ import org.junit.runners.Suite.SuiteClasses;
     GCSFileDownloaderTest.class,
     GoogleApiClientUtilTest.class,
     HprofAllocSiteParserTest.class,
+    JavaCodeCoverageFlusherTest.class,
     JUnitXmlParserTest.class,
     KeyguardControllerStateTest.class,
     LegacySubprocessResultsReporterTest.class,
