@@ -24,6 +24,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -47,6 +48,7 @@ public class ResultsPlayerTest {
     private ResultsPlayer mPlayer;
     private ITestInvocationListener mMockListener;
     private IInvocationContext mContext;
+    private TestInformation mTestInfo;
     private ITestDevice mMockDevice;
     private IDevice mMockIDevice;
     private IConfiguration mMockConfig;
@@ -64,9 +66,9 @@ public class ResultsPlayerTest {
         EasyMock.expect(mMockLogOutput.getLogLevel()).andReturn(LogLevel.VERBOSE);
         mMockLogOutput.setLogLevel(LogLevel.WARN);
         mMockLogOutput.setLogLevel(LogLevel.VERBOSE);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(mContext).build();
 
         mPlayer = new ResultsPlayer();
-        mPlayer.setInvocationContext(mContext);
         mPlayer.setConfiguration(mMockConfig);
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
 
@@ -96,7 +98,7 @@ public class ResultsPlayerTest {
         mMockListener.testRunEnded(500L, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockListener, mMockDevice, mMockConfig, mMockLogOutput);
-        mPlayer.run(mMockListener);
+        mPlayer.run(mTestInfo, mMockListener);
         EasyMock.verify(mMockListener, mMockDevice, mMockConfig, mMockLogOutput);
     }
 
@@ -142,7 +144,7 @@ public class ResultsPlayerTest {
         mMockListener.testModuleEnded();
 
         EasyMock.replay(mMockListener, mMockDevice, mMockConfig, mMockLogOutput);
-        mPlayer.run(mMockListener);
+        mPlayer.run(mTestInfo, mMockListener);
         EasyMock.verify(mMockListener, mMockDevice, mMockConfig, mMockLogOutput);
     }
 
@@ -169,7 +171,7 @@ public class ResultsPlayerTest {
         mMockListener.testRunEnded(500L, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockListener, mMockDevice, mMockConfig, mMockLogOutput);
-        mPlayer.run(mMockListener);
+        mPlayer.run(mTestInfo, mMockListener);
         EasyMock.verify(mMockListener, mMockDevice, mMockConfig, mMockLogOutput);
     }
 
@@ -212,7 +214,7 @@ public class ResultsPlayerTest {
         mMockListener.testRunEnded(500L, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockListener, mMockDevice, mMockConfig, mMockLogOutput);
-        mPlayer.run(mMockListener);
+        mPlayer.run(mTestInfo, mMockListener);
         EasyMock.verify(mMockListener, mMockDevice, mMockConfig, mMockLogOutput);
     }
 
