@@ -38,6 +38,7 @@ import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecution;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.invoker.shard.LastShardDetector;
@@ -402,6 +403,7 @@ public class TestInvocation implements ITestInvocation {
                     }
                 }
             } finally {
+                TfObjectTracker.clearTracking();
                 CurrentInvocation.clearInvocationInfos();
                 invocationPath.cleanUpBuilds(context, config);
             }

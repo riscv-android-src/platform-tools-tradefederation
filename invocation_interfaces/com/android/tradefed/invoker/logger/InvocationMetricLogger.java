@@ -137,6 +137,8 @@ public class InvocationMetricLogger {
     /** Clear the invocation metrics for an invocation. */
     public static void clearInvocationMetrics() {
         ThreadGroup group = Thread.currentThread().getThreadGroup();
-        mPerGroupMetrics.remove(group);
+        synchronized (mPerGroupMetrics) {
+            mPerGroupMetrics.remove(group);
+        }
     }
 }
