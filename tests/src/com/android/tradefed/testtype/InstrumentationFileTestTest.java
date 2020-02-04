@@ -19,7 +19,6 @@ package com.android.tradefed.testtype;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
@@ -673,7 +672,7 @@ public class InstrumentationFileTestTest {
             }
         } catch (IOException e) {
             // fail if the file is corrupt in any way
-            fail("failed reading test file");
+            throw new RuntimeException(e);
         }
     }
 
