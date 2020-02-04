@@ -427,7 +427,9 @@ public class TestDevice extends NativeDevice {
     private void allowLegacyStorageForApps(List<File> appFiles) throws DeviceNotAvailableException {
         for (File appFile : appFiles) {
             AaptParser aaptParser = AaptParser.parse(appFile);
-            if (aaptParser != null && aaptParser.isRequestingLegacyStorage()) {
+            if (aaptParser != null
+                    && aaptParser.getTargetSdkVersion() > 29
+                    && aaptParser.isRequestingLegacyStorage()) {
                 // Set the MANAGE_EXTERNAL_STORAGE App Op to MODE_ALLOWED (Code = 0)
                 // for all users.
                 ArrayList<Integer> userIds = listUsers();
