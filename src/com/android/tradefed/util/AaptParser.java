@@ -37,6 +37,8 @@ public class AaptParser {
             Pattern.MULTILINE);
     private static final Pattern SDK_PATTERN = Pattern.compile(
             "^sdkVersion:'(\\d+)'", Pattern.MULTILINE);
+    private static final Pattern TARGET_SDK_PATTERN =
+            Pattern.compile("^targetSdkVersion:'(\\d+)'", Pattern.MULTILINE);
     /** Patterns for native code are not always present, so the list may stay empty. */
     private static final Pattern NATIVE_CODE_PATTERN =
             Pattern.compile("native-code: '(.*?)'( '.*?')*");
@@ -55,6 +57,7 @@ public class AaptParser {
     private List<String> mNativeCode = new ArrayList<>();
     private String mLabel;
     private int mSdkVersion = INVALID_SDK;
+    private int mTargetSdkVersion = 10000;
     private boolean mRequestLegacyStorage = false;
 
     // @VisibleForTesting
@@ -76,6 +79,10 @@ public class AaptParser {
             m = SDK_PATTERN.matcher(aaptOut);
             if (m.find()) {
                 mSdkVersion = Integer.parseInt(m.group(1));
+            }
+            m = TARGET_SDK_PATTERN.matcher(aaptOut);
+            if (m.find()) {
+                mTargetSdkVersion = Integer.parseInt(m.group(1));
             }
             m = NATIVE_CODE_PATTERN.matcher(aaptOut);
             if (m.find()) {
@@ -188,6 +195,10 @@ public class AaptParser {
 
     public int getSdkVersion() {
         return mSdkVersion;
+    }
+
+    public int getTargetSdkVersion() {
+        return mTargetSdkVersion;
     }
 
     /**

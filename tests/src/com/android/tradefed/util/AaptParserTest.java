@@ -220,4 +220,36 @@ public class AaptParserTest extends TestCase {
                         + ".CoreComponentFactory\" (Raw: \"androidx.core.app");
         assertFalse(p.isRequestingLegacyStorage());
     }
+
+    public void testParseTargetSdkVersion() {
+        AaptParser p = new AaptParser();
+        p.parse(
+                "package: name='com.android.foo' versionCode='13' versionName='2.3'\n"
+                        + "sdkVersion:'5'\n"
+                        + "targetSdkVersion:'29'\n"
+                        + "application-label-fr:'Faa'\n"
+                        + "uses-permission:'android.permission.INTERNET'");
+        assertEquals(29, p.getTargetSdkVersion());
+    }
+
+    public void testParseInvalidTargetSdkVersion() {
+        AaptParser p = new AaptParser();
+        p.parse(
+                "package: name='com.android.foo' versionCode='13' versionName='2.3'\n"
+                        + "sdkVersion:'5'\n"
+                        + "targetSdkVersion:'R'\n"
+                        + "application-label-fr:'Faa'\n"
+                        + "uses-permission:'android.permission.INTERNET'");
+        assertEquals(10000, p.getTargetSdkVersion());
+    }
+
+    public void testParseNoTargetSdkVersion() {
+        AaptParser p = new AaptParser();
+        p.parse(
+                "package: name='com.android.foo' versionCode='13' versionName='2.3'\n"
+                        + "sdkVersion:'5'\n"
+                        + "application-label-fr:'Faa'\n"
+                        + "uses-permission:'android.permission.INTERNET'");
+        assertEquals(10000, p.getTargetSdkVersion());
+    }
 }
