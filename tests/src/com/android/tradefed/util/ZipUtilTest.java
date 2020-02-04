@@ -266,9 +266,6 @@ public class ZipUtilTest extends TestCase {
             try (BufferedReader br = new BufferedReader(new FileReader(targetFile))) {
                 String line = br.readLine();
                 assertTrue(line.endsWith("this is a text file."));
-            } catch (IOException e) {
-                // fail if the file is corrupt in any way
-                fail("failed reading text file");
             }
             // Verify file permissions - read/write - 666 rw-rw-rw-
             permissions = Files.getPosixFilePermissions(targetFile.toPath());
