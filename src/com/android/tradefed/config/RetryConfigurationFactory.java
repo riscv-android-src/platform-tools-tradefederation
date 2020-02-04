@@ -51,7 +51,7 @@ public class RetryConfigurationFactory extends ConfigurationFactory {
         try {
             retryRunner.run(null, null);
             return retryRunner.getRetryConfiguration();
-        } catch (Exception e) {
+        } catch (Throwable e) {
             throw new ConfigurationException(e.getMessage(), e);
         }
     }
