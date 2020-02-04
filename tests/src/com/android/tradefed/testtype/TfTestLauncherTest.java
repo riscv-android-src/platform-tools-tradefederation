@@ -236,6 +236,9 @@ public class TfTestLauncherTest {
     public void testRunCoverage() throws Exception {
         OptionSetter setter = new OptionSetter(mTfTestLauncher);
         setter.setOptionValue("jacoco-code-coverage", "true");
+        setter.setOptionValue("include-coverage", "com.android.tradefed*");
+        setter.setOptionValue("include-coverage", "com.google.android.tradefed*");
+        setter.setOptionValue("exclude-coverage", "com.test*");
         EasyMock.expect(mMockBuildInfo.getRootDir()).andReturn(new File(""));
         EasyMock.expect(mMockBuildInfo.getTestTag()).andReturn(TEST_TAG);
         EasyMock.expect(mMockBuildInfo.getBuildBranch()).andReturn(BUILD_BRANCH).times(2);
@@ -253,6 +256,13 @@ public class TfTestLauncherTest {
             mTfTestLauncher.preRun();
             EasyMock.verify(mMockBuildInfo, mMockRunUtil, mMockListener);
             assertTrue(mTfTestLauncher.mCmdArgs.get(2).startsWith("-javaagent:"));
+            assertTrue(
+                    mTfTestLauncher
+                            .mCmdArgs
+                            .get(2)
+                            .contains(
+                                    "includes=com.android.tradefed*:com.google.android.tradefed*,"
+                                            + "excludes=com.test*"));
         } finally {
             FileUtil.recursiveDelete(mTfTestLauncher.mTmpDir);
             mTfTestLauncher.cleanTmpFile();
