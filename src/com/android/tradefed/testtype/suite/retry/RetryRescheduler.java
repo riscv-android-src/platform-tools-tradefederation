@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.testtype.suite.retry;
 
+import static org.junit.Assert.assertNull;
+
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
@@ -114,6 +116,9 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
             TestInformation testInfo /* do not use - should be null */,
             ITestInvocationListener listener /* do not use - should be null */)
             throws DeviceNotAvailableException {
+        assertNull(testInfo);
+        assertNull(listener);
+
         // Get the re-loader for previous results
         Object loader = mConfiguration.getConfigurationObject(PREVIOUS_LOADER_NAME);
         if (loader == null) {
