@@ -20,6 +20,7 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.device.cloud.GceAvdInfo;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -36,6 +37,7 @@ import com.android.tradefed.util.TarUtil;
 import com.android.tradefed.util.ZipUtil;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
+import com.google.common.net.HostAndPort;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -43,7 +45,9 @@ import java.util.Arrays;
 import java.util.List;
 
 /** The class for local virtual devices running on TradeFed host. */
-public class LocalAndroidVirtualDevice extends TestDevice implements ITestLoggerReceiver {
+public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements ITestLoggerReceiver {
+
+    private static final int INVALID_PORT = 0;
 
     // Environment variables.
     private static final String ANDROID_HOST_OUT = "ANDROID_HOST_OUT";
@@ -53,13 +57,8 @@ public class LocalAndroidVirtualDevice extends TestDevice implements ITestLogger
     // The name of the GZIP file containing launch_cvd and stop_cvd.
     private static final String CVD_HOST_PACKAGE_NAME = "cvd-host_package.tar.gz";
 
-    // The port of cuttlefish instance 1.
-    private static final int CUTTLEFISH_FIRST_HOST_PORT = 6520;
-
     private static final String ACLOUD_CVD_TEMP_DIR_NAME = "acloud_cvd_temp";
-    private static final String INSTANCE_DIR_NAME_PREFIX = "instance_home_";
     private static final String CUTTLEFISH_RUNTIME_DIR_NAME = "cuttlefish_runtime";
-    private static final String INSTANCE_NAME_PREFIX = "local-instance-";
 
     private ITestLogger mTestLogger = null;
 
@@ -68,11 +67,7 @@ public class LocalAndroidVirtualDevice extends TestDevice implements ITestLogger
     private boolean mShouldDeleteHostPackageDir = false;
     private File mImageDir = null;
 
-    // The data for restoring the stub device at tear-down.
-    private String mOriginalSerialNumber = null;
-
-    // A positive integer for acloud to identify this device.
-    private int mInstanceId = -1;
+    private GceAvdInfo mGceAvdInfo = null;
 
     public LocalAndroidVirtualDevice(
             IDevice device, IDeviceStateMonitor stateMonitor, IDeviceMonitor allocationMonitor) {
@@ -86,17 +81,39 @@ public class LocalAndroidVirtualDevice extends TestDevice implements ITestLogger
         // The setup method in super class does not require the device to be online.
         super.preInvocationSetup(info, testResourceBuildInfos);
 
-        // TODO(b/133211308): multiple instances
-        mInstanceId = 1;
-        replaceStubDevice("127.0.0.1:" + (CUTTLEFISH_FIRST_HOST_PORT + mInstanceId - 1));
-
         createTempDirs((IDeviceBuildInfo) info);
 
-        CommandResult result = acloudCreate(info.getBuildFlavor(), getOptions());
+        CommandResult result = null;
+        File report = null;
+        try {
+            report = FileUtil.createTempFile("report", ".json");
+            result = acloudCreate(info.getBuildFlavor(), report, getOptions());
+            loadAvdInfo(report);
+        } catch (IOException ex) {
+            throw new TargetSetupError(
+                    "Cannot create acloud report file.", ex, getDeviceDescriptor());
+        } finally {
+            FileUtil.deleteFile(report);
+        }
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
             throw new TargetSetupError(
-                    String.format("Cannot launch virtual device. stderr:\n%s", result.getStderr()),
+                    String.format("Cannot execute acloud command. stderr:\n%s", result.getStderr()),
                     getDeviceDescriptor());
+        }
+
+        HostAndPort hostAndPort = mGceAvdInfo.hostAndPort();
+        replaceStubDevice(hostAndPort.toString());
+
+        RecoveryMode previousMode = getRecoveryMode();
+        try {
+            setRecoveryMode(RecoveryMode.NONE);
+            if (!adbTcpConnect(hostAndPort.getHost(), Integer.toString(hostAndPort.getPort()))) {
+                throw new TargetSetupError(
+                        String.format("Cannot connect to %s.", hostAndPort), getDeviceDescriptor());
+            }
+            waitForDeviceAvailable();
+        } finally {
+            setRecoveryMode(previousMode);
         }
     }
 
@@ -104,9 +121,18 @@ public class LocalAndroidVirtualDevice extends TestDevice implements ITestLogger
     @Override
     public void postInvocationTearDown(Throwable exception) {
         TestDeviceOptions options = getOptions();
+        HostAndPort hostAndPort = getHostAndPortFromAvdInfo();
+        String instanceName = (mGceAvdInfo != null ? mGceAvdInfo.instanceName() : null);
         try {
-            if (!options.shouldSkipTearDown() && mHostPackageDir != null) {
-                CommandResult result = acloudDelete(options);
+            if (!options.shouldSkipTearDown() && hostAndPort != null) {
+                if (!adbTcpDisconnect(
+                        hostAndPort.getHost(), Integer.toString(hostAndPort.getPort()))) {
+                    CLog.e("Cannot disconnect from %s", hostAndPort.toString());
+                }
+            }
+
+            if (!options.shouldSkipTearDown() && instanceName != null) {
+                CommandResult result = acloudDelete(instanceName, options);
                 if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
                     CLog.e("Cannot stop the virtual device.");
                 }
@@ -114,7 +140,9 @@ public class LocalAndroidVirtualDevice extends TestDevice implements ITestLogger
                 CLog.i("Skip stopping the virtual device.");
             }
 
-            reportInstanceLogs();
+            if (instanceName != null) {
+                reportInstanceLogs(instanceName);
+            }
         } finally {
             restoreStubDevice();
 
@@ -122,9 +150,14 @@ public class LocalAndroidVirtualDevice extends TestDevice implements ITestLogger
                 deleteTempDirs();
             } else {
                 CLog.i(
-                        "Skip deleting the temporary directories.\nHost package: %s\nImage: %s\n",
-                        mHostPackageDir, mImageDir);
+                        "Skip deleting the temporary directories.\n"
+                                + "Address: %s\nName: %s\nHost package: %s\nImage: %s",
+                        hostAndPort, instanceName, mHostPackageDir, mImageDir);
+                mHostPackageDir = null;
+                mImageDir = null;
             }
+
+            mGceAvdInfo = null;
 
             super.postInvocationTearDown(exception);
         }
@@ -202,38 +235,14 @@ public class LocalAndroidVirtualDevice extends TestDevice implements ITestLogger
             throw new TargetSetupError(
                     "Unexpected device type: " + device.getClass(), getDeviceDescriptor());
         }
-        mOriginalSerialNumber = device.getSerialNumber();
         setIDevice(new StubLocalAndroidVirtualDevice(newSerialNumber));
         setFastbootEnabled(false);
     }
 
-    /**
-     * Set this device to be offline and associate it with a {@link StubLocalAndroidVirtualDevice}.
-     */
+    /** Restore the {@link StubLocalAndroidVirtualDevice} with the initial serial number. */
     private void restoreStubDevice() {
-        if (mOriginalSerialNumber == null) {
-            CLog.w("Skip restoring the stub device.");
-            return;
-        }
-        setIDevice(new StubLocalAndroidVirtualDevice(mOriginalSerialNumber));
+        setIDevice(new StubLocalAndroidVirtualDevice(getInitialSerial()));
         setFastbootEnabled(false);
-        mOriginalSerialNumber = null;
-    }
-
-    private String getInstanceDirName() {
-        return INSTANCE_DIR_NAME_PREFIX + mInstanceId;
-    }
-
-    private File getInstanceDir() {
-        return FileUtil.getFileForPath(
-                getTmpDir(),
-                ACLOUD_CVD_TEMP_DIR_NAME,
-                getInstanceDirName(),
-                CUTTLEFISH_RUNTIME_DIR_NAME);
-    }
-
-    private String getInstanceName() {
-        return INSTANCE_NAME_PREFIX + mInstanceId;
     }
 
     private static void addLogLevelToAcloudCommand(List<String> command, LogLevel logLevel) {
@@ -244,7 +253,7 @@ public class LocalAndroidVirtualDevice extends TestDevice implements ITestLogger
         }
     }
 
-    private CommandResult acloudCreate(String buildFlavor, TestDeviceOptions options) {
+    private CommandResult acloudCreate(String buildFlavor, File report, TestDeviceOptions options) {
         CommandResult result = null;
 
         File acloud = options.getAvdDriverBinary();
@@ -262,6 +271,7 @@ public class LocalAndroidVirtualDevice extends TestDevice implements ITestLogger
                             options.getGceCmdTimeout(),
                             acloud,
                             buildFlavor,
+                            report,
                             options.getGceDriverLogLevel(),
                             options.getGceDriverParams());
             if (CommandStatus.SUCCESS.equals(result.getStatus())) {
@@ -275,18 +285,16 @@ public class LocalAndroidVirtualDevice extends TestDevice implements ITestLogger
     }
 
     private CommandResult acloudCreate(
-            long timeout, File acloud, String buildFlavor, LogLevel logLevel, List<String> args) {
+            long timeout,
+            File acloud,
+            String buildFlavor,
+            File report,
+            LogLevel logLevel,
+            List<String> args) {
         IRunUtil runUtil = createRunUtil();
         // The command creates the instance directory under TMPDIR.
         runUtil.setEnvVariable(TMPDIR, getTmpDir().getAbsolutePath());
-        // The command finds bin/launch_cvd in ANDROID_HOST_OUT.
-        runUtil.setEnvVariable(ANDROID_HOST_OUT, mHostPackageDir.getAbsolutePath());
         runUtil.setEnvVariable(TARGET_PRODUCT, buildFlavor);
-        // TODO(b/141349771): Size of sockaddr_un->sun_path is 108, which may be too small for this
-        // path.
-        if (new File(getInstanceDir(), "launcher_monitor.sock").getAbsolutePath().length() > 108) {
-            CLog.w("Length of instance path is too long for launch_cvd.");
-        }
 
         List<String> command =
                 new ArrayList<String>(
@@ -294,9 +302,13 @@ public class LocalAndroidVirtualDevice extends TestDevice implements ITestLogger
                                 acloud.getAbsolutePath(),
                                 "create",
                                 "--local-instance",
-                                Integer.toString(mInstanceId),
                                 "--local-image",
                                 mImageDir.getAbsolutePath(),
+                                "--local-tool",
+                                mHostPackageDir.getAbsolutePath(),
+                                "--report_file",
+                                report.getAbsolutePath(),
+                                "--no-autoconnect",
                                 "--yes",
                                 "--skip-pre-run-check"));
         addLogLevelToAcloudCommand(command, logLevel);
@@ -308,7 +320,47 @@ public class LocalAndroidVirtualDevice extends TestDevice implements ITestLogger
         return result;
     }
 
-    private CommandResult acloudDelete(TestDeviceOptions options) {
+    /**
+     * Get valid host and port from mGceAvdInfo.
+     *
+     * @return {@link HostAndPort} if the port is valid; null otherwise.
+     */
+    private HostAndPort getHostAndPortFromAvdInfo() {
+        if (mGceAvdInfo == null) {
+            return null;
+        }
+        HostAndPort hostAndPort = mGceAvdInfo.hostAndPort();
+        if (hostAndPort == null
+                || !hostAndPort.hasPort()
+                || hostAndPort.getPort() == INVALID_PORT) {
+            return null;
+        }
+        return hostAndPort;
+    }
+
+    /** Initialize instance name, host address, and port from an acloud report file. */
+    private void loadAvdInfo(File report) throws TargetSetupError {
+        mGceAvdInfo = GceAvdInfo.parseGceInfoFromFile(report, getDeviceDescriptor(), INVALID_PORT);
+        if (mGceAvdInfo == null) {
+            throw new TargetSetupError("Cannot read acloud report file.", getDeviceDescriptor());
+        }
+
+        if (Strings.isNullOrEmpty(mGceAvdInfo.instanceName())) {
+            throw new TargetSetupError("No instance name in acloud report.", getDeviceDescriptor());
+        }
+
+        if (getHostAndPortFromAvdInfo() == null) {
+            throw new TargetSetupError("No port in acloud report.", getDeviceDescriptor());
+        }
+
+        if (!GceAvdInfo.GceStatus.SUCCESS.equals(mGceAvdInfo.getStatus())) {
+            throw new TargetSetupError(
+                    "Cannot launch virtual device: " + mGceAvdInfo.getErrors(),
+                    getDeviceDescriptor());
+        }
+    }
+
+    private CommandResult acloudDelete(String instanceName, TestDeviceOptions options) {
         File acloud = options.getAvdDriverBinary();
         if (acloud == null || !acloud.isFile()) {
             CLog.e("Specified AVD driver binary is not a file.");
@@ -324,8 +376,9 @@ public class LocalAndroidVirtualDevice extends TestDevice implements ITestLogger
                         Arrays.asList(
                                 acloud.getAbsolutePath(),
                                 "delete",
+                                "--local-only",
                                 "--instance-names",
-                                getInstanceName()));
+                                instanceName));
         addLogLevelToAcloudCommand(command, options.getGceDriverLogLevel());
 
         CommandResult result =
@@ -335,24 +388,29 @@ public class LocalAndroidVirtualDevice extends TestDevice implements ITestLogger
         return result;
     }
 
-    private void reportInstanceLogs() {
+    private void reportInstanceLogs(String instanceName) {
         if (mTestLogger == null) {
             return;
         }
-        reportInstanceLog("kernel.log", LogDataType.KERNEL_LOG);
-        reportInstanceLog("logcat", LogDataType.LOGCAT);
-        reportInstanceLog("launcher.log", LogDataType.TEXT);
-        reportInstanceLog("cuttlefish_config.json", LogDataType.TEXT);
+        File instanceDir =
+                FileUtil.getFileForPath(
+                        getTmpDir(),
+                        ACLOUD_CVD_TEMP_DIR_NAME,
+                        instanceName,
+                        CUTTLEFISH_RUNTIME_DIR_NAME);
+        reportInstanceLog(new File(instanceDir, "kernel.log"), LogDataType.KERNEL_LOG);
+        reportInstanceLog(new File(instanceDir, "logcat"), LogDataType.LOGCAT);
+        reportInstanceLog(new File(instanceDir, "launcher.log"), LogDataType.TEXT);
+        reportInstanceLog(new File(instanceDir, "cuttlefish_config.json"), LogDataType.TEXT);
     }
 
-    private void reportInstanceLog(String fileName, LogDataType type) {
-        File file = new File(getInstanceDir(), fileName);
+    private void reportInstanceLog(File file, LogDataType type) {
         if (file.exists()) {
             try (InputStreamSource source = new FileInputStreamSource(file)) {
-                mTestLogger.testLog(fileName, type, source);
+                mTestLogger.testLog(file.getName(), type, source);
             }
         } else {
-            CLog.w("%s doesn't exist.", fileName);
+            CLog.w("%s doesn't exist.", file.getAbsolutePath());
         }
     }
 
