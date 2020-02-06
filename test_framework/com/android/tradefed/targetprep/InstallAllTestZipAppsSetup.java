@@ -48,6 +48,10 @@ public class InstallAllTestZipAppsSetup extends BaseTargetPreparer {
     )
     private Collection<String> mInstallArgs = new ArrayList<>();
 
+    @Option(name = "force-queryable",
+            description = "Whether apks should be installed as force queryable.")
+    private boolean mForceQueryable = true;
+
     @Option(
         name = "cleanup-apks",
         description =
@@ -101,6 +105,10 @@ public class InstallAllTestZipAppsSetup extends BaseTargetPreparer {
         } catch (IOException e) {
             throw new TargetSetupError(
                     "Failed to extract test zip.", e, device.getDeviceDescriptor());
+        }
+
+        if (mForceQueryable && device.isAppEnumerationSupported()) {
+            mInstallArgs.add("--force-queryable");
         }
 
         try {

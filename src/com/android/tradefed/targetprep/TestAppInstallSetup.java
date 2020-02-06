@@ -99,6 +99,10 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
                     + "including leading dash, e.g. \"-d\"")
     private Collection<String> mInstallArgs = new ArrayList<>();
 
+    @Option(name = "force-queryable",
+            description = "Whether apks should be installed as force queryable.")
+    private boolean mForceQueryable = true;
+
     @Option(
             name = "cleanup-apks",
             description =
@@ -263,6 +267,10 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
             if (mInstantMode) {
                 mInstallArgs.add("--instant");
             }
+        }
+
+        if (mForceQueryable && getDevice().isAppEnumerationSupported()) {
+            mInstallArgs.add("--force-queryable");
         }
 
         for (String testAppName : mTestFileNames) {
