@@ -30,6 +30,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.FileUtil;
@@ -53,6 +54,7 @@ public class PushFilePreparerTest {
     private PushFilePreparer mPreparer = null;
     private ITestDevice mMockDevice = null;
     private OptionSetter mOptionSetter = null;
+    private TestInformation mTestInfo;
 
     @Before
     public void setUp() throws Exception {
@@ -61,13 +63,16 @@ public class PushFilePreparerTest {
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
         mPreparer = new PushFilePreparer();
         mOptionSetter = new OptionSetter(mPreparer);
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mMockDevice);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     /** When there's nothing to be done, expect no exception to be thrown */
     @Test
     public void testNoop() throws Exception {
         EasyMock.replay(mMockDevice);
-        mPreparer.setUp(mMockDevice, null);
+        mPreparer.setUp(mTestInfo);
         EasyMock.verify(mMockDevice);
     }
 
@@ -77,8 +82,9 @@ public class PushFilePreparerTest {
         mOptionSetter.setOptionValue("post-push", "ls /");
         EasyMock.replay(mMockDevice);
         try {
+            mTestInfo.getContext().addDeviceBuildInfo("device", new BuildInfo());
             // Should throw TargetSetupError and _not_ run any post-push command
-            mPreparer.setUp(mMockDevice, null);
+            mPreparer.setUp(mTestInfo);
             fail("TargetSetupError not thrown");
         } catch (TargetSetupError e) {
             // expected
@@ -96,8 +102,9 @@ public class PushFilePreparerTest {
                 .andReturn(Boolean.FALSE);
         EasyMock.replay(mMockDevice);
         try {
+            mTestInfo.getContext().addDeviceBuildInfo("device", new BuildInfo());
             // Should throw TargetSetupError and _not_ run any post-push command
-            mPreparer.setUp(mMockDevice, null);
+            mPreparer.setUp(mTestInfo);
             fail("TargetSetupError not thrown");
         } catch (TargetSetupError e) {
             // expected
@@ -123,8 +130,9 @@ public class PushFilePreparerTest {
                             mMockDevice.pushFile(
                                     EasyMock.eq(testFile), EasyMock.eq("/data/local/tmp/")))
                     .andReturn(Boolean.TRUE);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
             EasyMock.replay(mMockDevice);
-            mPreparer.setUp(mMockDevice, info);
+            mPreparer.setUp(mTestInfo);
             EasyMock.verify(mMockDevice);
         } finally {
             FileUtil.recursiveDelete(testsDir);
@@ -150,8 +158,9 @@ public class PushFilePreparerTest {
                                     EasyMock.eq("/data/local/tmp/"),
                                     EasyMock.anyObject()))
                     .andReturn(Boolean.TRUE);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
             EasyMock.replay(mMockDevice);
-            mPreparer.setUp(mMockDevice, info);
+            mPreparer.setUp(mTestInfo);
             EasyMock.verify(mMockDevice);
         } finally {
             FileUtil.recursiveDelete(testsDir);
@@ -171,8 +180,9 @@ public class PushFilePreparerTest {
             EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/file")).andReturn(true);
             EasyMock.expect(mMockDevice.isDirectory("/data/local/tmp/file")).andReturn(false);
             EasyMock.replay(mMockDevice);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
             try {
-                mPreparer.setUp(mMockDevice, info);
+                mPreparer.setUp(mTestInfo);
                 fail("Should have thrown an exception.");
             } catch (TargetSetupError expected) {
                 // Expected
@@ -207,8 +217,9 @@ public class PushFilePreparerTest {
                                     EasyMock.eq(testFile2),
                                     EasyMock.eq("/data/local/tmp/perf_test")))
                     .andReturn(Boolean.TRUE);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
             EasyMock.replay(mMockDevice);
-            mPreparer.setUp(mMockDevice, info);
+            mPreparer.setUp(mTestInfo);
             EasyMock.verify(mMockDevice);
         } finally {
             FileUtil.recursiveDelete(testsDir);
@@ -240,8 +251,9 @@ public class PushFilePreparerTest {
                                     EasyMock.eq(testFile2),
                                     EasyMock.eq("/data/local/tmp/perf_test")))
                     .andReturn(Boolean.TRUE);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
             EasyMock.replay(mMockDevice);
-            mPreparer.setUp(mMockDevice, info);
+            mPreparer.setUp(mTestInfo);
             EasyMock.verify(mMockDevice);
         } finally {
             FileUtil.recursiveDelete(testsDir);
@@ -261,9 +273,9 @@ public class PushFilePreparerTest {
         // Because we're only warning, the post-push command should be run despite the push failures
         EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("ls /"))).andReturn("");
         EasyMock.replay(mMockDevice);
-
+        mTestInfo.getContext().addDeviceBuildInfo("device", new BuildInfo());
         // Don't expect any exceptions to be thrown
-        mPreparer.setUp(mMockDevice, null);
+        mPreparer.setUp(mTestInfo);
         EasyMock.verify(mMockDevice);
     }
 
@@ -374,9 +386,9 @@ public class PushFilePreparerTest {
                                     EasyMock.eq("/data/local/tmp/debugger"),
                                     EasyMock.capture(capture)))
                     .andReturn(true);
-
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
             EasyMock.replay(mMockDevice);
-            mPreparer.setUp(mMockDevice, info);
+            mPreparer.setUp(mTestInfo);
             EasyMock.verify(mMockDevice);
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
@@ -411,9 +423,9 @@ public class PushFilePreparerTest {
                                     EasyMock.eq("/data/local/tmp/folder"),
                                     EasyMock.capture(capture)))
                     .andReturn(true);
-
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
             EasyMock.replay(mMockDevice);
-            mPreparer.setUp(mMockDevice, info);
+            mPreparer.setUp(mTestInfo);
             EasyMock.verify(mMockDevice);
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
@@ -446,8 +458,9 @@ public class PushFilePreparerTest {
                                     EasyMock.eq("/data/local/tmp/debugger"),
                                     EasyMock.capture(capture)))
                     .andReturn(true);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
             EasyMock.replay(mMockDevice);
-            mPreparer.setUp(mMockDevice, info);
+            mPreparer.setUp(mTestInfo);
             EasyMock.verify(mMockDevice);
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
@@ -487,8 +500,9 @@ public class PushFilePreparerTest {
                                     EasyMock.eq("/data/local/tmp/lib"),
                                     EasyMock.capture(capture)))
                     .andReturn(true);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
             EasyMock.replay(mMockDevice);
-            mPreparer.setUp(mMockDevice, info);
+            mPreparer.setUp(mTestInfo);
             EasyMock.verify(mMockDevice);
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
@@ -525,8 +539,9 @@ public class PushFilePreparerTest {
                                                     "target/testcases/aaaaa/x86_64/file")),
                                     EasyMock.eq("/data/local/tmp/file")))
                     .andReturn(true);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
             EasyMock.replay(mMockDevice);
-            mPreparer.setUp(mMockDevice, info);
+            mPreparer.setUp(mTestInfo);
             EasyMock.verify(mMockDevice);
         } finally {
             FileUtil.recursiveDelete(tmpFolder);
@@ -562,8 +577,9 @@ public class PushFilePreparerTest {
                                     EasyMock.eq("/data/local/tmp/lib"),
                                     EasyMock.capture(capture)))
                     .andReturn(true);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
             EasyMock.replay(mMockDevice);
-            mPreparer.setUp(mMockDevice, info);
+            mPreparer.setUp(mTestInfo);
             EasyMock.verify(mMockDevice);
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
@@ -600,8 +616,9 @@ public class PushFilePreparerTest {
                                     EasyMock.eq("/data/local/tmp/lib"),
                                     EasyMock.capture(capture)))
                     .andReturn(true);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
             EasyMock.replay(mMockDevice);
-            mPreparer.setUp(mMockDevice, info);
+            mPreparer.setUp(mTestInfo);
             EasyMock.verify(mMockDevice);
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
@@ -643,8 +660,9 @@ public class PushFilePreparerTest {
                                     EasyMock.eq("/data/local/tmp/debugger"),
                                     EasyMock.capture(capture)))
                     .andReturn(true);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
             EasyMock.replay(mMockDevice);
-            mPreparer.setUp(mMockDevice, info);
+            mPreparer.setUp(mTestInfo);
             EasyMock.verify(mMockDevice);
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
@@ -682,8 +700,9 @@ public class PushFilePreparerTest {
                                     EasyMock.eq("/data/local/tmp/lib"),
                                     EasyMock.capture(capture)))
                     .andReturn(true);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
             EasyMock.replay(mMockDevice);
-            mPreparer.setUp(mMockDevice, info);
+            mPreparer.setUp(mTestInfo);
             EasyMock.verify(mMockDevice);
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
@@ -756,8 +775,9 @@ public class PushFilePreparerTest {
                                     EasyMock.eq("/data/local/tmp/propertyinfoserializer_tests"),
                                     EasyMock.capture(capture)))
                     .andReturn(true);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
             EasyMock.replay(mMockDevice);
-            mPreparer.setUp(mMockDevice, info);
+            mPreparer.setUp(mTestInfo);
             EasyMock.verify(mMockDevice);
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
@@ -793,8 +813,9 @@ public class PushFilePreparerTest {
                                     EasyMock.eq("/data/local/tmp/lib"),
                                     EasyMock.capture(capture)))
                     .andReturn(true);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
             EasyMock.replay(mMockDevice);
-            mPreparer.setUp(mMockDevice, info);
+            mPreparer.setUp(mTestInfo);
             EasyMock.verify(mMockDevice);
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
