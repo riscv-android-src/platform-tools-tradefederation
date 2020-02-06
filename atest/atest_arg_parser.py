@@ -312,9 +312,6 @@ OPTIONS
         --collect-tests-only
             {COLLECT_TESTS_ONLY}
 
-        --dry-run
-            {DRY_RUN}
-
         --info
             {INFO}
 
@@ -329,6 +326,9 @@ OPTIONS
 
 
         [ Dry-Run and Caching ]
+        --dry-run
+            {DRY_RUN}
+
         -c, --clear-cache
             {CLEAR_CACHE}
 
