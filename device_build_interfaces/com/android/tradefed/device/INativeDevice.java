@@ -569,6 +569,13 @@ public interface INativeDevice {
     public boolean isRuntimePermissionSupported() throws DeviceNotAvailableException;
 
     /**
+     * Check whether platform on device supports app enumeration
+     * @return True if app enumeration is supported, false otherwise
+     * @throws DeviceNotAvailableException
+     */
+    public boolean isAppEnumerationSupported() throws DeviceNotAvailableException;
+
+    /**
      * Retrieves a file off device.
      *
      * @param remoteFilePath the absolute path to file on device.
