@@ -255,8 +255,6 @@ public class InvocationExecution implements IInvocationExecution {
             // Note: These metrics are handled in a try in case of a kernel reset or device issue.
             // Setup timing metric. It does not include flashing time on boot tests.
             long setupDuration = System.currentTimeMillis() - start;
-            testInfo.getContext()
-                    .addInvocationTimingMetric(IInvocationContext.TimingEvent.SETUP, setupDuration);
             InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.SETUP, setupDuration);
             CLog.d("Setup duration: %s'", TimeUtil.formatElapsedTime(setupDuration));
             // Upload the setup logcat after setup is complete.
