@@ -33,6 +33,7 @@ public class AllTestAppsInstallSetupTest extends TestCase {
         mMockTestDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn(SERIAL);
         EasyMock.expect(mMockTestDevice.getDeviceDescriptor()).andStubReturn(null);
+        EasyMock.expect(mMockTestDevice.isAppEnumerationSupported()).andStubReturn(false);
     }
 
     public void testNotIDeviceBuildInfo() throws DeviceNotAvailableException {
@@ -86,6 +87,22 @@ public class AllTestAppsInstallSetupTest extends TestCase {
             EasyMock.expect(mMockBuildInfo.getTestsDir()).andReturn(testDir);
             EasyMock.expect(mMockTestDevice.installPackage((File)EasyMock.anyObject(),
                     EasyMock.eq(true))).andReturn(null).times(3);
+            EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+            mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+            EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        } finally {
+            FileUtil.recursiveDelete(testDir);
+        }
+    }
+    public void testSetupForceQueryable() throws Exception {
+        EasyMock.expect(mMockTestDevice.isAppEnumerationSupported()).andReturn(true);
+        File testDir = FileUtil.createTempDir("TestAppSetupForceQueryableTest");
+        // fake hierarchy of directory and files
+        FileUtil.createTempFile("fakeApk", ".apk", testDir);
+        try {
+            EasyMock.expect(mMockBuildInfo.getTestsDir()).andReturn(testDir);
+            EasyMock.expect(mMockTestDevice.installPackage((File)EasyMock.anyObject(),
+                    EasyMock.eq(true), EasyMock.eq("--force-queryable"))).andReturn(null);
             EasyMock.replay(mMockBuildInfo, mMockTestDevice);
             mPrep.setUp(mMockTestDevice, mMockBuildInfo);
             EasyMock.verify(mMockBuildInfo, mMockTestDevice);
