@@ -364,8 +364,8 @@ public class ContentProviderHandlerTest {
                 ContentProviderHandler.createEscapedContentUri("filepath/file name spaced (data)");
         // We expect the full url to be quoted to avoid space issues and the URL to be encoded.
         assertEquals(
-                "\"content://android.tradefed.contentprovider/filepath%252Ffile%2520name"
-                        + "%2520spaced%2520%28data%29\"",
+                "\"content://android.tradefed.contentprovider/filepath%252Ffile+name+spaced+"
+                        + "%2528data%2529\"",
                 espacedUrl);
     }
 
