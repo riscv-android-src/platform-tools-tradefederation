@@ -830,8 +830,6 @@ public class TestInvocation implements ITestInvocation {
             boolean providerSuccess =
                     invokeFetchBuild(info, config, rescheduler, listener, invocationPath);
             long fetchBuildDuration = System.currentTimeMillis() - start;
-            context.addInvocationTimingMetric(IInvocationContext.TimingEvent.FETCH_BUILD,
-                    fetchBuildDuration);
             InvocationMetricLogger.addInvocationMetrics(
                     InvocationMetricKey.FETCH_BUILD, fetchBuildDuration);
             CLog.d("Fetch build duration: %s", TimeUtil.formatElapsedTime(fetchBuildDuration));
