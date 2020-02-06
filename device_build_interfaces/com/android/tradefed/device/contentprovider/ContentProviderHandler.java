@@ -276,9 +276,11 @@ public class ContentProviderHandler {
     public static String createEscapedContentUri(String deviceFilePath) {
         String escapedFilePath = deviceFilePath;
         try {
-            // Escape the path then encode it.
-            String escaped = UrlEscapers.urlPathSegmentEscaper().escape(deviceFilePath);
-            escapedFilePath = URLEncoder.encode(escaped, "UTF-8");
+            // Encode the path then escape it. This logic must invert the logic in
+            // ManagedFileContentProvider.getFileForUri. That calls to Uri.getPath() and then
+            // URLDecoder.decode(), so this must invert each of those two steps and switch the order
+            String encoded = URLEncoder.encode(deviceFilePath, "UTF-8");
+            escapedFilePath = UrlEscapers.urlPathSegmentEscaper().escape(encoded);
         } catch (UnsupportedEncodingException e) {
             CLog.e(e);
         }
