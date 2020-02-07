@@ -43,48 +43,48 @@ public class HostStatsdMetricCollector extends BaseDeviceMetricCollector {
     @Option(name = "binary-stats-config", description = "Path to the binary Statsd config file")
     private File mBinaryConfig;
 
+    @Option(name = "per-run", description = "Collect Metrics at per-test level or per-run level")
+    private boolean mPerRun = true;
+
     /** Map from device serial number to config ID on that device */
     private Map<String, Long> mDeviceConfigIds = new HashMap<>();
 
+    /**
+     * Counting the test in the same run. It is used to distinguish the statsd result file from
+     * multiple tests
+     */
+    private int mTestCount = 1;
+
     @Override
     public void onTestRunStart(DeviceMetricData runData) {
-        mDeviceConfigIds.clear();
-        for (ITestDevice device : getDevices()) {
-            String serialNumber = device.getSerialNumber();
-            try {
-                long configId = pushBinaryStatsConfig(device, mBinaryConfig);
-                CLog.d(
-                        "Pushed binary stats config to device %s with config id: %d",
-                        serialNumber, configId);
-                mDeviceConfigIds.put(serialNumber, configId);
-            } catch (IOException | DeviceNotAvailableException e) {
-                CLog.e("Failed to push stats config to device %s, error: %s", serialNumber, e);
-            }
+        if (mPerRun) {
+            mDeviceConfigIds.clear();
+            startCollection();
+        }
+    }
+
+    @Override
+    public void onTestStart(DeviceMetricData testData) {
+        if (!mPerRun) {
+            mDeviceConfigIds.clear();
+            startCollection();
+        }
+    }
+
+    @Override
+    public void onTestEnd(
+            DeviceMetricData testData, final Map<String, Metric> currentTestCaseMetrics) {
+        if (!mPerRun) {
+            stopCollection(testData);
+            mTestCount++;
         }
     }
 
     @Override
     public void onTestRunEnd(
             DeviceMetricData runData, final Map<String, Metric> currentRunMetrics) {
-        for (ITestDevice device : getDevices()) {
-            String serialNumber = device.getSerialNumber();
-            if (mDeviceConfigIds.containsKey(serialNumber)) {
-                long configId = mDeviceConfigIds.get(serialNumber);
-                try {
-                    InputStreamSource dataStream = getReportByteStream(device, configId);
-                    CLog.d(
-                            "Retrieved stats report from device %s for config %d",
-                            serialNumber, configId);
-                    processStatsReport(device, dataStream, runData);
-                    testLog(
-                            String.format("device_%s_stats_report", serialNumber),
-                            LogDataType.PB,
-                            dataStream);
-                    removeConfig(device, configId);
-                } catch (DeviceNotAvailableException e) {
-                    CLog.e("Device %s not available: %s", serialNumber, e);
-                }
-            }
+        if (mPerRun) {
+            stopCollection(runData);
         }
     }
 
@@ -114,5 +114,47 @@ public class HostStatsdMetricCollector extends BaseDeviceMetricCollector {
      * @param runData The destination where the processed metrics will be stored
      */
     protected void processStatsReport(
-            ITestDevice device, InputStreamSource dataStream, DeviceMetricData runData) {}
+            ITestDevice device, InputStreamSource dataStream, DeviceMetricData runData) {
+        // Empty method by default
+    }
+
+    private void startCollection() {
+        for (ITestDevice device : getDevices()) {
+            String serialNumber = device.getSerialNumber();
+            try {
+                long configId = pushBinaryStatsConfig(device, mBinaryConfig);
+                CLog.d(
+                        "Pushed binary stats config to device %s with config id: %d",
+                        serialNumber, configId);
+                mDeviceConfigIds.put(serialNumber, configId);
+            } catch (IOException | DeviceNotAvailableException e) {
+                CLog.e("Failed to push stats config to device %s, error: %s", serialNumber, e);
+            }
+        }
+    }
+
+    private void stopCollection(DeviceMetricData metricData) {
+        for (ITestDevice device : getDevices()) {
+            String serialNumber = device.getSerialNumber();
+            if (mDeviceConfigIds.containsKey(serialNumber)) {
+                long configId = mDeviceConfigIds.get(serialNumber);
+                try (InputStreamSource dataStream = getReportByteStream(device, configId)) {
+                    CLog.d(
+                            "Retrieved stats report from device %s for config %d",
+                            serialNumber, configId);
+                    removeConfig(device, configId);
+                    String reportName =
+                            mPerRun
+                                    ? String.format("device_%s_stats_report", serialNumber)
+                                    : String.format(
+                                            "device_%s_stats_report_test_%d",
+                                            serialNumber, mTestCount);
+                    testLog(reportName, LogDataType.PB, dataStream);
+                    processStatsReport(device, dataStream, metricData);
+                } catch (DeviceNotAvailableException e) {
+                    CLog.e("Device %s not available: %s", serialNumber, e);
+                }
+            }
+        }
+    }
 }
