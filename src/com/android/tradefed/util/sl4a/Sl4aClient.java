@@ -240,14 +240,14 @@ public class Sl4aClient implements AutoCloseable {
      * @throws IOException
      */
     private synchronized Object sendThroughSocket(String message) throws IOException {
-        CLog.d("preparing sending: '%s' to device %s", message, mDevice.getSerialNumber());
+        CLog.v("preparing sending: '%s' to device %s", message, mDevice.getSerialNumber());
         PrintWriter out = new PrintWriter(mSocket.getOutputStream(), false);
         out.print(message);
         out.print('\n');
         out.flush();
         BufferedReader in = new BufferedReader(new InputStreamReader(mSocket.getInputStream()));
         String response = in.readLine();
-        CLog.d("response: '%s' from device %s", response, mDevice.getSerialNumber());
+        CLog.v("response: '%s' from device %s", response, mDevice.getSerialNumber());
         try {
             JSONObject resp = new JSONObject(response);
             if (!resp.isNull("error")) {
