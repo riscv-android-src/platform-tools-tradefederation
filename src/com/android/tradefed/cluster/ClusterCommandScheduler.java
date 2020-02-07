@@ -17,6 +17,7 @@ package com.android.tradefed.cluster;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.cluster.ClusterHostEvent.HostEventType;
 import com.android.tradefed.command.CommandScheduler;
 import com.android.tradefed.command.ICommandScheduler;
 import com.android.tradefed.command.remote.DeviceDescriptor;
@@ -33,6 +34,7 @@ import com.android.tradefed.device.battery.IBatteryInfo;
 import com.android.tradefed.device.battery.IBatteryInfo.BatteryState;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestSummaryListener;
@@ -42,7 +44,6 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 
-import com.android.tradefed.cluster.ClusterHostEvent.HostEventType;
 import com.google.common.primitives.Ints;
 
 import org.json.JSONException;
@@ -56,7 +57,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.RejectedExecutionHandler;
@@ -289,20 +289,17 @@ public class ClusterCommandScheduler extends CommandScheduler {
                 mError = "build not found";
             }
 
-            long fetchBuildTimeMillis = -1;
-            long setupTimeMillis = -1;
-            if (metadata != null && metadata.getInvocationTimingMetrics() != null) {
-                for (Entry<IInvocationContext.TimingEvent, Long> entry :
-                        metadata.getInvocationTimingMetrics().entrySet()) {
-                    switch (entry.getKey()) {
-                        case FETCH_BUILD:
-                            fetchBuildTimeMillis = entry.getValue();
-                            break;
-                        case SETUP:
-                            setupTimeMillis = entry.getValue();
-                            break;
-                    }
-                }
+            String fetchBuildTimeMillis = "-1";
+            String setupTimeMillis = "-1";
+            if (metadata != null) {
+                fetchBuildTimeMillis =
+                        metadata.getAttributes()
+                                .getUniqueMap()
+                                .get(InvocationMetricKey.FETCH_BUILD.toString());
+                setupTimeMillis =
+                        metadata.getAttributes()
+                                .getUniqueMap()
+                                .get(InvocationMetricKey.SETUP.toString());
             }
 
             // Stop heartbeat thread before sending InvocationCompleted event.
@@ -318,10 +315,9 @@ public class ClusterCommandScheduler extends CommandScheduler {
                             .setData(ClusterCommandEvent.DATA_KEY_SUMMARY, mSummary)
                             .setData(
                                     ClusterCommandEvent.DATA_KEY_FETCH_BUILD_TIME_MILLIS,
-                                    Long.toString(fetchBuildTimeMillis))
+                                    fetchBuildTimeMillis)
                             .setData(
-                                    ClusterCommandEvent.DATA_KEY_SETUP_TIME_MILLIS,
-                                    Long.toString(setupTimeMillis))
+                                    ClusterCommandEvent.DATA_KEY_SETUP_TIME_MILLIS, setupTimeMillis)
                             .setData(
                                     ClusterCommandEvent.DATA_KEY_TOTAL_TEST_COUNT,
                                     Integer.toString(getNumTotalTests()))
