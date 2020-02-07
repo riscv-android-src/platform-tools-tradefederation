@@ -29,7 +29,6 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
