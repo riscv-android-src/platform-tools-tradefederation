@@ -242,7 +242,10 @@ public abstract class BasePostProcessor implements IPostProcessor {
                     continue;
                 }
                 // Force the metric to 'processed' since generated in a post-processor.
-                Metric newMetric = newEntry.getValue().setType(DataType.PROCESSED).build();
+                Metric newMetric =
+                        newEntry.getValue()
+                                .setType(getMetricType())
+                                .build();
                 testMetrics.put(newKey, newMetric);
             }
         } catch (RuntimeException e) {
@@ -325,8 +328,19 @@ public abstract class BasePostProcessor implements IPostProcessor {
                 continue;
             }
             // Force the metric to 'processed' since generated in a post-processor.
-            Metric newMetric = newEntry.getValue().setType(DataType.PROCESSED).build();
+            Metric newMetric =
+                    newEntry.getValue()
+                            .setType(getMetricType())
+                            .build();
             existing.put(newKey, newMetric);
         }
+    }
+
+    /**
+     * Override this method to change the metric type if needed. By default metric is set to
+     * processed type.
+     */
+    protected DataType getMetricType() {
+        return DataType.PROCESSED;
     }
 }
