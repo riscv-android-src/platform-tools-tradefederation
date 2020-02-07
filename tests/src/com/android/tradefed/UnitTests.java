@@ -151,6 +151,7 @@ import com.android.tradefed.log.TerribleFailureEmailHandlerTest;
 import com.android.tradefed.postprocessor.AggregatePostProcessorTest;
 import com.android.tradefed.postprocessor.AveragePostProcessorTest;
 import com.android.tradefed.postprocessor.BasePostProcessorTest;
+import com.android.tradefed.postprocessor.PerfettoGenericPostProcessorTest;
 import com.android.tradefed.postprocessor.StatsdEventMetricPostProcessorTest;
 import com.android.tradefed.postprocessor.StatsdGenericPostProcessorTest;
 import com.android.tradefed.result.ATestFileSystemLogSaverTest;
@@ -580,6 +581,7 @@ import org.junit.runners.Suite.SuiteClasses;
     AggregatePostProcessorTest.class,
     AveragePostProcessorTest.class,
     BasePostProcessorTest.class,
+    PerfettoGenericPostProcessorTest.class,
     StatsdEventMetricPostProcessorTest.class,
     StatsdGenericPostProcessorTest.class,
 
