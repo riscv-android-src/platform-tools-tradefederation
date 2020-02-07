@@ -87,7 +87,9 @@ public class CurrentInvocation {
     /** Clear the invocation info for an invocation. */
     public static void clearInvocationInfos() {
         ThreadGroup group = Thread.currentThread().getThreadGroup();
-        mPerGroupInfo.remove(group);
+        synchronized (mPerGroupInfo) {
+            mPerGroupInfo.remove(group);
+        }
     }
 
     /**
