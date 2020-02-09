@@ -105,6 +105,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             installer(testInfo, testAppFileNames);
             if (containsApex(testAppFileNames)
                     || containsPersistentApk(testAppFileNames, testInfo)) {
+                RunUtil.getDefault().sleep(mApexStagingWaitTime);
                 device.reboot();
             }
             if (mTestApexInfoList.isEmpty()) {
