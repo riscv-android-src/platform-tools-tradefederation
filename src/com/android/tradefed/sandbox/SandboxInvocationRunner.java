@@ -57,6 +57,9 @@ public class SandboxInvocationRunner {
         try {
             CommandResult result = sandbox.run(config, listener);
             if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+                CLog.e(
+                        "Sandbox finished with status: %s and exit code: %s",
+                        result.getStatus(), result.getExitCode());
                 handleStderrException(result.getStderr());
             }
         } finally {
