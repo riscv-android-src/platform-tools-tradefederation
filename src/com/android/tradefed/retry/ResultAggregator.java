@@ -20,12 +20,14 @@ import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
+import com.android.tradefed.result.MultiFailureDescription;
 import com.android.tradefed.result.ResultAndLogForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
@@ -63,7 +65,7 @@ public class ResultAggregator extends CollectingTestListener {
     // Holders for results in progress
     private TestRunResult mDetailedRunResults = null;
     private boolean mShouldReportFailure = true;
-    private List<String> mAllDetailedFailures = new ArrayList<>();
+    private List<FailureDescription> mAllDetailedFailures = new ArrayList<>();
 
     // In some configuration of non-module retry, all attempts of runs might not be adjacent. We
     // track that a special handling needs to be applied for this case.
@@ -266,7 +268,13 @@ public class ResultAggregator extends CollectingTestListener {
         super.testRunEnded(elapsedTime, runMetrics);
         mDetailedRunResults = getCurrentRunResults();
         if (mDetailedRunResults.isRunFailure()) {
-            mAllDetailedFailures.add(mDetailedRunResults.getRunFailureMessage());
+            FailureDescription currentFailure = mDetailedRunResults.getRunFailureDescription();
+            if (currentFailure instanceof MultiFailureDescription) {
+                mAllDetailedFailures.addAll(
+                        ((MultiFailureDescription) currentFailure).getFailures());
+            } else {
+                mAllDetailedFailures.add(currentFailure);
+            }
         }
 
         // If we are not a module and we reach here. This allows to support non-suite scenarios
@@ -397,16 +405,21 @@ public class ResultAggregator extends CollectingTestListener {
     private void forwardDetailedFailure() {
         if (mDetailedRunResults != null) {
             if (mDetailedRunResults.isRunFailure() && mShouldReportFailure) {
-                mDetailedForwarder.testRunFailed(String.join("\n\n", mAllDetailedFailures));
+                // TODO: Convert to new failure interface
+                mDetailedForwarder.testRunFailed(
+                        new MultiFailureDescription(mAllDetailedFailures).toString());
             } else {
                 // Log the run failure that was cleared
+                List<String> invocationFailures = new ArrayList<>();
                 String value = getInvocationMetricRunError();
                 if (value != null) {
-                    mAllDetailedFailures.add(0, value);
+                    invocationFailures.add(value);
                 }
                 // If there are failure, track them
                 if (!mAllDetailedFailures.isEmpty()) {
-                    addInvocationMetricRunError(String.join("\n\n", mAllDetailedFailures));
+                    invocationFailures.add(
+                            new MultiFailureDescription(mAllDetailedFailures).toString());
+                    addInvocationMetricRunError(String.join("\n\n", invocationFailures));
                 }
             }
             mAllDetailedFailures.clear();
