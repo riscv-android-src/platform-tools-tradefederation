@@ -107,7 +107,7 @@ public class TfObjectTrackerTest {
             if (mTrackWithParents) {
                 TfObjectTracker.countWithParents(mToTrack);
             } else {
-                TfObjectTracker.count(mToTrack);
+                TfObjectTracker.directCount(mToTrack.getName(), 1);
             }
             mResultMap = TfObjectTracker.getUsage();
         }

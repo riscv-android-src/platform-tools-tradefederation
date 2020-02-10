@@ -18,7 +18,6 @@ package com.android.tradefed.invoker.logger;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.postprocessor.IPostProcessor;
-import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -41,7 +40,6 @@ public class TfObjectTracker {
                     IMultiTargetPreparer.class,
                     IPostProcessor.class,
                     IRemoteTest.class,
-                    ISystemStatusChecker.class,
                     ITargetPreparer.class);
 
     private TfObjectTracker() {}
@@ -59,12 +57,32 @@ public class TfObjectTracker {
     }
 
     /**
+     * Count explicitly one class and its occurrences
+     *
+     * @param className The object to track
+     * @param occurrences current num of known occurrences
+     */
+    public static void directCount(String className, long occurrences) {
+        ThreadGroup group = Thread.currentThread().getThreadGroup();
+        if (mPerGroupUsage.get(group) == null) {
+            mPerGroupUsage.put(group, new ConcurrentHashMap<>());
+        }
+        Map<String, Long> countMap = mPerGroupUsage.get(group);
+        long count = 0;
+        if (countMap.get(className) != null) {
+            count = countMap.get(className);
+        }
+        count += occurrences;
+        countMap.put(className, count);
+    }
+
+    /**
      * Count the current occurrence only if it's part of the tracked objects.
      *
      * @param object The object to track
      * @return True if the object was tracked, false otherwise.
      */
-    public static boolean count(Class<?> object) {
+    private static boolean count(Class<?> object) {
         ThreadGroup group = Thread.currentThread().getThreadGroup();
         String qualifiedName = object.getName();
 

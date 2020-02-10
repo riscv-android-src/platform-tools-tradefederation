@@ -24,11 +24,14 @@ import com.android.tradefed.config.proto.ConfigurationDescription.Metadata;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.UniqueMultiMap;
+
+import com.google.common.base.Joiner;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -331,6 +334,11 @@ public class InvocationContext implements IInvocationContext {
         Map<String, String> metrics = InvocationMetricLogger.getInvocationMetrics();
         if (!metrics.isEmpty()) {
             mInvocationAttributes.putAll(new MultiMap<>(metrics));
+        }
+        Map<String, Long> usage = TfObjectTracker.getUsage();
+        if (!usage.isEmpty()) {
+            mInvocationAttributes.put(
+                    TfObjectTracker.TF_OBJECTS_TRACKING_KEY, Joiner.on(",").join(usage.entrySet()));
         }
     }
 
