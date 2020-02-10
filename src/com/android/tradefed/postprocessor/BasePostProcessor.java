@@ -20,6 +20,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.DataType;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -142,6 +143,11 @@ public abstract class BasePostProcessor implements IPostProcessor {
     }
 
     @Override
+    public final void testRunFailed(FailureDescription failure) {
+        mForwarder.testRunFailed(failure);
+    }
+
+    @Override
     public final void testRunStopped(long elapsedTime) {
         mForwarder.testRunStopped(elapsedTime);
     }
@@ -197,6 +203,11 @@ public abstract class BasePostProcessor implements IPostProcessor {
     @Override
     public final void testFailed(TestDescription test, String trace) {
         mForwarder.testFailed(test, trace);
+    }
+
+    @Override
+    public final void testFailed(TestDescription test, FailureDescription failure) {
+        mForwarder.testFailed(test, failure);
     }
 
     @Override
