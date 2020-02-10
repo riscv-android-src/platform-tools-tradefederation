@@ -46,7 +46,8 @@ public class PreviousSessionFileCopier implements ITestInvocationListener {
                     CertificationSuiteResultReporter.FAILURE_REPORT_NAME,
                     CertificationSuiteResultReporter.SUMMARY_FILE,
                     CertificationChecksumHelper.NAME,
-                    "diffs");
+                    "diffs",
+                    "proto");
 
     private CompatibilityBuildHelper mBuildHelper;
     private File mPreviousSessionDir = null;
