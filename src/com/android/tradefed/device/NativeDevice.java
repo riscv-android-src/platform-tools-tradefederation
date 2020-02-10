@@ -3917,6 +3917,22 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public int getLaunchApiLevel() throws DeviceNotAvailableException {
+        try {
+            String prop = getProperty(DeviceProperties.FIRST_API_LEVEL);
+            return Integer.parseInt(prop);
+        } catch (NumberFormatException nfe) {
+            CLog.w(
+                    "Unable to get first launch API level from "
+                            + DeviceProperties.FIRST_API_LEVEL
+                            + ", falling back to getApiLevel().",
+                    nfe);
+        }
+        return getApiLevel();
+    }
+
     @Override
     public IDeviceStateMonitor getMonitor() {
         return mStateMonitor;
