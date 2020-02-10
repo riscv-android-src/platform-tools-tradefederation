@@ -15,13 +15,28 @@
  */
 package com.android.tradefed.result.suite;
 
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.TargetSetupError;
+import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.suite.retry.ResultsPlayer;
 
 /** Reporter that allows to generate reports in a particular format. TODO: fix logged file */
-public abstract class FormattedGeneratorReporter extends SuiteResultReporter {
+public abstract class FormattedGeneratorReporter extends SuiteResultReporter
+        implements IConfigurationReceiver {
 
     private Throwable mTestHarnessError = null;
+    private IConfiguration mConfiguration;
+
+    @Override
+    public final void setConfiguration(IConfiguration configuration) {
+        mConfiguration = configuration;
+    }
+
+    public final IConfiguration getConfiguration() {
+        return mConfiguration;
+    }
 
     /** {@inheritDoc} */
     @Override
@@ -31,11 +46,19 @@ public abstract class FormattedGeneratorReporter extends SuiteResultReporter {
 
         // If invocation failed due to a test harness error and did not see any tests
         if (mTestHarnessError != null) {
-            CLog.e(
-                    "Invocation failed and we couldn't ensure results are consistent, skip "
-                            + "generating the formatted report due to:");
-            CLog.e(mTestHarnessError);
-            return;
+            Boolean replaySuccess = null;
+            for (IRemoteTest test : mConfiguration.getTests()) {
+                if (test instanceof ResultsPlayer) {
+                    replaySuccess = ((ResultsPlayer) test).completed();
+                }
+            }
+            if (replaySuccess != null && !replaySuccess) {
+                CLog.e(
+                        "Invocation failed and previous session results couldn't be copied, skip "
+                                + "generating the formatted report due to:");
+                CLog.e(mTestHarnessError);
+                return;
+            }
         }
 
         SuiteResultHolder holder = generateResultHolder();
