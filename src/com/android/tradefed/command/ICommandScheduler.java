@@ -49,6 +49,16 @@ public interface ICommandScheduler {
         public default void invocationInitiated(IInvocationContext context) {}
 
         /**
+         * Callback associated with {@link ICommandOptions#earlyDeviceRelease()} to release the
+         * devices when done with them.
+         *
+         * @param context
+         * @param devicesStates
+         */
+        public default void releaseDevices(
+                IInvocationContext context, Map<ITestDevice, FreeDeviceState> devicesStates) {}
+
+        /**
          * Callback when entire invocation has completed, including all {@link
          * ITestInvocationListener#invocationEnded(long)} events.
          *
