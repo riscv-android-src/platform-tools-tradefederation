@@ -63,14 +63,20 @@ public final class MultiFailureDescription extends FailureDescription {
 
     @Override
     public @Nullable FailureStatus getFailureStatus() {
-        throw new UnsupportedOperationException(
-                "Cannot call #getFailureStatus on MultiFailureDescription");
+        if (mFailures.isEmpty()) {
+            return null;
+        }
+        // Default to the first reported failure
+        return mFailures.get(0).getFailureStatus();
     }
 
     @Override
     public String getErrorMessage() {
-        throw new UnsupportedOperationException(
-                "Cannot call #getErrorMessage on MultiFailureDescription");
+        if (mFailures.isEmpty()) {
+            return null;
+        }
+        // Default to the first reported failure
+        return mFailures.get(0).getErrorMessage();
     }
 
     @Override
