@@ -567,7 +567,7 @@ public class DeviceSelectionOptions implements IDeviceSelection {
 
         if (mRequestedType != null) {
             Class<?> classNeeded = mRequestedType.getRequiredClass();
-            if (!(device.getClass().equals(classNeeded))) {
+            if (!device.getClass().equals(classNeeded)) {
                 return false;
             }
         } else {
@@ -578,19 +578,19 @@ public class DeviceSelectionOptions implements IDeviceSelection {
             if (nullDeviceRequested() != (device instanceof NullDevice)) {
                 return false;
             }
-            if (tcpDeviceRequested() != (TcpDevice.class.equals(device.getClass()))) {
+            if (tcpDeviceRequested() != TcpDevice.class.equals(device.getClass())) {
                 // We only match an exact TcpDevice here, no child class.
                 return false;
             }
-            if (gceDeviceRequested() != (RemoteAvdIDevice.class.equals(device.getClass()))) {
+            if (gceDeviceRequested() != RemoteAvdIDevice.class.equals(device.getClass())) {
                 // We only match an exact RemoteAvdIDevice here, no child class.
                 return false;
             }
-            if (remoteDeviceRequested() != (VmRemoteDevice.class.equals(device.getClass()))) {
+            if (remoteDeviceRequested() != VmRemoteDevice.class.equals(device.getClass())) {
                 return false;
             }
             if (localVirtualDeviceRequested()
-                    != (StubLocalAndroidVirtualDevice.class.equals(device.getClass()))) {
+                    != StubLocalAndroidVirtualDevice.class.equals(device.getClass())) {
                 return false;
             }
         }
