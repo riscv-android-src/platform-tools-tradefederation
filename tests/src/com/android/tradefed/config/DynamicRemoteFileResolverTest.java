@@ -15,8 +15,11 @@
  */
 package com.android.tradefed.config;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -40,6 +43,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
 
 import javax.annotation.Nonnull;
@@ -647,5 +651,18 @@ public class DynamicRemoteFileResolverTest {
             }
         }
         EasyMock.verify(mMockResolver);
+    }
+
+    /** Ensure that we are able to load all the services included in Tradefed. */
+    @Test
+    public void testServiceLoader() {
+        ServiceLoader<IRemoteFileResolver> serviceLoader =
+                ServiceLoader.load(IRemoteFileResolver.class);
+        assertNotNull(serviceLoader);
+        List<IRemoteFileResolver> listResolver = new ArrayList<>();
+        serviceLoader.forEach(listResolver::add);
+        // We want to ensure we were successful in loading resolvers, we need to load at least one
+        // since we should always have a few.
+        assertThat(listResolver).isNotEmpty();
     }
 }

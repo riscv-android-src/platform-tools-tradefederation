@@ -42,6 +42,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -50,6 +51,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * <p>For example: gs://bucket/path/file.txt will be resolved by downloading the file from the GCS
  * bucket.
+ *
+ * <p>New protocols should be added to META_INF/services.
  */
 public class DynamicRemoteFileResolver {
 
@@ -272,6 +275,7 @@ public class DynamicRemoteFileResolver {
     @VisibleForTesting
     protected IRemoteFileResolver getResolver(String protocol) {
         if (updateProtocols()) {
+            // TODO: Remove and clean up the global configuration specification.
             IGlobalConfiguration globalConfig = getGlobalConfig();
             Object o = globalConfig.getConfigurationObject(DYNAMIC_RESOLVER);
             if (o != null) {
@@ -282,6 +286,12 @@ public class DynamicRemoteFileResolver {
                 } else {
                     CLog.e("%s is not of type IRemoteFileResolver", o);
                 }
+            }
+            // Use the service loader to find all the implementations.
+            ServiceLoader<IRemoteFileResolver> serviceLoader =
+                    ServiceLoader.load(IRemoteFileResolver.class);
+            for (IRemoteFileResolver resolver : serviceLoader) {
+                PROTOCOL_SUPPORT.putIfAbsent(resolver.getSupportedProtocol(), resolver);
             }
         }
         return PROTOCOL_SUPPORT.get(protocol);
