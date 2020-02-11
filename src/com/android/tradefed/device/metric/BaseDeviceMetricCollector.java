@@ -113,7 +113,7 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
             mRealDeviceList =
                     mContext.getDevices()
                             .stream()
-                            .filter(d -> (!(d.getIDevice() instanceof StubDevice)))
+                            .filter(d -> !(d.getIDevice() instanceof StubDevice))
                             .collect(Collectors.toList());
         }
         return mRealDeviceList;

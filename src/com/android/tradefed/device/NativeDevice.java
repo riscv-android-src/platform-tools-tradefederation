@@ -1150,7 +1150,7 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public File pullFileFromExternal(String remoteFilePath) throws DeviceNotAvailableException {
         String externalPath = getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
-        String fullPath = (new File(externalPath, remoteFilePath)).getPath();
+        String fullPath = new File(externalPath, remoteFilePath).getPath();
         return pullFile(fullPath);
     }
 
