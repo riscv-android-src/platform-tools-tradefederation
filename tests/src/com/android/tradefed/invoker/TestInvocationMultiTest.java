@@ -80,6 +80,10 @@ public class TestInvocationMultiTest {
         mMockConfig = EasyMock.createMock(IConfiguration.class);
         EasyMock.expect(mMockConfig.getPostProcessors()).andReturn(mPostProcessors);
         EasyMock.expect(mMockConfig.getRetryDecision()).andReturn(new BaseRetryDecision());
+        EasyMock.expect(mMockConfig.getConfigurationObject(ShardHelper.SHARED_TEST_INFORMATION))
+                .andReturn(null);
+        EasyMock.expect(mMockConfig.getConfigurationObject(ShardHelper.LAST_SHARD_DETECTOR))
+                .andReturn(null);
         mMockRescheduler = EasyMock.createMock(IRescheduler.class);
         mMockTestListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
@@ -274,6 +278,11 @@ public class TestInvocationMultiTest {
         mMockConfig.resolveDynamicOptions();
         EasyMock.expectLastCall().andThrow(configException);
 
+        DeviceConfigurationHolder holder1 = new DeviceConfigurationHolder();
+        mProvider1 = EasyMock.createMock(IBuildProvider.class);
+        holder1.addSpecificConfig(mProvider1);
+        EasyMock.expect(mMockConfig.getDeviceConfigByName("device1")).andStubReturn(holder1);
+        EasyMock.expect(mDevice1.getSerialNumber()).andReturn("serial1");
         mMockConfig.cleanConfigurationData();
 
         mMockTestListener.invocationStarted(mContext);

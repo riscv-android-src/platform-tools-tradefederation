@@ -47,6 +47,11 @@ DRY_RUN = 'DRY_RUN'
 ANDROID_SERIAL = 'ANDROID_SERIAL'
 INSTANT = 'INSTANT'
 USER_TYPE = 'USER_TYPE'
+ITERATIONS = 'ITERATIONS'
+RERUN_UNTIL_FAILURE = 'RERUN_UNTIL_FAILURE'
+RETRY_ANY_FAILURE = 'RETRY_ANY_FAILURE'
+TF_TEMPLATE = 'TF_TEMPLATE'
+COLLECT_TESTS_ONLY = 'COLLECT_TESTS_ONLY'
 
 # Application exit codes.
 EXIT_CODE_SUCCESS = 0
@@ -56,6 +61,7 @@ EXIT_CODE_ERROR = 3
 EXIT_CODE_TEST_NOT_FOUND = 4
 EXIT_CODE_TEST_FAILURE = 5
 EXIT_CODE_VERIFY_FAILURE = 6
+EXIT_CODE_OUTSIDE_ROOT = 7
 
 # Codes of specific events. These are exceptions that don't stop anything
 # but sending metrics.
@@ -95,6 +101,8 @@ TI_MODULE_ARG = 'module-arg'
 GTF_MODULE = 'google-tradefed'
 GTF_TARGET = 'google-tradefed-core'
 
+# TEST_MAPPING filename
+TEST_MAPPING = 'TEST_MAPPING'
 # Test group for tests in TEST_MAPPING
 TEST_GROUP_PRESUBMIT = 'presubmit'
 TEST_GROUP_POSTSUBMIT = 'postsubmit'
@@ -117,13 +125,12 @@ TF_SKIP_LOADING_CONFIG_JAR = '--skip-loading-config-jar'
 # Suite Plans
 SUITE_PLANS = frozenset(['cts'])
 
-# Constants used for AtestArgParser
-HELP_DESC = 'Build, install and run Android tests locally.'
+# Constants of Steps
+REBUILD_MODULE_INFO_FLAG = '--rebuild-module-info'
 BUILD_STEP = 'build'
 INSTALL_STEP = 'install'
 TEST_STEP = 'test'
 ALL_STEPS = [BUILD_STEP, INSTALL_STEP, TEST_STEP]
-REBUILD_MODULE_INFO_FLAG = '--rebuild-module-info'
 
 # ANSI code shift for colorful print
 BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
@@ -183,7 +190,13 @@ ATEST_TF_MODULE = 'atest-tradefed'
 # be generated when make.
 ATEST_BUILD_ENV = {'SOONG_COLLECT_JAVA_DEPS':'true'}
 
-# Atest cache root and relative dirs/caches.
+# For generating dependencies in module-info.json, appending deps-license in the
+# make command is a must. Also the environment variables PROJ_PATH and DEP_PATH
+# are necessary.
+DEPS_LICENSE = 'deps-license'
+DEPS_LICENSE_ENV = {'PROJ_PATH': '.', 'DEP_PATH': '.'}
+
+# Atest index path and relative dirs/caches.
 INDEX_DIR = os.path.join(os.getenv(ANDROID_HOST_OUT, ''), 'indexes')
 LOCATE_CACHE = os.path.join(INDEX_DIR, 'mlocate.db')
 INT_INDEX = os.path.join(INDEX_DIR, 'integration.idx')
@@ -192,6 +205,7 @@ CC_CLASS_INDEX = os.path.join(INDEX_DIR, 'cc_classes.idx')
 PACKAGE_INDEX = os.path.join(INDEX_DIR, 'packages.idx')
 QCLASS_INDEX = os.path.join(INDEX_DIR, 'fqcn.idx')
 MODULE_INDEX = os.path.join(INDEX_DIR, 'modules.idx')
+VERSION_FILE = os.path.join(os.path.dirname(__file__), 'VERSION')
 
 # Regeular Expressions
 CC_EXT_RE = re.compile(r'.*\.(cc|cpp)$')
@@ -208,3 +222,5 @@ QCLASS_OUTPUT_RE = re.compile(r'(?P<java_path>.*/(?P<class>[A-Z]\w+)\.\w+)'
                               r'[:]\s*package\s+(?P<package>[^(;|\s)]+)\s*')
 PACKAGE_OUTPUT_RE = re.compile(r'(?P<java_dir>/.*/).*[.](java|kt)[:]\s*package\s+'
                                r'(?P<package>[^(;|\s)]+)\s*')
+
+ATEST_RESULT_ROOT = '/tmp/atest_result'

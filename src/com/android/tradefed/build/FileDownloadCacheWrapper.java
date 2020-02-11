@@ -43,12 +43,10 @@ public class FileDownloadCacheWrapper implements IFileDownloader {
         return mCache.fetchRemoteFile(mDelegateDownloader, remoteFilePath);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void downloadFile(String remotePath, File destFile) throws BuildRetrievalError {
-        throw new UnsupportedOperationException();
+    public void downloadFile(String remoteFilePath, File destFile) throws BuildRetrievalError {
+        mCache.fetchRemoteFile(mDelegateDownloader, remoteFilePath, destFile);
     }
 
     /** {@inheritDoc} */

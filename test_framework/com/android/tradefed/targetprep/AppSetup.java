@@ -40,7 +40,7 @@ import java.util.concurrent.TimeUnit;
  * <p>Requires 'aapt' on PATH when --uninstall is set
  */
 @OptionClass(alias = "app-setup")
-public class AppSetup extends BaseTargetPreparer implements ITargetCleaner {
+public class AppSetup extends BaseTargetPreparer {
 
     @Option(name="reboot", description="reboot device after running tests.")
     private boolean mReboot = true;
@@ -62,6 +62,10 @@ public class AppSetup extends BaseTargetPreparer implements ITargetCleaner {
 
     @Option(name = "install-arg", description = "optional flag(s) to provide when installing apks.")
     private ArrayList<String> mInstallArgs = new ArrayList<>();
+
+    @Option(name = "force-queryable",
+            description = "Whether apks should be installed as force queryable.")
+    private boolean mForceQueryable = true;
 
     @Option(name = "post-install-cmd", description =
             "optional post-install adb shell commands; can be repeated.")
@@ -102,6 +106,10 @@ public class AppSetup extends BaseTargetPreparer implements ITargetCleaner {
         }
 
         if (mInstall) {
+            if (mForceQueryable && device.isAppEnumerationSupported()) {
+                mInstallArgs.add("--force-queryable");
+            }
+
             for (VersionedFile apkFile : apps) {
                 if (mCheckMinSdk) {
                     AaptParser aaptParser = doAaptParse(apkFile.getFile());

@@ -44,6 +44,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nullable;
+
 /**
  * Provides an reliable and slightly higher level API to a ddmlib {@link IDevice}.
  * <p/>
@@ -90,6 +92,29 @@ public interface INativeDevice {
     public String getProperty(String name) throws DeviceNotAvailableException;
 
     /**
+     * Returns integer value of the given property from the device.
+     *
+     * @param name the property name
+     * @param defaultValue default value to return if property is empty or doesn't exist.
+     * @return the property value or {@code defaultValue} if the property is empty, doesn't exist,
+     *     or doesn't have an integer value.
+     */
+    public long getIntProperty(String name, long defaultValue) throws DeviceNotAvailableException;
+
+    /**
+     * Returns boolean value of the given property.
+     *
+     * @param name the property name
+     * @param defaultValue default value to return if property is empty or doesn't exist.
+     * @return {@code true} if the property has value {@code "1"}, {@code "y"}, {@code "yes"},
+     *     {@code "on"}, or {@code "true"}, {@code false} if the property has value of {@code "0"},
+     *     {@code "n"}, {@code "no"}, {@code "off"}, {@code "false"}, or {@code defaultValue}
+     *     otherwise.
+     */
+    public boolean getBooleanProperty(String name, boolean defaultValue)
+            throws DeviceNotAvailableException;
+
+    /**
      * Sets the given property value on the device. Requires adb root is true.
      *
      * @param propKey The key targeted to be set.
@@ -98,6 +123,16 @@ public interface INativeDevice {
      * @throws DeviceNotAvailableException
      */
     public boolean setProperty(String propKey, String propValue) throws DeviceNotAvailableException;
+
+    /**
+     * Retrieve the given fastboot variable value from the device.
+     *
+     * @param variableName the variable name
+     * @return the property value or <code>null</code> if it does not exist
+     * @throws DeviceNotAvailableException, UnsupportedOperationException
+     */
+    public String getFastbootVariable(String variableName)
+            throws DeviceNotAvailableException, UnsupportedOperationException;
 
     /**
      * Convenience method to get the bootloader version of this device.
@@ -544,6 +579,13 @@ public interface INativeDevice {
     public boolean isRuntimePermissionSupported() throws DeviceNotAvailableException;
 
     /**
+     * Check whether platform on device supports app enumeration
+     * @return True if app enumeration is supported, false otherwise
+     * @throws DeviceNotAvailableException
+     */
+    public boolean isAppEnumerationSupported() throws DeviceNotAvailableException;
+
+    /**
      * Retrieves a file off device.
      *
      * @param remoteFilePath the absolute path to file on device.
@@ -888,6 +930,40 @@ public interface INativeDevice {
     public void reboot() throws DeviceNotAvailableException;
 
     /**
+     * Reboots the device into adb mode with given {@code reason} to be persisted across reboot.
+     *
+     * <p>Blocks until device becomes available.
+     *
+     * <p>Last reboot reason can be obtained by querying {@code sys.boot.reason} propety.
+     *
+     * @param reason a reason for this reboot, or {@code null} if no reason is specified.
+     * @throws DeviceNotAvailableException if device is not available after reboot
+     */
+    public void reboot(@Nullable String reason) throws DeviceNotAvailableException;
+
+    /**
+     * Reboots the device into fastbootd mode.
+     *
+     * <p>Blocks until device is in fastbootd mode.
+     *
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     */
+    public void rebootIntoFastbootd() throws DeviceNotAvailableException;
+
+    /**
+     * Reboots only userspace part of device.
+     *
+     * <p>Blocks until device becomes available.
+     *
+     * <p>WARNING. Userspace reboot is currently under active development, use it on your own risk.
+     *
+     * @throws DeviceNotAvailableException if device is not available after reboot
+     */
+    // TODO(ioffe): link to docs around userspace reboot when they are available.
+    public void rebootUserspace() throws DeviceNotAvailableException;
+
+    /**
      * Reboots the device into adb recovery mode.
      * <p/>
      * Blocks until device enters recovery
@@ -906,11 +982,38 @@ public interface INativeDevice {
     public void rebootIntoSideload() throws DeviceNotAvailableException;
 
     /**
+     * Reboots the device into adb sideload mode (note that this is a special mode under recovery)
+     *
+     * <p>Blocks until device enters sideload mode
+     *
+     * @param autoReboot whether to automatically reboot the device after sideload
+     * @throws DeviceNotAvailableException if device is not in sideload after reboot
+     */
+    public void rebootIntoSideload(boolean autoReboot) throws DeviceNotAvailableException;
+
+    /**
      * An alternate to {@link #reboot()} that only blocks until device is online ie visible to adb.
      *
      * @throws DeviceNotAvailableException if device is not available after reboot
      */
     public void rebootUntilOnline() throws DeviceNotAvailableException;
+
+    /**
+     * An alternate to {@link #reboot()} that only blocks until device is online ie visible to adb.
+     *
+     * @param reason a reason for this reboot, or {@code null} if no reason is specified.
+     * @throws DeviceNotAvailableException if device is not available after reboot
+     * @see #reboot(String)
+     */
+    public void rebootUntilOnline(@Nullable String reason) throws DeviceNotAvailableException;
+
+    /**
+     * An alternate to {@link #rebootUserspace()} ()} that only blocks until device is online ie
+     * visible to adb.
+     *
+     * @throws DeviceNotAvailableException if device is not available after reboot
+     */
+    public void rebootUserspaceUntilOnline() throws DeviceNotAvailableException;
 
     /**
      * Issues a command to reboot device and returns on command complete and when device is no
@@ -1217,6 +1320,13 @@ public interface INativeDevice {
      * @throws DeviceNotAvailableException
      */
     public void remountSystemWritable() throws DeviceNotAvailableException;
+
+    /**
+     * Make the vendor partition on the device writable. May reboot the device.
+     *
+     * @throws DeviceNotAvailableException
+     */
+    public void remountVendorWritable() throws DeviceNotAvailableException;
 
     /**
      * Returns the key type used to sign the device image

@@ -26,6 +26,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
@@ -33,6 +34,7 @@ import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -54,7 +56,7 @@ import java.util.Set;
  */
 @OptionClass(alias = "push-file")
 public class PushFilePreparer extends BaseTargetPreparer
-        implements ITargetCleaner, IAbiReceiver, IInvocationContextReceiver {
+        implements IAbiReceiver, IInvocationContextReceiver {
     private static final String LOG_TAG = "PushFilePreparer";
     private static final String MEDIA_SCAN_INTENT =
             "am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://%s "
@@ -103,9 +105,19 @@ public class PushFilePreparer extends BaseTargetPreparer
             + "been deleted.")
     private boolean mCleanup = false;
 
-    @Option(name="remount-system", description="Remounts system partition to be writable "
-            + "so that files could be pushed there too")
-    private boolean mRemount = false;
+    @Option(
+            name = "remount-system",
+            description =
+                    "Remounts system partition to be writable "
+                            + "so that files could be pushed there too")
+    private boolean mRemountSystem = false;
+
+    @Option(
+            name = "remount-vendor",
+            description =
+                    "Remounts vendor partition to be writable "
+                            + "so that files could be pushed there too")
+    private boolean mRemountVendor = false;
 
     private Set<String> mFilesPushed = null;
     /** If the preparer is part of a module, we can use the test module name as a search criteria */
@@ -194,7 +206,7 @@ public class PushFilePreparer extends BaseTargetPreparer
                                 return src;
                             }
                         } else {
-                            CLog.e("Did not find any module directory for '%s'", mModuleName);
+                            CLog.d("Did not find any module directory for '%s'", mModuleName);
                         }
 
                     } catch (IOException e) {
@@ -246,15 +258,17 @@ public class PushFilePreparer extends BaseTargetPreparer
         return src;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError, BuildError,
-            DeviceNotAvailableException {
+    public void setUp(TestInformation testInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
         mFilesPushed = new HashSet<>();
-        if (mRemount) {
+        ITestDevice device = testInfo.getDevice();
+        if (mRemountSystem) {
             device.remountSystemWritable();
+        }
+        if (mRemountVendor) {
+            device.remountVendorWritable();
         }
 
         Map<String, File> remoteToLocalMapping = new HashMap<>();
@@ -278,7 +292,7 @@ public class PushFilePreparer extends BaseTargetPreparer
                     String.format(
                             "Trying to push local '%s' to remote '%s'",
                             local.getPath(), remotePath));
-            evaluatePushingPair(device, buildInfo, local, remotePath);
+            evaluatePushingPair(device, testInfo.getBuildInfo(), local, remotePath);
         }
 
         for (String command : mPostPushCommands) {
@@ -291,15 +305,16 @@ public class PushFilePreparer extends BaseTargetPreparer
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
         if (!(e instanceof DeviceNotAvailableException) && mCleanup && mFilesPushed != null) {
-            if (mRemount) {
+            if (mRemountSystem) {
                 device.remountSystemWritable();
+            }
+            if (mRemountVendor) {
+                device.remountVendorWritable();
             }
             for (String devicePath : mFilesPushed) {
                 device.deleteFile(devicePath);

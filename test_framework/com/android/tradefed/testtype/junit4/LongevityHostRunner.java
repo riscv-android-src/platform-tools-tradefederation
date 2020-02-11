@@ -18,13 +18,12 @@ package com.android.tradefed.testtype.junit4;
 
 import android.host.test.longevity.LongevitySuite;
 import android.host.test.longevity.listener.TimeoutTerminator;
-import com.android.tradefed.build.IBuildInfo;
+
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.config.OptionSetter;
-import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.HostTest;
 import com.android.tradefed.testtype.IAbi;
@@ -32,20 +31,22 @@ import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.ISetOptionReceiver;
+import com.android.tradefed.testtype.ITestInformationReceiver;
 import com.android.tradefed.testtype.junit4.builder.DeviceJUnit4ClassRunnerBuilder;
 import com.android.tradefed.util.TimeVal;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+
 import org.junit.runner.Description;
 import org.junit.runner.Runner;
 import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * A JUnit4-based {@link Runner} that composes tests run with {@link DeviceJUnit4ClassRunner} into a
@@ -58,20 +59,12 @@ import org.junit.runners.model.InitializationError;
  */
 @OptionClass(alias = "longevity-runner")
 public class LongevityHostRunner extends Runner
-        implements IDeviceTest,
-                IBuildReceiver,
-                IAbiReceiver,
-                IMultiDeviceTest,
-                IInvocationContextReceiver,
-                ISetOptionReceiver {
+        implements IAbiReceiver, ITestInformationReceiver, ISetOptionReceiver {
     static final String ITERATIONS_OPTION = "iterations";
     static final String TOTAL_TIMEOUT_OPTION = "total-timeout";
 
-    private ITestDevice mDevice;
-    private IBuildInfo mBuildInfo;
+    private TestInformation mTestInfo;
     private IAbi mAbi;
-    private IInvocationContext mContext;
-    private Map<ITestDevice, IBuildInfo> mDeviceInfos;
 
     @Option(name = HostTest.SET_OPTION_NAME, description = HostTest.SET_OPTION_DESC)
     private Set<String> mKeyValueOptions = new HashSet<>();
@@ -96,13 +89,13 @@ public class LongevityHostRunner extends Runner
     }
 
     @Override
-    public void setDevice(ITestDevice device) {
-        mDevice = device;
+    public void setTestInformation(TestInformation testInformation) {
+        mTestInfo = testInformation;
     }
 
     @Override
-    public ITestDevice getDevice() {
-        return mDevice;
+    public TestInformation getTestInformation() {
+        return mTestInfo;
     }
 
     @Override
@@ -115,20 +108,6 @@ public class LongevityHostRunner extends Runner
         return mAbi;
     }
 
-    @Override
-    public void setBuild(IBuildInfo buildInfo) {
-        mBuildInfo = buildInfo;
-    }
-
-    @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
-    }
-
-    @Override
-    public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
-        mDeviceInfos = deviceInfos;
-    }
 
     private Map<String, String> getOptions() {
         // Note: *TS does not have a convenient mechanism for sending options to test runners. To
@@ -192,19 +171,19 @@ public class LongevityHostRunner extends Runner
         // Pass the feature set to the runners.
         for (Runner child : suite.getRunners()) {
             if (child instanceof IDeviceTest) {
-                ((IDeviceTest) child).setDevice(mDevice);
+                ((IDeviceTest) child).setDevice(mTestInfo.getDevice());
             }
             if (child instanceof IAbiReceiver) {
                 ((IAbiReceiver) child).setAbi(mAbi);
             }
             if (child instanceof IBuildReceiver) {
-                ((IBuildReceiver) child).setBuild(mBuildInfo);
+                ((IBuildReceiver) child).setBuild(mTestInfo.getBuildInfo());
             }
             if (child instanceof IInvocationContextReceiver) {
-                ((IInvocationContextReceiver) child).setInvocationContext(mContext);
+                ((IInvocationContextReceiver) child).setInvocationContext(mTestInfo.getContext());
             }
-            if (child instanceof IMultiDeviceTest) {
-                ((IMultiDeviceTest) child).setDeviceInfos(mDeviceInfos);
+            if (child instanceof ITestInformationReceiver) {
+                ((ITestInformationReceiver) child).setTestInformation(mTestInfo);
             }
             try {
                 OptionSetter setter = new OptionSetter(child);

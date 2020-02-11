@@ -20,8 +20,9 @@ java_library_host {
     ],
     static_libs: [
         "longevity-host-lib",
-        "perfetto_config-full",
+        "perfetto_metrics-full",
         "test-composers",
+        "truth-prebuilt",
     ],
     libs: [
         "tradefed-lib-core",

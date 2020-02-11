@@ -40,8 +40,7 @@ import java.util.List;
  * folder onto device. For individual test app install please look at {@link TestAppInstallSetup}
  */
 @OptionClass(alias = "all-tests-installer")
-public class AllTestAppsInstallSetup extends BaseTargetPreparer
-        implements ITargetCleaner, IAbiReceiver {
+public class AllTestAppsInstallSetup extends BaseTargetPreparer implements IAbiReceiver {
     @Option(name = AbiFormatter.FORCE_ABI_STRING,
             description = AbiFormatter.FORCE_ABI_DESCRIPTION,
             importance = Importance.IF_UNSET)
@@ -51,6 +50,10 @@ public class AllTestAppsInstallSetup extends BaseTargetPreparer
             description = "Additional arguments to be passed to install command, "
                     + "including leading dash, e.g. \"-d\"")
     private Collection<String> mInstallArgs = new ArrayList<>();
+
+    @Option(name = "force-queryable",
+            description = "Whether apks should be installed as force queryable.")
+    private boolean mForceQueryable = true;
 
     @Option(name = "cleanup-apks",
             description = "Whether apks installed should be uninstalled after test. Note that the "
@@ -81,6 +84,9 @@ public class AllTestAppsInstallSetup extends BaseTargetPreparer
         if (testsDir == null || !testsDir.exists()) {
             throw new TargetSetupError("Failed to find a valid test zip directory.",
                     device.getDeviceDescriptor());
+        }
+        if (mForceQueryable && device.isAppEnumerationSupported()) {
+            mInstallArgs.add("--force-queryable");
         }
         resolveAbi(device);
         installApksRecursively(testsDir, device);

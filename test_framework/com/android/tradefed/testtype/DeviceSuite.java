@@ -15,11 +15,11 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import junit.framework.Test;
@@ -43,9 +43,8 @@ import java.util.Set;
  * that requires it.
  */
 public class DeviceSuite extends Suite
-        implements IDeviceTest, IBuildReceiver, IAbiReceiver, ISetOptionReceiver {
-    private ITestDevice mDevice;
-    private IBuildInfo mBuildInfo;
+        implements IAbiReceiver, ISetOptionReceiver, ITestInformationReceiver {
+    private TestInformation mTestInfo;
     private IAbi mAbi;
 
     @Option(name = HostTest.SET_OPTION_NAME, description = HostTest.SET_OPTION_DESC)
@@ -56,22 +55,25 @@ public class DeviceSuite extends Suite
     }
 
     @Override
-    public void setDevice(ITestDevice device) {
-        mDevice = device;
+    public void setTestInformation(TestInformation testInformation) {
+        mTestInfo = testInformation;
         for (Runner r : getChildren()) {
-            // propagate to runner if it needs a device.
+            // propagate to runner if needed.
             if (r instanceof IDeviceTest) {
-                if (mDevice == null) {
-                    throw new IllegalArgumentException("Missing device");
-                }
-                ((IDeviceTest)r).setDevice(mDevice);
+                ((IDeviceTest) r).setDevice(mTestInfo.getDevice());
+            }
+            if (r instanceof IBuildReceiver) {
+                ((IBuildReceiver) r).setBuild(mTestInfo.getBuildInfo());
+            }
+            if (r instanceof ITestInformationReceiver) {
+                ((ITestInformationReceiver) r).setTestInformation(mTestInfo);
             }
         }
     }
 
     @Override
-    public ITestDevice getDevice() {
-        return mDevice;
+    public TestInformation getTestInformation() {
+        return mTestInfo;
     }
 
     @Override
@@ -88,20 +90,6 @@ public class DeviceSuite extends Suite
     @Override
     public IAbi getAbi() {
         return mAbi;
-    }
-
-    @Override
-    public void setBuild(IBuildInfo buildInfo) {
-        mBuildInfo = buildInfo;
-        for (Runner r : getChildren()) {
-            // propagate to runner if it needs a buildInfo.
-            if (r instanceof IBuildReceiver) {
-                if (mBuildInfo == null) {
-                    throw new IllegalArgumentException("Missing build information");
-                }
-                ((IBuildReceiver)r).setBuild(mBuildInfo);
-            }
-        }
     }
 
     @Override
@@ -150,16 +138,13 @@ public class DeviceSuite extends Suite
     /** Inject the options to the tests. */
     private void injectValues(Object testObj) {
         if (testObj instanceof IDeviceTest) {
-            if (mDevice == null) {
-                throw new IllegalArgumentException("Missing device");
-            }
-            ((IDeviceTest) testObj).setDevice(mDevice);
+            ((IDeviceTest) testObj).setDevice(mTestInfo.getDevice());
         }
         if (testObj instanceof IBuildReceiver) {
-            if (mBuildInfo == null) {
-                throw new IllegalArgumentException("Missing build information");
-            }
-            ((IBuildReceiver) testObj).setBuild(mBuildInfo);
+            ((IBuildReceiver) testObj).setBuild(mTestInfo.getBuildInfo());
+        }
+        if (testObj instanceof ITestInformationReceiver) {
+            ((ITestInformationReceiver) testObj).setTestInformation(mTestInfo);
         }
         // We are more flexible about abi information since not always available.
         if (testObj instanceof IAbiReceiver) {

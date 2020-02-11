@@ -23,12 +23,15 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.StreamProtoReceiver;
+import com.android.tradefed.result.proto.StreamProtoResultReporter;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -40,8 +43,6 @@ import com.android.tradefed.util.SubprocessTestResultsParser;
 import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.UniqueMultiMap;
-
-import com.google.api.client.repackaged.com.google.common.base.Joiner;
 
 import org.junit.Assert;
 
@@ -85,6 +86,11 @@ public abstract class SubprocessTfLauncher
     @Option(name = "use-event-streaming", description = "Use a socket to receive results as they"
             + "arrived instead of using a temporary file and parsing at the end.")
     private boolean mEventStreaming = true;
+
+    @Option(
+            name = "use-proto-reporting",
+            description = "Use a proto result reporter for the results from the subprocess.")
+    private boolean mUseProtoReporting = false;
 
     @Option(name = "sub-global-config", description = "The global config name to pass to the"
             + "sub process, can be local or from jar resources. Be careful of conflicts with "
@@ -212,7 +218,7 @@ public abstract class SubprocessTfLauncher
                 paths.add(f.getAbsolutePath());
             }
         }
-        jarClasspath = Joiner.on(":").join(paths);
+        jarClasspath = String.join(":", paths);
 
         mCmdArgs = new ArrayList<String>();
         mCmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
@@ -306,7 +312,7 @@ public abstract class SubprocessTfLauncher
 
     /** {@inheritDoc} */
     @Override
-    public void run(ITestInvocationListener listener) {
+    public void run(TestInformation testInfo, ITestInvocationListener listener) {
         preRun();
         addInvocationData();
 
@@ -314,6 +320,7 @@ public abstract class SubprocessTfLauncher
         File stderrFile = null;
         File eventFile = null;
         SubprocessTestResultsParser eventParser = null;
+        StreamProtoReceiver protoReceiver = null;
         FileOutputStream stdout = null;
         FileOutputStream stderr = null;
 
@@ -326,27 +333,47 @@ public abstract class SubprocessTfLauncher
             stderr = new FileOutputStream(stderrFile);
             stdout = new FileOutputStream(stdoutFile);
 
-            eventParser = new SubprocessTestResultsParser(listener, mEventStreaming, mContext);
-            if (mEventStreaming) {
-                mCmdArgs.add("--subprocess-report-port");
-                mCmdArgs.add(Integer.toString(eventParser.getSocketServerPort()));
+            if (mUseProtoReporting) {
+                protoReceiver = new StreamProtoReceiver(listener, mContext, false, false);
+                mCmdArgs.add("--" + StreamProtoResultReporter.PROTO_REPORT_PORT_OPTION);
+                mCmdArgs.add(Integer.toString(protoReceiver.getSocketServerPort()));
             } else {
-                eventFile = FileUtil.createTempFile("event_subprocess_", ".log");
-                mCmdArgs.add("--subprocess-report-file");
-                mCmdArgs.add(eventFile.getAbsolutePath());
+                eventParser = new SubprocessTestResultsParser(listener, mEventStreaming, mContext);
+                if (mEventStreaming) {
+                    mCmdArgs.add("--subprocess-report-port");
+                    mCmdArgs.add(Integer.toString(eventParser.getSocketServerPort()));
+                } else {
+                    eventFile = FileUtil.createTempFile("event_subprocess_", ".log");
+                    mCmdArgs.add("--subprocess-report-file");
+                    mCmdArgs.add(eventFile.getAbsolutePath());
+                }
             }
             startTime = System.currentTimeMillis();
             CommandResult result = mRunUtil.runTimedCmd(mMaxTfRunTime, stdout,
                     stderr, mCmdArgs.toArray(new String[0]));
-            if (eventParser.getStartTime() != null) {
-                startTime = eventParser.getStartTime();
-            }
-            elapsedTime = System.currentTimeMillis() - startTime;
-            // We possibly allow for a little more time if the thread is still processing events.
-            if (!eventParser.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS)) {
-                elapsedTime = -1l;
-                throw new RuntimeException(String.format("Event receiver thread did not complete:"
-                        + "\n%s", FileUtil.readStringFromFile(stderrFile)));
+
+            if (eventParser != null) {
+                if (eventParser.getStartTime() != null) {
+                    startTime = eventParser.getStartTime();
+                }
+                elapsedTime = System.currentTimeMillis() - startTime;
+                // We possibly allow for a little more time if the thread is still processing
+                // events.
+                if (!eventParser.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS)) {
+                    elapsedTime = -1l;
+                    throw new RuntimeException(
+                            String.format(
+                                    "Event receiver thread did not complete:" + "\n%s",
+                                    FileUtil.readStringFromFile(stderrFile)));
+                }
+            } else if (protoReceiver != null) {
+                if (!protoReceiver.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS)) {
+                    elapsedTime = -1l;
+                    throw new RuntimeException(
+                            String.format(
+                                    "Event receiver thread did not complete:" + "\n%s",
+                                    FileUtil.readStringFromFile(stderrFile)));
+                }
             }
             if (result.getStatus().equals(CommandStatus.SUCCESS)) {
                 CLog.d("Successfully ran TF tests for build %s", mBuildInfo.getBuildId());
@@ -381,6 +408,7 @@ public abstract class SubprocessTfLauncher
                 logAndCleanFile(eventFile, listener);
             }
             StreamUtil.close(eventParser);
+            StreamUtil.close(protoReceiver);
 
             postRun(listener, exception, elapsedTime);
 

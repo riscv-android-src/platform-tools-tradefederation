@@ -25,6 +25,7 @@ import static org.junit.Assert.fail;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Configuration;
@@ -49,6 +50,7 @@ import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.guice.InvocationScopeModule;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -70,6 +72,7 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.StubTest;
+import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.MultiMap;
 
@@ -112,6 +115,7 @@ public class ITestSuiteTest {
     private ITestDevice mMockDevice;
     private IBuildInfo mMockBuildInfo;
     private ISystemStatusChecker mMockSysChecker;
+    private TestInformation mTestInfo;
     private IInvocationContext mContext;
     private List<IMetricCollector> mListCollectors;
     private IConfiguration mStubMainConfiguration;
@@ -208,7 +212,8 @@ public class ITestSuiteTest {
         }
 
         @Override
-        public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        public void run(TestInformation testInfo, ITestInvocationListener listener)
+                throws DeviceNotAvailableException {
             listener.testRunStarted(TEST_CONFIG_NAME, 1);
             try {
                 if (mException != null) {
@@ -305,6 +310,7 @@ public class ITestSuiteTest {
         mTestSuite.setInvocationContext(mContext);
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
         mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockBuildInfo);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(mContext).build();
         mListCollectors = new ArrayList<>();
         mListCollectors.add(new TestMetricCollector("metric1", "value1"));
         mListCollectors.add(new TestMetricCollector("metric2", "value2"));
@@ -416,7 +422,7 @@ public class ITestSuiteTest {
         listener.testModuleEnded();
     }
 
-    /** Test for {@link ITestSuite#run(ITestInvocationListener)}. */
+    /** Test for {@link ITestSuite#run(TestInformation, ITestInvocationListener)}. */
     @Test
     public void testRun() throws Exception {
         OptionSetter setter = new OptionSetter(mTestSuite);
@@ -435,10 +441,10 @@ public class ITestSuiteTest {
                 .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
         expectTestRun(mMockListener);
         replayMocks();
-        mTestSuite.run(mMockListener);
+        mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
         // Setup should have been called.
-        Mockito.verify(mMockPreparer).setUp(Mockito.any(), Mockito.any());
+        Mockito.verify(mMockPreparer).setUp(Mockito.any());
     }
 
     /** Test that when preparer-whitelist is set only the preparer whitelisted can run. */
@@ -462,15 +468,15 @@ public class ITestSuiteTest {
                 .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
         expectTestRun(mMockListener);
         replayMocks();
-        mTestSuite.run(mMockListener);
+        mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
         // Setup should have been called.
-        Mockito.verify(mMockPreparer, Mockito.times(0)).setUp(Mockito.any(), Mockito.any());
+        Mockito.verify(mMockPreparer, Mockito.times(0)).setUp(Mockito.any());
     }
 
     /**
-     * Test for {@link ITestSuite#run(ITestInvocationListener)} when the System status checker is
-     * failing.
+     * Test for {@link ITestSuite#run(TestInformation, ITestInvocationListener)} when the System
+     * status checker is failing.
      */
     @Test
     public void testRun_failedSystemChecker() throws Exception {
@@ -491,13 +497,14 @@ public class ITestSuiteTest {
                 .andReturn(result);
         expectTestRun(mMockListener);
         replayMocks();
-        mTestSuite.run(mMockListener);
+        mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
     }
 
     /**
-     * Test for {@link ITestSuite#run(ITestInvocationListener)} when the System status checker is
-     * failing with a runtime exception. RuntimeException is interpreted as a checker failure.
+     * Test for {@link ITestSuite#run(TestInformation, ITestInvocationListener)} when the System
+     * status checker is failing with a runtime exception. RuntimeException is interpreted as a
+     * checker failure.
      */
     @Test
     public void testRun_failedSystemChecker_runtimeException() throws Exception {
@@ -517,13 +524,14 @@ public class ITestSuiteTest {
                 .andThrow(new RuntimeException("I failed post."));
         expectTestRun(mMockListener);
         replayMocks();
-        mTestSuite.run(mMockListener);
+        mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
     }
 
     /**
-     * Test for {@link ITestSuite#run(ITestInvocationListener)} when the System status checker is
-     * passing pre-check but failing post-check and we enable reporting a failure for it.
+     * Test for {@link ITestSuite#run(TestInformation, ITestInvocationListener)} when the System
+     * status checker is passing pre-check but failing post-check and we enable reporting a failure
+     * for it.
      */
     @Test
     public void testRun_failedSystemChecker_reportFailure() throws Exception {
@@ -560,7 +568,7 @@ public class ITestSuiteTest {
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         replayMocks();
-        mTestSuite.run(mMockListener);
+        mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
     }
 
@@ -605,13 +613,13 @@ public class ITestSuiteTest {
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         replayMocks();
-        mTestSuite.run(mMockListener);
+        mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
     }
 
     /**
-     * Test for {@link ITestSuite#run(ITestInvocationListener)} when the System status checker is
-     * disabled and we request reboot before module run.
+     * Test for {@link ITestSuite#run(TestInformation, ITestInvocationListener)} when the System
+     * status checker is disabled and we request reboot before module run.
      */
     @Test
     public void testRun_rebootBeforeModule() throws Exception {
@@ -625,14 +633,14 @@ public class ITestSuiteTest {
         mMockDevice.reboot();
         expectTestRun(mMockListener);
         replayMocks();
-        mTestSuite.run(mMockListener);
+        mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
     }
 
     /**
-     * Test for {@link ITestSuite#run(ITestInvocationListener)} when the test throw an
-     * unresponsive device exception. The run can continue since device has been recovered in this
-     * case.
+     * Test for {@link ITestSuite#run(TestInformation, ITestInvocationListener)} when the test throw
+     * an unresponsive device exception. The run can continue since device has been recovered in
+     * this case.
      */
     @Test
     public void testRun_unresponsiveDevice() throws Exception {
@@ -687,7 +695,7 @@ public class ITestSuiteTest {
         EasyMock.expectLastCall().times(1);
         mMockListener.testModuleEnded();
         replayMocks();
-        mTestSuite.run(mMockListener);
+        mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
     }
 
@@ -754,7 +762,7 @@ public class ITestSuiteTest {
         replayMocks();
         // The DNAE is bubbled up to the top
         try {
-            mTestSuite.run(mMockListener);
+            mTestSuite.run(mTestInfo, mMockListener);
             fail("Should have thrown an exception.");
         } catch (DeviceNotAvailableException expected) {
             assertEquals("I failed", expected.getMessage());
@@ -763,8 +771,8 @@ public class ITestSuiteTest {
     }
 
     /**
-     * Test for {@link ITestSuite#run(ITestInvocationListener)} when the test throw a runtime
-     * exception. The run can continue in this case.
+     * Test for {@link ITestSuite#run(TestInformation, ITestInvocationListener)} when the test throw
+     * a runtime exception. The run can continue in this case.
      */
     @Test
     public void testRun_runtimeException() throws Exception {
@@ -814,7 +822,7 @@ public class ITestSuiteTest {
         EasyMock.expectLastCall().times(1);
         mMockListener.testModuleEnded();
         replayMocks();
-        mTestSuite.run(mMockListener);
+        mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
         String exception = captured.getValue();
         assertTrue(exception.contains("runtime"));
@@ -832,9 +840,8 @@ public class ITestSuiteTest {
     @Test
     public void testShardModules_notShardable() {
         mTestSuite = new TestSuiteImpl(5);
-        mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setConfiguration(mStubMainConfiguration);
-        Collection<IRemoteTest> tests = mTestSuite.split(3);
+        Collection<IRemoteTest> tests = mTestSuite.split(3, mTestInfo);
         assertEquals(5, tests.size());
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof TestSuiteImpl);
@@ -844,7 +851,7 @@ public class ITestSuiteTest {
     /** Test that when splitting a single non-splitable test we end up with only one IRemoteTest. */
     @Test
     public void testGetTestShard_onlyOneTest() {
-        Collection<IRemoteTest> tests = mTestSuite.split(2);
+        Collection<IRemoteTest> tests = mTestSuite.split(2, mTestInfo);
         assertEquals(1, tests.size());
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof TestSuiteImpl);
@@ -857,9 +864,8 @@ public class ITestSuiteTest {
         // default runtime hint is 0, it is only meant to be used for sharding.
         assertEquals(0l, mTestSuite.getRuntimeHint());
         mTestSuite = new TestSuiteImpl(5);
-        mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setConfiguration(mStubMainConfiguration);
-        Collection<IRemoteTest> tests = mTestSuite.split(3);
+        Collection<IRemoteTest> tests = mTestSuite.split(3, mTestInfo);
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof TestSuiteImpl);
             // once sharded modules from the shard start reporting their runtime.
@@ -1271,7 +1277,7 @@ public class ITestSuiteTest {
         mMockListener.testModuleEnded();
 
         replayMocks();
-        mTestSuite.run(mMockListener);
+        mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
         assertEquals("value1", c.getValue().get("metric1").getMeasurements().getSingleString());
         assertEquals("value2", c.getValue().get("metric2").getMeasurements().getSingleString());
@@ -1286,7 +1292,7 @@ public class ITestSuiteTest {
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue(ITestSuite.SKIP_SYSTEM_STATUS_CHECKER, "com.i.dont.exist.Checker");
         try {
-            mTestSuite.run(mMockListener);
+            mTestSuite.run(mTestInfo, mMockListener);
             fail("Should have thrown an exception.");
         } catch (RuntimeException expected) {
             assertTrue(expected.getCause() instanceof ConfigurationException);
@@ -1294,8 +1300,8 @@ public class ITestSuiteTest {
     }
 
     /**
-     * Test for {@link ITestSuite#run(ITestInvocationListener)} when only one of the module checkers
-     * is skipped.
+     * Test for {@link ITestSuite#run(TestInformation, ITestInvocationListener)} when only one of
+     * the module checkers is skipped.
      */
     @Test
     public void testRun_SkipOneModuleChecker() throws Exception {
@@ -1313,7 +1319,7 @@ public class ITestSuiteTest {
                 .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
         expectTestRun(mMockListener);
         replayMocks();
-        mTestSuite.run(mMockListener);
+        mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
     }
 
@@ -1323,7 +1329,7 @@ public class ITestSuiteTest {
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue(ITestSuite.RUNNER_WHITELIST, "com.I.dont.exist.runner");
         try {
-            mTestSuite.run(mMockListener);
+            mTestSuite.run(mTestInfo, mMockListener);
             fail("Should have thrown an exception.");
         } catch (RuntimeException expected) {
             assertTrue(expected.getCause() instanceof ConfigurationException);
@@ -1437,7 +1443,10 @@ public class ITestSuiteTest {
         assertTrue(config.getTests().get(0) instanceof FakeTest);
     }
 
-    /** Test for {@link ITestSuite#run(ITestInvocationListener)} when a module listener is used. */
+    /**
+     * Test for {@link ITestSuite#run(TestInformation, ITestInvocationListener)} when a module
+     * listener is used.
+     */
     @Test
     public void testRun_withModuleListener() throws Exception {
         ITestInvocationListener moduleListener = EasyMock.createMock(ITestInvocationListener.class);
@@ -1469,7 +1478,7 @@ public class ITestSuiteTest {
         expectIntraModuleTestRun(moduleListener, 1, false);
         replayMocks();
         EasyMock.replay(moduleListener);
-        mTestSuite.run(mMockListener);
+        mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
         EasyMock.verify(moduleListener);
     }
@@ -1480,7 +1489,6 @@ public class ITestSuiteTest {
      */
     @Test
     public void testRun_coverageOptionsCopied() throws Exception {
-        ITestInvocationListener moduleListener = EasyMock.createMock(ITestInvocationListener.class);
         StubCollectingTest test = new StubCollectingTest();
         mTestSuite =
                 new TestSuiteImpl() {
@@ -1523,7 +1531,7 @@ public class ITestSuiteTest {
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         mMockListener.testModuleEnded();
         replayMocks();
-        mTestSuite.run(mMockListener);
+        mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
 
         // Check that CoverageOptions was copied to the module.
@@ -1532,7 +1540,10 @@ public class ITestSuiteTest {
                 test.getConfiguration().getCoverageOptions());
     }
 
-    /** Test for {@link ITestSuite#run(ITestInvocationListener)} when a module listener is used. */
+    /**
+     * Test for {@link ITestSuite#run(TestInformation, ITestInvocationListener)} when a module
+     * listener is used.
+     */
     @Test
     public void testRun_GranularRerunwithModuleListener() throws Exception {
         ITestInvocationListener moduleListener = EasyMock.createMock(ITestInvocationListener.class);
@@ -1608,7 +1619,7 @@ public class ITestSuiteTest {
         expectIntraModuleTestRun(moduleListener, maxRunLimit, true);
         replayMocks();
         EasyMock.replay(moduleListener);
-        mTestSuite.run(mMockListener);
+        mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
         EasyMock.verify(moduleListener);
     }
@@ -1767,10 +1778,7 @@ public class ITestSuiteTest {
         assertTrue(randomSeed.equals(String.valueOf(123L)));
     }
 
-    /**
-     * Test for {@link ITestSuite#stageTestArtifacts(Set)} is called when test zip build artifact
-     * staging is delayed.
-     */
+    /** Test for stageTestArtifact is called when test zip build artifact staging is delayed. */
     @Test
     public void testStageTestArtifacts() throws Exception {
         String remoteFilePath = "gs://module1/tests.zip";
@@ -1782,7 +1790,7 @@ public class ITestSuiteTest {
                             String remoteFilePath,
                             List<String> includeFilters,
                             List<String> excludeFilters)
-                            throws ConfigurationException {
+                            throws BuildRetrievalError {
                         assertEquals(new File("tests_dir"), destDir);
                         assertEquals(remoteFilePath, remoteFilePath);
                         assertArrayEquals(new String[] {"/test/"}, includeFilters.toArray());
@@ -1801,7 +1809,7 @@ public class ITestSuiteTest {
         mTestSuite.setSystemStatusChecker(checkers);
 
         EasyMock.replay(mockBuildInfo);
-        mTestSuite.run(mMockListener);
+        mTestSuite.run(mTestInfo, mMockListener);
         EasyMock.verify(mockBuildInfo);
     }
 

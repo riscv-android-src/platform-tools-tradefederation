@@ -35,7 +35,7 @@ from test_runners import atest_tf_test_runner
 _INT_NAME_RE = re.compile(r'^.*\/res\/config\/(?P<int_name>.*).xml$')
 _TF_TARGETS = frozenset(['tradefed', 'tradefed-contrib'])
 _GTF_TARGETS = frozenset(['google-tradefed', 'google-tradefed-contrib'])
-_CONTRIB_TARGETS = frozenset(['tradefed-contrib', 'google-tradefed-contrib'])
+_CONTRIB_TARGETS = frozenset(['google-tradefed-contrib'])
 _TF_RES_DIR = '../res/config'
 
 

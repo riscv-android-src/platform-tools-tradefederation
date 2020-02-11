@@ -83,6 +83,7 @@ class CLITranslatorUnittests(unittest.TestCase):
         # Test mapping related args
         self.args.test_mapping = False
         self.args.include_subdirs = False
+        self.args.enable_file_patterns = False
         # Cache finder related args
         self.args.clear_cache = False
         self.ctr.mod_info = mock.Mock
@@ -351,7 +352,7 @@ class CLITranslatorUnittests(unittest.TestCase):
         sys.stdout = sys.__stdout__
         output = 'Did you mean the following modules?\n{0}\n{1}\n'.format(
             uc.MODULE_NAME, uc.MODULE2_NAME)
-        self.assertEquals(capture_output.getvalue(), output)
+        self.assertEqual(capture_output.getvalue(), output)
 
     def test_filter_comments(self):
         """Test filter_comments method"""

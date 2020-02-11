@@ -15,14 +15,14 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 
 /** Target preparer for creating user and cleaning it up at the end. */
-public class CreateUserPreparer extends BaseTargetPreparer implements ITargetCleaner {
+public class CreateUserPreparer extends BaseTargetPreparer {
 
     private static final String TF_CREATED_USER = "tf_created_user";
 
@@ -30,8 +30,9 @@ public class CreateUserPreparer extends BaseTargetPreparer implements ITargetCle
     private Integer mCreatedUserId = null;
 
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+    public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
         mOriginalUser = device.getCurrentUser();
         if (mOriginalUser == TestDevice.INVALID_USER_ID) {
             mOriginalUser = null;
@@ -58,8 +59,7 @@ public class CreateUserPreparer extends BaseTargetPreparer implements ITargetCle
     }
 
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
         if (mCreatedUserId == null) {
             return;
         }
@@ -70,6 +70,7 @@ public class CreateUserPreparer extends BaseTargetPreparer implements ITargetCle
             CLog.d("Skipping teardown due to dnae: %s", e.getMessage());
             return;
         }
+        ITestDevice device = testInfo.getDevice();
         if (!device.switchUser(mOriginalUser)) {
             CLog.e("Failed to switch back to original user '%s'", mOriginalUser);
         }

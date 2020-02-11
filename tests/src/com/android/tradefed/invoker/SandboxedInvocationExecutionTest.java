@@ -179,7 +179,7 @@ public class SandboxedInvocationExecutionTest {
                             @Override
                             public boolean shardConfig(
                                     IConfiguration config,
-                                    IInvocationContext context,
+                                    TestInformation testInfo,
                                     IRescheduler rescheduler,
                                     ITestLogger logger) {
                                 // Ensure that sharding is not called against a sandbox
@@ -246,8 +246,8 @@ public class SandboxedInvocationExecutionTest {
         mInvocation.invoke(mContext, mConfig, mMockRescheduler, mMockListener);
 
         // Ensure no preparer and cleaner are called in parent process
-        Mockito.verify(mMockPreparer, times(0)).setUp(any(), any());
-        Mockito.verify(mMockCleaner, times(0)).tearDown(any(), any(), any());
+        Mockito.verify(mMockPreparer, times(0)).setUp(any());
+        Mockito.verify(mMockCleaner, times(0)).tearDown(any(), any());
     }
 
     /**

@@ -51,6 +51,8 @@ import java.util.List;
 @RunWith(JUnit4.class)
 public class PerfettoPullerMetricCollectorTest {
 
+
+
     private PerfettoPullerMetricCollector mPerfettoMetricCollector;
     @Mock
     private ITestInvocationListener mMockListener;
@@ -60,7 +62,6 @@ public class PerfettoPullerMetricCollectorTest {
 
     @Before
     public void setUp() {
-
         MockitoAnnotations.initMocks(this);
         mContext = new InvocationContext();
         mContext.addAllocatedDevice("default", mMockDevice);
@@ -92,6 +93,7 @@ public class PerfettoPullerMetricCollectorTest {
         OptionSetter setter = new OptionSetter(mPerfettoMetricCollector);
         setter.setOptionValue("pull-pattern-keys", "perfettofile");
         setter.setOptionValue("perfetto-binary-path", "trx");
+        setter.setOptionValue("convert-metric-file", "false");
         HashMap<String, Metric> currentMetrics = new HashMap<>();
         currentMetrics.put("perfettofile", TfMetricProtoUtil.stringToMetric("/data/trace.pb"));
         Mockito.when(mMockDevice.pullFile(Mockito.eq("/data/trace.pb")))
@@ -126,6 +128,7 @@ public class PerfettoPullerMetricCollectorTest {
         setter.setOptionValue("pull-pattern-keys", "perfettofile");
         setter.setOptionValue("perfetto-binary-path", "trx");
         setter.setOptionValue("compress-perfetto", "true");
+        setter.setOptionValue("convert-metric-file", "false");
         HashMap<String, Metric> currentMetrics = new HashMap<>();
         currentMetrics.put("perfettofile", TfMetricProtoUtil.stringToMetric("/data/trace.pb"));
         Mockito.when(mMockDevice.pullFile(Mockito.eq("/data/trace.pb")))
@@ -161,6 +164,7 @@ public class PerfettoPullerMetricCollectorTest {
         OptionSetter setter = new OptionSetter(mPerfettoMetricCollector);
         setter.setOptionValue("pull-pattern-keys", "perfettofile");
         setter.setOptionValue("perfetto-binary-path", "trx");
+        setter.setOptionValue("convert-metric-file", "false");
         HashMap<String, Metric> currentMetrics = new HashMap<>();
         currentMetrics.put("perfettofile", TfMetricProtoUtil.stringToMetric("/data/trace.pb"));
         Mockito.when(mMockDevice.pullFile(Mockito.eq("/data/trace.pb")))
@@ -197,6 +201,7 @@ public class PerfettoPullerMetricCollectorTest {
         setter.setOptionValue("perfetto-binary-args", "--uno");
         setter.setOptionValue("perfetto-binary-args", "--dos");
         setter.setOptionValue("perfetto-binary-args", "--tres");
+        setter.setOptionValue("convert-metric-file", "false");
         HashMap<String, Metric> currentMetrics = new HashMap<>();
         currentMetrics.put("perfettofile", TfMetricProtoUtil.stringToMetric("/data/trace.pb"));
         Mockito.when(mMockDevice.pullFile(Mockito.eq("/data/trace.pb")))
@@ -222,9 +227,95 @@ public class PerfettoPullerMetricCollectorTest {
         Assert.assertTrue(args.contains("--tres"));
     }
 
+    /**
+     * Test the defaults args for trace processor shell.
+     * @throws Exception
+     */
+    @Test
+    public void testTraceProcessorArgsDefaults() throws Exception {
+        OptionSetter setter = new OptionSetter(mPerfettoMetricCollector);
+        setter.setOptionValue("pull-pattern-keys", "perfettofile");
+        HashMap<String, Metric> currentMetrics = new HashMap<>();
+
+        currentMetrics.put("perfettofile", TfMetricProtoUtil.stringToMetric("/data/trace.pb"));
+        Mockito.when(mMockDevice.pullFile(Mockito.eq("/data/trace.pb")))
+                .thenReturn(new File("trace"));
+
+        TestDescription testDesc = new TestDescription("xyz", "abc");
+        CommandResult cr = new CommandResult();
+        cr.setStatus(CommandStatus.SUCCESS);
+        cr.setStdout("sometext");
+
+        File tmpFile = File.createTempFile("trace_processor_shell", "");
+
+        // Verifies the trace processor shell lookup in test artifacts file path map.
+        Mockito.doReturn(tmpFile).when(
+                mPerfettoMetricCollector).getFileFromTestArtifacts("trace_processor_shell");
+        Mockito.doReturn(cr).when(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
+                Mockito.any(), Mockito.any(), Mockito.any());
+
+        mPerfettoMetricCollector.testStarted(testDesc);
+        mPerfettoMetricCollector.testEnded(testDesc, currentMetrics);
+
+        String path = tmpFile.getAbsolutePath();
+        tmpFile.delete();
+
+        ArgumentCaptor<String[]> captor = ArgumentCaptor.forClass(String[].class);
+        Mockito.verify(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
+                captor.capture(), Mockito.any(), Mockito.any());
+        List<String> args = Arrays.asList(captor.getValue());
+        Assert.assertTrue(args.contains(path));
+        Assert.assertTrue(args.contains("--run-metrics"));
+        Assert.assertTrue(args.contains("--metrics-output=text"));
+
+    }
+
+    /**
+     * Test that trace processor run metrics are used when running the trace
+     * processor shell command.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testTraceProcessorAdditionalArgs() throws Exception {
+        File tmpFile = File.createTempFile("trace_processor_binary", "");
+        OptionSetter setter = new OptionSetter(mPerfettoMetricCollector);
+        setter.setOptionValue("trace-processor-name", "trace_processor_shell");
+        setter.setOptionValue("pull-pattern-keys", "perfettofile");
+        setter.setOptionValue("trace-processor-run-metrics", "android_cpu,android_mem");
+        setter.setOptionValue("trace-processor-binary", tmpFile.getAbsolutePath());
+
+        HashMap<String, Metric> currentMetrics = new HashMap<>();
+
+        currentMetrics.put("perfettofile", TfMetricProtoUtil.stringToMetric("/data/trace.pb"));
+        Mockito.when(mMockDevice.pullFile(Mockito.eq("/data/trace.pb")))
+                .thenReturn(new File("trace"));
+
+        TestDescription testDesc = new TestDescription("xyz", "abc");
+        CommandResult cr = new CommandResult();
+        cr.setStatus(CommandStatus.SUCCESS);
+        cr.setStdout("abc:efg");
+
+        Mockito.doReturn(cr).when(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
+                Mockito.any(), Mockito.any(), Mockito.any());
+
+        mPerfettoMetricCollector.testStarted(testDesc);
+        mPerfettoMetricCollector.testEnded(testDesc, currentMetrics);
+        tmpFile.delete();
+
+        ArgumentCaptor<String[]> captor = ArgumentCaptor.forClass(String[].class);
+        Mockito.verify(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
+                captor.capture(), Mockito.any(), Mockito.any());
+        List<String> args = Arrays.asList(captor.getValue());
+        // Verifies all the overridden values are taken into account and trace processor
+        // binary is given preference over trace processor shell name.
+        Assert.assertTrue(args.contains(tmpFile.getAbsolutePath()));
+        Assert.assertTrue(args.contains("android_cpu,android_mem"));
+        Assert.assertTrue(args.contains("--metrics-output=text"));
+    }
+
     @Test
     public void testSplitKeyValue() {
-
         Assert.assertNull(PerfettoPullerMetricCollector.splitKeyValue("a:"));
         Assert.assertNull(PerfettoPullerMetricCollector.splitKeyValue(""));
         Assert.assertNull(PerfettoPullerMetricCollector.splitKeyValue(":a"));
@@ -234,4 +325,5 @@ public class PerfettoPullerMetricCollectorTest {
                 PerfettoPullerMetricCollector.splitKeyValue("a:b:c:xyz"),
                 new Pair<>("a:b:c", "xyz"));
     }
+
 }

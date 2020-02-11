@@ -22,9 +22,12 @@ import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
+import com.google.common.collect.ImmutableSet;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Forwarder from ddmlib {@link ITestRunListener} to {@link ITestLifeCycleReceiver}. Interface that
@@ -34,9 +37,11 @@ import java.util.Map;
  */
 public class TestRunToTestInvocationForwarder implements ITestRunListener {
 
-    private static final String NULL_STRING = "null";
+    private static final Set<String> INVALID_METHODS =
+            ImmutableSet.<String>of("null", "initializationError");
+
     public static final String ERROR_MESSAGE_FORMAT =
-            "Runner reported an invalid method 'null' (%s). Something went wrong, Skipping "
+            "Runner reported an invalid method '%s' (%s). Something went wrong, Skipping "
                     + "its reporting.";
 
     private Collection<ITestLifeCycleReceiver> mListeners;
@@ -45,6 +50,7 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     // and report a "null" as a test method. This creates a lot of issues in the reporting pipeline
     // so catch it, and avoid it at the root.
     private TestIdentifier mNullMethod = null;
+    private String mNullStack = null;
 
     public TestRunToTestInvocationForwarder(Collection<ITestLifeCycleReceiver> listeners) {
         mListeners = listeners;
@@ -57,7 +63,7 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
 
     @Override
     public void testStarted(TestIdentifier testId) {
-        if (NULL_STRING.equals(testId.getTestName())) {
+        if (INVALID_METHODS.contains(testId.getTestName())) {
             mNullMethod = testId;
             return;
         }
@@ -65,25 +71,6 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
                 listener.testStarted(TestDescription.createFromTestIdentifier(testId));
-            } catch (RuntimeException any) {
-                CLog.e(
-                        "RuntimeException when invoking %s#testStarted",
-                        listener.getClass().getName());
-                CLog.e(any);
-            }
-        }
-    }
-
-    @Override
-    public void testStarted(TestIdentifier testId, long startTime) {
-        if (NULL_STRING.equals(testId.getTestName())) {
-            mNullMethod = testId;
-            return;
-        }
-        mNullMethod = null;
-        for (ITestLifeCycleReceiver listener : mListeners) {
-            try {
-                listener.testStarted(TestDescription.createFromTestIdentifier(testId), startTime);
             } catch (RuntimeException any) {
                 CLog.e(
                         "RuntimeException when invoking %s#testStarted",
@@ -114,6 +101,7 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     @Override
     public void testFailed(TestIdentifier testId, String trace) {
         if (mNullMethod != null && mNullMethod.equals(testId)) {
+            mNullStack = trace;
             return;
         }
         for (ITestLifeCycleReceiver listener : mListeners) {
@@ -149,33 +137,18 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     public void testEnded(TestIdentifier testId, Map<String, String> testMetrics) {
         for (ITestLifeCycleReceiver listener : mListeners) {
             if (mNullMethod != null && mNullMethod.equals(testId)) {
-                listener.testRunFailed(String.format(ERROR_MESSAGE_FORMAT, mNullMethod));
+                String message =
+                        String.format(ERROR_MESSAGE_FORMAT, mNullMethod.getTestName(), mNullMethod);
+                if (mNullStack != null) {
+                    message = String.format("%s Stack:%s", message, mNullStack);
+                }
+                listener.testRunFailed(message);
+                mNullStack = null;
                 continue;
             }
             try {
                 listener.testEnded(
                         TestDescription.createFromTestIdentifier(testId),
-                        TfMetricProtoUtil.upgradeConvert(testMetrics));
-            } catch (RuntimeException any) {
-                CLog.e(
-                        "RuntimeException when invoking %s#testEnded",
-                        listener.getClass().getName());
-                CLog.e(any);
-            }
-        }
-    }
-
-    @Override
-    public void testEnded(TestIdentifier testId, long endTime, Map<String, String> testMetrics) {
-        for (ITestLifeCycleReceiver listener : mListeners) {
-            if (mNullMethod != null && mNullMethod.equals(testId)) {
-                listener.testRunFailed(String.format(ERROR_MESSAGE_FORMAT, mNullMethod));
-                continue;
-            }
-            try {
-                listener.testEnded(
-                        TestDescription.createFromTestIdentifier(testId),
-                        endTime,
                         TfMetricProtoUtil.upgradeConvert(testMetrics));
             } catch (RuntimeException any) {
                 CLog.e(

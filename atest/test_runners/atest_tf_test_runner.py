@@ -30,6 +30,7 @@ from functools import partial
 # pylint: disable=import-error
 import atest_utils
 import constants
+import result_reporter
 from event_handler import EventHandler
 from test_finders import test_info
 from test_runners import test_runner_base
@@ -42,11 +43,11 @@ SELECT_TIMEOUT = 5
 
 # Socket Events of form FIRST_EVENT {JSON_DATA}\nSECOND_EVENT {JSON_DATA}
 # EVENT_RE has groups for the name and the data. "." does not match \n.
-EVENT_RE = re.compile(r'^(?P<event_name>[A-Z_]+) (?P<json_data>{.*})(?:\n|$)')
+EVENT_RE = re.compile(r'\n*(?P<event_name>[A-Z_]+) (?P<json_data>{.*})(?=\n|.)*')
 
 EXEC_DEPENDENCIES = ('adb', 'aapt')
 
-TRADEFED_EXIT_MSG = ('TradeFed subprocess exited early with exit code=%s.')
+TRADEFED_EXIT_MSG = 'TradeFed subprocess exited early with exit code=%s.'
 
 LOG_FOLDER_NAME = 'log'
 
@@ -61,10 +62,16 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
     NAME = 'AtestTradefedTestRunner'
     EXECUTABLE = 'atest_tradefed.sh'
     _TF_TEMPLATE = 'template/atest_local_min'
-    _LOG_ARGS = '--logcat-on-failure --atest-log-file-path={log_path}'
+    # Use --no-enable-granular-attempts to control reporter replay behavior.
+    # TODO(b/142630648): Enable option enable-granular-attempts in sharding mode.
+    _LOG_ARGS = ('--logcat-on-failure --atest-log-file-path={log_path} '
+                 '--no-enable-granular-attempts')
     _RUN_CMD = ('{exe} {template} --template:map '
-                'test=atest {log_args} {args}')
+                'test=atest {tf_customize_template} {log_args} {args}')
     _BUILD_REQ = {'tradefed-core'}
+    _RERUN_OPTION_GROUP = [constants.ITERATIONS,
+                           constants.RERUN_UNTIL_FAILURE,
+                           constants.RETRY_ANY_FAILURE]
 
     def __init__(self, results_dir, module_info=None, **kwargs):
         """Init stuff for base class."""
@@ -76,6 +83,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         log_args = {'log_path': self.log_path}
         self.run_cmd_dict = {'exe': self.EXECUTABLE,
                              'template': self._TF_TEMPLATE,
+                             'tf_customize_template': '',
                              'args': '',
                              'log_args': self._LOG_ARGS.format(**log_args)}
         self.is_verbose = logging.getLogger().isEnabledFor(logging.DEBUG)
@@ -116,6 +124,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             0 if tests succeed, non-zero otherwise.
         """
         reporter.log_path = self.log_path
+        reporter.rerun_options = self._extract_rerun_options(extra_args)
         # Set google service key if it's available or found before running tests.
         self._try_set_gts_authentication_key()
         if os.getenv(test_runner_base.OLD_OUTPUT_ENV_VAR):
@@ -169,6 +178,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             ret_code |= self.wait_for_subprocess(subproc)
         return ret_code
 
+    # pylint: disable=too-many-branches
     def _start_monitor(self, server, tf_subproc, reporter):
         """Polling and process event.
 
@@ -180,6 +190,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         inputs = [server]
         event_handlers = {}
         data_map = {}
+        inv_socket = None
         while inputs:
             try:
                 readable, _, _ = select.select(inputs, [], [], SELECT_TIMEOUT)
@@ -190,9 +201,20 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                         conn.setblocking(False)
                         inputs.append(conn)
                         data_map[conn] = ''
+                        # The First connection should be invocation level reporter.
+                        if not inv_socket:
+                            inv_socket = conn
                     else:
-                        event_handler = event_handlers.setdefault(
-                            socket_object, EventHandler(reporter, self.NAME))
+                        # Count invocation level reporter events
+                        # without showing real-time information.
+                        if inv_socket == socket_object:
+                            reporter.silent = True
+                            event_handler = event_handlers.setdefault(
+                                socket_object, EventHandler(reporter, self.NAME))
+                        else:
+                            event_handler = event_handlers.setdefault(
+                                socket_object, EventHandler(
+                                    result_reporter.ResultReporter(), self.NAME))
                         recv_data = self._process_connection(data_map,
                                                              socket_object,
                                                              event_handler)
@@ -200,9 +222,9 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                             inputs.remove(socket_object)
                             socket_object.close()
             finally:
-                if tf_subproc.poll() is not None:
-                    while inputs:
-                        inputs.pop(0).close()
+                # Subprocess ended and all socket client closed.
+                if tf_subproc.poll() is not None and len(inputs) == 1:
+                    inputs.pop().close()
                     if not data_map:
                         raise TradeFedExitError(TRADEFED_EXIT_MSG
                                                 % tf_subproc.returncode)
@@ -302,6 +324,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         return build_req
 
     # pylint: disable=too-many-branches
+    # pylint: disable=too-many-statements
     @staticmethod
     def _parse_extra_args(extra_args):
         """Convert the extra args into something tf can understand.
@@ -354,6 +377,27 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 args_to_append.append('--module-parameter')
                 args_to_append.append(extra_args[arg])
                 continue
+            if constants.ITERATIONS == arg:
+                args_to_append.append('--retry-strategy')
+                args_to_append.append(constants.ITERATIONS)
+                args_to_append.append('--max-testcase-run-count')
+                args_to_append.append(str(extra_args[arg]))
+                continue
+            if constants.RERUN_UNTIL_FAILURE == arg:
+                args_to_append.append('--retry-strategy')
+                args_to_append.append(constants.RERUN_UNTIL_FAILURE)
+                args_to_append.append('--max-testcase-run-count')
+                args_to_append.append(str(extra_args[arg]))
+                continue
+            if constants.RETRY_ANY_FAILURE == arg:
+                args_to_append.append('--retry-strategy')
+                args_to_append.append(constants.RETRY_ANY_FAILURE)
+                args_to_append.append('--max-testcase-run-count')
+                args_to_append.append(str(extra_args[arg]))
+                continue
+            if constants.COLLECT_TESTS_ONLY == arg:
+                args_to_append.append('--collect-tests-only')
+                continue
             args_not_supported.append(arg)
         return args_to_append, args_not_supported
 
@@ -398,7 +442,10 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         if metrics_folder:
             test_args.extend(['--metrics-folder', metrics_folder])
             logging.info('Saved metrics in: %s', metrics_folder)
-        log_level = 'VERBOSE' if self.is_verbose else 'WARN'
+        log_level = 'WARN'
+        if self.is_verbose:
+            log_level = 'VERBOSE'
+            test_args.extend(['--log-level-display', log_level])
         test_args.extend(['--log-level', log_level])
 
         args_to_add, args_not_supported = self._parse_extra_args(extra_args)
@@ -416,8 +463,13 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             logging.info('%s does not support the following args %s',
                          self.EXECUTABLE, args_not_supported)
 
-        test_args.extend(atest_utils.get_result_server_args())
+        # Only need to check one TestInfo to determine if the tests are
+        # configured in TEST_MAPPING.
+        for_test_mapping = test_infos and test_infos[0].from_test_mapping
+        test_args.extend(atest_utils.get_result_server_args(for_test_mapping))
         self.run_cmd_dict['args'] = ' '.join(test_args)
+        self.run_cmd_dict['tf_customize_template'] = (
+            self._extract_customize_tf_templates(extra_args))
         return [self._RUN_CMD.format(**self.run_cmd_dict)]
 
     def _flatten_test_infos(self, test_infos):
@@ -526,10 +578,6 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         if not test_infos:
             return []
 
-        # Only need to check one TestInfo to determine if the tests are
-        # configured in TEST_MAPPING.
-        if test_infos[0].from_test_mapping:
-            args.extend(constants.TEST_MAPPING_RESULT_SERVER_ARGS)
         test_infos = self._flatten_test_infos(test_infos)
         # In order to do dry-run verification, sort it to make each run has the
         # same result
@@ -571,3 +619,27 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         if not has_integration_test:
             args.append(constants.TF_SKIP_LOADING_CONFIG_JAR)
         return args
+
+    def _extract_rerun_options(self, extra_args):
+        """Extract rerun options to a string for output.
+
+        Args:
+            extra_args: Dict of extra args for test runners to use.
+
+        Returns: A string of rerun options.
+        """
+        extracted_options = ['{} {}'.format(arg, extra_args[arg])
+                             for arg in extra_args
+                             if arg in self._RERUN_OPTION_GROUP]
+        return ' '.join(extracted_options)
+
+    def _extract_customize_tf_templates(self, extra_args):
+        """Extract tradefed template options to a string for output.
+
+        Args:
+            extra_args: Dict of extra args for test runners to use.
+
+        Returns: A string of tradefed template options.
+        """
+        return ''.join(['--template:map %s '
+                        % x for x in extra_args.get(constants.TF_TEMPLATE, [])])

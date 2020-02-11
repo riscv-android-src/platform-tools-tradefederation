@@ -27,6 +27,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.KeyguardControllerState;
@@ -52,6 +53,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
 
 /**
@@ -84,8 +86,14 @@ public class TestDevice extends NativeDevice {
     private static final Pattern PACKAGE_REGEX = Pattern.compile("package:(.*)=(.*)");
 
     static final String LIST_APEXES_CMD = "pm list packages --apex-only --show-versioncode -f";
-    private static final Pattern APEXES_REGEX =
+    private static final Pattern APEXES_WITH_PATH_REGEX =
             Pattern.compile("package:(.*)=(.*) versionCode:(.*)");
+    /**
+     * Regexp to match on old versions of platform (before R), where {@code -f} flag for the {@code
+     * pm list packages apex-only} command wasn't supported.
+     */
+    private static final Pattern APEXES_WITHOUT_PATH_REGEX =
+            Pattern.compile("package:(.*) versionCode:(.*)");
 
     private static final int FLAG_PRIMARY = 1; // From the UserInfo class
 
@@ -187,6 +195,9 @@ public class TestDevice extends NativeDevice {
                 packageFile.getAbsolutePath(), extraArgs.toString(), getSerialNumber());
         performDeviceAction(String.format("install %s", packageFile.getAbsolutePath()),
                 installAction, MAX_RETRY_ATTEMPTS);
+        List<File> packageFiles = new ArrayList();
+        packageFiles.add(packageFile);
+        allowLegacyStorageForApps(packageFiles);
         return response[0];
     }
 
@@ -325,6 +336,9 @@ public class TestDevice extends NativeDevice {
                 };
         performDeviceAction(String.format("install %s", packageFile.getAbsolutePath()),
                 installAction, MAX_RETRY_ATTEMPTS);
+        List<File> packageFiles = new ArrayList();
+        packageFiles.add(packageFile);
+        allowLegacyStorageForApps(packageFiles);
         return response[0];
     }
 
@@ -357,8 +371,8 @@ public class TestDevice extends NativeDevice {
      *
      * @param packageFiles the local apk files
      * @param reinstall <code>true</code> if a reinstall should be performed
-     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
-     *     available options.
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm -h' for available
+     *     options.
      * @return the response from the installation <code>null</code> if installation succeeds.
      * @throws DeviceNotAvailableException
      */
@@ -397,7 +411,45 @@ public class TestDevice extends NativeDevice {
                 String.format("install %s", packageFiles.toString()),
                 installAction,
                 MAX_RETRY_ATTEMPTS);
+        allowLegacyStorageForApps(packageFiles);
         return response[0];
+    }
+
+    /**
+     * Allows Legacy External Storage access for apps that request for it.
+     *
+     * <p>Apps that request for legacy external storage access are granted the access by setting
+     * MANAGE_EXTERNAL_STORAGE App Op. This gives the app File manager privileges, File managers
+     * have legacy external storage access.
+     *
+     * @param appFiles List of Files. Apk Files of the apps that are installed.
+     */
+    private void allowLegacyStorageForApps(List<File> appFiles) throws DeviceNotAvailableException {
+        for (File appFile : appFiles) {
+            AaptParser aaptParser = AaptParser.parse(appFile);
+            if (aaptParser != null
+                    && aaptParser.getTargetSdkVersion() > 29
+                    && aaptParser.isRequestingLegacyStorage()) {
+                // Set the MANAGE_EXTERNAL_STORAGE App Op to MODE_ALLOWED (Code = 0)
+                // for all users.
+                ArrayList<Integer> userIds = listUsers();
+                for (int userId : userIds) {
+                    CommandResult setFileManagerAppOpResult =
+                            executeShellV2Command(
+                                    "appops set --user "
+                                            + userId
+                                            + " --uid "
+                                            + aaptParser.getPackageName()
+                                            + " MANAGE_EXTERNAL_STORAGE 0");
+                    if (!CommandStatus.SUCCESS.equals(setFileManagerAppOpResult.getStatus())) {
+                        CLog.e(
+                                "Failed to set MANAGE_EXTERNAL_STORAGE App Op to"
+                                        + " allow legacy external storage for: %s ; stderr: %s",
+                                aaptParser.getPackageName(), setFileManagerAppOpResult.getStderr());
+                    }
+                }
+            }
+        }
     }
 
     /** {@inheritDoc} */
@@ -461,8 +513,8 @@ public class TestDevice extends NativeDevice {
      *
      * @param remoteApkPaths the remote apk file paths
      * @param reinstall <code>true</code> if a reinstall should be performed
-     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
-     *     available options.
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm -h' for available
+     *     options.
      * @return the response from the installation <code>null</code> if installation succeeds.
      * @throws DeviceNotAvailableException
      */
@@ -568,7 +620,7 @@ public class TestDevice extends NativeDevice {
 
     /** {@inheritDoc} */
     @Override
-    public InputStreamSource getScreenshot(int displayId) throws DeviceNotAvailableException {
+    public InputStreamSource getScreenshot(long displayId) throws DeviceNotAvailableException {
         final String tmpDevicePath = String.format("/data/local/tmp/display_%s.png", displayId);
         CommandResult result =
                 executeShellV2Command(
@@ -849,15 +901,16 @@ public class TestDevice extends NativeDevice {
     /**
      * Performs an reboot via framework power manager
      *
-     * Must have root access, device must be API Level 18 or above
+     * <p>Must have root access, device must be API Level 18 or above
      *
-     * @param into the mode to reboot into, currently supported: bootloader, recovery, leave it
-     *         null for a plain reboot
+     * @param rebootMode a mode of this reboot.
+     * @param reason for this reboot.
      * @return <code>true</code> if the device rebooted, <code>false</code> if not successful or
-     *          unsupported
+     *     unsupported
      * @throws DeviceNotAvailableException
      */
-    private boolean doAdbFrameworkReboot(final String into) throws DeviceNotAvailableException {
+    private boolean doAdbFrameworkReboot(RebootMode rebootMode, @Nullable final String reason)
+            throws DeviceNotAvailableException {
         // use framework reboot when:
         // 1. device API level >= 18
         // 2. has adb root
@@ -875,10 +928,7 @@ public class TestDevice extends NativeDevice {
                     CLog.v("framework reboot: can't detect framework running");
                     return false;
                 }
-                String command = "svc power reboot";
-                if (into != null && !into.isEmpty()) {
-                    command = String.format("%s %s", command, into);
-                }
+                String command = "svc power reboot " + rebootMode.formatRebootCommand(reason);
                 executeShellCommand(command);
             } catch (DeviceUnresponsiveException due) {
                 CLog.v("framework reboot: device unresponsive to shell command, using fallback");
@@ -898,14 +948,16 @@ public class TestDevice extends NativeDevice {
     /**
      * Perform a adb reboot.
      *
-     * @param into the bootloader name to reboot into, or <code>null</code> to just reboot the
-     *            device.
+     * @param rebootMode a mode of this reboot.
+     * @param reason for this reboot.
      * @throws DeviceNotAvailableException
      */
     @Override
-    protected void doAdbReboot(final String into) throws DeviceNotAvailableException {
-        if (!TestDeviceState.ONLINE.equals(getDeviceState()) || !doAdbFrameworkReboot(into)) {
-            super.doAdbReboot(into);
+    protected void doAdbReboot(RebootMode rebootMode, @Nullable final String reason)
+            throws DeviceNotAvailableException {
+        if (!TestDeviceState.ONLINE.equals(getDeviceState())
+                || !doAdbFrameworkReboot(rebootMode, reason)) {
+            super.doAdbReboot(rebootMode, reason);
         }
     }
 
@@ -933,15 +985,32 @@ public class TestDevice extends NativeDevice {
     /** {@inheritDoc} */
     @Override
     public Set<ApexInfo> getActiveApexes() throws DeviceNotAvailableException {
-        Set<ApexInfo> ret = new HashSet<>();
         String output = executeShellCommand(LIST_APEXES_CMD);
-        if (output != null) {
-            Matcher m = APEXES_REGEX.matcher(output);
-            while (m.find()) {
-                String sourceDir = m.group(1);
-                String name = m.group(2);
-                long version = Long.valueOf(m.group(3));
+        // Optimistically parse expecting platform to return paths. If it doesn't, empty set will
+        // be returned.
+        Set<ApexInfo> ret = parseApexesFromOutput(output, true /* withPath */);
+        if (ret.isEmpty()) {
+            ret = parseApexesFromOutput(output, false /* withPath */);
+        }
+        return ret;
+    }
+
+    private Set<ApexInfo> parseApexesFromOutput(final String output, boolean withPath) {
+        Set<ApexInfo> ret = new HashSet<>();
+        Matcher matcher =
+                withPath
+                        ? APEXES_WITH_PATH_REGEX.matcher(output)
+                        : APEXES_WITHOUT_PATH_REGEX.matcher(output);
+        while (matcher.find()) {
+            if (withPath) {
+                String sourceDir = matcher.group(1);
+                String name = matcher.group(2);
+                long version = Long.valueOf(matcher.group(3));
                 ret.add(new ApexInfo(name, version, sourceDir));
+            } else {
+                String name = matcher.group(1);
+                long version = Long.valueOf(matcher.group(2));
+                ret.add(new ApexInfo(name, version));
             }
         }
         return ret;
@@ -1408,9 +1477,9 @@ public class TestDevice extends NativeDevice {
                 // disable keyguard if option is true
                 prePostBootSetup();
                 return true;
-            } else {
-                RunUtil.getDefault().sleep(getCheckNewUserSleep());
             }
+            RunUtil.getDefault().sleep(getCheckNewUserSleep());
+            executeShellCommand(String.format("am switch-user %d", userId));
         }
         CLog.e("User did not switch in the given %d timeout", timeout);
         return false;
@@ -1435,9 +1504,16 @@ public class TestDevice extends NativeDevice {
      */
     @Override
     public boolean hasFeature(String feature) throws DeviceNotAvailableException {
-        final String output = executeShellCommand("pm list features");
-        if (output.contains(feature)) {
-            return true;
+        // Add support for directly checking a feature and match the pm output.
+        if (!feature.startsWith("feature:")) {
+            feature = "feature:" + feature;
+        }
+        String commandOutput = executeShellCommand("pm list features");
+        for (String line: commandOutput.split("\\s+")) {
+            // Each line in the output of the command has the format "feature:{FEATURE_VALUE}".
+            if (feature.equals(line)) {
+                return true;
+            }
         }
         CLog.w("Feature: %s is not available on %s", feature, getSerialNumber());
         return false;
@@ -1757,10 +1833,10 @@ public class TestDevice extends NativeDevice {
 
     /** {@inheritDoc} */
     @Override
-    public Set<Integer> listDisplayIds() throws DeviceNotAvailableException {
-        Set<Integer> displays = new HashSet<>();
+    public Set<Long> listDisplayIds() throws DeviceNotAvailableException {
+        Set<Long> displays = new HashSet<>();
         // Zero is the default display
-        displays.add(0);
+        displays.add(0L);
         CommandResult res = executeShellV2Command("dumpsys SurfaceFlinger | grep 'color modes:'");
         if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
             CLog.e("Something went wrong while listing displays: %s", res.getStderr());
@@ -1771,7 +1847,7 @@ public class TestDevice extends NativeDevice {
         for (String line : output.split("\n")) {
             Matcher m = p.matcher(line);
             if (m.matches()) {
-                displays.add(Integer.parseInt(m.group("id")));
+                displays.add(Long.parseLong(m.group("id")));
             }
         }
         return displays;

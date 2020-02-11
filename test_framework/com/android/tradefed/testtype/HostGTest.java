@@ -22,6 +22,7 @@ import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.CommandResult;
@@ -197,7 +198,7 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
 
     /** {@inheritDoc} */
     @Override
-    public void run(ITestInvocationListener listener)
+    public void run(TestInformation testInfo, ITestInvocationListener listener)
             throws DeviceNotAvailableException { // DNAE is part of IRemoteTest.
         // Get testcases directory using the key HOST_LINKED_DIR first.
         // If the directory is null, then get testcase directory from getTestDir() since *TS will

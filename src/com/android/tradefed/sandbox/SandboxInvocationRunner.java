@@ -17,7 +17,7 @@ package com.android.tradefed.sandbox;
 
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.CommandResult;
@@ -38,7 +38,7 @@ public class SandboxInvocationRunner {
 
     /** Do setup and run the tests */
     public static void prepareAndRun(
-            IConfiguration config, IInvocationContext context, ITestInvocationListener listener)
+            TestInformation info, IConfiguration config, ITestInvocationListener listener)
             throws Throwable {
         // TODO: refactor TestInvocation to be more modular in the sandbox handling
         ISandbox sandbox =
@@ -47,7 +47,7 @@ public class SandboxInvocationRunner {
             throw new RuntimeException("Couldn't find the sandbox object.");
         }
         PrettyPrintDelimiter.printStageDelimiter("Starting Sandbox Environment Setup");
-        Exception res = sandbox.prepareEnvironment(context, config, listener);
+        Exception res = sandbox.prepareEnvironment(info.getContext(), config, listener);
         if (res != null) {
             CLog.w("Sandbox prepareEnvironment threw an Exception.");
             sandbox.tearDown();
@@ -57,6 +57,9 @@ public class SandboxInvocationRunner {
         try {
             CommandResult result = sandbox.run(config, listener);
             if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+                CLog.e(
+                        "Sandbox finished with status: %s and exit code: %s",
+                        result.getStatus(), result.getExitCode());
                 handleStderrException(result.getStderr());
             }
         } finally {

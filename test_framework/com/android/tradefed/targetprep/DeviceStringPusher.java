@@ -15,11 +15,11 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 
 import java.io.File;
 
@@ -29,7 +29,7 @@ import java.io.File;
  * <p>If the file already exists, this will restore the old version on tear down.
  */
 @OptionClass(alias = "write-file")
-public class DeviceStringPusher extends BaseTargetPreparer implements ITargetCleaner {
+public class DeviceStringPusher extends BaseTargetPreparer {
     @Option(name = "file-path", description = "Path of file to write")
     private String mFileName;
 
@@ -39,8 +39,9 @@ public class DeviceStringPusher extends BaseTargetPreparer implements ITargetCle
     private File mOldContents;
 
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+    public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
         if (device.doesFileExist(mFileName)) {
             mOldContents = device.pullFile(mFileName);
         }
@@ -51,8 +52,8 @@ public class DeviceStringPusher extends BaseTargetPreparer implements ITargetCle
     }
 
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
         if (mOldContents == null) {
             device.deleteFile(mFileName);
         } else {

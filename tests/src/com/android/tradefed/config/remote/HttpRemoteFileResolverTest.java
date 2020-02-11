@@ -18,8 +18,7 @@ package com.android.tradefed.config.remote;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.config.Option;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.net.IHttpHelper;
 
@@ -56,7 +55,6 @@ public class HttpRemoteFileResolverTest {
         File res =
                 mResolver.resolveRemoteFiles(
                         new File("http:/fake/HttpRemoteFileResolverTest"),
-                        Mockito.mock(Option.class),
                         new HashMap<>());
         FileUtil.deleteFile(res);
 
@@ -73,10 +71,9 @@ public class HttpRemoteFileResolverTest {
         try {
             mResolver.resolveRemoteFiles(
                     new File("http:/fake/HttpRemoteFileResolverTest"),
-                    Mockito.mock(Option.class),
                     new HashMap<>());
             fail("Should have thrown an exception.");
-        } catch (ConfigurationException expected) {
+        } catch (BuildRetrievalError expected) {
             assertEquals(
                     "Failed to download http://fake/HttpRemoteFileResolverTest due to: download failure",
                     expected.getMessage());

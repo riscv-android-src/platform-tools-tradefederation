@@ -20,6 +20,7 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
@@ -148,6 +149,17 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
         super.testRunFailed(failureMessage);
         CLog.logAndDisplay(LogLevel.ERROR, "FAILED: %s failed with message: %s",
                 getCurrentRunResults().getName(), failureMessage);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testRunFailed(FailureDescription failure) {
+        super.testRunFailed(failure);
+        CLog.logAndDisplay(
+                LogLevel.ERROR,
+                "FAILED: %s failed with message: %s",
+                getCurrentRunResults().getName(),
+                failure.toString());
     }
 
     /** {@inheritDoc} */

@@ -18,6 +18,7 @@ package com.android.tradefed.device.cloud;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceStateMonitor;
@@ -47,6 +48,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import javax.annotation.Nullable;
+
 /**
  * Extends {@link RemoteAndroidDevice} behavior for a full stack android device running in the
  * Google Compute Engine (Gce). Assume the device serial will be in the format
@@ -54,7 +57,6 @@ import java.util.List;
  */
 public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements ITestLoggerReceiver {
 
-    private String mInitialSerial;
     private GceAvdInfo mGceAvd;
     private ITestLogger mTestLogger;
 
@@ -93,7 +95,6 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                     new GceManager(
                             getDeviceDescriptor(), getOptions(), info, testResourceBuildInfos);
             getGceHandler().logStableHostImageInfos(info);
-            mInitialSerial = getSerialNumber();
             setFastbootEnabled(false);
 
             // Launch GCE helper script.
@@ -178,21 +179,24 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
             }
 
             if (mGceAvd != null) {
-                // attempt to get a bugreport if Gce Avd is a failure
-                if (!GceStatus.SUCCESS.equals(mGceAvd.getStatus())) {
-                    // Get a bugreport via ssh
-                    getSshBugreport();
+                // Host and port can be null in case of acloud timeout
+                if (mGceAvd.hostAndPort() != null) {
+                    // attempt to get a bugreport if Gce Avd is a failure
+                    if (!GceStatus.SUCCESS.equals(mGceAvd.getStatus())) {
+                        // Get a bugreport via ssh
+                        getSshBugreport();
+                    }
+                    // Log the serial output of the instance.
+                    getGceHandler().logSerialOutput(mGceAvd, mTestLogger);
+
+                    // Fetch remote files
+                    CommonLogRemoteFileUtil.fetchCommonFiles(
+                            mTestLogger, mGceAvd, getOptions(), getRunUtil());
+
+                    // Fetch all tombstones if any.
+                    CommonLogRemoteFileUtil.fetchTombstones(
+                            mTestLogger, mGceAvd, getOptions(), getRunUtil());
                 }
-                // Log the serial output of the instance.
-                getGceHandler().logSerialOutput(mGceAvd, mTestLogger);
-
-                // Fetch remote files
-                CommonLogRemoteFileUtil.fetchCommonFiles(
-                        mTestLogger, mGceAvd, getOptions(), getRunUtil());
-
-                // Fetch all tombstones if any.
-                CommonLogRemoteFileUtil.fetchTombstones(
-                        mTestLogger, mGceAvd, getOptions(), getRunUtil());
 
                 // Cleanup GCE first to make sure ssh tunnel has nowhere to go.
                 if (!getOptions().shouldSkipTearDown()) {
@@ -202,8 +206,8 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                 mGceAvd = null;
             }
 
-            if (mInitialSerial != null) {
-                setIDevice(new RemoteAvdIDevice(mInitialSerial));
+            if (getInitialSerial() != null) {
+                setIDevice(new RemoteAvdIDevice(getInitialSerial(), getInitialIp()));
             }
             setFastbootEnabled(false);
 
@@ -246,7 +250,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
         TargetSetupError exception = null;
         for (int attempt = 0; attempt < getOptions().getGceMaxAttempt(); attempt++) {
             try {
-                mGceAvd = getGceHandler().startGce();
+                mGceAvd = getGceHandler().startGce(getInitialIp());
                 if (mGceAvd != null) break;
             } catch (TargetSetupError tse) {
                 CLog.w(
@@ -331,10 +335,11 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
     }
 
     @Override
-    protected void doAdbReboot(String into) throws DeviceNotAvailableException {
+    protected void doAdbReboot(RebootMode rebootMode, @Nullable final String reason)
+            throws DeviceNotAvailableException {
         // We catch that adb reboot is called to expect it from the tunnel.
         getGceSshMonitor().isAdbRebootCalled(true);
-        super.doAdbReboot(into);
+        super.doAdbReboot(rebootMode, reason);
         // We allow a little time for instance to reboot and be reachable.
         getRunUtil().sleep(WAIT_AFTER_REBOOT);
         // after the reboot we wait for tunnel to be online and device to be reconnected
@@ -377,6 +382,22 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
         return super.getTombstones();
     }
 
+    /**
+     * Returns the {@link GceAvdInfo} from the created remote VM. Returns null if the bring up was
+     * not successful.
+     */
+    public @Nullable GceAvdInfo getAvdInfo() {
+        if (mGceAvd == null) {
+            CLog.w("Requested getAvdInfo() but GceAvdInfo is null.");
+            return null;
+        }
+        if (!GceStatus.SUCCESS.equals(mGceAvd.getStatus())) {
+            CLog.w("Requested getAvdInfo() but the bring up was not successful, returning null.");
+            return null;
+        }
+        return mGceAvd;
+    }
+
     @VisibleForTesting
     boolean fetchRemoteDir(File localDir, String remotePath) {
         return RemoteFileUtil.fetchRemoteDir(
@@ -405,5 +426,19 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
     @VisibleForTesting
     GceManager getGceHandler() {
         return mGceHandler;
+    }
+
+    @Override
+    public DeviceDescriptor getDeviceDescriptor() {
+        DeviceDescriptor descriptor = super.getDeviceDescriptor();
+        if (!getInitialSerial().equals(descriptor.getSerial())) {
+            // Alter the display for the console.
+            descriptor =
+                    new DeviceDescriptor(
+                            descriptor,
+                            getInitialSerial(),
+                            getInitialSerial() + "[" + descriptor.getSerial() + "]");
+        }
+        return descriptor;
     }
 }

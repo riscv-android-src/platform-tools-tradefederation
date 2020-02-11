@@ -41,12 +41,15 @@ else:
 TEST_INFO_DIR = '/tmp/atest_run_1510085893_pi_Nbi'
 METRICS_DIR = '%s/baseline-metrics' % TEST_INFO_DIR
 METRICS_DIR_ARG = '--metrics-folder %s ' % METRICS_DIR
+# TODO(147567606): Replace {serial} with {extra_args} for general extra
+# arguments testing.
 RUN_CMD_ARGS = '{metrics}--log-level WARN{serial}'
 LOG_ARGS = atf_tr.AtestTradefedTestRunner._LOG_ARGS.format(
     log_path=os.path.join(TEST_INFO_DIR, atf_tr.LOG_FOLDER_NAME))
 RUN_CMD = atf_tr.AtestTradefedTestRunner._RUN_CMD.format(
     exe=atf_tr.AtestTradefedTestRunner.EXECUTABLE,
     template=atf_tr.AtestTradefedTestRunner._TF_TEMPLATE,
+    tf_customize_template='{tf_customize_template}',
     args=RUN_CMD_ARGS,
     log_args=LOG_ARGS)
 FULL_CLASS2_NAME = 'android.jank.cts.ui.SomeOtherClass'
@@ -200,7 +203,7 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         mock_subproc = mock.Mock()
         mock_run.return_value = mock_subproc
         mock_subproc.returncode = 0
-        mock_subproc.poll.side_effect = [True, None]
+        mock_subproc.poll.side_effect = [True, True, None]
         mock_server = mock.Mock()
         mock_server.getsockname.return_value = ('', '')
         mock_start_socket_server.return_value = mock_server
@@ -240,15 +243,20 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         mock_server.accept.side_effect = [(mock_conn1, 'addr 1'),
                                           (mock_conn2, 'addr 2')]
         mock_select.side_effect = [([mock_server], None, None),
+                                   ([mock_server], None, None),
+                                   ([mock_conn1], None, None),
+                                   ([mock_conn2], None, None),
                                    ([mock_conn1], None, None),
                                    ([mock_conn2], None, None)]
-        mock_subproc.poll.side_effect = [None, None, True]
+        mock_process.side_effect = ['abc', 'def', False, False]
+        mock_subproc.poll.side_effect = [None, None, None, None,
+                                         None, True]
         self.tr._start_monitor(mock_server, mock_subproc, mock_reporter)
-        self.assertEqual(mock_process.call_count, 2)
+        self.assertEqual(mock_process.call_count, 4)
         calls = [mock.call.accept(), mock.call.close()]
         mock_server.assert_has_calls(calls)
         mock_conn1.assert_has_calls([mock.call.close()])
-        mock_conn1.assert_has_calls([mock.call.close()])
+        mock_conn2.assert_has_calls([mock.call.close()])
 
     @mock.patch.object(atf_tr.AtestTradefedTestRunner, '_process_connection')
     @mock.patch('select.select')
@@ -264,22 +272,28 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         mock_server.accept.side_effect = [(mock_conn1, 'addr 1'),
                                           (mock_conn2, 'addr 2')]
         mock_select.side_effect = [([mock_server], None, None),
+                                   ([mock_server], None, None),
+                                   ([mock_conn1], None, None),
+                                   ([mock_conn2], None, None),
                                    ([mock_conn1], None, None),
                                    ([mock_conn2], None, None)]
-        mock_subproc.poll.side_effect = [None, True]
+        mock_process.side_effect = ['abc', 'def', False, False]
+        # TF exit early but have not processed data in socket buffer.
+        mock_subproc.poll.side_effect = [None, None, True, True,
+                                         True, True]
         self.tr._start_monitor(mock_server, mock_subproc, mock_reporter)
-        self.assertEqual(mock_process.call_count, 1)
+        self.assertEqual(mock_process.call_count, 4)
         calls = [mock.call.accept(), mock.call.close()]
         mock_server.assert_has_calls(calls)
         mock_conn1.assert_has_calls([mock.call.close()])
-        mock_conn1.assert_has_calls([mock.call.close()])
+        mock_conn2.assert_has_calls([mock.call.close()])
 
 
     def test_start_socket_server(self):
         """Test start_socket_server method."""
         server = self.tr._start_socket_server()
         host, port = server.getsockname()
-        self.assertEquals(host, atf_tr.SOCKET_HOST)
+        self.assertEqual(host, atf_tr.SOCKET_HOST)
         self.assertLessEqual(port, 65535)
         self.assertGreaterEqual(port, 1024)
         server.close()
@@ -300,7 +314,7 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         mock_exist.return_value = False
         mock_key.return_value = ''
         self.tr._try_set_gts_authentication_key()
-        self.assertEquals(os.environ.get('APE_API_KEY'), None)
+        self.assertEqual(os.environ.get('APE_API_KEY'), None)
 
     @mock.patch.object(event_handler.EventHandler, 'process_event')
     def test_process_connection(self, mock_pe):
@@ -351,6 +365,19 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         calls = [mock.call.process_event(name, data) for name, data in module_events]
         mock_pe.assert_has_calls(calls)
 
+    @mock.patch.object(event_handler.EventHandler, 'process_event')
+    def test_process_connection_with_not_completed_event_data(self, mock_pe):
+        """Test _process_connection when event have \n prefix."""
+        mock_socket = mock.Mock()
+        mock_socket.recv.return_value = ('\n%s %s'
+                                         %(EVENTS_NORMAL[0][0],
+                                           json.dumps(EVENTS_NORMAL[0][1])))
+        datas = {mock_socket: ''}
+        self.tr._process_connection(datas, mock_socket, mock_pe)
+        calls = [mock.call.process_event(EVENTS_NORMAL[0][0],
+                                         EVENTS_NORMAL[0][1])]
+        mock_pe.assert_has_calls(calls)
+
     @mock.patch('os.environ.get', return_value=None)
     @mock.patch.object(atf_tr.AtestTradefedTestRunner, '_generate_metrics_folder')
     @mock.patch('atest_utils.get_result_server_args')
@@ -362,12 +389,16 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         unittest_utils.assert_strict_equal(
             self,
             self.tr.generate_run_commands([], {}),
-            [RUN_CMD.format(metrics='', serial='')])
+            [RUN_CMD.format(metrics='',
+                            serial='',
+                            tf_customize_template='')])
         mock_mertrics.return_value = METRICS_DIR
         unittest_utils.assert_strict_equal(
             self,
             self.tr.generate_run_commands([], {}),
-            [RUN_CMD.format(metrics=METRICS_DIR_ARG, serial='')])
+            [RUN_CMD.format(metrics=METRICS_DIR_ARG,
+                            serial='',
+                            tf_customize_template='')])
         # Run cmd with result server args.
         result_arg = '--result_arg'
         mock_resultargs.return_value = [result_arg]
@@ -375,7 +406,9 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         unittest_utils.assert_strict_equal(
             self,
             self.tr.generate_run_commands([], {}),
-            [RUN_CMD.format(metrics='', serial='') + ' ' + result_arg])
+            [RUN_CMD.format(metrics='',
+                            serial='',
+                            tf_customize_template='') + ' ' + result_arg])
 
     @mock.patch('os.environ.get')
     @mock.patch.object(atf_tr.AtestTradefedTestRunner, '_generate_metrics_folder')
@@ -392,19 +425,25 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         unittest_utils.assert_strict_equal(
             self,
             self.tr.generate_run_commands([], {}),
-            [RUN_CMD.format(metrics='', serial=env_serial_arg)])
+            [RUN_CMD.format(metrics='',
+                            serial=env_serial_arg,
+                            tf_customize_template='')])
         # Serial env be set but with --serial arg.
         arg_device_serial = 'arg-device-0'
         arg_serial_arg = ' --serial %s' % arg_device_serial
         unittest_utils.assert_strict_equal(
             self,
             self.tr.generate_run_commands([], {constants.SERIAL:arg_device_serial}),
-            [RUN_CMD.format(metrics='', serial=arg_serial_arg)])
+            [RUN_CMD.format(metrics='',
+                            serial=arg_serial_arg,
+                            tf_customize_template='')])
         # Serial env be set but with -n arg
         unittest_utils.assert_strict_equal(
             self,
-            self.tr.generate_run_commands([], {constants.HOST}),
-            [RUN_CMD.format(metrics='', serial='') +
+            self.tr.generate_run_commands([], {constants.HOST: True}),
+            [RUN_CMD.format(metrics='',
+                            serial='',
+                            tf_customize_template='') +
              ' -n --prioritize-host-config --skip-host-arch-check'])
 
 
@@ -526,6 +565,79 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         args = self.tr._create_test_args([MOD_INFO_NO_TEST_FINDER, INT_INFO, MOD_INFO])
         self.assertFalse(constants.TF_SKIP_LOADING_CONFIG_JAR in args)
 
+
+    @mock.patch('os.environ.get', return_value=None)
+    @mock.patch.object(atf_tr.AtestTradefedTestRunner, '_generate_metrics_folder')
+    @mock.patch('atest_utils.get_result_server_args')
+    def test_generate_run_commands_with_tf_template(self, mock_resultargs, mock_mertrics, _):
+        """Test generate_run_command method."""
+        tf_tmplate_key1 = 'tf_tmplate_key1'
+        tf_tmplate_val1 = 'tf_tmplate_val1'
+        tf_tmplate_key2 = 'tf_tmplate_key2'
+        tf_tmplate_val2 = 'tf_tmplate_val2'
+        # Testing with only one tradefed template command
+        mock_resultargs.return_value = []
+        mock_mertrics.return_value = ''
+        extra_args = {constants.TF_TEMPLATE:
+                          ['{}={}'.format(tf_tmplate_key1,
+                                          tf_tmplate_val1)]}
+        unittest_utils.assert_strict_equal(
+            self,
+            self.tr.generate_run_commands([], extra_args),
+            [RUN_CMD.format(
+                metrics='',
+                serial='',
+                tf_customize_template=
+                '--template:map {}={} ').format(tf_tmplate_key1,
+                                                tf_tmplate_val1)])
+        # Testing with two tradefed template commands
+        extra_args = {constants.TF_TEMPLATE:
+                          ['{}={}'.format(tf_tmplate_key1,
+                                          tf_tmplate_val1),
+                           '{}={}'.format(tf_tmplate_key2,
+                                          tf_tmplate_val2)]}
+        unittest_utils.assert_strict_equal(
+            self,
+            self.tr.generate_run_commands([], extra_args),
+            [RUN_CMD.format(
+                metrics='',
+                serial='',
+                tf_customize_template=
+                '--template:map {}={} --template:map {}={} ').format(
+                    tf_tmplate_key1,
+                    tf_tmplate_val1,
+                    tf_tmplate_key2,
+                    tf_tmplate_val2)])
+
+    @mock.patch('os.environ.get', return_value=None)
+    @mock.patch.object(atf_tr.AtestTradefedTestRunner, '_generate_metrics_folder')
+    @mock.patch('atest_utils.get_result_server_args')
+    def test_generate_run_commands_collect_tests_only(self,
+                                                      mock_resultargs,
+                                                      mock_mertrics, _):
+        """Test generate_run_command method."""
+        # Testing  without collect-tests-only
+        mock_resultargs.return_value = []
+        mock_mertrics.return_value = ''
+        extra_args = {}
+        unittest_utils.assert_strict_equal(
+            self,
+            self.tr.generate_run_commands([], extra_args),
+            [RUN_CMD.format(
+                metrics='',
+                serial='',
+                tf_customize_template='')])
+        # Testing  with collect-tests-only
+        mock_resultargs.return_value = []
+        mock_mertrics.return_value = ''
+        extra_args = {constants.COLLECT_TESTS_ONLY: True}
+        unittest_utils.assert_strict_equal(
+            self,
+            self.tr.generate_run_commands([], extra_args),
+            [RUN_CMD.format(
+                metrics='',
+                serial=' --collect-tests-only',
+                tf_customize_template='')])
 
 if __name__ == '__main__':
     unittest.main()

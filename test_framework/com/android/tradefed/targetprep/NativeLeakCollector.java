@@ -15,12 +15,12 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
@@ -33,14 +33,13 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A {@link ITargetCleaner} that runs 'dumpsys meminfo --unreachable -a' to identify the unreachable
- * native memory currently held by each process.
+ * A {@link ITargetPreparer} that runs 'dumpsys meminfo --unreachable -a' to identify the
+ * unreachable native memory currently held by each process.
  *
  * <p>Note: this preparer requires N platform or newer.
  */
 @OptionClass(alias = "native-leak-collector")
-public class NativeLeakCollector extends BaseTargetPreparer
-        implements ITestLoggerReceiver, ITargetCleaner {
+public class NativeLeakCollector extends BaseTargetPreparer implements ITestLoggerReceiver {
     private static final String UNREACHABLE_MEMINFO_CMD = "dumpsys -t %d meminfo --unreachable -a";
     private static final String DIRECT_UNREACHABLE_CMD = "dumpsys -t %d %s --unreachable";
     private static final String OUTPUT_HEADER = "\nExecuted command: %s\n";
@@ -65,24 +64,20 @@ public class NativeLeakCollector extends BaseTargetPreparer
             isTimeVal = true)
     private long mAdditionalDumpTimeout = 1 * 60 * 1000; // defaults to 1m
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+    public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         // No-op
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
         if (isDisabled() || (e instanceof DeviceNotAvailableException)) {
             return;
         }
+        ITestDevice device = testInfo.getDevice();
 
         CollectingOutputReceiver receiver = new CollectingOutputReceiver();
         String allCommand = String.format(UNREACHABLE_MEMINFO_CMD, mDumpTimeout / 1000);

@@ -49,6 +49,16 @@ public interface ICommandScheduler {
         public default void invocationInitiated(IInvocationContext context) {}
 
         /**
+         * Callback associated with {@link ICommandOptions#earlyDeviceRelease()} to release the
+         * devices when done with them.
+         *
+         * @param context
+         * @param devicesStates
+         */
+        public default void releaseDevices(
+                IInvocationContext context, Map<ITestDevice, FreeDeviceState> devicesStates) {}
+
+        /**
          * Callback when entire invocation has completed, including all {@link
          * ITestInvocationListener#invocationEnded(long)} events.
          *
@@ -87,19 +97,6 @@ public interface ICommandScheduler {
      */
     public void addCommandFile(String cmdFile, List<String> extraArgs)
             throws ConfigurationException;
-
-    /**
-     * An alternate {@link #addCommand(String[])} that accepts an initial total
-     * execution time for the command.
-     * <p/>
-     * Useful when transitioning pre-existing commands from another tradefed process
-     *
-     * @param args the config arguments.
-     * @param totalExecTime the accumulated elapsed execution time of the command
-     * @return <code>true</code> if command was added successfully
-     * @throws ConfigurationException if command was invalid
-     */
-    public boolean addCommand(String[] args, long totalExecTime) throws ConfigurationException;
 
     /**
      * Directly allocates a device and executes a command without adding it to the command queue.
@@ -312,6 +309,9 @@ public interface ICommandScheduler {
 
     /** Returns the number of Commands in ready state in the queue. */
     public int getReadyCommandCount();
+
+    /** Returns the number of Commands in executing state. */
+    public int getExecutingCommandCount();
 
     /** Set the client to report harness data */
     public void setClearcutClient(ClearcutClient client);

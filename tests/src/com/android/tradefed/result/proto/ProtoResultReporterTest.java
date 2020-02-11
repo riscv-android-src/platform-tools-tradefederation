@@ -116,10 +116,10 @@ public class ProtoResultReporterTest {
         assertEquals(TestStatus.FAIL, testRecord2.getStatus());
         assertEquals("I failed", testRecord2.getDebugInfo().getTrace());
         // test 2 has 1 metric and 1 log artifact
-        assertEquals(1, testRecord2.getMetrics().size());
-        assertEquals(1, testRecord2.getArtifacts().size());
+        assertEquals(1, testRecord2.getMetricsMap().size());
+        assertEquals(1, testRecord2.getArtifactsMap().size());
         // run 1 has one log file
-        assertEquals(1, run1.getArtifacts().size());
+        assertEquals(1, run1.getArtifactsMap().size());
     }
 
     /** Test when testRunFailed in called from within a test context (testStarted/TestEnded). */

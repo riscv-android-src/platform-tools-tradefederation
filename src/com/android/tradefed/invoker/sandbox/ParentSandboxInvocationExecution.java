@@ -27,6 +27,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.InvocationExecution;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -46,23 +47,23 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
 
     @Override
     public boolean fetchBuild(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             IRescheduler rescheduler,
             ITestInvocationListener listener)
             throws DeviceNotAvailableException, BuildRetrievalError {
-        if (!context.getBuildInfos().isEmpty()) {
+        if (!testInfo.getContext().getBuildInfos().isEmpty()) {
             CLog.d(
                     "Context already contains builds: %s. Skipping download as we are in "
                             + "sandbox-test-mode.",
-                    context.getBuildInfos());
+                    testInfo.getContext().getBuildInfos());
             return true;
         }
-        return super.fetchBuild(context, config, rescheduler, listener);
+        return super.fetchBuild(testInfo, config, rescheduler, listener);
     }
 
     @Override
-    public void doSetup(IInvocationContext context, IConfiguration config, ITestLogger logger)
+    public void doSetup(TestInformation testInfo, IConfiguration config, ITestLogger logger)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         // Skip
         mParentPreparerConfig = getParentTargetConfig(config);
@@ -70,12 +71,12 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
             return;
         }
         CLog.d("Using %s to run in the parent setup.", SandboxOptions.PARENT_PREPARER_CONFIG);
-        super.doSetup(context, mParentPreparerConfig, logger);
+        super.doSetup(testInfo, mParentPreparerConfig, logger);
     }
 
     @Override
     public void doTeardown(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             ITestLogger logger,
             Throwable exception)
@@ -88,7 +89,7 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
             return;
         }
         CLog.d("Using %s to run in the parent tear down.", SandboxOptions.PARENT_PREPARER_CONFIG);
-        super.doTeardown(context, mParentPreparerConfig, logger, exception);
+        super.doTeardown(testInfo, mParentPreparerConfig, logger, exception);
     }
 
     @Override
@@ -103,10 +104,10 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
 
     @Override
     public void runTests(
-            IInvocationContext context, IConfiguration config, ITestInvocationListener listener)
+            TestInformation info, IConfiguration config, ITestInvocationListener listener)
             throws Throwable {
         // If the invocation is sandboxed run as a sandbox instead.
-        SandboxInvocationRunner.prepareAndRun(config, context, listener);
+        SandboxInvocationRunner.prepareAndRun(info, config, listener);
     }
 
     @Override

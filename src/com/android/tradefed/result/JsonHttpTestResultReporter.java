@@ -15,6 +15,16 @@
  */
 package com.android.tradefed.result;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -25,19 +35,8 @@ import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.net.HttpHelper;
 import com.android.tradefed.util.net.IHttpHelper;
 
-import com.google.common.base.Joiner;
-
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 
 /**
  * A result reporter that encode test metrics results and branch, device info into JSON and POST
@@ -181,10 +180,13 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
             for (Entry<TestDescription, TestResult> entry : testResultMap.entrySet()) {
                 TestDescription testDescription = entry.getKey();
                 TestResult testResult = entry.getValue();
-                Joiner joiner = Joiner.on(SEPARATOR).skipNulls();
-                String reportingUnit = joiner.join(
-                        mIncludeRunName ? runResult.getName() : null,
+                List<String> reportingUnitParts =
+                        Arrays.asList(
                                 testDescription.getClassName(), testDescription.getTestName());
+                if (mIncludeRunName) {
+                    reportingUnitParts.add(0, runResult.getName());
+                }
+                String reportingUnit = String.join(SEPARATOR, reportingUnitParts);
                 if (mReportingUnitKeySuffix != null && !mReportingUnitKeySuffix.isEmpty()) {
                     reportingUnit += mReportingUnitKeySuffix;
                 }

@@ -20,12 +20,16 @@ import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -75,6 +79,7 @@ public class TestMappingSuiteRunnerTest {
     private TestMappingSuiteRunner mRunner2;
     private IDeviceBuildInfo mBuildInfo;
     private ITestDevice mMockDevice;
+    private TestInformation mTestInfo;
 
     @Before
     public void setUp() throws Exception {
@@ -90,6 +95,11 @@ public class TestMappingSuiteRunnerTest {
         mRunner2 = new FakeTestMappingSuiteRunner();
         mRunner2.setBuild(mBuildInfo);
         mRunner2.setDevice(mMockDevice);
+
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
+        context.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mBuildInfo);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
 
         EasyMock.expect(mBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null)
                 .anyTimes();
@@ -158,6 +168,17 @@ public class TestMappingSuiteRunnerTest {
     public void testLoadTests_conflictTestGroup() throws Exception {
         mOptionSetter.setOptionValue("include-filter", "test1");
         mOptionSetter.setOptionValue("test-mapping-test-group", "group");
+        mRunner.loadTests();
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#loadTests()} to fail when both options include-filter
+     * and test-mapping-path are set.
+     */
+    @Test(expected = RuntimeException.class)
+    public void testLoadTests_conflictOptions() throws Exception {
+        mOptionSetter.setOptionValue("include-filter", "test1");
+        mOptionSetter.setOptionValue("test-mapping-path", "path1");
         mRunner.loadTests();
     }
 
@@ -457,10 +478,12 @@ public class TestMappingSuiteRunnerTest {
             EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
             EasyMock.expect(mockBuildInfo.getRemoteFiles()).andReturn(null).once();
 
-            mRunner.setBuild(mockBuildInfo);
+            mTestInfo
+                    .getContext()
+                    .addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mockBuildInfo);
             EasyMock.replay(mockBuildInfo);
 
-            Collection<IRemoteTest> tests = mRunner.split(2);
+            Collection<IRemoteTest> tests = mRunner.split(2, mTestInfo);
             assertEquals(4, tests.size());
             EasyMock.verify(mockBuildInfo);
         } finally {

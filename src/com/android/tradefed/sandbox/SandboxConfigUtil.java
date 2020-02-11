@@ -28,7 +28,6 @@ import com.android.tradefed.util.IRunUtil.EnvPriority;
 import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.TimeUtil;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 
 import java.io.File;
@@ -92,7 +91,7 @@ public class SandboxConfigUtil {
         }
 
         if (result.getStderr() != null && !result.getStderr().isEmpty()) {
-            CLog.d("stderr: %s", result.getStderr());
+            CLog.d("stderr: %s\nstdout: %s", result.getStderr(), result.getStdout());
         }
 
         FileUtil.deleteFile(destination);
@@ -124,7 +123,7 @@ public class SandboxConfigUtil {
         // include all jars on the classpath
         String classpath = "";
         Set<String> jarFiles = FileUtil.findFiles(rootDir, ".*.jar");
-        classpath = Joiner.on(":").join(jarFiles);
+        classpath = String.join(":", jarFiles);
         return dumpConfigForVersion(classpath, runUtil, args, dump, globalConfig);
     }
 

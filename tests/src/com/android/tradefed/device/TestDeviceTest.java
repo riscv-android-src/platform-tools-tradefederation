@@ -15,6 +15,10 @@
  */
 package com.android.tradefed.device;
 
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
@@ -74,6 +78,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nullable;
+
 /**
  * Unit tests for {@link TestDevice}.
  */
@@ -115,8 +121,8 @@ public class TestDeviceTest extends TestCase {
         }
 
         @Override
-        void doReboot() throws DeviceNotAvailableException, UnsupportedOperationException {
-        }
+        void doReboot(RebootMode rebootMode, @Nullable final String reason)
+                throws DeviceNotAvailableException, UnsupportedOperationException {}
 
         @Override
         IHostOptions getHostOptions() {
@@ -587,7 +593,7 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    void doReboot()
+                    void doReboot(RebootMode rebootMode, @Nullable final String reason)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
                 };
         mTestDevice.setRecovery(mMockRecovery);
@@ -654,7 +660,7 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    void doReboot()
+                    void doReboot(RebootMode rebootMode, @Nullable final String reason)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
                 };
         mTestDevice.setRecovery(mMockRecovery);
@@ -704,7 +710,7 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    void doReboot()
+                    void doReboot(RebootMode rebootMode, @Nullable final String reason)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
                 };
         mTestDevice.setRecovery(mMockRecovery);
@@ -2193,7 +2199,7 @@ public class TestDeviceTest extends TestCase {
     }
 
     /** Unit test for {@link TestDevice#getActiveApexes()}. */
-    public void testGetActiveApexes() throws Exception {
+    public void testGetActiveApexesPlatformSupportsPath() throws Exception {
         final String output =
                 "package:/system/apex/com.android.foo.apex="
                         + "com.android.foo versionCode:100\n"
@@ -2217,6 +2223,31 @@ public class TestDeviceTest extends TestCase {
         assertEquals(200, bar.versionCode);
         assertEquals("/system/apex/com.android.foo.apex", foo.sourceDir);
         assertEquals("/system/apex/com.android.bar.apex", bar.sourceDir);
+    }
+
+    /** Unit test for {@link TestDevice#getActiveApexes()}. */
+    public void testGetActiveApexesPlatformDoesNotSupportPath() throws Exception {
+        final String output =
+                "package:com.android.foo versionCode:100\n"
+                        + "package:com.android.bar versionCode:200";
+        injectShellResponse(TestDevice.LIST_APEXES_CMD, output);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor);
+        Set<ApexInfo> actual = mTestDevice.getActiveApexes();
+        assertEquals(2, actual.size());
+        ApexInfo foo =
+                actual.stream()
+                        .filter(apex -> apex.name.equals("com.android.foo"))
+                        .findFirst()
+                        .get();
+        ApexInfo bar =
+                actual.stream()
+                        .filter(apex -> apex.name.equals("com.android.bar"))
+                        .findFirst()
+                        .get();
+        assertEquals(100, foo.versionCode);
+        assertEquals(200, bar.versionCode);
+        assertEquals("", foo.sourceDir);
+        assertEquals("", bar.sourceDir);
     }
 
     /**
@@ -2809,6 +2840,20 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Test that remount vendor works as expected on a device not supporting dm verity
+     *
+     * @throws Exception
+     */
+    public void testRemountVendor_verityUnsupported() throws Exception {
+        injectSystemProperty("partition.vendor.verified", "");
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountVendorWritable();
+        verifyMocks();
+    }
+
+    /**
      * Test that remount works as expected on a device supporting dm verity v1
      * @throws Exception
      */
@@ -2821,6 +2866,22 @@ public class TestDeviceTest extends TestCase {
         EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
         replayMocks();
         mTestDevice.remountSystemWritable();
+        verifyMocks();
+    }
+    /**
+     * Test that remount vendor works as expected on a device supporting dm verity v1
+     *
+     * @throws Exception
+     */
+    public void testRemountVendor_veritySupportedV1() throws Exception {
+        injectSystemProperty("partition.vendor.verified", "1");
+        setExecuteAdbCommandExpectations(
+                new CommandResult(CommandStatus.SUCCESS), "disable-verity");
+        setRebootExpectations();
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountVendorWritable();
         verifyMocks();
     }
 
@@ -2841,6 +2902,23 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Test that remount vendor works as expected on a device supporting dm verity v2
+     *
+     * @throws Exception
+     */
+    public void testRemountVendor_veritySupportedV2() throws Exception {
+        injectSystemProperty("partition.vendor.verified", "2");
+        setExecuteAdbCommandExpectations(
+                new CommandResult(CommandStatus.SUCCESS), "disable-verity");
+        setRebootExpectations();
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountVendorWritable();
+        verifyMocks();
+    }
+
+    /**
      * Test that remount works as expected on a device supporting dm verity but with unknown version
      * @throws Exception
      */
@@ -2853,6 +2931,24 @@ public class TestDeviceTest extends TestCase {
         EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
         replayMocks();
         mTestDevice.remountSystemWritable();
+        verifyMocks();
+    }
+
+    /**
+     * Test that remount vendor works as expected on a device supporting dm verity but with unknown
+     * version
+     *
+     * @throws Exception
+     */
+    public void testRemountVendor_veritySupportedNonNumerical() throws Exception {
+        injectSystemProperty("partition.vendor.verified", "foo");
+        setExecuteAdbCommandExpectations(
+                new CommandResult(CommandStatus.SUCCESS), "disable-verity");
+        setRebootExpectations();
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountVendorWritable();
         verifyMocks();
     }
 
@@ -3202,8 +3298,12 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     public String executeShellCommand(String command)
                             throws DeviceNotAvailableException {
-                        test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
-                        test.start();
+                        if (!started) {
+                            started = true;
+                            test.setDaemon(true);
+                            test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
+                            test.start();
+                        }
                         return "";
                     }
 
@@ -3227,6 +3327,7 @@ public class TestDeviceTest extends TestCase {
                         return 100;
                     }
 
+                    boolean started = false;
                     Thread test =
                             new Thread(
                                     new Runnable() {
@@ -3526,6 +3627,20 @@ public class TestDeviceTest extends TestCase {
                         "feature:com.google.android.feature.GOOGLE_EXPERIENCE";
             }
         };
+        assertTrue(mTestDevice.hasFeature("feature:com.google.android.feature.EXCHANGE_6_2"));
+    }
+
+    public void testHasFeature_flexible() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "feature:com.google.android.feature.EXCHANGE_6_2\n"
+                                + "feature:com.google.android.feature.GOOGLE_BUILD\n"
+                                + "feature:com.google.android.feature.GOOGLE_EXPERIENCE";
+                    }
+                };
         assertTrue(mTestDevice.hasFeature("com.google.android.feature.EXCHANGE_6_2"));
     }
 
@@ -3542,6 +3657,22 @@ public class TestDeviceTest extends TestCase {
             }
         };
         assertFalse(mTestDevice.hasFeature("feature:test"));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#hasFeature(String)} on partly matching case.
+     */
+    public void testHasFeature_partly_matching() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "feature:com.google.android.feature.EXCHANGE_6_2\n" +
+                        "feature:com.google.android.feature.GOOGLE_BUILD\n" +
+                        "feature:com.google.android.feature.GOOGLE_EXPERIENCE";
+            }
+        };
+        assertFalse(mTestDevice.hasFeature("feature:com.google.android.feature"));
+        assertTrue(mTestDevice.hasFeature("feature:com.google.android.feature.EXCHANGE_6_2"));
     }
 
     /**
@@ -3926,11 +4057,11 @@ public class TestDeviceTest extends TestCase {
             Assert.assertEquals(3000, testImage.data.length);
             byte[] result = mTestDevice.compressRawImage(testImage, "PNG", true);
             // Size after compressing can vary a bit depending of the JDK
-            if (result.length != 107 && result.length != 117) {
+            if (result.length != 107 && result.length != 117 && result.length != 139) {
                 fail(
                         String.format(
                                 "Should have compress the length as expected, got %s, "
-                                        + "expected 107 or 117",
+                                        + "expected 107 or 117 or 139",
                                 result.length));
             }
 
@@ -4385,10 +4516,10 @@ public class TestDeviceTest extends TestCase {
                                 "modes:'"))
                 .andReturn(res);
         replayMocks();
-        Set<Integer> displays = mTestDevice.listDisplayIds();
+        Set<Long> displays = mTestDevice.listDisplayIds();
         assertEquals(2, displays.size());
-        assertTrue(displays.contains(0));
-        assertTrue(displays.contains(5));
+        assertTrue(displays.contains(0L));
+        assertTrue(displays.contains(5L));
         verifyMocks();
     }
 
@@ -4466,5 +4597,124 @@ public class TestDeviceTest extends TestCase {
         EasyMock.replay(mMockIDevice);
         assertTrue(mTestDevice.doesFileExist("/sdcard/file"));
         EasyMock.verify(mMockIDevice);
+    }
+
+    /** Push a file using the content provider. */
+    public void testPushFile_contentProvider() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 29;
+                    }
+
+                    @Override
+                    public int getCurrentUser()
+                            throws DeviceNotAvailableException, DeviceRuntimeException {
+                        return 10;
+                    }
+
+                    @Override
+                    public boolean isPackageInstalled(String packageName, String userId)
+                            throws DeviceNotAvailableException {
+                        return false;
+                    }
+                };
+        TestableTestDevice spy = (TestableTestDevice) Mockito.spy(mTestDevice);
+        final String fakeRemotePath = "/sdcard/";
+        File tmpFile = FileUtil.createTempFile("push", ".test");
+        doReturn(null)
+                .when(spy)
+                .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
+        CommandResult setLegacy = new CommandResult(CommandStatus.SUCCESS);
+        doReturn(setLegacy).when(spy).executeShellV2Command(Mockito.contains("cmd appops set"));
+
+        CommandResult getLegacy = new CommandResult(CommandStatus.SUCCESS);
+        getLegacy.setStdout("LEGACY_STORAGE: allow");
+        doReturn(getLegacy).when(spy).executeShellV2Command(Mockito.contains("cmd appops get"));
+
+        CommandResult writeContent = new CommandResult(CommandStatus.SUCCESS);
+        writeContent.setStdout("");
+        doReturn(writeContent)
+                .when(spy)
+                .executeShellV2Command(Mockito.contains("content write"), (File) Mockito.any());
+        doReturn(null).when(spy).uninstallPackage(Mockito.eq("android.tradefed.contentprovider"));
+        EasyMock.replay(mMockIDevice);
+        try {
+            boolean res = spy.pushFile(tmpFile, fakeRemotePath);
+            EasyMock.verify(mMockIDevice);
+            assertTrue(res);
+            verify(spy, times(1))
+                    .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
+            ContentProviderHandler cp = spy.getContentProvider();
+            assertFalse(cp.contentProviderNotFound());
+            // Since it didn't fail, we did not re-install the content provider
+            verify(spy, times(1))
+                    .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
+            cp.tearDown();
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+        }
+    }
+
+    /** Push a file using the content provider. */
+    public void testPushFile_contentProvider_notFound() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 29;
+                    }
+
+                    @Override
+                    public int getCurrentUser()
+                            throws DeviceNotAvailableException, DeviceRuntimeException {
+                        return 10;
+                    }
+
+                    @Override
+                    public boolean isPackageInstalled(String packageName, String userId)
+                            throws DeviceNotAvailableException {
+                        return false;
+                    }
+                };
+        TestableTestDevice spy = (TestableTestDevice) Mockito.spy(mTestDevice);
+        final String fakeRemotePath = "/sdcard/";
+        File tmpFile = FileUtil.createTempFile("push", ".test");
+        doReturn(null)
+                .when(spy)
+                .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
+        CommandResult setLegacy = new CommandResult(CommandStatus.SUCCESS);
+        doReturn(setLegacy).when(spy).executeShellV2Command(Mockito.contains("cmd appops set"));
+
+        CommandResult getLegacy = new CommandResult(CommandStatus.SUCCESS);
+        getLegacy.setStdout("LEGACY_STORAGE: allow");
+        doReturn(getLegacy).when(spy).executeShellV2Command(Mockito.contains("cmd appops get"));
+
+        CommandResult writeContent = new CommandResult(CommandStatus.SUCCESS);
+        writeContent.setStdout("");
+        writeContent.setStderr(
+                "java.lang.IllegalStateException: Could not find provider: "
+                        + "android.tradefed.contentprovider");
+        doReturn(writeContent)
+                .when(spy)
+                .executeShellV2Command(Mockito.contains("content write"), (File) Mockito.any());
+        doReturn(null).when(spy).uninstallPackage(Mockito.eq("android.tradefed.contentprovider"));
+        EasyMock.replay(mMockIDevice);
+        try {
+            boolean res = spy.pushFile(tmpFile, fakeRemotePath);
+            EasyMock.verify(mMockIDevice);
+            assertFalse(res);
+            verify(spy, times(1))
+                    .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
+            // Since it fails, requesting the content provider again will re-do setup.
+            ContentProviderHandler cp = spy.getContentProvider();
+            assertFalse(cp.contentProviderNotFound());
+            verify(spy, times(2))
+                    .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
+            cp.tearDown();
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+        }
     }
 }

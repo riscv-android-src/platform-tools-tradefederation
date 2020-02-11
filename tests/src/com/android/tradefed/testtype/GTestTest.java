@@ -28,6 +28,7 @@ import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.MockFileUtil;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
 
@@ -53,6 +54,7 @@ public class GTestTest {
     private GTest mGTest;
     private OptionSetter mSetter;
 
+    private TestInformation mTestInfo;
     private Configuration mConfiguration;
     private CoverageOptions mCoverageOptions;
     private OptionSetter mCoverageOptionsSetter;
@@ -95,6 +97,8 @@ public class GTestTest {
 
         mConfiguration.setCoverageOptions(mCoverageOptions);
         mGTest.setConfiguration(mConfiguration);
+
+        mTestInfo = TestInformation.newBuilder().build();
     }
 
     /**
@@ -117,7 +121,7 @@ public class GTestTest {
         EasyMock.expect(mMockITestDevice.doesFileExist(GTest.DEFAULT_NATIVETEST_PATH))
                 .andReturn(false);
         replayMocks();
-        mGTest.run(mMockInvocationListener);
+        mGTest.run(mTestInfo, mMockInvocationListener);
         verifyMocks();
     }
 
@@ -127,7 +131,7 @@ public class GTestTest {
         mGTest.setDevice(null);
         replayMocks();
         try {
-            mGTest.run(mMockInvocationListener);
+            mGTest.run(mTestInfo, mMockInvocationListener);
             fail("an exception should have been thrown");
         } catch (IllegalArgumentException e) {
             // expected
@@ -171,7 +175,7 @@ public class GTestTest {
 
         replayMocks();
 
-        mGTest.run(mMockInvocationListener);
+        mGTest.run(mTestInfo, mMockInvocationListener);
         verifyMocks();
     }
 
@@ -195,7 +199,7 @@ public class GTestTest {
 
         replayMocks();
 
-        mGTest.run(mMockInvocationListener);
+        mGTest.run(mTestInfo, mMockInvocationListener);
         verifyMocks();
     }
 
@@ -228,7 +232,7 @@ public class GTestTest {
 
         replayMocks();
 
-        mGTest.run(mMockInvocationListener);
+        mGTest.run(mTestInfo, mMockInvocationListener);
         verifyMocks();
     }
 
@@ -254,7 +258,7 @@ public class GTestTest {
                 EasyMock.same(mMockReceiver), EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(),
                 EasyMock.anyInt());
         replayMocks();
-        mGTest.run(mMockInvocationListener);
+        mGTest.run(mTestInfo, mMockInvocationListener);
 
         verifyMocks();
     }
@@ -348,7 +352,7 @@ public class GTestTest {
         // Expect deletion of file on device
         mMockITestDevice.deleteFile(deviceScriptPath);
         replayMocks();
-        mGTest.run(mMockInvocationListener);
+        mGTest.run(mTestInfo, mMockInvocationListener);
 
         verifyMocks();
     }
@@ -444,7 +448,7 @@ public class GTestTest {
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
         replayMocks();
 
-        mGTest.run(mMockInvocationListener);
+        mGTest.run(mTestInfo, mMockInvocationListener);
         verifyMocks();
     }
 
@@ -494,7 +498,7 @@ public class GTestTest {
 
         replayMocks();
 
-        mGTest.run(mMockInvocationListener);
+        mGTest.run(mTestInfo, mMockInvocationListener);
         verifyMocks();
     }
 
@@ -556,7 +560,7 @@ public class GTestTest {
 
         replayMocks();
 
-        mGTest.run(mMockInvocationListener);
+        mGTest.run(mTestInfo, mMockInvocationListener);
         verifyMocks();
     }
 

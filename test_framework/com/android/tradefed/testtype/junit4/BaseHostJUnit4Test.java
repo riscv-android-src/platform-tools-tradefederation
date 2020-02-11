@@ -26,6 +26,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
@@ -33,17 +34,14 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.ddmlib.DefaultRemoteAndroidTestRunner;
+import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.suite.SuiteApkInstaller;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
-import com.android.tradefed.testtype.IBuildReceiver;
-import com.android.tradefed.testtype.IDeviceTest;
-import com.android.tradefed.testtype.IInvocationContextReceiver;
+import com.android.tradefed.testtype.ITestInformationReceiver;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
-
-import com.google.common.base.Joiner;
 
 import org.junit.After;
 import org.junit.Assume;
@@ -62,37 +60,33 @@ import java.util.stream.Collectors;
  * Should be the single source of truth to run instrumentation tests from host side in order to
  * avoid duplicated utility and base class.
  */
-public abstract class BaseHostJUnit4Test
-        implements IAbiReceiver, IBuildReceiver, IDeviceTest, IInvocationContextReceiver {
+public abstract class BaseHostJUnit4Test implements IAbiReceiver, ITestInformationReceiver {
 
     static final long DEFAULT_TEST_TIMEOUT_MS = 10 * 60 * 1000L;
     private static final long DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS = 10 * 60 * 1000L; // 10min
     private static final Map<String, String> DEFAULT_INSTRUMENTATION_ARGS = new HashMap<>();
 
-    private ITestDevice mDevice;
-    private IBuildInfo mBuild;
     private IAbi mAbi;
-    private IInvocationContext mContext;
+    private TestInformation mTestInfo;
     private Map<SuiteApkInstaller, ITestDevice> mInstallers = new LinkedHashMap<>();
     private TestRunResult mLatestInstruRes;
 
-    @Override
-    public final void setDevice(ITestDevice device) {
-        mDevice = device;
-    }
-
-    @Override
     public final ITestDevice getDevice() {
-        return mDevice;
-    }
-
-    @Override
-    public final void setBuild(IBuildInfo buildInfo) {
-        mBuild = buildInfo;
+        return mTestInfo.getDevice();
     }
 
     public final IBuildInfo getBuild() {
-        return mBuild;
+        return mTestInfo.getBuildInfo();
+    }
+
+    @Override
+    public final void setTestInformation(TestInformation testInformation) {
+        mTestInfo = testInformation;
+    }
+
+    @Override
+    public TestInformation getTestInformation() {
+        return mTestInfo;
     }
 
     @Override
@@ -105,17 +99,12 @@ public abstract class BaseHostJUnit4Test
         return mAbi;
     }
 
-    @Override
-    public final void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
-    }
-
     public final IInvocationContext getInvocationContext() {
-        return mContext;
+        return mTestInfo.getContext();
     }
 
     public final List<ITestDevice> getListDevices() {
-        return mContext.getDevices();
+        return mTestInfo.getContext().getDevices();
     }
 
     /**
@@ -126,8 +115,7 @@ public abstract class BaseHostJUnit4Test
     public final void autoTearDown() throws DeviceNotAvailableException {
         mLatestInstruRes = null;
         for (SuiteApkInstaller installer : mInstallers.keySet()) {
-            ITestDevice device = mInstallers.get(installer);
-            installer.tearDown(device, mContext.getBuildInfo(device), null);
+            installer.tearDown(mTestInfo, null);
         }
         mInstallers.clear();
     }
@@ -164,7 +152,13 @@ public abstract class BaseHostJUnit4Test
         for (String option : options) {
             installer.addInstallArg(option);
         }
-        installer.setUp(device, mContext.getBuildInfo(device));
+        try {
+            installer.setUp(mTestInfo);
+        } catch (BuildError e) {
+            // For some reason we forgot the BuildError part of the interface so it's hard to add
+            // it now
+            throw new TargetSetupError(e.getMessage(), e, device.getDeviceDescriptor());
+        }
     }
 
     /**
@@ -209,7 +203,13 @@ public abstract class BaseHostJUnit4Test
         for (String option : options) {
             installer.addInstallArg(option);
         }
-        installer.setUp(device, mContext.getBuildInfo(device));
+        try {
+            installer.setUp(mTestInfo);
+        } catch (BuildError e) {
+            // For some reason we forgot the BuildError part of the interface so it's hard to add
+            // it now
+            throw new TargetSetupError(e.getMessage(), e, device.getDeviceDescriptor());
+        }
     }
 
     /**
@@ -475,6 +475,7 @@ public abstract class BaseHostJUnit4Test
                 options.getMaxInstrumentationTimeoutMs(),
                 options.shouldCheckResults(),
                 options.isHiddenApiCheckDisabled(),
+                options.isTestApiCheckDisabled(),
                 options.isIsolatedStorageDisabled(),
                 options.getInstrumentationArgs(),
                 options.getExtraListeners());
@@ -523,6 +524,7 @@ public abstract class BaseHostJUnit4Test
                 maxInstrumentationTimeoutMs,
                 checkResults,
                 isHiddenApiCheckDisabled,
+                true,
                 false,
                 instrumentationArgs,
                 new ArrayList<>());
@@ -542,6 +544,7 @@ public abstract class BaseHostJUnit4Test
      * @param maxInstrumentationTimeoutMs the max timeout the full instrumentation has to complete.
      * @param checkResults whether or not the results are checked for crashes.
      * @param isHiddenApiCheckDisabled whether or not we should disable the hidden api check.
+     * @param isTestApiCheckDisabled whether or not we should disable the test api check.
      * @param isIsolatedStorageDisabled whether or not we should disable isolated storage.
      * @param instrumentationArgs arguments to pass to the instrumentation.
      * @return True if it succeeded without failure. False otherwise.
@@ -558,6 +561,7 @@ public abstract class BaseHostJUnit4Test
             Long maxInstrumentationTimeoutMs,
             boolean checkResults,
             boolean isHiddenApiCheckDisabled,
+            boolean isTestApiCheckDisabled,
             boolean isIsolatedStorageDisabled,
             Map<String, String> instrumentationArgs,
             List<ITestLifeCycleReceiver> extraListeners)
@@ -574,6 +578,7 @@ public abstract class BaseHostJUnit4Test
                 maxInstrumentationTimeoutMs,
                 checkResults,
                 isHiddenApiCheckDisabled,
+                isTestApiCheckDisabled,
                 isIsolatedStorageDisabled,
                 false, // leave window animations enabled for existing invocations
                 instrumentationArgs,
@@ -594,6 +599,7 @@ public abstract class BaseHostJUnit4Test
      * @param maxInstrumentationTimeoutMs the max timeout the full instrumentation has to complete.
      * @param checkResults whether or not the results are checked for crashes.
      * @param isHiddenApiCheckDisabled whether or not we should disable the hidden api check.
+     * @param isTestApiCheckDisabled whether or not we should disable the test api check.
      * @param isIsolatedStorageDisabled whether or not we should disable isolated storage.
      * @param isWindowAnimationDisabled whether or not we should disable window animation.
      * @param instrumentationArgs arguments to pass to the instrumentation.
@@ -611,6 +617,7 @@ public abstract class BaseHostJUnit4Test
             Long maxInstrumentationTimeoutMs,
             boolean checkResults,
             boolean isHiddenApiCheckDisabled,
+            boolean isTestApiCheckDisabled,
             boolean isIsolatedStorageDisabled,
             boolean isWindowAnimationDisabled,
             Map<String, String> instrumentationArgs,
@@ -628,6 +635,7 @@ public abstract class BaseHostJUnit4Test
                         maxTimeToOutputMs,
                         maxInstrumentationTimeoutMs,
                         isHiddenApiCheckDisabled,
+                        isTestApiCheckDisabled,
                         isIsolatedStorageDisabled,
                         isWindowAnimationDisabled,
                         instrumentationArgs,
@@ -663,7 +671,7 @@ public abstract class BaseHostJUnit4Test
                     runResult.getTestsResultsInState(TestStatus.ASSUMPTION_FAILURE);
             List<String> messages =
                     assumpFail.stream().map(r -> r.getStackTrace()).collect(Collectors.toList());
-            String errors = Joiner.on("\n\n").join(messages);
+            String errors = String.join("\n\n", messages);
             Assume.assumeTrue(
                     errors,
                     runResult.getNumTests()
@@ -692,6 +700,7 @@ public abstract class BaseHostJUnit4Test
             Long maxTimeToOutputMs,
             Long maxInstrumentationTimeoutMs,
             boolean isHiddenApiCheckDisabled,
+            boolean isTestApiCheckDisabled,
             boolean isIsolatedStorageDisabled,
             boolean isWindowAnimationDisabled,
             Map<String, String> instrumentationArgs,
@@ -705,6 +714,11 @@ public abstract class BaseHostJUnit4Test
                 ? device.getApiLevel() : 0;
         if (isHiddenApiCheckDisabled && (apiLevel >= 28)) {
             runOptions += "--no-hidden-api-checks ";
+        }
+        if (!isHiddenApiCheckDisabled
+                && !isTestApiCheckDisabled
+                && device.checkApiLevelAgainstNextRelease(30)) {
+            runOptions += "--no-test-api-access ";
         }
         // isolated-storage flag only exists in Q and after.
         if (isIsolatedStorageDisabled && device.checkApiLevelAgainstNextRelease(29)) {

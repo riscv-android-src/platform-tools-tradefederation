@@ -19,10 +19,13 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.targetprep.adb.AdbStopServerPreparer;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -45,6 +48,7 @@ public class PythonBinaryHostTestTest {
     private IRunUtil mMockRunUtil;
     private IBuildInfo mMockBuildInfo;
     private ITestDevice mMockDevice;
+    private TestInformation mTestInfo;
     private ITestInvocationListener mMockListener;
     private File mFakeAdb;
 
@@ -67,10 +71,10 @@ public class PythonBinaryHostTestTest {
                         return mFakeAdb.getAbsolutePath();
                     }
                 };
-        EasyMock.expect(mMockBuildInfo.getFile(AdbStopServerPreparer.ADB_BINARY_KEY))
-                .andReturn(null);
-        mTest.setBuild(mMockBuildInfo);
-        mTest.setDevice(mMockDevice);
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mMockDevice);
+        context.addDeviceBuildInfo("device", mMockBuildInfo);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
         mMockRunUtil.setEnvVariable(PythonBinaryHostTest.ANDROID_SERIAL_VAR, "SERIAL");
     }
@@ -109,7 +113,7 @@ public class PythonBinaryHostTestTest {
             EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
             
             EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
-            mTest.run(mMockListener);
+            mTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
         } finally {
             FileUtil.deleteFile(binary);
@@ -122,11 +126,7 @@ public class PythonBinaryHostTestTest {
      */
     @Test
     public void testRun_withAdbPath() throws Exception {
-        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        EasyMock.expect(mMockBuildInfo.getFile(AdbStopServerPreparer.ADB_BINARY_KEY))
-                .andReturn(new File("/test/adb"));
-        mTest.setBuild(mMockBuildInfo);
-
+        mTestInfo.executionFiles().put(FilesKey.ADB_BINARY, new File("/test/adb"));
         File binary = FileUtil.createTempFile("python-dir", "");
         try {
             OptionSetter setter = new OptionSetter(mTest);
@@ -153,7 +153,7 @@ public class PythonBinaryHostTestTest {
             EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
 
             EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
-            mTest.run(mMockListener);
+            mTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
         } finally {
             FileUtil.deleteFile(binary);
@@ -188,12 +188,12 @@ public class PythonBinaryHostTestTest {
                     EasyMock.anyObject());
             // Report a failure if we cannot parse the logs
             mMockListener.testRunStarted(binary.getName(), 0);
-            mMockListener.testRunFailed(EasyMock.anyObject());
+            mMockListener.testRunFailed((String) EasyMock.anyObject());
             mMockListener.testRunEnded(
                     EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
             EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
-            mTest.run(mMockListener);
+            mTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
         } finally {
             FileUtil.deleteFile(binary);
@@ -231,7 +231,7 @@ public class PythonBinaryHostTestTest {
                     EasyMock.anyObject());
             EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
             EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
-            mTest.run(mMockListener);
+            mTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
         } finally {
             FileUtil.deleteFile(binary);

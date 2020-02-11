@@ -76,6 +76,7 @@ public class InstallAllTestZipAppsSetupTest {
         mMockTestDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn(SERIAL);
         EasyMock.expect(mMockTestDevice.getDeviceDescriptor()).andStubReturn(null);
+        EasyMock.expect(mMockTestDevice.isAppEnumerationSupported()).andStubReturn(false);
     }
 
     @After
@@ -141,6 +142,28 @@ public class InstallAllTestZipAppsSetupTest {
         setMockUnzipDir();
 
         mMockTestDevice.installPackage((File) EasyMock.anyObject(), EasyMock.anyBoolean());
+        EasyMock.expectLastCall().andReturn(null).times(3);
+        mMockTestDevice.uninstallPackage((String) EasyMock.anyObject());
+        EasyMock.expectLastCall().andReturn(null).times(3);
+        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+
+        mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+        mPrep.tearDown(mMockTestDevice, mMockBuildInfo, null);
+
+        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+    }
+
+    @Test
+    public void testForceQueryableSuccess() throws Exception {
+        EasyMock.expect(mMockTestDevice.isAppEnumerationSupported()).andReturn(true);
+        mPrep.setTestZipName("zip");
+
+        mMockBuildInfo.getFile((String) EasyMock.anyObject());
+        EasyMock.expectLastCall().andReturn(new File("zip"));
+
+        setMockUnzipDir();
+        mMockTestDevice.installPackage(
+                EasyMock.anyObject(), EasyMock.anyBoolean(), EasyMock.eq("--force-queryable"));
         EasyMock.expectLastCall().andReturn(null).times(3);
         mMockTestDevice.uninstallPackage((String) EasyMock.anyObject());
         EasyMock.expectLastCall().andReturn(null).times(3);

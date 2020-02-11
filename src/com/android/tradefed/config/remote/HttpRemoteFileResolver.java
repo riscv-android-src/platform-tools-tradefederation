@@ -16,9 +16,8 @@
 package com.android.tradefed.config.remote;
 
 import com.android.annotations.VisibleForTesting;
-import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.config.Option;
-import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.build.BuildRetrievalError;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.net.HttpHelper;
 import com.android.tradefed.util.net.IHttpHelper;
@@ -36,12 +35,10 @@ public class HttpRemoteFileResolver implements IRemoteFileResolver {
     public static final String PROTOCOL_HTTP = "http";
 
     @Override
-    public File resolveRemoteFiles(
-            File consideredFile, Option option, Map<String, String> queryArgs)
-            throws ConfigurationException {
+    public File resolveRemoteFiles(File consideredFile, Map<String, String> queryArgs)
+            throws BuildRetrievalError {
         // Don't use absolute path as it would not start with gs:
         String path = consideredFile.getPath();
-        CLog.d("Considering option '%s' with path: '%s' for download.", option.name(), path);
         // Replace the very first / by // to be http:// again.
         path = path.replaceFirst(":/", "://");
 
@@ -53,12 +50,12 @@ public class HttpRemoteFileResolver implements IRemoteFileResolver {
                             FileUtil.getBaseName(consideredFile.getName()),
                             FileUtil.getExtension(consideredFile.getName()));
             downloader.doGet(path, new FileOutputStream(downloadedFile));
+            return DynamicRemoteFileResolver.unzipIfRequired(downloadedFile, queryArgs);
         } catch (IOException | RuntimeException e) {
             FileUtil.deleteFile(downloadedFile);
-            throw new ConfigurationException(
+            throw new BuildRetrievalError(
                     String.format("Failed to download %s due to: %s", path, e.getMessage()), e);
         }
-        return downloadedFile;
     }
 
     @Override

@@ -88,7 +88,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         """Fill in the fields with vts specific info.
 
         We need to update the runner to use the vts runner and also find the
-        test specific depedencies
+        test specific dependencies.
 
         Args:
             test: TestInfo to update with vts specific details.
@@ -308,12 +308,15 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                 # The real test config might be record in module-info.
                 rel_config = self._get_module_test_config(mname,
                                                           rel_config=rel_config)
+                mod_info = self.module_info.get_module_info(mname)
                 tinfo = self._process_test_info(test_info.TestInfo(
                     test_name=mname,
                     test_runner=self._TEST_RUNNER,
                     build_targets=set(),
                     data={constants.TI_FILTER: test_filter,
-                          constants.TI_REL_CONFIG: rel_config}))
+                          constants.TI_REL_CONFIG: rel_config},
+                    compatibility_suites=mod_info.get(
+                        constants.MODULE_COMPATIBILITY_SUITES, [])))
                 if tinfo:
                     test_infos.append(tinfo)
         return test_infos
@@ -339,7 +342,9 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                 test_runner=self._TEST_RUNNER,
                 build_targets=set(),
                 data={constants.TI_REL_CONFIG: rel_config,
-                      constants.TI_FILTER: frozenset()}))
+                      constants.TI_FILTER: frozenset()},
+                compatibility_suites=mod_info.get(
+                    constants.MODULE_COMPATIBILITY_SUITES, [])))
             if tinfo:
                 return [tinfo]
         return None

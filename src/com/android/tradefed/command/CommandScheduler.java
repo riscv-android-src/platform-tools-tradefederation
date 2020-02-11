@@ -63,7 +63,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.sandbox.ISandbox;
-import com.android.tradefed.sandbox.TradefedSandbox;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.retry.RetryRescheduler;
 import com.android.tradefed.util.ArrayUtil;
@@ -81,8 +80,6 @@ import com.android.tradefed.util.keystore.IKeyStoreFactory;
 import com.android.tradefed.util.keystore.KeyStoreException;
 
 import com.google.common.annotations.VisibleForTesting;
-
-import org.json.JSONException;
 
 import java.io.File;
 import java.io.IOException;
@@ -468,6 +465,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             IScheduledInvocationListener {
 
         private final IDeviceManager mDeviceManager;
+        private boolean mDeviceReleased = false;
 
         FreeDeviceHandler(IDeviceManager deviceManager,
                 IScheduledInvocationListener... listeners) {
@@ -476,12 +474,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         }
 
         @Override
-        public void invocationComplete(IInvocationContext context,
-                Map<ITestDevice, FreeDeviceState> devicesStates) {
-            for (ITestInvocationListener listener : getListeners()) {
-                ((IScheduledInvocationListener) listener).invocationComplete(context, devicesStates);
+        public void releaseDevices(
+                IInvocationContext context, Map<ITestDevice, FreeDeviceState> devicesStates) {
+            if (mDeviceReleased) {
+                return;
             }
-
             for (ITestDevice device : context.getDevices()) {
                 mDeviceManager.freeDevice(device, devicesStates.get(device));
                 remoteFreeDevice(device);
@@ -490,6 +487,17 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     ((IManagedTestDevice)device).setFastbootPath(mDeviceManager.getFastbootPath());
                 }
             }
+            mDeviceReleased = true;
+        }
+
+        @Override
+        public void invocationComplete(
+                IInvocationContext context, Map<ITestDevice, FreeDeviceState> devicesStates) {
+            for (ITestInvocationListener listener : getListeners()) {
+                ((IScheduledInvocationListener) listener)
+                        .invocationComplete(context, devicesStates);
+            }
+            releaseDevices(context, devicesStates);
         }
     }
 
@@ -519,11 +527,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     }
 
     private class InvocationThread extends Thread {
-        /**
-         * time to wait for device adb shell responsive connection before declaring it unavailable
-         * for the next iteration of testing.
-         */
-        private static final long CHECK_WAIT_DEVICE_AVAIL_MS = 30 * 1000;
+
         private static final int EXPECTED_THREAD_COUNT = 1;
         private static final String INVOC_END_EVENT_ID_KEY = "id";
         private static final String INVOC_END_EVENT_ELAPSED_KEY = "elapsed-time";
@@ -557,10 +561,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
         @Override
         public void run() {
-            Map<ITestDevice, FreeDeviceState> deviceStates = new HashMap<>();
-            for (ITestDevice device : mInvocationContext.getDevices()) {
-                deviceStates.put(device, FreeDeviceState.AVAILABLE);
-            }
             mStartTime = System.currentTimeMillis();
             ITestInvocation instance = getInvocation();
             IConfiguration config = mCmd.getConfiguration();
@@ -574,6 +574,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 }
             }
 
+            Exception trackDeviceException = null;
             try {
                 // Copy the command options invocation attributes to the invocation if it has not
                 // been already done.
@@ -592,17 +593,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                         new Rescheduler(mCmd.getCommandTracker()), mListeners);
             } catch (DeviceUnresponsiveException e) {
                 CLog.w("Device %s is unresponsive. Reason: %s", e.getSerial(), e.getMessage());
-                ITestDevice badDevice = mInvocationContext.getDeviceBySerial(e.getSerial());
-                if (badDevice != null) {
-                    deviceStates.put(badDevice, FreeDeviceState.UNRESPONSIVE);
-                }
+                trackDeviceException = e;
                 setLastInvocationExitCode(ExitCode.DEVICE_UNRESPONSIVE, e);
             } catch (DeviceNotAvailableException e) {
                 CLog.w("Device %s is not available. Reason: %s", e.getSerial(), e.getMessage());
-                ITestDevice badDevice = mInvocationContext.getDeviceBySerial(e.getSerial());
-                if (badDevice != null) {
-                    deviceStates.put(badDevice, FreeDeviceState.UNAVAILABLE);
-                }
+                trackDeviceException = e;
                 setLastInvocationExitCode(ExitCode.DEVICE_UNAVAILABLE, e);
             } catch (FatalHostError e) {
                 CLog.wtf(String.format("Fatal error occurred: %s, shutting down", e.getMessage()),
@@ -623,24 +618,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 // remove invocation thread first so another invocation can be started on device
                 // when freed
                 removeInvocationThread(this);
-                for (ITestDevice device : mInvocationContext.getDevices()) {
-                    if (device.getIDevice() instanceof StubDevice) {
-                        // Never release stub and Tcp devices, otherwise they will disappear
-                        // during deallocation since they are only placeholder.
-                        deviceStates.put(device, FreeDeviceState.AVAILABLE);
-                    } else if (!TestDeviceState.ONLINE.equals(device.getDeviceState())) {
-                        // If the device is offline at the end of the test
-                        deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
-                    } else if (!isDeviceResponsive(device)) {
-                        // If device cannot pass basic shell responsiveness test.
-                        deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
-                    }
-                    // Reset the recovery mode at the end of the invocation.
-                    device.setRecoveryMode(RecoveryMode.AVAILABLE);
-                }
 
                 checkStrayThreads();
 
+                Map<ITestDevice, FreeDeviceState> deviceStates =
+                        createReleaseMap(mInvocationContext, trackDeviceException);
                 for (final IScheduledInvocationListener listener : mListeners) {
                     try {
                         listener.invocationComplete(mInvocationContext, deviceStates);
@@ -698,11 +680,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 args.put(key, context.getAttributes().get(key).get(0));
             }
             logEvent(EventType.INVOCATION_END, args);
-        }
-
-        /** Basic responsiveness check at the end of an invocation. */
-        private boolean isDeviceResponsive(ITestDevice device) {
-            return device.waitForDeviceShell(CHECK_WAIT_DEVICE_AVAIL_MS);
         }
 
         ITestInvocation getInvocation() {
@@ -801,6 +778,48 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 }
             }
         }
+    }
+
+    /** Create a map of the devices state so they can be released appropriately. */
+    public static Map<ITestDevice, FreeDeviceState> createReleaseMap(
+            IInvocationContext context, Throwable e) {
+        Map<ITestDevice, FreeDeviceState> deviceStates = new HashMap<>();
+        for (ITestDevice device : context.getDevices()) {
+            deviceStates.put(device, FreeDeviceState.AVAILABLE);
+        }
+
+        if (e != null) {
+            if (e instanceof DeviceUnresponsiveException) {
+                ITestDevice badDevice =
+                        context.getDeviceBySerial(((DeviceUnresponsiveException) e).getSerial());
+                if (badDevice != null) {
+                    deviceStates.put(badDevice, FreeDeviceState.UNRESPONSIVE);
+                }
+            } else if (e instanceof DeviceNotAvailableException) {
+                ITestDevice badDevice =
+                        context.getDeviceBySerial(((DeviceNotAvailableException) e).getSerial());
+                if (badDevice != null) {
+                    deviceStates.put(badDevice, FreeDeviceState.UNAVAILABLE);
+                }
+            }
+        }
+
+        for (ITestDevice device : context.getDevices()) {
+            if (device.getIDevice() instanceof StubDevice) {
+                // Never release stub and Tcp devices, otherwise they will disappear
+                // during deallocation since they are only placeholder.
+                deviceStates.put(device, FreeDeviceState.AVAILABLE);
+            } else if (!TestDeviceState.ONLINE.equals(device.getDeviceState())) {
+                // If the device is offline at the end of the test
+                deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
+            } else if (!device.waitForDeviceShell(30000)) {
+                // If device cannot pass basic shell responsiveness test.
+                deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
+            }
+            // Reset the recovery mode at the end of the invocation.
+            device.setRecoveryMode(RecoveryMode.AVAILABLE);
+        }
+        return deviceStates;
     }
 
     /**
@@ -978,7 +997,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 checkInvocations();
                 try {
                     processReadyCommands(manager);
-                    postProcessReadyCommands();
                 } catch (RuntimeException e) {
                     CLog.e(e);
                     Map<String, String> information = new HashMap<>();
@@ -1010,13 +1028,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             System.out.flush();
         }
     }
-
-    /**
-     * Placeholder method within the scheduler main loop, called after {@link
-     * #processReadyCommands(IDeviceManager)}. Default implementation is empty and does not provide
-     * any extra actions.
-     */
-    protected void postProcessReadyCommands() {}
 
     void checkInvocations() {
         CLog.d("Checking invocations...");
@@ -1135,15 +1146,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      */
     @Override
     public boolean addCommand(String[] args) throws ConfigurationException {
-        return addCommand(args, 0);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean addCommand(String[] args, long totalExecTime) throws ConfigurationException {
-        return internalAddCommand(args, totalExecTime, null);
+        return internalAddCommand(args, null);
     }
 
     /** Returns true if {@link CommandOptions#USE_SANDBOX} is part of the command line. */
@@ -1176,7 +1179,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /** Create a {@link ISandbox} that the invocation will use to run. */
     public ISandbox createSandbox() {
-        return new TradefedSandbox();
+        return GlobalConfiguration.getInstance().getSandboxFactory().createSandbox();
     }
 
     private IConfiguration createConfiguration(String[] args) throws ConfigurationException {
@@ -1195,7 +1198,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return config;
     }
 
-    private boolean internalAddCommand(String[] args, long totalExecTime, String cmdFilePath)
+    private boolean internalAddCommand(String[] args, String cmdFilePath)
             throws ConfigurationException {
         assertStarted();
         IConfiguration config = createConfiguration(args);
@@ -1203,13 +1206,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             getConfigFactory().printHelpForConfig(args, true, System.out);
         } else if (config.getCommandOptions().isFullHelpMode()) {
             getConfigFactory().printHelpForConfig(args, false, System.out);
-        } else if (config.getCommandOptions().isJsonHelpMode()) {
-            try {
-                // Convert the JSON usage to a string (with 4 space indentation) and print to stdout
-                System.out.println(config.getJsonCommandUsage().toString(4));
-            } catch (JSONException e) {
-                CLog.logAndDisplay(LogLevel.ERROR, "Failed to get json command usage: %s", e);
-            }
         } else if (config.getCommandOptions().isDryRunMode()) {
             config.validateOptions();
             String cmdLine = QuotationAwareTokenizer.combineTokens(args);
@@ -1222,10 +1218,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             config.validateOptions();
 
             if (config.getCommandOptions().runOnAllDevices()) {
-                addCommandForAllDevices(totalExecTime, args, cmdFilePath);
+                addCommandForAllDevices(args, cmdFilePath);
             } else {
                 CommandTracker cmdTracker = createCommandTracker(args, cmdFilePath);
-                cmdTracker.incrementExecTime(totalExecTime);
                 ExecutableCommand cmdInstance = createExecutableCommand(cmdTracker, config, false);
                 addExecCommandToQueue(cmdInstance, 0);
             }
@@ -1272,7 +1267,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 CLog.d("Adding command %s", prettyCmdLine);
 
                 try {
-                    internalAddCommand(arrayCommand, 0, cmdFile.getAbsolutePath());
+                    internalAddCommand(arrayCommand, cmdFile.getAbsolutePath());
                 } catch (ConfigurationException e) {
                     throw new ConfigurationException(String.format(
                             "Failed to add command '%s': %s", prettyCmdLine, e.getMessage()), e);
@@ -1294,11 +1289,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /**
      * Creates a new command for each connected device, and adds each to the queue.
-     * <p/>
-     * Note this won't have the desired effect if user has specified other
-     * conflicting {@link IConfiguration#getDeviceRequirements()}in the command.
+     *
+     * <p>Note this won't have the desired effect if user has specified other conflicting {@link
+     * IConfiguration#getDeviceRequirements()}in the command.
      */
-    private void addCommandForAllDevices(long totalExecTime, String[] args, String cmdFilePath)
+    private void addCommandForAllDevices(String[] args, String cmdFilePath)
             throws ConfigurationException {
         List<DeviceDescriptor> deviceDescs = getDeviceManager().listAllDevices();
 
@@ -1309,7 +1304,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 argsWithDevice[argsWithDevice.length - 2] = "-s";
                 argsWithDevice[argsWithDevice.length - 1] = device;
                 CommandTracker cmdTracker = createCommandTracker(argsWithDevice, cmdFilePath);
-                cmdTracker.incrementExecTime(totalExecTime);
                 IConfiguration config = getConfigFactory().createConfigurationFromArgs(
                         cmdTracker.getArgs(), null, getKeyStoreClient());
                 CLog.logAndDisplay(LogLevel.INFO, "Scheduling '%s' on '%s'",
@@ -1437,9 +1431,37 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /** {@inheritDoc} */
     @Override
+    public void execCommand(
+            IScheduledInvocationListener listener, ITestDevice device, String[] args)
+            throws ConfigurationException {
+        // TODO: add support for execCommand multi-device allocation
+        assertStarted();
+        CommandTracker cmdTracker = createCommandTracker(args, null);
+        IConfiguration config =
+                getConfigFactory()
+                        .createConfigurationFromArgs(
+                                cmdTracker.getArgs(), null, getKeyStoreClient());
+        config.validateOptions();
+        CLog.i("Executing '%s' on '%s'", cmdTracker.getArgs()[0], device.getSerialNumber());
+        ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
+        if (config.getDeviceConfig().size() > 1) {
+            throw new RuntimeException("execCommand assume single device invocation.");
+        }
+
+        synchronized (this) {
+            mExecutingCommands.add(execCmd);
+        }
+        IInvocationContext context = createInvocationContext();
+        context.setConfigurationDescriptor(config.getConfigurationDescription());
+        context.addAllocatedDevice(config.getDeviceConfig().get(0).getDeviceName(), device);
+        startInvocation(context, execCmd, listener);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public void execCommand(IScheduledInvocationListener listener, String[] args)
             throws ConfigurationException, NoDeviceException {
-        execCommand(new InvocationContext(), listener, args);
+        execCommand(createInvocationContext(), listener, args);
     }
 
     /**
@@ -1483,40 +1505,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void execCommand(IScheduledInvocationListener listener, ITestDevice device,
-            String[] args) throws ConfigurationException {
-        // TODO: add support for execCommand multi-device allocation
-        assertStarted();
-        CommandTracker cmdTracker = createCommandTracker(args, null);
-        IConfiguration config = getConfigFactory().createConfigurationFromArgs(
-                cmdTracker.getArgs(), null, getKeyStoreClient());
-        config.validateOptions();
-        CLog.i("Executing '%s' on '%s'", cmdTracker.getArgs()[0], device.getSerialNumber());
-        ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
-        if (config.getDeviceConfig().size() > 1) {
-            throw new RuntimeException("execCommand assume single device invocation.");
-        }
-
-        synchronized(this) {
-            mExecutingCommands.add(execCmd);
-        }
-        IInvocationContext context = createInvocationContext();
-        context.setConfigurationDescriptor(config.getConfigurationDescription());
-        context.addAllocatedDevice(config.getDeviceConfig().get(0).getDeviceName(), device);
-        startInvocation(context, execCmd, listener);
-    }
-
     @VisibleForTesting
     protected IInvocationContext createInvocationContext() {
         return new InvocationContext();
     }
-
-    /** Optional initialization step before test invocation starts */
-    protected void initInvocation() {}
 
     /**
      * Spawns off thread to run invocation for given device.
@@ -1531,8 +1523,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             IInvocationContext context,
             ExecutableCommand cmd,
             IScheduledInvocationListener... listeners) {
-        initInvocation();
-
         // Check if device is not used in another invocation.
         throwIfDeviceInInvocationThread(context.getDevices());
 
@@ -2253,6 +2243,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     @Override
     public synchronized int getReadyCommandCount() {
         return mReadyCommands.size();
+    }
+
+    @Override
+    public synchronized int getExecutingCommandCount() {
+        return mExecutingCommands.size();
     }
 
     @Override

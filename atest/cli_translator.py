@@ -37,7 +37,6 @@ from metrics import metrics
 from metrics import metrics_utils
 from test_finders import module_finder
 
-TEST_MAPPING = 'TEST_MAPPING'
 FUZZY_FINDER = 'FUZZY'
 CACHE_FINDER = 'CACHE'
 
@@ -69,6 +68,7 @@ class CLITranslator(object):
             module_info: ModuleInfo class that has cached module-info.json.
         """
         self.mod_info = module_info
+        self.enable_file_patterns = False
 
     # pylint: disable=too-many-locals
     def _find_test_infos(self, test, tm_test_detail):
@@ -273,6 +273,10 @@ class CLITranslator(object):
                 grouped_tests = all_tests.setdefault(test_group_name, set())
                 tests = []
                 for test in test_list:
+                    if (self.enable_file_patterns and
+                            not test_mapping.is_match_file_patterns(
+                                test_mapping_file, test)):
+                        continue
                     test_mod_info = self.mod_info.name_to_module_info.get(
                         test['name'])
                     if not test_mod_info:
@@ -297,7 +301,7 @@ class CLITranslator(object):
                 grouped_tests.update(tests)
         return all_tests, imports
 
-    def _find_files(self, path, file_name=TEST_MAPPING):
+    def _find_files(self, path, file_name=constants.TEST_MAPPING):
         """Find all files with given name under the given path.
 
         Args:
@@ -353,7 +357,8 @@ class CLITranslator(object):
     # pylint: disable=too-many-locals
     def _find_tests_by_test_mapping(
             self, path='', test_group=constants.TEST_GROUP_PRESUBMIT,
-            file_name=TEST_MAPPING, include_subdirs=False, checked_files=None):
+            file_name=constants.TEST_MAPPING, include_subdirs=False,
+            checked_files=None):
         """Find tests defined in TEST_MAPPING in the given path.
 
         Args:
@@ -492,6 +497,8 @@ class CLITranslator(object):
         # Test details from TEST_MAPPING files
         test_details_list = None
         if atest_utils.is_test_mapping(args):
+            if args.enable_file_patterns:
+                self.enable_file_patterns = True
             tests, test_details_list = self._get_test_mapping_tests(args)
         atest_utils.colorful_print("\nFinding Tests...", constants.CYAN)
         logging.debug('Finding Tests: %s', tests)

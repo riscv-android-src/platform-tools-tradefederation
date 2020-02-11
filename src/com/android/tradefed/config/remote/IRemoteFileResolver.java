@@ -15,8 +15,7 @@
  */
 package com.android.tradefed.config.remote;
 
-import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.config.Option;
+import com.android.tradefed.build.BuildRetrievalError;
 
 import java.io.File;
 import java.util.Map;
@@ -33,28 +32,25 @@ public interface IRemoteFileResolver {
      * Resolve the remote file.
      *
      * @param consideredFile {@link File} evaluated as remote.
-     * @param option The original option configuring the file.
      * @return The resolved local file.
-     * @throws ConfigurationException if something goes wrong.
+     * @throws BuildRetrievalError if something goes wrong.
      */
-    public default @Nonnull File resolveRemoteFiles(File consideredFile, Option option)
-            throws ConfigurationException {
-        throw new ConfigurationException("Should not have been called");
+    public default @Nonnull File resolveRemoteFiles(File consideredFile)
+            throws BuildRetrievalError {
+        throw new BuildRetrievalError("Should not have been called");
     }
 
     /**
      * Resolve the remote file.
      *
      * @param consideredFile {@link File} evaluated as remote.
-     * @param option The original option configuring the file.
      * @param queryArgs The arguments passed as a query to the URL.
      * @return The resolved local file.
-     * @throws ConfigurationException if something goes wrong.
+     * @throws BuildRetrievalError if something goes wrong.
      */
     public default @Nonnull File resolveRemoteFiles(
-            File consideredFile, Option option, Map<String, String> queryArgs)
-            throws ConfigurationException {
-        return resolveRemoteFiles(consideredFile, option);
+            File consideredFile, Map<String, String> queryArgs) throws BuildRetrievalError {
+        return resolveRemoteFiles(consideredFile);
     }
 
     /** Returns the associated protocol supported for download. */

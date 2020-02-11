@@ -49,6 +49,7 @@ import com.google.common.net.HostAndPort;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.ProcessBuilder.Redirect;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.List;
@@ -113,13 +114,17 @@ public class GceManager {
         mGceHost = gceHost;
     }
 
+    public GceAvdInfo startGce() throws TargetSetupError {
+        return startGce(null);
+    }
+
     /**
      * Attempt to start a gce instance
      *
      * @return a {@link GceAvdInfo} describing the GCE instance. Could be a BOOT_FAIL instance.
      * @throws TargetSetupError
      */
-    public GceAvdInfo startGce() throws TargetSetupError {
+    public GceAvdInfo startGce(String ipDevice) throws TargetSetupError {
         mGceAvdInfo = null;
         // For debugging purposes bypass.
         if (mGceHost != null && mGceInstanceName != null) {
@@ -134,7 +139,7 @@ public class GceManager {
         File reportFile = null;
         try {
             reportFile = FileUtil.createTempFile("gce_avd_driver", ".json");
-            List<String> gceArgs = buildGceCmd(reportFile, mBuildInfo);
+            List<String> gceArgs = buildGceCmd(reportFile, mBuildInfo, ipDevice);
 
             CLog.i("Launching GCE with %s", gceArgs.toString());
             CommandResult cmd =
@@ -209,7 +214,7 @@ public class GceManager {
     }
 
     /** Build and return the command to launch GCE. Exposed for testing. */
-    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
+    protected List<String> buildGceCmd(File reportFile, IBuildInfo b, String ipDevice) {
         File avdDriverFile = getTestDeviceOptions().getAvdDriverBinary();
         if (!avdDriverFile.exists()) {
             throw new RuntimeException(
@@ -264,11 +269,17 @@ public class GceManager {
                 TestDeviceOptions.getExtraParamsByInstanceType(
                         getTestDeviceOptions().getInstanceType(),
                         getTestDeviceOptions().getBaseImage()));
-        gceArgs.add("--config_file");
-        gceArgs.add(getAvdConfigFile().getAbsolutePath());
-        if (getTestDeviceOptions().getSerivceAccountJsonKeyFile() != null) {
-            gceArgs.add("--service_account_json_private_key_path");
-            gceArgs.add(getTestDeviceOptions().getSerivceAccountJsonKeyFile().getAbsolutePath());
+        if (ipDevice == null) {
+            gceArgs.add("--config_file");
+            gceArgs.add(getAvdConfigFile().getAbsolutePath());
+            if (getTestDeviceOptions().getServiceAccountJsonKeyFile() != null) {
+                gceArgs.add("--service_account_json_private_key_path");
+                gceArgs.add(
+                        getTestDeviceOptions().getServiceAccountJsonKeyFile().getAbsolutePath());
+            }
+        } else {
+            gceArgs.add("--host");
+            gceArgs.add(ipDevice);
         }
         gceArgs.add("--report_file");
         gceArgs.add(reportFile.getAbsolutePath());
@@ -291,8 +302,12 @@ public class GceManager {
         return gceArgs;
     }
 
-    /** Shutdown the Gce instance associated with the {@link #startGce()}. */
-    public void shutdownGce() {
+    /**
+     * Shutdown the Gce instance associated with the {@link #startGce()}.
+     *
+     * @return returns true if gce shutdown was requested as non-blocking.
+     */
+    public boolean shutdownGce() {
         if (!getTestDeviceOptions().getAvdDriverBinary().canExecute()) {
             mGceAvdInfo = null;
             throw new RuntimeException(
@@ -302,7 +317,7 @@ public class GceManager {
         }
         if (mGceAvdInfo == null) {
             CLog.d("No instance to shutdown.");
-            return;
+            return false;
         }
         List<String> gceArgs =
                 ArrayUtil.list(getTestDeviceOptions().getAvdDriverBinary().getAbsolutePath());
@@ -319,10 +334,10 @@ public class GceManager {
             // the file until it's done with it.
             FileUtil.copyFile(getAvdConfigFile(), config);
             gceArgs.add(config.getAbsolutePath());
-            if (getTestDeviceOptions().getSerivceAccountJsonKeyFile() != null) {
+            if (getTestDeviceOptions().getServiceAccountJsonKeyFile() != null) {
                 gceArgs.add("--service_account_json_private_key_path");
                 gceArgs.add(
-                        getTestDeviceOptions().getSerivceAccountJsonKeyFile().getAbsolutePath());
+                        getTestDeviceOptions().getServiceAccountJsonKeyFile().getAbsolutePath());
             }
             f = FileUtil.createTempFile("gce_avd_driver", ".json");
             gceArgs.add("--report_file");
@@ -334,14 +349,18 @@ public class GceManager {
                                 .runTimedCmd(
                                         getTestDeviceOptions().getGceCmdTimeout(),
                                         gceArgs.toArray(new String[gceArgs.size()]));
+                FileUtil.deleteFile(config);
                 if (!CommandStatus.SUCCESS.equals(cmd.getStatus())) {
                     CLog.w(
-                            "Failed to tear down GCE %s with the following arg, %s",
-                            mGceAvdInfo.instanceName(), gceArgs);
+                            "Failed to tear down GCE %s with the following arg: %s."
+                                    + "\nstdout:%s\nstderr:%s",
+                            mGceAvdInfo.instanceName(), gceArgs, cmd.getStdout(), cmd.getStderr());
+                    return false;
                 }
-                FileUtil.deleteFile(config);
             } else {
-                Process p = getRunUtil().runCmdInBackground(gceArgs);
+                // Discard the output so the process is not linked to the parent and doesn't die
+                // if the JVM exit.
+                Process p = getRunUtil().runCmdInBackground(Redirect.DISCARD, gceArgs);
                 AcloudDeleteCleaner cleaner = new AcloudDeleteCleaner(p, config);
                 cleaner.start();
             }
@@ -352,6 +371,7 @@ public class GceManager {
             FileUtil.deleteFile(f);
             mGceAvdInfo = null;
         }
+        return true;
     }
 
     /**
@@ -399,7 +419,9 @@ public class GceManager {
         // Retry a couple of time because adb might not be started for that user.
         // FIXME: See if we can use vsoc-01 directly to avoid this
         for (int i = 0; i < 3; i++) {
-            output = remoteSshCommandExec(gceAvd, options, runUtil, "adb", "shell", "bugreportz");
+            output =
+                    remoteSshCommandExec(
+                            gceAvd, options, runUtil, "./bin/adb", "shell", "bugreportz");
             Matcher match = BUGREPORTZ_RESPONSE_PATTERN.matcher(output);
             if (match.find()) {
                 break;
@@ -412,7 +434,7 @@ public class GceManager {
         }
         String deviceFilePath = match.group(2);
         String pullOutput =
-                remoteSshCommandExec(gceAvd, options, runUtil, "adb", "pull", deviceFilePath);
+                remoteSshCommandExec(gceAvd, options, runUtil, "./bin/adb", "pull", deviceFilePath);
         CLog.d(pullOutput);
         String remoteFilePath = "./" + new File(deviceFilePath).getName();
         File localTmpFile = FileUtil.createTempFile("bugreport-ssh", ".zip");
@@ -607,7 +629,7 @@ public class GceManager {
                 GceManager.getInstanceSerialLog(
                         infos,
                         getAvdConfigFile(),
-                        getTestDeviceOptions().getSerivceAccountJsonKeyFile(),
+                        getTestDeviceOptions().getServiceAccountJsonKeyFile(),
                         getRunUtil());
         if (output == null) {
             CLog.w("Failed to collect the instance serial logs.");

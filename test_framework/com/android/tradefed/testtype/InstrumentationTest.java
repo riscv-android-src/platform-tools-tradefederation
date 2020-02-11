@@ -26,7 +26,6 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner.TestSize;
-import com.android.ddmlib.testrunner.InstrumentationResultParser;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
@@ -38,7 +37,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.BugreportCollector;
@@ -67,6 +66,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -81,7 +81,6 @@ public class InstrumentationTest
                 ITestCollector,
                 IAbiReceiver,
                 IConfigurationReceiver,
-                IInvocationContextReceiver,
                 IMetricCollectorReceiver {
 
     private static final String LOG_TAG = "InstrumentationTest";
@@ -273,10 +272,10 @@ public class InstrumentationTest
     )
     private boolean mMergeCoverageMeasurements = false;
 
+    @Deprecated
     @Option(
-        name = "enforce-ajur-format",
-        description = "Whether or not enforcing the AJUR instrumentation output format"
-    )
+            name = "enforce-ajur-format",
+            description = "Whether or not enforcing the AJUR instrumentation output format")
     private boolean mShouldEnforceFormat = false;
 
     @Option(
@@ -288,11 +287,18 @@ public class InstrumentationTest
     private boolean mHiddenApiChecks = true;
 
     @Option(
-        name = "isolated-storage",
-        description =
-                "If set to false, the '--no-isolated-storage' flag will be passed to the am "
-                        + "instrument command. Only works for Q or later."
-    )
+            name = "test-api-access",
+            description =
+                    "If set to false and hidden API checks are enabled, the '--no-test-api-access'"
+                            + " flag will be passed to the am instrument command."
+                            + " Only works for R or later.")
+    private boolean mTestApiAccess = true;
+
+    @Option(
+            name = "isolated-storage",
+            description =
+                    "If set to false, the '--no-isolated-storage' flag will be passed to the am "
+                            + "instrument command. Only works for Q or later.")
     private boolean mIsolatedStorage = true;
 
     @Option(
@@ -302,6 +308,13 @@ public class InstrumentationTest
                         + "instrument command. Only works for ICS or later."
     )
     private boolean mWindowAnimation = true;
+
+    @Option(
+            name = "disable-duplicate-test-check",
+            description =
+                    "If set to true, it will not check that a method is only run once by a "
+                            + "given instrumentation.")
+    private boolean mDisableDuplicateCheck = false;
 
     private IAbi mAbi = null;
 
@@ -318,13 +331,13 @@ public class InstrumentationTest
     private String mTestFilePathOnDevice = null;
 
     private ListInstrumentationParser mListInstrumentationParser = null;
+    private NativeCodeCoverageListener mNativeCoverageListener = null;
 
     private List<String> mExtraDeviceListener = new ArrayList<>();
 
     private boolean mIsRerun = false;
 
     private IConfiguration mConfiguration = null;
-    private IInvocationContext mContext;
     private List<IMetricCollector> mCollectors = new ArrayList<>();
 
     /** {@inheritDoc} */
@@ -678,10 +691,17 @@ public class InstrumentationTest
         String runOptions = "";
         // hidden-api-checks flag only exists in P and after.
         // Using a temp variable to consolidate the dynamic checks
-        int apiLevel = (!mHiddenApiChecks) || (!mWindowAnimation)
-                ? getDevice().getApiLevel() : 0;
+        int apiLevel = !mHiddenApiChecks || !mWindowAnimation ? getDevice().getApiLevel() : 0;
         if (!mHiddenApiChecks && apiLevel >= 28) {
             runOptions += "--no-hidden-api-checks ";
+        }
+        // test-api-access flag only exists in R and after.
+        // Test API checks are subset of hidden API checks, so only make sense if hidden API
+        // checks are enabled.
+        if (mHiddenApiChecks
+                && !mTestApiAccess
+                && getDevice().checkApiLevelAgainstNextRelease(30)) {
+            runOptions += "--no-test-api-access ";
         }
         // isolated-storage flag only exists in Q and after.
         if (!mIsolatedStorage && getDevice().checkApiLevelAgainstNextRelease(29)) {
@@ -701,7 +721,6 @@ public class InstrumentationTest
             runner.setRunOptions(runOptions);
         }
 
-        runner.setEnforceTimeStamp(mShouldEnforceFormat);
         return runner;
     }
 
@@ -770,11 +789,10 @@ public class InstrumentationTest
         return intersection.iterator().next();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void run(final ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(TestInformation testInfo, final ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         checkArgument(mDevice != null, "Device has not been set.");
         checkArgument(mPackageName != null, "Package name has not been set.");
         // Install the apk before checking the runner
@@ -799,7 +817,7 @@ public class InstrumentationTest
         mRunner = createRemoteAndroidTestRunner(mPackageName, mRunnerName, mDevice.getIDevice());
         setRunnerArgs(mRunner);
 
-        doTestRun(listener);
+        doTestRun(testInfo, listener);
         if (mInstallFile != null) {
             mDevice.uninstallPackage(mPackageName);
         }
@@ -861,7 +879,8 @@ public class InstrumentationTest
      * @param listener the test result listener
      * @throws DeviceNotAvailableException if device stops communicating
      */
-    private void doTestRun(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    private void doTestRun(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         // If this is a dry-run, just collect the tests and return
         if (mCollectTestsOnly) {
             checkState(
@@ -893,11 +912,29 @@ public class InstrumentationTest
             mRunner.addInstrumentationArg("coverage", "true");
         }
 
-        // Reruns do not create new listeners.
+        // Reruns do not create new listeners or clear coverage measurements.
         if (!mIsRerun) {
             listener = addBugreportListenerIfEnabled(listener);
             listener = addJavaCoverageListenerIfEnabled(listener);
             listener = addNativeCoverageListenerIfEnabled(listener);
+
+            // Clear coverage measurements on the device before running.
+            if (mConfiguration != null
+                    && mConfiguration.getCoverageOptions().isCoverageFlushEnabled()) {
+                CoverageOptions options = mConfiguration.getCoverageOptions();
+
+                if (options.getCoverageToolchains().contains(Toolchain.GCOV)) {
+                    NativeCodeCoverageFlusher flusher =
+                            new NativeCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
+                    flusher.resetCoverage();
+                }
+
+                if (options.getCoverageToolchains().contains(Toolchain.JACOCO)) {
+                    JavaCodeCoverageFlusher flusher =
+                            new JavaCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
+                    flusher.resetCoverage();
+                }
+            }
 
             // TODO: Convert to device-side collectors when possible.
             for (IMetricCollector collector : mCollectors) {
@@ -907,7 +944,7 @@ public class InstrumentationTest
                     CLog.d(
                             "Initializing %s for instrumentation.",
                             collector.getClass().getCanonicalName());
-                    listener = collector.init(mContext, listener);
+                    listener = collector.init(testInfo.getContext(), listener);
                 }
             }
         }
@@ -917,29 +954,11 @@ public class InstrumentationTest
             mRunner.addInstrumentationArg("listener", ArrayUtil.join(",", mExtraDeviceListener));
         }
 
-        // Clear coverage measurements on the device before running.
-        if (mConfiguration != null
-                && mConfiguration.getCoverageOptions().isCoverageFlushEnabled()) {
-            CoverageOptions options = mConfiguration.getCoverageOptions();
-
-            if (options.getCoverageToolchains().contains(Toolchain.GCOV)) {
-                NativeCodeCoverageFlusher flusher =
-                        new NativeCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
-                flusher.resetCoverage();
-            }
-
-            if (options.getCoverageToolchains().contains(Toolchain.JACOCO)) {
-                JavaCodeCoverageFlusher flusher =
-                        new JavaCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
-                flusher.resetCoverage();
-            }
-        }
-
         if (testsToRun == null) {
             // Failed to collect the tests or collection is off. Just try to run them all.
             mDevice.runInstrumentationTests(mRunner, listener);
         } else if (!testsToRun.isEmpty()) {
-            runWithRerun(listener, testsToRun);
+            runWithRerun(testInfo, listener, testsToRun);
         } else {
             CLog.i("No tests expected for %s, skipping", mPackageName);
         }
@@ -999,8 +1018,10 @@ public class InstrumentationTest
         }
         if (mConfiguration.getCoverageOptions().isCoverageEnabled()
                 && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(GCOV)) {
-            return new NativeCodeCoverageListener(
-                    getDevice(), mConfiguration.getCoverageOptions(), listener);
+            mNativeCoverageListener =
+                    new NativeCodeCoverageListener(
+                            getDevice(), mConfiguration.getCoverageOptions(), listener);
+            return mNativeCoverageListener;
         }
         return listener;
     }
@@ -1012,13 +1033,18 @@ public class InstrumentationTest
      * @param expectedTests the full set of expected tests in this run.
      */
     private void runWithRerun(
-            final ITestInvocationListener listener, Collection<TestDescription> expectedTests)
+            TestInformation testInfo,
+            final ITestInvocationListener listener,
+            Collection<TestDescription> expectedTests)
             throws DeviceNotAvailableException {
         CollectingTestListener testTracker = new CollectingTestListener();
         mDevice.runInstrumentationTests(
                 mRunner,
                 // Use a crash forwarder to get stacks from logcat when crashing.
                 new LogcatCrashResultForwarder(getDevice(), listener, testTracker) {
+                    private Set<TestDescription> mTests = new HashSet<>();
+                    private Set<TestDescription> mDuplicateTests = new HashSet<>();
+
                     @Override
                     public void testRunStarted(String runName, int testCount) {
                         // In case of crash, run will attempt to report with 0
@@ -1030,6 +1056,30 @@ public class InstrumentationTest
                         } else {
                             super.testRunStarted(runName, testCount);
                         }
+                    }
+
+                    @Override
+                    public void testStarted(TestDescription test, long startTime) {
+                        super.testStarted(test, startTime);
+                        if (!mTests.add(test)) {
+                            mDuplicateTests.add(test);
+                        }
+                    }
+
+                    @Override
+                    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
+                        if (!mDuplicateTests.isEmpty() && !mDisableDuplicateCheck) {
+                            String errorMessage =
+                                    String.format(
+                                            "The following tests ran more than once: %s. Check "
+                                                    + "your run configuration, you might be "
+                                                    + "including the same test class several "
+                                                    + "times.",
+                                            mDuplicateTests);
+                            CLog.e(errorMessage);
+                            super.testRunFailed(errorMessage);
+                        }
+                        super.testRunEnded(elapsedTime, runMetrics);
                     }
                 });
         TestRunResult testRun = testTracker.getCurrentRunResults();
@@ -1059,7 +1109,7 @@ public class InstrumentationTest
                     return;
                 }
             }
-            rerunTests(expectedTests, listener);
+            rerunTests(expectedTests, testInfo, listener);
         }
     }
 
@@ -1070,7 +1120,9 @@ public class InstrumentationTest
      * @throws DeviceNotAvailableException
      */
     private void rerunTests(
-            Collection<TestDescription> expectedTests, final ITestInvocationListener listener)
+            Collection<TestDescription> expectedTests,
+            TestInformation testInfo,
+            final ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         if (expectedTests.isEmpty()) {
             CLog.d("No tests to re-run, all tests executed at least once.");
@@ -1091,7 +1143,16 @@ public class InstrumentationTest
             return;
         }
 
-        testReRunner.run(listener);
+        if (mNativeCoverageListener != null) {
+            mNativeCoverageListener.setCollectOnTestEnd(false);
+        }
+
+        testReRunner.run(testInfo, listener);
+
+        if (mNativeCoverageListener != null) {
+            mNativeCoverageListener.setCollectOnTestEnd(true);
+            mNativeCoverageListener.logCoverageMeasurements("rerun_merged");
+        }
     }
 
     @VisibleForTesting
@@ -1175,11 +1236,6 @@ public class InstrumentationTest
                 CLog.w("Run failure %s when collecting tests to run for %s on device %s.",
                         runResults.getRunFailureMessage(), mPackageName,
                         mDevice.getSerialNumber());
-                if (mShouldEnforceFormat
-                        && InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG.equals(
-                                runResults.getRunFailureMessage())) {
-                    throw new RuntimeException(InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG);
-                }
                 return null;
             } else {
                 // success!
@@ -1218,11 +1274,6 @@ public class InstrumentationTest
     @Override
     public IAbi getAbi() {
         return mAbi;
-    }
-
-    @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
     }
 
     @Override

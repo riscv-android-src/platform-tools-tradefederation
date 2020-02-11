@@ -15,18 +15,25 @@
  */
 package com.android.tradefed.device.metric;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.testtype.suite.ModuleDefinition;
+import com.android.tradefed.util.FileUtil;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -69,10 +76,12 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     private IInvocationContext mContext;
     private List<ITestDevice> mRealDeviceList;
     private ITestInvocationListener mForwarder;
+    private Map<String, File> mTestArtifactFilePathMap = new HashMap<>();
     private DeviceMetricData mRunData;
     private DeviceMetricData mTestData;
     private String mTag;
     private String mRunName;
+
     /**
      * Variable for whether or not to skip the collection of one test case because it was filtered.
      */
@@ -108,6 +117,27 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
                             .collect(Collectors.toList());
         }
         return mRealDeviceList;
+    }
+
+    /**
+     * Retrieve the file from the test artifacts or module artifacts and cache
+     * it in a map for the subsequent calls.
+     *
+     * @param fileName name of the file to look up in the artifacts.
+     * @return File from the test artifact or module artifact. Returns null
+     *         if file is not found.
+     */
+    public File getFileFromTestArtifacts(String fileName) {
+        if (mTestArtifactFilePathMap.containsKey(fileName)) {
+            return mTestArtifactFilePathMap.get(fileName);
+        }
+
+        File resolvedFile = resolveRelativeFilePath(fileName);
+        if (resolvedFile != null) {
+            CLog.i("Using file %s from %s", fileName, resolvedFile.getAbsolutePath());
+            mTestArtifactFilePathMap.put(fileName, resolvedFile);
+        }
+        return resolvedFile;
     }
 
     @Override
@@ -183,9 +213,30 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
         mForwarder.testLog(dataName, dataType, dataStream);
     }
 
+    @Override
+    public final void testModuleStarted(IInvocationContext moduleContext) {
+        mForwarder.testModuleStarted(moduleContext);
+    }
+
+    @Override
+    public final void testModuleEnded() {
+        mForwarder.testModuleEnded();
+    }
+
     /** Test run callbacks */
     @Override
     public final void testRunStarted(String runName, int testCount) {
+        testRunStarted(runName, testCount, 0);
+    }
+
+    @Override
+    public final void testRunStarted(String runName, int testCount, int attemptNumber) {
+        testRunStarted(runName, testCount, 0, System.currentTimeMillis());
+    }
+
+    @Override
+    public final void testRunStarted(
+            String runName, int testCount, int attemptNumber, long startTime) {
         mRunData = new DeviceMetricData(mContext);
         mRunName = runName;
         try {
@@ -194,12 +245,17 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
             // Prevent exception from messing up the status reporting.
             CLog.e(t);
         }
-        mForwarder.testRunStarted(runName, testCount);
+        mForwarder.testRunStarted(runName, testCount, attemptNumber, startTime);
     }
 
     @Override
     public final void testRunFailed(String errorMessage) {
         mForwarder.testRunFailed(errorMessage);
+    }
+
+    @Override
+    public final void testRunFailed(FailureDescription failure) {
+        mForwarder.testRunFailed(failure);
     }
 
     @Override
@@ -242,7 +298,6 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
 
     @Override
     public final void testFailed(TestDescription test, String trace) {
-        mSkipTestCase = shouldSkip(test);
         if (!mSkipTestCase) {
             try {
                 onTestFail(mTestData, test);
@@ -252,6 +307,19 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
             }
         }
         mForwarder.testFailed(test, trace);
+    }
+
+    @Override
+    public final void testFailed(TestDescription test, FailureDescription failure) {
+        if (!mSkipTestCase) {
+            try {
+                onTestFail(mTestData, test);
+            } catch (Throwable t) {
+                // Prevent exception from messing up the status reporting.
+                CLog.e(t);
+            }
+        }
+        mForwarder.testFailed(test, failure);
     }
 
     @Override
@@ -278,7 +346,6 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
 
     @Override
     public final void testAssumptionFailure(TestDescription test, String trace) {
-        mSkipTestCase = shouldSkip(test);
         if (!mSkipTestCase) {
             try {
                 onTestAssumptionFailure(mTestData, test);
@@ -369,4 +436,99 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
         }
         return false;
     }
+
+    /**
+     * Resolves the relative path of the file from the test artifacts
+     * directory or module directory.
+     *
+     * @param fileName file name that needs to be resolved.
+     * @return File file resolved for the given file name. Returns null
+     *         if file not found.
+     */
+    private File resolveRelativeFilePath(String fileName) {
+        IBuildInfo buildInfo = getBuildInfos().get(0);
+        String mModuleName = null;
+        // Retrieve the module name.
+        if (mContext.getAttributes().get(ModuleDefinition.MODULE_NAME) != null) {
+            mModuleName = mContext.getAttributes().get(ModuleDefinition.MODULE_NAME)
+                    .get(0);
+        }
+
+        File src = null;
+        if (buildInfo != null) {
+            src = buildInfo.getFile(fileName);
+            if (src != null && src.exists()) {
+                return src;
+            }
+        }
+
+        if (buildInfo instanceof IDeviceBuildInfo) {
+            IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo) buildInfo;
+            File testDir = deviceBuild.getTestsDir();
+            List<File> scanDirs = new ArrayList<>();
+            // If it exists, always look first in the ANDROID_TARGET_OUT_TESTCASES
+            File targetTestCases = deviceBuild.getFile(BuildInfoFileKey.TARGET_LINKED_DIR);
+            if (targetTestCases != null) {
+                scanDirs.add(targetTestCases);
+            }
+            // If not, look into the test directory.
+            if (testDir != null) {
+                scanDirs.add(testDir);
+            }
+
+            if (mModuleName != null) {
+                // Use module name as a discriminant to find some files
+                if (testDir != null) {
+                    try {
+                        File moduleDir = FileUtil.findDirectory(
+                                mModuleName, scanDirs.toArray(new File[] {}));
+                        if (moduleDir != null) {
+                            // If the spec is pushing the module itself
+                            if (mModuleName.equals(fileName)) {
+                                // If that's the main binary generated by the target, we push the
+                                // full directory
+                                return moduleDir;
+                            }
+                            // Search the module directory if it exists use it in priority
+                            src = FileUtil.findFile(fileName, null, moduleDir);
+                            if (src != null) {
+                                CLog.i("Retrieving src file from" + src.getAbsolutePath());
+                                return src;
+                            }
+                        } else {
+                            CLog.d("Did not find any module directory for '%s'", mModuleName);
+                        }
+
+                    } catch (IOException e) {
+                        CLog.w(
+                                "Something went wrong while searching for the module '%s' "
+                                        + "directory.",
+                                mModuleName);
+                    }
+                }
+            }
+
+            for (File searchDir : scanDirs) {
+                try {
+                    Set<File> allMatch = FileUtil.findFilesObject(searchDir, fileName);
+                    if (allMatch.size() > 1) {
+                        CLog.d(
+                                "Several match for filename '%s', searching for top-level match.",
+                                fileName);
+                        for (File f : allMatch) {
+                            if (f.getParent().equals(searchDir.getAbsolutePath())) {
+                                return f;
+                            }
+                        }
+                    } else if (allMatch.size() == 1) {
+                        return allMatch.iterator().next();
+                    }
+                } catch (IOException e) {
+                    CLog.w("Failed to find test files from directory.");
+                }
+            }
+        }
+        return src;
+    }
+
 }

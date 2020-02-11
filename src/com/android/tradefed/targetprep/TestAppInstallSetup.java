@@ -23,6 +23,9 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
@@ -32,8 +35,8 @@ import com.android.tradefed.util.BuildTestsZipUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -46,8 +49,7 @@ import java.util.List;
  * the first.
  */
 @OptionClass(alias = "tests-zip-app")
-public class TestAppInstallSetup extends BaseTargetPreparer
-        implements ITargetCleaner, IAbiReceiver {
+public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiReceiver {
 
     /** The mode the apk should be install in. */
     private enum InstallMode {
@@ -97,10 +99,16 @@ public class TestAppInstallSetup extends BaseTargetPreparer
                     + "including leading dash, e.g. \"-d\"")
     private Collection<String> mInstallArgs = new ArrayList<>();
 
-    @Option(name = "cleanup-apks",
-            description = "Whether apks installed should be uninstalled after test. Note that the "
-                    + "preparer does not verify if the apks are successfully removed.")
-    private boolean mCleanup = false;
+    @Option(name = "force-queryable",
+            description = "Whether apks should be installed as force queryable.")
+    private boolean mForceQueryable = true;
+
+    @Option(
+            name = "cleanup-apks",
+            description =
+                    "Whether apks installed should be uninstalled after test. Note that the "
+                            + "preparer does not verify if the apks are successfully removed.")
+    private boolean mCleanup = true;
 
     @Option(name = "alt-dir",
             description = "Alternate directory to look for the apk if the apk is not in the tests "
@@ -128,6 +136,11 @@ public class TestAppInstallSetup extends BaseTargetPreparer
     private Boolean mGrantPermission = null;
 
     private List<String> mPackagesInstalled = null;
+    private TestInformation mTestInfo;
+
+    protected void setTestInformation(TestInformation testInfo) {
+        mTestInfo = testInfo;
+    }
 
     /**
      * Adds a file name to the list of apks to installed
@@ -177,32 +190,49 @@ public class TestAppInstallSetup extends BaseTargetPreparer
     /**
      * Resolve the actual apk path based on testing artifact information inside build info.
      *
-     * @param buildInfo build artifact information
+     * @param testInfo The {@link TestInformation} for the invocation.
      * @param apkFileName filename of the apk to install
-     * @param device the {@link ITestDevice} being prepared
      * @return a {@link File} representing the physical apk file on host or {@code null} if the file
      *     does not exist.
      */
-    protected File getLocalPathForFilename(
-            IBuildInfo buildInfo, String apkFileName, ITestDevice device) throws TargetSetupError {
+    protected File getLocalPathForFilename(TestInformation testInfo, String apkFileName)
+            throws TargetSetupError {
         try {
-            return BuildTestsZipUtils.getApkFile(buildInfo, apkFileName, mAltDirs, mAltDirBehavior,
+            return BuildTestsZipUtils.getApkFile(
+                    testInfo.getBuildInfo(),
+                    apkFileName,
+                    mAltDirs,
+                    mAltDirBehavior,
                     false /* use resource as fallback */,
                     null /* device signing key */);
         } catch (IOException ioe) {
             throw new TargetSetupError(
                     String.format(
                             "failed to resolve apk path for apk %s in build %s",
-                            apkFileName, buildInfo.toString()),
+                            apkFileName, testInfo.getBuildInfo().toString()),
                     ioe,
-                    device.getDeviceDescriptor());
+                    testInfo.getDevice().getDeviceDescriptor());
         }
+    }
+
+    /** @deprecated Temporary backward compatible callback. */
+    @Deprecated
+    @Override
+    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", device);
+        context.addDeviceBuildInfo("device", buildInfo);
+        TestInformation backwardCompatible =
+                TestInformation.newBuilder().setInvocationContext(context).build();
+        setUp(backwardCompatible);
     }
 
     /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
-            throws TargetSetupError, DeviceNotAvailableException {
+    public void setUp(TestInformation testInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        mTestInfo = testInfo;
         if (mTestFileNames.isEmpty() && mSplitApkFileNames.isEmpty()) {
             CLog.i("No test apps to install, skipping");
             return;
@@ -219,7 +249,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer
         if (mAbi != null) {
             abiName = mAbi.getName();
         } else if (mForceAbi != null) {
-            abiName = AbiFormatter.getDefaultAbi(device, mForceAbi);
+            abiName = AbiFormatter.getDefaultAbi(getDevice(), mForceAbi);
         }
 
         // Set all the extra install args outside the loop to avoid adding them several times.
@@ -239,14 +269,31 @@ public class TestAppInstallSetup extends BaseTargetPreparer
             }
         }
 
+        if (mForceQueryable && getDevice().isAppEnumerationSupported()) {
+            mInstallArgs.add("--force-queryable");
+        }
+
         for (String testAppName : mTestFileNames) {
-            installer(device, buildInfo, Arrays.asList(new String[] {testAppName}));
+            installer(testInfo, Arrays.asList(new String[] {testAppName}));
         }
 
         for (String testAppNames : mSplitApkFileNames) {
             List<String> apkNames = Arrays.asList(testAppNames.split(","));
-            installer(device, buildInfo, apkNames);
+            installer(testInfo, apkNames);
         }
+    }
+
+    /**
+     * Returns the device that the preparer should apply to.
+     *
+     * @throws TargetSetupError
+     */
+    public ITestDevice getDevice() throws TargetSetupError {
+        return mTestInfo.getDevice();
+    }
+
+    public TestInformation getTestInfo() {
+        return mTestInfo;
     }
 
     @Override
@@ -272,15 +319,17 @@ public class TestAppInstallSetup extends BaseTargetPreparer
         return mInstantMode;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
+        mTestInfo = testInfo;
         if (mCleanup && mPackagesInstalled != null && !(e instanceof DeviceNotAvailableException)) {
             for (String packageName : mPackagesInstalled) {
-                uninstallPackage(device, packageName);
+                try {
+                    uninstallPackage(getDevice(), packageName);
+                } catch (TargetSetupError tse) {
+                    CLog.e(tse);
+                }
             }
         }
     }
@@ -299,24 +348,29 @@ public class TestAppInstallSetup extends BaseTargetPreparer
         mAltDirBehavior = altDirBehavior;
     }
 
+    /** Returns True if Apks will be cleaned up during tear down. */
+    public boolean isCleanUpEnabled() {
+        return mCleanup;
+    }
+
     /**
      * Attempt to install an package or split package on the device.
      *
-     * @param device the {@link ITestDevice} to install package
-     * @param buildInfo build artifact information
+     * @param testInfo the {@link TestInformation} for the invocation
      * @param apkNames List of String. The application file base names to be installed. If apkNames
      *     contains only one apk name, the apk will be installed as single package. If apkNames
      *     contains more than one name, the apks will be installed as split apks.
      */
-    protected void installer(ITestDevice device, IBuildInfo buildInfo, List<String> apkNames)
+    protected void installer(TestInformation testInfo, List<String> apkNames)
             throws TargetSetupError, DeviceNotAvailableException {
         List<File> appFiles = new ArrayList<File>();
         List<String> packageNames = new ArrayList<String>();
+        ITestDevice device = testInfo.getDevice();
         for (String name : apkNames) {
             if (name == null || name.trim().isEmpty()) {
                 continue;
             }
-            File testAppFile = getLocalPathForFilename(buildInfo, name, device);
+            File testAppFile = getLocalPathForFilename(testInfo, name);
             if (testAppFile == null) {
                 if (mThrowIfNoFile) {
                     throw new TargetSetupError(

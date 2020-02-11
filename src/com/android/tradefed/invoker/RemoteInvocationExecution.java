@@ -59,7 +59,6 @@ import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.proto.TestRecordProtoUtil;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -81,6 +80,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
     public static final long LAUNCH_EXTRA_DEVICE = 15 * 60 * 1000L;
     public static final long SETUP_REMOTE_DIR_TIMEOUT = 10 * 60 * 1000L;
     public static final long NEW_USER_TIMEOUT = 5 * 60 * 1000L;
+    public static final long JOIN_CLEAN_TIMEOUT_MS = 2 * 60 * 1000L;
 
     public static final String REMOTE_USER_DIR = "/home/{$USER}/";
     public static final String PROTO_RESULT_NAME = "output.pb";
@@ -88,11 +88,10 @@ public class RemoteInvocationExecution extends InvocationExecution {
     public static final String STDERR_FILE = "screen-VM_tradefed-stderr.txt";
     public static final String REMOTE_CONFIG = "configuration";
     public static final String GLOBAL_REMOTE_CONFIG = "global-remote-configuration";
-    public static final String SHARDING_DEVICE_SETUP_TIME = "sharding-device-setup-ms";
 
     private static final int MAX_CONNECTION_REFUSED_COUNT = 3;
     private static final int MAX_PUSH_TF_ATTEMPTS = 3;
-    private static final int MAX_WORKER_THREAD = 3;
+    private static final int MAX_WORKER_THREAD = 1;
     private static final String TRADEFED_EARLY_TERMINATION =
             "Remote Tradefed might have terminated early.\nRemote Stderr:\n%s";
 
@@ -101,9 +100,12 @@ public class RemoteInvocationExecution extends InvocationExecution {
     private ProtoResultParser mProtoParser = null;
     private String mRemoteConsoleStdErr = null;
 
+    // Track the threads that are starting remote devices
+    private List<StartDeviceThread> mParallelSetupThreads = null;
+
     @Override
     public boolean fetchBuild(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             IRescheduler rescheduler,
             ITestInvocationListener listener)
@@ -119,17 +121,17 @@ public class RemoteInvocationExecution extends InvocationExecution {
         if (info == null) {
             return false;
         }
-        context.addDeviceBuildInfo(deviceName, info);
+        testInfo.getContext().addDeviceBuildInfo(deviceName, info);
         updateBuild(info, config);
         return true;
     }
 
     @Override
     public void runTests(
-            IInvocationContext context, IConfiguration config, ITestInvocationListener listener)
+            TestInformation info, IConfiguration config, ITestInvocationListener listener)
             throws Throwable {
-        ManagedRemoteDevice device = (ManagedRemoteDevice) context.getDevices().get(0);
-        GceAvdInfo info = device.getRemoteAvdInfo();
+        ManagedRemoteDevice device = (ManagedRemoteDevice) info.getDevice();
+        GceAvdInfo gceInfo = device.getRemoteAvdInfo();
 
         // Run remote TF (new tests?)
         IRunUtil runUtil = new RunUtil();
@@ -141,45 +143,37 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 && config.getCommandOptions().getShardIndex() == null) {
             if (config.getCommandOptions().getShardCount() > 1) {
                 int instanceCount = config.getCommandOptions().getShardCount();
-                if (!context.getBuildInfos().get(0).getBuildId().startsWith("P")) {
+                if (!info.getBuildInfo().getBuildId().startsWith("P")) {
                     instanceCount += config.getCommandOptions().getExtraRemotePostsubmitInstance();
                     config.getCommandOptions().setShardCount(instanceCount);
                 }
                 boolean parallel = config.getCommandOptions().shouldUseParallelRemoteSetup();
-                long startTime = System.currentTimeMillis();
                 // For each device after the first one we need to start a new device.
                 if (!parallel) {
+                    long startTime = System.currentTimeMillis();
                     for (int i = 2; i < instanceCount + 1; i++) {
-                        boolean res = startDevice(listener, i, info, options, runUtil, null);
+                        boolean res = startDevice(listener, i, gceInfo, options, runUtil, null);
                         if (!res) {
                             return;
                         }
                     }
+                    // Log the overhead to start the device
+                    long elapsedTime = System.currentTimeMillis() - startTime;
+                    InvocationMetricLogger.addInvocationMetrics(
+                            InvocationMetricKey.SHARDING_DEVICE_SETUP_TIME, elapsedTime);
                 } else {
                     // Parallel setup of devices
                     Semaphore token = new Semaphore(MAX_WORKER_THREAD);
-                    List<StartDeviceThread> threads = new ArrayList<>();
+                    mParallelSetupThreads = new ArrayList<>();
                     for (int i = 2; i < instanceCount + 1; i++) {
                         StartDeviceThread sdt =
-                                new StartDeviceThread(listener, i, info, options, runUtil, token);
-                        threads.add(sdt);
+                                new StartDeviceThread(
+                                        listener, i, gceInfo, options, runUtil, token);
+                        mParallelSetupThreads.add(sdt);
                         sdt.start();
-                    }
-
-                    boolean res = true;
-                    for (StartDeviceThread t : threads) {
-                        t.join();
-                        res = res & t.getFinalStatus();
-                    }
-                    if (!res) {
-                        return;
                     }
                 }
 
-                // Log the overhead to start the device
-                long elapsedTime = System.currentTimeMillis() - startTime;
-                InvocationMetricLogger.addInvocationMetrics(
-                        InvocationMetricKey.SHARDING_DEVICE_SETUP_TIME, elapsedTime);
             }
         }
 
@@ -193,7 +187,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
         mRemoteTradefedDir = mainRemoteDir + "tradefed/";
         CommandResult createRemoteDir =
                 GceManager.remoteSshCommandExecution(
-                        info, options, runUtil, 120000L, "mkdir", "-p", mRemoteTradefedDir);
+                        gceInfo, options, runUtil, 120000L, "mkdir", "-p", mRemoteTradefedDir);
         if (!CommandStatus.SUCCESS.equals(createRemoteDir.getStatus())) {
             listener.invocationFailed(new RuntimeException("Failed to create remote dir."));
             return;
@@ -205,7 +199,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
         while (!result && attempt < MAX_PUSH_TF_ATTEMPTS) {
             result =
                     RemoteFileUtil.pushFileToRemote(
-                            info,
+                            gceInfo,
                             options,
                             Arrays.asList("-r"),
                             runUtil,
@@ -223,7 +217,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
         mRemoteTradefedDir = mRemoteTradefedDir + tfToPush.getName() + "/";
         CommandResult listRemoteDir =
                 GceManager.remoteSshCommandExecution(
-                        info, options, runUtil, 120000L, "ls", "-l", mRemoteTradefedDir);
+                        gceInfo, options, runUtil, 120000L, "ls", "-l", mRemoteTradefedDir);
         CLog.d("stdout: %s", listRemoteDir.getStdout());
         CLog.d("stderr: %s", listRemoteDir.getStderr());
 
@@ -233,7 +227,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
             CLog.d("Pushing Tradefed XML configuration to remote.");
             boolean resultPush =
                     RemoteFileUtil.pushFileToRemote(
-                            info,
+                            gceInfo,
                             options,
                             null,
                             runUtil,
@@ -249,7 +243,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
             String[] whitelistConfigs =
                     new String[] {
-                        GlobalConfiguration.SCHEDULER_TYPE_NAME,
+                        GlobalConfiguration.SANDBOX_FACTORY_TYPE_NAME,
                         GlobalConfiguration.HOST_OPTIONS_TYPE_NAME,
                         DynamicRemoteFileResolver.DYNAMIC_RESOLVER,
                         "android-build"
@@ -268,7 +262,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
             // Push the global configuration
             boolean resultPushGlobal =
                     RemoteFileUtil.pushFileToRemote(
-                            info,
+                            gceInfo,
                             options,
                             null,
                             runUtil,
@@ -282,9 +276,17 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 return;
             }
 
-            resetAdb(info, options, runUtil);
-            runRemote(listener, context, configFile, info, options, runUtil, config, globalConfig);
-            collectAdbLogs(info, options, runUtil, listener);
+            resetAdb(gceInfo, options, runUtil);
+            runRemote(
+                    listener,
+                    info.getContext(),
+                    configFile,
+                    gceInfo,
+                    options,
+                    runUtil,
+                    config,
+                    globalConfig);
+            collectAdbLogs(gceInfo, options, runUtil, listener);
         } finally {
             FileUtil.recursiveDelete(configFile);
             FileUtil.recursiveDelete(globalConfig);
@@ -292,20 +294,40 @@ public class RemoteInvocationExecution extends InvocationExecution {
     }
 
     @Override
-    public void doSetup(IInvocationContext context, IConfiguration config, ITestLogger logger)
+    public void doSetup(TestInformation testInfo, IConfiguration config, ITestLogger logger)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         // Skip
     }
 
     @Override
     public void doTeardown(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             ITestLogger logger,
             Throwable exception)
             throws Throwable {
-        // Only run device post invocation teardown
-        super.runDevicePostInvocationTearDown(context, config, exception);
+        try {
+            List<StartDeviceThread> interrupted = new ArrayList<>();
+            if (mParallelSetupThreads != null) {
+                for (StartDeviceThread t : mParallelSetupThreads) {
+                    if (t.isAlive()) {
+                        t.interrupt();
+                        interrupted.add(t);
+                    }
+                }
+
+                try {
+                    for (StartDeviceThread t : interrupted) {
+                        t.join(JOIN_CLEAN_TIMEOUT_MS);
+                    }
+                } catch (InterruptedException e) {
+                    CLog.e(e);
+                }
+            }
+        } finally {
+            // Only run device post invocation teardown
+            super.runDevicePostInvocationTearDown(testInfo.getContext(), config, exception);
+        }
     }
 
     @Override
@@ -754,7 +776,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                             options,
                             runUtil,
                             LAUNCH_EXTRA_DEVICE,
-                            Joiner.on(" ").join(startCommand));
+                            String.join(" ", startCommand));
         } finally {
             if (token != null) {
                 token.release();
@@ -780,8 +802,6 @@ public class RemoteInvocationExecution extends InvocationExecution {
         private IRunUtil mRunUtil;
         private Semaphore mToken;
 
-        private boolean mFinalResult = false;
-
         public StartDeviceThread(
                 ITestInvocationListener listener,
                 int userId,
@@ -802,19 +822,20 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
         @Override
         public void run() {
+            long startTime = System.currentTimeMillis();
+            boolean success = false;
             try {
-                mFinalResult = startDevice(mListener, mUserId, mInfo, mOptions, mRunUtil, mToken);
+                success = startDevice(mListener, mUserId, mInfo, mOptions, mRunUtil, mToken);
             } catch (InterruptedException e) {
                 CLog.e(e);
             }
-        }
-
-        /**
-         * Returns the final status of the startDevice. Returns true if it succeeded, false
-         * otherwise.
-         */
-        boolean getFinalStatus() {
-            return mFinalResult;
+            if (!success) {
+                CLog.e("Failed to start device for vsoc-%s.", mUserId);
+            }
+            // Log the overhead to start the device
+            long elapsedTime = System.currentTimeMillis() - startTime;
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.SHARDING_DEVICE_SETUP_TIME, elapsedTime);
         }
     }
 }

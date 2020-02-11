@@ -17,13 +17,19 @@ package com.android.tradefed.build;
 
 import com.android.ddmlib.Log;
 import com.android.tradefed.command.FatalHostError;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
+import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -60,6 +66,8 @@ public class FileDownloadCache {
 
     /** A map of remote file paths to locks. */
     private final Map<String, ReentrantLock> mFileLocks = new CollapsedKeyMap<>();
+
+    private final Map<String, FileLock> mJvmLocks = new CollapsedKeyMap<>();
 
     private long mCurrentCacheSize = 0;
 
@@ -176,8 +184,26 @@ public class FileDownloadCache {
 
     /** Acquires the lock for a file. */
     protected void lockFile(String remoteFilePath) {
+        // Get a JVM level lock first
+        synchronized (mJvmLocks) {
+            FileLock fLock = mJvmLocks.get(remoteFilePath);
+            if (fLock == null) {
+                File f = new File(mCacheRoot, convertPath(remoteFilePath));
+                // We can't lock a directory
+                if (!f.isDirectory()) {
+                    try {
+                        f.getParentFile().mkdirs();
+                        f.createNewFile();
+                        fLock = FileChannel.open(f.toPath(), StandardOpenOption.WRITE).lock();
+                        mJvmLocks.put(remoteFilePath, fLock);
+                    } catch (IOException e) {
+                        CLog.e(e);
+                    }
+                }
+            }
+        }
+        // Get concurrent lock for inside the JVM
         ReentrantLock fileLock;
-
         synchronized (mFileLocks) {
             fileLock = mFileLocks.get(remoteFilePath);
             if (fileLock == null) {
@@ -194,6 +220,23 @@ public class FileDownloadCache {
      * @return true if the lock was acquired, and false otherwise.
      */
     protected boolean tryLockFile(String remoteFilePath) {
+        synchronized (mJvmLocks) {
+            FileLock fLock = mJvmLocks.get(remoteFilePath);
+            if (fLock == null) {
+                File f = new File(mCacheRoot, convertPath(remoteFilePath));
+                try {
+                    if (f.exists()) {
+                        fLock = FileChannel.open(f.toPath(), StandardOpenOption.WRITE).tryLock();
+                        mJvmLocks.put(remoteFilePath, fLock);
+                    }
+                } catch (IOException e) {
+                    CLog.e(e);
+                }
+            }
+            if (fLock == null) {
+                return false;
+            }
+        }
         synchronized (mFileLocks) {
             ReentrantLock fileLock = mFileLocks.get(remoteFilePath);
             if (fileLock == null) {
@@ -219,6 +262,20 @@ public class FileDownloadCache {
                 fileLock.unlock();
             }
         }
+        // Release the JVM level lock
+        synchronized (mJvmLocks) {
+            FileLock fLock = mJvmLocks.get(remoteFilePath);
+            if (fLock != null) {
+                mJvmLocks.remove(remoteFilePath);
+                try {
+                    fLock.release();
+                } catch (IOException e) {
+                    CLog.e(e);
+                } finally {
+                    StreamUtil.close(fLock.channel());
+                }
+            }
+        }
     }
 
     /**
@@ -237,17 +294,36 @@ public class FileDownloadCache {
     }
 
     /**
+     * Download the file or link the cache to the destination file.
+     *
+     * @param downloader the {@link IFileDownloader}
+     * @param remoteFilePath the remote file.
+     * @param destFile The destination file of the download.
+     * @throws BuildRetrievalError
+     */
+    public void fetchRemoteFile(IFileDownloader downloader, String remoteFilePath, File destFile)
+            throws BuildRetrievalError {
+        internalfetchRemoteFile(downloader, remoteFilePath, destFile);
+    }
+
+    /**
      * Returns a local file corresponding to the given <var>remotePath</var>
-     * <p/>
-     * The local {@link File} will be copied from the cache if it exists, otherwise will be
+     *
+     * <p>The local {@link File} will be copied from the cache if it exists, otherwise will be
      * downloaded via the given {@link IFileDownloader}.
      *
      * @param downloader the {@link IFileDownloader}
-     * @param remotePath the remote file.
+     * @param remoteFilePath the remote file.
      * @return a local {@link File} containing contents of remotePath
      * @throws BuildRetrievalError if file could not be retrieved
      */
-    public File fetchRemoteFile(IFileDownloader downloader, String remotePath)
+    public File fetchRemoteFile(IFileDownloader downloader, String remoteFilePath)
+            throws BuildRetrievalError {
+        return internalfetchRemoteFile(downloader, remoteFilePath, null);
+    }
+
+    private File internalfetchRemoteFile(
+            IFileDownloader downloader, String remotePath, File destFile)
             throws BuildRetrievalError {
         boolean download = false;
         File cachedFile, copyFile;
@@ -269,7 +345,8 @@ public class FileDownloadCache {
             try {
                 if (!download
                         && cachedFile.exists()
-                        && !downloader.isFresh(cachedFile, remotePath)) {
+                        && (cachedFile.length() == 0L
+                                || !downloader.isFresh(cachedFile, remotePath))) {
                     Log.d(
                             LOG_TAG,
                             String.format(
@@ -280,6 +357,10 @@ public class FileDownloadCache {
                 }
                 if (download || !cachedFile.exists()) {
                     cachedFile.getParentFile().mkdirs();
+                    // TODO: handle folder better
+                    if (cachedFile.exists()) {
+                        cachedFile.delete();
+                    }
                     downloadFile(downloader, remotePath, cachedFile);
                 } else {
                     Log.d(
@@ -288,7 +369,7 @@ public class FileDownloadCache {
                                     "Retrieved remote file %s from cached file %s",
                                     remotePath, cachedFile.getAbsolutePath()));
                 }
-                copyFile = copyFile(remotePath, cachedFile);
+                copyFile = copyFile(remotePath, cachedFile, destFile);
             } catch (BuildRetrievalError | RuntimeException e) {
                 // cached file is likely incomplete, delete it.
                 deleteCacheEntry(remotePath);
@@ -313,11 +394,15 @@ public class FileDownloadCache {
     }
 
     @VisibleForTesting
-    File copyFile(String remotePath, File cachedFile) throws BuildRetrievalError {
+    File copyFile(String remotePath, File cachedFile, File destFile) throws BuildRetrievalError {
         // attempt to create a local copy of cached file with sane name
-        File hardlinkFile = null;
+        File hardlinkFile = destFile;
         try {
-            hardlinkFile = FileUtil.createTempFileForRemote(remotePath, null);
+            if (hardlinkFile == null) {
+                hardlinkFile =
+                        FileUtil.createTempFileForRemote(
+                                remotePath, CurrentInvocation.getInfo(InvocationInfo.WORK_FOLDER));
+            }
             hardlinkFile.delete();
             CLog.d(
                     "Creating hardlink '%s' to '%s'",

@@ -20,6 +20,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.DataType;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -115,6 +116,16 @@ public abstract class BasePostProcessor implements IPostProcessor {
         mForwarder.testLog(dataName, dataType, dataStream);
     }
 
+    @Override
+    public final void testModuleStarted(IInvocationContext moduleContext) {
+        mForwarder.testModuleStarted(moduleContext);
+    }
+
+    @Override
+    public final void testModuleEnded() {
+        mForwarder.testModuleEnded();
+    }
+
     /** Test run callbacks */
     @Override
     public final void testRunStarted(String runName, int testCount) {
@@ -129,6 +140,11 @@ public abstract class BasePostProcessor implements IPostProcessor {
     @Override
     public final void testRunFailed(String errorMessage) {
         mForwarder.testRunFailed(errorMessage);
+    }
+
+    @Override
+    public final void testRunFailed(FailureDescription failure) {
+        mForwarder.testRunFailed(failure);
     }
 
     @Override
@@ -190,6 +206,11 @@ public abstract class BasePostProcessor implements IPostProcessor {
     }
 
     @Override
+    public final void testFailed(TestDescription test, FailureDescription failure) {
+        mForwarder.testFailed(test, failure);
+    }
+
+    @Override
     public final void testEnded(TestDescription test, Map<String, String> testMetrics) {
         testEnded(test, System.currentTimeMillis(), testMetrics);
     }
@@ -232,7 +253,10 @@ public abstract class BasePostProcessor implements IPostProcessor {
                     continue;
                 }
                 // Force the metric to 'processed' since generated in a post-processor.
-                Metric newMetric = newEntry.getValue().setType(DataType.PROCESSED).build();
+                Metric newMetric =
+                        newEntry.getValue()
+                                .setType(getMetricType())
+                                .build();
                 testMetrics.put(newKey, newMetric);
             }
         } catch (RuntimeException e) {
@@ -315,8 +339,19 @@ public abstract class BasePostProcessor implements IPostProcessor {
                 continue;
             }
             // Force the metric to 'processed' since generated in a post-processor.
-            Metric newMetric = newEntry.getValue().setType(DataType.PROCESSED).build();
+            Metric newMetric =
+                    newEntry.getValue()
+                            .setType(getMetricType())
+                            .build();
             existing.put(newKey, newMetric);
         }
+    }
+
+    /**
+     * Override this method to change the metric type if needed. By default metric is set to
+     * processed type.
+     */
+    protected DataType getMetricType() {
+        return DataType.PROCESSED;
     }
 }

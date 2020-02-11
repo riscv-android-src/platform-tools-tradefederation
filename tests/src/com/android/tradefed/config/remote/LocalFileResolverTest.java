@@ -18,15 +18,13 @@ package com.android.tradefed.config.remote;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.config.Option;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.util.FileUtil;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.mockito.Mockito;
 
 import java.io.File;
 
@@ -46,7 +44,7 @@ public class LocalFileResolverTest {
         File testFile = FileUtil.createTempFile("test-local-file", ".txt");
         try {
             File markedFile = new File("file:" + testFile.getAbsolutePath());
-            File returned = mResolver.resolveRemoteFiles(markedFile, Mockito.mock(Option.class));
+            File returned = mResolver.resolveRemoteFiles(markedFile);
             assertEquals(testFile, returned);
         } finally {
             FileUtil.deleteFile(testFile);
@@ -57,9 +55,9 @@ public class LocalFileResolverTest {
     public void testResolveLocalFile_notFound() throws Exception {
         File markedFile = new File("file:whateverpathsomewhere");
         try {
-            mResolver.resolveRemoteFiles(markedFile, Mockito.mock(Option.class));
+            mResolver.resolveRemoteFiles(markedFile);
             fail("Should have thrown an exception.");
-        } catch (ConfigurationException expected) {
+        } catch (BuildRetrievalError expected) {
             // Expected
         }
     }
